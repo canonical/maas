@@ -3,10 +3,7 @@
 
 """API handlers: `Fan Network`."""
 
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fannetwork import FanNetworkForm
 from maasserver.models import FanNetwork
@@ -15,19 +12,20 @@ from piston3.utils import rc
 
 
 DISPLAYED_FANNETWORK_FIELDS = (
-    'id',
-    'name',
-    'underlay',
-    'overlay',
-    'dhcp',
-    'host_reserve',
-    'bridge',
-    'off',
+    "id",
+    "name",
+    "underlay",
+    "overlay",
+    "dhcp",
+    "host_reserve",
+    "bridge",
+    "off",
 )
 
 
 class FanNetworksHandler(OperationsHandler):
     """Manage Fan Networks."""
+
     api_doc_section_name = "Fan Networks"
     update = delete = None
     fields = DISPLAYED_FANNETWORK_FIELDS
@@ -35,7 +33,7 @@ class FanNetworksHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('fannetworks_handler', [])
+        return ("fannetworks_handler", [])
 
     def read(self, request):
         """@description-title List fan networks
@@ -86,6 +84,7 @@ class FanNetworksHandler(OperationsHandler):
 
 class FanNetworkHandler(OperationsHandler):
     """Manage Fan Network."""
+
     api_doc_section_name = "Fan Network"
     create = None
     model = FanNetwork
@@ -97,7 +96,7 @@ class FanNetworkHandler(OperationsHandler):
         fannetwork_id = "id"
         if fannetwork is not None:
             fannetwork_id = fannetwork.id
-        return ('fannetwork_handler', (fannetwork_id,))
+        return ("fannetwork_handler", (fannetwork_id,))
 
     def read(self, request, id):
         """@description-title Read a fan network
@@ -117,7 +116,8 @@ class FanNetworkHandler(OperationsHandler):
             Not Found
         """
         return FanNetwork.objects.get_fannetwork_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update a fan network
@@ -154,7 +154,8 @@ class FanNetworkHandler(OperationsHandler):
             Not Found
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         form = FanNetworkForm(instance=fannetwork, data=request.data)
         if form.is_valid():
             return form.save()
@@ -175,6 +176,7 @@ class FanNetworkHandler(OperationsHandler):
             Not Found
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         fannetwork.delete()
         return rc.DELETED

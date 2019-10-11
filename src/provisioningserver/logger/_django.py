@@ -3,9 +3,7 @@
 
 """Django-specific logging stuff."""
 
-__all__ = [
-    "configure_django_logging",
-]
+__all__ = ["configure_django_logging"]
 
 import warnings
 
@@ -37,9 +35,11 @@ def configure_django_logging(verbosity: int, mode: LoggingMode):
     # Django's default logging configuration is not great. For example it
     # wants to email request errors and security issues to the site admins,
     # but fails silently. Throw it all away.
-    warn_unless(hasattr(log, "DEFAULT_LOGGING"), (
-        "No DEFAULT_LOGGING attribute found in Django; please investigate!"))
-    log.DEFAULT_LOGGING = {'version': 1, 'disable_existing_loggers': False}
+    warn_unless(
+        hasattr(log, "DEFAULT_LOGGING"),
+        "No DEFAULT_LOGGING attribute found in Django; please investigate!",
+    )
+    log.DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 
     # Prevent Django from meddling with `warnings`. There's no configuration
     # option for this so we have to get invasive. We also skip running-in
@@ -50,8 +50,10 @@ def configure_django_logging(verbosity: int, mode: LoggingMode):
             logging_config_func = log.import_string(logging_config)
             logging_config_func(logging_settings)
 
-    warn_unless(hasattr(log, "configure_logging"), (
-        "No configure_logging function found in Django; please investigate!"))
+    warn_unless(
+        hasattr(log, "configure_logging"),
+        "No configure_logging function found in Django; please investigate!",
+    )
     log.configure_logging = configure_logging
 
     # Outside of the development environment ensure that deprecation warnings
@@ -59,4 +61,5 @@ def configure_django_logging(verbosity: int, mode: LoggingMode):
     # warnings from Django. Developers are, however.
     if not is_dev_environment():
         from django.utils.deprecation import RemovedInNextVersionWarning
+
         warnings.simplefilter("ignore", RemovedInNextVersionWarning)

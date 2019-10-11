@@ -3,17 +3,12 @@
 
 """Django command: generate the API documentation."""
 
-__all__ = [
-    'Command',
-    ]
+__all__ = ["Command"]
 
 from django.core.management.base import BaseCommand
-from maasserver.api.doc_handler import (
-    api_doc_title,
-    render_api_docs,
-)
+from maasserver.api.doc_handler import api_doc_title, render_api_docs
 
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        self.stdout.write('\n'.join([api_doc_title, render_api_docs()]))
+        self.stdout.write("\n".join([api_doc_title, render_api_docs()]))

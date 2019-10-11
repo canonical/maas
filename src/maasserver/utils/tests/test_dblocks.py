@@ -5,18 +5,11 @@
 
 __all__ = []
 
-from contextlib import (
-    closing,
-    contextmanager,
-)
+from contextlib import closing, contextmanager
 from random import randrange
 import sys
 
-from django.db import (
-    connection,
-    reset_queries,
-    transaction,
-)
+from django.db import connection, reset_queries, transaction
 from maasserver.testing.dblocks import lock_held_in_other_thread
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -36,7 +29,8 @@ def get_locks():
         cursor.execute(
             "SELECT objid FROM pg_locks "
             "WHERE classid = %s AND objid >= %s AND objid < %s",
-            [dblocks.classid, objid_min, objid_max])
+            [dblocks.classid, objid_min, objid_max],
+        )
         return {result[0] for result in cursor.fetchall()}
 
 
@@ -72,8 +66,7 @@ def capture_queries_while_holding_lock(lock):
         reset_queries()
         with lock:
             pass  # Just being here is enough.
-    return "\n--\n".join(
-        query["sql"] for query in connection.queries)
+    return "\n--\n".join(query["sql"] for query in connection.queries)
 
 
 class TestDatabaseLock(MAASTransactionServerTestCase):
@@ -193,7 +186,8 @@ class TestDatabaseLock(MAASTransactionServerTestCase):
         objid = random_objid()
         lock = self.make_lock(objid)
         self.assertRaises(
-            dblocks.DatabaseLockAttemptWithoutConnection, lock.__enter__)
+            dblocks.DatabaseLockAttemptWithoutConnection, lock.__enter__
+        )
 
     def test_releasing_lock_fails_when_lock_not_held(self):
         objid = random_objid()
@@ -203,13 +197,13 @@ class TestDatabaseLock(MAASTransactionServerTestCase):
     def test_repr(self):
         lock = self.make_lock(random_objid())
         self.assertEqual(
-            "<DatabaseLock classid=%d objid=%d lock=%s unlock=%s>" % (
-                lock[0], lock[1], self.mode[0], self.mode[1]),
-            repr(lock))
+            "<DatabaseLock classid=%d objid=%d lock=%s unlock=%s>"
+            % (lock[0], lock[1], self.mode[0], self.mode[1]),
+            repr(lock),
+        )
 
 
 class TestDatabaseLockVariations(MAASServerTestCase):
-
     def test_plain_variation(self):
         lock = dblocks.DatabaseLock(random_objid())
         self.assertDocTestMatches(
@@ -218,7 +212,8 @@ class TestDatabaseLockVariations(MAASServerTestCase):
             --
             SELECT pg_advisory_unlock(...)
             """,
-            capture_queries_while_holding_lock(lock))
+            capture_queries_while_holding_lock(lock),
+        )
 
     def test_try_variation(self):
         lock = dblocks.DatabaseLock(random_objid())
@@ -229,7 +224,8 @@ class TestDatabaseLockVariations(MAASServerTestCase):
             --
             SELECT pg_advisory_unlock(...)
             """,
-            capture_queries_while_holding_lock(lock.TRY))
+            capture_queries_while_holding_lock(lock.TRY),
+        )
 
     def test_shared_variation(self):
         lock = dblocks.DatabaseLock(random_objid())
@@ -240,7 +236,8 @@ class TestDatabaseLockVariations(MAASServerTestCase):
             --
             SELECT pg_advisory_unlock_shared(...)
             """,
-            capture_queries_while_holding_lock(lock.SHARED))
+            capture_queries_while_holding_lock(lock.SHARED),
+        )
 
     def test_try_shared_variation(self):
         lock = dblocks.DatabaseLock(random_objid())
@@ -251,7 +248,8 @@ class TestDatabaseLockVariations(MAASServerTestCase):
             --
             SELECT pg_advisory_unlock_shared(...)
             """,
-            capture_queries_while_holding_lock(lock.TRY.SHARED))
+            capture_queries_while_holding_lock(lock.TRY.SHARED),
+        )
 
 
 class TestDatabaseXactLock(MAASTransactionServerTestCase):
@@ -314,8 +312,8 @@ class TestDatabaseXactLock(MAASTransactionServerTestCase):
         objid = random_objid()
         lock = self.make_lock(objid)
         self.assertRaises(
-            dblocks.DatabaseLockAttemptOutsideTransaction,
-            lock.__enter__)
+            dblocks.DatabaseLockAttemptOutsideTransaction, lock.__enter__
+        )
 
     def test_releasing_lock_does_nothing(self):
         objid = random_objid()
@@ -325,39 +323,43 @@ class TestDatabaseXactLock(MAASTransactionServerTestCase):
     def test_repr(self):
         lock = self.make_lock(random_objid())
         self.assertEqual(
-            "<DatabaseXactLock classid=%d objid=%d lock=%s unlock=%s>" % (
-                lock[0], lock[1], self.mode[0], self.mode[1]),
-            repr(lock))
+            "<DatabaseXactLock classid=%d objid=%d lock=%s unlock=%s>"
+            % (lock[0], lock[1], self.mode[0], self.mode[1]),
+            repr(lock),
+        )
 
 
 class TestDatabaseXactLockVariations(MAASServerTestCase):
-
     def test_plain_variation(self):
         lock = dblocks.DatabaseXactLock(random_objid())
         self.assertDocTestMatches(
             "SELECT pg_advisory_xact_lock(...)",
-            capture_queries_while_holding_lock(lock))
+            capture_queries_while_holding_lock(lock),
+        )
 
     def test_try_variation(self):
         lock = dblocks.DatabaseXactLock(random_objid())
         self.assertThat(lock.TRY, Equals(lock))
         self.assertDocTestMatches(
             "SELECT pg_try_advisory_xact_lock(...)",
-            capture_queries_while_holding_lock(lock.TRY))
+            capture_queries_while_holding_lock(lock.TRY),
+        )
 
     def test_shared_variation(self):
         lock = dblocks.DatabaseXactLock(random_objid())
         self.assertThat(lock.SHARED, Equals(lock))
         self.assertDocTestMatches(
             "SELECT pg_advisory_xact_lock_shared(...)",
-            capture_queries_while_holding_lock(lock.SHARED))
+            capture_queries_while_holding_lock(lock.SHARED),
+        )
 
     def test_try_shared_variation(self):
         lock = dblocks.DatabaseXactLock(random_objid())
         self.assertThat(lock.TRY.SHARED, Equals(lock))
         self.assertDocTestMatches(
             "SELECT pg_try_advisory_xact_lock_shared(...)",
-            capture_queries_while_holding_lock(lock.TRY.SHARED))
+            capture_queries_while_holding_lock(lock.TRY.SHARED),
+        )
 
 
 class TestTryingToAcquireLockedLock(MAASServerTestCase):
@@ -371,23 +373,19 @@ class TestTryingToAcquireLockedLock(MAASServerTestCase):
     def test_try_variation_when_already_exclusively_locked(self):
         lock = self.make_lock(random_objid())
         with lock_held_in_other_thread(lock):
-            self.assertRaises(
-                dblocks.DatabaseLockNotHeld,
-                lock.TRY.__enter__)
+            self.assertRaises(dblocks.DatabaseLockNotHeld, lock.TRY.__enter__)
 
     def test_try_variation_when_already_share_locked(self):
         lock = self.make_lock(random_objid())
         with lock_held_in_other_thread(lock.SHARED):
-            self.assertRaises(
-                dblocks.DatabaseLockNotHeld,
-                lock.TRY.__enter__)
+            self.assertRaises(dblocks.DatabaseLockNotHeld, lock.TRY.__enter__)
 
     def test_try_shared_variation_when_already_exclusively_locked(self):
         lock = self.make_lock(random_objid())
         with lock_held_in_other_thread(lock):
             self.assertRaises(
-                dblocks.DatabaseLockNotHeld,
-                lock.TRY.SHARED.__enter__)
+                dblocks.DatabaseLockNotHeld, lock.TRY.SHARED.__enter__
+            )
 
     def test_try_shared_variation_when_already_share_locked(self):
         lock = self.make_lock(random_objid())

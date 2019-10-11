@@ -3,18 +3,13 @@
 
 """DNSResource form."""
 
-__all__ = [
-    "DNSResourceForm",
-]
+__all__ = ["DNSResourceForm"]
 
 from collections import Iterable
 
 from django import forms
 from maasserver.enum import IPADDRESS_TYPE
-from maasserver.forms import (
-    APIEditMixin,
-    MAASModelForm,
-)
+from maasserver.forms import APIEditMixin, MAASModelForm
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -28,28 +23,34 @@ class DNSResourceForm(MAASModelForm):
 
     name = forms.CharField(label="Name")
     domain = forms.ModelChoiceField(
-        label="Domain",
-        queryset=Domain.objects.all())
+        label="Domain", queryset=Domain.objects.all()
+    )
     address_ttl = forms.IntegerField(
-        required=False, min_value=0, max_value=(1 << 31) - 1,
+        required=False,
+        min_value=0,
+        max_value=(1 << 31) - 1,
         label="Time To Live (seconds)",
-        help_text="For how long is the answer valid?")
+        help_text="For how long is the answer valid?",
+    )
     ip_addresses = forms.CharField(
-        required=False, label="IP Addresseses",
-        help_text="The IP (or list of IPs), either as IDs or as addresses")
+        required=False,
+        label="IP Addresseses",
+        help_text="The IP (or list of IPs), either as IDs or as addresses",
+    )
 
     class Meta:
         model = DNSResource
-        fields = (
-            'name',
-            'domain',
-            'address_ttl',
-            'ip_addresses',
-            )
+        fields = ("name", "domain", "address_ttl", "ip_addresses")
 
     def __init__(
-            self, data=None, instance=None, request=None, user=None, *args,
-            **kwargs):
+        self,
+        data=None,
+        instance=None,
+        request=None,
+        user=None,
+        *args,
+        **kwargs
+    ):
         # Always save the user, in case we create a StaticIPAddress in save().
         if request is not None:
             self.user = request.user
@@ -83,16 +84,17 @@ class DNSResourceForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if self.data.get('ip_addresses', None) is not None:
-            ip_addresses = self.data.get('ip_addresses')
+        if self.data.get("ip_addresses", None) is not None:
+            ip_addresses = self.data.get("ip_addresses")
             if isinstance(ip_addresses, str):
                 ip_addresses = ip_addresses.split()
             elif isinstance(ip_addresses, Iterable):
                 ip_addresses = list(ip_addresses)
             else:
                 ip_addresses = [ip_addresses]
-            cleaned_data['ip_addresses'] = [
-                self.clean_ip(ipaddr) for ipaddr in ip_addresses]
+            cleaned_data["ip_addresses"] = [
+                self.clean_ip(ipaddr) for ipaddr in ip_addresses
+            ]
         return cleaned_data
 
     def _post_clean(self):
@@ -100,12 +102,12 @@ class DNSResourceForm(MAASModelForm):
         self.cleaned_data = {
             key: value
             for key, value in self.cleaned_data.items()
-            if value is not None or key == 'address_ttl'
+            if value is not None or key == "address_ttl"
         }
         super(APIEditMixin, self)._post_clean()
 
     def save(self, *args, **kwargs):
-        ip_addresses = self.cleaned_data.get('ip_addresses')
+        ip_addresses = self.cleaned_data.get("ip_addresses")
         new_list = []
         for ipaddr in ip_addresses:
             if isinstance(ipaddr, int):
@@ -115,10 +117,11 @@ class DNSResourceForm(MAASModelForm):
             static_ip, _ = StaticIPAddress.objects.get_or_create(
                 ip="%s" % ipaddr,
                 defaults={
-                    'alloc_type': IPADDRESS_TYPE.USER_RESERVED,
-                    'subnet': subnet,
-                    'user': self.user,
-                })
+                    "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
+                    "subnet": subnet,
+                    "user": self.user,
+                },
+            )
             new_list.append(static_ip.id)
-        self.cleaned_data['ip_addresses'] = new_list
+        self.cleaned_data["ip_addresses"] = new_list
         return super().save(self, *args, **kwargs)

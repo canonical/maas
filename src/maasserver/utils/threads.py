@@ -33,10 +33,7 @@ from provisioningserver.utils.twisted import (
     ThreadPool,
     ThreadUnpool,
 )
-from twisted.internet import (
-    reactor,
-    threads,
-)
+from twisted.internet import reactor, threads
 from twisted.internet.defer import DeferredSemaphore
 
 
@@ -104,11 +101,13 @@ def install_default_pool(maxthreads=max_threads_for_default_pool):
         reactor.threadpool = make_default_pool(maxthreads)
         reactor.callWhenRunning(reactor.threadpool.start)
         reactor.addSystemEventTrigger(
-            "during", "shutdown", reactor.threadpool.stop)
+            "during", "shutdown", reactor.threadpool.stop
+        )
     else:
         raise AssertionError(
             "Too late; global/reactor thread-pool has "
-            "already been configured and installed.")
+            "already been configured and installed."
+        )
 
 
 @asynchronous(timeout=FOREVER)
@@ -121,11 +120,13 @@ def install_database_pool(maxthreads=max_threads_for_database_pool):
         reactor.callInDatabase = reactor.threadpoolForDatabase.callInThread
         reactor.callWhenRunning(reactor.threadpoolForDatabase.start)
         reactor.addSystemEventTrigger(
-            "during", "shutdown", reactor.threadpoolForDatabase.stop)
+            "during", "shutdown", reactor.threadpoolForDatabase.stop
+        )
     else:
         raise AssertionError(
             "Too late; database thread-pool has already "
-            "been configured and installed.")
+            "been configured and installed."
+        )
 
 
 @asynchronous(timeout=FOREVER)
@@ -141,20 +142,22 @@ def install_database_unpool(maxthreads=max_threads_for_database_pool):
         reactor.callInDatabase = reactor.threadpoolForDatabase.callInThread
         reactor.callWhenRunning(reactor.threadpoolForDatabase.start)
         reactor.addSystemEventTrigger(
-            "during", "shutdown", reactor.threadpoolForDatabase.stop)
+            "during", "shutdown", reactor.threadpoolForDatabase.stop
+        )
     else:
         raise AssertionError(
             "Too late; database thread-pool has already "
-            "been configured and installed.")
+            "been configured and installed."
+        )
 
 
 def deferToDatabase(func, *args, **kwargs):
     """Call `func` in a thread where database activity is permitted."""
-    if settings.DEBUG and getattr(settings, 'DEBUG_QUERIES', False):
+    if settings.DEBUG and getattr(settings, "DEBUG_QUERIES", False):
         func = count_queries(log.debug)(func)
     return threads.deferToThreadPool(
-        reactor, reactor.threadpoolForDatabase,
-        func, *args, **kwargs)
+        reactor, reactor.threadpoolForDatabase, func, *args, **kwargs
+    )
 
 
 def callOutToDatabase(thing, func, *args, **kwargs):

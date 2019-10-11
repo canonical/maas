@@ -12,10 +12,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
 )
 from maastesting.factory import factory
-from metadataserver.fields import (
-    Bin,
-    BinaryField,
-)
+from metadataserver.fields import Bin, BinaryField
 from metadataserver.tests.models import BinaryFieldModel
 
 
@@ -38,28 +35,29 @@ class TestBin(MAASServerTestCase):
         self.assertEqual("", Bin(b"").__emittable__())
         example_bytes = factory.make_bytes()
         self.assertEqual(
-            b64encode(example_bytes).decode('ascii'),
-            Bin(example_bytes).__emittable__())
+            b64encode(example_bytes).decode("ascii"),
+            Bin(example_bytes).__emittable__(),
+        )
 
 
 class TestBinaryField(MAASLegacyTransactionServerTestCase):
     """Test BinaryField.  Uses BinaryFieldModel test model."""
 
-    apps = ['metadataserver.tests']
+    apps = ["metadataserver.tests"]
 
     def test_stores_and_retrieves_None(self):
         binary_item = BinaryFieldModel()
         self.assertIsNone(binary_item.data)
         binary_item.save()
-        self.assertIsNone(
-            BinaryFieldModel.objects.get(id=binary_item.id).data)
+        self.assertIsNone(BinaryFieldModel.objects.get(id=binary_item.id).data)
 
     def test_stores_and_retrieves_empty_data(self):
-        binary_item = BinaryFieldModel(data=Bin(b''))
-        self.assertEqual(b'', binary_item.data)
+        binary_item = BinaryFieldModel(data=Bin(b""))
+        self.assertEqual(b"", binary_item.data)
         binary_item.save()
         self.assertEqual(
-            b'', BinaryFieldModel.objects.get(id=binary_item.id).data)
+            b"", BinaryFieldModel.objects.get(id=binary_item.id).data
+        )
 
     def test_does_not_truncate_at_zero_bytes(self):
         data = b"BEFORE THE ZERO\x00AFTER THE ZERO"
@@ -67,7 +65,8 @@ class TestBinaryField(MAASLegacyTransactionServerTestCase):
         self.assertEqual(data, binary_item.data)
         binary_item.save()
         self.assertEqual(
-            data, BinaryFieldModel.objects.get(id=binary_item.id).data)
+            data, BinaryFieldModel.objects.get(id=binary_item.id).data
+        )
 
     def test_stores_and_retrieves_binary_data(self):
         data = b"\x01\x02\xff\xff\xfe\xff\xff\xfe"
@@ -75,7 +74,8 @@ class TestBinaryField(MAASLegacyTransactionServerTestCase):
         self.assertEqual(data, binary_item.data)
         binary_item.save()
         self.assertEqual(
-            data, BinaryFieldModel.objects.get(id=binary_item.id).data)
+            data, BinaryFieldModel.objects.get(id=binary_item.id).data
+        )
 
     def test_returns_bytes_not_text(self):
         binary_item = BinaryFieldModel(data=Bin(b"Data"))
@@ -88,7 +88,8 @@ class TestBinaryField(MAASLegacyTransactionServerTestCase):
         binary_item = BinaryFieldModel(data=Bin(data))
         binary_item.save()
         self.assertEqual(
-            binary_item, BinaryFieldModel.objects.get(data=Bin(data)))
+            binary_item, BinaryFieldModel.objects.get(data=Bin(data))
+        )
 
     def test_get_default_returns_None(self):
         field = BinaryField(null=True)

@@ -6,29 +6,16 @@
 __all__ = []
 
 from optparse import OptionParser
-from os import (
-    devnull,
-    makedirs,
-)
-from os.path import (
-    dirname,
-    join,
-)
+from os import devnull, makedirs
+from os.path import dirname, join
 import random
 import unittest
-from unittest.mock import (
-    ANY,
-    sentinel,
-)
+from unittest.mock import ANY, sentinel
 
 import crochet as crochet_module
 from maastesting import noseplug
 from maastesting.factory import factory
-from maastesting.matchers import (
-    IsCallable,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import IsCallable, MockCalledOnceWith, MockNotCalled
 from maastesting.noseplug import (
     Crochet,
     Resources,
@@ -56,25 +43,29 @@ from twisted.python.filepath import FilePath
 
 
 class TestCrochet(MAASTestCase):
-
     def test__options_adds_options(self):
         crochet = Crochet()
         parser = OptionParser()
         crochet.options(parser=parser, env={})
         self.assertThat(
             parser.option_list[-2:],
-            MatchesListwise([
-                # The --with-crochet option.
-                MatchesStructure.byEquality(
-                    action="store_true", default=None,
-                    dest="enable_plugin_crochet",
-                ),
-                # The --crochet-no-setup option.
-                MatchesStructure.byEquality(
-                    action="store_true", default=False,
-                    dest="crochet_no_setup",
-                ),
-            ]))
+            MatchesListwise(
+                [
+                    # The --with-crochet option.
+                    MatchesStructure.byEquality(
+                        action="store_true",
+                        default=None,
+                        dest="enable_plugin_crochet",
+                    ),
+                    # The --crochet-no-setup option.
+                    MatchesStructure.byEquality(
+                        action="store_true",
+                        default=False,
+                        dest="crochet_no_setup",
+                    ),
+                ]
+            ),
+        )
 
     def test__configure_sets_up_crochet_if_enabled(self):
         self.patch_autospec(crochet_module, "setup")
@@ -97,7 +88,8 @@ class TestCrochet(MAASTestCase):
         parser = OptionParser()
         crochet.add_options(parser=parser, env={})
         options, rest = parser.parse_args(
-            ["--with-crochet", "--crochet-no-setup"])
+            ["--with-crochet", "--crochet-no-setup"]
+        )
         crochet.configure(options, sentinel.conf)
 
         self.assertThat(crochet_module.setup, MockNotCalled())
@@ -118,9 +110,7 @@ class TestCrochet(MAASTestCase):
 
 
 class TestResources(MAASTestCase):
-
     def test_prepareTest_returns_optimised_test_suite(self):
-
         class SomeTests(MAASTestCase):
             test_a = lambda self: None
             test_b = lambda self: None
@@ -137,7 +127,6 @@ class TestResources(MAASTestCase):
         self.assertThat(suite.countTestCases(), Equals(2))
 
     def test_prepareTest_flattens_nested_suites(self):
-
         class SomeTests(MAASTestCase):
             test_a = lambda self: None
             test_b = lambda self: None
@@ -147,10 +136,12 @@ class TestResources(MAASTestCase):
             test_d = lambda self: None
 
         loader = unittest.TestLoader()
-        suite = unittest.TestSuite([
-            loader.loadTestsFromTestCase(SomeTests),
-            loader.loadTestsFromTestCase(MoreTests),
-        ])
+        suite = unittest.TestSuite(
+            [
+                loader.loadTestsFromTestCase(SomeTests),
+                loader.loadTestsFromTestCase(MoreTests),
+            ]
+        )
 
         self.assertThat(list(suite), HasLength(2))
         self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestSuite)))
@@ -164,7 +155,6 @@ class TestResources(MAASTestCase):
         self.assertThat(suite.countTestCases(), Equals(4))
 
     def test_prepareTest_hoists_resources(self):
-
         class SomeTests(MAASTestCase):
             resources = sentinel.resources
             test_a = lambda self: None
@@ -179,7 +169,8 @@ class TestResources(MAASTestCase):
         self.assertThat(suite.countTestCases(), Equals(2))
         self.assertThat(
             {getattr(test, "resources", sentinel.notset) for test in suite},
-            Equals({sentinel.notset}))
+            Equals({sentinel.notset}),
+        )
 
         plugin = Resources()
         suite = plugin.prepareTest(suite)
@@ -190,10 +181,10 @@ class TestResources(MAASTestCase):
         self.assertThat(suite.countTestCases(), Equals(2))
         self.assertThat(
             {getattr(test, "resources", sentinel.notset) for test in suite},
-            Equals({SomeTests.resources}))
+            Equals({SomeTests.resources}),
+        )
 
     def test_prepareTest_hoists_resources_of_nested_tests(self):
-
         class SomeTests(MAASTestCase):
             resources = sentinel.resources
             test_a = lambda self: None
@@ -221,11 +212,11 @@ class TestResources(MAASTestCase):
         self.assertThat(suite.countTestCases(), Equals(2))
         self.assertThat(
             {getattr(test, "resources", sentinel.notset) for test in suite},
-            Equals({SomeTests.resources}))
+            Equals({SomeTests.resources}),
+        )
 
 
 class TestScenarios(MAASTestCase):
-
     @staticmethod
     def makeTest(plugin, obj, parent):
         # Call the plugin via an intermediate function where we can create a
@@ -236,7 +227,6 @@ class TestScenarios(MAASTestCase):
         return list(tests)
 
     def test_makeTest_makes_tests_from_test_case_class(self):
-
         class SomeTests(MAASTestCase):
             test_a = lambda self: None
             test_b = lambda self: None
@@ -247,10 +237,10 @@ class TestScenarios(MAASTestCase):
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
         self.assertThat(
             {test._testMethodName for test in tests},
-            Equals({"test_a", "test_b"}))
+            Equals({"test_a", "test_b"}),
+        )
 
     def test_makeTest_makes_tests_from_test_case_class_with_scenarios(self):
-
         class SomeTests(MAASTestCase):
             scenarios = [("scn1", {"attr": 1}), ("scn2", {"attr": 2})]
             test_a = lambda self: None
@@ -262,16 +252,16 @@ class TestScenarios(MAASTestCase):
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
         self.assertThat(
             {(test._testMethodName, test.attr) for test in tests},
-            Equals({
-                ("test_a", 1), ("test_a", 2),
-                ("test_b", 1), ("test_b", 2),
-            }))
+            Equals(
+                {("test_a", 1), ("test_a", 2), ("test_b", 1), ("test_b", 2)}
+            ),
+        )
 
     def test_makeTest_makes_tests_from_test_function(self):
-
         class SomeTests(MAASTestCase):
             def test_a(self):
                 """Example test method."""
+
             def test_b(self):
                 """Example test method."""
 
@@ -281,16 +271,16 @@ class TestScenarios(MAASTestCase):
         self.assertThat(tests, HasLength(1))
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
         self.assertThat(
-            {test._testMethodName for test in tests},
-            Equals({method.__name__}))
+            {test._testMethodName for test in tests}, Equals({method.__name__})
+        )
 
     def test_makeTest_makes_tests_from_test_function_with_scenarios(self):
-
         class SomeTests(MAASTestCase):
             scenarios = [("scn1", {"attr": 1}), ("scn2", {"attr": 2})]
 
             def test_a(self):
                 """Example test method."""
+
             def test_b(self):
                 """Example test method."""
 
@@ -301,15 +291,14 @@ class TestScenarios(MAASTestCase):
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
         self.assertThat(
             {(test._testMethodName, test.attr) for test in tests},
-            Equals({(method.__name__, 1), (method.__name__, 2)}))
+            Equals({(method.__name__, 1), (method.__name__, 2)}),
+        )
 
 
 class TestSelect(MAASTestCase):
-
     def test__create_has_dirs(self):
         select = Select()
-        self.assertThat(
-            select, MatchesStructure.byEquality(dirs=frozenset()))
+        self.assertThat(select, MatchesStructure.byEquality(dirs=frozenset()))
 
     def test__options_adds_options(self):
         select = Select()
@@ -317,19 +306,27 @@ class TestSelect(MAASTestCase):
         select.options(parser=parser, env={})
         self.assertThat(
             parser.option_list[-2:],
-            MatchesListwise([
-                # The --with-select option.
-                MatchesStructure.byEquality(
-                    action="store_true", default=None,
-                    dest="enable_plugin_select",
-                ),
-                # The --select-dir/--select-directory option.
-                MatchesStructure.byEquality(
-                    action="append", default=[], dest="select_dirs",
-                    metavar="DIR", type="string", _short_opts=[],
-                    _long_opts=["--select-dir", "--select-directory"],
-                )
-            ]))
+            MatchesListwise(
+                [
+                    # The --with-select option.
+                    MatchesStructure.byEquality(
+                        action="store_true",
+                        default=None,
+                        dest="enable_plugin_select",
+                    ),
+                    # The --select-dir/--select-directory option.
+                    MatchesStructure.byEquality(
+                        action="append",
+                        default=[],
+                        dest="select_dirs",
+                        metavar="DIR",
+                        type="string",
+                        _short_opts=[],
+                        _long_opts=["--select-dir", "--select-directory"],
+                    ),
+                ]
+            ),
+        )
 
     def test__configure_scans_directories(self):
         directory = self.make_dir()
@@ -340,14 +337,16 @@ class TestSelect(MAASTestCase):
         parser = OptionParser()
         select.add_options(parser=parser, env={})
         options, rest = parser.parse_args(
-            ["--with-select", "--select-dir", directory])
+            ["--with-select", "--select-dir", directory]
+        )
         select.configure(options, sentinel.conf)
 
         leaf = FilePath(directory).descendant(segments)
         expected_dirs = {leaf}
         expected_dirs.update(leaf.parents())
-        self.assertThat(select.dirs, Equals(
-            set(fp.path for fp in expected_dirs)))
+        self.assertThat(
+            select.dirs, Equals(set(fp.path for fp in expected_dirs))
+        )
 
     def test__wantDirectory_checks_dirs_and_thats_it(self):
         directory = self.make_dir()
@@ -360,39 +359,49 @@ class TestSelect(MAASTestCase):
         self.assertTrue(select.wantDirectory(directory))
         self.assertTrue(select.wantDirectory(join(directory, *segments)))
         self.assertTrue(select.wantDirectory(dirname(directory)))
-        self.assertFalse(select.wantDirectory(
-            join(directory, factory.make_name("other-child"))))
+        self.assertFalse(
+            select.wantDirectory(
+                join(directory, factory.make_name("other-child"))
+            )
+        )
 
 
 class TestSelectBucket(MAASTestCase):
-
     def test__options_adds_options(self):
         select = SelectBucket()
         parser = OptionParser()
         select.options(parser=parser, env={})
         self.assertThat(
             parser.option_list[-2:],
-            MatchesListwise([
-                # The --with-select-bucket option.
-                MatchesStructure.byEquality(
-                    action="store_true", default=None,
-                    dest="enable_plugin_select_bucket",
-                ),
-                # The --select-bucket option.
-                MatchesStructure.byEquality(
-                    action="callback", default=None,
-                    dest="select-bucket_selected_bucket",
-                    metavar="BUCKET/BUCKETS", type="string",
-                    _short_opts=[], _long_opts=["--select-bucket"],
-                )
-            ]))
+            MatchesListwise(
+                [
+                    # The --with-select-bucket option.
+                    MatchesStructure.byEquality(
+                        action="store_true",
+                        default=None,
+                        dest="enable_plugin_select_bucket",
+                    ),
+                    # The --select-bucket option.
+                    MatchesStructure.byEquality(
+                        action="callback",
+                        default=None,
+                        dest="select-bucket_selected_bucket",
+                        metavar="BUCKET/BUCKETS",
+                        type="string",
+                        _short_opts=[],
+                        _long_opts=["--select-bucket"],
+                    ),
+                ]
+            ),
+        )
 
     def test__configure_parses_selected_bucket(self):
         select = SelectBucket()
         parser = OptionParser()
         select.add_options(parser=parser, env={})
         options, rest = parser.parse_args(
-            ["--with-select-bucket", "--select-bucket", "8/13"])
+            ["--with-select-bucket", "--select-bucket", "8/13"]
+        )
         select.configure(options, sentinel.conf)
         self.assertThat(select, MatchesStructure(_selectTest=IsCallable()))
 
@@ -407,7 +416,8 @@ class TestSelectBucket(MAASTestCase):
         parser = OptionParser()
         select.add_options(parser=parser, env={})
         options, rest = parser.parse_args(
-            ["--with-select-bucket", "--select-bucket", "8/13"])
+            ["--with-select-bucket", "--select-bucket", "8/13"]
+        )
         select.configure(options, sentinel.conf)
 
         # We start at 65 because chr(65) is "A" and so makes a nice readable
@@ -444,26 +454,33 @@ class TestSelectBucket(MAASTestCase):
 
 
 class TestSubunit(MAASTestCase):
-
     def test__options_adds_options(self):
         select = Subunit()
         parser = OptionParser()
         select.options(parser=parser, env={})
         self.assertThat(
             parser.option_list[-2:],
-            MatchesListwise([
-                # The --with-subunit option.
-                MatchesStructure.byEquality(
-                    action="store_true", default=None,
-                    dest="enable_plugin_subunit",
-                ),
-                # The --subunit-fd option.
-                MatchesStructure.byEquality(
-                    action="store", default=1, dest="subunit_fd",
-                    metavar="FD", type="int", _short_opts=[],
-                    _long_opts=["--subunit-fd"],
-                )
-            ]))
+            MatchesListwise(
+                [
+                    # The --with-subunit option.
+                    MatchesStructure.byEquality(
+                        action="store_true",
+                        default=None,
+                        dest="enable_plugin_subunit",
+                    ),
+                    # The --subunit-fd option.
+                    MatchesStructure.byEquality(
+                        action="store",
+                        default=1,
+                        dest="subunit_fd",
+                        metavar="FD",
+                        type="int",
+                        _short_opts=[],
+                        _long_opts=["--subunit-fd"],
+                    ),
+                ]
+            ),
+        )
 
     def test__configure_opens_stream(self):
         subunit = Subunit()
@@ -471,7 +488,8 @@ class TestSubunit(MAASTestCase):
         subunit.add_options(parser=parser, env={})
         with open(devnull, "wb") as fd:
             options, rest = parser.parse_args(
-                ["--with-subunit", "--subunit-fd", str(fd.fileno())])
+                ["--with-subunit", "--subunit-fd", str(fd.fileno())]
+            )
             subunit.configure(options, sentinel.conf)
             self.assertThat(subunit.stream.fileno(), Equals(fd.fileno()))
             self.assertThat(subunit.stream.mode, Equals("wb"))
@@ -486,16 +504,22 @@ class TestSubunit(MAASTestCase):
 
 
 class TestMain(MAASTestCase):
-
     def test__sets_addplugins(self):
         self.patch(noseplug, "TestProgram")
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY, ANY, ANY)))
+            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY, ANY, ANY)),
+        )
         plugins = noseplug.TestProgram.call_args[1]["addplugins"]
-        self.assertThat(plugins, MatchesSetwise(
-            IsInstance(Crochet), IsInstance(Resources),
-            IsInstance(Scenarios), IsInstance(Select),
-            IsInstance(SelectBucket), IsInstance(Subunit),
-        ))
+        self.assertThat(
+            plugins,
+            MatchesSetwise(
+                IsInstance(Crochet),
+                IsInstance(Resources),
+                IsInstance(Scenarios),
+                IsInstance(Select),
+                IsInstance(SelectBucket),
+                IsInstance(Subunit),
+            ),
+        )

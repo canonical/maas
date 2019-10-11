@@ -3,22 +3,14 @@
 
 """Test object factories."""
 
-__all__ = [
-    "factory",
-    "NO_VALUE",
-    "TooManyRandomRetries",
-    ]
+__all__ = ["factory", "NO_VALUE", "TooManyRandomRetries"]
 
 import datetime
 from enum import Enum
 from functools import partial
 import http.client
 import io
-from itertools import (
-    count,
-    islice,
-    repeat,
-)
+from itertools import count, islice, repeat
 import os
 import os.path
 import random
@@ -30,17 +22,11 @@ from unittest import mock
 import urllib.error
 import urllib.parse
 import urllib.request
-from uuid import (
-    UUID,
-    uuid1,
-)
+from uuid import UUID, uuid1
 
 from distro_info import UbuntuDistroInfo
 from maastesting.fixtures import TempDirectory
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import IPAddress, IPNetwork
 
 # Occasionally a parameter needs separate values for None and "no value
 # given, make one up."  In that case, use NO_VALUE as the default and
@@ -77,61 +63,75 @@ def network_clashes(network, other_networks):
 class Factory:
 
     random_letters = map(
-        random.choice, repeat(string.ascii_letters + string.digits))
+        random.choice, repeat(string.ascii_letters + string.digits)
+    )
 
     random_letters_with_spaces = map(
-        random.choice, repeat(string.ascii_letters + string.digits + ' '))
+        random.choice, repeat(string.ascii_letters + string.digits + " ")
+    )
 
     # See django.contrib.auth.forms.UserCreationForm.username.
     random_letters_for_usernames = map(
-        random.choice, repeat(string.ascii_letters + '.@+-'))
+        random.choice, repeat(string.ascii_letters + ".@+-")
+    )
 
     random_http_responses = map(
-        random.choice, repeat(tuple(http.client.responses)))
+        random.choice, repeat(tuple(http.client.responses))
+    )
 
     random_octet = partial(random.randint, 0, 255)
 
     random_octets = iter(random_octet, None)
 
-    random_unicode_codepoint = partial(random.randint, 0, 0x10ffff)
+    random_unicode_codepoint = partial(random.randint, 0, 0x10FFFF)
 
     random_unicode_codepoints = iter(random_unicode_codepoint, None)
 
     random_unicode_characters = (
-        char for char in map(chr, random_unicode_codepoints)
-        if unicodedata.category(char)[0] in "LMNPS")
+        char
+        for char in map(chr, random_unicode_codepoints)
+        if unicodedata.category(char)[0] in "LMNPS"
+    )
 
     random_unicode_non_ascii_characters = (
-        char for char in random_unicode_characters
-        if ord(char) >= 128)
+        char for char in random_unicode_characters if ord(char) >= 128
+    )
 
     random_unicode_characters_with_spaces = (
-        char for char in map(chr, random_unicode_codepoints)
-        if unicodedata.category(char)[0] in "LMNPSZ")
+        char
+        for char in map(chr, random_unicode_codepoints)
+        if unicodedata.category(char)[0] in "LMNPSZ"
+    )
 
     random_unicode_non_ascii_characters_with_spaces = (
-        char for char in random_unicode_characters_with_spaces
-        if char == " " or ord(char) >= 128)
+        char
+        for char in random_unicode_characters_with_spaces
+        if char == " " or ord(char) >= 128
+    )
 
     def make_string(self, size=10, spaces=False, prefix=""):
         """Return a `str` filled with random ASCII letters or digits."""
         source = (
-            self.random_letters_with_spaces
-            if spaces else self.random_letters)
+            self.random_letters_with_spaces if spaces else self.random_letters
+        )
         return prefix + "".join(islice(source, size))
 
     def make_unicode_string(self, size=10, spaces=False, prefix=""):
         """Return a `str` filled with random Unicode characters."""
         source = (
             self.random_unicode_characters_with_spaces
-            if spaces else self.random_unicode_characters)
+            if spaces
+            else self.random_unicode_characters
+        )
         return prefix + "".join(islice(source, size))
 
     def make_unicode_non_ascii_string(self, size=10, spaces=False, prefix=""):
         """Return a `str` filled with random non-ASCII Unicode characters."""
         source = (
             self.random_unicode_non_ascii_characters_with_spaces
-            if spaces else self.random_unicode_non_ascii_characters)
+            if spaces
+            else self.random_unicode_non_ascii_characters
+        )
         return prefix + "".join(islice(source, size))
 
     def make_bytes(self, size=10):
@@ -160,11 +160,11 @@ class Factory:
         return exc_type() if message is None else exc_type(message)
 
     def make_absolute_path(
-            self, directories=3, directory_length=10, path_seperator='/'):
+        self, directories=3, directory_length=10, path_seperator="/"
+    ):
         return path_seperator + path_seperator.join(
-            self.make_string(size=directory_length)
-            for _ in range(directories)
-            )
+            self.make_string(size=directory_length) for _ in range(directories)
+        )
 
     def pick_bool(self):
         """Return an arbitrary Boolean value (`True` or `False`)."""
@@ -180,15 +180,17 @@ class Factory:
         :type but_not: Sequence.
         """
         if issubclass(enum, Enum):
-            return random.choice([
-                value for value in enum
-                if value not in but_not
-            ])
+            return random.choice(
+                [value for value in enum if value not in but_not]
+            )
         else:
-            return random.choice([
-                value for key, value in vars(enum).items()
-                if not key.startswith('_') and value not in but_not
-            ])
+            return random.choice(
+                [
+                    value
+                    for key, value in vars(enum).items()
+                    if not key.startswith("_") and value not in but_not
+                ]
+            )
 
     def pick_port(self, port_min=1024, port_max=65535):
         assert port_min >= 0 and port_max <= 65535
@@ -209,7 +211,8 @@ class Factory:
         if but_not is None:
             but_not = ()
         return random.choice(
-            [choice for choice in choices if choice[0] not in but_not])[0]
+            [choice for choice in choices if choice[0] not in but_not]
+        )[0]
 
     def make_vlan_tag(self, allow_none=False, *, but_not=EMPTY_SET):
         """Create a random VLAN tag.
@@ -226,7 +229,7 @@ class Factory:
             return None
         else:
             for _ in range(100):
-                vlan_tag = random.randint(1, 0xffe)
+                vlan_tag = random.randint(1, 0xFFE)
                 if vlan_tag not in but_not:
                     return vlan_tag
             raise TooManyRandomRetries("Could not find an available VLAN tag.")
@@ -244,13 +247,13 @@ class Factory:
         octets = list(islice(self.random_octets, 4))
         if octets[0] == 0:
             octets[0] = 1
-        return '%d.%d.%d.%d' % tuple(octets)
+        return "%d.%d.%d.%d" % tuple(octets)
 
     def make_ipv6_address(self):
         # We return from the fc00::/7 space because that's a private
         # space and shouldn't cause problems of addressing the outside
         # world.
-        network = IPNetwork('fc00::/7')
+        network = IPNetwork("fc00::/7")
         # We can't use random.choice() because there are too many
         # elements in network.
         random_address_index = random.randint(0, network.size - 1)
@@ -280,21 +283,29 @@ class Factory:
             node = random.getrandbits(48) | 0x010000000000
         if clock_seq is None:
             clock_seq = random.getrandbits(14)
-        timestamp = int(timestamp * 1e9 / 100) + 0x01b21dd213814000
-        time_low = timestamp & 0xffffffff
-        time_mid = (timestamp >> 32) & 0xffff
-        time_hi_version = (timestamp >> 48) & 0x0fff
-        clock_seq_low = clock_seq & 0xff
-        clock_seq_hi_variant = (clock_seq >> 8) & 0x3f
+        timestamp = int(timestamp * 1e9 / 100) + 0x01B21DD213814000
+        time_low = timestamp & 0xFFFFFFFF
+        time_mid = (timestamp >> 32) & 0xFFFF
+        time_hi_version = (timestamp >> 48) & 0x0FFF
+        clock_seq_low = clock_seq & 0xFF
+        clock_seq_hi_variant = (clock_seq >> 8) & 0x3F
         fields = (
-            time_low, time_mid, time_hi_version, clock_seq_hi_variant,
-            clock_seq_low, node
+            time_low,
+            time_mid,
+            time_hi_version,
+            clock_seq_hi_variant,
+            clock_seq_low,
+            node,
         )
         return str(UUID(fields=fields, version=1))
 
     def _make_random_network(
-            self, slash=None, but_not=EMPTY_SET, disjoint_from=None,
-            random_address_factory=None):
+        self,
+        slash=None,
+        but_not=EMPTY_SET,
+        disjoint_from=None,
+        random_address_factory=None,
+    ):
         """Generate a random IP network.
 
         :param slash: Netmask or bit width of the network, e.g. 24 or
@@ -321,15 +332,17 @@ class Factory:
         # Look randomly for a network that matches our criteria.
         for _ in range(100):
             network = IPNetwork(
-                '%s/%s' % (random_address_factory(), slash)).cidr
-            forbidden = (network in but_not)
+                "%s/%s" % (random_address_factory(), slash)
+            ).cidr
+            forbidden = network in but_not
             clashes = network_clashes(network, disjoint_from)
             if not forbidden and not clashes:
                 return network
         raise TooManyRandomRetries("Could not find available network")
 
     def make_ipv4_network(
-            self, slash=None, *, but_not=EMPTY_SET, disjoint_from=None):
+        self, slash=None, *, but_not=EMPTY_SET, disjoint_from=None
+    ):
         """Generate a random IPv4 network.
 
         :param slash: Netmask or bit width of the network, e.g. 24 or
@@ -346,11 +359,15 @@ class Factory:
         if slash is None:
             slash = random.randint(16, 28)
         return self._make_random_network(
-            slash=slash, but_not=but_not, disjoint_from=disjoint_from,
-            random_address_factory=self.make_ipv4_address)
+            slash=slash,
+            but_not=but_not,
+            disjoint_from=disjoint_from,
+            random_address_factory=self.make_ipv4_address,
+        )
 
     def make_ipv6_network(
-            self, slash=None, *, but_not=EMPTY_SET, disjoint_from=None):
+        self, slash=None, *, but_not=EMPTY_SET, disjoint_from=None
+    ):
         """Generate a random IPv6 network.
 
         :param slash: Netmask or bit width of the network. If not
@@ -368,8 +385,11 @@ class Factory:
         if slash is None:
             slash = random.randint(112, 125)
         return self._make_random_network(
-            slash=slash, but_not=but_not, disjoint_from=disjoint_from,
-            random_address_factory=self.make_ipv6_address)
+            slash=slash,
+            but_not=but_not,
+            disjoint_from=disjoint_from,
+            random_address_factory=self.make_ipv6_address,
+        )
 
     def make_ip4_or_6_network(self, version=None, host_bits=None):
         """Generate a random IPv4 or IPv6 network."""
@@ -394,7 +414,8 @@ class Factory:
             if address not in but_not:
                 return str(address)
         raise TooManyRandomRetries(
-            "Could not find available IP in static range")
+            "Could not find available IP in static range"
+        )
 
     def pick_ip_in_static_range(self, ngi, *, but_not=EMPTY_SET):
         first = ngi.get_static_ip_range().first
@@ -405,11 +426,13 @@ class Factory:
             if address not in but_not:
                 return str(address)
         raise TooManyRandomRetries(
-            "Could not find available IP in static range")
+            "Could not find available IP in static range"
+        )
 
     def pick_ip_in_network(self, network, *, but_not=EMPTY_SET):
         but_not = {
-            IPAddress(but) for but in but_not
+            IPAddress(but)
+            for but in but_not
             if but is not None and IPAddress(but) in network
         }
         # Unless the prefix length is very small, make sure we don't select
@@ -429,15 +452,17 @@ class Factory:
             network_size = network.size
         if len(but_not) == network_size:
             raise ValueError(
-                "No IP addresses available in network: %s (but_not=%r)" % (
-                    network, but_not))
+                "No IP addresses available in network: %s (but_not=%r)"
+                % (network, but_not)
+            )
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:
                 return str(address)
         raise TooManyRandomRetries(
-            "Could not find available IP in network: %s (but_not=%r)" % (
-                network, but_not))
+            "Could not find available IP in network: %s (but_not=%r)"
+            % (network, but_not)
+        )
 
     def make_ip_range(self, network):
         """Return a pair of IP addresses from the given network.
@@ -447,14 +472,17 @@ class Factory:
         :return: A pair of `IPAddress`.
         """
         for _ in range(100):
-            ip_range = tuple(sorted(
-                IPAddress(factory.pick_ip_in_network(network))
-                for _ in range(2)
-                ))
+            ip_range = tuple(
+                sorted(
+                    IPAddress(factory.pick_ip_in_network(network))
+                    for _ in range(2)
+                )
+            )
             if ip_range[0] < ip_range[1]:
                 return ip_range
         raise TooManyRandomRetries(
-            "Could not find available IP range in network: %s" % network)
+            "Could not find available IP range in network: %s" % network
+        )
 
     def make_ipv4_range(self, network=None):
         """Return a pair of IPv4 addresses.
@@ -502,7 +530,8 @@ class Factory:
         return datetime.timedelta(
             days=random.randint(0, 3 * 365),
             seconds=random.randint(0, 24 * 60 * 60 - 1),
-            microseconds=random.randint(0, 999999))
+            microseconds=random.randint(0, 999999),
+        )
 
     def make_file(self, location, name=None, contents=None):
         """Create a file, and write data to it.
@@ -524,15 +553,15 @@ class Factory:
         if name is None:
             name = self.make_string()
         if contents is None:
-            contents = self.make_string().encode('ascii')
+            contents = self.make_string().encode("ascii")
         if isinstance(contents, str):
             contents = contents.encode("utf-8")
         path = os.path.join(location, name)
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             f.write(contents)
         return path
 
-    def make_name(self, prefix=None, sep='-', size=6):
+    def make_name(self, prefix=None, sep="-", size=6):
         """Generate a random name.
 
         :param prefix: Optional prefix.  Pass one to help make test failures
@@ -551,7 +580,7 @@ class Factory:
         else:
             return prefix + sep + self.make_string(size=size)
 
-    def make_hostname(self, prefix='host', *args, **kwargs):
+    def make_hostname(self, prefix="host", *args, **kwargs):
         """Generate a random hostname.
 
         The returned hostname is lowercase because python's urlparse
@@ -562,12 +591,19 @@ class Factory:
     # that we can round-trip a URL with params successfully (otherwise
     # the params don't get parsed out of the path).
     _make_parsed_url_schemes = tuple(
-        scheme for scheme in urllib.parse.uses_params
-        if scheme != "")
+        scheme for scheme in urllib.parse.uses_params if scheme != ""
+    )
 
     def make_parsed_url(
-            self, scheme=None, netloc=None, path=None, port=None,
-            params=None, query=None, fragment=None):
+        self,
+        scheme=None,
+        netloc=None,
+        path=None,
+        port=None,
+        params=None,
+        query=None,
+        fragment=None,
+    ):
         """Generate a random parsed URL object.
 
         Contains randomly generated values for all parts of a URL: scheme,
@@ -581,10 +617,11 @@ class Factory:
 
         :return: Instance of :py:class:`urlparse.ParseResult`.
         """
-        if port is not False and netloc is not None and netloc.count(':') == 1:
+        if port is not False and netloc is not None and netloc.count(":") == 1:
             raise AssertionError(
-                'A port number has been requested, however the given netloc '
-                'spec %r already contains a port number.' % (netloc,))
+                "A port number has been requested, however the given netloc "
+                "spec %r already contains a port number." % (netloc,)
+            )
         if scheme is None:
             # Select a scheme that allows parameters; see above.
             scheme = random.choice(self._make_parsed_url_schemes)
@@ -610,11 +647,18 @@ class Factory:
         if fragment is None:
             fragment = self.make_name("fragment")
         return urllib.parse.ParseResult(
-            scheme, netloc, path, params, query, fragment)
+            scheme, netloc, path, params, query, fragment
+        )
 
     def make_url(
-            self, scheme=None, netloc=None, path=None, params=None,
-            query=None, fragment=None):
+        self,
+        scheme=None,
+        netloc=None,
+        path=None,
+        params=None,
+        query=None,
+        fragment=None,
+    ):
         """Generate a random URL.
 
         Contains randomly generated values for all parts of a URL: scheme,
@@ -624,13 +668,20 @@ class Factory:
         :return: string
         """
         return self.make_parsed_url(
-            scheme, netloc, path, params, query, fragment).geturl()
+            scheme, netloc, path, params, query, fragment
+        ).geturl()
 
     def make_simple_http_url(self, netloc=None, path=None, port=None):
         """Create an arbitrary HTTP URL with only a location and path."""
         return self.make_parsed_url(
-            scheme="http", netloc=netloc, path=path, port=port,
-            params="", query="", fragment="").geturl()
+            scheme="http",
+            netloc=netloc,
+            path=path,
+            port=port,
+            params="",
+            query="",
+            fragment="",
+        ).geturl()
 
     def make_names(self, *prefixes):
         """Generate random names.
@@ -650,13 +701,13 @@ class Factory:
             the value is `None`, the file will contain arbitrary data.
         :return: Path to a gzip-compressed tarball.
         """
-        tarball = os.path.join(location, '%s.tar.gz' % self.make_name())
+        tarball = os.path.join(location, "%s.tar.gz" % self.make_name())
         with TempDirectory() as working_dir:
             source = working_dir.path
             for name, content in contents.items():
                 self.make_file(source, name, content)
 
-            subprocess.check_call(['tar', '-C', source, '-czf', tarball, '.'])
+            subprocess.check_call(["tar", "-C", source, "-czf", tarball, "."])
 
         return tarball
 
@@ -666,8 +717,8 @@ class Factory:
         if content_type is not None:
             headers.set_type(content_type)
         return urllib.request.addinfourl(
-            fp=io.BytesIO(content), headers=headers,
-            url=None, code=status_code)
+            fp=io.BytesIO(content), headers=headers, url=None, code=status_code
+        )
 
     def make_streams(self, stdin=None, stdout=None, stderr=None):
         """Make a fake return value for a SSHClient.exec_command."""
@@ -682,10 +733,12 @@ class Factory:
         return subprocess.CalledProcessError(
             returncode=random.randint(1, 10),
             cmd=[self.make_name("command")],
-            output=factory.make_bytes())
+            output=factory.make_bytes(),
+        )
 
     def make_kernel_string(
-            self, can_be_release_or_version=False, generic_only=False):
+        self, can_be_release_or_version=False, generic_only=False
+    ):
         ubuntu = UbuntuDistroInfo()
         # Only select from MAAS supported releases so we don't have to deal
         # with versions name overlap(e.g Warty and Wily).
@@ -694,14 +747,16 @@ class Factory:
         except AttributeError:
             ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
         supported_releases = [
-            release for release in ubuntu_rows
-            if int(release['version'].split('.')[0]) >= 12
+            release
+            for release in ubuntu_rows
+            if int(release["version"].split(".")[0]) >= 12
         ]
         release = random.choice(supported_releases)
         # Remove 'LTS' from version if it exists
-        version_str = release['version'].split(' ')[0]
+        version_str = release["version"].split(" ")[0]
         strings = [
-            "hwe-%s" % release['series'][0], "hwe-%s" % version_str,
+            "hwe-%s" % release["series"][0],
+            "hwe-%s" % version_str,
             "hwe-%s-edge" % version_str,
         ]
         if not generic_only:
@@ -710,20 +765,24 @@ class Factory:
                 "hwe-%s-lowlatency-edge" % version_str,
             ]
         if can_be_release_or_version:
-            strings += [release['series'], version_str]
+            strings += [release["series"], version_str]
         return random.choice(strings)
 
     def make_dhcp_packet(
-            self, transaction_id: bytes = None,
-            truncated: bool = False, truncated_option_value: bool = False,
-            bad_cookie: bool = False, truncated_option_length: bool = False,
-            include_server_identifier: bool = False,
-            server_ip: str = "127.1.1.1",
-            include_end_option: bool = True) -> bytes:
+        self,
+        transaction_id: bytes = None,
+        truncated: bool = False,
+        truncated_option_value: bool = False,
+        bad_cookie: bool = False,
+        truncated_option_length: bool = False,
+        include_server_identifier: bool = False,
+        server_ip: str = "127.1.1.1",
+        include_end_option: bool = True,
+    ) -> bytes:
         """Returns a [possibly invalid] DHCP packet."""
         if transaction_id is None:
             transaction_id = self.make_bytes(size=4)
-        options = b''
+        options = b""
         if include_server_identifier:
             # 0x36 == 54 (Server Identifier option)
             ip_bytes = int(IPAddress(server_ip).value).to_bytes(4, "big")
@@ -739,42 +798,50 @@ class Factory:
         # considered a bug, but in practice it works out.
         packet = (
             # Message type: 0x02 (BOOTP operation: reply).
-            b'\x02'
+            b"\x02"
             # Hardware type: Ethernet
-            b'\x01'
+            b"\x01"
             # Hardware address length: 6
-            b'\x06'
+            b"\x06"
             # Hops: 0
-            b'\x00' +
+            b"\x00"
+            +
             # Transaction ID
-            transaction_id +
+            transaction_id
+            +
             # Seconds
-            b'\x00\x00'
+            b"\x00\x00"
             # Flags
-            b'\x00\x00'
+            b"\x00\x00"
             # Client IP address: 0.0.0.0
-            b'\x00\x00\x00\x00'
+            b"\x00\x00\x00\x00"
             # Your (client) IP address: 0.0.0.0
-            b'\x00\x00\x00\x00'
+            b"\x00\x00\x00\x00"
             # Next server IP address: 0.0.0.0
-            b'\x00\x00\x00\x00'
+            b"\x00\x00\x00\x00"
             # Relay agent IP address: 0.0.0.0
-            b'\x00\x00\x00\x00' +
+            b"\x00\x00\x00\x00"
+            +
             # Client hardware address
-            b'\x01\x02\x03\x04\x05\x06'
+            b"\x01\x02\x03\x04\x05\x06"
             # Hardware address padding
-            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' +
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            +
             # Server host name
-            (b'\x00' * 67) +
+            (b"\x00" * 67)
+            +
             # Boot filename
-            (b'\x00' * 125) +
+            (b"\x00" * 125)
+            +
             # Cookie
-            (b'\x63\x82\x53\x63' if not bad_cookie else b'xxxx') +
+            (b"\x63\x82\x53\x63" if not bad_cookie else b"xxxx")
+            +
             # "DHCP Offer" option
-            b'\x35\x01\x02' +
-            options +
+            b"\x35\x01\x02"
+            + options
+            +
             # End options.
-            (b'\xff' if include_end_option else b'')
+            (b"\xff" if include_end_option else b"")
         )
         if truncated:
             packet = packet[:200]

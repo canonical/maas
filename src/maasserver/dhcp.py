@@ -3,22 +3,12 @@
 
 """DHCP management module."""
 
-__all__ = [
-    'configure_dhcp',
-    'validate_dhcp_config',
-    ]
+__all__ = ["configure_dhcp", "validate_dhcp_config"]
 
-from collections import (
-    defaultdict,
-    namedtuple,
-)
+from collections import defaultdict, namedtuple
 from itertools import groupby
 from operator import itemgetter
-from typing import (
-    Iterable,
-    Optional,
-    Union,
-)
+from typing import Iterable, Optional, Union
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -44,17 +34,10 @@ from maasserver.models import (
     StaticIPAddress,
     Subnet,
 )
-from maasserver.rpc import (
-    getAllClients,
-    getClientFor,
-    getRandomClient,
-)
+from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import IPAddress, IPNetwork
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
@@ -73,10 +56,7 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import typed
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
+from provisioningserver.utils.twisted import asynchronous, synchronous
 from twisted.internet.defer import inlineCallbacks
 from twisted.protocols import amp
 
@@ -87,7 +67,7 @@ log = LegacyLogger()
 def get_omapi_key():
     """Return the OMAPI key for all DHCP servers that are ran by MAAS."""
     key = Config.objects.get_config("omapi_key")
-    if key is None or key == '':
+    if key is None or key == "":
         key = generate_omapi_key()
         Config.objects.set_config("omapi_key", key)
     return key
@@ -102,15 +82,18 @@ def split_managed_ipv4_ipv6_subnets(subnets: Iterable[Subnet]):
     split = defaultdict(list)
     for subnet in (s for s in subnets if s.managed is True):
         split[subnet.get_ipnetwork().version].append(subnet)
-    assert len(split) <= 2, (
-        "Unexpected IP version(s): %s" % ', '.join(list(split.keys())))
+    assert len(split) <= 2, "Unexpected IP version(s): %s" % ", ".join(
+        list(split.keys())
+    )
     return split[4], split[6]
 
 
 def ip_is_sticky_or_auto(ip_address):
     """Return True if the `ip_address` alloc_type is STICKY or AUTO."""
     return ip_address.alloc_type in [
-        IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.AUTO]
+        IPADDRESS_TYPE.STICKY,
+        IPADDRESS_TYPE.AUTO,
+    ]
 
 
 def get_best_interface(interfaces):
@@ -124,11 +107,15 @@ def get_best_interface(interfaces):
     for interface in interfaces:
         if best_interface is None:
             best_interface = interface
-        elif (best_interface.type == INTERFACE_TYPE.PHYSICAL and
-                interface.type == INTERFACE_TYPE.BOND):
+        elif (
+            best_interface.type == INTERFACE_TYPE.PHYSICAL
+            and interface.type == INTERFACE_TYPE.BOND
+        ):
             best_interface = interface
-        elif (best_interface.type == INTERFACE_TYPE.VLAN and
-                interface.type == INTERFACE_TYPE.PHYSICAL):
+        elif (
+            best_interface.type == INTERFACE_TYPE.VLAN
+            and interface.type == INTERFACE_TYPE.PHYSICAL
+        ):
             best_interface = interface
     return best_interface
 
@@ -136,9 +123,10 @@ def get_best_interface(interfaces):
 def ip_is_version(ip_address, ip_version):
     """Return True if `ip_address` is the same IP version as `ip_version`."""
     return (
-        ip_address.ip is not None and
-        ip_address.ip != "" and
-        IPAddress(ip_address.ip).version == ip_version)
+        ip_address.ip is not None
+        and ip_address.ip != ""
+        and IPAddress(ip_address.ip).version == ip_version
+    )
 
 
 def _key_interface_subnet_dynamic_range_count(interface):
@@ -155,11 +143,14 @@ def _ip_version_on_vlan(ip_address, ip_version, vlan):
     """Return True when the `ip_address` is the same `ip_version` and is on
     the same `vlan` or relay VLAN's for the `vlan."""
     return (
-        ip_is_version(ip_address, ip_version) and
-        ip_address.subnet is not None and
-        ip_address.subnet.vlan is not None and (
-            ip_address.subnet.vlan == vlan or
-            vlan in list(ip_address.subnet.vlan.relay_vlans.all())))
+        ip_is_version(ip_address, ip_version)
+        and ip_address.subnet is not None
+        and ip_address.subnet.vlan is not None
+        and (
+            ip_address.subnet.vlan == vlan
+            or vlan in list(ip_address.subnet.vlan.relay_vlans.all())
+        )
+    )
 
 
 def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
@@ -175,11 +166,14 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
     interfaces_with_static = []
     interfaces_with_discovered = []
     for interface in rack_controller.interface_set.all().prefetch_related(
-            "ip_addresses__subnet__vlan__relay_vlans",
-            "ip_addresses__subnet__iprange_set"):
+        "ip_addresses__subnet__vlan__relay_vlans",
+        "ip_addresses__subnet__iprange_set",
+    ):
         for ip_address in interface.ip_addresses.all():
             if ip_address.alloc_type in [
-                    IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY]:
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+            ]:
                 if _ip_version_on_vlan(ip_address, ip_version, vlan):
                     interfaces_with_static.append(interface)
                     break
@@ -193,14 +187,16 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
         return sorted(
             interfaces_with_static,
             key=_key_interface_subnet_dynamic_range_count,
-            reverse=True)
+            reverse=True,
+        )
     elif len(interfaces_with_discovered) == 1:
         return interfaces_with_discovered
     elif len(interfaces_with_discovered) > 1:
         return sorted(
             interfaces_with_discovered,
             key=_key_interface_subnet_dynamic_range_count,
-            reverse=True)
+            reverse=True,
+        )
     else:
         return []
 
@@ -210,9 +206,12 @@ def gen_managed_vlans_for(rack_controller):
     `rack_controller` is either the `primary_rack` or the `secondary_rack`.
     """
     interfaces = rack_controller.interface_set.filter(
-        Q(vlan__dhcp_on=True) & (
-            Q(vlan__primary_rack=rack_controller) |
-            Q(vlan__secondary_rack=rack_controller)))
+        Q(vlan__dhcp_on=True)
+        & (
+            Q(vlan__primary_rack=rack_controller)
+            | Q(vlan__secondary_rack=rack_controller)
+        )
+    )
     interfaces = interfaces.prefetch_related("vlan__relay_vlans")
     for interface in interfaces:
         yield interface.vlan
@@ -223,11 +222,12 @@ def gen_managed_vlans_for(rack_controller):
 def ip_is_on_vlan(ip_address, vlan):
     """Return True if `ip_address` is on `vlan`."""
     return (
-        ip_is_sticky_or_auto(ip_address) and
-        ip_address.subnet is not None and
-        ip_address.subnet.vlan_id == vlan.id and
-        ip_address.ip is not None and
-        ip_address.ip != "")
+        ip_is_sticky_or_auto(ip_address)
+        and ip_address.subnet is not None
+        and ip_address.subnet.vlan_id == vlan.id
+        and ip_address.ip is not None
+        and ip_address.ip != ""
+    )
 
 
 def get_ip_address_for_interface(interface, vlan):
@@ -244,7 +244,8 @@ def get_ip_address_for_rack_controller(rack_controller, vlan):
     # on that vlan. Then we pick the best interface for that vlan
     # based on the `get_best_interface` function.
     interfaces = rack_controller.interface_set.all().prefetch_related(
-        "ip_addresses__subnet")
+        "ip_addresses__subnet"
+    )
     matching_interfaces = set()
     for interface in interfaces:
         for ip_address in interface.ip_addresses.all():
@@ -266,21 +267,20 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
     space+family group even if there are multiple.
     """
     rack_addresses = StaticIPAddress.objects.filter(
-        interface__enabled=True, interface__node=rack, alloc_type__in={
-            IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED})
+        interface__enabled=True,
+        interface__node=rack,
+        alloc_type__in={IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
+    )
     rack_addresses = rack_addresses.exclude(subnet__isnull=True)
     rack_addresses = rack_addresses.order_by(
         # Prefer subnets with DHCP enabled.
         "-subnet__vlan__dhcp_on",
         "subnet__vlan__space_id",
         "subnet__cidr",
-        "ip"
+        "ip",
     )
     rack_addresses = rack_addresses.values_list(
-        "subnet__vlan__dhcp_on",
-        "subnet__vlan__space_id",
-        "subnet__cidr",
-        "ip"
+        "subnet__vlan__dhcp_on", "subnet__vlan__space_id", "subnet__cidr", "ip"
     )
 
     def get_space_id_and_family(record):
@@ -292,15 +292,12 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
         return -int(dhcp_on), IPAddress(ip)
 
     best_ntp_servers = {
-        space_id_and_family:
-            min(group, key=sort_key__dhcp_on__ip)
-            for space_id_and_family, group in groupby(
-                rack_addresses, get_space_id_and_family)
+        space_id_and_family: min(group, key=sort_key__dhcp_on__ip)
+        for space_id_and_family, group in groupby(
+            rack_addresses, get_space_id_and_family
+        )
     }
-    return {
-        key: value[3]
-        for key, value in best_ntp_servers.items()
-    }
+    return {key: value[3] for key, value in best_ntp_servers.items()}
 
 
 def make_interface_hostname(interface):
@@ -340,21 +337,23 @@ def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
             IPADDRESS_TYPE.AUTO,
             IPADDRESS_TYPE.STICKY,
             IPADDRESS_TYPE.USER_RESERVED,
-            ],
-        subnet__in=subnets, ip__isnull=False,
-        temp_expires_on__isnull=True).order_by('id')
+        ],
+        subnet__in=subnets,
+        ip__isnull=False,
+        temp_expires_on__isnull=True,
+    ).order_by("id")
     hosts = []
     interface_ids = set()
     for sip in sips:
         # Skip blank IP addresses.
-        if sip.ip == '':
+        if sip.ip == "":
             continue
         # Skip temp IP addresses.
         if sip.temp_expires_on:
             continue
 
         # Add all interfaces attached to this IP address.
-        for interface in sip.interface_set.order_by('id'):
+        for interface in sip.interface_set.order_by("id"):
             # Only allow an interface to be in hosts once.
             if interface.id in interface_ids:
                 continue
@@ -369,35 +368,44 @@ def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
                     # from the bond.
                     if parent.mac_address != interface.mac_address:
                         interface_ids.add(parent.id)
-                        hosts.append({
-                            'host': make_interface_hostname(parent),
-                            'mac': str(parent.mac_address),
-                            'ip': str(sip.ip),
-                            'dhcp_snippets': get_dhcp_snippets_for_interface(
-                                parent),
-                        })
-                hosts.append({
-                    'host': make_interface_hostname(interface),
-                    'mac': str(interface.mac_address),
-                    'ip': str(sip.ip),
-                    'dhcp_snippets': get_dhcp_snippets_for_interface(
-                        interface),
-                })
+                        hosts.append(
+                            {
+                                "host": make_interface_hostname(parent),
+                                "mac": str(parent.mac_address),
+                                "ip": str(sip.ip),
+                                "dhcp_snippets": get_dhcp_snippets_for_interface(
+                                    parent
+                                ),
+                            }
+                        )
+                hosts.append(
+                    {
+                        "host": make_interface_hostname(interface),
+                        "mac": str(interface.mac_address),
+                        "ip": str(sip.ip),
+                        "dhcp_snippets": get_dhcp_snippets_for_interface(
+                            interface
+                        ),
+                    }
+                )
             else:
-                hosts.append({
-                    'host': make_interface_hostname(interface),
-                    'mac': str(interface.mac_address),
-                    'ip': str(sip.ip),
-                    'dhcp_snippets': get_dhcp_snippets_for_interface(
-                        interface),
-                })
+                hosts.append(
+                    {
+                        "host": make_interface_hostname(interface),
+                        "mac": str(interface.mac_address),
+                        "ip": str(sip.ip),
+                        "dhcp_snippets": get_dhcp_snippets_for_interface(
+                            interface
+                        ),
+                    }
+                )
     return hosts
 
 
 def make_pools_for_subnet(subnet, failover_peer=None):
     """Return list of pools to create in the DHCP config for `subnet`."""
     pools = []
-    for ip_range in subnet.get_dynamic_ranges().order_by('id'):
+    for ip_range in subnet.get_dynamic_ranges().order_by("id"):
         pool = {
             "ip_range_low": ip_range.start_ip,
             "ip_range_high": ip_range.end_ip,
@@ -410,10 +418,16 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 @typed
 def make_subnet_config(
-        rack_controller, subnet, default_dns_servers: Optional[list],
-        ntp_servers: Union[list, dict], default_domain, search_list=None,
-        failover_peer=None, subnets_dhcp_snippets: list = None,
-        peer_rack=None):
+    rack_controller,
+    subnet,
+    default_dns_servers: Optional[list],
+    ntp_servers: Union[list, dict],
+    default_domain,
+    search_list=None,
+    failover_peer=None,
+    subnets_dhcp_snippets: list = None,
+    peer_rack=None,
+):
     """Return DHCP subnet configuration dict for a rack interface.
 
     :param ntp_servers: Either a list of NTP server addresses or hostnames to
@@ -432,25 +446,23 @@ def make_subnet_config(
         subnets_dhcp_snippets = []
 
     subnet_config = {
-        'subnet': str(ip_network.network),
-        'subnet_mask': str(ip_network.netmask),
-        'subnet_cidr': str(ip_network.cidr),
-        'broadcast_ip': str(ip_network.broadcast),
-        'router_ip': (
-            '' if not subnet.gateway_ip
-            else str(subnet.gateway_ip)),
-        'dns_servers': dns_servers,
-        'ntp_servers': get_ntp_servers(ntp_servers, subnet, peer_rack),
-        'domain_name': default_domain.name,
-        'pools': make_pools_for_subnet(subnet, failover_peer),
-        'dhcp_snippets': [
+        "subnet": str(ip_network.network),
+        "subnet_mask": str(ip_network.netmask),
+        "subnet_cidr": str(ip_network.cidr),
+        "broadcast_ip": str(ip_network.broadcast),
+        "router_ip": ("" if not subnet.gateway_ip else str(subnet.gateway_ip)),
+        "dns_servers": dns_servers,
+        "ntp_servers": get_ntp_servers(ntp_servers, subnet, peer_rack),
+        "domain_name": default_domain.name,
+        "pools": make_pools_for_subnet(subnet, failover_peer),
+        "dhcp_snippets": [
             make_dhcp_snippet(dhcp_snippet)
             for dhcp_snippet in subnets_dhcp_snippets
             if dhcp_snippet.subnet == subnet
-            ],
-        }
+        ],
+    }
     if search_list is not None:
-        subnet_config['search_list'] = search_list
+        subnet_config["search_list"] = search_list
     return subnet_config
 
 
@@ -458,7 +470,8 @@ def make_failover_peer_config(vlan, rack_controller):
     """Return DHCP failover peer configuration dict for a rack controller."""
     is_primary = vlan.primary_rack_id == rack_controller.id
     interface_ip_address = get_ip_address_for_rack_controller(
-        rack_controller, vlan)
+        rack_controller, vlan
+    )
     if is_primary:
         peer_rack = vlan.secondary_rack
     else:
@@ -473,7 +486,7 @@ def make_failover_peer_config(vlan, rack_controller):
             "address": str(interface_ip_address.ip),
             "peer_address": str(peer_address.ip),
         },
-        peer_rack
+        peer_rack,
     )
 
 
@@ -505,7 +518,8 @@ def get_ntp_servers(ntp_servers, subnet, peer_rack):
 
 @typed
 def get_dns_server_addresses_for_rack(
-        rack_controller: RackController, subnet: Subnet) -> dict:
+    rack_controller: RackController, subnet: Subnet
+) -> dict:
     """Return a map of IP addresses suitable for DNS on subnet.
 
     This will define a list of IP addresses across all rack controllers that
@@ -514,15 +528,15 @@ def get_dns_server_addresses_for_rack(
     """
     addresses = StaticIPAddress.objects.filter(
         subnet=subnet,
-        alloc_type__in={
-            IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
+        alloc_type__in={IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
         interface__enabled=True,
         interface__node__node_type__in={
-            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER})
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        },
+    )
     addresses = addresses.distinct()
-    addresses = addresses.values_list(
-        "ip",
-        "interface__node_id")
+    addresses = addresses.values_list("ip", "interface__node_id")
 
     def sort_key__rack__ip(record):
         ip, node_id = record
@@ -547,22 +561,22 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     try:
         default_region_ip = get_source_address(subnet.get_ipnetwork())
         dns_servers = get_dns_server_addresses(
-            rack_controller, ipv4=(ip_version == 4),
-            ipv6=(ip_version == 6), include_alternates=True,
-            default_region_ip=default_region_ip)
+            rack_controller,
+            ipv4=(ip_version == 4),
+            ipv6=(ip_version == 6),
+            include_alternates=True,
+            default_region_ip=default_region_ip,
+        )
     except UnresolvableHost:
         dns_servers = None
 
     if use_rack_proxy:
         # Add the IP address for the rack controllers on the subnet before the
         # region DNS servers.
-        rack_ips = get_dns_server_addresses_for_rack(
-            rack_controller, subnet)
+        rack_ips = get_dns_server_addresses_for_rack(rack_controller, subnet)
         if dns_servers:
             dns_servers = rack_ips + [
-                server
-                for server in dns_servers
-                if server not in rack_ips
+                server for server in dns_servers if server not in rack_ips
             ]
         elif rack_ips:
             dns_servers = rack_ips
@@ -572,14 +586,22 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
 
 @typed
 def get_dhcp_configure_for(
-        ip_version: int, rack_controller, vlan, subnets: list,
-        ntp_servers: Union[list, dict], domain, search_list=None,
-        dhcp_snippets: Iterable = None, use_rack_proxy=True):
+    ip_version: int,
+    rack_controller,
+    vlan,
+    subnets: list,
+    ntp_servers: Union[list, dict],
+    domain,
+    search_list=None,
+    dhcp_snippets: Iterable = None,
+    use_rack_proxy=True,
+):
     """Get the DHCP configuration for `ip_version`."""
     # Select the best interface for this VLAN. This is an interface that
     # at least has an IP address.
     interfaces = get_interfaces_with_ip_on_vlan(
-        rack_controller, vlan, ip_version)
+        rack_controller, vlan, ip_version
+    )
     interface = get_best_interface(interfaces)
 
     has_secondary = vlan.secondary_rack_id is not None
@@ -587,7 +609,8 @@ def get_dhcp_configure_for(
     if has_secondary:
         # Generate the failover peer for this VLAN.
         peer_name, peer_config, peer_rack = make_failover_peer_config(
-            vlan, rack_controller)
+            vlan, rack_controller
+        )
     else:
         peer_name, peer_config, peer_rack = None, None, None
 
@@ -595,28 +618,44 @@ def get_dhcp_configure_for(
         dhcp_snippets = []
 
     subnets_dhcp_snippets = [
-        dhcp_snippet for dhcp_snippet in dhcp_snippets
-        if dhcp_snippet.subnet is not None]
+        dhcp_snippet
+        for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.subnet is not None
+    ]
     nodes_dhcp_snippets = [
-        dhcp_snippet for dhcp_snippet in dhcp_snippets
-        if dhcp_snippet.node is not None]
+        dhcp_snippet
+        for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.node is not None
+    ]
 
     # Generate the shared network configurations.
     subnet_configs = []
     for subnet in subnets:
         maas_dns_servers = get_default_dns_servers(
-            rack_controller, subnet, use_rack_proxy)
+            rack_controller, subnet, use_rack_proxy
+        )
         subnet_configs.append(
             make_subnet_config(
-                rack_controller, subnet, maas_dns_servers, ntp_servers,
-                domain, search_list, peer_name, subnets_dhcp_snippets,
-                peer_rack))
+                rack_controller,
+                subnet,
+                maas_dns_servers,
+                ntp_servers,
+                domain,
+                search_list,
+                peer_name,
+                subnets_dhcp_snippets,
+                peer_rack,
+            )
+        )
 
     # Generate the hosts for all subnets.
     hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
     return (
-        peer_config, sorted(subnet_configs, key=itemgetter("subnet")),
-        hosts, None if interface is None else interface.name)
+        peer_config,
+        sorted(subnet_configs, key=itemgetter("subnet")),
+        hosts,
+        None if interface is None else interface.name,
+    )
 
 
 @synchronous
@@ -657,7 +696,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         make_dhcp_snippet(dhcp_snippet)
         for dhcp_snippet in dhcp_snippets
         if dhcp_snippet.node is None and dhcp_snippet.subnet is None
-        ]
+    ]
 
     # Configure both DHCPv4 and DHCPv6 on the rack controller.
     failover_peers_v4 = []
@@ -671,7 +710,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
 
     # DNS can either go through the rack controller or directly to the
     # region controller.
-    use_rack_proxy = Config.objects.get_config('use_rack_proxy')
+    use_rack_proxy = Config.objects.get_config("use_rack_proxy")
 
     # NTP configuration can get tricky...
     ntp_external_only = Config.objects.get_config("ntp_external_only")
@@ -691,9 +730,16 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         # IPv4
         if len(subnets_v4) > 0:
             config = get_dhcp_configure_for(
-                4, rack_controller, vlan, subnets_v4, ntp_servers,
-                default_domain, search_list=search_list,
-                dhcp_snippets=dhcp_snippets, use_rack_proxy=use_rack_proxy)
+                4,
+                rack_controller,
+                vlan,
+                subnets_v4,
+                ntp_servers,
+                default_domain,
+                search_list=search_list,
+                dhcp_snippets=dhcp_snippets,
+                use_rack_proxy=use_rack_proxy,
+            )
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v4.append(failover_peer)
@@ -710,9 +756,16 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         # IPv6
         if len(subnets_v6) > 0:
             config = get_dhcp_configure_for(
-                6, rack_controller, vlan, subnets_v6,
-                ntp_servers, default_domain, search_list=search_list,
-                dhcp_snippets=dhcp_snippets, use_rack_proxy=use_rack_proxy)
+                6,
+                rack_controller,
+                vlan,
+                subnets_v6,
+                ntp_servers,
+                default_domain,
+                search_list=search_list,
+                dhcp_snippets=dhcp_snippets,
+                use_rack_proxy=use_rack_proxy,
+            )
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v6.append(failover_peer)
@@ -733,15 +786,34 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     if len(interfaces_v6) == 0:
         shared_networks_v6 = {}
     return DHCPConfigurationForRack(
-        failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-        failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-        get_omapi_key(), global_dhcp_snippets)
+        failover_peers_v4,
+        shared_networks_v4,
+        hosts_v4,
+        interfaces_v4,
+        failover_peers_v6,
+        shared_networks_v6,
+        hosts_v6,
+        interfaces_v6,
+        get_omapi_key(),
+        global_dhcp_snippets,
+    )
 
 
-DHCPConfigurationForRack = namedtuple("DHCPConfigurationForRack", (
-    "failover_peers_v4", "shared_networks_v4", "hosts_v4", "interfaces_v4",
-    "failover_peers_v6", "shared_networks_v6", "hosts_v6", "interfaces_v6",
-    "omapi_key", "global_dhcp_snippets"))
+DHCPConfigurationForRack = namedtuple(
+    "DHCPConfigurationForRack",
+    (
+        "failover_peers_v4",
+        "shared_networks_v4",
+        "hosts_v4",
+        "interfaces_v4",
+        "failover_peers_v6",
+        "shared_networks_v6",
+        "hosts_v6",
+        "interfaces_v6",
+        "omapi_key",
+        "global_dhcp_snippets",
+    ),
+)
 
 
 @asynchronous
@@ -767,14 +839,8 @@ def configure_dhcp(rack_controller):
     config = yield deferToDatabase(get_dhcp_configuration, rack_controller)
 
     # Fix interfaces to go over the wire.
-    interfaces_v4 = [
-        {"name": name}
-        for name in config.interfaces_v4
-    ]
-    interfaces_v6 = [
-        {"name": name}
-        for name in config.interfaces_v6
-    ]
+    interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
+    interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
     # Configure both IPv4 and IPv6.
     ipv4_exc, ipv6_exc = None, None
@@ -782,49 +848,63 @@ def configure_dhcp(rack_controller):
 
     try:
         yield _perform_dhcp_config(
-            client, ConfigureDHCPv4_V2, ConfigureDHCPv4,
-            failover_peers=config.failover_peers_v4, interfaces=interfaces_v4,
-            shared_networks=config.shared_networks_v4, hosts=config.hosts_v4,
+            client,
+            ConfigureDHCPv4_V2,
+            ConfigureDHCPv4,
+            failover_peers=config.failover_peers_v4,
+            interfaces=interfaces_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
             global_dhcp_snippets=config.global_dhcp_snippets,
-            omapi_key=config.omapi_key)
+            omapi_key=config.omapi_key,
+        )
     except Exception as exc:
         ipv4_exc = exc
         ipv4_status = SERVICE_STATUS.DEAD
         log.err(
             None,
-            "Error configuring DHCPv4 on rack controller '%s (%s)': %s" % (
-                rack_controller.hostname, rack_controller.system_id, exc))
+            "Error configuring DHCPv4 on rack controller '%s (%s)': %s"
+            % (rack_controller.hostname, rack_controller.system_id, exc),
+        )
     else:
         if len(config.shared_networks_v4) > 0:
             ipv4_status = SERVICE_STATUS.RUNNING
         else:
             ipv4_status = SERVICE_STATUS.OFF
         log.msg(
-            "Successfully configured DHCPv4 on rack controller '%s (%s)'." % (
-                rack_controller.hostname, rack_controller.system_id))
+            "Successfully configured DHCPv4 on rack controller '%s (%s)'."
+            % (rack_controller.hostname, rack_controller.system_id)
+        )
 
     try:
         yield _perform_dhcp_config(
-            client, ConfigureDHCPv6_V2, ConfigureDHCPv6,
-            failover_peers=config.failover_peers_v6, interfaces=interfaces_v6,
-            shared_networks=config.shared_networks_v6, hosts=config.hosts_v6,
+            client,
+            ConfigureDHCPv6_V2,
+            ConfigureDHCPv6,
+            failover_peers=config.failover_peers_v6,
+            interfaces=interfaces_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
             global_dhcp_snippets=config.global_dhcp_snippets,
-            omapi_key=config.omapi_key)
+            omapi_key=config.omapi_key,
+        )
     except Exception as exc:
         ipv6_exc = exc
         ipv6_status = SERVICE_STATUS.DEAD
         log.err(
             None,
-            "Error configuring DHCPv6 on rack controller '%s (%s)': %s" % (
-                rack_controller.hostname, rack_controller.system_id, exc))
+            "Error configuring DHCPv6 on rack controller '%s (%s)': %s"
+            % (rack_controller.hostname, rack_controller.system_id, exc),
+        )
     else:
         if len(config.shared_networks_v6) > 0:
             ipv6_status = SERVICE_STATUS.RUNNING
         else:
             ipv6_status = SERVICE_STATUS.OFF
         log.msg(
-            "Successfully configured DHCPv6 on rack controller '%s (%s)'." % (
-                rack_controller.hostname, rack_controller.system_id))
+            "Successfully configured DHCPv6 on rack controller '%s (%s)'."
+            % (rack_controller.hostname, rack_controller.system_id)
+        )
 
     # Update the status for both services so the user is always seeing the
     # most up to date status.
@@ -839,9 +919,12 @@ def configure_dhcp(rack_controller):
         else:
             ipv6_status_info = str(ipv6_exc)
         Service.objects.update_service_for(
-            rack_controller, "dhcpd", ipv4_status, ipv4_status_info)
+            rack_controller, "dhcpd", ipv4_status, ipv4_status_info
+        )
         Service.objects.update_service_for(
-            rack_controller, "dhcpd6", ipv6_status, ipv6_status_info)
+            rack_controller, "dhcpd6", ipv6_status, ipv6_status_info
+        )
+
     yield deferToDatabase(update_services)
 
     # Raise the exceptions to the caller, it might want to retry. This raises
@@ -878,8 +961,9 @@ def validate_dhcp_config(test_dhcp_snippet=None):
         # which is connected will result in testing a config which does
         # not contain the values we are trying to test.
         raise ValidationError(
-            'Unable to validate DHCP config, '
-            'no available rack controller connected.')
+            "Unable to validate DHCP config, "
+            "no available rack controller connected."
+        )
 
     rack_controller = None
     # Test on the rack controller where the DHCPSnippet will be used
@@ -887,7 +971,8 @@ def validate_dhcp_config(test_dhcp_snippet=None):
         if test_dhcp_snippet.subnet is not None:
             rack_controller = find_connected_rack(
                 RackController.objects.filter_by_subnets(
-                    [test_dhcp_snippet.subnet])
+                    [test_dhcp_snippet.subnet]
+                )
             )
         elif test_dhcp_snippet.node is not None:
             rack_controller = find_connected_rack(
@@ -900,42 +985,44 @@ def validate_dhcp_config(test_dhcp_snippet=None):
             client = getRandomClient()
         except NoConnectionsAvailable:
             raise ValidationError(
-                'Unable to validate DHCP config, '
-                'no available rack controller connected.')
+                "Unable to validate DHCP config, "
+                "no available rack controller connected."
+            )
         rack_controller = RackController.objects.get(system_id=client.ident)
     else:
         try:
             client = getClientFor(rack_controller.system_id)
         except NoConnectionsAvailable:
             raise ValidationError(
-                'Unable to validate DHCP config, '
-                'no available rack controller connected.')
+                "Unable to validate DHCP config, "
+                "no available rack controller connected."
+            )
         rack_controller = RackController.objects.get(system_id=client.ident)
 
     # Get configuration for both IPv4 and IPv6.
     config = get_dhcp_configuration(rack_controller, test_dhcp_snippet)
 
     # Fix interfaces to go over the wire.
-    interfaces_v4 = [
-        {"name": name}
-        for name in config.interfaces_v4
-    ]
-    interfaces_v6 = [
-        {"name": name}
-        for name in config.interfaces_v6
-    ]
+    interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
+    interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
     # Validate both IPv4 and IPv6.
     v4_args = dict(
-        omapi_key=config.omapi_key, failover_peers=config.failover_peers_v4,
-        hosts=config.hosts_v4, interfaces=interfaces_v4,
+        omapi_key=config.omapi_key,
+        failover_peers=config.failover_peers_v4,
+        hosts=config.hosts_v4,
+        interfaces=interfaces_v4,
         global_dhcp_snippets=config.global_dhcp_snippets,
-        shared_networks=config.shared_networks_v4)
+        shared_networks=config.shared_networks_v4,
+    )
     v6_args = dict(
-        omapi_key=config.omapi_key, failover_peers=config.failover_peers_v6,
-        hosts=config.hosts_v6, interfaces=interfaces_v6,
+        omapi_key=config.omapi_key,
+        failover_peers=config.failover_peers_v6,
+        hosts=config.hosts_v6,
+        interfaces=interfaces_v6,
         global_dhcp_snippets=config.global_dhcp_snippets,
-        shared_networks=config.shared_networks_v6)
+        shared_networks=config.shared_networks_v6,
+    )
 
     # XXX: These remote calls can hold transactions open for a prolonged
     # period. This is bad for concurrency and scaling.
@@ -945,11 +1032,11 @@ def validate_dhcp_config(test_dhcp_snippet=None):
     # Deduplicate errors between IPv4 and IPv6
     known_errors = []
     unique_errors = []
-    for errors in (v4_response['errors'], v6_response['errors']):
+    for errors in (v4_response["errors"], v6_response["errors"]):
         if errors is None:
             continue
         for error in errors:
-            hash = "%s - %s" % (error['line'], error['error'])
+            hash = "%s - %s" % (error["line"], error["error"])
             if hash not in known_errors:
                 known_errors.append(hash)
                 unique_errors.append(error)
@@ -959,18 +1046,21 @@ def validate_dhcp_config(test_dhcp_snippet=None):
 def _validate_dhcp_config_v4(client, **args):
     """See `_validate_dhcp_config_vx`."""
     return _perform_dhcp_config(
-        client, ValidateDHCPv4Config_V2, ValidateDHCPv4Config, **args)
+        client, ValidateDHCPv4Config_V2, ValidateDHCPv4Config, **args
+    )
 
 
 def _validate_dhcp_config_v6(client, **args):
     """See `_validate_dhcp_config_vx`."""
     return _perform_dhcp_config(
-        client, ValidateDHCPv6Config_V2, ValidateDHCPv6Config, **args)
+        client, ValidateDHCPv6Config_V2, ValidateDHCPv6Config, **args
+    )
 
 
 @asynchronous
 def _perform_dhcp_config(
-        client, v2_command, v1_command, *, shared_networks, **args):
+    client, v2_command, v1_command, *, shared_networks, **args
+):
     """Call `v2_command` then `v1_command`...
 
     ... if the former is not recognised. This allows interoperability between
@@ -984,13 +1074,17 @@ def _perform_dhcp_config(
         structure will be downgraded in place.
     :param args: Remaining arguments for `v2_command` and `v1_command`.
     """
+
     def call(command):
         # DHCP command should not take more than `DHCP_TIMEOUT` plus 5 seconds
         # to complete. This gives the region controller a 5 second buffer to
         # recieve the timeout error from the rack controller.
         return client(
-            command, _timeout=DHCP_TIMEOUT + 5,
-            shared_networks=shared_networks, **args)
+            command,
+            _timeout=DHCP_TIMEOUT + 5,
+            shared_networks=shared_networks,
+            **args
+        )
 
     def maybeDowngrade(failure):
         if failure.check(amp.UnhandledCommand):

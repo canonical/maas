@@ -3,9 +3,7 @@
 
 """PackageRepository objects."""
 
-__all__ = [
-    "PackageRepository",
-    ]
+__all__ = ["PackageRepository"]
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -24,19 +22,21 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 
 class PackageRepositoryQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'id': "__id",
-            'name': "__name",
+            "id": "__id",
+            "name": "__name",
         }
         return super(PackageRepositoryQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class PackageRepositoryQuerySet(QuerySet, PackageRepositoryQueriesMixin):
@@ -80,45 +80,47 @@ class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
 
     def get_default_archive(self, arch):
         return PackageRepository.objects.filter(
-            arches__contains=[arch],
-            enabled=True,
-            default=True).first()
+            arches__contains=[arch], enabled=True, default=True
+        ).first()
 
     def get_additional_repositories(self, arch):
         return PackageRepository.objects.filter(
-            arches__contains=[arch],
-            enabled=True,
-            default=False).all()
+            arches__contains=[arch], enabled=True, default=False
+        ).all()
 
 
 class PackageRepository(CleanSave, TimestampedModel):
     """A `PackageRepository`."""
 
-    MAIN_ARCHES = ['amd64', 'i386']
-    PORTS_ARCHES = ['armhf', 'arm64', 'ppc64el', 's390x']
+    MAIN_ARCHES = ["amd64", "i386"]
+    PORTS_ARCHES = ["armhf", "arm64", "ppc64el", "s390x"]
     KNOWN_ARCHES = MAIN_ARCHES + PORTS_ARCHES
-    POCKETS_TO_DISABLE = ['updates', 'security', 'backports']
-    COMPONENTS_TO_DISABLE = ['restricted', 'universe', 'multiverse']
-    KNOWN_COMPONENTS = ['main', 'restricted', 'universe', 'multiverse']
+    POCKETS_TO_DISABLE = ["updates", "security", "backports"]
+    COMPONENTS_TO_DISABLE = ["restricted", "universe", "multiverse"]
+    KNOWN_COMPONENTS = ["main", "restricted", "universe", "multiverse"]
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
     objects = PackageRepositoryManager()
 
-    name = CharField(max_length=41, unique=True, default='')
+    name = CharField(max_length=41, unique=True, default="")
 
     url = URLOrPPAField(
-        blank=False, help_text="The URL of the PackageRepository.")
+        blank=False, help_text="The URL of the PackageRepository."
+    )
 
     distributions = ArrayField(
-        TextField(), blank=True, null=True, default=list)
+        TextField(), blank=True, null=True, default=list
+    )
 
     disabled_pockets = ArrayField(
-        TextField(), blank=True, null=True, default=list)
+        TextField(), blank=True, null=True, default=list
+    )
 
     disabled_components = ArrayField(
-        TextField(), blank=True, null=True, default=list)
+        TextField(), blank=True, null=True, default=list
+    )
 
     disable_sources = BooleanField(default=True)
 
@@ -126,7 +128,7 @@ class PackageRepository(CleanSave, TimestampedModel):
 
     arches = ArrayField(TextField(), blank=True, null=True, default=list)
 
-    key = TextField(blank=True, default='')
+    key = TextField(blank=True, default="")
 
     default = BooleanField(default=False)
 
@@ -144,7 +146,8 @@ class PackageRepository(CleanSave, TimestampedModel):
         return cls.objects.filter(
             arches__overlap=PackageRepository.MAIN_ARCHES,
             enabled=True,
-            default=True).first()
+            default=True,
+        ).first()
 
     @classmethod
     def get_ports_archive_url(cls):
@@ -155,7 +158,8 @@ class PackageRepository(CleanSave, TimestampedModel):
         return cls.objects.filter(
             arches__overlap=PackageRepository.PORTS_ARCHES,
             enabled=True,
-            default=True).first()
+            default=True,
+        ).first()
 
     def delete(self):
         main_archive = self.get_main_archive()

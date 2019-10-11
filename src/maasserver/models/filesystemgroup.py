@@ -4,27 +4,12 @@
 """Model for a filesystem group. Contains a set of filesystems that create
 a virtual block device. E.g. LVM Volume Group."""
 
-__all__ = [
-    'Bcache',
-    'FilesystemGroup',
-    'RAID',
-    'VMFS',
-    'VolumeGroup',
-    ]
+__all__ = ["Bcache", "FilesystemGroup", "RAID", "VMFS", "VolumeGroup"]
 
 from uuid import uuid4
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Manager,
-    Q,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import CASCADE, CharField, ForeignKey, Manager, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
@@ -54,12 +39,13 @@ class BaseFilesystemGroupManager(Manager):
     extra_filters = {}
 
     def get_queryset(self):
-        return super(
-            BaseFilesystemGroupManager,
-            self).get_queryset().filter(**self.extra_filters)
+        return (
+            super(BaseFilesystemGroupManager, self)
+            .get_queryset()
+            .filter(**self.extra_filters)
+        )
 
-    def get_object_or_404(
-            self, system_id, filesystem_group_id, user, perm):
+    def get_object_or_404(self, system_id, filesystem_group_id, user, perm):
         """Fetch a `FilesystemGroup` by its `Node`'s system_id and its id.
         Raise exceptions if no `FilesystemGroup` with this id exist, if the
         `Node` with system_id doesn't exist, if the `FilesystemGroup` doesn't
@@ -103,30 +89,39 @@ class BaseFilesystemGroupManager(Manager):
         block_device."""
         cache_set_partition_query = Q(
             cache_set__filesystems__partition__partition_table__block_device=(
-                block_device))
+                block_device
+            )
+        )
         partition_query = Q(
-            filesystems__partition__partition_table__block_device=block_device)
+            filesystems__partition__partition_table__block_device=block_device
+        )
         return self.filter(
-            Q(cache_set__filesystems__block_device=block_device) |
-            cache_set_partition_query |
-            Q(filesystems__block_device=block_device) |
-            partition_query).distinct()
+            Q(cache_set__filesystems__block_device=block_device)
+            | cache_set_partition_query
+            | Q(filesystems__block_device=block_device)
+            | partition_query
+        ).distinct()
 
     def filter_by_node(self, node):
         """Return all `FilesystemGroup` that are related to node."""
-        cache_set_partition_query = Q(**{
-            "cache_set__filesystems__partition__partition_table__"
-            "block_device__node": node,
-            })
-        partition_query = Q(**{
-            "filesystems__partition__partition_table__"
-            "block_device__node": node,
-            })
+        cache_set_partition_query = Q(
+            **{
+                "cache_set__filesystems__partition__partition_table__"
+                "block_device__node": node
+            }
+        )
+        partition_query = Q(
+            **{
+                "filesystems__partition__partition_table__"
+                "block_device__node": node
+            }
+        )
         return self.filter(
-            Q(cache_set__filesystems__block_device__node=node) |
-            cache_set_partition_query |
-            Q(filesystems__block_device__node=node) |
-            partition_query).distinct()
+            Q(cache_set__filesystems__block_device__node=node)
+            | cache_set_partition_query
+            | Q(filesystems__block_device__node=node)
+            | partition_query
+        ).distinct()
 
     def get_available_name_for(self, filesystem_group):
         """Return an available name that can be used for a `VirtualBlockDevice`
@@ -136,8 +131,9 @@ class BaseFilesystemGroupManager(Manager):
         prefix = filesystem_group.get_name_prefix()
         node = filesystem_group.get_node()
         idx = -1
-        for filesystem_group in self.filter_by_node(
-                node).filter(name__startswith=prefix):
+        for filesystem_group in self.filter_by_node(node).filter(
+            name__startswith=prefix
+        ):
             name = filesystem_group.name.replace(prefix, "")
             try:
                 name_idx = int(name)
@@ -155,22 +151,27 @@ class FilesystemGroupManager(BaseFilesystemGroupManager):
 class VolumeGroupManager(BaseFilesystemGroupManager):
     """Volume groups."""
 
-    extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.LVM_VG}
+    extra_filters = {"group_type": FILESYSTEM_GROUP_TYPE.LVM_VG}
 
     def create_volume_group(self, name, block_devices, partitions, uuid=None):
         """Create a `VolumeGroup` with the list of block devices and
         partitions."""
         # Circual imports.
         from maasserver.models.filesystem import Filesystem
+
         volume_group = VolumeGroup.objects.create(name=name, uuid=uuid)
         for block_device in block_devices:
             Filesystem.objects.create(
-                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device,
-                filesystem_group=volume_group)
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                block_device=block_device,
+                filesystem_group=volume_group,
+            )
         for partition in partitions:
             Filesystem.objects.create(
-                fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition,
-                filesystem_group=volume_group)
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                partition=partition,
+                filesystem_group=volume_group,
+            )
         volume_group.save(force_update=True)
         return volume_group
 
@@ -178,12 +179,18 @@ class VolumeGroupManager(BaseFilesystemGroupManager):
 class RAIDManager(BaseFilesystemGroupManager):
     """RAID groups"""
 
-    extra_filters = {'group_type__in': FILESYSTEM_GROUP_RAID_TYPES}
+    extra_filters = {"group_type__in": FILESYSTEM_GROUP_RAID_TYPES}
 
     def create_raid(
-            self, level, name=None, uuid=None,
-            block_devices=[], partitions=[],
-            spare_devices=[], spare_partitions=[]):
+        self,
+        level,
+        name=None,
+        uuid=None,
+        block_devices=[],
+        partitions=[],
+        spare_devices=[],
+        spare_partitions=[],
+    ):
         # Avoid circular import issues
         from maasserver.models.filesystem import Filesystem
 
@@ -195,22 +202,26 @@ class RAIDManager(BaseFilesystemGroupManager):
             Filesystem.objects.create(
                 fstype=FILESYSTEM_TYPE.RAID,
                 block_device=block_device,
-                filesystem_group=raid)
+                filesystem_group=raid,
+            )
         for partition in partitions:
             Filesystem.objects.create(
                 fstype=FILESYSTEM_TYPE.RAID,
                 partition=partition,
-                filesystem_group=raid)
+                filesystem_group=raid,
+            )
         for block_device in spare_devices:
             Filesystem.objects.create(
                 fstype=FILESYSTEM_TYPE.RAID_SPARE,
                 block_device=block_device,
-                filesystem_group=raid)
+                filesystem_group=raid,
+            )
         for partition in spare_partitions:
             Filesystem.objects.create(
                 fstype=FILESYSTEM_TYPE.RAID_SPARE,
                 partition=partition,
-                filesystem_group=raid)
+                filesystem_group=raid,
+            )
         raid.save(force_update=True)
         return raid
 
@@ -218,51 +229,70 @@ class RAIDManager(BaseFilesystemGroupManager):
 class BcacheManager(BaseFilesystemGroupManager):
     """Bcache groups"""
 
-    extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.BCACHE}
+    extra_filters = {"group_type": FILESYSTEM_GROUP_TYPE.BCACHE}
 
     def validate_bcache_creation_parameters(
-            self, cache_set, cache_mode, backing_device, backing_partition,
-            validate_mode=True):
+        self,
+        cache_set,
+        cache_mode,
+        backing_device,
+        backing_partition,
+        validate_mode=True,
+    ):
         """Validate bcache creation parameters. Raises ValidationErrors as
         needed. We don't always need to validate the mode, so, there is an
         option for that."""
 
         if validate_mode and cache_mode not in (
-                CACHE_MODE_TYPE.WRITEBACK, CACHE_MODE_TYPE.WRITETHROUGH,
-                CACHE_MODE_TYPE.WRITEAROUND):
-            raise ValidationError('Invalid cache mode: %s' % cache_mode)
+            CACHE_MODE_TYPE.WRITEBACK,
+            CACHE_MODE_TYPE.WRITETHROUGH,
+            CACHE_MODE_TYPE.WRITEAROUND,
+        ):
+            raise ValidationError("Invalid cache mode: %s" % cache_mode)
 
         if cache_set is None:
             raise ValidationError("Bcache requires a cache_set.")
 
         if backing_device and backing_partition:
             raise ValidationError(
-                'A Bcache can have either a backing device or partition.')
+                "A Bcache can have either a backing device or partition."
+            )
 
         if not backing_device and not backing_partition:
             raise ValidationError(
-                'Either backing_device or backing_partition must be '
-                'specified.')
+                "Either backing_device or backing_partition must be "
+                "specified."
+            )
 
     def create_bcache(
-            self, cache_set, name=None, uuid=None,
-            backing_device=None, backing_partition=None, cache_mode=None):
+        self,
+        cache_set,
+        name=None,
+        uuid=None,
+        backing_device=None,
+        backing_partition=None,
+        cache_mode=None,
+    ):
         """Creates a bcache of type `cache_type` using the desired cache and
         backing elements."""
 
         self.validate_bcache_creation_parameters(
-            cache_set, cache_mode, backing_device, backing_partition)
+            cache_set, cache_mode, backing_device, backing_partition
+        )
 
         # Avoid circular import issues
         from maasserver.models.filesystem import Filesystem
+
         if backing_device is not None:
             backing_filesystem = Filesystem(
                 block_device=backing_device,
-                fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+            )
         elif backing_partition is not None:
             backing_filesystem = Filesystem(
                 partition=backing_partition,
-                fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+            )
 
         # Setup the cache FilesystemGroup and attach the filesystems to it.
         bcache_filesystem_group = FilesystemGroup.objects.create(
@@ -270,7 +300,8 @@ class BcacheManager(BaseFilesystemGroupManager):
             uuid=uuid,
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=cache_mode,
-            cache_set=cache_set)
+            cache_set=cache_set,
+        )
         backing_filesystem.filesystem_group = bcache_filesystem_group
         backing_filesystem.save()
         bcache_filesystem_group.save(force_update=True)
@@ -280,21 +311,24 @@ class BcacheManager(BaseFilesystemGroupManager):
 class VMFSManager(BaseFilesystemGroupManager):
     """VMFS filesystem group"""
 
-    extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.VMFS6}
+    extra_filters = {"group_type": FILESYSTEM_GROUP_TYPE.VMFS6}
 
     def create_vmfs(self, name, partitions, uuid=None):
         """Create a `VMFS` with the list of block devices and partitions."""
         # Avoid circular imports.
         from maasserver.models.filesystem import Filesystem
+
         vmfs = self.create(name=name, uuid=uuid)
         for partition in partitions:
             Filesystem.objects.create(
-                fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
-                filesystem_group=vmfs)
+                fstype=FILESYSTEM_TYPE.VMFS6,
+                partition=partition,
+                filesystem_group=vmfs,
+            )
         vmfs.save(force_update=True)
         vmfs.virtual_device.filesystem_set.create(
-            fstype=FILESYSTEM_TYPE.VMFS6,
-            mount_point='/vmfs/volumes/%s' % name)
+            fstype=FILESYSTEM_TYPE.VMFS6, mount_point="/vmfs/volumes/%s" % name
+        )
         return vmfs
 
 
@@ -315,27 +349,28 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     objects = FilesystemGroupManager()
 
     uuid = CharField(
-        max_length=36, unique=True, null=False, blank=False, editable=False)
+        max_length=36, unique=True, null=False, blank=False, editable=False
+    )
 
     group_type = CharField(
-        max_length=20, null=False, blank=False,
-        choices=FILESYSTEM_GROUP_TYPE_CHOICES)
+        max_length=20,
+        null=False,
+        blank=False,
+        choices=FILESYSTEM_GROUP_TYPE_CHOICES,
+    )
 
-    name = CharField(
-        max_length=255, null=False, blank=False)
+    name = CharField(max_length=255, null=False, blank=False)
 
-    create_params = CharField(
-        max_length=255, null=True, blank=True)
+    create_params = CharField(max_length=255, null=True, blank=True)
 
     cache_mode = CharField(
-        max_length=20, null=True, blank=True,
-        choices=CACHE_MODE_TYPE_CHOICES)
+        max_length=20, null=True, blank=True, choices=CACHE_MODE_TYPE_CHOICES
+    )
 
-    cache_set = ForeignKey(
-        CacheSet, null=True, blank=True, on_delete=CASCADE)
+    cache_set = ForeignKey(CacheSet, null=True, blank=True, on_delete=CASCADE)
 
     def __str__(self):
-        return '%s device %s %d' % (self.group_type, self.name, self.id)
+        return "%s device %s %d" % (self.group_type, self.name, self.id)
 
     @property
     def virtual_device(self):
@@ -348,7 +383,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if self.is_lvm():
             raise AttributeError(
                 "virtual_device should not be called when "
-                "group_type = LVM_VG.")
+                "group_type = LVM_VG."
+            )
         else:
             # Return the first `VirtualBlockDevice` since it is the only one.
             # Using 'all()' instead of 'first()' so that if it was precached
@@ -393,9 +429,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return 0
         else:
             pv_total_size = sum(
-                filesystem.get_size()
-                for filesystem in filesystems
-                )
+                filesystem.get_size() for filesystem in filesystems
+            )
             number_of_extents, _ = divmod(pv_total_size, LVM_PE_SIZE)
             # Reserve one extent per filesystem for LVM headers - lp:1517129.
             return (number_of_extents - len(filesystems)) * LVM_PE_SIZE
@@ -406,10 +441,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if len(filesystems) == 0:
             return 0
         else:
-            return min(
-                filesystem.get_size()
-                for filesystem in filesystems
-                )
+            return min(filesystem.get_size() for filesystem in filesystems)
 
     def get_total_size(self):
         """Return the size of all filesystems combined."""
@@ -435,25 +467,24 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return 0
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
             return (
-                (min_size * self.filesystems.count()) -
-                RAID_SUPERBLOCK_OVERHEAD)
+                min_size * self.filesystems.count()
+            ) - RAID_SUPERBLOCK_OVERHEAD
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
             return min_size - RAID_SUPERBLOCK_OVERHEAD
         else:
-            num_raid = len([
-                fstype
-                for fstype in self._get_all_fstypes()
-                if fstype == FILESYSTEM_TYPE.RAID
-                ])
+            num_raid = len(
+                [
+                    fstype
+                    for fstype in self._get_all_fstypes()
+                    if fstype == FILESYSTEM_TYPE.RAID
+                ]
+            )
             if self.group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
-                return (
-                    (min_size * (num_raid - 1)) - RAID_SUPERBLOCK_OVERHEAD)
+                return (min_size * (num_raid - 1)) - RAID_SUPERBLOCK_OVERHEAD
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
-                return (
-                    (min_size * (num_raid - 2)) - RAID_SUPERBLOCK_OVERHEAD)
+                return (min_size * (num_raid - 2)) - RAID_SUPERBLOCK_OVERHEAD
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
-                return (
-                    (min_size * num_raid / 2) - RAID_SUPERBLOCK_OVERHEAD)
+                return (min_size * num_raid / 2) - RAID_SUPERBLOCK_OVERHEAD
         raise ValidationError("Unknown raid type: %s" % self.group_type)
 
     def get_bcache_backing_filesystem(self):
@@ -506,7 +537,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     def get_lvm_free_space(self, skip_volumes=[]):
         """Returns the total unallocated space on this FilesystemGroup"""
         return self.get_lvm_size() - self.get_lvm_allocated_size(
-            skip_volumes=skip_volumes)
+            skip_volumes=skip_volumes
+        )
 
     def clean(self, *args, **kwargs):
         super(FilesystemGroup, self).clean(*args, **kwargs)
@@ -525,16 +557,15 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         # Must at least have a filesystem added to the group.
         if len(filesystems) == 0:
             raise ValidationError(
-                "At least one filesystem must have been added.")
+                "At least one filesystem must have been added."
+            )
 
         # All filesystems must belong all to the same node.
-        nodes = {
-            filesystem.get_node()
-            for filesystem in filesystems
-            }
+        nodes = {filesystem.get_node() for filesystem in filesystems}
         if len(nodes) > 1:
             raise ValidationError(
-                "All added filesystems must belong to the same node.")
+                "All added filesystems must belong to the same node."
+            )
 
         # Validate all the different group types.
         if self.is_lvm():
@@ -566,10 +597,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         # precached it will be used. This prevents extra database queries.
         if filesystems is None:
             filesystems = list(self.filesystems.all())
-        return [
-            filesystem.fstype
-            for filesystem in filesystems
-        ]
+        return [filesystem.fstype for filesystem in filesystems]
 
     def _validate_lvm(self, filesystems=None):
         """Validate attached filesystems are correct type for LVM_VG.
@@ -579,7 +607,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         unique_fstypes = set(self._get_all_fstypes(filesystems=filesystems))
         if unique_fstypes != set([FILESYSTEM_TYPE.LVM_PV]):
             raise ValidationError(
-                "Volume group can only contain lvm physical volumes.")
+                "Volume group can only contain lvm physical volumes."
+            )
 
     def _validate_raid(self, filesystems=None):
         """Validate attached filesystems are correct count and type for RAID.
@@ -587,59 +616,69 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if not self.is_raid():
             return
         fstypes = self._get_all_fstypes(filesystems=filesystems)
-        num_raid = len([
-            fstype
-            for fstype in fstypes
-            if fstype == FILESYSTEM_TYPE.RAID
-            ])
-        num_raid_spare = len([
-            fstype
-            for fstype in fstypes
-            if fstype == FILESYSTEM_TYPE.RAID_SPARE
-            ])
+        num_raid = len(
+            [fstype for fstype in fstypes if fstype == FILESYSTEM_TYPE.RAID]
+        )
+        num_raid_spare = len(
+            [
+                fstype
+                for fstype in fstypes
+                if fstype == FILESYSTEM_TYPE.RAID_SPARE
+            ]
+        )
         if self.group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
             # RAID 0 can contain 2 or more RAID filesystems and no spares are
             # allowed.
             if num_raid < 2 or num_raid_spare != 0:
                 raise ValidationError(
                     "RAID level 0 must have at least 2 raid devices and "
-                    "no spares.")
+                    "no spares."
+                )
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
             # RAID 1 must have at least 2 RAID filesystems.
             if num_raid < 2:
                 raise ValidationError(
                     "RAID level 1 must have at least 2 raid devices and "
-                    "any number of spares.")
+                    "any number of spares."
+                )
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
             # RAID 5 must have at least 3 RAID filesystems, but can have
             # spares.
             if num_raid < 3:
                 raise ValidationError(
                     "RAID level 5 must have at least 3 raid devices and "
-                    "any number of spares.")
+                    "any number of spares."
+                )
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
             # RAID 6 must have at least 4 RAID filesystems, but can have
             # spares.
             if num_raid < 4:
                 raise ValidationError(
                     "RAID level 6 must have at least 4 raid devices and "
-                    "any number of spares.")
+                    "any number of spares."
+                )
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
             # RAID 10 must have at least 4 RAID filesystems, but can have
             # spares.
             if num_raid < 3:
                 raise ValidationError(
                     "RAID level 10 must have at least 3 raid devices and "
-                    "any number of spares.")
-        num_raid_invalid = len([
-            fstype
-            for fstype in fstypes
-            if (fstype != FILESYSTEM_TYPE.RAID and
-                fstype != FILESYSTEM_TYPE.RAID_SPARE)
-            ])
+                    "any number of spares."
+                )
+        num_raid_invalid = len(
+            [
+                fstype
+                for fstype in fstypes
+                if (
+                    fstype != FILESYSTEM_TYPE.RAID
+                    and fstype != FILESYSTEM_TYPE.RAID_SPARE
+                )
+            ]
+        )
         if num_raid_invalid > 0:
             raise ValidationError(
-                "RAID can only contain raid device and raid spares.")
+                "RAID can only contain raid device and raid spares."
+            )
 
     def _validate_bcache(self, filesystems=None):
         """Validate attached filesystems are correct type for BCACHE.
@@ -648,40 +687,45 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return
         # Circular imports.
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
+
         filesystems = [
-            filesystem.fstype
-            for filesystem in self.filesystems.all()
+            filesystem.fstype for filesystem in self.filesystems.all()
         ]
         if filesystems != [FILESYSTEM_TYPE.BCACHE_BACKING]:
             raise ValidationError(
-                "Bcache can only contain one backing device.")
+                "Bcache can only contain one backing device."
+            )
         backing_block_device = self.get_bcache_backing_block_device()
         backing_block_device = backing_block_device.actual_instance
         if isinstance(backing_block_device, VirtualBlockDevice):
             if backing_block_device.filesystem_group.is_lvm():
                 raise ValidationError(
-                    "Bcache cannot use a logical volume as a backing device.")
+                    "Bcache cannot use a logical volume as a backing device."
+                )
         if self.cache_mode is None:
             raise ValidationError("Bcache requires cache mode to be set.")
         if self.cache_set is None:
-            raise ValidationError(
-                "Bcache requires an assigned cache set.")
+            raise ValidationError("Bcache requires an assigned cache set.")
 
     def save(self, *args, **kwargs):
         # Prevent the group_type from changing. This is not supported and will
         # break the linked filesystems and the created virtual block device(s).
-        if self.pk is not None and self._state.has_changed('group_type'):
-            orig_type = self._state.get_old_value('group_type')
+        if self.pk is not None and self._state.has_changed("group_type"):
+            orig_type = self._state.get_old_value("group_type")
             if orig_type != self.group_type:
                 raise ValidationError(
-                    "Cannot change the group_type of a FilesystemGroup.")
+                    "Cannot change the group_type of a FilesystemGroup."
+                )
 
         # Prevent saving if the size of the volume group is now smaller than
         # the total size of logical volumes.
-        if (self.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG and
-                self.get_lvm_free_space() < 0):
+        if (
+            self.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG
+            and self.get_lvm_free_space() < 0
+        ):
             raise ValidationError(
-                "Volume group cannot be smaller than its logical volumes.")
+                "Volume group cannot be smaller than its logical volumes."
+            )
 
         # Set the name correctly based on the type and generate a new UUID
         # if needed.
@@ -697,6 +741,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         # contain the node that this filesystem group belongs to.
         if self.filesystems.count() > 0:
             from maasserver.models.virtualblockdevice import VirtualBlockDevice
+
             VirtualBlockDevice.objects.create_or_update_for(self)
 
     def delete(self, force=False):
@@ -717,7 +762,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                     # group that has logical volumes.
                     raise ValidationError(
                         "This volume group has logical volumes; it cannot be "
-                        "deleted.")
+                        "deleted."
+                    )
         else:
             # For the other types we delete the virtual block device.
             virtual_device = self.virtual_device
@@ -777,6 +823,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         else:
             raise ValidationError("Unknown group_type.")
 
+
 # Piston serializes objects based on the object class.
 # Here we define a proxy classes so that we can specialize how all the
 # different group types are serialized on the API.
@@ -792,7 +839,8 @@ class VolumeGroup(FilesystemGroup):
 
     def __init__(self, *args, **kwargs):
         super(VolumeGroup, self).__init__(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, *args, **kwargs)
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, *args, **kwargs
+        )
 
     def update_block_devices_and_partitions(self, block_devices, partitions):
         """Update the block devices and partitions that are in this
@@ -806,6 +854,7 @@ class VolumeGroup(FilesystemGroup):
         """Update the block devices that are in this volume group."""
         # Circual imports.
         from maasserver.models.filesystem import Filesystem
+
         block_devices = list(block_devices)
         current_filesystems = self.filesystems.filter(partition__isnull=True)
         for filesystem in current_filesystems:
@@ -816,16 +865,20 @@ class VolumeGroup(FilesystemGroup):
                 filesystem.delete()
         for new_block_device in block_devices:
             Filesystem.objects.create(
-                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=new_block_device,
-                filesystem_group=self)
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                block_device=new_block_device,
+                filesystem_group=self,
+            )
 
     def _update_partitions(self, partitions):
         """Update the partitions that are in this volume group."""
         # Circual imports.
         from maasserver.models.filesystem import Filesystem
+
         partitions = list(partitions)
         current_filesystems = self.filesystems.filter(
-            block_device__isnull=True)
+            block_device__isnull=True
+        )
         for filesystem in current_filesystems:
             partition = filesystem.partition
             if partition in partitions:
@@ -834,18 +887,24 @@ class VolumeGroup(FilesystemGroup):
                 filesystem.delete()
         for new_partition in partitions:
             Filesystem.objects.create(
-                fstype=FILESYSTEM_TYPE.LVM_PV, partition=new_partition,
-                filesystem_group=self)
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                partition=new_partition,
+                filesystem_group=self,
+            )
 
     def create_logical_volume(self, name, size, uuid=None):
         """Create a logical volume in this volume group."""
         # Circular imports.
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
+
         return VirtualBlockDevice.objects.create(
             node=self.get_node(),
-            name=name, uuid=uuid,
-            size=size, block_size=self.get_virtual_block_device_block_size(),
-            filesystem_group=self)
+            name=name,
+            uuid=uuid,
+            size=size,
+            block_size=self.get_virtual_block_device_block_size(),
+            filesystem_group=self,
+        )
 
 
 class RAID(FilesystemGroup):
@@ -865,32 +924,40 @@ class RAID(FilesystemGroup):
         """Adds a device to the array, creates the correct filesystem."""
         # Avoid circular import.
         from maasserver.models.filesystem import Filesystem
+
         if device.node != self.get_node():
             raise ValidationError(
                 "Device needs to be from the same node as the rest of the "
-                "array.")
+                "array."
+            )
         elif device.get_effective_filesystem() is not None:
             raise ValidationError(
-                "There is another filesystem on this device.")
+                "There is another filesystem on this device."
+            )
         else:
             Filesystem.objects.create(
-                block_device=device, fstype=fstype, filesystem_group=self)
+                block_device=device, fstype=fstype, filesystem_group=self
+            )
         return self
 
     def add_partition(self, partition, fstype):
         """Adds a partition to the array, creates the correct filesystem."""
         # Avoid circular import.
         from maasserver.models.filesystem import Filesystem
+
         if partition.get_node() != self.get_node():
             raise ValidationError(
                 "Partition must be on a device from the same node as the rest "
-                "of the array.")
+                "of the array."
+            )
         elif partition.get_effective_filesystem() is not None:
             raise ValidationError(
-                "There is another filesystem on this partition.")
+                "There is another filesystem on this partition."
+            )
         else:
             Filesystem.objects.create(
-                partition=partition, fstype=fstype, filesystem_group=self)
+                partition=partition, fstype=fstype, filesystem_group=self
+            )
         return self
 
     def remove_device(self, device):
@@ -900,8 +967,7 @@ class RAID(FilesystemGroup):
         the array becomes invalid with the deletion.
         """
         filesystem = device.get_effective_filesystem()
-        if (filesystem is None or
-                filesystem.filesystem_group_id != self.id):
+        if filesystem is None or filesystem.filesystem_group_id != self.id:
             raise ValidationError("Device does not belong to this array.")
         else:
             # If validation passes, delete the filesystem.
@@ -927,8 +993,7 @@ class RAID(FilesystemGroup):
         the array becomes invalid with the deletion.
         """
         filesystem = partition.get_effective_filesystem()
-        if (filesystem is None or
-                filesystem.filesystem_group_id != self.id):
+        if filesystem is None or filesystem.filesystem_group_id != self.id:
             raise ValidationError("Partition does not belong to this array.")
         elif filesystem is not None:
             self.filesystems.remove(filesystem)
@@ -957,7 +1022,8 @@ class Bcache(FilesystemGroup):
 
     def __init__(self, *args, **kwargs):
         super(Bcache, self).__init__(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, *args, **kwargs)
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, *args, **kwargs
+        )
 
 
 class VMFS(FilesystemGroup):
@@ -970,4 +1036,5 @@ class VMFS(FilesystemGroup):
 
     def __init__(self, *args, **kwargs):
         super().__init__(
-            group_type=FILESYSTEM_GROUP_TYPE.VMFS6, *args, **kwargs)
+            group_type=FILESYSTEM_GROUP_TYPE.VMFS6, *args, **kwargs
+        )

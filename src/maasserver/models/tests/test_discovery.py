@@ -21,14 +21,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from testtools.matchers import (
-    Equals,
-    Is,
-)
+from testtools.matchers import Equals, Is
 
 
 class TestDiscoveryModel(MAASServerTestCase):
-
     def test_mac_organization(self):
         discovery = factory.make_Discovery(mac_address="48:51:b7:00:00:00")
         self.assertThat(discovery.mac_organization, IsNonEmptyString)
@@ -42,7 +38,8 @@ class TestDiscoveryModel(MAASServerTestCase):
         # interfaces.
         d1 = factory.make_Discovery(interface=iface1)
         factory.make_Discovery(
-            interface=iface2, mac_address=d1.mac_address, ip=d1.ip)
+            interface=iface2, mac_address=d1.mac_address, ip=d1.ip
+        )
         # ... the Discovery view should only display one entry.
         self.assertThat(Discovery.objects.count(), Equals(1))
 
@@ -71,22 +68,26 @@ class TestDiscoveryModel(MAASServerTestCase):
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertThat(
-            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(1))
+            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(1)
+        )
         factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
         # Known IP address, unexpected MAC.
         self.assertThat(
-            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0))
+            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0)
+        )
 
     def test__query_by_unknown_ip_and_mac__known_mac(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
         self.assertThat(
-            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(1))
+            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(1)
+        )
         # Known MAC, unknown IP.
         factory.make_Interface(mac_address=discovery.mac_address)
         self.assertThat(
-            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0))
+            Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0)
+        )
 
     def test__does_not_fail_if_cannot_find_subnet(self):
         rack = factory.make_RackController()
@@ -118,7 +119,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         discovery = Discovery.objects.first()
         self.assertThat(discovery.is_external_dhcp, Equals(False))
-        iface.vlan.external_dhcp = '10.0.0.1'
+        iface.vlan.external_dhcp = "10.0.0.1"
         iface.vlan.save()
         discovery = Discovery.objects.first()
         self.assertThat(discovery.is_external_dhcp, Equals(True))
@@ -149,7 +150,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
     """Tests for `DiscoveryManager.clear` """
 
     def test__clear_mdns_entries(self):
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+        maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
         factory.make_Neighbour()
@@ -159,11 +160,15 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(mdns=True)
         self.assertThat(MDNS.objects.count(), Equals(0))
         self.assertThat(Neighbour.objects.count(), Equals(2))
-        self.assertThat(maaslog, MockCalledOnceWith(
-            Matches(DocTestMatches('Cleared all mDNS entries.'))))
+        self.assertThat(
+            maaslog,
+            MockCalledOnceWith(
+                Matches(DocTestMatches("Cleared all mDNS entries."))
+            ),
+        )
 
     def test__clear_neighbour_entries(self):
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+        maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
         factory.make_Neighbour()
@@ -173,12 +178,15 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(neighbours=True)
         self.assertThat(MDNS.objects.count(), Equals(2))
         self.assertThat(Neighbour.objects.count(), Equals(0))
-        self.assertThat(maaslog, MockCalledOnceWith(
-            Matches(DocTestMatches('Cleared all neighbour entries.'))
-        ))
+        self.assertThat(
+            maaslog,
+            MockCalledOnceWith(
+                Matches(DocTestMatches("Cleared all neighbour entries."))
+            ),
+        )
 
     def test__clear_all_entries(self):
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+        maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
         factory.make_Neighbour()
@@ -188,12 +196,17 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(all=True)
         self.assertThat(MDNS.objects.count(), Equals(0))
         self.assertThat(Neighbour.objects.count(), Equals(0))
-        self.assertThat(maaslog, MockCalledOnceWith(
-            Matches(DocTestMatches('Cleared all mDNS and neighbour entries.'))
-        ))
+        self.assertThat(
+            maaslog,
+            MockCalledOnceWith(
+                Matches(
+                    DocTestMatches("Cleared all mDNS and neighbour entries.")
+                )
+            ),
+        )
 
     def test__clear_mdns_entries_is_noop_if_what_to_clear_is_unspecified(self):
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+        maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
         factory.make_Neighbour()
@@ -208,13 +221,16 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
 
     def test__clear_logs_username_if_given(self):
         user = factory.make_admin()
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+        maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_Neighbour()
         Discovery.objects.clear(user=user, all=True)
-        self.assertThat(maaslog, MockCalledOnceWith(
-            Matches(DocTestMatches("User '%s' cleared..." % user.username))
-        ))
+        self.assertThat(
+            maaslog,
+            MockCalledOnceWith(
+                Matches(DocTestMatches("User '%s' cleared..." % user.username))
+            ),
+        )
 
 
 class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
@@ -225,7 +241,8 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
         self.assertThat(Neighbour.objects.count(), Equals(2))
         Discovery.objects.delete_by_mac_and_ip(
-            ip=neigh.ip, mac=neigh.mac_address)
+            ip=neigh.ip, mac=neigh.mac_address
+        )
         self.assertThat(Neighbour.objects.count(), Equals(0))
 
     def test__unrelated_neighbours_remain(self):
@@ -235,7 +252,8 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         factory.make_Neighbour()
         self.assertThat(Neighbour.objects.count(), Equals(3))
         Discovery.objects.delete_by_mac_and_ip(
-            ip=neigh.ip, mac=neigh.mac_address)
+            ip=neigh.ip, mac=neigh.mac_address
+        )
         self.assertThat(Neighbour.objects.count(), Equals(1))
 
     def test__deletes_related_mdns_entries(self):
@@ -245,7 +263,8 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         self.assertThat(Neighbour.objects.count(), Equals(2))
         self.assertThat(MDNS.objects.count(), Equals(1))
         Discovery.objects.delete_by_mac_and_ip(
-            ip=neigh.ip, mac=neigh.mac_address)
+            ip=neigh.ip, mac=neigh.mac_address
+        )
         self.assertThat(Neighbour.objects.count(), Equals(0))
         self.assertThat(MDNS.objects.count(), Equals(0))
 
@@ -256,25 +275,38 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         self.assertThat(Neighbour.objects.count(), Equals(2))
         self.assertThat(RDNS.objects.count(), Equals(1))
         Discovery.objects.delete_by_mac_and_ip(
-            ip=neigh.ip, mac=neigh.mac_address)
+            ip=neigh.ip, mac=neigh.mac_address
+        )
         self.assertThat(Neighbour.objects.count(), Equals(0))
         self.assertThat(MDNS.objects.count(), Equals(0))
 
     def test__log_entries(self):
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+        maaslog = self.patch(discovery_module.maaslog, "info")
         user = factory.make_admin()
         neigh = factory.make_Neighbour(
-            ip='1.1.1.1', mac_address='00:01:02:03:04:05')
+            ip="1.1.1.1", mac_address="00:01:02:03:04:05"
+        )
         Discovery.objects.delete_by_mac_and_ip(
-            ip=neigh.ip, mac=neigh.mac_address, user=user)
-        self.assertThat(maaslog, MockCalledOnceWith(
-            Matches(DocTestMatches("User '%s' cleared..." % user.username))
-        ))
+            ip=neigh.ip, mac=neigh.mac_address, user=user
+        )
+        self.assertThat(
+            maaslog,
+            MockCalledOnceWith(
+                Matches(DocTestMatches("User '%s' cleared..." % user.username))
+            ),
+        )
         neigh = factory.make_Neighbour(
-            ip='1.1.1.1', mac_address='00:01:02:03:04:05')
-        maaslog = self.patch(discovery_module.maaslog, 'info')
+            ip="1.1.1.1", mac_address="00:01:02:03:04:05"
+        )
+        maaslog = self.patch(discovery_module.maaslog, "info")
         Discovery.objects.delete_by_mac_and_ip(
-            ip=neigh.ip, mac=neigh.mac_address)
-        self.assertThat(maaslog, MockCalledOnceWith(
-            Matches(DocTestMatches('Cleared neighbour entry: 1.1.1.1 (00:...'))
-        ))
+            ip=neigh.ip, mac=neigh.mac_address
+        )
+        self.assertThat(
+            maaslog,
+            MockCalledOnceWith(
+                Matches(
+                    DocTestMatches("Cleared neighbour entry: 1.1.1.1 (00:...")
+                )
+            ),
+        )

@@ -3,37 +3,23 @@
 
 """Service that periodically runs neighbour discovery scans on each rack."""
 
-__all__ = [
-    "ActiveDiscoveryService"
-]
+__all__ = ["ActiveDiscoveryService"]
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime, timedelta
 
 from maasserver import locks
 from maasserver.api.discoveries import (
     get_scan_result_string_for_humans,
     scan_all_rack_networks,
 )
-from maasserver.models import (
-    Config,
-    Subnet,
-)
+from maasserver.models import Config, Subnet
 from maasserver.utils.dblocks import DatabaseLockNotHeld
-from maasserver.utils.orm import (
-    transactional,
-    with_connection,
-)
+from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-)
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
 
 
 log = LegacyLogger()
@@ -63,11 +49,11 @@ class ActiveDiscoveryService(TimerService):
     def startService(self):
         super().startService()
         if self.listener is not None:
-            self.listener.register('config', self.refreshDiscoveryConfig)
+            self.listener.register("config", self.refreshDiscoveryConfig)
 
     def stopService(self):
         if self.listener is not None:
-            self.listener.unregister('config', self.refreshDiscoveryConfig)
+            self.listener.unregister("config", self.refreshDiscoveryConfig)
         return super().stopService()
 
     @inlineCallbacks
@@ -81,7 +67,8 @@ class ActiveDiscoveryService(TimerService):
         Prints log messages for significant configuration changes.
         """
         enabled, interval, last_scan = yield deferToDatabase(
-            self.get_active_discovery_config)
+            self.get_active_discovery_config
+        )
         enabled_changed = enabled != self.discovery_enabled
         interval_changed = interval != self.discovery_interval
         last_scan_time_changed = last_scan != self.discovery_last_scan
@@ -89,10 +76,12 @@ class ActiveDiscoveryService(TimerService):
         if enabled and interval_changed:
             log.msg(
                 "Active network discovery: Discovery interval set to %d "
-                "seconds." % interval)
+                "seconds." % interval
+            )
         elif not enabled and enabled_changed:
             log.msg(
-                "Active network discovery: periodic discovery is disabled.")
+                "Active network discovery: periodic discovery is disabled."
+            )
         self.discovery_enabled = enabled
         self.discovery_interval = interval
         self.discovery_last_scan = last_scan
@@ -110,8 +99,8 @@ class ActiveDiscoveryService(TimerService):
 
         Intended to be called with `deferToDatabase()`.
         """
-        interval = Config.objects.get_config('active_discovery_interval')
-        last_scan = Config.objects.get_config('active_discovery_last_scan')
+        interval = Config.objects.get_config("active_discovery_interval")
+        last_scan = Config.objects.get_config("active_discovery_last_scan")
         try:
             interval = int(interval)
         except ValueError:
@@ -143,18 +132,21 @@ class ActiveDiscoveryService(TimerService):
         discovery_config = Config.objects.get_network_discovery_config()
         if discovery_config.passive is False:
             raise _InvalidScanState(
-                'Passive discovery is disabled. Skipping periodic scan.')
+                "Passive discovery is disabled. Skipping periodic scan."
+            )
         # Check the discovery configuration one more time, just in case it
         # changed while we weren't holding the lock.
         enabled, interval, last_scan = self.get_active_discovery_config()
         if not enabled:
             raise _InvalidScanState(
-                'Skipping active scan. Periodic discovery is now disabled.')
+                "Skipping active scan. Periodic discovery is now disabled."
+            )
         current_time = self.getCurrentTimestamp()
         if (last_scan + interval) > current_time:
             raise _InvalidScanState(
-                'Another region controller is already scanning. '
-                'Skipping scan.')
+                "Another region controller is already scanning. "
+                "Skipping scan."
+            )
         cidrs = Subnet.objects.get_cidr_list_for_periodic_active_scan()
         return cidrs
 
@@ -162,8 +154,7 @@ class ActiveDiscoveryService(TimerService):
     def _update_last_scan_time(self):
         """Helper function to update the last_scan time in a transaction."""
         current_time = self.getCurrentTimestamp()
-        Config.objects.set_config(
-            'active_discovery_last_scan', current_time)
+        Config.objects.set_config("active_discovery_last_scan", current_time)
 
     def scan_all_subnets(self, cidrs):
         """Scans the specified list of subnet CIDRs.
@@ -197,13 +188,15 @@ class ActiveDiscoveryService(TimerService):
                 else:
                     if len(cidrs) == 0:
                         return (
-                            'Active scanning is not enabled on any subnet. '
-                            'Skipping periodic scan.')
+                            "Active scanning is not enabled on any subnet. "
+                            "Skipping periodic scan."
+                        )
                     return self.scan_all_subnets(cidrs)
         except DatabaseLockNotHeld:
             return (
-                'Active discovery lock was taken. Another region controller '
-                'is already scanning; skipping scan.')
+                "Active discovery lock was taken. Another region controller "
+                "is already scanning; skipping scan."
+            )
 
     def scanIfNeeded(self):
         """Defers `try_lock_and_scan()` to the database if necessary.
@@ -222,7 +215,8 @@ class ActiveDiscoveryService(TimerService):
             log.msg(
                 "Active network discovery: Clock skew detected. Last "
                 "scan time (%d) is greater than current time (%d). "
-                "Skipping scan." % (self.discovery_last_scan, now))
+                "Skipping scan." % (self.discovery_last_scan, now)
+            )
             return None
         elif now >= (self.discovery_last_scan + self.discovery_interval):
             # We hit the next scan interval, so check if we need to scan.
@@ -281,4 +275,5 @@ class ActiveDiscoveryService(TimerService):
         log.err(
             failure,
             "Active network discovery: error refreshing discovery "
-            "configuration.")
+            "configuration.",
+        )

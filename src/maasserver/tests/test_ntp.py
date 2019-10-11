@@ -6,16 +6,10 @@
 __all__ = []
 
 from maasserver.models.config import Config
-from maasserver.ntp import (
-    get_peers_for,
-    get_servers_for,
-)
+from maasserver.ntp import get_peers_for, get_servers_for
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import (
-    IPAddress,
-    IPSet,
-)
+from netaddr import IPAddress, IPSet
 from testtools.matchers import (
     AfterPreprocessing,
     ContainsAll,
@@ -30,21 +24,18 @@ from testtools.matchers import (
 
 def IsSetOfServers(servers):
     return MatchesAll(
-        IsInstance(frozenset),
-        Equals(frozenset(servers)),
-        first_only=True,
+        IsInstance(frozenset), Equals(frozenset(servers)), first_only=True
     )
 
 
 IsEmptySet = MatchesAll(
-    IsInstance(frozenset),
-    Equals(frozenset()),
-    first_only=True,
+    IsInstance(frozenset), Equals(frozenset()), first_only=True
 )
 
 
 IsIPv6Address = AfterPreprocessing(
-    IPAddress, MatchesStructure(version=Equals(6)))
+    IPAddress, MatchesStructure(version=Equals(6))
+)
 
 
 def populate_node_with_addresses(node, subnets):
@@ -123,23 +114,25 @@ class TestGetServersFor_Rack(TestGetServersFor_Common):
 
         rack = factory.make_RackController()
         address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=rack))
+            interface=factory.make_Interface(node=rack)
+        )
 
         region1 = factory.make_RegionController()
         region1_address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=region1),
-            subnet=address.subnet)
+            subnet=address.subnet,
+        )
 
         region2 = factory.make_RegionController()
         region2_address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=region2),
-            subnet=address.subnet)
+            subnet=address.subnet,
+        )
 
         servers = get_servers_for(rack)
-        self.assertThat(servers, IsSetOfServers({
-            region1_address.ip,
-            region2_address.ip,
-        }))
+        self.assertThat(
+            servers, IsSetOfServers({region1_address.ip, region2_address.ip})
+        )
 
 
 class TestGetServersFor_Machine(TestGetServersFor_Common):
@@ -150,43 +143,47 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
         machine.boot_cluster_ip = None
         machine.save()
         address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=machine))
+            interface=factory.make_Interface(node=machine)
+        )
 
         rack1 = factory.make_RackController()
         rack1_address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=rack1),
-            subnet=address.subnet)
+            interface=factory.make_Interface(node=rack1), subnet=address.subnet
+        )
 
         rack2 = factory.make_RackController()
         rack2_address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=rack2),
-            subnet=address.subnet)
+            interface=factory.make_Interface(node=rack2), subnet=address.subnet
+        )
 
         servers = get_servers_for(machine)
-        self.assertThat(servers, IsSetOfServers({
-            rack1_address.ip,
-            rack2_address.ip,
-        }))
+        self.assertThat(
+            servers, IsSetOfServers({rack1_address.ip, rack2_address.ip})
+        )
 
     def test_yields_boot_rack_addresses_when_machine_has_booted(self):
         machine = factory.make_Machine()
         address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=machine))
+            interface=factory.make_Interface(node=machine)
+        )
 
         rack_primary = factory.make_RackController()
         rack_primary_address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=rack_primary),
-            subnet=address.subnet)
+            subnet=address.subnet,
+        )
 
         rack_secondary = factory.make_RackController()
         rack_secondary_address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=rack_secondary),
-            subnet=address.subnet)
+            subnet=address.subnet,
+        )
 
         rack_other = factory.make_RackController()
         rack_other_address = factory.make_StaticIPAddress(  # noqa
             interface=factory.make_Interface(node=rack_other),
-            subnet=address.subnet)
+            subnet=address.subnet,
+        )
 
         vlan = address.subnet.vlan
         vlan.primary_rack = rack_primary
@@ -195,10 +192,12 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
         vlan.save()
 
         servers = get_servers_for(machine)
-        self.assertThat(servers, IsSetOfServers({
-            rack_primary_address.ip,
-            rack_secondary_address.ip,
-        }))
+        self.assertThat(
+            servers,
+            IsSetOfServers(
+                {rack_primary_address.ip, rack_secondary_address.ip}
+            ),
+        )
 
 
 class TestGetServersFor_Device(TestGetServersFor_Common):
@@ -207,23 +206,23 @@ class TestGetServersFor_Device(TestGetServersFor_Common):
     def test_yields_rack_addresses(self):
         device = factory.make_Device()
         address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=device))
+            interface=factory.make_Interface(node=device)
+        )
 
         rack1 = factory.make_RackController()
         rack1_address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=rack1),
-            subnet=address.subnet)
+            interface=factory.make_Interface(node=rack1), subnet=address.subnet
+        )
 
         rack2 = factory.make_RackController()
         rack2_address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=rack2),
-            subnet=address.subnet)
+            interface=factory.make_Interface(node=rack2), subnet=address.subnet
+        )
 
         servers = get_servers_for(device)
-        self.assertThat(servers, IsSetOfServers({
-            rack1_address.ip,
-            rack2_address.ip,
-        }))
+        self.assertThat(
+            servers, IsSetOfServers({rack1_address.ip, rack2_address.ip})
+        )
 
 
 class TestGetServersFor_Selection(MAASServerTestCase):
@@ -235,18 +234,27 @@ class TestGetServersFor_Selection(MAASServerTestCase):
     """
 
     scenarios = (
-        ("rack", {
-            "make_node": factory.make_RackController,
-            "make_server": factory.make_RegionController,
-        }),
-        ("machine", {
-            "make_node": factory.make_Machine,
-            "make_server": factory.make_RackController,
-        }),
-        ("device", {
-            "make_node": factory.make_Device,
-            "make_server": factory.make_RackController,
-        }),
+        (
+            "rack",
+            {
+                "make_node": factory.make_RackController,
+                "make_server": factory.make_RegionController,
+            },
+        ),
+        (
+            "machine",
+            {
+                "make_node": factory.make_Machine,
+                "make_server": factory.make_RackController,
+            },
+        ),
+        (
+            "device",
+            {
+                "make_node": factory.make_Device,
+                "make_server": factory.make_RackController,
+            },
+        ),
     )
 
     def setUp(self):
@@ -266,14 +274,16 @@ class TestGetServersFor_Selection(MAASServerTestCase):
         # ... and a server with an address in every subnet.
         server = self.make_server()
         populate_node_with_addresses(
-            server, {subnet4, subnet6, subnet4v, subnet6v})
+            server, {subnet4, subnet6, subnet4v, subnet6v}
+        )
 
         # The NTP server addresses chosen will be those that are "closest" to
         # the node, and same-subnet wins in this over same-VLAN. No additional
         # preference is made between IPv4 or IPv6, hence we allow for either.
         preferred_subnets = subnet4, subnet6
         preferred_networks = IPSet(
-            subnet.get_ipnetwork() for subnet in preferred_subnets)
+            subnet.get_ipnetwork() for subnet in preferred_subnets
+        )
 
         servers = get_servers_for(node)
         self.assertThat(servers, Not(HasLength(0)))
@@ -291,18 +301,20 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
     def test_yields_peer_addresses(self):
         node1 = self.make_node()
         node1_address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=node1))
+            interface=factory.make_Interface(node=node1)
+        )
         node2 = self.make_node()
         node2_address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=node2),
-            subnet=node1_address.subnet)
+            subnet=node1_address.subnet,
+        )
 
         self.assertThat(
-            get_peers_for(node1),
-            IsSetOfServers({node2_address.ip}))
+            get_peers_for(node1), IsSetOfServers({node2_address.ip})
+        )
         self.assertThat(
-            get_peers_for(node2),
-            IsSetOfServers({node1_address.ip}))
+            get_peers_for(node2), IsSetOfServers({node1_address.ip})
+        )
 
     def test_prefers_closest_addresses(self):
         subnet4 = factory.make_Subnet(version=4)
@@ -317,19 +329,22 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
         # two same-VLAN subnets.
         node1 = self.make_node()
         populate_node_with_addresses(
-            node1, {subnet4, subnet6, subnet4v1, subnet6v1})
+            node1, {subnet4, subnet6, subnet4v1, subnet6v1}
+        )
         # Create a node with an address in the first two subnets and the
         # second two same-VLAN subnets.
         node2 = self.make_node()
         populate_node_with_addresses(
-            node2, {subnet4, subnet6, subnet4v2, subnet6v2})
+            node2, {subnet4, subnet6, subnet4v2, subnet6v2}
+        )
 
         # The NTP server addresses chosen will be those that are "closest" to
         # the node, and same-subnet wins in this over same-VLAN. No additional
         # preference is made between IPv4 or IPv6, hence we allow for either.
         preferred_subnets = subnet4, subnet6
         preferred_networks = IPSet(
-            subnet.get_ipnetwork() for subnet in preferred_subnets)
+            subnet.get_ipnetwork() for subnet in preferred_subnets
+        )
 
         for node in (node1, node2):
             peers = get_peers_for(node)
@@ -349,11 +364,13 @@ class TestGetPeersFor_Other(MAASServerTestCase):
     def test_yields_nothing(self):
         node1 = self.make_node()
         node1_address = factory.make_StaticIPAddress(
-            interface=factory.make_Interface(node=node1))
+            interface=factory.make_Interface(node=node1)
+        )
         node2 = self.make_node()
         node2_address = factory.make_StaticIPAddress(  # noqa
             interface=factory.make_Interface(node=node2),
-            subnet=node1_address.subnet)
+            subnet=node1_address.subnet,
+        )
 
         self.assertThat(get_peers_for(node1), IsEmptySet)
         self.assertThat(get_peers_for(node2), IsEmptySet)

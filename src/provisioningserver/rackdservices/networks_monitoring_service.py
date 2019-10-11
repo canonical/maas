@@ -3,9 +3,7 @@
 
 """Networks monitoring service for rack controllers."""
 
-__all__ = [
-    "RackNetworksMonitoringService",
-]
+__all__ = ["RackNetworksMonitoringService"]
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -37,10 +35,10 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
             # Wait until the rack has refreshed.
             return {}
         else:
+
             def getState(client):
-                d = client(
-                    GetDiscoveryState, system_id=client.localIdent)
-                d.addCallback(lambda args: args['interfaces'])
+                d = client(GetDiscoveryState, system_id=client.localIdent)
+                d.addCallback(lambda args: args["interfaces"])
                 return d
 
             d = self.clientService.getClientNow()
@@ -59,21 +57,31 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
             if self._recorded is None:
                 yield client(RequestRackRefresh, system_id=client.localIdent)
             yield client(
-                UpdateInterfaces, system_id=client.localIdent,
-                interfaces=interfaces, topology_hints=hints)
+                UpdateInterfaces,
+                system_id=client.localIdent,
+                interfaces=interfaces,
+                topology_hints=hints,
+            )
             break
 
     def reportNeighbours(self, neighbours):
         """Report neighbour information to the region."""
         d = self.clientService.getClientNow()
-        d.addCallback(lambda client: client(
-            ReportNeighbours, system_id=client.localIdent,
-            neighbours=neighbours))
+        d.addCallback(
+            lambda client: client(
+                ReportNeighbours,
+                system_id=client.localIdent,
+                neighbours=neighbours,
+            )
+        )
         return d
 
     def reportMDNSEntries(self, mdns):
         """Report mDNS entries to the region."""
         d = self.clientService.getClientNow()
-        d.addCallback(lambda client: client(
-            ReportMDNSEntries, system_id=client.localIdent, mdns=mdns))
+        d.addCallback(
+            lambda client: client(
+                ReportMDNSEntries, system_id=client.localIdent, mdns=mdns
+            )
+        )
         return d

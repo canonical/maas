@@ -3,39 +3,29 @@
 
 """RBACSync objects."""
 
-__all__ = [
-    "RBACLastSync",
-    "RBACSync",
-]
+__all__ = ["RBACLastSync", "RBACSync"]
 
-from django.db.models import (
-    Manager,
-    Model,
-)
-from django.db.models.fields import (
-    CharField,
-    DateTimeField,
-    IntegerField,
-)
+from django.db.models import Manager, Model
+from django.db.models.fields import CharField, DateTimeField, IntegerField
 from maasserver import DefaultMeta
 
 
 class RBAC_ACTION:
     #: Perform a full sync.
-    FULL = 'full'
+    FULL = "full"
     #: Add a new resource.
-    ADD = 'add'
+    ADD = "add"
     #: Update a resource.
-    UPDATE = 'update'
+    UPDATE = "update"
     #: Remove a resource.
-    REMOVE = 'remove'
+    REMOVE = "remove"
 
 
 RBAC_ACTION_CHOICES = [
-    (RBAC_ACTION.FULL, 'full'),
-    (RBAC_ACTION.ADD, 'add'),
-    (RBAC_ACTION.UPDATE, 'update'),
-    (RBAC_ACTION.REMOVE, 'remove'),
+    (RBAC_ACTION.FULL, "full"),
+    (RBAC_ACTION.ADD, "add"),
+    (RBAC_ACTION.UPDATE, "update"),
+    (RBAC_ACTION.REMOVE, "remove"),
 ]
 
 
@@ -44,12 +34,13 @@ class RBACSyncManager(Manager):
 
     def changes(self, resource_type):
         """Returns the changes that have occurred for `resource_type`."""
-        return list(self.filter(
-            resource_type__in=['', resource_type]).order_by('id'))
+        return list(
+            self.filter(resource_type__in=["", resource_type]).order_by("id")
+        )
 
     def clear(self, resource_type):
         """Deletes all `RBACSync` for `resource_type`."""
-        self.filter(resource_type__in=['', resource_type]).delete()
+        self.filter(resource_type__in=["", resource_type]).delete()
 
 
 class RBACSync(Model):
@@ -68,33 +59,54 @@ class RBACSync(Model):
     objects = RBACSyncManager()
 
     action = CharField(
-        editable=False, max_length=6, null=False, blank=True,
-        choices=RBAC_ACTION_CHOICES, default=RBAC_ACTION.FULL,
-        help_text="Action that should occur on the RBAC service.")
+        editable=False,
+        max_length=6,
+        null=False,
+        blank=True,
+        choices=RBAC_ACTION_CHOICES,
+        default=RBAC_ACTION.FULL,
+        help_text="Action that should occur on the RBAC service.",
+    )
 
     # An '' string is used when action is 'full'.
     resource_type = CharField(
-        editable=False, max_length=255, null=False, blank=True,
-        help_text="Resource type that as been added/updated/removed.")
+        editable=False,
+        max_length=255,
+        null=False,
+        blank=True,
+        help_text="Resource type that as been added/updated/removed.",
+    )
 
     # A `None` is used when action is 'full'.
     resource_id = IntegerField(
-        editable=False, null=True, blank=True,
-        help_text="Resource ID that has been added/updated/removed.")
+        editable=False,
+        null=True,
+        blank=True,
+        help_text="Resource ID that has been added/updated/removed.",
+    )
 
     # A '' string is used when action is 'full'.
     resource_name = CharField(
-        editable=False, max_length=255, null=False, blank=True,
-        help_text="Resource name that has been added/updated/removed.")
+        editable=False,
+        max_length=255,
+        null=False,
+        blank=True,
+        help_text="Resource name that has been added/updated/removed.",
+    )
 
     # This field is informational.
     created = DateTimeField(
-        editable=False, null=False, auto_now=False, auto_now_add=True)
+        editable=False, null=False, auto_now=False, auto_now_add=True
+    )
 
     # This field is informational.
     source = CharField(
-        editable=False, max_length=255, null=False, blank=True,
-        help_text="A brief explanation what changed.")
+        editable=False,
+        max_length=255,
+        null=False,
+        blank=True,
+        help_text="A brief explanation what changed.",
+    )
 
 
 class RBACLastSync(Model):
@@ -104,8 +116,17 @@ class RBACLastSync(Model):
         """Default meta."""
 
     resource_type = CharField(
-        editable=False, max_length=255, null=False, blank=False, unique=True,
-        help_text="Resource type that as been sync'd.")
+        editable=False,
+        max_length=255,
+        null=False,
+        blank=False,
+        unique=True,
+        help_text="Resource type that as been sync'd.",
+    )
     sync_id = CharField(
-        editable=False, max_length=255, null=False, blank=False,
-        help_text="ID returned by the RBAC service after the last sync.")
+        editable=False,
+        max_length=255,
+        null=False,
+        blank=False,
+        help_text="ID returned by the RBAC service after the last sync.",
+    )

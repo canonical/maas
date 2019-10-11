@@ -8,11 +8,7 @@ __all__ = []
 import random
 from unittest.mock import call
 
-from maasserver import (
-    eventloop,
-    locks,
-    start_up,
-)
+from maasserver import eventloop, locks, start_up
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
@@ -30,19 +26,11 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.twisted import (
-    extract_result,
-    TwistedLoggerFixture,
-)
+from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import (
-    HasLength,
-    Is,
-    IsInstance,
-    Not,
-)
+from testtools.matchers import HasLength, Is, IsInstance, Not
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 
@@ -75,11 +63,11 @@ class TestStartUp(MAASTransactionServerTestCase):
         def check_lock(_):
             raise locked if locks.startup.is_locked() else unlocked
 
-        self.patch(start_up, 'register_mac_type').side_effect = check_lock
+        self.patch(start_up, "register_mac_type").side_effect = check_lock
         self.assertRaises(type(locked), start_up.inner_start_up, master=False)
 
     def test_start_up_retries_with_wait_on_exception(self):
-        inner_start_up = self.patch(start_up, 'inner_start_up')
+        inner_start_up = self.patch(start_up, "inner_start_up")
         inner_start_up.side_effect = [
             factory.make_exception("Boom!"),
             None,  # Success.
@@ -92,7 +80,8 @@ class TestStartUp(MAASTransactionServerTestCase):
         # in the "Boom!" exception so it tried again.
         self.expectThat(
             inner_start_up,
-            MockCallsMatch(call(master=False), call(master=False)))
+            MockCallsMatch(call(master=False), call(master=False)),
+        )
         # It also slept once, for 3 seconds, between those attempts.
         self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
 
@@ -103,9 +92,9 @@ class TestInnerStartUp(MAASServerTestCase):
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
         self.useFixture(MAASIDFixture(None))
-        self.patch_autospec(start_up, 'dns_kms_setting_changed')
-        self.patch_autospec(start_up, 'load_builtin_scripts')
-        self.patch_autospec(start_up, 'post_commit_do')
+        self.patch_autospec(start_up, "dns_kms_setting_changed")
+        self.patch_autospec(start_up, "load_builtin_scripts")
+        self.patch_autospec(start_up, "post_commit_do")
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -132,35 +121,45 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test__resets_deprecated_commissioning_release_if_master(self):
         Config.objects.set_config(
-            'commissioning_distro_series',
-            random.choice(['precise', 'trusty']))
+            "commissioning_distro_series", random.choice(["precise", "trusty"])
+        )
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         ubuntu = UbuntuOS()
         self.assertEquals(
-            Config.objects.get_config('commissioning_distro_series'),
-            ubuntu.get_default_commissioning_release())
+            Config.objects.get_config("commissioning_distro_series"),
+            ubuntu.get_default_commissioning_release(),
+        )
         self.assertTrue(
             Notification.objects.filter(
-                ident="commissioning_release_deprecated").exists())
+                ident="commissioning_release_deprecated"
+            ).exists()
+        )
 
     def test__doesnt_reset_deprecated_commissioning_release_if_notmaster(self):
-        release = random.choice(['precise', 'trusty'])
-        Config.objects.set_config('commissioning_distro_series', release)
+        release = random.choice(["precise", "trusty"])
+        Config.objects.set_config("commissioning_distro_series", release)
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertEquals(
-            Config.objects.get_config('commissioning_distro_series'), release)
+            Config.objects.get_config("commissioning_distro_series"), release
+        )
         self.assertFalse(
             Notification.objects.filter(
-                ident="commissioning_release_deprecated").exists())
+                ident="commissioning_release_deprecated"
+            ).exists()
+        )
 
     def test__refreshes_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         region = RegionController.objects.first()
-        self.assertThat(start_up.post_commit_do, MockCalledOnceWith(
-            reactor.callLater, 0, start_up.refreshRegion, region))
+        self.assertThat(
+            start_up.post_commit_do,
+            MockCalledOnceWith(
+                reactor.callLater, 0, start_up.refreshRegion, region
+            ),
+        )
 
     def test__does_refresh_if_not_master(self):
         with post_commit_hooks:
@@ -188,7 +187,7 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(get_maas_id(), Is(None))
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        uuid = Config.objects.get_config('uuid')
+        uuid = Config.objects.get_config("uuid")
         self.assertThat(uuid, Not(Is(None)))
 
 
@@ -207,9 +206,12 @@ class TestFunctions(MAASServerTestCase):
             self.assertThat(extract_result(d), Is(None))
         # ... but it has been logged.
         self.assertThat(
-            logger.output, DocTestMatches(
+            logger.output,
+            DocTestMatches(
                 """
                 Failure when refreshing region.
                 Traceback (most recent call last):...
                 Failure: maastesting.factory.TestException#...: boom
-                """))
+                """
+            ),
+        )

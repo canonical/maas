@@ -3,16 +3,9 @@
 
 """Boot Resource Set."""
 
-__all__ = [
-    'BootResourceSet',
-    ]
+__all__ = ["BootResourceSet"]
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Sum,
-)
+from django.db.models import CASCADE, CharField, ForeignKey, Sum
 from maasserver import DefaultMeta
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -28,7 +21,7 @@ XINSTALL_TYPES = (
     BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ,
     BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ,
     BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
-    )
+)
 
 
 class BootResourceSet(CleanSave, TimestampedModel):
@@ -55,12 +48,11 @@ class BootResourceSet(CleanSave, TimestampedModel):
     """
 
     class Meta(DefaultMeta):
-        unique_together = (
-            ('resource', 'version'),
-            )
+        unique_together = (("resource", "version"),)
 
     resource = ForeignKey(
-        'BootResource', related_name='sets', editable=False, on_delete=CASCADE)
+        "BootResource", related_name="sets", editable=False, on_delete=CASCADE
+    )
 
     version = CharField(max_length=255, editable=False)
 
@@ -75,11 +67,11 @@ class BootResourceSet(CleanSave, TimestampedModel):
         node."""
         types = {resource_file.filetype for resource_file in self.files.all()}
         return (
-            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL in types and
-            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD in types and
-            (
-                BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in types or
-                BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE in types
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL in types
+            and BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD in types
+            and (
+                BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in types
+                or BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE in types
             )
         )
 
@@ -89,13 +81,15 @@ class BootResourceSet(CleanSave, TimestampedModel):
         node."""
         return any(
             resource_file.filetype in XINSTALL_TYPES
-            for resource_file in self.files.all())
+            for resource_file in self.files.all()
+        )
 
     @property
     def total_size(self):
         """Total amount of space this set will consume."""
         total_size = self.files.all().aggregate(
-            total_size=Sum('largefile__total_size'))['total_size']
+            total_size=Sum("largefile__total_size")
+        )["total_size"]
         if total_size is None:
             total_size = 0
         return total_size
@@ -103,7 +97,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
     @property
     def size(self):
         """Amount of space this set currently consumes."""
-        size = self.files.all().aggregate(size=Sum('largefile__size'))['size']
+        size = self.files.all().aggregate(size=Sum("largefile__size"))["size"]
         if size is None:
             size = 0
         return size
@@ -112,16 +106,17 @@ class BootResourceSet(CleanSave, TimestampedModel):
     def progress(self):
         """Percentage complete for all files in the set."""
         size_info = self.files.all().aggregate(
-            total_size=Sum('largefile__total_size'),
-            size=Sum('largefile__size'))
-        if size_info['size'] is None:
-            size_info['size'] = 0
-        if size_info['total_size'] is None:
-            size_info['total_size'] = 0
-        if size_info['size'] <= 0:
+            total_size=Sum("largefile__total_size"),
+            size=Sum("largefile__size"),
+        )
+        if size_info["size"] is None:
+            size_info["size"] = 0
+        if size_info["total_size"] is None:
+            size_info["total_size"] = 0
+        if size_info["size"] <= 0:
             # Handle division by zero
             return 0
-        return 100.0 * size_info['size'] / float(size_info['total_size'])
+        return 100.0 * size_info["size"] / float(size_info["total_size"])
 
     @property
     def complete(self):
@@ -129,6 +124,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
         if not self.files.exists():
             return False
         size_info = self.files.all().aggregate(
-            total_size=Sum('largefile__total_size'),
-            size=Sum('largefile__size'))
-        return size_info['total_size'] == size_info['size']
+            total_size=Sum("largefile__total_size"),
+            size=Sum("largefile__size"),
+        )
+        return size_info["total_size"] == size_info["size"]

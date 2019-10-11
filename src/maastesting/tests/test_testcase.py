@@ -9,11 +9,7 @@ import os.path
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest import mock as mock_module
-from unittest.mock import (
-    call,
-    MagicMock,
-    sentinel,
-)
+from unittest.mock import call, MagicMock, sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -22,11 +18,7 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import (
-    Contains,
-    DirExists,
-    FileExists,
-)
+from testtools.matchers import Contains, DirExists, FileExists
 
 
 class TestTestCase(MAASTestCase):
@@ -41,7 +33,7 @@ class TestTestCase(MAASTestCase):
         other_temp_root, other_subdir = os.path.split(other_temp_dir)
         temp_root, subdir = os.path.split(self.make_dir())
         self.assertEqual(other_temp_root, temp_root)
-        self.assertNotIn(subdir, [b'', '', None])
+        self.assertNotIn(subdir, [b"", "", None])
 
     def test_make_dir_creates_one_directory_per_call(self):
         self.assertNotEqual(self.make_dir(), self.make_dir())
@@ -51,7 +43,7 @@ class TestTestCase(MAASTestCase):
 
     def test_make_file_uses_temporary_directory(self):
         directory = self.make_dir()
-        self.patch(self, 'make_dir', lambda: directory)
+        self.patch(self, "make_dir", lambda: directory)
         dir_part, file_part = os.path.split(self.make_file())
         self.assertEqual(directory, dir_part)
 
@@ -78,14 +70,20 @@ class TestTestCase(MAASTestCase):
         create_autospec.return_value = sentinel.autospec
 
         method_to_be_patched_autospec = self.patch_autospec(
-            self, "method_to_be_patched", spec_set=sentinel.spec_set,
-            instance=sentinel.instance)
+            self,
+            "method_to_be_patched",
+            spec_set=sentinel.spec_set,
+            instance=sentinel.instance,
+        )
 
         self.assertIs(sentinel.autospec, method_to_be_patched_autospec)
         self.assertIs(sentinel.autospec, self.method_to_be_patched)
         self.assertThat(
-            create_autospec, MockCalledOnceWith(
-                method_to_be_patched, sentinel.spec_set, sentinel.instance))
+            create_autospec,
+            MockCalledOnceWith(
+                method_to_be_patched, sentinel.spec_set, sentinel.instance
+            ),
+        )
 
     def test_patch_autospec_really_leaves_an_autospec_behind(self):
         self.patch_autospec(self, "method_to_be_patched")
@@ -96,8 +94,10 @@ class TestTestCase(MAASTestCase):
         self.method_to_be_patched(1, 2)
         self.method_to_be_patched(3, b=4)
         self.method_to_be_patched(a=5, b=6)
-        self.assertThat(self.method_to_be_patched, MockCallsMatch(
-            call(1, 2), call(3, b=4), call(a=5, b=6)))
+        self.assertThat(
+            self.method_to_be_patched,
+            MockCallsMatch(call(1, 2), call(3, b=4), call(a=5, b=6)),
+        )
         # Calling the patched method with unrecognised arguments or not
         # enough arguments results in an exception.
         self.assertRaises(TypeError, self.method_to_be_patched, c=7)
@@ -113,7 +113,8 @@ class TestTestCase(MAASTestCase):
     def test_assertItemsEqual_forwards_message(self):
         message = factory.make_name("message")
         error = self.assertRaises(
-            AssertionError, self.assertItemsEqual, [1], [2], message)
+            AssertionError, self.assertItemsEqual, [1], [2], message
+        )
         self.assertThat(str(error), Contains(message))
 
     def test_assertSequenceEqual_rejects_mappings(self):
@@ -128,5 +129,6 @@ class TestTestCase(MAASTestCase):
     def test_assertSequenceEqual_forwards_message(self):
         message = factory.make_name("message")
         error = self.assertRaises(
-            AssertionError, self.assertSequenceEqual, [1], [2], message)
+            AssertionError, self.assertSequenceEqual, [1], [2], message
+        )
         self.assertThat(str(error), Contains(message))

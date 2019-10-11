@@ -3,19 +3,11 @@
 
 """Region Controller RPC."""
 
-__all__ = [
-    "getClientFromIdentifiers",
-    "getClientFor",
-    "getAllClients",
-]
+__all__ = ["getClientFromIdentifiers", "getClientFor", "getAllClients"]
 
 from maasserver import eventloop
 from provisioningserver.rpc import exceptions
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    deferred,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, deferred, FOREVER
 
 
 @asynchronous(timeout=FOREVER)  # Handles times-out itself.
@@ -33,7 +25,8 @@ def getClientFromIdentifiers(identifiers, timeout=0):
     except KeyError:
         raise exceptions.NoConnectionsAvailable(
             "Unable to connect to any rack controller %s; no connections "
-            "available." % ','.join(identifiers))
+            "available." % ",".join(identifiers)
+        )
     else:
         return service.getClientFromIdentifiers(identifiers, timeout=timeout)
 
@@ -53,7 +46,9 @@ def getClientFor(uuid, timeout=0):
     except KeyError:
         raise exceptions.NoConnectionsAvailable(
             "Unable to connect to rack controller %s; no connections "
-            "available." % uuid, uuid=uuid)
+            "available." % uuid,
+            uuid=uuid,
+        )
     else:
         return service.getClientFor(uuid, timeout=timeout)
 

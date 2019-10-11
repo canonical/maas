@@ -3,15 +3,9 @@
 
 """RegionControllerProcess object."""
 
-__all__ = [
-    "RegionControllerProcess",
-    ]
+__all__ = ["RegionControllerProcess"]
 
-from django.db.models import (
-    CASCADE,
-    ForeignKey,
-    IntegerField,
-)
+from django.db.models import CASCADE, ForeignKey, IntegerField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
@@ -29,13 +23,18 @@ class RegionControllerProcess(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed recognize this model."""
+
         unique_together = ("region", "pid")
         ordering = ["pid"]
 
     # It links to `Node` but it will be either
     # `RegionController` or `RegionRackController`.
     region = ForeignKey(
-        Node, null=False, blank=False, related_name="processes",
-        on_delete=CASCADE)
+        Node,
+        null=False,
+        blank=False,
+        related_name="processes",
+        on_delete=CASCADE,
+    )
 
     pid = IntegerField()

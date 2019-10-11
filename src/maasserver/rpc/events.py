@@ -3,19 +3,10 @@
 
 """RPC helpers relating to events."""
 
-__all__ = [
-    "register_event_type",
-    "send_event",
-    "send_event_mac_address",
-]
+__all__ = ["register_event_type", "send_event", "send_event_mac_address"]
 
 from maasserver.enum import INTERFACE_TYPE
-from maasserver.models import (
-    Event,
-    EventType,
-    Interface,
-    Node,
-)
+from maasserver.models import Event, EventType, Interface, Node
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoSuchEventType
@@ -57,12 +48,17 @@ def send_event(system_id, type_name, description, timestamp):
         log.debug(
             "Event '{type}: {description}' sent for non-existent "
             "node '{node_id}'.",
-            type=type_name, description=description,
-            node_id=system_id)
+            type=type_name,
+            description=description,
+            node_id=system_id,
+        )
     else:
         Event.objects.create(
-            node=node, type=event_type, description=description,
-            created=timestamp)
+            node=node,
+            type=event_type,
+            description=description,
+            created=timestamp,
+        )
 
 
 @synchronous
@@ -79,7 +75,8 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
 
     try:
         interface = Interface.objects.get(
-            type=INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
+            type=INTERFACE_TYPE.PHYSICAL, mac_address=mac_address
+        )
     except Interface.DoesNotExist:
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a node
@@ -88,11 +85,17 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
         log.debug(
             "Event '{type}: {description}' sent for non-existent "
             "node with MAC address '{mac}'.",
-            type=type_name, description=description, mac=mac_address)
+            type=type_name,
+            description=description,
+            mac=mac_address,
+        )
     else:
         Event.objects.create(
-            node=interface.node, type=event_type, description=description,
-            created=timestamp)
+            node=interface.node,
+            type=event_type,
+            description=description,
+            created=timestamp,
+        )
 
 
 @synchronous
@@ -107,8 +110,7 @@ def send_event_ip_address(ip_address, type_name, description, timestamp):
     except EventType.DoesNotExist:
         raise NoSuchEventType.from_name(type_name)
 
-    node = Node.objects.filter(
-        interface__ip_addresses__ip=ip_address).first()
+    node = Node.objects.filter(interface__ip_addresses__ip=ip_address).first()
     if node is None:
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a node
@@ -117,8 +119,14 @@ def send_event_ip_address(ip_address, type_name, description, timestamp):
         log.debug(
             "Event '{type}: {description}' sent for non-existent "
             "node with IP address '{ip_address}'.",
-            type=type_name, description=description, ip_address=ip_address)
+            type=type_name,
+            description=description,
+            ip_address=ip_address,
+        )
     else:
         Event.objects.create(
-            node=node, type=event_type, description=description,
-            created=timestamp)
+            node=node,
+            type=event_type,
+            description=description,
+            created=timestamp,
+        )

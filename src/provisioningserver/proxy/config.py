@@ -3,11 +3,7 @@
 
 """Proxy config management module."""
 
-__all__ = [
-    'get_proxy_config_path',
-    'is_config_present',
-    'write_config',
-    ]
+__all__ = ["get_proxy_config_path", "is_config_present", "write_config"]
 
 import datetime
 import os
@@ -16,18 +12,15 @@ import sys
 from urllib.parse import urlparse
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import (
-    locate_template,
-    snappy,
-)
+from provisioningserver.utils import locate_template, snappy
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
 import tempita
 
 
 maaslog = get_maas_logger("proxy")
-MAAS_PROXY_CONF_NAME = 'maas-proxy.conf'
-MAAS_PROXY_CONF_TEMPLATE = 'maas-proxy.conf.template'
+MAAS_PROXY_CONF_NAME = "maas-proxy.conf"
+MAAS_PROXY_CONF_TEMPLATE = "maas-proxy.conf.template"
 
 
 class ProxyConfigFail(Exception):
@@ -51,35 +44,36 @@ def is_config_present():
 
 @synchronous
 def write_config(
-        allowed_cidrs, peer_proxies=None,
-        prefer_v4_proxy=False, maas_proxy_port=8000):
+    allowed_cidrs,
+    peer_proxies=None,
+    prefer_v4_proxy=False,
+    maas_proxy_port=8000,
+):
     """Write the proxy configuration."""
     if peer_proxies is None:
         peer_proxies = []
 
     context = {
-        'modified': str(datetime.date.today()),
-        'fqdn': socket.getfqdn(),
-        'cidrs': allowed_cidrs,
-        'running_in_snap': snappy.running_in_snap(),
-        'snap_path': snappy.get_snap_path(),
-        'snap_data_path': snappy.get_snap_data_path(),
-        'snap_common_path': snappy.get_snap_common_path(),
-        'dns_v4_first': prefer_v4_proxy,
-        'maas_proxy_port': maas_proxy_port,
+        "modified": str(datetime.date.today()),
+        "fqdn": socket.getfqdn(),
+        "cidrs": allowed_cidrs,
+        "running_in_snap": snappy.running_in_snap(),
+        "snap_path": snappy.get_snap_path(),
+        "snap_data_path": snappy.get_snap_data_path(),
+        "snap_common_path": snappy.get_snap_common_path(),
+        "dns_v4_first": prefer_v4_proxy,
+        "maas_proxy_port": maas_proxy_port,
     }
 
     formatted_peers = []
     for peer in peer_proxies:
-        formatted_peers.append({
-            'address': urlparse(peer).hostname,
-            'port': urlparse(peer).port
-        })
-    context['peers'] = formatted_peers
+        formatted_peers.append(
+            {"address": urlparse(peer).hostname, "port": urlparse(peer).port}
+        )
+    context["peers"] = formatted_peers
 
-    template_path = locate_template('proxy', MAAS_PROXY_CONF_TEMPLATE)
-    template = tempita.Template.from_filename(
-        template_path, encoding="UTF-8")
+    template_path = locate_template("proxy", MAAS_PROXY_CONF_TEMPLATE)
+    template = tempita.Template.from_filename(template_path, encoding="UTF-8")
     try:
         content = template.substitute(context)
     except NameError as error:

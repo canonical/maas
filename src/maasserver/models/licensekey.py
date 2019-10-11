@@ -3,15 +3,10 @@
 
 """Global license keys."""
 
-__all__ = [
-    'LicenseKey',
-    ]
+__all__ = ["LicenseKey"]
 
 
-from django.db.models import (
-    CharField,
-    Manager,
-)
+from django.db.models import CharField, Manager
 from maasserver import DefaultMeta
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -41,7 +36,8 @@ class LicenseKeyManager(Manager):
         """Checks that a license key exists for the osystem and
         distro_series."""
         return self.filter(
-            osystem=osystem, distro_series=distro_series).exists()
+            osystem=osystem, distro_series=distro_series
+        ).exists()
 
 
 class LicenseKey(TimestampedModel):
@@ -52,9 +48,7 @@ class LicenseKey(TimestampedModel):
     """
 
     class Meta(DefaultMeta):
-        unique_together = (
-            ('osystem', 'distro_series'),
-            )
+        unique_together = (("osystem", "distro_series"),)
 
     objects = LicenseKeyManager()
 
@@ -66,20 +60,21 @@ class LicenseKey(TimestampedModel):
 
     # License key for the osystem/distro_series combo.
     license_key = CharField(
-        max_length=255, blank=False, verbose_name="License Key", help_text=(
-            "License key for operating system"))
+        max_length=255,
+        blank=False,
+        verbose_name="License Key",
+        help_text="License key for operating system",
+    )
 
     def __repr__(self):
-        return "<LicenseKey %s/%s>" % (
-            self.osystem,
-            self.distro_series,
-            )
+        return "<LicenseKey %s/%s>" % (self.osystem, self.distro_series)
 
     def unique_error_message(self, model_class, unique_check):
-        if unique_check == ('osystem', 'distro_series'):
-            return '%s %s' % (
+        if unique_check == ("osystem", "distro_series"):
+            return "%s %s" % (
                 "License key with this operating system and distro series",
                 "already exists.",
-                )
-        return super(
-            LicenseKey, self).unique_error_message(model_class, unique_check)
+            )
+        return super(LicenseKey, self).unique_error_message(
+            model_class, unique_check
+        )

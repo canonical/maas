@@ -19,21 +19,20 @@ from provisioningserver.drivers.osystem.suse import (
 
 
 class TestSUSEOS(MAASTestCase):
-
     def test_get_boot_image_purposes(self):
         osystem = SUSEOS()
-        archs = [factory.make_name('arch') for _ in range(2)]
-        subarchs = [factory.make_name('subarch') for _ in range(2)]
-        releases = [factory.make_name('release') for _ in range(2)]
-        labels = [factory.make_name('label') for _ in range(2)]
+        archs = [factory.make_name("arch") for _ in range(2)]
+        subarchs = [factory.make_name("subarch") for _ in range(2)]
+        releases = [factory.make_name("release") for _ in range(2)]
+        labels = [factory.make_name("label") for _ in range(2)]
         for arch, subarch, release, label in product(
-                archs, subarchs, releases, labels):
+            archs, subarchs, releases, labels
+        ):
             expected = osystem.get_boot_image_purposes(
-                arch, subarchs, release, label)
+                arch, subarchs, release, label
+            )
             self.assertIsInstance(expected, list)
-            self.assertEqual(expected, [
-                BOOT_IMAGE_PURPOSE.XINSTALL,
-                ])
+            self.assertEqual(expected, [BOOT_IMAGE_PURPOSE.XINSTALL])
 
     def test_get_default_release(self):
         osystem = SUSEOS()
@@ -44,5 +43,5 @@ class TestSUSEOS(MAASTestCase):
         osystem = SUSEOS()
         release = random.choice(list(DISTRO_SERIES_CHOICES))
         self.assertEqual(
-            DISTRO_SERIES_CHOICES[release],
-            osystem.get_release_title(release))
+            DISTRO_SERIES_CHOICES[release], osystem.get_release_title(release)
+        )

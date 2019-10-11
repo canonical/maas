@@ -13,20 +13,10 @@ import subprocess
 from unittest.mock import sentinel
 
 from maastesting import factory as factory_module
-from maastesting.factory import (
-    factory,
-    TooManyRandomRetries,
-)
-from maastesting.matchers import (
-    FileContains,
-    Matches,
-    MockCalledOnceWith,
-)
+from maastesting.factory import factory, TooManyRandomRetries
+from maastesting.matchers import FileContains, Matches, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import IPAddress, IPNetwork
 from testtools.matchers import (
     Contains,
     EndsWith,
@@ -42,7 +32,6 @@ from testtools.testcase import ExpectedException
 
 
 class TestFactory(MAASTestCase):
-
     def test_make_string_respects_size(self):
         sizes = [1, 10, 100]
         random_strings = [factory.make_string(size) for size in sizes]
@@ -73,12 +62,13 @@ class TestFactory(MAASTestCase):
                 factory.make_vlan_tag(allow_none=True),
                 factory.make_vlan_tag(allow_none=True),
                 factory.make_vlan_tag(allow_none=True),
-            })
+            },
+        )
 
     def test_make_ipv4_address(self):
         ip_address = factory.make_ipv4_address()
         self.assertIsInstance(ip_address, str)
-        octets = ip_address.split('.')
+        octets = ip_address.split(".")
         self.assertEqual(4, len(octets))
         for octet in octets:
             self.assertTrue(0 <= int(octet) <= 255)
@@ -89,8 +79,8 @@ class TestFactory(MAASTestCase):
         # triggering a clash, but not so far that we'll loop for very long
         # trying to find a network we haven't seen already.
         self.patch(
-            factory, 'make_ipv4_address',
-            lambda: '10.%d.0.0' % randint(1, 200))
+            factory, "make_ipv4_address", lambda: "10.%d.0.0" % randint(1, 200)
+        )
         networks = []
         for _ in range(100):
             networks.append(factory.make_ipv4_network(but_not=networks))
@@ -106,49 +96,65 @@ class TestFactory(MAASTestCase):
         self.assertIsInstance(network, IPNetwork)
 
     def test_make_ipv4_network_respects_but_not(self):
-        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
-            '10.1.1.0')
+        self.patch(factory, "make_ipv4_address").return_value = IPAddress(
+            "10.1.1.0"
+        )
         self.assertRaises(
             TooManyRandomRetries,
             factory.make_ipv4_network,
-            slash=24, but_not=[IPNetwork('10.1.1.0/24')])
+            slash=24,
+            but_not=[IPNetwork("10.1.1.0/24")],
+        )
 
     def test_make_ipv4_network_returns_network_not_in_but_not(self):
-        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
-            '10.1.1.0')
+        self.patch(factory, "make_ipv4_address").return_value = IPAddress(
+            "10.1.1.0"
+        )
         self.assertEqual(
-            IPNetwork('10.1.1.0/24'),
+            IPNetwork("10.1.1.0/24"),
             factory.make_ipv4_network(
-                slash=24, but_not=[IPNetwork('10.9.9.0/24')]))
+                slash=24, but_not=[IPNetwork("10.9.9.0/24")]
+            ),
+        )
 
     def test_make_ipv4_network_may_overlap_but_not(self):
-        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
-            '10.1.1.0')
+        self.patch(factory, "make_ipv4_address").return_value = IPAddress(
+            "10.1.1.0"
+        )
         self.assertEqual(
-            IPNetwork('10.1.1.0/24'),
+            IPNetwork("10.1.1.0/24"),
             factory.make_ipv4_network(
-                slash=24, but_not=[IPNetwork('10.1.0.0/16')]))
+                slash=24, but_not=[IPNetwork("10.1.0.0/16")]
+            ),
+        )
 
     def test_make_ipv4_network_avoids_network_in_disjoint_from(self):
-        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
-            '10.1.1.0')
+        self.patch(factory, "make_ipv4_address").return_value = IPAddress(
+            "10.1.1.0"
+        )
         self.assertRaises(
             TooManyRandomRetries,
             factory.make_ipv4_network,
-            slash=24, disjoint_from=[IPNetwork('10.1.1.0/24')])
+            slash=24,
+            disjoint_from=[IPNetwork("10.1.1.0/24")],
+        )
 
     def test_make_ipv4_network_avoids_network_overlapping_disjoint_from(self):
-        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
-            '10.1.1.0')
+        self.patch(factory, "make_ipv4_address").return_value = IPAddress(
+            "10.1.1.0"
+        )
         self.assertRaises(
             TooManyRandomRetries,
             factory.make_ipv4_network,
-            slash=24, disjoint_from=[IPNetwork('10.1.0.0/16')])
+            slash=24,
+            disjoint_from=[IPNetwork("10.1.0.0/16")],
+        )
 
     def test_make_ipv4_network_returns_network_disjoint_from(self):
         existing_network = factory.make_ipv4_network()
         new_network = factory.make_ipv4_network(
-            disjoint_from=[existing_network])
+            disjoint_from=[existing_network]
+        )
         self.assertNotEqual(existing_network, new_network)
         self.assertNotIn(new_network, existing_network)
         self.assertNotIn(existing_network, new_network)
@@ -156,22 +162,19 @@ class TestFactory(MAASTestCase):
     def test_pick_ip_in_network_for_ipv4_slash_31(self):
         network = factory.make_ipv4_network(slash=31)
         ip = factory.pick_ip_in_network(network)
-        self.assertTrue(
-            network.first <= IPAddress(ip).value <= network.last)
+        self.assertTrue(network.first <= IPAddress(ip).value <= network.last)
 
     def test_pick_ip_in_network_for_ipv4_slash_30(self):
         network = factory.make_ipv4_network(slash=30)
         ip = factory.pick_ip_in_network(network)
-        self.assertTrue(
-            network.first < IPAddress(ip).value < network.last)
+        self.assertTrue(network.first < IPAddress(ip).value < network.last)
 
     def test_pick_ip_in_network_for_ipv6(self):
         # For IPv6, pick_ip_in_network will not consider the very first
         # address in a network because this is reserved for routers.
         network = factory.make_ipv6_network(slash=126)
         ip = factory.pick_ip_in_network(network)
-        self.assertTrue(
-            network.first < IPAddress(ip).value <= network.last)
+        self.assertTrue(network.first < IPAddress(ip).value <= network.last)
 
     def test_make_date_returns_datetime(self):
         self.assertIsInstance(factory.make_date(), datetime)
@@ -184,107 +187,121 @@ class TestFactory(MAASTestCase):
             self.assertTrue(0 <= int(hex_octet, 16) <= 255)
 
     def test_make_mac_address_alternative_delimiter(self):
-        self.patch(factory, "random_octets", count(0x3a))
+        self.patch(factory, "random_octets", count(0x3A))
         mac_address = factory.make_mac_address(delimiter="-")
         self.assertEqual("3a-3b-3c-3d-3e-3f", mac_address)
 
     def test_make_random_leases_maps_ips_to_macs(self):
         [(ip, mac)] = factory.make_random_leases().items()
         self.assertEqual(
-            4, len(ip.split('.')),
-            "IP address does not look like an IP address: '%s'" % ip)
+            4,
+            len(ip.split(".")),
+            "IP address does not look like an IP address: '%s'" % ip,
+        )
         self.assertEqual(
-            6, len(mac.split(':')),
-            "MAC address does not look like a MAC address: '%s'" % mac)
+            6,
+            len(mac.split(":")),
+            "MAC address does not look like a MAC address: '%s'" % mac,
+        )
 
     def test_make_random_leases_randomizes_ips(self):
         self.assertNotEqual(
             list(factory.make_random_leases().keys()),
-            list(factory.make_random_leases().keys()))
+            list(factory.make_random_leases().keys()),
+        )
 
     def test_make_random_leases_randomizes_macs(self):
         self.assertNotEqual(
             list(factory.make_random_leases().values()),
-            list(factory.make_random_leases().values()))
+            list(factory.make_random_leases().values()),
+        )
 
     def test_make_random_leases_returns_requested_number_of_leases(self):
         num_leases = randint(0, 3)
         self.assertEqual(
-            num_leases,
-            len(factory.make_random_leases(num_leases)))
+            num_leases, len(factory.make_random_leases(num_leases))
+        )
 
     def test_make_file_creates_file(self):
         self.assertThat(factory.make_file(self.make_dir()), FileExists())
 
     def test_make_file_writes_binary_contents(self):
-        contents = factory.make_string().encode('ascii')
+        contents = factory.make_string().encode("ascii")
         self.assertThat(
             factory.make_file(self.make_dir(), contents=contents),
-            FileContains(contents))
+            FileContains(contents),
+        )
 
     def test_make_file_writes_textual_contents_as_utf8(self):
         contents = factory.make_string() + "\xa3\u20ac"
         self.assertThat(
             factory.make_file(self.make_dir(), contents=contents),
-            FileContains(contents, encoding="utf-8"))
+            FileContains(contents, encoding="utf-8"),
+        )
 
     def test_make_file_makes_up_contents_if_none_given(self):
         with open(factory.make_file(self.make_dir())) as temp_file:
             contents = temp_file.read()
-        self.assertNotEqual('', contents)
+        self.assertNotEqual("", contents)
 
     def test_make_file_uses_given_name(self):
         name = factory.make_string()
         self.assertEqual(
             name,
-            os.path.basename(factory.make_file(self.make_dir(), name=name)))
+            os.path.basename(factory.make_file(self.make_dir(), name=name)),
+        )
 
     def test_make_file_uses_given_dir(self):
         directory = self.make_dir()
         name = factory.make_string()
         self.assertEqual(
             (directory, name),
-            os.path.split(factory.make_file(directory, name=name)))
+            os.path.split(factory.make_file(directory, name=name)),
+        )
 
     def test_make_name_returns_unicode(self):
         self.assertIsInstance(factory.make_name(), str)
 
     def test_make_name_includes_prefix_and_separator(self):
-        self.assertThat(factory.make_name('abc'), StartsWith('abc-'))
+        self.assertThat(factory.make_name("abc"), StartsWith("abc-"))
 
     def test_make_name_includes_random_text_of_requested_length(self):
         size = randint(1, 99)
         self.assertEqual(
-            len('prefix') + len('-') + size,
-            len(factory.make_name('prefix', size=size)))
+            len("prefix") + len("-") + size,
+            len(factory.make_name("prefix", size=size)),
+        )
 
     def test_make_name_includes_random_text(self):
         self.assertNotEqual(
-            factory.make_name(size=100), factory.make_name(size=100))
+            factory.make_name(size=100), factory.make_name(size=100)
+        )
 
     def test_make_name_uses_configurable_separator(self):
-        sep = 'SEPARATOR'
+        sep = "SEPARATOR"
         prefix = factory.make_string(3)
         self.assertThat(
-            factory.make_name(prefix, sep=sep),
-            StartsWith(prefix + sep))
+            factory.make_name(prefix, sep=sep), StartsWith(prefix + sep)
+        )
 
     def test_make_name_does_not_require_prefix(self):
         size = randint(1, 99)
-        unprefixed_name = factory.make_name(sep='-', size=size)
+        unprefixed_name = factory.make_name(sep="-", size=size)
         self.assertEqual(size, len(unprefixed_name))
-        self.assertThat(unprefixed_name, Not(StartsWith('-')))
+        self.assertThat(unprefixed_name, Not(StartsWith("-")))
 
     def test_make_name_does_not_include_weird_characters(self):
         self.assertThat(
             factory.make_name(size=100),
-            MatchesAll(*[Not(Contains(char)) for char in '/ \t\n\r\\']))
+            MatchesAll(*[Not(Contains(char)) for char in "/ \t\n\r\\"]),
+        )
 
     def test_make_names_calls_make_name_with_each_prefix(self):
         self.patch(factory, "make_name", lambda prefix: prefix + "-xxx")
         self.assertSequenceEqual(
             ["abc-xxx", "def-xxx", "ghi-xxx"],
-            list(factory.make_names("abc", "def", "ghi")))
+            list(factory.make_names("abc", "def", "ghi")),
+        )
 
     def test_make_tarball_writes_tarball(self):
         filename = factory.make_name()
@@ -293,67 +310,82 @@ class TestFactory(MAASTestCase):
         tarball = factory.make_tarball(self.make_dir(), contents)
 
         dest = self.make_dir()
-        subprocess.check_call(['tar', '-xzf', tarball, '-C', dest])
+        subprocess.check_call(["tar", "-xzf", tarball, "-C", dest])
         self.assertThat(
-            os.path.join(dest, filename),
-            FileContains(contents[filename]))
+            os.path.join(dest, filename), FileContains(contents[filename])
+        )
 
     def test_make_tarball_makes_up_content_if_None(self):
         filename = factory.make_name()
         tarball = factory.make_tarball(self.make_dir(), {filename: None})
 
         dest = self.make_dir()
-        subprocess.check_call(['tar', '-xzf', tarball, '-C', dest])
+        subprocess.check_call(["tar", "-xzf", tarball, "-C", dest])
         self.assertThat(os.path.join(dest, filename), FileExists())
-        with open(os.path.join(dest, filename), 'rb') as unpacked_file:
+        with open(os.path.join(dest, filename), "rb") as unpacked_file:
             contents = unpacked_file.read()
         self.assertGreater(len(contents), 0)
 
     def test_make_parsed_url_accepts_explicit_port(self):
         port = factory.pick_port()
         url = factory.make_parsed_url(port=port)
-        self.assertThat(url.netloc, EndsWith(':%d' % port),
-                        'The generated URL does not contain'
-                        'a port specification for port %d' % port)
+        self.assertThat(
+            url.netloc,
+            EndsWith(":%d" % port),
+            "The generated URL does not contain"
+            "a port specification for port %d" % port,
+        )
 
     def test_make_parsed_url_can_omit_port(self):
         url = factory.make_parsed_url(port=False)
-        self.assertThat(url.netloc, Not(Contains(':')),
-                        'Generated url: %s contains a port number'
-                        'in netloc segment' % url.geturl())
+        self.assertThat(
+            url.netloc,
+            Not(Contains(":")),
+            "Generated url: %s contains a port number"
+            "in netloc segment" % url.geturl(),
+        )
 
     def test_make_parsed_url_pics_random_port(self):
         url = factory.make_parsed_url()
-        self.assertThat(url.netloc, Contains(':'),
-                        'Generated url: %s does not contain '
-                        'a port number in netloc segment' % url.geturl())
+        self.assertThat(
+            url.netloc,
+            Contains(":"),
+            "Generated url: %s does not contain "
+            "a port number in netloc segment" % url.geturl(),
+        )
 
-        self.assertTrue(url.netloc.split(':')[1].isdigit(),
-                        'Generated url: %s does not contain a valid '
-                        'port number in netloc segment' % url.geturl())
+        self.assertTrue(
+            url.netloc.split(":")[1].isdigit(),
+            "Generated url: %s does not contain a valid "
+            "port number in netloc segment" % url.geturl(),
+        )
 
         url = factory.make_parsed_url(port=True)
 
-        self.assertThat(url.netloc, Contains(':'),
-                        ('Generated url: %s does not contain '
-                         'a port number in netloc segment') % url.geturl())
+        self.assertThat(
+            url.netloc,
+            Contains(":"),
+            (
+                "Generated url: %s does not contain "
+                "a port number in netloc segment"
+            )
+            % url.geturl(),
+        )
 
-        self.assertTrue(url.netloc.split(':')[1].isdigit(),
-                        'Generated url: %s does not contain a valid '
-                        'port number in netloc segment' % url.geturl())
+        self.assertTrue(
+            url.netloc.split(":")[1].isdigit(),
+            "Generated url: %s does not contain a valid "
+            "port number in netloc segment" % url.geturl(),
+        )
 
     def test_make_parsed_url_asserts_with_conflicting_port_numbers(self):
         with ExpectedException(AssertionError):
-            netloc = "%s:%d" % (factory.make_hostname(),
-                                factory.pick_port())
-            factory.make_parsed_url(netloc=netloc,
-                                    port=factory.pick_port())
+            netloc = "%s:%d" % (factory.make_hostname(), factory.pick_port())
+            factory.make_parsed_url(netloc=netloc, port=factory.pick_port())
 
         with ExpectedException(AssertionError):
-            netloc = "%s:%d" % (factory.make_hostname(),
-                                factory.pick_port())
-            factory.make_parsed_url(netloc=netloc,
-                                    port=True)
+            netloc = "%s:%d" % (factory.make_hostname(), factory.pick_port())
+            factory.make_parsed_url(netloc=netloc, port=True)
 
 
 class TestMakeIPRange(MAASTestCase):
@@ -364,16 +396,22 @@ class TestMakeIPRange(MAASTestCase):
     """
 
     scenarios = (
-        ("ipv4", {
-            "version": 4,
-            "make_network": factory.make_ipv4_network,
-            "make_range": factory.make_ipv4_range,
-        }),
-        ("ipv6", {
-            "version": 6,
-            "make_network": factory.make_ipv6_network,
-            "make_range": factory.make_ipv6_range,
-        }),
+        (
+            "ipv4",
+            {
+                "version": 4,
+                "make_network": factory.make_ipv4_network,
+                "make_range": factory.make_ipv4_range,
+            },
+        ),
+        (
+            "ipv6",
+            {
+                "version": 6,
+                "make_network": factory.make_ipv6_network,
+                "make_range": factory.make_ipv6_range,
+            },
+        ),
     )
 
     def test_make_ip_range_returns_IPs(self):
@@ -395,7 +433,8 @@ class TestMakeIPRange(MAASTestCase):
         # Make a very very small network, to maximise the chances of exposure
         # if the method gets this wrong e.g. by returning identical addresses.
         low, high = factory.make_ip_range(
-            self.make_network(slash=(31 if self.version == 4 else 126)))
+            self.make_network(slash=(31 if self.version == 4 else 126))
+        )
         self.assertLess(low, high)
 
     def test_make_ipvN_range_calls_make_ip_range(self):
@@ -404,8 +443,9 @@ class TestMakeIPRange(MAASTestCase):
         network = self.make_network()
         ip_range = self.make_range(network)
         self.assertThat(ip_range, Is(sentinel.ip_range))
-        self.assertThat(factory.make_ip_range, MockCalledOnceWith(
-            network=network))
+        self.assertThat(
+            factory.make_ip_range, MockCalledOnceWith(network=network)
+        )
 
     def test_make_ipvN_range_creates_random_network_if_not_supplied(self):
         self.patch_autospec(factory, "make_ip_range")
@@ -420,7 +460,7 @@ class TestMakeIPRange(MAASTestCase):
                         IsInstance(IPNetwork),
                         MatchesStructure.byEquality(version=self.version),
                         first_only=True,
-                    ),
-                ),
+                    )
+                )
             ),
         )

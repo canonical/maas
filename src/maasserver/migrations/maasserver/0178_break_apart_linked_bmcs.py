@@ -12,9 +12,7 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 def get_none_chassis_power_types():
     """Return the power_types that are not chassis."""
     return [
-        ptype
-        for ptype, driver in PowerDriverRegistry
-        if not driver.chassis
+        ptype for ptype, driver in PowerDriverRegistry if not driver.chassis
     ]
 
 
@@ -28,10 +26,11 @@ def generate_bmc_name(existing_names):
 
 def break_apart_linked_bmcs(apps, schema_editor):
     BMC = apps.get_model("maasserver", "BMC")
-    existing_names = list(BMC.objects.values_list('name', flat=True))
+    existing_names = list(BMC.objects.values_list("name", flat=True))
     power_types = get_none_chassis_power_types()
     for bmc in BMC.objects.filter(power_type__in=power_types).prefetch_related(
-            'node_set'):
+        "node_set"
+    ):
         nodes = list(bmc.node_set.all())
         for node in nodes[1:]:
             bmc.id = None
@@ -44,10 +43,6 @@ def break_apart_linked_bmcs(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0177_remove_unique_together_on_bmc'),
-    ]
+    dependencies = [("maasserver", "0177_remove_unique_together_on_bmc")]
 
-    operations = [
-        migrations.RunPython(break_apart_linked_bmcs),
-    ]
+    operations = [migrations.RunPython(break_apart_linked_bmcs)]

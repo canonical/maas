@@ -3,24 +3,14 @@
 
 """API handlers: `User`."""
 
-__all__ = [
-    'UserHandler',
-    'UsersHandler',
-    ]
+__all__ = ["UserHandler", "UsersHandler"]
 
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.ssh_keys import SSHKeysHandler
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
-from maasserver.api.utils import (
-    extract_bool,
-    get_mandatory_param,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.utils import extract_bool, get_mandatory_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import (
@@ -28,10 +18,7 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
 )
 from maasserver.forms import DeleteUserForm
-from maasserver.models import (
-    User,
-    UserProfile,
-)
+from maasserver.models import User, UserProfile
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.orm import get_one
 from piston3.handler import BaseHandler
@@ -42,12 +29,13 @@ from provisioningserver.events import EVENT_TYPES
 
 class UsersHandler(OperationsHandler):
     """Manage the user accounts of this MAAS."""
+
     api_doc_section_name = "Users"
     update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('users_handler', [])
+        return ("users_handler", [])
 
     def read(self, request):
         """@description-title List users
@@ -58,7 +46,7 @@ class UsersHandler(OperationsHandler):
         users.
         @success-example "success-json" [exkey=list] placeholder text
         """
-        return User.objects.all().order_by('username')
+        return User.objects.all().order_by("username")
 
     @operation(idempotent=True)
     def whoami(self, request):
@@ -101,44 +89,49 @@ class UsersHandler(OperationsHandler):
         @error-example "error-content"
             No provided username!
         """
-        username = get_mandatory_param(request.data, 'username')
-        email = get_mandatory_param(request.data, 'email')
+        username = get_mandatory_param(request.data, "username")
+        email = get_mandatory_param(request.data, "email")
         if request.external_auth_info:
-            password = request.data.get('password')
+            password = request.data.get("password")
         else:
-            password = get_mandatory_param(request.data, 'password')
+            password = get_mandatory_param(request.data, "password")
         is_superuser = extract_bool(
-            get_mandatory_param(request.data, 'is_superuser'))
+            get_mandatory_param(request.data, "is_superuser")
+        )
 
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-            description=("Created %s '%s'." % (
-                'admin' if is_superuser else 'user', username)))
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.API,
+            request,
+            None,
+            description=(
+                "Created %s '%s'."
+                % ("admin" if is_superuser else "user", username)
+            ),
+        )
         if is_superuser:
             user = User.objects.create_superuser(
-                username=username, password=password, email=email)
-            if request.data.get('key') is not None:
+                username=username, password=password, email=email
+            )
+            if request.data.get("key") is not None:
                 request.user = user
                 sshkeys_handler = SSHKeysHandler()
                 sshkeys_handler.create(request)
             return user
         else:
             return User.objects.create_user(
-                username=username, password=password, email=email)
+                username=username, password=password, email=email
+            )
 
 
 class UserHandler(OperationsHandler):
     """Manage a user account."""
+
     api_doc_section_name = "User"
     create = update = None
 
     model = User
-    fields = (
-        'username',
-        'email',
-        'is_local',
-        'is_superuser',
-        )
+    fields = ("username", "email", "is_local", "is_superuser")
 
     def read(self, request, username):
         """@description-title Retrieve user details
@@ -182,10 +175,11 @@ class UserHandler(OperationsHandler):
 
         user = get_one(User.objects.filter(username=username))
         if user is not None:
-            new_owner_username = form.cleaned_data['transfer_resources_to']
+            new_owner_username = form.cleaned_data["transfer_resources_to"]
             if new_owner_username:
                 new_owner = get_object_or_404(
-                    User, username=new_owner_username)
+                    User, username=new_owner_username
+                )
                 if new_owner is not None:
                     user.userprofile.transfer_resources(new_owner)
 
@@ -193,9 +187,15 @@ class UserHandler(OperationsHandler):
             try:
                 user.userprofile.delete()
                 create_audit_event(
-                    EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-                    description=("Deleted %s '%s'." % (
-                        'admin' if user.is_superuser else 'user', username)))
+                    EVENT_TYPES.AUTHORISATION,
+                    ENDPOINT.API,
+                    request,
+                    None,
+                    description=(
+                        "Deleted %s '%s'."
+                        % ("admin" if user.is_superuser else "user", username)
+                    ),
+                )
             except CannotDeleteUserException as e:
                 raise ValidationError(str(e))
 
@@ -204,7 +204,7 @@ class UserHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, user=None):
         username = "username" if user is None else user.username
-        return ('user_handler', [username])
+        return ("user_handler", [username])
 
     @classmethod
     def is_local(self, user=None):
@@ -225,4 +225,4 @@ class UserProfileHandler(BaseHandler):
     """
 
     model = UserProfile
-    exclude = ('user',)
+    exclude = ("user",)

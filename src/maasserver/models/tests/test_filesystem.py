@@ -6,10 +6,7 @@
 __all__ = []
 
 from copy import copy
-from itertools import (
-    chain,
-    combinations,
-)
+from itertools import chain, combinations
 import re
 from uuid import uuid4
 
@@ -20,12 +17,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-    IsInstance,
-    MatchesStructure,
-)
+from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 
 
 class TestFilesystemManager(MAASServerTestCase):
@@ -39,15 +31,21 @@ class TestFilesystemManager(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice(node=node)
         bd_for_partitions = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
-            block_device=bd_for_partitions)
+            block_device=bd_for_partitions
+        )
         partition = factory.make_Partition(partition_table=partition_table)
         filesystem_on_bd = factory.make_Filesystem(block_device=block_device)
         filesystem_on_partition = factory.make_Filesystem(partition=partition)
         filesystem_on_node = factory.make_Filesystem(node=node)
         self.assertItemsEqual(
-            [root_fs, filesystem_on_bd, filesystem_on_partition,
-             filesystem_on_node],
-            Filesystem.objects.filter_by_node(node))
+            [
+                root_fs,
+                filesystem_on_bd,
+                filesystem_on_partition,
+                filesystem_on_node,
+            ],
+            Filesystem.objects.filter_by_node(node),
+        )
 
 
 class TestFilesystem(MAASServerTestCase):
@@ -56,14 +54,12 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_node_returns_partition_node(self):
         partition = factory.make_Partition()
         fs = factory.make_Filesystem(partition=partition)
-        self.assertEqual(
-            fs.partition.get_node(), fs.get_node())
+        self.assertEqual(fs.partition.get_node(), fs.get_node())
 
     def test_get_node_returns_block_device_node(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEqual(
-            fs.block_device.node, fs.get_node())
+        self.assertEqual(fs.block_device.node, fs.get_node())
 
     def test_get_node_returns_special_filesystem_node(self):
         machine = factory.make_Node()
@@ -77,14 +73,12 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_size_returns_partition_size(self):
         partition = factory.make_Partition()
         fs = factory.make_Filesystem(partition=partition)
-        self.assertEqual(
-            fs.partition.size, fs.get_size())
+        self.assertEqual(fs.partition.size, fs.get_size())
 
     def test_get_size_returns_block_device_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEqual(
-            fs.block_device.size, fs.get_size())
+        self.assertEqual(fs.block_device.size, fs.get_size())
 
     def test_get_size_returns_0_when_partition_and_block_device_None(self):
         fs = Filesystem()
@@ -93,14 +87,12 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_block_size_returns_partition_block_size(self):
         partition = factory.make_Partition()
         fs = factory.make_Filesystem(partition=partition)
-        self.assertEqual(
-            fs.partition.get_block_size(), fs.get_block_size())
+        self.assertEqual(fs.partition.get_block_size(), fs.get_block_size())
 
     def test_get_block_size_returns_block_device_block_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEqual(
-            fs.block_device.block_size, fs.get_block_size())
+        self.assertEqual(fs.block_device.block_size, fs.get_block_size())
 
     def test_get_block_size_returns_0_when_partition_and_device_None(self):
         fs = Filesystem()
@@ -109,17 +101,20 @@ class TestFilesystem(MAASServerTestCase):
     def test_cannot_save_storage_backed_filesystem_if_storage_missing(self):
         fs = Filesystem()
         error = self.assertRaises(ValidationError, fs.save)
-        self.assertThat(error.messages, Equals([
-            "One of partition or block device must be specified.",
-        ]))
+        self.assertThat(
+            error.messages,
+            Equals(["One of partition or block device must be specified."]),
+        )
 
     def test_cannot_save_host_backed_filesystem_if_node_missing(self):
         for fstype in Filesystem.TYPES - Filesystem.TYPES_REQUIRING_STORAGE:
             fs = Filesystem(fstype=fstype)
             error = self.assertRaises(ValidationError, fs.save)
-            self.expectThat(error.messages, Equals([
-                "A node must be specified.",
-            ]), "using " + fstype)
+            self.expectThat(
+                error.messages,
+                Equals(["A node must be specified."]),
+                "using " + fstype,
+            )
 
     def test_cannot_save_filesystem_if_too_much_storage(self):
         substrate_factories = {
@@ -132,20 +127,28 @@ class TestFilesystem(MAASServerTestCase):
             combinations(substrate_factories, 3),
         )
         for substrates in substrate_combos:
-            fs = Filesystem(**{
-                substrate: substrate_factories[substrate]()
-                for substrate in substrates
-            })
+            fs = Filesystem(
+                **{
+                    substrate: substrate_factories[substrate]()
+                    for substrate in substrates
+                }
+            )
             error = self.assertRaises(ValidationError, fs.save)
-            self.expectThat(error.messages, Equals([
-                "Only one of partition, block device, "
-                "or node can be specified.",
-            ]), "using " + ", ".join(substrates))
+            self.expectThat(
+                error.messages,
+                Equals(
+                    [
+                        "Only one of partition, block device, "
+                        "or node can be specified."
+                    ]
+                ),
+                "using " + ", ".join(substrates),
+            )
 
     def test_save_doesnt_overwrite_uuid(self):
         uuid = uuid4()
         fs = factory.make_Filesystem(uuid=uuid)
-        self.assertEqual('%s' % uuid, fs.uuid)
+        self.assertEqual("%s" % uuid, fs.uuid)
 
     def test_get_parent_returns_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -166,11 +169,13 @@ class TestFilesystem(MAASServerTestCase):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['Cannot place filesystem directly on the "
-                    "boot disk. Create a partition on the boot disk first "
-                    "and then format the partition.']}")):
+            ValidationError,
+            re.escape(
+                "{'__all__': ['Cannot place filesystem directly on the "
+                "boot disk. Create a partition on the boot disk first "
+                "and then format the partition.']}"
+            ),
+        ):
             factory.make_Filesystem(block_device=boot_disk)
 
     def test_can_create_filesystem_on_partition_on_boot_disk(self):
@@ -199,7 +204,8 @@ class TestFilesystem(MAASServerTestCase):
         filesystem_dupe.id = None  # Force INSERT.
 
         error_messages_expected = Equals(
-            ['Filesystem with this Partition and Acquired already exists.'])
+            ["Filesystem with this Partition and Acquired already exists."]
+        )
 
         # Saving an unacquired duplicate fails.
         filesystem_dupe.acquired = False
@@ -229,7 +235,8 @@ class TestFilesystem(MAASServerTestCase):
         filesystem_dupe.id = None  # Force INSERT.
 
         error_messages_expected = Equals(
-            ['Filesystem with this Block device and Acquired already exists.'])
+            ["Filesystem with this Block device and Acquired already exists."]
+        )
 
         # Saving an unacquired duplicate fails.
         filesystem_dupe.acquired = False
@@ -246,44 +253,55 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
     """Tests the `Filesystem` model with mountable filesystems."""
 
     scenarios_fstypes_with_storage = tuple(
-        (displayname, {"fstype": name}) for name, displayname in
-        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
-        if name in Filesystem.TYPES_REQUIRING_STORAGE)
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
+        if name in Filesystem.TYPES_REQUIRING_STORAGE
+    )
 
     scenarios_fstypes_without_storage = tuple(
-        (displayname, {"fstype": name}) for name, displayname in
-        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
-        if name not in Filesystem.TYPES_REQUIRING_STORAGE)
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    )
 
     scenarios_substrate_storage = (
-        ("partition", {
-            "make_substrate": lambda: {
-                "partition": factory.make_Partition(),
+        (
+            "partition",
+            {
+                "make_substrate": lambda: {
+                    "partition": factory.make_Partition()
+                },
+                "can_be_unmounted": True,
             },
-            "can_be_unmounted": True,
-        }),
-        ("block-device", {
-            "make_substrate": lambda: {
-                "block_device": factory.make_PhysicalBlockDevice(),
+        ),
+        (
+            "block-device",
+            {
+                "make_substrate": lambda: {
+                    "block_device": factory.make_PhysicalBlockDevice()
+                },
+                "can_be_unmounted": True,
             },
-            "can_be_unmounted": True,
-        }),
+        ),
     )
 
     scenarios_substrate_node = (
-        ("node", {
-            "make_substrate": lambda: {
-                "node": factory.make_Node(),
+        (
+            "node",
+            {
+                "make_substrate": lambda: {"node": factory.make_Node()},
+                "can_be_unmounted": False,
             },
-            "can_be_unmounted": False,
-        }),
+        ),
     )
 
     scenarios = chain(
         multiply_scenarios(
-            scenarios_fstypes_with_storage, scenarios_substrate_storage),
+            scenarios_fstypes_with_storage, scenarios_substrate_storage
+        ),
         multiply_scenarios(
-            scenarios_fstypes_without_storage, scenarios_substrate_node),
+            scenarios_fstypes_without_storage, scenarios_substrate_node
+        ),
     )
 
     def test_can_create_mountable_filesystem(self):
@@ -306,9 +324,15 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         # at the same directory as another filesystem.
         if filesystem1.uses_mount_point:
             error = self.assertRaises(ValidationError, filesystem2.save)
-            self.assertThat(error.messages, Equals([
-                "Another filesystem is already mounted at %s." % mount_point,
-            ]))
+            self.assertThat(
+                error.messages,
+                Equals(
+                    [
+                        "Another filesystem is already mounted at %s."
+                        % mount_point
+                    ]
+                ),
+            )
         else:
             self.assertThat(filesystem2.save(), Is(None))
 
@@ -323,7 +347,8 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         substrate = self.make_substrate()
         mount_point = factory.make_name("mount-point")
         filesystem = factory.make_Filesystem(
-            fstype=self.fstype, mount_point=mount_point, **substrate)
+            fstype=self.fstype, mount_point=mount_point, **substrate
+        )
         if filesystem.uses_mount_point:
             self.assertThat(filesystem.mount_point, Equals(mount_point))
         else:
@@ -348,43 +373,45 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
             filesystem.mount_point = None
             self.assertThat(filesystem.is_mounted, Is(False))
             error = self.assertRaises(ValidationError, filesystem.save)
-            self.assertThat(error.messages, Equals([
-                "RAM-backed filesystems must be mounted.",
-            ]))
+            self.assertThat(
+                error.messages,
+                Equals(["RAM-backed filesystems must be mounted."]),
+            )
 
 
 class TestFilesystemsUsingMountPoints(MAASServerTestCase):
     """Tests the `Filesystem` model regarding use of mount points."""
 
     scenarios = tuple(
-        (displayname, {
-            "fstype": name,
-            "mounts_at_path": (name != "swap"),
-        })
-        for name, displayname in
-        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
+        (displayname, {"fstype": name, "mounts_at_path": (name != "swap")})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
+    )
 
     def test_uses_mount_point_is_true_for_real_filesystems(self):
         filesystem = factory.make_Filesystem(fstype=self.fstype)
         self.assertThat(
-            filesystem.uses_mount_point,
-            Equals(self.mounts_at_path))
+            filesystem.uses_mount_point, Equals(self.mounts_at_path)
+        )
 
 
 class TestFilesystemsUsingStorage(MAASServerTestCase):
     """Tests the `Filesystem` model regarding use of storage."""
 
     scenarios = tuple(
-        (displayname, {
-            "fstype": name,
-            "mounts_device_or_partition": (
-                name != "ramfs" and name != "tmpfs"),
-        })
-        for name, displayname in
-        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
+        (
+            displayname,
+            {
+                "fstype": name,
+                "mounts_device_or_partition": (
+                    name != "ramfs" and name != "tmpfs"
+                ),
+            },
+        )
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
+    )
 
     def test_uses_mount_point_is_true_for_real_filesystems(self):
         filesystem = factory.make_Filesystem(fstype=self.fstype)
         self.assertThat(
-            filesystem.uses_storage,
-            Equals(self.mounts_device_or_partition))
+            filesystem.uses_storage, Equals(self.mounts_device_or_partition)
+        )

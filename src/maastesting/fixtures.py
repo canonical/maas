@@ -15,18 +15,11 @@ __all__ = [
 import builtins
 import codecs
 from errno import ENOENT
-from io import (
-    BytesIO,
-    TextIOWrapper,
-)
+from io import BytesIO, TextIOWrapper
 import logging
 import os
 from pathlib import Path
-from subprocess import (
-    CalledProcessError,
-    PIPE,
-    Popen,
-)
+from subprocess import CalledProcessError, PIPE, Popen
 import sys
 
 import fixtures
@@ -61,9 +54,11 @@ class ImportErrorFixture(fixtures.Fixture):
             if name == self.module_name:
                 module_list = import_args[2]
                 if self.sub_name in module_list:
-                    raise ImportError("ImportErrorFixture raising ImportError "
-                                      "exception on targeted import: %s.%s" % (
-                                          self.module_name, self.sub_name))
+                    raise ImportError(
+                        "ImportErrorFixture raising ImportError "
+                        "exception on targeted import: %s.%s"
+                        % (self.module_name, self.sub_name)
+                    )
 
             return self.__real_import(name, *import_args, **kwargs)
 
@@ -129,8 +124,14 @@ class DisplayFixture(fixtures.Fixture):
         spec = "{self.width}x{self.height}x{self.depth}".format(self=self)
         args = "-ac -screen 0 %s" % spec
         return (
-            "xvfb-run", "--server-args", args, "--auto-servernum", "--",
-            "bash", "-c", "echo $DISPLAY && exec cat",
+            "xvfb-run",
+            "--server-args",
+            args,
+            "--auto-servernum",
+            "--",
+            "bash",
+            "-c",
+            "echo $DISPLAY && exec cat",
         )
 
     def setUp(self):
@@ -187,13 +188,16 @@ class ChromiumWebDriverFixture(fixtures.Fixture):
         super(ChromiumWebDriverFixture, self).setUp()
         # Import late to avoid hard dependency.
         from selenium.webdriver.chrome.service import Service as ChromeService
-        service = ChromeService(
-            "/usr/lib/chromium-browser/chromedriver", 4444)
+
+        service = ChromeService("/usr/lib/chromium-browser/chromedriver", 4444)
 
         # Set the LD_LIBRARY_PATH so the chrome driver can find the required
         # libraries.
-        self.useFixture(EnvironmentVariable(
-            "LD_LIBRARY_PATH", "/usr/lib/chromium-browser/libs"))
+        self.useFixture(
+            EnvironmentVariable(
+                "LD_LIBRARY_PATH", "/usr/lib/chromium-browser/libs"
+            )
+        )
         service.start()
 
         # Stop service on cleanup.
@@ -250,8 +254,8 @@ class CaptureStandardIO(fixtures.Fixture):
 
     def _wrapStream(self, stream):
         return TextIOWrapper(
-            stream, encoding=self.encoding,
-            write_through=True)
+            stream, encoding=self.encoding, write_through=True
+        )
 
     def _addStream(self, name, stream):
         self.patcher.add_patch(self, name, stream)
@@ -359,8 +363,8 @@ class DetectLeakedFileDescriptors(fixtures.Fixture):
         if len(fds_new) != 0:
             message = ["File descriptor(s) leaked:"]
             message.extend(
-                "* %s --> %s" % (fd, desc)
-                for (fd, desc) in fds_new.items())
+                "* %s --> %s" % (fd, desc) for (fd, desc) in fds_new.items()
+            )
             raise AssertionError("\n".join(message))
 
 
@@ -384,15 +388,18 @@ class MAASRootFixture(fixtures.Fixture):
             ntp.joinpath(".keep").touch()
             ntp_conf = ntp.joinpath("chrony.conf")
             ntp_conf.write_bytes(
-                skel.joinpath("etc", "chrony", "chrony.conf").read_bytes())
+                skel.joinpath("etc", "chrony", "chrony.conf").read_bytes()
+            )
             # Create and populate $MAAS_ROOT/run/etc/maas.
             maas = etc.joinpath("maas")
             maas.mkdir(parents=True)
             maas.joinpath("drivers.yaml").symlink_to(
-                skel.joinpath("etc", "maas", "drivers.yaml").resolve())
+                skel.joinpath("etc", "maas", "drivers.yaml").resolve()
+            )
             maas.joinpath("templates").mkdir()
             # Update the environment.
             self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
         else:
             raise NotADirectoryError(
-                "Skeleton MAAS_ROOT (%s) is not a directory." % skel)
+                "Skeleton MAAS_ROOT (%s) is not a directory." % skel
+            )

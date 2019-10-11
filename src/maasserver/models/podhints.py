@@ -3,9 +3,7 @@
 
 """Model that holds hint information for a Pod."""
 
-__all__ = [
-    'PodHints',
-    ]
+__all__ = ["PodHints"]
 
 
 from django.db.models import (
@@ -25,7 +23,7 @@ class PodHints(CleanSave, Model):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    pod = OneToOneField('BMC', related_name="hints", on_delete=CASCADE)
+    pod = OneToOneField("BMC", related_name="hints", on_delete=CASCADE)
 
     cores = IntegerField(default=0)
 
@@ -34,9 +32,11 @@ class PodHints(CleanSave, Model):
     cpu_speed = IntegerField(default=0)  # MHz
 
     local_storage = BigIntegerField(  # Bytes
-        blank=False, null=False, default=0)
+        blank=False, null=False, default=0
+    )
 
     local_disks = IntegerField(blank=False, null=False, default=-1)
 
     iscsi_storage = BigIntegerField(  # Bytes
-        blank=False, null=False, default=-1)
+        blank=False, null=False, default=-1
+    )

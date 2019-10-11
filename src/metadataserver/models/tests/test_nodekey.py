@@ -29,7 +29,8 @@ class TestNodeKeyManager(MAASServerTestCase):
     def test_get_node_for_key_raises_DoesNotExist_if_key_not_found(self):
         non_key = factory.make_string()
         self.assertRaises(
-            NodeKey.DoesNotExist, NodeKey.objects.get_node_for_key, non_key)
+            NodeKey.DoesNotExist, NodeKey.objects.get_node_for_key, non_key
+        )
 
     def test_get_token_for_node_creates_token(self):
         node = factory.make_Node()
@@ -47,7 +48,9 @@ class TestNodeKeyManager(MAASServerTestCase):
         self.assertEqual(
             node,
             NodeKey.objects.get_node_for_key(
-                NodeKey.objects.get_token_for_node(node).key))
+                NodeKey.objects.get_token_for_node(node).key
+            ),
+        )
 
     def test_clear_token_for_node_deletes_related_NodeKey(self):
         node = factory.make_Node()
@@ -60,4 +63,6 @@ class TestNodeKeyManager(MAASServerTestCase):
         self.assertEqual(
             key,
             NodeKey.objects.get_token_for_node(
-                NodeKey.objects.get_node_for_key(key)).key)
+                NodeKey.objects.get_node_for_key(key)
+            ).key,
+        )

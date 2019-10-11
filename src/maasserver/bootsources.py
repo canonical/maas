@@ -32,25 +32,16 @@ from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
-from provisioningserver.config import (
-    DEFAULT_IMAGES_URL,
-    DEFAULT_KEYRINGS_PATH,
-)
+from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh import get_architecture
 from provisioningserver.utils.fs import tempdir
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, FOREVER
 from requests.exceptions import ConnectionError
 from simplestreams import util as sutil
 from twisted.internet.defer import inlineCallbacks
@@ -65,22 +56,27 @@ def ensure_boot_source_definition():
     """Set default boot source if none is currently defined."""
     if not BootSource.objects.exists():
         source = BootSource.objects.create(
-            url=DEFAULT_IMAGES_URL, keyring_filename=DEFAULT_KEYRINGS_PATH)
+            url=DEFAULT_IMAGES_URL, keyring_filename=DEFAULT_KEYRINGS_PATH
+        )
         # Default is to import newest Ubuntu LTS release, for the current
         # architecture.
-        arch = get_architecture().split('/')[0]
+        arch = get_architecture().split("/")[0]
         # amd64 is the primary architecture for MAAS uses. Make sure its always
         # selected. If MAAS is running on another architecture select that as
         # well.
-        if arch in ('', 'amd64'):
-            arches = ['amd64']
+        if arch in ("", "amd64"):
+            arches = ["amd64"]
         else:
-            arches = [arch, 'amd64']
+            arches = [arch, "amd64"]
         ubuntu = UbuntuOS()
         BootSourceSelection.objects.create(
-            boot_source=source, os=ubuntu.name,
+            boot_source=source,
+            os=ubuntu.name,
             release=ubuntu.get_default_commissioning_release(),
-            arches=arches, subarches=['*'], labels=['*'])
+            arches=arches,
+            subarches=["*"],
+            labels=["*"],
+        )
         return True
     else:
         return False
@@ -89,39 +85,36 @@ def ensure_boot_source_definition():
 @transactional
 def get_boot_sources():
     """Return list of boot sources for the region to import from."""
-    return [
-        source.to_dict()
-        for source in BootSource.objects.all()
-        ]
+    return [source.to_dict() for source in BootSource.objects.all()]
 
 
 @transactional
 def get_simplestreams_env():
     """Get environment that should be used with simplestreams."""
-    env = {'GNUPGHOME': get_maas_user_gpghome()}
-    if Config.objects.get_config('enable_http_proxy'):
-        http_proxy = Config.objects.get_config('http_proxy')
+    env = {"GNUPGHOME": get_maas_user_gpghome()}
+    if Config.objects.get_config("enable_http_proxy"):
+        http_proxy = Config.objects.get_config("http_proxy")
         if http_proxy is not None:
-            env['http_proxy'] = http_proxy
-            env['https_proxy'] = http_proxy
+            env["http_proxy"] = http_proxy
+            env["https_proxy"] = http_proxy
             # When the proxy environment variables are set they effect the
             # entire process, including controller refresh. When the region
             # needs to refresh itself it sends itself results over HTTP to
             # 127.0.0.1.
-            no_proxy_hosts = '127.0.0.1,localhost'
+            no_proxy_hosts = "127.0.0.1,localhost"
             # When using a proxy and using an image mirror, we may not want
             # to use the proxy to download the images, as they could be
             # localted in the local network, hence it makes no sense to use
             # it. With this, we add the image mirror localtion(s) to the
             # no proxy variable, which ensures MAAS contacts the mirror
             # directly instead of through the proxy.
-            no_proxy = Config.objects.get_config('boot_images_no_proxy')
+            no_proxy = Config.objects.get_config("boot_images_no_proxy")
             if no_proxy:
                 sources = get_boot_sources()
                 for source in sources:
-                    host = urlparse(source["url"]).netloc.split(':')[0]
+                    host = urlparse(source["url"]).netloc.split(":")[0]
                     no_proxy_hosts = ",".join((no_proxy_hosts, host))
-            env['no_proxy'] = no_proxy_hosts
+            env["no_proxy"] = no_proxy_hosts
     return env
 
 
@@ -146,7 +139,8 @@ def get_os_info_from_boot_sources(os):
     arches = set()
     for source in BootSource.objects.all():
         for cache_item in BootSourceCache.objects.filter(
-                boot_source=source, os=os):
+            boot_source=source, os=os
+        ):
             if source not in os_sources:
                 os_sources.append(source)
             releases.add(cache_item.release)
@@ -155,9 +149,9 @@ def get_os_info_from_boot_sources(os):
 
 
 def get_product_title(item):
-    os_title = item.get('os_title')
-    release_title = item.get('release_title')
-    gadget_title = item.get('gadget_title')
+    os_title = item.get("os_title")
+    release_title = item.get("release_title")
+    gadget_title = item.get("gadget_title")
     if None not in (os_title, release_title, gadget_title):
         return "%s %s %s" % (os_title, release_title, gadget_title)
     elif None not in (os_title, release_title):
@@ -174,23 +168,31 @@ def _update_cache(source, descriptions):
         # The record was deleted while we were fetching the description.
         log.debug(
             "Image descriptions at {url} are no longer needed; discarding.",
-            url=source["url"])
+            url=source["url"],
+        )
     else:
         if bootsource.compare_dict_without_selections(source):
             if descriptions.is_empty():
                 # No images for this source, so clear the cache.
                 BootSourceCache.objects.filter(boot_source=bootsource).delete()
             else:
+
                 def make_image_tuple(image):
                     return (
-                        image.os, image.arch, image.subarch,
-                        image.release, image.kflavor, image.label)
+                        image.os,
+                        image.arch,
+                        image.subarch,
+                        image.release,
+                        image.kflavor,
+                        image.label,
+                    )
 
                 # Get current images for the source.
                 current_images = {
                     make_image_tuple(image): image
                     for image in BootSourceCache.objects.filter(
-                        boot_source=bootsource)
+                        boot_source=bootsource
+                    )
                 }
                 bulk_create = []
                 for spec, item in descriptions.mapping.items():
@@ -198,21 +200,22 @@ def _update_cache(source, descriptions):
                     if title is None:
                         extra = {}
                     else:
-                        extra = {'title': title}
+                        extra = {"title": title}
                     current = current_images.pop(make_image_tuple(spec), None)
                     if current is not None:
-                        current.release_codename = item.get('release_codename')
-                        current.release_title = item.get('release_title')
-                        current.support_eol = item.get('support_eol')
-                        current.bootloader_type = item.get('bootloader-type')
+                        current.release_codename = item.get("release_codename")
+                        current.release_title = item.get("release_title")
+                        current.support_eol = item.get("support_eol")
+                        current.bootloader_type = item.get("bootloader-type")
                         current.extra = extra
 
                         # Support EOL needs to be a datetime so it will only
                         # be marked updated if actually different.
-                        support_eol = item.get('support_eol')
+                        support_eol = item.get("support_eol")
                         if support_eol:
                             current.support_eol = datetime.datetime.strptime(
-                                support_eol, '%Y-%m-%d').date()
+                                support_eol, "%Y-%m-%d"
+                            ).date()
                         else:
                             current.support_eol = support_eol
 
@@ -220,32 +223,41 @@ def _update_cache(source, descriptions):
                         current.save()
                     else:
                         created = now()
-                        bulk_create.append(BootSourceCache(
-                            boot_source=bootsource, os=spec.os,
-                            arch=spec.arch, subarch=spec.subarch,
-                            kflavor=spec.kflavor,
-                            release=spec.release, label=spec.label,
-                            release_codename=item.get('release_codename'),
-                            release_title=item.get('release_title'),
-                            support_eol=item.get('support_eol'),
-                            bootloader_type=item.get('bootloader-type'),
-                            extra=extra,
-                            created=created,
-                            updated=created))
+                        bulk_create.append(
+                            BootSourceCache(
+                                boot_source=bootsource,
+                                os=spec.os,
+                                arch=spec.arch,
+                                subarch=spec.subarch,
+                                kflavor=spec.kflavor,
+                                release=spec.release,
+                                label=spec.label,
+                                release_codename=item.get("release_codename"),
+                                release_title=item.get("release_title"),
+                                support_eol=item.get("support_eol"),
+                                bootloader_type=item.get("bootloader-type"),
+                                extra=extra,
+                                created=created,
+                                updated=created,
+                            )
+                        )
                 if bulk_create:
                     # Insert all cache items in 1 query.
                     BootSourceCache.objects.bulk_create(bulk_create)
                 if current_images:
                     image_ids = {
-                        image.id for _, image in current_images.items()}
+                        image.id for _, image in current_images.items()
+                    }
                     BootSourceCache.objects.filter(id__in=image_ids).delete()
             log.debug(
                 "Image descriptions for {url} have been updated.",
-                url=source["url"])
+                url=source["url"],
+            )
         else:
             log.debug(
                 "Image descriptions for {url} are outdated; discarding.",
-                url=source["url"])
+                url=source["url"],
+            )
 
 
 @asynchronous(timeout=FOREVER)
@@ -285,29 +297,37 @@ def cache_boot_sources():
     @transactional
     def check_commissioning_series_selected():
         commissioning_osystem = Config.objects.get_config(
-            name='commissioning_osystem')
+            name="commissioning_osystem"
+        )
         commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
+            name="commissioning_distro_series"
+        )
         qs = BootSourceSelection.objects.filter(
-            os=commissioning_osystem, release=commissioning_series)
+            os=commissioning_osystem, release=commissioning_series
+        )
         if not qs.exists():
             if not Notification.objects.filter(
-                    ident='commissioning_series_unselected').exists():
+                ident="commissioning_series_unselected"
+            ).exists():
                 Notification.objects.create_error_for_users(
-                    '%s %s is configured as the commissioning release but it '
-                    'is not selected for download!' % (
-                        commissioning_osystem, commissioning_series),
-                    ident='commissioning_series_unselected')
+                    "%s %s is configured as the commissioning release but it "
+                    "is not selected for download!"
+                    % (commissioning_osystem, commissioning_series),
+                    ident="commissioning_series_unselected",
+                )
         qs = BootSourceCache.objects.filter(
-            os=commissioning_osystem, release=commissioning_series)
+            os=commissioning_osystem, release=commissioning_series
+        )
         if not qs.exists():
             if not Notification.objects.filter(
-                    ident='commissioning_series_unavailable').exists():
+                ident="commissioning_series_unavailable"
+            ).exists():
                 Notification.objects.create_error_for_users(
-                    '%s %s is configured as the commissioning release but it '
-                    'is unavailable in the configured streams!' % (
-                        commissioning_osystem, commissioning_series),
-                    ident='commissioning_series_unavailable')
+                    "%s %s is configured as the commissioning release but it "
+                    "is unavailable in the configured streams!"
+                    % (commissioning_osystem, commissioning_series),
+                    ident="commissioning_series_unavailable",
+                )
 
     @transactional
     def get_proxy():
@@ -329,12 +349,13 @@ def cache_boot_sources():
             try:
                 user_agent = yield deferToDatabase(get_maas_user_agent)
                 descriptions = download_all_image_descriptions(
-                    [source],
-                    user_agent=user_agent)
+                    [source], user_agent=user_agent
+                )
             except (IOError, ConnectionError) as error:
-                msg = (
-                    "Failed to import images from "
-                    "%s: %s" % (source["url"], error))
+                msg = "Failed to import images from " "%s: %s" % (
+                    source["url"],
+                    error,
+                )
                 errors.append(msg)
                 maaslog.error(msg)
             except sutil.SignatureMissingException as error:
@@ -343,14 +364,16 @@ def cache_boot_sources():
                 if not proxy:
                     msg = (
                         "Failed to import images from %s (%s). Verify "
-                        "network connectivity and try again." % (
-                            source["url"], error))
+                        "network connectivity and try again."
+                        % (source["url"], error)
+                    )
                 else:
                     msg = (
                         "Failed to import images from %s (%s). Verify "
                         "network connectivity via your external "
-                        "proxy (%s) and try again." % (
-                            source["url"], error, proxy))
+                        "proxy (%s) and try again."
+                        % (source["url"], error, proxy)
+                    )
                 errors.append(msg)
             else:
                 yield deferToDatabase(_update_cache, source, descriptions)
@@ -361,9 +384,10 @@ def cache_boot_sources():
     if len(errors) > 0:
         maaslog.error("Unable to update boot sources cache.")
         yield deferToDatabase(
-            register_persistent_error, component,
-            "<br>".join(map(html.escape, errors)))
+            register_persistent_error,
+            component,
+            "<br>".join(map(html.escape, errors)),
+        )
     else:
         maaslog.info("Updated boot sources cache.")
-        yield deferToDatabase(
-            discard_persistent_error, component)
+        yield deferToDatabase(discard_persistent_error, component)

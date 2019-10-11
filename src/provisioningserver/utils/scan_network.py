@@ -3,10 +3,7 @@
 
 """Utilities for scanning attached networks."""
 
-__all__ = [
-    "add_arguments",
-    "run"
-]
+__all__ = ["add_arguments", "run"]
 
 from collections import namedtuple
 import json
@@ -18,10 +15,7 @@ import sys
 from textwrap import dedent
 import time
 
-from netaddr import (
-    IPNetwork,
-    IPSet,
-)
+from netaddr import IPNetwork, IPSet
 from netaddr.core import AddrFormatError
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.script import ActionScriptError
@@ -31,10 +25,10 @@ from provisioningserver.utils.shell import (
 )
 
 
-PingParameters = namedtuple('PingParameters', ('interface', 'ip'))
+PingParameters = namedtuple("PingParameters", ("interface", "ip"))
 
 
-NmapParameters = namedtuple('NmapParameters', ('interface', 'cidr', 'slow'))
+NmapParameters = namedtuple("NmapParameters", ("interface", "cidr", "slow"))
 
 
 def add_arguments(parser):
@@ -42,7 +36,8 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Generate traffic which attempts to confirm the existence of
         neighbours on specified CIDRs and/or interfaces.
 
@@ -58,32 +53,51 @@ def add_arguments(parser):
         networks.
 
         This command only considers IPv4 CIDRs. (IPv6 CIDRs are excluded.)
-        """)
+        """
+    )
     parser.add_argument(
-        '-s', '--slow', action='store_true', required=False,
-        help='Scan slower. Only applies to nmap scans; ping is slow already.')
+        "-s",
+        "--slow",
+        action="store_true",
+        required=False,
+        help="Scan slower. Only applies to nmap scans; ping is slow already.",
+    )
     parser.add_argument(
-        '-t', '--threads', required=False, type=int,
-        help='Number of concurrent threads to spawn during a scan. '
-             'Default is to spawn four times the number of CPUs when using '
-             'ping, or one times the number of CPUs when using nmap.')
+        "-t",
+        "--threads",
+        required=False,
+        type=int,
+        help="Number of concurrent threads to spawn during a scan. "
+        "Default is to spawn four times the number of CPUs when using "
+        "ping, or one times the number of CPUs when using nmap.",
+    )
     parser.add_argument(
-        '-p', '--ping', action='store_true', required=False,
-        help='Scan using ping. (Default is to scan with nmap, if installed.)')
+        "-p",
+        "--ping",
+        action="store_true",
+        required=False,
+        help="Scan using ping. (Default is to scan with nmap, if installed.)",
+    )
     parser.add_argument(
-        'interface', type=str, nargs='?',
+        "interface",
+        type=str,
+        nargs="?",
         help="Ethernet interface to ping from. Optional if all interfaces are "
-             "to be considered. If an interface is not specified, the first "
-             "argument will be treated as a CIDR, and each interface "
-             "configured on matching CIDRs (or configured with a CIDR that is "
-             "a superset of a specified CIDR) will be scanned.")
+        "to be considered. If an interface is not specified, the first "
+        "argument will be treated as a CIDR, and each interface "
+        "configured on matching CIDRs (or configured with a CIDR that is "
+        "a superset of a specified CIDR) will be scanned.",
+    )
     parser.add_argument(
-        'cidr', type=str, nargs='*',
+        "cidr",
+        type=str,
+        nargs="*",
         help="CIDR(s) to scan. Default is to scan all configured CIDRs. If an "
-             "interface is specified, restricts the scan to that interface, "
-             "and scans the CIDR(s) even if it is not configured. If an "
-             "interface is specified, but no CIDR(s) are specified, scans "
-             "any configured CIDR on that interface.")
+        "interface is specified, restricts the scan to that interface, "
+        "and scans the CIDR(s) even if it is not configured. If an "
+        "interface is specified, but no CIDR(s) are specified, scans "
+        "any configured CIDR on that interface.",
+    )
 
 
 def yield_ipv4_networks_on_link(ifname: str, interfaces: dict):
@@ -94,7 +108,7 @@ def yield_ipv4_networks_on_link(ifname: str, interfaces: dict):
     """
     return filter(
         lambda link: IPNetwork(link).version == 4,
-        (link['address'] for link in interfaces[ifname]['links'])
+        (link["address"] for link in interfaces[ifname]["links"]),
     )
 
 
@@ -109,7 +123,8 @@ def yield_cidrs_on_interface(cidr_set: IPSet, ifname: str, interfaces: dict):
 
 
 def get_interface_cidrs_to_scan(
-        interface_name: str, cidrs: list, interfaces: dict) -> dict:
+    interface_name: str, cidrs: list, interfaces: dict
+) -> dict:
     """Returns a dictionary of {<interface-name>: <iterable-of-cidr-strings>}.
 
     Given the specified `interface_name` (which can be None, which means
@@ -132,21 +147,21 @@ def get_interface_cidrs_to_scan(
             # are a superset of the specified CIDRs.
             to_scan = {
                 ifname: yield_cidrs_on_interface(
-                    IPSet(cidrs), ifname, interfaces)
+                    IPSet(cidrs), ifname, interfaces
+                )
                 for ifname in interfaces
             }
     else:
         if len(cidrs) > 0:
             # The interface was specified, along with one or more CIDRs.
-            to_scan = {
-                interface_name: cidrs
-            }
+            to_scan = {interface_name: cidrs}
         else:
             # A specific interface was specified, but no specific CIDRs.
             # In this case, we scan any IPv4 CIDRs we find on that interface.
             to_scan = {
                 interface_name: yield_ipv4_networks_on_link(
-                    interface_name, interfaces)
+                    interface_name, interfaces
+                )
             }
     return to_scan
 
@@ -185,24 +200,25 @@ def get_nmap_arguments(args: NmapParameters):
     :param args.slow: If True, will throttle scanning to 9 packets per second.
     :return: list
     """
-    nmap_args = [
-        "sudo", "--non-interactive", "nmap", "-e", args.interface
-    ]
+    nmap_args = ["sudo", "--non-interactive", "nmap", "-e", args.interface]
     if args.slow is True:
         # If we're doing a slow scan, use a packets-per-second limit.
         # A rate limit of 9 PPS tends to scan a /24 in about one minute.
         nmap_args.extend(["--max-rate", "9"])
-    nmap_args.extend([
-        # Ping scan (disable port scan).
-        "-sn",
-        # Never do DNS resolution.
-        "-n",
-        # Output XML to stdout. (in case we want to parse it later.)
-        "-oX", "-",
-        # Ping scan type: neighbour discovery scan. (that is, ARP-only.)
-        "-PR",
-        args.cidr
-    ])
+    nmap_args.extend(
+        [
+            # Ping scan (disable port scan).
+            "-sn",
+            # Never do DNS resolution.
+            "-n",
+            # Output XML to stdout. (in case we want to parse it later.)
+            "-oX",
+            "-",
+            # Ping scan type: neighbour discovery scan. (that is, ARP-only.)
+            "-PR",
+            args.cidr,
+        ]
+    )
     return nmap_args
 
 
@@ -217,12 +233,15 @@ def run_nmap(args: NmapParameters) -> dict:
     """
     clock = time.monotonic()
     nmap = subprocess.Popen(
-        get_nmap_arguments(args), stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        get_nmap_arguments(args),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         env=get_env_with_locale(),
         # This pre-exec function prevents `nmap` from writing to the pty, which
         # misbehaves when it runs in parallel and can require a `reset`.
-        preexec_fn=os.setsid)
+        preexec_fn=os.setsid,
+    )
     nmap.wait()
     clock_diff = time.monotonic() - clock
     event = {
@@ -231,7 +250,7 @@ def run_nmap(args: NmapParameters) -> dict:
         "cidr": args.cidr,
         "returncode": nmap.returncode,
         "seconds": int(clock_diff),
-        "slow": args.slow
+        "slow": args.slow,
     }
     return event
 
@@ -265,14 +284,19 @@ def get_ping_arguments(args: PingParameters):
         "ping",
         # Bypass the routing table. (send directly on the given interface.)
         "-r",
-        "-I", args.interface, args.ip,
+        "-I",
+        args.interface,
+        args.ip,
         # Stop after 3 tries.
-        "-c", "3",
+        "-c",
+        "3",
         # Wait at most one second. This is the minimum that 'ping' accepts.
         # (less would be better)
-        "-w", "1",
+        "-w",
+        "1",
         # Send packets 0.2 seconds apart. (this is the minimum)
-        "-i", "0.2",
+        "-i",
+        "0.2",
         # Print the timestamp. (This is only used for debugging.)
         "-D",
         # Log outstanding replies before sending next packet.
@@ -282,7 +306,8 @@ def get_ping_arguments(args: PingParameters):
         "-n",
         # This reads: http://maas.io/ (in ASCII-encoded hex bytes).
         # This string will be sent repeatedly in each ping packet payload.
-        "-p", "687474703a2f2f6d6161732e696f2f20"
+        "-p",
+        "687474703a2f2f6d6161732e696f2f20",
     ]
 
 
@@ -297,15 +322,18 @@ def run_ping(args: PingParameters) -> dict:
     """
     ping = subprocess.Popen(
         get_ping_arguments(args),
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL, env=get_env_with_locale())
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=get_env_with_locale(),
+    )
     ping.wait()
     result = bool(ping.returncode == 0)
     event = {
         "scan_type": "ping",
         "interface": args.interface,
         "ip": args.ip,
-        "result": result
+        "result": result,
     }
     return event
 
@@ -337,22 +365,24 @@ def write_event(event, output=sys.stdout):
     Defaults to writing to stdout.
     """
     output.write(json.dumps(event))
-    output.write('\n')
+    output.write("\n")
     output.flush()
 
 
 def warn_about_missing_cidrs(
-        ifname_to_scan: str, cidrs: list, interfaces: dict, stderr: object):
+    ifname_to_scan: str, cidrs: list, interfaces: dict, stderr: object
+):
     """Write a warning to the specified `stderr` stream if `ifname_to_scan`
     is not configured with `cidrs`."""
     cidrs_on_interface = {
         IPNetwork(cidr)
         for cidr in yield_ipv4_networks_on_link(ifname_to_scan, interfaces)
-        }
+    }
     for cidr in cidrs:
         if IPNetwork(cidr) not in cidrs_on_interface:
-            stderr.write("Warning: %s is not present on %s\n" % (
-                cidr, ifname_to_scan))
+            stderr.write(
+                "Warning: %s is not present on %s\n" % (cidr, ifname_to_scan)
+            )
             stderr.flush()
 
 
@@ -369,7 +399,8 @@ def validate_ipv4_cidrs(cidrs):
 
 
 def adjust_scanning_parameters(
-        ifname_to_scan: str, cidrs: list, interfaces: dict) -> str:
+    ifname_to_scan: str, cidrs: list, interfaces: dict
+) -> str:
     """Adjust scan settings `ifname_to_scan` is not an interface name.
 
     If the first argument was a CIDR instead of an interface, add it to the
@@ -379,12 +410,13 @@ def adjust_scanning_parameters(
         argument specified) is neither an interface name nor a CIDR.
     """
     if ifname_to_scan is not None and ifname_to_scan not in interfaces:
-        if '/' in ifname_to_scan:
+        if "/" in ifname_to_scan:
             cidrs.append(ifname_to_scan)
         else:
             raise ActionScriptError(
-                "First argument must be an interface or CIDR: %s" % (
-                    ifname_to_scan))
+                "First argument must be an interface or CIDR: %s"
+                % ifname_to_scan
+            )
         ifname_to_scan = None
     return ifname_to_scan
 
@@ -398,10 +430,10 @@ def scan_networks(args, to_scan, stderr, stdout):
     clock = time.monotonic()
     # The user must explicitly opt out of using `nmap` by selecting --ping,
     # unless `nmap` is not installed.
-    use_nmap = has_command_available('nmap')
+    use_nmap = has_command_available("nmap")
     use_ping = args.ping
     if use_nmap and not use_ping:
-        tool = 'nmap'
+        tool = "nmap"
         scanner = nmap_scan(to_scan, slow=args.slow, threads=args.threads)
         count = 0
         for count, event in enumerate(scanner, 1):
@@ -409,11 +441,12 @@ def scan_networks(args, to_scan, stderr, stdout):
         clock_diff = time.monotonic() - clock
         if count > 0:
             stderr.write(
-                "%d nmap scan(s) completed in %d second(s).\n" % (
-                    count, clock_diff))
+                "%d nmap scan(s) completed in %d second(s).\n"
+                % (count, clock_diff)
+            )
             stderr.flush()
     else:
-        tool = 'ping'
+        tool = "ping"
         # For a ping scan, we can easily get a count of the number of hosts,
         # and whether or not the ping was successful. It will be printed to
         # stderr for informational purposes.
@@ -421,14 +454,15 @@ def scan_networks(args, to_scan, stderr, stdout):
         hosts = 0
         for event in ping_scan(to_scan, threads=args.threads):
             count += 1
-            if event['result'] is True:
+            if event["result"] is True:
                 hosts += 1
             write_event(event, stdout)
         clock_diff = time.monotonic() - clock
         if count > 0:
             stderr.write(
-                "Pinged %d hosts (%d up) in %d second(s).\n" % (
-                    count, hosts, clock_diff))
+                "Pinged %d hosts (%d up) in %d second(s).\n"
+                % (count, hosts, clock_diff)
+            )
             stderr.flush()
     return {"count": count, "tool": tool, "seconds": clock_diff}
 
@@ -451,7 +485,8 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
     # We may need to adjust the scanning parameters if the first positional
     # argument was a CIDR and not an interface.
     ifname_to_scan = adjust_scanning_parameters(
-        ifname_to_scan, cidrs, interfaces)
+        ifname_to_scan, cidrs, interfaces
+    )
 
     # Validate that each CIDR is an IPv4 CIDR. We don't want to spend an
     # eternity trying to scan an IPv6 subnet.
@@ -467,7 +502,9 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
         warn_about_missing_cidrs(ifname_to_scan, cidrs, interfaces, stderr)
 
     result = scan_networks(args, to_scan, stderr, stdout)
-    if result['count'] == 0:
-        stderr.write("Requested network(s) not available to scan: %s\n" % (
-            ", ".join(cidrs) if len(cidrs) > 0 else ifname_to_scan))
+    if result["count"] == 0:
+        stderr.write(
+            "Requested network(s) not available to scan: %s\n"
+            % (", ".join(cidrs) if len(cidrs) > 0 else ifname_to_scan)
+        )
         stderr.flush()

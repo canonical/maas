@@ -3,17 +3,12 @@
 
 """Utilities for URL handling."""
 
-__all__ = [
-    'compose_URL',
-    ]
+__all__ = ["compose_URL"]
 
 import re
 import urllib.error
 import urllib.parse
-from urllib.parse import (
-    urlparse,
-    urlunparse,
-)
+from urllib.parse import urlparse, urlunparse
 import urllib.request
 
 
@@ -30,10 +25,10 @@ def compose_URL(base_url, host):
     :return: A URL string with the host part taken from `host`, and all others
         from `base_url`.
     """
-    if re.match('[:.0-9a-fA-F]+(?:%.+)?$', host) and host.count(':') > 0:
+    if re.match("[:.0-9a-fA-F]+(?:%.+)?$", host) and host.count(":") > 0:
         # IPv6 address, without the brackets.  Add square brackets.
         # In case there's a zone index (introduced by a % sign), escape it.
-        netloc_host = '[%s]' % urllib.parse.quote(host, safe=':')
+        netloc_host = "[%s]" % urllib.parse.quote(host, safe=":")
     else:
         # IPv4 address, hostname, or IPv6 with brackets.  Keep as-is.
         netloc_host = host
@@ -41,7 +36,7 @@ def compose_URL(base_url, host):
     if parsed_url.port is None:
         netloc = netloc_host
     else:
-        netloc = '%s:%d' % (netloc_host, parsed_url.port)
+        netloc = "%s:%d" % (netloc_host, parsed_url.port)
     return urlunparse(parsed_url._replace(netloc=netloc))
 
 
@@ -50,16 +45,16 @@ def splithost(host):
 
     If no :port is in `host` the port with return as None.
     """
-    parsed = urlparse('//' + host)
+    parsed = urlparse("//" + host)
     hostname = parsed.hostname
     if hostname is None:
         # This only occurs when the `host` is an IPv6 address without brakets.
         # Lets try again but add the brackets.
-        parsed = urlparse('//[%s]' % host)
+        parsed = urlparse("//[%s]" % host)
         hostname = parsed.hostname
-    if ':' in hostname:
+    if ":" in hostname:
         # IPv6 hostname, place back into brackets.
-        hostname = '[%s]' % hostname
+        hostname = "[%s]" % hostname
     return hostname, parsed.port
 
 

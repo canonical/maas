@@ -7,10 +7,7 @@ __all__ = []
 
 import random
 import re
-from unittest.mock import (
-    ANY,
-    sentinel,
-)
+from unittest.mock import ANY, sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -32,12 +29,7 @@ from provisioningserver.rpc.testing.doubles import (
     FakeConnectionToRegion,
 )
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-    IsInstance,
-    Not,
-)
+from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.protocols import amp
@@ -45,11 +37,10 @@ from twisted.test.proto_helpers import StringTransport
 
 
 class TestClient(MAASTestCase):
-
     def setUp(self):
         super().setUp()
         self.command = sentinel.command
-        self.command.__name__ = 'Command'  # needed for metrics labels
+        self.command.__name__ = "Command"  # needed for metrics labels
 
     def test_init(self):
         conn = DummyConnection()
@@ -75,7 +66,8 @@ class TestClient(MAASTestCase):
         conn = FakeConnection()
         client = common.Client(conn)
         with ExpectedException(
-                NotImplementedError, ".* only available in the rack\\b"):
+            NotImplementedError, ".* only available in the rack\\b"
+        ):
             client.localIdent
 
     def test_address(self):
@@ -87,7 +79,8 @@ class TestClient(MAASTestCase):
         conn = FakeConnection()
         client = common.Client(conn)
         with ExpectedException(
-                NotImplementedError, ".* only available in the rack\\b"):
+            NotImplementedError, ".* only available in the rack\\b"
+        ):
             client.address
 
     def test_call_no_timeout(self):
@@ -95,34 +88,47 @@ class TestClient(MAASTestCase):
         self.patch_autospec(conn, "callRemote")
         conn.callRemote.return_value = sentinel.response
         response = client(
-            sentinel.command, _timeout=None,
-            foo=sentinel.foo, bar=sentinel.bar)
+            sentinel.command, _timeout=None, foo=sentinel.foo, bar=sentinel.bar
+        )
         self.assertThat(response, Is(sentinel.response))
-        self.assertThat(conn.callRemote, MockCalledOnceWith(
-            sentinel.command, foo=sentinel.foo, bar=sentinel.bar))
+        self.assertThat(
+            conn.callRemote,
+            MockCalledOnceWith(
+                sentinel.command, foo=sentinel.foo, bar=sentinel.bar
+            ),
+        )
 
     def test_call_zero_timeout(self):
         conn, client = self.make_connection_and_client()
         self.patch_autospec(conn, "callRemote")
         conn.callRemote.return_value = sentinel.response
         response = client(
-            sentinel.command, _timeout=0,
-            foo=sentinel.foo, bar=sentinel.bar)
+            sentinel.command, _timeout=0, foo=sentinel.foo, bar=sentinel.bar
+        )
         self.assertThat(response, Is(sentinel.response))
-        self.assertThat(conn.callRemote, MockCalledOnceWith(
-            sentinel.command, foo=sentinel.foo, bar=sentinel.bar))
+        self.assertThat(
+            conn.callRemote,
+            MockCalledOnceWith(
+                sentinel.command, foo=sentinel.foo, bar=sentinel.bar
+            ),
+        )
 
     def test_call_default_timeout(self):
         conn, client = self.make_connection_and_client()
         self.patch_autospec(common, "deferWithTimeout")
         common.deferWithTimeout.return_value = sentinel.response
-        response = client(
-            sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
+        response = client(sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
         self.assertThat(response, Is(sentinel.response))
         self.assertThat(
-            common.deferWithTimeout, MockCalledOnceWith(
-                120, conn.callRemote, sentinel.command,
-                foo=sentinel.foo, bar=sentinel.bar))
+            common.deferWithTimeout,
+            MockCalledOnceWith(
+                120,
+                conn.callRemote,
+                sentinel.command,
+                foo=sentinel.foo,
+                bar=sentinel.bar,
+            ),
+        )
 
     def test_call_custom_timeout(self):
         conn, client = self.make_connection_and_client()
@@ -130,13 +136,22 @@ class TestClient(MAASTestCase):
         self.patch_autospec(common, "deferWithTimeout")
         common.deferWithTimeout.return_value = sentinel.response
         response = client(
-            sentinel.command, _timeout=timeout,
-            foo=sentinel.foo, bar=sentinel.bar)
+            sentinel.command,
+            _timeout=timeout,
+            foo=sentinel.foo,
+            bar=sentinel.bar,
+        )
         self.assertThat(response, Is(sentinel.response))
         self.assertThat(
-            common.deferWithTimeout, MockCalledOnceWith(
-                timeout, conn.callRemote, sentinel.command,
-                foo=sentinel.foo, bar=sentinel.bar))
+            common.deferWithTimeout,
+            MockCalledOnceWith(
+                timeout,
+                conn.callRemote,
+                sentinel.command,
+                foo=sentinel.foo,
+                bar=sentinel.bar,
+            ),
+        )
 
     def test_call_with_keyword_arguments_raises_useful_error(self):
         conn = DummyConnection()
@@ -144,35 +159,39 @@ class TestClient(MAASTestCase):
         expected_message = re.escape(
             "provisioningserver.rpc.common.Client called with 3 positional "
             "arguments, (1, 2, 3), but positional arguments are not "
-            "supported. Usage: client(command, arg1=value1, ...)")
+            "supported. Usage: client(command, arg1=value1, ...)"
+        )
         with ExpectedException(TypeError, expected_message):
             client(sentinel.command, 1, 2, 3)
 
     def test_call_records_latency_metric(self):
-        mock_metrics = self.patch(PROMETHEUS_METRICS, 'update')
+        mock_metrics = self.patch(PROMETHEUS_METRICS, "update")
         conn, client = self.make_connection_and_client()
         self.patch_autospec(conn, "callRemote")
         conn.callRemote.return_value = sentinel.response
         client(
-            sentinel.command, _timeout=None,
-            foo=sentinel.foo, bar=sentinel.bar)
+            sentinel.command, _timeout=None, foo=sentinel.foo, bar=sentinel.bar
+        )
         mock_metrics.assert_called_with(
-            'maas_rack_region_rpc_call_latency', 'observe',
-            labels={'call': 'Command'}, value=ANY)
+            "maas_rack_region_rpc_call_latency",
+            "observe",
+            labels={"call": "Command"},
+            value=ANY,
+        )
 
     def test_getHostCertificate(self):
         conn, client = self.make_connection_and_client()
         conn.hostCertificate = sentinel.hostCertificate
         self.assertThat(
-            client.getHostCertificate(),
-            Is(sentinel.hostCertificate))
+            client.getHostCertificate(), Is(sentinel.hostCertificate)
+        )
 
     def test_getPeerCertificate(self):
         conn, client = self.make_connection_and_client()
         conn.peerCertificate = sentinel.peerCertificate
         self.assertThat(
-            client.getPeerCertificate(),
-            Is(sentinel.peerCertificate))
+            client.getPeerCertificate(), Is(sentinel.peerCertificate)
+        )
 
     def test_isSecure(self):
         conn, client = self.make_connection_and_client()
@@ -199,7 +218,6 @@ class TestClient(MAASTestCase):
 
 
 class TestRPCProtocol(MAASTestCase):
-
     def test_init(self):
         protocol = common.RPCProtocol()
         self.assertThat(protocol.onConnectionMade, IsUnfiredDeferred())
@@ -225,8 +243,10 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
 
     error_seq = b"%d" % random.randrange(0, 2 ** 32)
     error_box = amp.AmpBox(
-        _error=error_seq, _error_code=amp.UNHANDLED_ERROR_CODE,
-        _error_description=factory.make_string())
+        _error=error_seq,
+        _error_code=amp.UNHANDLED_ERROR_CODE,
+        _error_description=factory.make_string(),
+    )
 
     scenarios = (
         ("_answerReceived", {"seq": answer_seq, "box": answer_box}),
@@ -234,7 +254,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
     )
 
     def test_unhandled_errors_logged_and_do_not_cause_disconnection(self):
-        self.patch(common.log, 'debug')
+        self.patch(common.log, "debug")
         protocol = common.RPCProtocol()
         protocol.makeConnection(StringTransport())
         # Poke a request into the dispatcher that will always fail.
@@ -255,13 +275,13 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
             Traceback (most recent call last):
             ...
             """,
-            logger.output)
+            logger.output,
+        )
 
 
 class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
-
     def test_unhandled_errors_do_not_cause_disconnection(self):
-        self.patch(common.log, 'debug')
+        self.patch(common.log, "debug")
         protocol = common.RPCProtocol()
         protocol.makeConnection(StringTransport())
         # Ensure that the superclass dispatchCommand() will fail.
@@ -287,17 +307,22 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
             Traceback (most recent call last):
             ...
 
-            """ % (cmd, cmd_ref),
-            logger.output)
+            """
+            % (cmd, cmd_ref),
+            logger.output,
+        )
         # A simpler error message has been transmitted over the wire. It
         # includes the same command reference as logged locally.
         protocol.transport.io.seek(0)
         observed_boxes_sent = amp.parse(protocol.transport.io)
         expected_boxes_sent = [
             amp.AmpBox(
-                _error=seq, _error_code=amp.UNHANDLED_ERROR_CODE,
+                _error=seq,
+                _error_code=amp.UNHANDLED_ERROR_CODE,
                 _error_description=(
-                    b"Unknown Error [%s]" % cmd_ref.encode("ascii"))),
+                    b"Unknown Error [%s]" % cmd_ref.encode("ascii")
+                ),
+            )
         ]
         self.assertThat(observed_boxes_sent, Equals(expected_boxes_sent))
 
@@ -316,8 +341,12 @@ class TestMakeCommandRef(MAASTestCase):
         self.patch(common, "getpid").return_value = pid
 
         self.assertThat(
-            common.make_command_ref(box), Equals("%s:pid=%s:cmd=%s:ask=%s" % (
-                host, pid, cmd.decode("ascii"), ask.decode("ascii"))))
+            common.make_command_ref(box),
+            Equals(
+                "%s:pid=%s:cmd=%s:ask=%s"
+                % (host, pid, cmd.decode("ascii"), ask.decode("ascii"))
+            ),
+        )
 
     def test__replaces_missing_ask_with_none(self):
         box = amp.AmpBox(_command=b"command")
@@ -325,5 +354,7 @@ class TestMakeCommandRef(MAASTestCase):
         self.patch(common, "gethostname").return_value = "host"
         self.patch(common, "getpid").return_value = 1234
 
-        self.assertThat(common.make_command_ref(box), Equals(
-            "host:pid=1234:cmd=command:ask=none"))
+        self.assertThat(
+            common.make_command_ref(box),
+            Equals("host:pid=1234:cmd=command:ask=none"),
+        )

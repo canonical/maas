@@ -4,50 +4,39 @@
 """ORM-related utilities."""
 
 __all__ = [
-    'disable_all_database_connections',
-    'enable_all_database_connections',
-    'ExclusivelyConnected',
-    'FullyConnected',
-    'gen_retry_intervals',
-    'get_exception_class',
-    'get_first',
-    'get_one',
-    'in_transaction',
-    'is_deadlock_failure',
-    'is_retryable_failure',
-    'is_serialization_failure',
-    'is_unique_violation',
-    'make_deadlock_failure',
-    'make_serialization_failure',
-    'make_unique_violation',
-    'post_commit',
-    'post_commit_do',
-    'psql_array',
-    'request_transaction_retry',
-    'retry_context',
-    'retry_on_retryable_failure',
-    'savepoint',
-    'TotallyDisconnected',
-    'transactional',
-    'validate_in_transaction',
-    'with_connection',
-    ]
+    "disable_all_database_connections",
+    "enable_all_database_connections",
+    "ExclusivelyConnected",
+    "FullyConnected",
+    "gen_retry_intervals",
+    "get_exception_class",
+    "get_first",
+    "get_one",
+    "in_transaction",
+    "is_deadlock_failure",
+    "is_retryable_failure",
+    "is_serialization_failure",
+    "is_unique_violation",
+    "make_deadlock_failure",
+    "make_serialization_failure",
+    "make_unique_violation",
+    "post_commit",
+    "post_commit_do",
+    "psql_array",
+    "request_transaction_retry",
+    "retry_context",
+    "retry_on_retryable_failure",
+    "savepoint",
+    "TotallyDisconnected",
+    "transactional",
+    "validate_in_transaction",
+    "with_connection",
+]
 
-from collections import (
-    defaultdict,
-    deque,
-)
-from contextlib import (
-    contextmanager,
-    ExitStack,
-)
+from collections import defaultdict, deque
+from contextlib import contextmanager, ExitStack
 from functools import wraps
-from itertools import (
-    chain,
-    islice,
-    repeat,
-    takewhile,
-)
+from itertools import chain, islice, repeat, takewhile
 import re
 import threading
 from time import sleep
@@ -55,34 +44,16 @@ import types
 from typing import Container
 
 from django.conf import settings
-from django.core.exceptions import (
-    MultipleObjectsReturned,
-    ValidationError,
-)
-from django.db import (
-    connection,
-    connections,
-    reset_queries,
-    transaction,
-)
+from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.db import connection, connections, reset_queries, transaction
 from django.db.models import Q
 from django.db.transaction import TransactionManagementError
-from django.db.utils import (
-    DatabaseError,
-    IntegrityError,
-    OperationalError,
-)
+from django.db.utils import DatabaseError, IntegrityError, OperationalError
 from django.http import Http404
-from maasserver.exceptions import (
-    MAASAPIBadRequest,
-    MAASAPIForbidden,
-)
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
 from maasserver.utils.asynchronous import DeferredHooks
 from provisioningserver.utils import flatten
-from provisioningserver.utils.backoff import (
-    exponential_growth,
-    full_jitter,
-)
+from provisioningserver.utils.backoff import exponential_growth, full_jitter
 from provisioningserver.utils.network import parse_integer
 from provisioningserver.utils.twisted import callOut
 import psycopg2
@@ -102,8 +73,8 @@ def get_exception_class(items):
     `MultipleObjectsReturned` class as defined in that model.  Otherwise,
     returns the generic class.
     """
-    model = getattr(items, 'model', None)
-    return getattr(model, 'MultipleObjectsReturned', MultipleObjectsReturned)
+    model = getattr(items, "model", None)
+    return getattr(model, "MultipleObjectsReturned", MultipleObjectsReturned)
 
 
 def get_one(items, exception_class=None):
@@ -149,10 +120,7 @@ def get_first(items):
 
 def psql_array(items, sql_type=None):
     """Return PostgreSQL array string and parameters."""
-    sql = (
-        "ARRAY[" +
-        ",".join(["%s"] * len(items)) +
-        "]")
+    sql = "ARRAY[" + ",".join(["%s"] * len(items)) + "]"
     if sql_type is not None:
         sql += "::%s[]" % sql_type
     return sql, items
@@ -217,6 +185,7 @@ class SerializationFailure(psycopg2.OperationalError):
     set to `SERIALIZATION_FAILURE` without subclassing. I suspect only the C
     interface can do that.
     """
+
     pgcode = SERIALIZATION_FAILURE
 
 
@@ -245,6 +214,7 @@ class DeadlockFailure(psycopg2.OperationalError):
     set to `DEADLOCK_DETECTED` without subclassing. I suspect only the C
     interface can do that.
     """
+
     pgcode = DEADLOCK_DETECTED
 
 
@@ -328,6 +298,7 @@ class UniqueViolation(psycopg2.IntegrityError):
     `UNIQUE_VIOLATION` without subclassing. I suspect only the C interface can
     do that.
     """
+
     pgcode = UNIQUE_VIOLATION
 
 
@@ -382,6 +353,7 @@ class ForeignKeyViolation(psycopg2.IntegrityError):
     to `FOREIGN_KEY_VIOLATION` without subclassing. I suspect only the C
     interface can do that.
     """
+
     pgcode = FOREIGN_KEY_VIOLATION
 
 
@@ -505,10 +477,10 @@ def is_retryable_failure(exception):
         subclasses.
     """
     return (
-        is_serialization_failure(exception) or
-        is_deadlock_failure(exception) or
-        is_unique_violation(exception) or
-        is_foreign_key_violation(exception)
+        is_serialization_failure(exception)
+        or is_deadlock_failure(exception)
+        or is_unique_violation(exception)
+        or is_foreign_key_violation(exception)
     )
 
 
@@ -556,6 +528,7 @@ def retry_on_retryable_failure(func, reset=noop):
         fails with a non-retryable failure, it will *not* be called.
 
     """
+
     @wraps(func)
     def retrier(*args, **kwargs):
         with retry_context:
@@ -580,7 +553,9 @@ def retry_on_retryable_failure(func, reset=noop):
                 except RetryTransaction:
                     raise TooManyRetries(
                         "This transaction has already been attempted "
-                        "multiple times; giving up.")
+                        "multiple times; giving up."
+                    )
+
     return retrier
 
 
@@ -618,7 +593,8 @@ class PostCommitHooks(DeferredHooks):
             # -- not just warn about it -- to ensure it gets fixed.
             self.reset()
             raise TransactionManagementError(
-                "Orphaned post-commit hooks found:\n" + description)
+                "Orphaned post-commit hooks found:\n" + description
+            )
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         if exc_value is None:
@@ -647,8 +623,7 @@ def post_commit(hook=None):
     elif callable(hook):
         hook = Deferred().addBoth(hook)
     else:
-        raise AssertionError(
-            "Not a Deferred or callable: %r" % (hook,))
+        raise AssertionError("Not a Deferred or callable: %r" % (hook,))
 
     post_commit_hooks.add(hook)
     return hook
@@ -709,6 +684,7 @@ def with_connection(func):
 
     This can be important when using non-transactional advisory locks.
     """
+
     @wraps(func)
     def call_with_connection(*args, **kwargs):
         with connected():
@@ -732,7 +708,8 @@ def transactional(func):
     """
     func_within_txn = transaction.atomic(func)  # For savepoints.
     func_outside_txn = retry_on_retryable_failure(
-        func_within_txn, reset=post_commit_hooks.reset)
+        func_within_txn, reset=post_commit_hooks.reset
+    )
 
     @wraps(func)
     def call_within_transaction(*args, **kwargs):
@@ -788,7 +765,8 @@ def savepoint():
                 yield
     else:
         raise TransactionManagementError(
-            "Savepoints cannot be created outside of a transaction.")
+            "Savepoints cannot be created outside of a transaction."
+        )
 
 
 def in_transaction(_connection=None):
@@ -821,7 +799,8 @@ def validate_in_transaction(connection):
             "are done in a transaction. Further, lobject() has been known to "
             "segfault when used outside of a transaction. This assertion has "
             "prevented the use of lobject() outside of a transaction. Please "
-            "investigate.")
+            "investigate."
+        )
 
 
 class DisabledDatabaseConnection:
@@ -838,17 +817,20 @@ class DisabledDatabaseConnection:
     def __getattr__(self, name):
         raise RuntimeError(
             "Database connections in this thread (%s) are "
-            "disabled." % threading.currentThread().name)
+            "disabled." % threading.currentThread().name
+        )
 
     def __setattr__(self, name, value):
         raise RuntimeError(
             "Database connections in this thread (%s) are "
-            "disabled." % threading.currentThread().name)
+            "disabled." % threading.currentThread().name
+        )
 
     def __delattr__(self, name):
         raise RuntimeError(
             "Database connections in this thread (%s) are "
-            "disabled." % threading.currentThread().name)
+            "disabled." % threading.currentThread().name
+        )
 
 
 def disable_all_database_connections():
@@ -961,23 +943,20 @@ def parse_item_operation(specifier):
     """
     specifier = specifier.strip()
 
-    from operator import (
-        and_ as AND,
-        inv as INV,
-        or_ as OR,
-    )
+    from operator import and_ as AND, inv as INV, or_ as OR
+
     AND_NOT = lambda current, next: AND(current, INV(next))
 
-    if specifier.startswith('|'):
+    if specifier.startswith("|"):
         op = OR
         specifier = specifier[1:]
-    elif specifier.startswith('&'):
+    elif specifier.startswith("&"):
         op = AND
         specifier = specifier[1:]
-    elif specifier.startswith('not_'):
+    elif specifier.startswith("not_"):
         op = AND_NOT
         specifier = specifier[4:]
-    elif specifier.startswith('!'):
+    elif specifier.startswith("!"):
         op = AND_NOT
         specifier = specifier[1:]
     else:
@@ -987,7 +966,8 @@ def parse_item_operation(specifier):
 
 
 def parse_item_specifier_type(
-        specifier, spec_types: Container = None, separator=':'):
+    specifier, spec_types: Container = None, separator=":"
+):
     """
     Returns a tuple that splits the string int a specifier, and its specifier
     type.
@@ -1017,10 +997,10 @@ def get_model_object_name(queryset):
     """Returns the model object name for the given `QuerySet`, or None if
     it cannot be determined.
     """
-    if hasattr(queryset, 'model'):
-        if hasattr(queryset.model, '_meta'):
-            metadata = getattr(queryset.model, '_meta')
-            if hasattr(metadata, 'object_name'):
+    if hasattr(queryset, "model"):
+        if hasattr(queryset.model, "_meta"):
+            metadata = getattr(queryset.model, "_meta")
+            if hasattr(metadata, "object_name"):
                 return metadata.object_name
     return None
 
@@ -1068,7 +1048,7 @@ class MAASQueriesMixin(object):
             return [str(specifiers)]
         elif isinstance(specifiers, str):
             return [
-                '&' + specifier.strip() for specifier in specifiers.split(',')
+                "&" + specifier.strip() for specifier in specifiers.split(",")
             ]
         elif isinstance(specifiers, dict):
             return specifiers
@@ -1076,7 +1056,8 @@ class MAASQueriesMixin(object):
             return list(flatten(specifiers))
 
     def get_filter_function(
-            self, specifier_type, spec_types, item, separator=':'):
+        self, specifier_type, spec_types, item, separator=":"
+    ):
         """Returns a function that must return a Q() based on some pervious
         Q(), an operation function (which will manipulate it), and the data
         that will be used as an argument to the filter operation function.
@@ -1109,7 +1090,8 @@ class MAASQueriesMixin(object):
                 # manager_object is a Django Manager instance.
                 (manager_object, filter_from_object) = query
                 sub_ids = manager_object.filter_by_specifiers(
-                    item).values_list(filter_from_object + '__id', flat=True)
+                    item
+                ).values_list(filter_from_object + "__id", flat=True)
                 # Return a function to filter the current object based on
                 # its IDs (as gathered from the query above to the related
                 # object).
@@ -1125,14 +1107,14 @@ class MAASQueriesMixin(object):
                     # specifier-based filter for Subnet.
                     query, subordinate = query.split(separator, 1)
                     item = subordinate + separator + item
-                elif '__' in query:
+                elif "__" in query:
                     # If the value for this query specifier contains the string
                     # '__', assume it's a Django filter expression, and return
                     # the appropriate query. Disambiguate what could be an
                     # 'alias expression' by allowing the __ to appear before
                     # the filter. (that is, prefix the filter string with __
                     # to query the current object.)
-                    if query.startswith('__'):
+                    if query.startswith("__"):
                         query = query[2:]
                     kwargs = {query: item}
                     return lambda cq, op, i: op(cq, Q(**kwargs))
@@ -1146,7 +1128,8 @@ class MAASQueriesMixin(object):
         return None
 
     def get_specifiers_q(
-            self, specifiers, specifier_types=None, separator=':', **kwargs):
+        self, specifiers, specifier_types=None, separator=":", **kwargs
+    ):
         """Returns a Q object for objects matching the given specifiers.
 
         See documentation for `filter_by_specifiers()`.
@@ -1163,26 +1146,28 @@ class MAASQueriesMixin(object):
             for key in specifiers.keys():
                 assert isinstance(specifiers[key], list)
                 constraints = [
-                    key + separator + value
-                    for value in specifiers[key]
+                    key + separator + value for value in specifiers[key]
                 ]
                 # Leave off specifier_types here because this recursion
                 # will go back to the subclass to get the types filled in.
                 current_q &= self.get_specifiers_q(
-                    constraints, separator=separator)
+                    constraints, separator=separator
+                )
         else:
             for item in specifiers:
                 item, op = parse_item_operation(item)
                 item, specifier_type = parse_item_specifier_type(
-                    item, spec_types=specifier_types, separator=separator)
+                    item, spec_types=specifier_types, separator=separator
+                )
                 query = self.get_filter_function(
-                    specifier_type, specifier_types, item, separator=separator)
+                    specifier_type, specifier_types, item, separator=separator
+                )
                 current_q = query(current_q, op, item)
         if len(kwargs) > 0:
             current_q &= Q(**kwargs)
         return current_q
 
-    def filter_by_specifiers(self, specifiers, separator=':', **kwargs):
+    def filter_by_specifiers(self, specifiers, separator=":", **kwargs):
         """Filters this object by the given specifiers.
 
         If additional keyword arguments are supplied, they will also be queried
@@ -1192,7 +1177,8 @@ class MAASQueriesMixin(object):
         """
         specifiers = self.format_specifiers(specifiers)
         query = self.get_specifiers_q(
-            specifiers, separator=separator, **kwargs)
+            specifiers, separator=separator, **kwargs
+        )
         return self.filter(query)
 
     def exclude_by_specifiers(self, specifiers, **kwargs):
@@ -1218,14 +1204,14 @@ class MAASQueriesMixin(object):
         referred to by the specifier_types dictionary passed into
         get_specifiers_q() by the subclass.)
         """
-        if item.lower() == 'untagged':
+        if item.lower() == "untagged":
             vid = 0
         else:
             vid = parse_integer(item)
-        if vid < 0 or vid >= 0xfff:
+        if vid < 0 or vid >= 0xFFF:
             raise ValidationError(
-                "VLAN tag (VID) out of range "
-                "(0-4094; 0 for untagged.)")
+                "VLAN tag (VID) out of range " "(0-4094; 0 for untagged.)"
+            )
         current_q = op(current_q, Q(vlan__vid=vid))
         return current_q
 
@@ -1253,7 +1239,7 @@ class MAASQueriesMixin(object):
         # in this function, so make sure the interfaces are grouped by their
         # attached nodes.
         matches = matches.order_by(query)
-        matches = matches.values_list('id', query)
+        matches = matches.values_list("id", query)
         foreign_object_map = defaultdict(list)
         object_ids = set()
         object_id = None
@@ -1280,16 +1266,15 @@ class MAASQueriesMixin(object):
         if isinstance(specifiers, str):
             specifiers = specifiers.strip()
         if specifiers is None or specifiers == "":
-            raise MAASAPIBadRequest(
-                "%s specifier required." % object_name)
+            raise MAASAPIBadRequest("%s specifier required." % object_name)
         try:
             object = get_one(self.filter_by_specifiers(specifiers, **kwargs))
             if object is None:
-                raise Http404(
-                    'No %s matches the given query.' % object_name)
+                raise Http404("No %s matches the given query." % object_name)
         except self.model.MultipleObjectsReturned:
             raise MAASAPIForbidden(
-                "Too many %s objects match the given query." % object_name)
+                "Too many %s objects match the given query." % object_name
+            )
         return object
 
     def get_object_id(self, name, prefix=None):
@@ -1323,7 +1308,7 @@ class MAASQueriesMixin(object):
         if prefix is None:
             prefix = get_model_object_name(self).lower()
         name = name.strip()
-        match = re.match(r'%s-(\d+)$' % prefix, name)
+        match = re.match(r"%s-(\d+)$" % prefix, name)
         if match is not None:
             (object_id,) = match.groups()
             object_id = int(object_id)
@@ -1376,7 +1361,6 @@ def count_queries(log_func):
     """
 
     def wrapper(func):
-
         def inner_wrapper(*args, **kwargs):
             # Reset the queries count before performing the function.
             reset_queries()
@@ -1385,20 +1369,22 @@ def count_queries(log_func):
             result = func(*args, **kwargs)
 
             # Calculate the query_time and log the number and time.
-            query_time = sum([
-                float(query.get('time', 0))
-                for query in connection.queries
-            ])
-            log_func('[QUERIES] %s executed %s queries in %s seconds' % (
-                func.__name__, len(connection.queries), query_time))
+            query_time = sum(
+                [float(query.get("time", 0)) for query in connection.queries]
+            )
+            log_func(
+                "[QUERIES] %s executed %s queries in %s seconds"
+                % (func.__name__, len(connection.queries), query_time)
+            )
 
             # Log all the queries if requested.
-            if (getattr(func, '__log_sql_calls__', False) or
-                    getattr(settings, 'DEBUG_QUERIES_LOG_ALL', False)):
-                log_func('[QUERIES] === Start SQL Log: %s ===' % func.__name__)
+            if getattr(func, "__log_sql_calls__", False) or getattr(
+                settings, "DEBUG_QUERIES_LOG_ALL", False
+            ):
+                log_func("[QUERIES] === Start SQL Log: %s ===" % func.__name__)
                 for query in connection.queries:
-                    log_func('[QUERIES] %s' % query.get('sql'))
-                log_func('[QUERIES] === End SQL Log: %s ===' % func.__name__)
+                    log_func("[QUERIES] %s" % query.get("sql"))
+                log_func("[QUERIES] === End SQL Log: %s ===" % func.__name__)
 
             return result
 

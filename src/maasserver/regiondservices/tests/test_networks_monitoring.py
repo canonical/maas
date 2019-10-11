@@ -17,17 +17,9 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import DocTestMatches
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import (
-    Contains,
-    Equals,
-    HasLength,
-    IsInstance,
-)
+from testtools.matchers import Contains, Equals, HasLength, IsInstance
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import inlineCallbacks, succeed
 
 
 class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
@@ -53,7 +45,8 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
         }
 
         service = RegionNetworksMonitoringService(
-            reactor, enable_beaconing=False)
+            reactor, enable_beaconing=False
+        )
         service.getInterfaces = lambda: succeed(interfaces)
 
         with FakeLogger("maas") as logger:
@@ -61,9 +54,13 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             yield service.stopService()
 
         # Nothing was logged.
-        self.assertThat(logger.output, DocTestMatches(
-            "Networks monitoring service: "
-            "Process ID ... assumed responsibility."))
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                "Networks monitoring service: "
+                "Process ID ... assumed responsibility."
+            ),
+        )
 
         def get_interfaces():
             return list(region.interface_set.all())
@@ -76,7 +73,8 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
         interface_expected = interfaces[interface_observed.name]
         self.assertThat(
             interface_observed.mac_address.raw,
-            Equals(interface_expected["mac_address"]))
+            Equals(interface_expected["mac_address"]),
+        )
 
     @wait_for(30)
     @inlineCallbacks
@@ -87,7 +85,10 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             service.startService()
             yield service.stopService()
 
-        self.assertThat(logger.output, DocTestMatches(
-            "...Failed to update and/or record network interface "
-            "configuration: RegionController matching query does not exist...")
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                "...Failed to update and/or record network interface "
+                "configuration: RegionController matching query does not exist..."
+            ),
         )

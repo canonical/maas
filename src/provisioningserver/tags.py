@@ -3,11 +3,7 @@
 
 """Cluster-side evaluation of tags."""
 
-__all__ = [
-    'merge_details',
-    'merge_details_cleanly',
-    'process_node_tags',
-    ]
+__all__ = ["merge_details", "merge_details_cleanly", "process_node_tags"]
 
 from collections import OrderedDict
 from functools import partial
@@ -19,10 +15,7 @@ import urllib.request
 
 import bson
 from lxml import etree
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
 
@@ -53,19 +46,22 @@ def process_response(response):
 
     """
     if response.code != http.client.OK:
-        text_status = http.client.responses.get(response.code, '<unknown>')
-        message = '%s, expected 200 OK' % text_status
+        text_status = http.client.responses.get(response.code, "<unknown>")
+        message = "%s, expected 200 OK" % text_status
         raise urllib.error.HTTPError(
-            response.url, response.code, message,
-            response.headers, response.fp)
+            response.url, response.code, message, response.headers, response.fp
+        )
     content = response.read()
     content_type = response.headers.get_content_type()
     if content_type == "application/bson":
         return bson.BSON(content).decode()
     elif content_type == "application/json":
         content_charset = response.headers.get_content_charset()
-        return json.loads(content.decode(
-            "utf-8" if content_charset is None else content_charset))
+        return json.loads(
+            content.decode(
+                "utf-8" if content_charset is None else content_charset
+            )
+        )
     else:
         return content
 
@@ -79,14 +75,15 @@ def get_details_for_nodes(client, system_ids):
     """
     details = {}
     for system_id in system_ids:
-        path = '/MAAS/api/2.0/nodes/%s/' % system_id
-        data = process_response(client.get(path, op='details'))
+        path = "/MAAS/api/2.0/nodes/%s/" % system_id
+        data = process_response(client.get(path, op="details"))
         details[system_id] = data
     return details
 
 
 def post_updated_nodes(
-        client, rack_id, tag_name, tag_definition, added, removed):
+    client, rack_id, tag_name, tag_definition, added, removed
+):
     """Update the nodes relevant for a particular tag.
 
     :param client: MAAS client
@@ -97,15 +94,25 @@ def post_updated_nodes(
     :param added: Set of nodes to add
     :param removed: Set of nodes to remove
     """
-    path = '/MAAS/api/2.0/tags/%s/' % (tag_name,)
+    path = "/MAAS/api/2.0/tags/%s/" % (tag_name,)
     log.debug(
         "Updating nodes for {name}, adding {adding} removing {removing}",
-        name=tag_name, adding=added, removing=removed)
+        name=tag_name,
+        adding=added,
+        removing=removed,
+    )
     try:
-        return process_response(client.post(
-            path, op='update_nodes', as_json=True,
-            rack_controller=rack_id, definition=tag_definition,
-            add=added, remove=removed))
+        return process_response(
+            client.post(
+                path,
+                op="update_nodes",
+                as_json=True,
+                rack_controller=rack_id,
+                definition=tag_definition,
+                add=added,
+                remove=removed,
+            )
+        )
     except urllib.error.HTTPError as e:
         if e.code == http.client.CONFLICT:
             if e.fp is not None:
@@ -274,11 +281,20 @@ def gen_node_details(client, batches):
             yield system_id, merge_details(details)
 
 
-def process_all(client, rack_id, tag_name, tag_definition, system_ids,
-                xpath, batch_size=None):
+def process_all(
+    client,
+    rack_id,
+    tag_name,
+    tag_definition,
+    system_ids,
+    xpath,
+    batch_size=None,
+):
     log.debug(
         "Processing {nums} system_ids for tag {name}.",
-        nums=len(system_ids), name=tag_name)
+        nums=len(system_ids),
+        name=tag_name,
+    )
 
     if batch_size is None:
         batch_size = DEFAULT_BATCH_SIZE
@@ -286,15 +302,27 @@ def process_all(client, rack_id, tag_name, tag_definition, system_ids,
     batches = gen_batches(system_ids, batch_size)
     node_details = gen_node_details(client, batches)
     nodes_matched, nodes_unmatched = classify(
-        partial(try_match_xpath, xpath, logger=maaslog), node_details)
+        partial(try_match_xpath, xpath, logger=maaslog), node_details
+    )
     post_updated_nodes(
-        client, rack_id, tag_name, tag_definition,
-        nodes_matched, nodes_unmatched)
+        client,
+        rack_id,
+        tag_name,
+        tag_definition,
+        nodes_matched,
+        nodes_unmatched,
+    )
 
 
 def process_node_tags(
-        rack_id, nodes, tag_name, tag_definition, tag_nsmap,
-        client, batch_size=None):
+    rack_id,
+    nodes,
+    tag_name,
+    tag_definition,
+    tag_nsmap,
+    client,
+    batch_size=None,
+):
     """Update the nodes for a new/changed tag definition.
 
     :param rack_id: System ID for the rack controller.
@@ -308,10 +336,13 @@ def process_node_tags(
     # We evaluate this early, so we can fail before sending a bunch of data to
     # the server
     xpath = etree.XPath(tag_definition, namespaces=tag_nsmap)
-    system_ids = [
-        node["system_id"]
-        for node in nodes
-    ]
+    system_ids = [node["system_id"] for node in nodes]
     process_all(
-        client, rack_id, tag_name, tag_definition, system_ids, xpath,
-        batch_size=batch_size)
+        client,
+        rack_id,
+        tag_name,
+        tag_definition,
+        system_ids,
+        xpath,
+        batch_size=batch_size,
+    )

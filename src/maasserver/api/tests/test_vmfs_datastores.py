@@ -9,10 +9,7 @@ import http.client
 import random
 import uuid
 
-from maasserver.enum import (
-    FILESYSTEM_GROUP_TYPE,
-    NODE_STATUS,
-)
+from maasserver.enum import FILESYSTEM_GROUP_TYPE, NODE_STATUS
 from maasserver.models.filesystemgroup import VMFS
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
@@ -21,16 +18,10 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
-from maasserver.utils.converters import (
-    human_readable_bytes,
-    json_load_bytes,
-)
+from maasserver.utils.converters import human_readable_bytes, json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-)
+from testtools.matchers import ContainsDict, Equals
 
 
 class TestVMFSDatastoresAPI(APITestCase.ForUser):
@@ -38,13 +29,14 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
 
     def get_vmfs_uri(self, node):
         """Return the VMFS's URI on the API."""
-        return reverse('vmfs_datastores_handler', args=[node.system_id])
+        return reverse("vmfs_datastores_handler", args=[node.system_id])
 
     def test_handler_path(self):
         node = factory.make_Machine()
         self.assertEqual(
-            '/MAAS/api/2.0/nodes/%s/vmfs-datastores/' % (node.system_id),
-            self.get_vmfs_uri(node))
+            "/MAAS/api/2.0/nodes/%s/vmfs-datastores/" % (node.system_id),
+            self.get_vmfs_uri(node),
+        )
 
     def test_GET(self):
         node = factory.make_Machine()
@@ -58,17 +50,20 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
         parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
             [vmfs.id for vmfs in vmfs_datastores],
-            [result['id'] for result in parsed_results])
+            [result["id"] for result in parsed_results],
+        )
 
     def test_POST_raises_403_if_not_admin(self):
         node = factory.make_Machine(status=NODE_STATUS.READY)
         block_device = factory.make_PhysicalBlockDevice(node=node)
 
         response = self.client.post(
-            self.get_vmfs_uri(node), {
-                'name': factory.make_name('name'),
-                'block_devices': [block_device.id],
-            })
+            self.get_vmfs_uri(node),
+            {
+                "name": factory.make_name("name"),
+                "block_devices": [block_device.id],
+            },
+        )
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
     def test_POST_raises_409_if_not_ready(self):
@@ -77,10 +72,12 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
         block_device = factory.make_PhysicalBlockDevice(node=node)
 
         response = self.client.post(
-            self.get_vmfs_uri(node), {
-                'name': factory.make_name('name'),
-                'block_devices': [block_device.id],
-            })
+            self.get_vmfs_uri(node),
+            {
+                "name": factory.make_name("name"),
+                "block_devices": [block_device.id],
+            },
+        )
         self.assertThat(response, HasStatusCode(http.client.CONFLICT))
 
     def test_POST_raises_400_if_form_validation_fails(self):
@@ -93,43 +90,49 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
     def test_POST_creates_with_block_devices_and_partitions(self):
         self.become_admin()
         node = factory.make_Machine(
-            status=NODE_STATUS.READY, with_boot_disk=False)
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
         node.boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
         layout = VMFS6StorageLayout(node)
         layout.configure()
         block_devices = [
-            factory.make_PhysicalBlockDevice(node=node)
-            for _ in range(3)
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(3)
         ]
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=MIN_PARTITION_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE)
+            size=MIN_PARTITION_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         partitions = [
             partition_table.add_partition(size=MIN_PARTITION_SIZE)
             for _ in range(2)
         ]
-        name = factory.make_name('name')
+        name = factory.make_name("name")
         vmfs_uuid = uuid.uuid4()
 
         response = self.client.post(
-            self.get_vmfs_uri(node), {
-                'name': name,
-                'uuid': vmfs_uuid,
-                'block_devices': [bd.id for bd in block_devices],
-                'partitions': [part.id for part in partitions],
-            })
+            self.get_vmfs_uri(node),
+            {
+                "name": name,
+                "uuid": vmfs_uuid,
+                "block_devices": [bd.id for bd in block_devices],
+                "partitions": [part.id for part in partitions],
+            },
+        )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertEquals(node.system_id, parsed_results['system_id'])
+        self.assertEquals(node.system_id, parsed_results["system_id"])
         # VMFS should be using the 5 devices we listed above.
-        self.assertEquals(5, len(parsed_results['devices']))
+        self.assertEquals(5, len(parsed_results["devices"]))
         # VMFS should be using all the block devices we created.
         self.assertItemsEqual(
             [bd.id for bd in block_devices] + [block_device.id],
-            set([result['device_id'] for result in parsed_results['devices']]))
+            set([result["device_id"] for result in parsed_results["devices"]]),
+        )
 
 
 class TestVMFSDatastoreAPI(APITestCase.ForUser):
@@ -138,45 +141,58 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
     def get_vmfs_uri(self, vmfs):
         """Return the VMFS's URI on the API."""
         return reverse(
-            'vmfs_datastore_handler',
-            args=[vmfs.get_node().system_id, vmfs.id])
+            "vmfs_datastore_handler", args=[vmfs.get_node().system_id, vmfs.id]
+        )
 
     def test_handler_path(self):
         node = factory.make_Machine()
         vmfs = factory.make_VMFS(node=node)
         self.assertEquals(
-            '/MAAS/api/2.0/nodes/%s/vmfs-datastore/%s/' % (
-                node.system_id, vmfs.id),
-            self.get_vmfs_uri(vmfs))
+            "/MAAS/api/2.0/nodes/%s/vmfs-datastore/%s/"
+            % (node.system_id, vmfs.id),
+            self.get_vmfs_uri(vmfs),
+        )
 
     def test_GET(self):
         part = factory.make_Partition()
-        name = factory.make_name('datastore')
+        name = factory.make_name("datastore")
         vmfs = VMFS.objects.create_vmfs(name, [part])
 
         response = self.client.get(self.get_vmfs_uri(vmfs))
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_result = json_load_bytes(response.content)
 
-        self.assertThat(parsed_result, ContainsDict({
-            'id': Equals(vmfs.id),
-            'system_id': Equals(vmfs.get_node().system_id),
-            'uuid': Equals(vmfs.uuid),
-            'name': Equals(vmfs.name),
-            'size': Equals(vmfs.get_size()),
-            'human_size': Equals(human_readable_bytes(vmfs.get_size())),
-            'filesystem': Equals({
-                'fstype': 'vmfs6',
-                'mount_point': '/vmfs/volumes/%s' % name,
-            }),
-        }))
+        self.assertThat(
+            parsed_result,
+            ContainsDict(
+                {
+                    "id": Equals(vmfs.id),
+                    "system_id": Equals(vmfs.get_node().system_id),
+                    "uuid": Equals(vmfs.uuid),
+                    "name": Equals(vmfs.name),
+                    "size": Equals(vmfs.get_size()),
+                    "human_size": Equals(
+                        human_readable_bytes(vmfs.get_size())
+                    ),
+                    "filesystem": Equals(
+                        {
+                            "fstype": "vmfs6",
+                            "mount_point": "/vmfs/volumes/%s" % name,
+                        }
+                    ),
+                }
+            ),
+        )
         self.assertEquals(
-            vmfs.filesystems.count(), len(parsed_result['devices']))
+            vmfs.filesystems.count(), len(parsed_result["devices"])
+        )
 
     def test_GET_404_when_not_vmfs(self):
         not_vmfs = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6))
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6
+            )
+        )
         response = self.client.get(self.get_vmfs_uri(not_vmfs))
         self.assertThat(response, HasStatusCode(http.client.NOT_FOUND))
 
@@ -197,26 +213,31 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
         self.become_admin()
         node = factory.make_Machine(status=NODE_STATUS.READY)
         vmfs = factory.make_VMFS(node=node)
-        new_name = factory.make_name('name')
+        new_name = factory.make_name("name")
         new_uuid = str(uuid.uuid4())
         new_bd = factory.make_PhysicalBlockDevice(node=node)
         new_partition = factory.make_Partition(node=node)
         del_partition = random.choice(vmfs.filesystems.all()).get_parent()
         partition_ids = set(
-            [fs.get_parent().id for fs in vmfs.filesystems.all()])
+            [fs.get_parent().id for fs in vmfs.filesystems.all()]
+        )
         partition_ids.add(new_partition.id)
         partition_ids.remove(del_partition.id)
 
-        response = self.client.put(self.get_vmfs_uri(vmfs), {
-            'name': new_name,
-            'uuid': new_uuid,
-            'add_block_devices': [
-                random.choice([new_bd.id, new_bd.name])],
-            'add_partitions': [
-                random.choice([new_partition.id, new_partition.name])],
-            'remove_partitions': [
-                random.choice([del_partition.id, del_partition.name])],
-            })
+        response = self.client.put(
+            self.get_vmfs_uri(vmfs),
+            {
+                "name": new_name,
+                "uuid": new_uuid,
+                "add_block_devices": [random.choice([new_bd.id, new_bd.name])],
+                "add_partitions": [
+                    random.choice([new_partition.id, new_partition.name])
+                ],
+                "remove_partitions": [
+                    random.choice([del_partition.id, del_partition.name])
+                ],
+            },
+        )
         self.assertThat(response, HasStatusCode(http.client.OK))
         vmfs = reload_object(vmfs)
         partition_ids.add(new_bd.get_partitiontable().partitions.first().id)
@@ -225,7 +246,8 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
         self.assertEquals(new_uuid, vmfs.uuid)
         self.assertItemsEqual(
             partition_ids,
-            [fs.get_parent().id for fs in vmfs.filesystems.all()])
+            [fs.get_parent().id for fs in vmfs.filesystems.all()],
+        )
 
     def test_DELETE(self):
         self.become_admin()
@@ -252,7 +274,10 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
         self.become_admin()
         node = factory.make_Machine(status=NODE_STATUS.READY)
         not_vmfs = factory.make_FilesystemGroup(
-            node=node, group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6))
+            node=node,
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6
+            ),
+        )
         response = self.client.delete(self.get_vmfs_uri(not_vmfs))
         self.assertThat(response, HasStatusCode(http.client.NOT_FOUND))

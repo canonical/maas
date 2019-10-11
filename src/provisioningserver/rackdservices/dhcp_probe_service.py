@@ -3,34 +3,23 @@
 
 """ DHCP probing service."""
 
-__all__ = [
-    "DHCPProbeService",
-    ]
+__all__ = ["DHCPProbeService"]
 
 from datetime import timedelta
 import socket
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.dhcp.detect import probe_interface
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import ReportForeignDHCPServer
 from provisioningserver.utils.network import (
     get_all_interfaces_definition,
     has_ipv4_address,
 )
-from provisioningserver.utils.twisted import (
-    pause,
-    retries,
-)
+from provisioningserver.utils.twisted import pause, retries
 from twisted.application.internet import TimerService
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-)
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
 from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
 
@@ -52,7 +41,8 @@ class DHCPProbeService(TimerService):
     def __init__(self, client_service, reactor):
         # Call self.try_probe_dhcp() every self.check_interval.
         super(DHCPProbeService, self).__init__(
-            self.check_interval, self.try_probe_dhcp)
+            self.check_interval, self.try_probe_dhcp
+        )
         self.clock = reactor
         self.client_service = client_service
 
@@ -65,17 +55,19 @@ class DHCPProbeService(TimerService):
     def _get_interfaces(self):
         """Return the interfaces for this rack controller."""
         d = deferToThread(get_all_interfaces_definition)
-        d.addCallback(lambda interfaces: [
-            name
-            for name, info in interfaces.items()
-            # No IPv4 address (unfortunately) means that MAAS cannot probe
-            # this interface. This is because ultimately the DHCP probe
-            # mechanism must send out a unicast UDP packet from the
-            # interface in order to receive a response, and the TCP/IP
-            # stack will drop packets coming back from the server if an
-            # unexpected address is used.
-            if info["enabled"] and has_ipv4_address(interfaces, name)
-        ])
+        d.addCallback(
+            lambda interfaces: [
+                name
+                for name, info in interfaces.items()
+                # No IPv4 address (unfortunately) means that MAAS cannot probe
+                # this interface. This is because ultimately the DHCP probe
+                # mechanism must send out a unicast UDP packet from the
+                # interface in order to receive a response, and the TCP/IP
+                # stack will drop packets coming back from the server if an
+                # unexpected address is used.
+                if info["enabled"] and has_ipv4_address(interfaces, name)
+            ]
+        )
         return d
 
     def _inform_region_of_dhcp(self, client, name, dhcp_ip):
@@ -94,11 +86,15 @@ class DHCPProbeService(TimerService):
             maaslog.error(
                 "Unable to inform region of DHCP server: the region "
                 "does not yet support the ReportForeignDHCPServer RPC "
-                "method.")
+                "method."
+            )
 
         d = client(
-            ReportForeignDHCPServer, system_id=client.localIdent,
-            interface_name=name, dhcp_ip=dhcp_ip)
+            ReportForeignDHCPServer,
+            system_id=client.localIdent,
+            interface_name=name,
+            dhcp_ip=dhcp_ip,
+        )
         d.addErrback(eb_unhandled)
         return d
 
@@ -121,21 +117,24 @@ class DHCPProbeService(TimerService):
         client = yield self._tryGetClient()
         if client is None:
             maaslog.error(
-                "Can't initiate DHCP probe; no RPC connection to region.")
+                "Can't initiate DHCP probe; no RPC connection to region."
+            )
             return
 
         # Iterate over interfaces and probe each one.
         interfaces = yield self._get_interfaces()
         self.log(
-            "Probe for external DHCP servers started on interfaces: %s." % (
-                ', '.join(interfaces)))
+            "Probe for external DHCP servers started on interfaces: %s."
+            % (", ".join(interfaces))
+        )
         for interface in interfaces:
             try:
                 servers = yield maybeDeferred(probe_interface, interface)
             except socket.error as e:
                 error = (
                     "Failed to probe for external DHCP servers on interface "
-                    "'%s'." % interface)
+                    "'%s'." % interface
+                )
                 if is_dev_environment():
                     error += " (Did you configure authbind per HACKING.rst?)"
                 self.err(e, error)
@@ -146,10 +145,10 @@ class DHCPProbeService(TimerService):
                     # it can only track one per VLAN (this could be considered
                     # a bug).
                     yield self._inform_region_of_dhcp(
-                        client, interface, servers.pop())
+                        client, interface, servers.pop()
+                    )
                 else:
-                    yield self._inform_region_of_dhcp(
-                        client, interface, None)
+                    yield self._inform_region_of_dhcp(client, interface, None)
         self.log("External DHCP probe complete.")
 
     @inlineCallbacks
@@ -158,9 +157,7 @@ class DHCPProbeService(TimerService):
         try:
             yield self.probe_dhcp()
         except Exception as error:
-            maaslog.error(
-                "Unable to probe for DHCP servers: %s",
-                str(error))
+            maaslog.error("Unable to probe for DHCP servers: %s", str(error))
             self.err(error, "Unable to probe for DHCP servers.")
         else:
             log.debug("Finished periodic DHCP probe.")

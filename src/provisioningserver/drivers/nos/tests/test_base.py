@@ -39,49 +39,49 @@ class FakeNOSDriverBase(NOSDriverBase):
 
 def make_nos_driver_base(name=None, description=None, settings=None):
     if name is None:
-        name = factory.make_name('cardless')
+        name = factory.make_name("cardless")
     if description is None:
-        description = factory.make_name('description')
+        description = factory.make_name("description")
     if settings is None:
         settings = []
     return FakeNOSDriverBase(name, description, settings)
 
 
 class TestFakeNOSDriverBase(MAASTestCase):
-
     def test_attributes(self):
-        fake_name = factory.make_name('name')
-        fake_description = factory.make_name('description')
-        fake_setting = factory.make_name('setting')
+        fake_name = factory.make_name("name")
+        fake_description = factory.make_name("description")
+        fake_setting = factory.make_name("setting")
         fake_settings = [
-            make_setting_field(
-                fake_setting, fake_setting.title()),
-            ]
+            make_setting_field(fake_setting, fake_setting.title())
+        ]
         attributes = {
-            'name': fake_name,
-            'description': fake_description,
-            'settings': fake_settings,
-            }
+            "name": fake_name,
+            "description": fake_description,
+            "settings": fake_settings,
+        }
         fake_driver = FakeNOSDriverBase(
-            fake_name, fake_description, fake_settings)
+            fake_name, fake_description, fake_settings
+        )
         self.assertAttributes(fake_driver, attributes)
 
     def test_make_nos_driver_base(self):
-        fake_name = factory.make_name('name')
-        fake_description = factory.make_name('description')
-        fake_setting = factory.make_name('setting')
+        fake_name = factory.make_name("name")
+        fake_description = factory.make_name("description")
+        fake_setting = factory.make_name("setting")
         fake_settings = [
-            make_setting_field(
-                fake_setting, fake_setting.title()),
-            ]
+            make_setting_field(fake_setting, fake_setting.title())
+        ]
         attributes = {
-            'name': fake_name,
-            'description': fake_description,
-            'settings': fake_settings,
-            }
+            "name": fake_name,
+            "description": fake_description,
+            "settings": fake_settings,
+        }
         fake_driver = make_nos_driver_base(
-            name=fake_name, description=fake_description,
-            settings=fake_settings)
+            name=fake_name,
+            description=fake_description,
+            settings=fake_settings,
+        )
         self.assertAttributes(fake_driver, attributes)
 
     def test_make_nos_driver_base_makes_name_and_description(self):
@@ -93,30 +93,35 @@ class TestFakeNOSDriverBase(MAASTestCase):
         fake_driver = make_nos_driver_base()
         self.assertRaises(
             NotImplementedError,
-            fake_driver.is_switch_supported, sentinel.vendor, sentinel.model)
+            fake_driver.is_switch_supported,
+            sentinel.vendor,
+            sentinel.model,
+        )
 
 
 class TestNOSDriverBase(MAASTestCase):
-
     def test_get_schema(self):
-        fake_name = factory.make_name('name')
-        fake_description = factory.make_name('description')
-        fake_setting = factory.make_name('setting')
+        fake_name = factory.make_name("name")
+        fake_description = factory.make_name("description")
+        fake_setting = factory.make_name("setting")
         fake_settings = [
-            make_setting_field(
-                fake_setting, fake_setting.title()),
-            ]
+            make_setting_field(fake_setting, fake_setting.title())
+        ]
         fake_driver = make_nos_driver_base(
-            name=fake_name, description=fake_description,
-            settings=fake_settings)
-        self.assertEqual({
-            'driver_type': 'nos',
-            'name': fake_name,
-            'description': fake_description,
-            'fields': fake_settings,
-            'deployable': fake_driver.deployable,
+            name=fake_name,
+            description=fake_description,
+            settings=fake_settings,
+        )
+        self.assertEqual(
+            {
+                "driver_type": "nos",
+                "name": fake_name,
+                "description": fake_description,
+                "fields": fake_settings,
+                "deployable": fake_driver.deployable,
             },
-            fake_driver.get_schema())
+            fake_driver.get_schema(),
+        )
 
     def test_get_schema_returns_valid_schema(self):
         fake_driver = make_nos_driver_base()
@@ -143,16 +148,14 @@ class FakeNOSDriver(NOSDriver):
         return False
 
 
-def make_nos_driver(name=None, description=None, settings=None,
-                    clock=reactor):
+def make_nos_driver(name=None, description=None, settings=None, clock=reactor):
     if name is None:
-        name = factory.make_name('networkless')
+        name = factory.make_name("networkless")
     if description is None:
-        description = factory.make_name('description')
+        description = factory.make_name("description")
     if settings is None:
         settings = []
-    return FakeNOSDriver(
-        name, description, settings, clock=clock)
+    return FakeNOSDriver(name, description, settings, clock=clock)
 
 
 class TestNOSDriver(MAASTestCase):

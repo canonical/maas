@@ -3,22 +3,14 @@
 
 """API handler: `Account`."""
 
-__all__ = [
-    'AccountHandler',
-]
+__all__ = ["AccountHandler"]
 
 import http.client
 import json
 
 from django.http import HttpResponse
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
-from maasserver.api.utils import (
-    get_mandatory_param,
-    get_optional_param,
-)
+from maasserver.api.support import operation, OperationsHandler
+from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from piston3.utils import rc
@@ -33,7 +25,7 @@ def _format_tokens(tokens):
     return [
         {
             "name": token.consumer.name,
-            "token": ":".join([token.consumer.key, token.key, token.secret])
+            "token": ":".join([token.consumer.key, token.key, token.secret]),
         }
         for token in tokens
     ]
@@ -41,6 +33,7 @@ def _format_tokens(tokens):
 
 class AccountHandler(OperationsHandler):
     """Manage the current logged-in user."""
+
     api_doc_section_name = "Logged-in user"
     create = read = update = delete = None
 
@@ -59,19 +52,26 @@ class AccountHandler(OperationsHandler):
         placeholder text
         """
         profile = request.user.userprofile
-        consumer_name = get_optional_param(request.data, 'name')
+        consumer_name = get_optional_param(request.data, "name")
         consumer, token = profile.create_authorisation_token(consumer_name)
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.API,
-            request, None, "Created token.")
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.API,
+            request,
+            None,
+            "Created token.",
+        )
         auth_info = {
-            'token_key': token.key, 'token_secret': token.secret,
-            'consumer_key': consumer.key, 'name': consumer.name
+            "token_key": token.key,
+            "token_secret": token.secret,
+            "consumer_key": consumer.key,
+            "name": consumer.name,
         }
         return HttpResponse(
             json.dumps(auth_info),
-            content_type='application/json; charset=utf-8',
-            status=int(http.client.OK))
+            content_type="application/json; charset=utf-8",
+            status=int(http.client.OK),
+        )
 
     @operation(idempotent=False)
     def delete_authorisation_token(self, request):
@@ -85,11 +85,15 @@ class AccountHandler(OperationsHandler):
         @success (http-status-code) "204" 204
         """
         profile = request.user.userprofile
-        token_key = get_mandatory_param(request.data, 'token_key')
+        token_key = get_mandatory_param(request.data, "token_key")
         profile.delete_authorisation_token(token_key)
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.API,
-            request, None, "Deleted token.")
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.API,
+            request,
+            None,
+            "Deleted token.",
+        )
         return rc.DELETED
 
     @operation(idempotent=False)
@@ -107,17 +111,21 @@ class AccountHandler(OperationsHandler):
             Accepted
         """
         profile = request.user.userprofile
-        token = get_mandatory_param(request.data, 'token')
+        token = get_mandatory_param(request.data, "token")
         token_fields = token.split(":")
         if len(token_fields) == 3:
             token_key = token_fields[1]
         else:
             token_key = token
-        consumer_name = get_mandatory_param(request.data, 'name')
+        consumer_name = get_mandatory_param(request.data, "name")
         profile.modify_consumer_name(token_key, consumer_name)
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request,
-            None, "Modified consumer name of token.")
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.API,
+            request,
+            None,
+            "Modified consumer name of token.",
+        )
         return rc.ACCEPTED
 
     @operation(idempotent=True)
@@ -136,9 +144,10 @@ class AccountHandler(OperationsHandler):
         tokens = _format_tokens(profile.get_authorisation_tokens())
         return HttpResponse(
             json.dumps(tokens, indent=4),
-            content_type='application/json; charset=utf-8',
-            status=int(http.client.OK))
+            content_type="application/json; charset=utf-8",
+            status=int(http.client.OK),
+        )
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('account_handler', [])
+        return ("account_handler", [])

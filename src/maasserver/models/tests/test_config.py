@@ -11,11 +11,7 @@ from django.db import IntegrityError
 from django.http import HttpRequest
 from fixtures import TestWithFixtures
 from maasserver.enum import ENDPOINT_CHOICES
-from maasserver.models import (
-    Config,
-    Event,
-    signals,
-)
+from maasserver.models import Config, Event, signals
 import maasserver.models.config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
@@ -29,14 +25,11 @@ class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):
 
     def test_default_config_maas_name(self):
         default_config = get_default_config()
-        self.assertEqual(gethostname(), default_config['maas_name'])
+        self.assertEqual(gethostname(), default_config["maas_name"])
 
     def test_defaults(self):
         expected = get_default_config()
-        observed = {
-            name: Config.objects.get_config(name)
-            for name in expected
-            }
+        observed = {name: Config.objects.get_config(name) for name in expected}
 
         # Test isolation is not what it ought to be, so we have to exclude
         # rpc_shared_secret here for now. Attempts to improve isolation have
@@ -73,23 +66,26 @@ class ConfigTest(MAASServerTestCase):
     """Testing of the :class:`Config` model and its related manager class."""
 
     def test_config_name_uniqueness_enforced(self):
-        name = factory.make_name('name')
-        Config.objects.create(name=name, value=factory.make_name('value'))
+        name = factory.make_name("name")
+        Config.objects.create(name=name, value=factory.make_name("value"))
         self.assertRaises(
             IntegrityError,
-            Config.objects.create, name=name, value=factory.make_name('value'))
+            Config.objects.create,
+            name=name,
+            value=factory.make_name("value"),
+        )
 
     def test_manager_get_config_found(self):
-        Config.objects.create(name='name', value='config')
-        config = Config.objects.get_config('name')
-        self.assertEqual('config', config)
+        Config.objects.create(name="name", value="config")
+        config = Config.objects.get_config("name")
+        self.assertEqual("config", config)
 
     def test_manager_get_config_not_found(self):
-        config = Config.objects.get_config('name', 'default value')
-        self.assertEqual('default value', config)
+        config = Config.objects.get_config("name", "default value")
+        self.assertEqual("default value", config)
 
     def test_manager_get_config_not_found_none(self):
-        config = Config.objects.get_config('name')
+        config = Config.objects.get_config("name")
         self.assertIsNone(config)
 
     def test_manager_get_config_not_found_in_default_config(self):
@@ -102,27 +98,31 @@ class ConfigTest(MAASServerTestCase):
     def test_default_config_cannot_be_changed(self):
         name = factory.make_string()
         self.patch(
-            maasserver.models.config, "DEFAULT_CONFIG",
-            {name: {'key': 'value'}})
+            maasserver.models.config,
+            "DEFAULT_CONFIG",
+            {name: {"key": "value"}},
+        )
         config = Config.objects.get_config(name)
-        config.update({'key2': 'value2'})
+        config.update({"key2": "value2"})
 
-        self.assertEqual({'key': 'value'}, Config.objects.get_config(name))
+        self.assertEqual({"key": "value"}, Config.objects.get_config(name))
 
     def test_manager_get_configs_returns_configs_dict(self):
         expected = get_default_config()
         # Only get a subset of all the configs.
         expected_names = list(expected)[:5]
         # Set a config value to test that is over the default.
-        other_value = factory.make_name('value')
+        other_value = factory.make_name("value")
         Config.objects.set_config(expected_names[0], other_value)
         observed = Config.objects.get_configs(expected_names)
         expected_dict = {expected_names[0]: other_value}
-        expected_dict.update({
-            name: expected[name]
-            for name in expected_names
-            if name != expected_names[0]
-        })
+        expected_dict.update(
+            {
+                name: expected[name]
+                for name in expected_names
+                if name != expected_names[0]
+            }
+        )
         self.assertEquals(expected_dict, observed)
 
     def test_manager_get_configs_returns_passed_defaults(self):
@@ -130,34 +130,35 @@ class ConfigTest(MAASServerTestCase):
         # Only get a subset of all the configs.
         expected_names = list(expected)[:5]
         expected_dict = {
-            name: factory.make_name('value')
-            for name in expected_names
+            name: factory.make_name("value") for name in expected_names
         }
         defaults = [expected_dict[name] for name in expected_names]
         for name, value in expected_dict.items():
             Config.objects.set_config(name, value)
         self.assertEquals(
-            expected_dict,
-            Config.objects.get_configs(expected_names, defaults))
+            expected_dict, Config.objects.get_configs(expected_names, defaults)
+        )
 
     def test_manager_set_config_creates_config(self):
-        Config.objects.set_config('name', 'config1')
-        Config.objects.set_config('name', 'config2')
+        Config.objects.set_config("name", "config1")
+        Config.objects.set_config("name", "config2")
         self.assertSequenceEqual(
-            ['config2'],
-            [config.value for config in Config.objects.filter(name='name')])
+            ["config2"],
+            [config.value for config in Config.objects.filter(name="name")],
+        )
 
     def test_manager_set_config_creates_audit_event(self):
         user = factory.make_User()
         request = HttpRequest()
         request.user = user
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
-        Config.objects.set_config('name', 'value', endpoint, request)
+        Config.objects.set_config("name", "value", endpoint, request)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Updated configuration setting 'name' to 'value'.")
+            "Updated configuration setting 'name' to 'value'.",
+        )
 
     def test_manager_config_changed_connect_connects(self):
         recorder = CallRecorder()
@@ -219,17 +220,15 @@ class ConfigTest(MAASServerTestCase):
 
     def test_manager_is_external_auth_enabled_true(self):
         Config.objects.set_config(
-            'external_auth_url', 'http://auth.example.com')
+            "external_auth_url", "http://auth.example.com"
+        )
         self.assertTrue(Config.objects.is_external_auth_enabled())
 
 
 class SettingConfigTest(MAASServerTestCase):
     """Testing of the :class:`Config` model and setting each option."""
 
-    scenarios = tuple(
-        (name, {"name": name})
-        for name in get_default_config()
-    )
+    scenarios = tuple((name, {"name": name}) for name in get_default_config())
 
     def setUp(self):
         super(SettingConfigTest, self).setUp()

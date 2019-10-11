@@ -7,9 +7,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0168_add_pod_default_macvlan_mode'),
-    ]
+    dependencies = [("maasserver", "0168_add_pod_default_macvlan_mode")]
 
-    operations = [
-    ]
+    operations = []

@@ -3,9 +3,7 @@
 
 """Generic helpers for working with constraint strings."""
 
-__all__ = [
-    'parse_labeled_constraint_map',
-    ]
+__all__ = ["parse_labeled_constraint_map"]
 
 import re
 
@@ -84,22 +82,24 @@ def parse_labeled_constraint_map(value, exception_type=ValueError):
     if len(value) <= 1:
         return {}
     result = {}
-    constraints = value.split(';')
+    constraints = value.split(";")
     for constraint in constraints:
-        tokens = constraint.split(':', 1)
+        tokens = constraint.split(":", 1)
         if len(tokens) != 2:
             raise exception_type(
                 "Malformed constraint: '%s' (required format: "
-                "'<label>:<key>=<value>[,<key2>=<value2>[,...]]')"
-                % constraint)
+                "'<label>:<key>=<value>[,<key2>=<value2>[,...]]')" % constraint
+            )
         label = tokens[0]
         validate_constraint_label_name(label, exception_type=exception_type)
         if label in result:
             raise exception_type(
-                "Constraint label defined more than once: '%s'" % label)
-        key_value_pairs = tokens[1].split(',')
+                "Constraint label defined more than once: '%s'" % label
+            )
+        key_value_pairs = tokens[1].split(",")
         labeled_constraint = _parse_key_value_pairs(
-            key_value_pairs, exception_type=exception_type)
+            key_value_pairs, exception_type=exception_type
+        )
         result[label] = labeled_constraint
     return result
 
@@ -110,10 +110,11 @@ def _parse_key_value_pairs(kvps, exception_type=ValueError):
     """
     key_value_pairs = {}
     for kvp in kvps:
-        tokens = kvp.split('=', 1)
+        tokens = kvp.split("=", 1)
         if len(tokens) != 2:
             raise exception_type(
-                "Malformed key/value pair in constraint: '%s'" % kvp)
+                "Malformed key/value pair in constraint: '%s'" % kvp
+            )
         key, value = tokens
         value_list = key_value_pairs.get(key, [])
         value_list.append(value)
@@ -125,8 +126,9 @@ def validate_constraint_label_name(label_name, exception_type=ValueError):
     """Throws the specified exception_type (default is ValueError) if the
     label name is invalid.
     """
-    if not re.match(r'[a-zA-Z0-9]+[a-zA-Z0-9_-]*$', label_name):
+    if not re.match(r"[a-zA-Z0-9]+[a-zA-Z0-9_-]*$", label_name):
         raise exception_type(
             "Invalid label name: '%s' (Must begin with an alphanumeric "
             "character, and include only alphanumeric characters, dashes, and "
-            "underscores.)" % label_name)
+            "underscores.)" % label_name
+        )

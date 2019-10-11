@@ -5,10 +5,7 @@
 files with an existing DNS server.
 """
 
-__all__ = [
-    "add_arguments",
-    "run"
-]
+__all__ = ["add_arguments", "run"]
 
 import sys
 from textwrap import dedent
@@ -28,21 +25,28 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Return the named configuration snippet used to include
         MAAS' DNS configuration in an existing named configuration.
-        """)
+        """
+    )
     parser.add_argument(
-        '--edit', action='store_true', dest='edit',
+        "--edit",
+        action="store_true",
+        dest="edit",
         default=False,
         help="Edit the configuration file instead of simply "
-             "printing the snippet.")
+        "printing the snippet.",
+    )
     parser.add_argument(
-        '--config-path', dest='config_path',
-        default='/etc/bind/named.conf.local',
+        "--config-path",
+        dest="config_path",
+        default="/etc/bind/named.conf.local",
         help="Specifies the configuration file location ("
-             "used in conjonction with --edit). Defaults to "
-             "/etc/bind/named.conf.local.")
+        "used in conjonction with --edit). Defaults to "
+        "/etc/bind/named.conf.local.",
+    )
 
 
 def run(args, stdout=sys.stdout, stderr=sys.stderr):
@@ -63,5 +67,5 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
             conf_file.write(include_snippet)
     else:
         stdout.write(INCLUDE_SNIPPET_COMMENT + include_snippet)
-        stdout.write('\n')
+        stdout.write("\n")
         stdout.flush()

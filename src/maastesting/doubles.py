@@ -7,9 +7,7 @@ See http://www.martinfowler.com/bliki/TestDouble.html for the nomenclature
 used.
 """
 
-__all__ = [
-    "StubContext",
-]
+__all__ = ["StubContext"]
 
 
 class StubContext:

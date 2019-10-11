@@ -5,18 +5,12 @@
 
 __all__ = []
 
-from unittest.mock import (
-    MagicMock,
-    sentinel,
-)
+from unittest.mock import MagicMock, sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.events import (
-    Event,
-    EventGroup,
-)
+from provisioningserver.utils.events import Event, EventGroup
 from testtools.matchers import IsInstance
 
 
@@ -33,8 +27,8 @@ class TestEvent(MAASTestCase):
         event.registerHandler(event.registerHandler)
         event.fire(sentinel.otherHandler)
         self.assertItemsEqual(
-            [event.registerHandler, sentinel.otherHandler],
-            event.handlers)
+            [event.registerHandler, sentinel.otherHandler], event.handlers
+        )
 
     def test_unregisterHandler(self):
         event = Event()
@@ -54,10 +48,7 @@ class TestEvent(MAASTestCase):
         handler_two = MagicMock()
         event.registerHandler(handler_one)
         event.registerHandler(handler_two)
-        args = [
-            factory.make_name("arg")
-            for _ in range(3)
-        ]
+        args = [factory.make_name("arg") for _ in range(3)]
         kwargs = {
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
@@ -71,10 +62,7 @@ class TestEventGroup(MAASTestCase):
     """Tests for `EventGroup`."""
 
     def test_makes_events_as_properties(self):
-        events = [
-            factory.make_name("event")
-            for _ in range(3)
-        ]
+        events = [factory.make_name("event") for _ in range(3)]
         group = EventGroup(*events)
         for event in events:
             self.expectThat(getattr(group, event), IsInstance(Event))

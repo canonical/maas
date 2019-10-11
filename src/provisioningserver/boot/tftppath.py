@@ -3,11 +3,7 @@
 
 """Construct TFTP paths for boot files."""
 
-__all__ = [
-    'compose_image_path',
-    'list_boot_images',
-    'list_subdirs',
-    ]
+__all__ = ["compose_image_path", "list_boot_images", "list_subdirs"]
 
 import errno
 from itertools import chain
@@ -42,12 +38,12 @@ def compose_image_path(osystem, arch, subarch, release, label):
         kernel and initrd) as exposed over TFTP.
     """
     # This is a TFTP path, not a local filesystem path, so hard-code the slash.
-    return '/'.join([osystem, arch, subarch, release, label])
+    return "/".join([osystem, arch, subarch, release, label])
 
 
 def is_visible_subdir(directory, subdir):
     """Is `subdir` a non-hidden sub-directory of `directory`?"""
-    if subdir.startswith('.'):
+    if subdir.startswith("."):
         return False
     else:
         return os.path.isdir(os.path.join(directory, subdir))
@@ -77,7 +73,8 @@ def extend_path(directory, path):
     """
     return [
         path + [subdir]
-        for subdir in list_subdirs(os.path.join(directory, *path))]
+        for subdir in list_subdirs(os.path.join(directory, *path))
+    ]
 
 
 def drill_down(directory, paths):
@@ -89,8 +86,9 @@ def drill_down(directory, paths):
     :return: A list of paths, each of which drills one level deeper down into
         the filesystem hierarchy than the originals in `paths`.
     """
-    return list(chain.from_iterable(
-        extend_path(directory, path) for path in paths))
+    return list(
+        chain.from_iterable(extend_path(directory, path) for path in paths)
+    )
 
 
 def extract_metadata(metadata, params):
@@ -104,11 +102,11 @@ def extract_metadata(metadata, params):
     """
     mapping = BootImageMapping.load_json(metadata)
     subarch = params["subarchitecture"]
-    split_subarch = subarch.split('-')
+    split_subarch = subarch.split("-")
     if len(split_subarch) > 2:
         kflavor = split_subarch[2]
     else:
-        kflavor = 'generic'
+        kflavor = "generic"
 
     image = ImageSpec(
         os=params["osystem"],
@@ -117,12 +115,12 @@ def extract_metadata(metadata, params):
         kflavor=kflavor,
         release=params["release"],
         label=params["label"],
-        )
+    )
     try:
         # On upgrade from 1.5 to 1.6, the subarches does not exist in the
         # maas.meta file . Without this catch boot images will fail to
         # report until the boot images are imported again.
-        subarches = mapping.mapping[image]['subarches']
+        subarches = mapping.mapping[image]["subarches"]
     except KeyError:
         return {}
 
@@ -142,10 +140,10 @@ def extract_image_params(path, maas_meta):
         items of meta-data that are not elements in the path, such as
         "subarches".
     """
-    if path[0] == 'bootloader':
+    if path[0] == "bootloader":
         osystem, release, arch = path
-        subarch = 'generic'
-        label = '*'
+        subarch = "generic"
+        label = "*"
     else:
         osystem, arch, subarch, release, label = path
     osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
@@ -153,23 +151,32 @@ def extract_image_params(path, maas_meta):
         return []
 
     purposes = osystem_obj.get_boot_image_purposes(
-        arch, subarch, release, label)
+        arch, subarch, release, label
+    )
 
     # Expand the path into a list of dicts, one for each boot purpose.
     params = []
     for purpose in purposes:
         image = dict(
-            osystem=osystem, architecture=arch, subarchitecture=subarch,
-            release=release, label=label, purpose=purpose)
-        if purpose == BOOT_IMAGE_PURPOSE.XINSTALL \
-                or purpose == BOOT_IMAGE_PURPOSE.EPHEMERAL:
+            osystem=osystem,
+            architecture=arch,
+            subarchitecture=subarch,
+            release=release,
+            label=label,
+            purpose=purpose,
+        )
+        if (
+            purpose == BOOT_IMAGE_PURPOSE.XINSTALL
+            or purpose == BOOT_IMAGE_PURPOSE.EPHEMERAL
+        ):
             xinstall_path, xinstall_type = osystem_obj.get_xinstall_parameters(
-                arch, subarch, release, label)
-            image['xinstall_path'] = xinstall_path
-            image['xinstall_type'] = xinstall_type
+                arch, subarch, release, label
+            )
+            image["xinstall_path"] = xinstall_path
+            image["xinstall_type"] = xinstall_type
         else:
-            image['xinstall_path'] = ''
-            image['xinstall_type'] = ''
+            image["xinstall_path"] = ""
+            image["xinstall_type"] = ""
         params.append(image)
 
     # Merge in the meta-data.
@@ -182,7 +189,7 @@ def extract_image_params(path, maas_meta):
 
 def maas_meta_file_path(tftproot):
     """Return a string containing the full path to maas.meta."""
-    return os.path.join(tftproot, 'maas.meta')
+    return os.path.join(tftproot, "maas.meta")
 
 
 def maas_meta_last_modified(tftproot):
@@ -217,7 +224,8 @@ def list_boot_images(tftproot):
         if exception.errno == errno.ENOENT:
             # Directory does not exist, so return empty list.
             maaslog.warning(
-                "No boot images have been imported from the region.")
+                "No boot images have been imported from the region."
+            )
             return []
 
         # Other error. Propagate.
@@ -230,13 +238,13 @@ def list_boot_images(tftproot):
     # Extend paths deeper into the filesystem, through the levels that
     # represent architecture, sub-architecture, release, and label.
     # Any directory that doesn't extend this deep isn't a boot image.
-    for level in ['arch', 'subarch', 'release', 'label']:
+    for level in ["arch", "subarch", "release", "label"]:
         paths = drill_down(tftproot, paths)
 
     # Include bootloaders
-    if 'bootloader' in potential_osystems:
-        bootloader_paths = [['bootloader']]
-        for level in ['bootloader_type', 'arch']:
+    if "bootloader" in potential_osystems:
+        bootloader_paths = [["bootloader"]]
+        for level in ["bootloader_type", "arch"]:
             bootloader_paths = drill_down(tftproot, bootloader_paths)
         paths += bootloader_paths
 
@@ -246,8 +254,11 @@ def list_boot_images(tftproot):
     # Each path we find this way should be a boot image.
     # This gets serialised to JSON, so we really have to return a list, not
     # just any iterable.
-    return list(chain.from_iterable(
-        extract_image_params(path, metadata) for path in paths))
+    return list(
+        chain.from_iterable(
+            extract_image_params(path, metadata) for path in paths
+        )
+    )
 
 
 def get_image_metadata(tftproot):

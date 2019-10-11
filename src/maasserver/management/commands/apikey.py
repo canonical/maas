@@ -6,16 +6,10 @@
 __all__ = []
 
 
-from apiclient.creds import (
-    convert_string_to_tuple,
-    convert_tuple_to_string,
-)
+from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
 import django
 from django.contrib.auth.models import User
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import BaseCommand, CommandError
 from django.http import Http404
 from maasserver.models.user import get_creds_tuple
 from maasserver.utils.orm import get_one
@@ -24,43 +18,55 @@ from maasserver.utils.orm import get_one
 class Command(BaseCommand):
     help = (
         "Used to manage a user's API keys. Shows existing keys unless "
-        "--generate or --delete is passed.")
+        "--generate or --delete is passed."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--username', default=None,
-            help="Specifies the username for the admin.")
+            "--username",
+            default=None,
+            help="Specifies the username for the admin.",
+        )
         parser.add_argument(
-            '--generate', action="store_true",
-            help="Generate a new api key.")
+            "--generate", action="store_true", help="Generate a new api key."
+        )
         parser.add_argument(
-            '--delete', default=None,
-            help="Delete the supplied api key.")
+            "--delete", default=None, help="Delete the supplied api key."
+        )
         parser.add_argument(
-            '--update', default=None,
-            help="Update the supplied api key name")
+            "--update", default=None, help="Update the supplied api key name"
+        )
         parser.add_argument(
-            '--name', default=None, dest="api_key_name",
+            "--name",
+            default=None,
+            dest="api_key_name",
             help="Name of the token. This argument should be passed to "
-                 "--update or --generate options")
+            "--update or --generate options",
+        )
         parser.add_argument(
-            '--with-names ', dest="with_names", action="store_true",
-            help="Display tokens with their names.")
+            "--with-names ",
+            dest="with_names",
+            action="store_true",
+            help="Display tokens with their names.",
+        )
 
     def _print_token(self, token):
         """Write `token` to stdout in the standard format (with names if
         --with-names option is enabled)"""
         if self.display_names:
-            self.stdout.write("%s %s" % (
-                convert_tuple_to_string(get_creds_tuple(token)),
-                token.consumer.name
-            ))
+            self.stdout.write(
+                "%s %s"
+                % (
+                    convert_tuple_to_string(get_creds_tuple(token)),
+                    token.consumer.name,
+                )
+            )
         else:
             self.stdout.write(convert_tuple_to_string(get_creds_tuple(token)))
         # In Django 1.5+, self.stdout.write() adds a newline character at
         # the end of the message.
         if django.VERSION < (1, 5):
-            self.stdout.write('\n')
+            self.stdout.write("\n")
 
     def _generate_token(self, user, consumer_name=None):
         _, token = user.userprofile.create_authorisation_token(consumer_name)
@@ -90,15 +96,15 @@ class Command(BaseCommand):
             raise CommandError("No matching api key found.")
 
     def handle(self, *args, **options):
-        username = options.get('username', None)
+        username = options.get("username", None)
         if username is None:
             raise CommandError("You must provide a username with --username.")
 
-        generate = options.get('generate')
-        key_to_delete = options.get('delete', None)
-        key_to_update = options.get('update', None)
-        consumer_name = options.get('api_key_name', None)
-        self.display_names = options.get('with_names', None)
+        generate = options.get("generate")
+        key_to_delete = options.get("delete", None)
+        key_to_update = options.get("update", None)
+        consumer_name = options.get("api_key_name", None)
+        self.display_names = options.get("with_names", None)
 
         if generate and key_to_delete is not None:
             raise CommandError("Specify one of --generate or --delete.")

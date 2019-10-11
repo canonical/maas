@@ -10,10 +10,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms.packagerepository import PackageRepositoryForm
-from maasserver.models import (
-    Event,
-    PackageRepository,
-)
+from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -21,33 +18,32 @@ from provisioningserver.events import AUDIT
 
 
 class TestPackageRepositoryForm(MAASServerTestCase):
-
     def make_valid_repo_params(self, repo=None):
         # Helper that creates a valid PackageRepository and parameters for a
         # PackageRepositoryForm that will validate.
         if repo is None:
             repo = factory.make_PackageRepository()
-        name = factory.make_name('name')
-        url = factory.make_url(scheme='http')
+        name = factory.make_name("name")
+        url = factory.make_url(scheme="http")
         arch1 = random.choice(PackageRepository.KNOWN_ARCHES)
         arch2 = random.choice(PackageRepository.KNOWN_ARCHES)
-        dist1 = factory.make_name('dist')
-        dist2 = factory.make_name('dist')
-        pock1 = 'updates'
-        pock2 = 'backports'
-        comp1 = 'universe'
-        comp2 = 'multiverse'
+        dist1 = factory.make_name("dist")
+        dist2 = factory.make_name("dist")
+        pock1 = "updates"
+        pock2 = "backports"
+        comp1 = "universe"
+        comp2 = "multiverse"
         disable_sources = factory.pick_bool()
         enabled = factory.pick_bool()
         params = {
-            'name': name,
-            'url': url,
-            'distributions': [dist1, dist2],
-            'disabled_pockets': [pock1, pock2],
-            'components': [comp1, comp2],
-            'arches': [arch1, arch2],
-            'enabled': enabled,
-            'disable_sources': disable_sources,
+            "name": name,
+            "url": url,
+            "distributions": [dist1, dist2],
+            "disabled_pockets": [pock1, pock2],
+            "components": [comp1, comp2],
+            "arches": [arch1, arch2],
+            "enabled": enabled,
+            "disable_sources": disable_sources,
         }
         return params
 
@@ -65,21 +61,23 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Created package repository '%s'." % package_repository.name)
+            "Created package repository '%s'." % package_repository.name,
+        )
 
     def test__create_package_repository_requires_name(self):
         form = PackageRepositoryForm(
-            data={'url': factory.make_url(scheme='http')})
+            data={"url": factory.make_url(scheme="http")}
+        )
         self.assertFalse(form.is_valid())
 
     def test__create_package_repository_requires_url(self):
-        form = PackageRepositoryForm(data={'name': factory.make_name('name')})
+        form = PackageRepositoryForm(data={"name": factory.make_name("name")})
         self.assertFalse(form.is_valid())
 
     def test__default_repository_cannot_be_disabled(self):
         repo = factory.make_PackageRepository(default=True)
         params = self.make_valid_repo_params(repo)
-        params['enabled'] = False
+        params["enabled"] = False
         form = PackageRepositoryForm(data=params, instance=repo)
         self.assertFalse(form.is_valid())
         self.assertRaises(ValidationError, form.clean)
@@ -87,7 +85,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
     def test__create_package_repository_defaults_to_enabled(self):
         repo = factory.make_PackageRepository()
         params = self.make_valid_repo_params(repo)
-        del params['enabled']
+        del params["enabled"]
         form = PackageRepositoryForm(data=params)
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
@@ -101,7 +99,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         PackageRepository.objects.all().delete()
         repo = factory.make_PackageRepository()
         params = self.make_valid_repo_params(repo)
-        params['url'] = factory.make_string()
+        params["url"] = factory.make_string()
         repo.delete()
         form = PackageRepositoryForm(data=params)
         self.assertFalse(form.is_valid())
@@ -109,9 +107,10 @@ class TestPackageRepositoryForm(MAASServerTestCase):
 
     def test__updates_name(self):
         package_repository = factory.make_PackageRepository()
-        name = factory.make_name('name')
+        name = factory.make_name("name")
         form = PackageRepositoryForm(
-            instance=package_repository, data={'name': name})
+            instance=package_repository, data={"name": name}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
         request.user = factory.make_User()
@@ -121,14 +120,16 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Updated package repository '%s'." % (
-                package_repository.name))
+            event.description,
+            "Updated package repository '%s'." % (package_repository.name),
+        )
 
     def test__updates_url(self):
         package_repository = factory.make_PackageRepository()
-        url = factory.make_url(scheme='http')
+        url = factory.make_url(scheme="http")
         form = PackageRepositoryForm(
-            instance=package_repository, data={'url': url})
+            instance=package_repository, data={"url": url}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
         request.user = factory.make_User()
@@ -140,7 +141,8 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         package_repository = factory.make_PackageRepository()
         enabled = not package_repository.enabled
         form = PackageRepositoryForm(
-            instance=package_repository, data={'enabled': enabled})
+            instance=package_repository, data={"enabled": enabled}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
         request.user = factory.make_User()
@@ -154,8 +156,8 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         arch2 = random.choice(PackageRepository.KNOWN_ARCHES)
         arch3 = random.choice(PackageRepository.KNOWN_ARCHES)
         form = PackageRepositoryForm(
-            instance=package_repository,
-            data={'arches': [arch1, arch2, arch3]})
+            instance=package_repository, data={"arches": [arch1, arch2, arch3]}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
         request.user = factory.make_User()
@@ -168,16 +170,15 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         url = package_repository.url
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={
-                'url': factory.make_url(scheme='fake'),
-            })
+            data={"url": factory.make_url(scheme="fake")},
+        )
         self.assertFalse(form.is_valid())
         self.assertEquals(url, reload_object(package_repository).url)
 
     def test__creates_package_repository_defaults_main_arches(self):
         repo = factory.make_PackageRepository(arches=[])
         params = self.make_valid_repo_params(repo)
-        del params['arches']
+        del params["arches"]
         form = PackageRepositoryForm(data=params)
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
@@ -186,16 +187,21 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         package_repository = form.save(endpoint, request)
         self.assertAttributes(package_repository, params)
         self.assertItemsEqual(
-            package_repository.arches, PackageRepository.MAIN_ARCHES)
+            package_repository.arches, PackageRepository.MAIN_ARCHES
+        )
 
     def test__arches_validation(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
-            instance=package_repository, data={'arches': ['i286']})
+            instance=package_repository, data={"arches": ["i286"]}
+        )
         self.assertEqual(
-            ["'i286' is not a valid architecture. Known architectures: "
-                'amd64, arm64, armhf, i386, ppc64el, s390x'],
-            form.errors.get('arches'))
+            [
+                "'i286' is not a valid architecture. Known architectures: "
+                "amd64, arm64, armhf, i386, ppc64el, s390x"
+            ],
+            form.errors.get("arches"),
+        )
         request = HttpRequest()
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
@@ -204,108 +210,124 @@ class TestPackageRepositoryForm(MAASServerTestCase):
     def test__arches_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
-            instance=package_repository, data={'arches': ['i386,armhf']})
+            instance=package_repository, data={"arches": ["i386,armhf"]}
+        )
         request = HttpRequest()
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['i386', 'armhf'], repo.arches)
+        self.assertItemsEqual(["i386", "armhf"], repo.arches)
         form = PackageRepositoryForm(
-            instance=package_repository,
-            data={'arches': ['i386, armhf']})
+            instance=package_repository, data={"arches": ["i386, armhf"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['i386', 'armhf'], repo.arches)
+        self.assertItemsEqual(["i386", "armhf"], repo.arches)
         form = PackageRepositoryForm(
-            instance=package_repository, data={'arches': ['i386']})
+            instance=package_repository, data={"arches": ["i386"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['i386'], repo.arches)
+        self.assertItemsEqual(["i386"], repo.arches)
 
     def test__distribution_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
-            instance=package_repository, data={'distributions': ['val1,val2']})
+            instance=package_repository, data={"distributions": ["val1,val2"]}
+        )
         request = HttpRequest()
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['val1', 'val2'], repo.distributions)
+        self.assertItemsEqual(["val1", "val2"], repo.distributions)
         form = PackageRepositoryForm(
-            instance=package_repository,
-            data={'distributions': ['val1, val2']})
+            instance=package_repository, data={"distributions": ["val1, val2"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['val1', 'val2'], repo.distributions)
+        self.assertItemsEqual(["val1", "val2"], repo.distributions)
         form = PackageRepositoryForm(
-            instance=package_repository, data={'distributions': ['val1']})
+            instance=package_repository, data={"distributions": ["val1"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['val1'], repo.distributions)
+        self.assertItemsEqual(["val1"], repo.distributions)
 
     def test__disabled_pocket_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_pockets': ['updates,backports']})
+            data={"disabled_pockets": ["updates,backports"]},
+        )
         request = HttpRequest()
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['updates', 'backports'], repo.disabled_pockets)
+        self.assertItemsEqual(["updates", "backports"], repo.disabled_pockets)
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_pockets': ['updates, backports']})
+            data={"disabled_pockets": ["updates, backports"]},
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['updates', 'backports'], repo.disabled_pockets)
+        self.assertItemsEqual(["updates", "backports"], repo.disabled_pockets)
         form = PackageRepositoryForm(
-            instance=package_repository,
-            data={'disabled_pockets': ['updates']})
+            instance=package_repository, data={"disabled_pockets": ["updates"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['updates'], repo.disabled_pockets)
+        self.assertItemsEqual(["updates"], repo.disabled_pockets)
 
     def test__disabled_component_comma_cleaning(self):
         package_repository = factory.make_PackageRepository(
-            default=True, components=[])
+            default=True, components=[]
+        )
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_components': ['universe,multiverse']})
+            data={"disabled_components": ["universe,multiverse"]},
+        )
         request = HttpRequest()
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         repo = form.save(endpoint, request)
         self.assertItemsEqual(
-            ['universe', 'multiverse'], repo.disabled_components)
+            ["universe", "multiverse"], repo.disabled_components
+        )
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_components': ['universe, multiverse']})
+            data={"disabled_components": ["universe, multiverse"]},
+        )
         repo = form.save(endpoint, request)
         self.assertItemsEqual(
-            ['universe', 'multiverse'], repo.disabled_components)
+            ["universe", "multiverse"], repo.disabled_components
+        )
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_components': ['universe']})
+            data={"disabled_components": ["universe"]},
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['universe'], repo.disabled_components)
+        self.assertItemsEqual(["universe"], repo.disabled_components)
 
     def test__component_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
-            instance=package_repository, data={'components': ['val1,val2']})
+            instance=package_repository, data={"components": ["val1,val2"]}
+        )
         request = HttpRequest()
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['val1', 'val2'], repo.components)
+        self.assertItemsEqual(["val1", "val2"], repo.components)
         form = PackageRepositoryForm(
-            instance=package_repository, data={'components': ['val1, val2']})
+            instance=package_repository, data={"components": ["val1, val2"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['val1', 'val2'], repo.components)
+        self.assertItemsEqual(["val1", "val2"], repo.components)
         form = PackageRepositoryForm(
-            instance=package_repository, data={'components': ['val1']})
+            instance=package_repository, data={"components": ["val1"]}
+        )
         repo = form.save(endpoint, request)
-        self.assertItemsEqual(['val1'], repo.components)
+        self.assertItemsEqual(["val1"], repo.components)
 
     def test__updates_disable_sources(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
-            instance=package_repository, data={'disable_sources': True})
+            instance=package_repository, data={"disable_sources": True}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         request = HttpRequest()
         request.user = factory.make_User()
@@ -315,5 +337,6 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Updated package repository '%s'." % (
-                package_repository.name))
+            event.description,
+            "Updated package repository '%s'." % (package_repository.name),
+        )

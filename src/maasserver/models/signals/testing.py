@@ -3,9 +3,7 @@
 
 """Testing helpers for dealing with signals."""
 
-__all__ = [
-    "SignalsDisabled",
-]
+__all__ = ["SignalsDisabled"]
 
 from fixtures import Fixture
 from maasserver.models import signals
@@ -19,8 +17,7 @@ class SignalsDisabled(Fixture):
     """
 
     managers = {
-        name: getattr(signals, name).signals
-        for name in signals.__all__
+        name: getattr(signals, name).signals for name in signals.__all__
     }
 
     def __init__(self, *disable):
@@ -36,8 +33,7 @@ class SignalsDisabled(Fixture):
             self.disable = self.managers.values()
         else:
             self.disable = {
-                self.managers[d] if isinstance(d, str) else d
-                for d in disable
+                self.managers[d] if isinstance(d, str) else d for d in disable
             }
 
     def setUp(self):

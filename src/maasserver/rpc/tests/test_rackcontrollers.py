@@ -10,15 +10,8 @@ from unittest.mock import sentinel
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
-from maasserver import (
-    locks,
-    worker_user,
-)
-from maasserver.enum import (
-    INTERFACE_TYPE,
-    IPADDRESS_TYPE,
-    NODE_TYPE,
-)
+from maasserver import locks, worker_user
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models import (
     Node,
     NodeGroupToRackController,
@@ -39,10 +32,7 @@ from maasserver.rpc.rackcontrollers import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-)
+from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -52,7 +42,6 @@ from testtools.matchers import (
 
 
 class TestHandleUpgrade(MAASServerTestCase):
-
     def test_migrates_nodegroup_subnet(self):
         rack = factory.make_RackController()
         vlan = factory.make_VLAN()
@@ -63,11 +52,13 @@ class TestHandleUpgrade(MAASServerTestCase):
                 "type": "physical",
                 "mac_address": factory.make_mac_address(),
                 "parents": [],
-                "links": [{
-                    "mode": "static",
-                    "address": "%s/%d" % (
-                        str(ip), subnet.get_ipnetwork().prefixlen),
-                }],
+                "links": [
+                    {
+                        "mode": "static",
+                        "address": "%s/%d"
+                        % (str(ip), subnet.get_ipnetwork().prefixlen),
+                    }
+                ],
                 "enabled": True,
             }
         }
@@ -91,11 +82,13 @@ class TestHandleUpgrade(MAASServerTestCase):
                 "type": "physical",
                 "mac_address": factory.make_mac_address(),
                 "parents": [],
-                "links": [{
-                    "mode": "static",
-                    "address": "%s/%d" % (
-                        str(ip), subnet.get_ipnetwork().prefixlen),
-                }],
+                "links": [
+                    {
+                        "mode": "static",
+                        "address": "%s/%d"
+                        % (str(ip), subnet.get_ipnetwork().prefixlen),
+                    }
+                ],
                 "enabled": True,
             }
         }
@@ -105,19 +98,19 @@ class TestHandleUpgrade(MAASServerTestCase):
         handle_upgrade(rack, ng_uuid)
         vlan = reload_object(vlan)
         self.assertEqual(
-            "DHCP setting from NodeGroup(%s) have been migrated to %s." % (
-                ng_uuid, vlan),
-            logger.output.strip())
+            "DHCP setting from NodeGroup(%s) have been migrated to %s."
+            % (ng_uuid, vlan),
+            logger.output.strip(),
+        )
 
 
 class TestRegisterRackController(MAASServerTestCase):
-
     def setUp(self):
         super(TestRegisterRackController, self).setUp()
         self.this_region = factory.make_RegionController()
         mock_running = self.patch(
-            RegionController.objects,
-            "get_running_controller")
+            RegionController.objects, "get_running_controller"
+        )
         mock_running.return_value = self.this_region
 
     def test_sets_owner_to_worker_when_none(self):
@@ -159,7 +152,8 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_find_existing_keeps_type(self):
         node_type = random.choice(
-            (NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
+            (NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+        )
         node = factory.make_Node(node_type=node_type)
         register(system_id=node.system_id)
         self.assertEqual(node_type, node.node_type)
@@ -170,9 +164,10 @@ class TestRegisterRackController(MAASServerTestCase):
         register(system_id=node.system_id)
         self.assertEqual(
             "Existing rack controller '%s' running version 2.2 or below has "
-            "connected to region '%s'." % (
-                node.hostname, self.this_region.hostname),
-            logger.output.strip())
+            "connected to region '%s'."
+            % (node.hostname, self.this_region.hostname),
+            logger.output.strip(),
+        )
 
     def test_logs_finding_existing_node_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -180,15 +175,17 @@ class TestRegisterRackController(MAASServerTestCase):
         register(system_id=node.system_id, version="4.0")
         self.assertEqual(
             "Existing rack controller '%s' running version 4.0 has "
-            "connected to region '%s'." % (
-                node.hostname, self.this_region.hostname),
-            logger.output.strip())
+            "connected to region '%s'."
+            % (node.hostname, self.this_region.hostname),
+            logger.output.strip(),
+        )
 
     def test_converts_region_controller(self):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         rack_registered = register(system_id=node.system_id)
         self.assertEqual(
-            rack_registered.node_type, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+            rack_registered.node_type, NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        )
 
     def test_logs_converting_region_controller(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -197,7 +194,8 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual(
             "Region controller '%s' running version 2.2 or below converted "
             "into a region and rack controller.\n" % node.hostname,
-            logger.output)
+            logger.output,
+        )
 
     def test_logs_converting_region_controller_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -206,7 +204,8 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual(
             "Region controller '%s' running version 7.8 converted "
             "into a region and rack controller.\n" % node.hostname,
-            logger.output)
+            logger.output,
+        )
 
     def test_converts_existing_node(self):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
@@ -219,9 +218,10 @@ class TestRegisterRackController(MAASServerTestCase):
         register(system_id=node.system_id)
         self.assertEqual(
             "Region controller '%s' converted '%s' running version 2.2 or "
-            "below into a rack controller.\n" % (
-                self.this_region.hostname, node.hostname),
-            logger.output)
+            "below into a rack controller.\n"
+            % (self.this_region.hostname, node.hostname),
+            logger.output,
+        )
 
     def test_logs_converting_existing_node_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -229,9 +229,10 @@ class TestRegisterRackController(MAASServerTestCase):
         register(system_id=node.system_id, version="1.10.2")
         self.assertEqual(
             "Region controller '%s' converted '%s' running version 1.10.2 "
-            "into a rack controller.\n" % (
-                self.this_region.hostname, node.hostname),
-            logger.output)
+            "into a rack controller.\n"
+            % (self.this_region.hostname, node.hostname),
+            logger.output,
+        )
 
     def test_creates_new_rackcontroller(self):
         factory.make_Node()
@@ -249,7 +250,7 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual(node_count + 1, len(Node.objects.all()))
 
     def test_always_has_current_commissioning_script_set(self):
-        hostname = factory.make_name('hostname')
+        hostname = factory.make_name("hostname")
         register(hostname=hostname)
         rack = RackController.objects.get(hostname=hostname)
         self.assertIsNotNone(rack.current_commissioning_script_set)
@@ -260,9 +261,10 @@ class TestRegisterRackController(MAASServerTestCase):
         register(hostname=hostname)
         self.assertEqual(
             "New rack controller '%s' running version 2.2 or below was "
-            "created by region '%s' upon first connection." % (
-                hostname, self.this_region.hostname),
-            logger.output.strip())
+            "created by region '%s' upon first connection."
+            % (hostname, self.this_region.hostname),
+            logger.output.strip(),
+        )
 
     def test_logs_creating_new_rackcontroller_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -270,9 +272,10 @@ class TestRegisterRackController(MAASServerTestCase):
         register(hostname=hostname, version="4.2")
         self.assertEqual(
             "New rack controller '%s' running version 4.2 was "
-            "created by region '%s' upon first connection." % (
-                hostname, self.this_region.hostname),
-            logger.output.strip())
+            "created by region '%s' upon first connection."
+            % (hostname, self.this_region.hostname),
+            logger.output.strip(),
+        )
 
     def test_sets_interfaces(self):
         # Interfaces are set on new rack controllers.
@@ -288,17 +291,21 @@ class TestRegisterRackController(MAASServerTestCase):
         rack_registered = register(interfaces=interfaces)
         self.assertThat(
             rack_registered.interface_set.all(),
-            MatchesSetwise(*(
-                MatchesAll(
-                    IsInstance(PhysicalInterface),
-                    MatchesStructure.byEquality(
-                        name=name, mac_address=interface["mac_address"],
-                        enabled=interface["enabled"],
-                    ),
-                    first_only=True,
+            MatchesSetwise(
+                *(
+                    MatchesAll(
+                        IsInstance(PhysicalInterface),
+                        MatchesStructure.byEquality(
+                            name=name,
+                            mac_address=interface["mac_address"],
+                            enabled=interface["enabled"],
+                        ),
+                        first_only=True,
+                    )
+                    for name, interface in interfaces.items()
                 )
-                for name, interface in interfaces.items()
-            )))
+            ),
+        )
 
     def test_sets_version_of_controller(self):
         version = "1.10.2"
@@ -319,20 +326,25 @@ class TestRegisterRackController(MAASServerTestCase):
             }
         }
         rack_registered = register(
-            rack_controller.system_id, interfaces=interfaces)
+            rack_controller.system_id, interfaces=interfaces
+        )
         self.assertThat(
             rack_registered.interface_set.all(),
-            MatchesSetwise(*(
-                MatchesAll(
-                    IsInstance(PhysicalInterface),
-                    MatchesStructure.byEquality(
-                        name=name, mac_address=interface["mac_address"],
-                        enabled=interface["enabled"],
-                    ),
-                    first_only=True,
+            MatchesSetwise(
+                *(
+                    MatchesAll(
+                        IsInstance(PhysicalInterface),
+                        MatchesStructure.byEquality(
+                            name=name,
+                            mac_address=interface["mac_address"],
+                            enabled=interface["enabled"],
+                        ),
+                        first_only=True,
+                    )
+                    for name, interface in interfaces.items()
                 )
-                for name, interface in interfaces.items()
-            )))
+            ),
+        )
 
     def test_registers_with_startup_lock_held(self):
         lock_status = []
@@ -359,15 +371,21 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        url = 'http://%s/MAAS' % factory.make_name('host')
+        url = "http://%s/MAAS" % factory.make_name("host")
         rack_registered = register(
-            rack_controller.system_id, interfaces=interfaces,
-            url=urlparse(url), is_loopback=False)
+            rack_controller.system_id,
+            interfaces=interfaces,
+            url=urlparse(url),
+            is_loopback=False,
+        )
         self.assertEqual(url, rack_registered.url)
         rack_registered = register(
-            rack_controller.system_id, interfaces=interfaces,
-            url=urlparse('http://localhost/MAAS/'), is_loopback=True)
-        self.assertEqual('', rack_registered.url)
+            rack_controller.system_id,
+            interfaces=interfaces,
+            url=urlparse("http://localhost/MAAS/"),
+            is_loopback=True,
+        )
+        self.assertEqual("", rack_registered.url)
 
     def test_creates_rackcontroller_domain(self):
         # Create a domain if a newly registered rackcontroller uses a FQDN
@@ -382,10 +400,14 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        url = 'http://%s/MAAS' % factory.make_name('host')
+        url = "http://%s/MAAS" % factory.make_name("host")
         rack_registered = register(
-            "rack-id-foo", interfaces=interfaces, url=urlparse(url),
-            is_loopback=False, hostname=hostname)
+            "rack-id-foo",
+            interfaces=interfaces,
+            url=urlparse(url),
+            is_loopback=False,
+            hostname=hostname,
+        )
         self.assertEqual("newcontroller", rack_registered.hostname)
         self.assertEqual("example.com", rack_registered.domain.name)
         self.assertFalse(rack_registered.domain.authoritative)
@@ -404,62 +426,70 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        url = 'http://%s/MAAS' % factory.make_name('host')
+        url = "http://%s/MAAS" % factory.make_name("host")
         rack_registered = register(
-            "rack-id-foo", interfaces=interfaces, url=urlparse(url),
-            is_loopback=False, hostname=hostname)
+            "rack-id-foo",
+            interfaces=interfaces,
+            url=urlparse(url),
+            is_loopback=False,
+            hostname=hostname,
+        )
         self.assertEqual("newcontroller", rack_registered.hostname)
         self.assertEqual("example.com", rack_registered.domain.name)
         self.assertTrue(rack_registered.domain.authoritative)
 
 
 class TestUpdateForeignDHCP(MAASServerTestCase):
-
     def test__doesnt_fail_if_interface_missing(self):
         rack_controller = factory.make_RackController()
         # No error should be raised.
         update_foreign_dhcp(
-            rack_controller.system_id, factory.make_name("eth"), None)
+            rack_controller.system_id, factory.make_name("eth"), None
+        )
 
     def test__clears_external_dhcp_on_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller
+        )
         interface.vlan.external_dhcp = factory.make_ip_address()
         interface.vlan.save()
-        update_foreign_dhcp(
-            rack_controller.system_id, interface.name, None)
+        update_foreign_dhcp(rack_controller.system_id, interface.name, None)
         self.assertIsNone(reload_object(interface.vlan).external_dhcp)
 
     def test__sets_external_dhcp_when_not_managed_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller
+        )
         dhcp_ip = factory.make_ip_address()
-        update_foreign_dhcp(
-            rack_controller.system_id, interface.name, dhcp_ip)
-        self.assertEquals(
-            dhcp_ip, reload_object(interface.vlan).external_dhcp)
+        update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
+        self.assertEquals(dhcp_ip, reload_object(interface.vlan).external_dhcp)
 
     def test__logs_warning_for_external_dhcp_on_interface_no_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller
+        )
         dhcp_ip = factory.make_ip_address()
         interface.vlan = None
         interface.save()
         logger = self.useFixture(FakeLogger())
-        update_foreign_dhcp(
-            rack_controller.system_id, interface.name, dhcp_ip)
-        self.assertThat(logger.output, DocTestMatches(
-            "...DHCP server on an interface with no VLAN defined..."))
+        update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                "...DHCP server on an interface with no VLAN defined..."
+            ),
+        )
 
     def test__clears_external_dhcp_when_managed_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan
+        )
         subnet = factory.make_Subnet()
         dhcp_ip = factory.pick_ip_in_Subnet(subnet)
         vlan.dhcp_on = True
@@ -467,39 +497,41 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         vlan.external_dhcp = dhcp_ip
         vlan.save()
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=dhcp_ip,
-            subnet=subnet, interface=interface)
-        update_foreign_dhcp(
-            rack_controller.system_id, interface.name, dhcp_ip)
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=dhcp_ip,
+            subnet=subnet,
+            interface=interface,
+        )
+        update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
         self.assertIsNone(reload_object(interface.vlan).external_dhcp)
 
 
 class TestUpdateInterfaces(MAASServerTestCase):
-
     def test__calls_update_interfaces_on_rack_controller(self):
         rack_controller = factory.make_RackController()
         patched_update_interfaces = self.patch(
-            RackController, "update_interfaces")
+            RackController, "update_interfaces"
+        )
         update_interfaces(rack_controller.system_id, sentinel.interfaces)
         self.assertThat(
             patched_update_interfaces,
-            MockCalledOnceWith(sentinel.interfaces, None))
+            MockCalledOnceWith(sentinel.interfaces, None),
+        )
 
 
 class TestReportNeighbours(MAASServerTestCase):
-
     def test__calls_report_neighbours_on_rack_controller(self):
         rack_controller = factory.make_RackController()
         patched_report_neighbours = self.patch(
-            RackController, "report_neighbours")
+            RackController, "report_neighbours"
+        )
         report_neighbours(rack_controller.system_id, sentinel.neighbours)
         self.assertThat(
-            patched_report_neighbours,
-            MockCalledOnceWith(sentinel.neighbours))
+            patched_report_neighbours, MockCalledOnceWith(sentinel.neighbours)
+        )
 
 
 class TestUpdateLastImageSync(MAASServerTestCase):
-
     def test__updates_last_image_sync(self):
         rack = factory.make_RackController()
         previous_sync = rack.last_image_sync = now()
@@ -507,5 +539,4 @@ class TestUpdateLastImageSync(MAASServerTestCase):
 
         update_last_image_sync(rack.system_id)
 
-        self.assertNotEqual(
-            previous_sync, reload_object(rack).last_image_sync)
+        self.assertNotEqual(previous_sync, reload_object(rack).last_image_sync)

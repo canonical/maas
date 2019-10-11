@@ -1,25 +1,17 @@
 # -*- coding: utf-8 -*-
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0053_add_ownerdata_model'),
-    ]
+    dependencies = [("maasserver", "0053_add_ownerdata_model")]
 
     operations = [
         migrations.CreateModel(
-            name='Controller',
-            fields=[
-            ],
-            options={
-                'proxy': True,
-            },
-            bases=('maasserver.node',),
-        ),
+            name="Controller",
+            fields=[],
+            options={"proxy": True},
+            bases=("maasserver.node",),
+        )
     ]

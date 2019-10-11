@@ -24,10 +24,10 @@ controllers.
 """
 
 __all__ = [
-    'get_all_power_types',
-    'get_driver_choices',
-    'get_driver_parameters',
-    ]
+    "get_all_power_types",
+    "get_driver_choices",
+    "get_driver_parameters",
+]
 
 from copy import deepcopy
 from operator import itemgetter
@@ -46,11 +46,11 @@ from provisioningserver.rpc import cluster
 
 
 FIELD_TYPE_MAPPINGS = {
-    'string': forms.CharField,
-    'mac_address': MACAddressFormField,
-    'choice': forms.ChoiceField,
+    "string": forms.CharField,
+    "mac_address": MACAddressFormField,
+    "choice": forms.ChoiceField,
     # This is used on the API so a password field is just a char field.
-    'password': forms.CharField,
+    "password": forms.CharField,
 }
 
 
@@ -64,31 +64,40 @@ def make_form_field(json_field):
         specified in FIELD_TYPE_MAPPINGS.
     """
     field_class = FIELD_TYPE_MAPPINGS.get(
-        json_field['field_type'], forms.CharField)
-    if json_field['field_type'] == 'choice':
+        json_field["field_type"], forms.CharField
+    )
+    if json_field["field_type"] == "choice":
         invalid_choice_message = compose_invalid_choice_text(
-            json_field['name'], json_field['choices'])
+            json_field["name"], json_field["choices"]
+        )
         extra_parameters = {
-            'choices': json_field['choices'],
-            'error_messages': {
-                'invalid_choice': invalid_choice_message},
-            }
+            "choices": json_field["choices"],
+            "error_messages": {"invalid_choice": invalid_choice_message},
+        }
     else:
         extra_parameters = {}
 
-    default = json_field.get('default')
+    default = json_field.get("default")
     if default is not None:
-        extra_parameters['initial'] = default
+        extra_parameters["initial"] = default
 
     form_field = field_class(
-        label=json_field['label'], required=json_field['required'],
-        **extra_parameters)
+        label=json_field["label"],
+        required=json_field["required"],
+        **extra_parameters
+    )
     return form_field
 
 
 def add_power_driver_parameters(
-        driver_type, name, description, fields, missing_packages,
-        parameters_set, queryable=None):
+    driver_type,
+    name,
+    description,
+    fields,
+    missing_packages,
+    parameters_set,
+    queryable=None,
+):
     """Add new power type parameters to the given parameters_set if it
     does not already exist.
 
@@ -110,29 +119,32 @@ def add_power_driver_parameters(
     :type parameters_set: list
     """
     for power_type in parameters_set:
-        if name == power_type['name']:
+        if name == power_type["name"]:
             return
     field_set_schema = {
-        'title': "Power type parameters field set schema",
-        'type': 'array',
-        'items': SETTING_PARAMETER_FIELD_SCHEMA,
+        "title": "Power type parameters field set schema",
+        "type": "array",
+        "items": SETTING_PARAMETER_FIELD_SCHEMA,
     }
     validate(fields, field_set_schema)
     params = {
-        'driver_type': driver_type,
-        'name': name,
-        'description': description,
-        'fields': fields,
-        'missing_packages': missing_packages,
+        "driver_type": driver_type,
+        "name": name,
+        "description": description,
+        "fields": fields,
+        "missing_packages": missing_packages,
     }
     if queryable is not None:
-        params['queryable'] = queryable
+        params["queryable"] = queryable
     parameters_set.append(params)
 
 
 def get_driver_parameters_from_json(
-        json_power_type_parameters, initial_power_params=None,
-        skip_check=False, scope=None):
+    json_power_type_parameters,
+    initial_power_params=None,
+    skip_check=False,
+    scope=None,
+):
     """Return power type parameters.
 
     :param json_power_type_parameters: Power type parameters expressed
@@ -150,35 +162,34 @@ def get_driver_parameters_from_json(
     validate(json_power_type_parameters, JSON_POWER_DRIVERS_SCHEMA)
     power_parameters = {
         # Empty type, for the case where nothing is entered in the form yet.
-        '': DictCharField(
-            [], required=False, skip_check=True),
+        "": DictCharField([], required=False, skip_check=True)
     }
     if initial_power_params is None:
         initial_power_params = []
     for power_type in json_power_type_parameters:
         fields = []
         has_required_field = False
-        for json_field in power_type['fields']:
+        for json_field in power_type["fields"]:
             # Skip fields that do not match the scope.
-            if scope is not None and json_field['scope'] != scope:
+            if scope is not None and json_field["scope"] != scope:
                 continue
-            field_name = json_field['name']
+            field_name = json_field["name"]
             if field_name in initial_power_params:
-                json_field['default'] = initial_power_params[field_name]
-            has_required_field = has_required_field or json_field['required']
-            fields.append((
-                json_field['name'], make_form_field(json_field)))
+                json_field["default"] = initial_power_params[field_name]
+            has_required_field = has_required_field or json_field["required"]
+            fields.append((json_field["name"], make_form_field(json_field)))
         params = DictCharField(
-            fields, required=has_required_field, skip_check=skip_check)
-        power_parameters[power_type['name']] = params
+            fields, required=has_required_field, skip_check=skip_check
+        )
+        power_parameters[power_type["name"]] = params
     return power_parameters
 
 
-def get_driver_parameters(
-        initial_power_params=None, skip_check=False):
+def get_driver_parameters(initial_power_params=None, skip_check=False):
     params = get_all_power_types()
     return get_driver_parameters_from_json(
-        params, initial_power_params, skip_check)
+        params, initial_power_params, skip_check
+    )
 
 
 def get_driver_choices():
@@ -190,11 +201,10 @@ def get_driver_choices():
     return [
         (name, description)
         for name, description in get_driver_types(ignore_errors=True).items()
-        ]
+    ]
 
 
-def get_driver_types(
-        controllers=None, ignore_errors=False):
+def get_driver_types(controllers=None, ignore_errors=False):
     """Return the choice of mechanism to control a node's power.
 
     :param controllers: Restrict to power types on the supplied
@@ -210,9 +220,10 @@ def get_driver_types(
     """
     types = dict()
     params = get_all_power_types(
-        controllers=controllers, ignore_errors=ignore_errors)
+        controllers=controllers, ignore_errors=ignore_errors
+    )
     for power_type in params:
-        types[power_type['name']] = power_type['description']
+        types[power_type["name"]] = power_type["description"]
     return types
 
 
@@ -225,23 +236,30 @@ def get_all_power_types(controllers=None, ignore_errors=True):
     """
     merged_types = []
     for power_type_orig in PowerDriverRegistry.get_schema(
-            detect_missing_packages=False):
+        detect_missing_packages=False
+    ):
         power_type = deepcopy(power_type_orig)
-        driver_type = power_type.get('driver_type', 'power')
-        name = power_type['name']
-        fields = power_type.get('fields', [])
-        description = power_type['description']
-        missing_packages = power_type['missing_packages']
-        queryable = power_type.get('queryable')
+        driver_type = power_type.get("driver_type", "power")
+        name = power_type["name"]
+        fields = power_type.get("fields", [])
+        description = power_type["description"]
+        missing_packages = power_type["missing_packages"]
+        queryable = power_type.get("queryable")
         add_power_driver_parameters(
-            driver_type, name, description, fields, missing_packages,
-            merged_types, queryable=queryable)
+            driver_type,
+            name,
+            description,
+            fields,
+            missing_packages,
+            merged_types,
+            queryable=queryable,
+        )
     return sorted(merged_types, key=itemgetter("description"))
 
 
 def add_nos_driver_parameters(
-        driver_type, name, description, fields, parameters_set,
-        deployable=None):
+    driver_type, name, description, fields, parameters_set, deployable=None
+):
     """
     Add new NOS type parameters to the given parameters_set if it
     does not already exist.
@@ -261,23 +279,23 @@ def add_nos_driver_parameters(
     :type parameters_set: list
     """
     for power_type in parameters_set:
-        if name == power_type['name']:
+        if name == power_type["name"]:
             return
     field_set_schema = {
-        'title': "NOS type parameters field set schema",
-        'type': 'array',
-        'items': SETTING_PARAMETER_FIELD_SCHEMA,
+        "title": "NOS type parameters field set schema",
+        "type": "array",
+        "items": SETTING_PARAMETER_FIELD_SCHEMA,
     }
     validate(fields, field_set_schema)
-    assert driver_type == 'nos', "NOS driver type must be 'nos'."
+    assert driver_type == "nos", "NOS driver type must be 'nos'."
     params = {
-        'driver_type': driver_type,
-        'name': name,
-        'description': description,
-        'fields': fields,
+        "driver_type": driver_type,
+        "name": name,
+        "description": description,
+        "fields": fields,
     }
     if deployable is not None:
-        params['deployable'] = deployable
+        params["deployable"] = deployable
     parameters_set.append(params)
 
 
@@ -289,18 +307,25 @@ def get_all_nos_types_from_racks(controllers=None, ignore_errors=True):
     """
     merged_types = []
     responses = call_clusters(
-        cluster.DescribeNOSTypes, controllers=controllers,
-        ignore_errors=ignore_errors)
+        cluster.DescribeNOSTypes,
+        controllers=controllers,
+        ignore_errors=ignore_errors,
+    )
     for response in responses:
-        nos_types = response['nos_types']
+        nos_types = response["nos_types"]
         for nos_type in nos_types:
-            driver_type = nos_type.get('driver_type', 'nos')
-            name = nos_type['name']
-            fields = nos_type.get('fields', [])
-            description = nos_type['description']
-            deployable = nos_type.get('deployable')
+            driver_type = nos_type.get("driver_type", "nos")
+            name = nos_type["name"]
+            fields = nos_type.get("fields", [])
+            description = nos_type["description"]
+            deployable = nos_type.get("deployable")
             add_nos_driver_parameters(
-                driver_type, name, description, fields, merged_types,
-                deployable=deployable)
+                driver_type,
+                name,
+                description,
+                fields,
+                merged_types,
+                deployable=deployable,
+            )
     validate(merged_types, JSON_NOS_DRIVERS_SCHEMA)
     return sorted(merged_types, key=itemgetter("description"))

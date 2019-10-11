@@ -3,19 +3,11 @@
 
 """SQL Sequence."""
 
-__all__ = [
-    'BIGINT_MAX',
-    'INT_MAX',
-    'Sequence',
-]
+__all__ = ["BIGINT_MAX", "INT_MAX", "Sequence"]
 
 from textwrap import dedent
 
-from django.db import (
-    connection,
-    transaction,
-    utils,
-)
+from django.db import connection, transaction, utils
 from maasserver.utils.orm import get_psycopg2_exception
 from provisioningserver.utils import typed
 from psycopg2.errorcodes import (
@@ -43,9 +35,16 @@ class Sequence:
 
     @typed
     def __init__(
-            self, name: str, *, increment: int = 1, minvalue: int = None,
-            maxvalue: int = None, start: int = None, cycle: bool = True,
-            owner: str = None):
+        self,
+        name: str,
+        *,
+        increment: int = 1,
+        minvalue: int = None,
+        maxvalue: int = None,
+        start: int = None,
+        cycle: bool = True,
+        owner: str = None
+    ):
         """Initialise a new `Sequence`.
 
         :param name: The name of this sequence, a valid PostgreSQL identifier.
@@ -65,24 +64,26 @@ class Sequence:
         self.cycle = cycle
         self.owner = owner
 
-    _sql_create = dedent("""\
+    _sql_create = dedent(
+        """\
         CREATE SEQUENCE {name} INCREMENT BY {increment:d}
         {minvalue} {maxvalue} {start} {cycle} OWNED BY {owner};
-    """)
-    _sql_drop = (
-        "DROP SEQUENCE {name}"
+    """
     )
+    _sql_drop = "DROP SEQUENCE {name}"
 
     def create(self):
         """Create this sequence in the database."""
         minv, maxv = self.minvalue, self.maxvalue
         statement = self._sql_create.format(
-            name=self.name, increment=self.increment,
+            name=self.name,
+            increment=self.increment,
             minvalue=("NO MINVALUE" if minv is None else "MINVALUE %d" % minv),
             maxvalue=("NO MAXVALUE" if maxv is None else "MAXVALUE %d" % maxv),
             start=("" if self.start is None else "START WITH %d" % self.start),
             owner=("NONE" if self.owner is None else self.owner),
-            cycle=("CYCLE" if self.cycle else "NO CYCLE"))
+            cycle=("CYCLE" if self.cycle else "NO CYCLE"),
+        )
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(statement)
@@ -192,8 +193,7 @@ class Sequence:
         statement = "ALTER SEQUENCE {name} RESTART WITH %s;"
         with transaction.atomic():
             with connection.cursor() as cursor:
-                cursor.execute(statement.format(
-                    name=self.name), [next_value])
+                cursor.execute(statement.format(name=self.name), [next_value])
 
 
 def is_postgres_error(error, *pgcodes):

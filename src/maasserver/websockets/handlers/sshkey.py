@@ -3,9 +3,7 @@
 
 """The SSHKey handler for the WebSocket connection."""
 
-__all__ = [
-    "SSHKeyHandler",
-    ]
+__all__ = ["SSHKeyHandler"]
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
@@ -27,19 +25,10 @@ from provisioningserver.events import EVENT_TYPES
 
 
 class SSHKeyHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = SSHKey.objects.all()
-        allowed_methods = [
-            'list',
-            'get',
-            'create',
-            'delete',
-            'import_keys',
-        ]
-        listen_channels = [
-            "sshkey",
-        ]
+        allowed_methods = ["list", "get", "create", "delete", "import_keys"]
+        listen_channels = ["sshkey"]
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for SSH keys owned by `user`."""
@@ -48,7 +37,8 @@ class SSHKeyHandler(TimestampedModelHandler):
     def get_object(self, params, permission=None):
         """Only allow getting keys owned by the user."""
         obj = super(SSHKeyHandler, self).get_object(
-            params, permission=permission)
+            params, permission=permission
+        )
         if obj.user != self.user:
             raise HandlerDoesNotExistError(params[self._meta.pk])
         else:
@@ -96,12 +86,17 @@ class SSHKeyHandler(TimestampedModelHandler):
         try:
             KeySource.objects.save_keys_for_user(
                 user=self.user,
-                protocol=params['protocol'],
-                auth_id=params['auth_id'])
+                protocol=params["protocol"],
+                auth_id=params["auth_id"],
+            )
             request = HttpRequest()
             request.user = self.user
             create_audit_event(
-                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request,
-                None, description="Imported SSH keys.")
+                EVENT_TYPES.AUTHORISATION,
+                ENDPOINT.UI,
+                request,
+                None,
+                description="Imported SSH keys.",
+            )
         except ImportSSHKeysError as e:
             raise HandlerError(str(e))

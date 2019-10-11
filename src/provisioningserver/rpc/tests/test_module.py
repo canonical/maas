@@ -3,8 +3,7 @@
 
 """Tests for the top-level cluster RPC API."""
 
-__all__ = [
-]
+__all__ = []
 
 from maastesting.testcase import MAASTestCase
 import provisioningserver
@@ -12,19 +11,15 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
 class TestUtilities(MAASTestCase):
-
     def test_get_rpc_client_returns_client(self):
         services = self.patch(provisioningserver, "services")
 
         client = provisioningserver.rpc.getRegionClient()
-        self.assertEqual(
-            services.getServiceNamed('rpc').getClient(),
-            client,
-        )
+        self.assertEqual(services.getServiceNamed("rpc").getClient(), client)
 
     def test_error_when_cluster_services_are_down(self):
         services = self.patch(provisioningserver, "services")
         services.getServiceNamed.side_effect = KeyError
         self.assertRaises(
-            NoConnectionsAvailable,
-            provisioningserver.rpc.getRegionClient)
+            NoConnectionsAvailable, provisioningserver.rpc.getRegionClient
+        )

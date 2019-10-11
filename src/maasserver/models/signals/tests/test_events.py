@@ -9,25 +9,19 @@ __all__ = []
 from maasserver.enum import NODE_STATUS_CHOICES_DICT
 from maasserver.models import Event
 from maasserver.models.signals import power as node_query
-from maasserver.node_status import (
-    get_failed_status,
-    NODE_STATUS,
-)
+from maasserver.node_status import get_failed_status, NODE_STATUS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.events import (
-    EVENT_DETAILS,
-    EVENT_TYPES,
-)
+from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 
 
 class TestStatusTransitionEvent(MAASServerTestCase):
-
     def setUp(self):
         super(TestStatusTransitionEvent, self).setUp()
         # Circular imports.
         from maasserver.models import signals
-        self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', True)
+
+        self.patch(signals.events, "STATE_TRANSITION_EVENT_CONNECT", True)
 
     def test_changing_status_of_node_emits_event(self):
         self.addCleanup(node_query.signals.enable)
@@ -46,15 +40,15 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         self.assertEqual(
             (
                 EVENT_TYPES.NODE_CHANGED_STATUS,
-                EVENT_DETAILS[
-                    EVENT_TYPES.NODE_CHANGED_STATUS].description,
+                EVENT_DETAILS[EVENT_TYPES.NODE_CHANGED_STATUS].description,
                 description,
             ),
             (
                 latest_event.type.name,
                 latest_event.type.description,
                 latest_event.description,
-            ))
+            ),
+        )
 
     def test_changing_to_allocated_includes_user_name(self):
         old_status = NODE_STATUS.READY
@@ -69,8 +63,10 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             user.username,
         )
         self.assertEqual(
-            EVENT_TYPES.NODE_CHANGED_STATUS, latest_event.type.name)
+            EVENT_TYPES.NODE_CHANGED_STATUS, latest_event.type.name
+        )
         self.assertEqual(
             EVENT_DETAILS[EVENT_TYPES.NODE_CHANGED_STATUS].description,
-            latest_event.type.description)
+            latest_event.type.description,
+        )
         self.assertEqual(description, latest_event.description)

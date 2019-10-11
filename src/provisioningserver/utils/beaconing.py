@@ -12,14 +12,11 @@ __all__ = [
     "create_beacon_payload",
     "read_beacon_payload",
     "add_arguments",
-    "run"
+    "run",
 ]
 
 from collections import namedtuple
-from gzip import (
-    compress,
-    decompress,
-)
+from gzip import compress, decompress
 import json
 import math
 import os
@@ -36,16 +33,10 @@ from bson import BSON
 from bson.errors import BSONError
 from cryptography.fernet import InvalidToken
 from provisioningserver.path import get_path
-from provisioningserver.security import (
-    fernet_decrypt_psk,
-    fernet_encrypt_psk,
-)
+from provisioningserver.security import fernet_decrypt_psk, fernet_encrypt_psk
 from provisioningserver.utils import sudo
 from provisioningserver.utils.network import format_eui
-from provisioningserver.utils.pcap import (
-    PCAP,
-    PCAPError,
-)
+from provisioningserver.utils.pcap import PCAP, PCAPError
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.tcpip import (
     decode_ethernet_udp_packet,
@@ -58,45 +49,28 @@ BEACON_IPV4_MULTICAST = "224.0.0.118"
 BEACON_IPV6_MULTICAST = "ff02::15a"
 
 
-BEACON_TYPES = {
-    "solicitation": 1,
-    "advertisement": 2
-}
+BEACON_TYPES = {"solicitation": 1, "advertisement": 2}
 
-BEACON_TYPE_VALUES = {
-    value: name for name, value in BEACON_TYPES.items()
-}
+BEACON_TYPE_VALUES = {value: name for name, value in BEACON_TYPES.items()}
 
 PROTOCOL_VERSION = 1
 BEACON_HEADER_FORMAT_V1 = "!BBH"
 BEACON_HEADER_LENGTH_V1 = 4
 
 
-BeaconPayload = namedtuple('BeaconPayload', (
-    'bytes',
-    'version',
-    'type',
-    'payload',
-))
+BeaconPayload = namedtuple(
+    "BeaconPayload", ("bytes", "version", "type", "payload")
+)
 
-ReceivedBeacon = namedtuple('ReceivedBeacon', (
-    'uuid',
-    'json',
-    'ifname',
-    'ifinfo',
-    'vid',
-    'reply_address',
-    'multicast',
-))
+ReceivedBeacon = namedtuple(
+    "ReceivedBeacon",
+    ("uuid", "json", "ifname", "ifinfo", "vid", "reply_address", "multicast"),
+)
 
-TopologyHint = namedtuple('TopologyHint', (
-    'ifname',
-    'vid',
-    'hint',
-    'related_ifname',
-    'related_vid',
-    'related_mac',
-))
+TopologyHint = namedtuple(
+    "TopologyHint",
+    ("ifname", "vid", "hint", "related_ifname", "related_vid", "related_mac"),
+)
 
 
 def uuid_to_timestamp(uuid_str):
@@ -110,7 +84,7 @@ def uuid_to_timestamp(uuid_str):
     """
     uuid_time = UUID(uuid_str).time
     # Reverse the algorithm in uuid.py.
-    timestamp = (uuid_time - 0x01b21dd213814000) * 100 / 1e9
+    timestamp = (uuid_time - 0x01B21DD213814000) * 100 / 1e9
     return timestamp
 
 
@@ -175,12 +149,17 @@ def create_beacon_payload(beacon_type, payload=None, version=PROTOCOL_VERSION):
         compressed_bytes = compress(data_bytes, compresslevel=9)
         payload_bytes = fernet_encrypt_psk(compressed_bytes, raw=True)
     else:
-        payload_bytes = b''
+        payload_bytes = b""
     beacon_bytes = struct.pack(
         BEACON_HEADER_FORMAT_V1 + "%ds" % len(payload_bytes),
-        version, beacon_type_code, len(payload_bytes), payload_bytes)
+        version,
+        beacon_type_code,
+        len(payload_bytes),
+        payload_bytes,
+    )
     return BeaconPayload(
-        beacon_bytes, version, BEACON_TYPE_VALUES[beacon_type_code], payload)
+        beacon_bytes, version, BEACON_TYPE_VALUES[beacon_type_code], payload
+    )
 
 
 def read_beacon_payload(beacon_bytes):
@@ -193,16 +172,19 @@ def read_beacon_payload(beacon_bytes):
     """
     if len(beacon_bytes) < BEACON_HEADER_LENGTH_V1:
         raise InvalidBeaconingPacket(
-            "Beaconing packet must be at least %d bytes." % (
-                BEACON_HEADER_LENGTH_V1))
+            "Beaconing packet must be at least %d bytes."
+            % BEACON_HEADER_LENGTH_V1
+        )
     header = beacon_bytes[:BEACON_HEADER_LENGTH_V1]
     version, beacon_type_code, expected_payload_length = struct.unpack(
-        BEACON_HEADER_FORMAT_V1, header)
+        BEACON_HEADER_FORMAT_V1, header
+    )
     actual_payload_length = len(beacon_bytes) - BEACON_HEADER_LENGTH_V1
     if len(beacon_bytes) - BEACON_HEADER_LENGTH_V1 < expected_payload_length:
         raise InvalidBeaconingPacket(
-            "Invalid payload length: expected %d bytes, got %d bytes." % (
-                expected_payload_length, actual_payload_length))
+            "Invalid payload length: expected %d bytes, got %d bytes."
+            % (expected_payload_length, actual_payload_length)
+        )
     payload_start = BEACON_HEADER_LENGTH_V1
     payload_end = BEACON_HEADER_LENGTH_V1 + expected_payload_length
     payload_bytes = beacon_bytes[payload_start:payload_end]
@@ -214,27 +196,31 @@ def read_beacon_payload(beacon_bytes):
         else:
             try:
                 decrypted_data = fernet_decrypt_psk(
-                    payload_bytes, ttl=60, raw=True)
+                    payload_bytes, ttl=60, raw=True
+                )
             except InvalidToken:
                 raise InvalidBeaconingPacket(
-                    "Failed to decrypt inner payload: check MAAS secret key.")
+                    "Failed to decrypt inner payload: check MAAS secret key."
+                )
             try:
                 decompressed_data = decompress(decrypted_data)
             except OSError:
                 raise InvalidBeaconingPacket(
-                    "Failed to decompress inner payload: %r" % decrypted_data)
+                    "Failed to decompress inner payload: %r" % decrypted_data
+                )
             try:
                 # Replace the data in the dictionary with its decrypted form.
                 payload = BSON.decode(decompressed_data)
             except BSONError:
                 raise InvalidBeaconingPacket(
-                    "Inner beacon payload is not BSON: %r" % decompressed_data)
+                    "Inner beacon payload is not BSON: %r" % decompressed_data
+                )
     else:
-        raise InvalidBeaconingPacket(
-            "Unknown beacon version: %d" % version)
+        raise InvalidBeaconingPacket("Unknown beacon version: %d" % version)
     beacon_type_code = payload["type"] if payload else beacon_type_code
     return BeaconPayload(
-        beacon_bytes, version, BEACON_TYPE_VALUES[beacon_type_code], payload)
+        beacon_bytes, version, BEACON_TYPE_VALUES[beacon_type_code], payload
+    )
 
 
 class InvalidBeaconingPacket(Exception):
@@ -300,14 +286,14 @@ def observe_beaconing_packets(input=sys.stdin.buffer, out=sys.stdout):
                     "destination_ip": str(packet.l3.dst_ip),
                     "source_port": packet.l4.packet.src_port,
                     "destination_port": packet.l4.packet.dst_port,
-                    "time": pcap_header.timestamp_seconds
+                    "time": pcap_header.timestamp_seconds,
                 }
                 if packet.l2.vid is not None:
                     output_json["vid"] = packet.l2.vid
                 if beacon.data is not None:
                     output_json.update(beacon_to_json(beacon.data))
                 out.write(json.dumps(output_json))
-                out.write('\n')
+                out.write("\n")
                 out.flush()
             except PacketProcessingError as e:
                 err.write(e.error)
@@ -329,21 +315,31 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Observes beaconing traffic on the specified interface.
-        """)
+        """
+    )
     parser.add_argument(
-        'interface', type=str, nargs='?',
+        "interface",
+        type=str,
+        nargs="?",
         help="Ethernet interface from which to capture traffic. Optional if "
-             "an input file is specified.")
+        "an input file is specified.",
+    )
     parser.add_argument(
-        '-i', '--input-file', type=str, required=False,
+        "-i",
+        "--input-file",
+        type=str,
+        required=False,
         help="File to read beaconing output from. Use - for stdin. Default is "
-             "to call `sudo /usr/lib/maas/beacon-monitor` to get input.")
+        "to call `sudo /usr/lib/maas/beacon-monitor` to get input.",
+    )
 
 
-def run(args, output=sys.stdout, stdin=sys.stdin,
-        stdin_buffer=sys.stdin.buffer):
+def run(
+    args, output=sys.stdout, stdin=sys.stdin, stdin_buffer=sys.stdin.buffer
+):
     """Observe an Ethernet interface and print beaconing packets."""
 
     # First, become a progress group leader, so that signals can be directed
@@ -354,13 +350,13 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
-        cmd = sudo(
-            [get_path("/usr/lib/maas/beacon-monitor"), args.interface])
+        cmd = sudo([get_path("/usr/lib/maas/beacon-monitor"), args.interface])
         network_monitor = subprocess.Popen(
-            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
+            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE
+        )
         infile = network_monitor.stdout
     else:
-        if args.input_file == '-':
+        if args.input_file == "-":
             mode = os.fstat(stdin.fileno()).st_mode
             if not stat.S_ISFIFO(mode):
                 raise ActionScriptError("Expected stdin to be a pipe.")

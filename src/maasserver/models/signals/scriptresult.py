@@ -3,9 +3,7 @@
 
 """Emit ScriptResult status transition event."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from maasserver.models import Event
 from maasserver.preseed import CURTIN_INSTALL_LOG
@@ -25,38 +23,52 @@ signals = SignalsManager()
 
 
 def emit_script_result_status_transition_event(
-        script_result, old_values, **kwargs):
+    script_result, old_values, **kwargs
+):
     """Send a status transition event."""
     [old_status] = old_values
 
-    if (script_result.physical_blockdevice and
-            script_result.interface):
-        script_name = '%s on %s and %s' % (
-            script_result.name, script_result.physical_blockdevice.name,
-            script_result.interface.name)
+    if script_result.physical_blockdevice and script_result.interface:
+        script_name = "%s on %s and %s" % (
+            script_result.name,
+            script_result.physical_blockdevice.name,
+            script_result.interface.name,
+        )
     elif script_result.physical_blockdevice:
-        script_name = '%s on %s' % (
-            script_result.name, script_result.physical_blockdevice.name)
+        script_name = "%s on %s" % (
+            script_result.name,
+            script_result.physical_blockdevice.name,
+        )
     elif script_result.interface:
-        script_name = '%s on %s' % (
-            script_result.name, script_result.interface.name)
+        script_name = "%s on %s" % (
+            script_result.name,
+            script_result.interface.name,
+        )
     else:
         script_name = script_result.name
 
-    if (script_result.script_set.result_type == RESULT_TYPE.TESTING and
-            old_status == SCRIPT_STATUS.PENDING and (
-                script_result.status in SCRIPT_STATUS_RUNNING)):
+    if (
+        script_result.script_set.result_type == RESULT_TYPE.TESTING
+        and old_status == SCRIPT_STATUS.PENDING
+        and (script_result.status in SCRIPT_STATUS_RUNNING)
+    ):
         Event.objects.create_node_event(
-            script_result.script_set.node, EVENT_TYPES.RUNNING_TEST,
-            event_description=script_name)
-    elif script_result.status in SCRIPT_STATUS_FAILED.union({
-            SCRIPT_STATUS.ABORTED}):
+            script_result.script_set.node,
+            EVENT_TYPES.RUNNING_TEST,
+            event_description=script_name,
+        )
+    elif script_result.status in SCRIPT_STATUS_FAILED.union(
+        {SCRIPT_STATUS.ABORTED}
+    ):
         Event.objects.create_node_event(
             script_result.script_set.node,
             EVENT_TYPES.SCRIPT_DID_NOT_COMPLETE,
-            event_description="%s %s" % (
-                script_name, SCRIPT_STATUS_CHOICES[
-                    script_result.status][1].lower()))
+            event_description="%s %s"
+            % (
+                script_name,
+                SCRIPT_STATUS_CHOICES[script_result.status][1].lower(),
+            ),
+        )
     else:
         old_status_name = None
         new_status_name = None
@@ -68,17 +80,24 @@ def emit_script_result_status_transition_event(
         Event.objects.create_node_event(
             script_result.script_set.node,
             EVENT_TYPES.SCRIPT_RESULT_CHANGED_STATUS,
-            event_description="%s changed status from '%s' to '%s'" % (
-                script_name, old_status_name, new_status_name))
-        if (CURTIN_INSTALL_LOG == script_result.name and not
-                script_result.script_set.node.netboot):
+            event_description="%s changed status from '%s' to '%s'"
+            % (script_name, old_status_name, new_status_name),
+        )
+        if (
+            CURTIN_INSTALL_LOG == script_result.name
+            and not script_result.script_set.node.netboot
+        ):
             Event.objects.create_node_event(
-                script_result.script_set.node, EVENT_TYPES.REBOOTING)
+                script_result.script_set.node, EVENT_TYPES.REBOOTING
+            )
 
 
 signals.watch_fields(
     emit_script_result_status_transition_event,
-    ScriptResult, ['status'], delete=False)
+    ScriptResult,
+    ["status"],
+    delete=False,
+)
 
 # Enable all signals by default.
 signals.enable()

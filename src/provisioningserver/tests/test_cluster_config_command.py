@@ -9,35 +9,28 @@ from argparse import ArgumentParser
 import io
 from itertools import combinations
 import pprint
-from unittest.mock import (
-    Mock,
-    patch,
-)
+from unittest.mock import Mock, patch
 import uuid
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import cluster_config_command
-from provisioningserver.config import (
-    ClusterConfiguration,
-    UUID_NOT_SET,
-)
+from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools import ExpectedException
 
 
 class TestAddArguments(MAASTestCase):
-
     def test_accepts_all_args(self):
         all_test_arguments = cluster_config_command.all_arguments
 
         default_arg_values = {
-            '--region-url': None,
-            '--uuid': None,
-            '--init': False,
-            '--tftp-port': None,
-            '--tftp-root': None,
-            '--debug': None,
+            "--region-url": None,
+            "--uuid": None,
+            "--init": False,
+            "--tftp-port": None,
+            "--tftp-root": None,
+            "--debug": None,
         }
 
         failures = {}
@@ -46,19 +39,19 @@ class TestAddArguments(MAASTestCase):
         for r in range(len(all_test_arguments) + 1):
             for test_arg_names in combinations(all_test_arguments, r):
                 test_values = {
-                    '--region-url': factory.make_simple_http_url(),
-                    '--uuid': str(uuid.uuid4()),
-                    '--init': '',
-                    '--tftp-port': str(factory.pick_port()),
-                    '--tftp-root': factory.make_string(),
-                    '--debug': str(factory.pick_bool()),
+                    "--region-url": factory.make_simple_http_url(),
+                    "--uuid": str(uuid.uuid4()),
+                    "--init": "",
+                    "--tftp-port": str(factory.pick_port()),
+                    "--tftp-root": factory.make_string(),
+                    "--debug": str(factory.pick_bool()),
                 }
 
                 # Build a query dictionary for the given combination of args
                 args_under_test = []
                 for param_name in test_arg_names:
                     args_under_test.append(param_name)
-                    if param_name != '--init':
+                    if param_name != "--init":
                         args_under_test.append(test_values[param_name])
 
                 parser = ArgumentParser()
@@ -67,31 +60,32 @@ class TestAddArguments(MAASTestCase):
                 # If both init and uuid are passed, argparse will generate
                 # a nice ArgumentError exception, which unfortunately,
                 # gets caught and sent to exit.
-                if '--init' in test_arg_names and '--uuid' in test_arg_names:
-                    expected_exception = ExpectedException(SystemExit, '2')
-                    with expected_exception, patch('sys.stderr'):
+                if "--init" in test_arg_names and "--uuid" in test_arg_names:
+                    expected_exception = ExpectedException(SystemExit, "2")
+                    with expected_exception, patch("sys.stderr"):
                         parser.parse_known_args(args_under_test)
 
                 else:
                     # Otherwise, parsed args with defaults as usual
-                    observed_args = vars(
-                        parser.parse_args(args_under_test))
+                    observed_args = vars(parser.parse_args(args_under_test))
 
                     expected_args = {}
                     for param_name in all_test_arguments:
-                        parsed_param_name = param_name[2:].replace('-', '_')
+                        parsed_param_name = param_name[2:].replace("-", "_")
 
                         if param_name not in test_arg_names:
-                            expected_args[parsed_param_name] = \
-                                default_arg_values[param_name]
+                            expected_args[
+                                parsed_param_name
+                            ] = default_arg_values[param_name]
                         else:
-                            expected_args[parsed_param_name] = \
-                                observed_args[parsed_param_name]
+                            expected_args[parsed_param_name] = observed_args[
+                                parsed_param_name
+                            ]
 
                     if expected_args != observed_args:
                         failures[str(test_arg_names)] = {
-                            'expected_args': expected_args,
-                            'observed_args': observed_args,
+                            "expected_args": expected_args,
+                            "observed_args": observed_args,
                         }
 
         error_message = io.StringIO()
@@ -104,14 +98,14 @@ class TestAddArguments(MAASTestCase):
             "dropped / added / changed by the "
             "the function, which is incorrect "
             "behavior. The list of incorrect "
-            "arguments is as follows: \n")
+            "arguments is as follows: \n"
+        )
         pp = pprint.PrettyPrinter(depth=3, stream=error_message)
         pp.pprint(failures)
         self.assertDictEqual({}, failures, error_message.getvalue())
 
 
 class TestUpdateMaasClusterConf(MAASTestCase):
-
     def setUp(self):
         super(TestUpdateMaasClusterConf, self).setUp()
         self.useFixture(ClusterConfigurationFixture())

@@ -8,11 +8,7 @@ Views are implemented in the database to better encapsulate complex queries,
 and are recreated during the `dbupgrade` process.
 """
 
-__all__ = [
-    "drop_all_views",
-    "register_all_views",
-    "register_view",
-    ]
+__all__ = ["drop_all_views", "register_all_views", "register_view"]
 
 from contextlib import closing
 from textwrap import dedent
@@ -30,16 +26,22 @@ def _drop_view_if_exists(view_name):
 
 def _register_view(view_name, view_sql):
     """Re-registers the specified view."""
-    view_sql = dedent("""\
+    view_sql = (
+        dedent(
+            """\
         CREATE OR REPLACE VIEW %s AS (%s);
-        """) % (view_name, view_sql)
+        """
+        )
+        % (view_name, view_sql)
+    )
     with closing(connection.cursor()) as cursor:
         cursor.execute(view_sql)
 
 
 # Note that the `Discovery` model object is backed by this view. Any
 # changes made to this view should be reflected there.
-maasserver_discovery = dedent("""\
+maasserver_discovery = dedent(
+    """\
     SELECT
         DISTINCT ON (neigh.mac_address, neigh.ip)
         neigh.id AS id, -- Django needs a primary key for the object.
@@ -95,14 +97,16 @@ maasserver_discovery = dedent("""\
         rdns.updated DESC, -- We want the most recently seen reverse DNS entry.
         mdns.updated DESC, -- We want the most recently seen mDNS hostname.
         subnet_prefixlen DESC -- We want the best-match CIDR.
-    """)
+    """
+)
 
 # Pairs of IP addresses that can route between nodes. In MAAS all addresses in
 # a "space" are mutually routable, so this essentially means finding pairs of
 # IP addresses that are in subnets with the same space ID. Typically this view
 # should not be used without constraining, say, the sets of nodes, to find
 # addresses that are mutually routable between region controllers for example.
-maasserver_routable_pairs = dedent("""\
+maasserver_routable_pairs = dedent(
+    """\
     SELECT
            -- "Left" node.
            if_left.node_id AS left_node_id,
@@ -152,10 +156,12 @@ maasserver_routable_pairs = dedent("""\
      WHERE if_left.enabled AND sip_left.ip IS NOT NULL
        AND if_right.enabled AND sip_right.ip IS NOT NULL
        AND family(sip_left.ip) = family(sip_right.ip)
-    """)
+    """
+)
 
 # Relationship between nodes and pods they host.
-maasserver_podhost = dedent("""\
+maasserver_podhost = dedent(
+    """\
     SELECT
             pod.id::bigint << 32 | node.id AS id,
             node.id AS node_id,
@@ -175,11 +181,13 @@ maasserver_podhost = dedent("""\
              ON ifip.staticipaddress_id = ip.id
         LEFT OUTER JOIN maasserver_interface if ON if.id = ifip.interface_id
         LEFT OUTER JOIN maasserver_node node ON node.id = if.node_id
-""")
+"""
+)
 
 # Views that are helpful for supporting MAAS.
 # These can be batch-run using the maas-region-support-dump script.
-maas_support__node_overview = dedent("""\
+maas_support__node_overview = dedent(
+    """\
     SELECT
         hostname,
         system_id,
@@ -189,9 +197,11 @@ maas_support__node_overview = dedent("""\
     WHERE
         node_type = 0 -- Machine
     ORDER BY hostname
-    """)
+    """
+)
 
-maas_support__device_overview = dedent("""\
+maas_support__device_overview = dedent(
+    """\
     SELECT
         node.hostname,
         node.system_id,
@@ -202,9 +212,11 @@ maas_support__device_overview = dedent("""\
     WHERE
         node.node_type = 1
     ORDER BY hostname
-    """)
+    """
+)
 
-maas_support__node_networking = dedent("""\
+maas_support__node_networking = dedent(
+    """\
     SELECT
         node.hostname,
         iface.id "ifid",
@@ -238,9 +250,11 @@ maas_support__node_networking = dedent("""\
             on fabric.id = vlan.fabric_id
         ORDER BY
             node.hostname, iface.name, sip.alloc_type
-    """)
+    """
+)
 
-maas_support__ip_allocation = dedent("""\
+maas_support__ip_allocation = dedent(
+    """\
     SELECT
         sip.ip,
         CASE
@@ -270,9 +284,11 @@ maas_support__ip_allocation = dedent("""\
             LEFT OUTER JOIN maasserver_bmc bmc
                 ON bmc.ip_address_id = sip.id
         ORDER BY sip.ip
-    """)
+    """
+)
 
-maas_support__boot_source_selections = dedent("""\
+maas_support__boot_source_selections = dedent(
+    """\
     SELECT
         bs.url,
         bss.release,
@@ -284,9 +300,11 @@ maas_support__boot_source_selections = dedent("""\
         maasserver_bootsource bs
     LEFT OUTER JOIN maasserver_bootsourceselection bss
         ON bss.boot_source_id = bs.id
-     """)
+     """
+)
 
-maas_support__boot_source_cache = dedent("""\
+maas_support__boot_source_cache = dedent(
+    """\
     SELECT
         bs.url,
         bsc.label,
@@ -305,9 +323,11 @@ maas_support__boot_source_cache = dedent("""\
         bsc.release,
         bsc.arch,
         bsc.subarch
-     """)
+     """
+)
 
-maas_support__configuration__excluding_rpc_shared_secret = dedent("""\
+maas_support__configuration__excluding_rpc_shared_secret = dedent(
+    """\
     SELECT
         name,
         value
@@ -315,17 +335,21 @@ maas_support__configuration__excluding_rpc_shared_secret = dedent("""\
         maasserver_config
     WHERE
         name != 'rpc_shared_secret'
-    """)
+    """
+)
 
-maas_support__license_keys_present__excluding_key_material = dedent("""\
+maas_support__license_keys_present__excluding_key_material = dedent(
+    """\
     SELECT
         osystem,
         distro_series
     FROM
         maasserver_licensekey
-    """)
+    """
+)
 
-maas_support__ssh_keys__by_user = dedent("""\
+maas_support__ssh_keys__by_user = dedent(
+    """\
     SELECT
         u.username,
         sshkey.key
@@ -336,7 +360,8 @@ maas_support__ssh_keys__by_user = dedent("""\
     ORDER BY
         u.username,
         sshkey.key
-    """)
+    """
+)
 
 # Dictionary of view_name: view_sql tuples which describe the database views.
 _ALL_VIEWS = {
@@ -347,13 +372,10 @@ _ALL_VIEWS = {
     "maas_support__device_overview": maas_support__device_overview,
     "maas_support__node_networking": maas_support__node_networking,
     "maas_support__ip_allocation": maas_support__ip_allocation,
-    "maas_support__boot_source_selections":
-        maas_support__boot_source_selections,
+    "maas_support__boot_source_selections": maas_support__boot_source_selections,
     "maas_support__boot_source_cache": maas_support__boot_source_cache,
-    "maas_support__configuration__excluding_rpc_shared_secret":
-        maas_support__configuration__excluding_rpc_shared_secret,
-    "maas_support__license_keys_present__excluding_key_material":
-        maas_support__license_keys_present__excluding_key_material,
+    "maas_support__configuration__excluding_rpc_shared_secret": maas_support__configuration__excluding_rpc_shared_secret,
+    "maas_support__license_keys_present__excluding_key_material": maas_support__license_keys_present__excluding_key_material,
     "maas_support__ssh_keys__by_user": maas_support__ssh_keys__by_user,
 }
 

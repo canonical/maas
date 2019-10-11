@@ -14,13 +14,7 @@ import platform
 import random
 from random import randint
 import socket
-from unittest.mock import (
-    ANY,
-    call,
-    MagicMock,
-    Mock,
-    sentinel,
-)
+from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 from urllib.parse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
@@ -34,10 +28,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
@@ -103,18 +94,12 @@ from provisioningserver.rpc.testing import (
     call_responder,
     MockLiveClusterToRegionRPCFixture,
 )
-from provisioningserver.rpc.testing.doubles import (
-    DummyConnection,
-    StubOS,
-)
+from provisioningserver.rpc.testing.doubles import DummyConnection, StubOS
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.env import set_maas_id
-from provisioningserver.utils.fs import (
-    get_maas_common_command,
-    NamedLock,
-)
+from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
@@ -136,16 +121,8 @@ from testtools.matchers import (
 )
 from twisted import web
 from twisted.application.internet import TimerService
-from twisted.internet import (
-    error,
-    reactor,
-)
-from twisted.internet.defer import (
-    Deferred,
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet import error, reactor
+from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
 from twisted.internet.endpoints import TCP6ClientEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
@@ -173,6 +150,7 @@ class TestClusterProtocol_Identify(MAASTestCase):
 
         def check(response):
             self.assertEqual({"ident": system_id}, response)
+
         return d.addCallback(check)
 
 
@@ -240,18 +218,17 @@ class TestClusterProtocol_ListBootImages_and_ListBootImagesV2(MAASTestCase):
     scenarios = (
         ("ListBootImages", {"rpc_call": cluster.ListBootImages}),
         ("ListBootImagesV2", {"rpc_call": cluster.ListBootImagesV2}),
-        )
+    )
 
     def test_list_boot_images_is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            self.rpc_call.commandName)
+        responder = protocol.locateResponder(self.rpc_call.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_list_boot_images_can_be_called(self):
         self.useFixture(ClusterConfigurationFixture())
-        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
+        self.patch(boot_images, "CACHED_BOOT_IMAGES", None)
         list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images.return_value = []
 
@@ -275,15 +252,18 @@ class TestClusterProtocol_ListBootImages_and_ListBootImagesV2(MAASTestCase):
 
         # Populate a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
-        current_dir = os.path.join(tftpdir, 'current')
+        current_dir = os.path.join(tftpdir, "current")
         os.makedirs(current_dir)
         for options in product(osystems, archs, subarchs, releases, labels):
             os.makedirs(os.path.join(current_dir, *options))
             make_osystem(self, options[0], purposes)
 
-        self.useFixture(ClusterConfigurationFixture(
-            tftp_root=os.path.join(tftpdir, "current")))
-        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
+        self.useFixture(
+            ClusterConfigurationFixture(
+                tftp_root=os.path.join(tftpdir, "current")
+            )
+        )
+        self.patch(boot_images, "CACHED_BOOT_IMAGES", None)
 
         expected_images = [
             {
@@ -295,19 +275,20 @@ class TestClusterProtocol_ListBootImages_and_ListBootImagesV2(MAASTestCase):
                 "purpose": purpose,
             }
             for osystem, arch, subarch, release, label, purpose in product(
-                osystems, archs, subarchs, releases, labels, purposes)
-            ]
+                osystems, archs, subarchs, releases, labels, purposes
+            )
+        ]
         for expected_image in expected_images:
-            if expected_image['purpose'] == 'xinstall':
-                if expected_image['osystem'] == 'ubuntu':
-                    expected_image['xinstall_path'] = 'squashfs'
-                    expected_image['xinstall_type'] = 'squashfs'
+            if expected_image["purpose"] == "xinstall":
+                if expected_image["osystem"] == "ubuntu":
+                    expected_image["xinstall_path"] = "squashfs"
+                    expected_image["xinstall_type"] = "squashfs"
                 else:
-                    expected_image['xinstall_path'] = 'root-tgz'
-                    expected_image['xinstall_type'] = 'tgz'
+                    expected_image["xinstall_path"] = "root-tgz"
+                    expected_image["xinstall_type"] = "tgz"
             else:
-                expected_image['xinstall_path'] = ''
-                expected_image['xinstall_type'] = ''
+                expected_image["xinstall_path"] = ""
+                expected_image["xinstall_type"] = ""
 
         response = yield call_responder(Cluster(), self.rpc_call, {})
 
@@ -322,7 +303,8 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
     def test_import_boot_images_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ImportBootImages.commandName)
+            cluster.ImportBootImages.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
@@ -334,7 +316,8 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         conn_cluster.service.maas_url = factory.make_simple_http_url()
 
         response = yield call_responder(
-            conn_cluster, cluster.ImportBootImages, {'sources': []})
+            conn_cluster, cluster.ImportBootImages, {"sources": []}
+        )
         self.assertEqual({}, response)
 
     @inlineCallbacks
@@ -343,18 +326,18 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
 
         sources = [
             {
-                'url': factory.make_url(),
-                'keyring_data': b'',
-                'selections': [
+                "url": factory.make_url(),
+                "keyring_data": b"",
+                "selections": [
                     {
-                        'os': 'ubuntu',
-                        'release': "trusty",
-                        'arches': ["amd64"],
-                        'subarches': ["generic"],
-                        'labels': ["release"],
-                    },
+                        "os": "ubuntu",
+                        "release": "trusty",
+                        "arches": ["amd64"],
+                        "subarches": ["generic"],
+                        "labels": ["release"],
+                    }
                 ],
-            },
+            }
         ]
 
         conn_cluster = Cluster()
@@ -362,19 +345,24 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         conn_cluster.service.maas_url = factory.make_simple_http_url()
 
         yield call_responder(
-            conn_cluster, cluster.ImportBootImages, {'sources': sources})
+            conn_cluster, cluster.ImportBootImages, {"sources": sources}
+        )
 
         self.assertThat(
             import_boot_images,
             MockCalledOnceWith(
-                sources, conn_cluster.service.maas_url,
-                http_proxy=None, https_proxy=None))
+                sources,
+                conn_cluster.service.maas_url,
+                http_proxy=None,
+                https_proxy=None,
+            ),
+        )
 
     @inlineCallbacks
     def test_import_boot_images_calls_import_boot_images_with_proxies(self):
         import_boot_images = self.patch(clusterservice, "import_boot_images")
 
-        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        proxy = "http://%s.example.com" % factory.make_name("proxy")
         parsed_proxy = urlparse(proxy)
 
         conn_cluster = Cluster()
@@ -382,17 +370,24 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         conn_cluster.service.maas_url = factory.make_simple_http_url()
 
         yield call_responder(
-            conn_cluster, cluster.ImportBootImages, {
-                'sources': [],
-                'http_proxy': parsed_proxy,
-                'https_proxy': parsed_proxy,
-                })
+            conn_cluster,
+            cluster.ImportBootImages,
+            {
+                "sources": [],
+                "http_proxy": parsed_proxy,
+                "https_proxy": parsed_proxy,
+            },
+        )
 
         self.assertThat(
             import_boot_images,
             MockCalledOnceWith(
-                [], conn_cluster.service.maas_url,
-                http_proxy=proxy, https_proxy=proxy))
+                [],
+                conn_cluster.service.maas_url,
+                http_proxy=proxy,
+                https_proxy=proxy,
+            ),
+        )
 
 
 class TestClusterProtocol_IsImportBootImagesRunning(MAASTestCase):
@@ -402,25 +397,30 @@ class TestClusterProtocol_IsImportBootImagesRunning(MAASTestCase):
     def test_is_import_boot_images_running_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.IsImportBootImagesRunning.commandName)
+            cluster.IsImportBootImagesRunning.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_is_import_boot_images_running_returns_False(self):
         mock_is_running = self.patch(
-            clusterservice, "is_import_boot_images_running")
+            clusterservice, "is_import_boot_images_running"
+        )
         mock_is_running.return_value = False
         response = yield call_responder(
-            Cluster(), cluster.IsImportBootImagesRunning, {})
+            Cluster(), cluster.IsImportBootImagesRunning, {}
+        )
         self.assertEqual({"running": False}, response)
 
     @inlineCallbacks
     def test_is_import_boot_images_running_returns_True(self):
         mock_is_running = self.patch(
-            clusterservice, "is_import_boot_images_running")
+            clusterservice, "is_import_boot_images_running"
+        )
         mock_is_running.return_value = True
         response = yield call_responder(
-            Cluster(), cluster.IsImportBootImagesRunning, {})
+            Cluster(), cluster.IsImportBootImagesRunning, {}
+        )
         self.assertEqual({"running": True}, response)
 
 
@@ -431,19 +431,22 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
     def test_describe_power_types_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.DescribePowerTypes.commandName)
+            cluster.DescribePowerTypes.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_describe_power_types_returns_jsonized_schema(self):
 
         response = yield call_responder(
-            Cluster(), cluster.DescribePowerTypes, {})
+            Cluster(), cluster.DescribePowerTypes, {}
+        )
 
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
             PowerDriverRegistry.get_schema(detect_missing_packages=False),
-            response["power_types"])
+            response["power_types"],
+        )
 
 
 class TestClusterProtocol_DescribeNOSTypes(MAASTestCase):
@@ -453,18 +456,21 @@ class TestClusterProtocol_DescribeNOSTypes(MAASTestCase):
     def test_describe_nos_types_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.DescribeNOSTypes.commandName)
+            cluster.DescribeNOSTypes.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_describe_nos_types_returns_jsonized_schema(self):
 
         response = yield call_responder(
-            Cluster(), cluster.DescribeNOSTypes, {})
+            Cluster(), cluster.DescribeNOSTypes, {}
+        )
 
         self.assertThat(response, KeysEqual("nos_types"))
         self.assertItemsEqual(
-            NOSDriverRegistry.get_schema(), response["nos_types"])
+            NOSDriverRegistry.get_schema(), response["nos_types"]
+        )
 
 
 def make_inert_client_service():
@@ -482,16 +488,15 @@ class TestClusterClientService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def fakeAgentResponse(self, data):
-
         def mock_body_producer(code, phrase, defer):
             defer.callback(data)
             return Mock()
 
-        self.patch(clusterservice, '_ReadBodyProtocol', mock_body_producer)
+        self.patch(clusterservice, "_ReadBodyProtocol", mock_body_producer)
         mock_agent = MagicMock()
         response = MagicMock()
         mock_agent.request.return_value = succeed(response)
-        self.patch(clusterservice, 'Agent').return_value = mock_agent
+        self.patch(clusterservice, "Agent").return_value = mock_agent
 
     def test_init_sets_appropriate_instance_attributes(self):
         service = ClusterClientService(sentinel.reactor)
@@ -499,37 +504,31 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service.clock, Is(sentinel.reactor))
 
     def test__get_config_rpc_info_urls(self):
-        maas_urls = [
-            factory.make_simple_http_url()
-            for _ in range(3)
-        ]
+        maas_urls = [factory.make_simple_http_url() for _ in range(3)]
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_urls))
         service = ClusterClientService(reactor)
         observed_urls = service._get_config_rpc_info_urls()
         self.assertThat(observed_urls, Equals(maas_urls))
 
     def test__get_saved_rpc_info_urls(self):
-        saved_urls = [
-            factory.make_simple_http_url()
-            for _ in range(3)
-        ]
+        saved_urls = [factory.make_simple_http_url() for _ in range(3)]
         service = ClusterClientService(reactor)
-        with open(service._get_saved_rpc_info_path(), 'w') as stream:
+        with open(service._get_saved_rpc_info_path(), "w") as stream:
             for url in saved_urls:
-                stream.write('%s\n' % url)
+                stream.write("%s\n" % url)
         observed_urls = service._get_saved_rpc_info_urls()
         self.assertThat(observed_urls, Equals(saved_urls))
 
     def test_update_saved_rpc_info_state(self):
         service = ClusterClientService(reactor)
-        ipv4client = ClusterClient(
-            ("1.1.1.1", 1111), "host1:pid=1", service)
-        ipv6client = ClusterClient(
-            ("::ffff", 2222), "host2:pid=2", service)
+        ipv4client = ClusterClient(("1.1.1.1", 1111), "host1:pid=1", service)
+        ipv6client = ClusterClient(("::ffff", 2222), "host2:pid=2", service)
         ipv6mapped = ClusterClient(
-            ("::ffff:3.3.3.3", 3333), "host3:pid=3", service)
+            ("::ffff:3.3.3.3", 3333), "host3:pid=3", service
+        )
         hostclient = ClusterClient(
-            ("example.com", 4444), "host4:pid=4", service)
+            ("example.com", 4444), "host4:pid=4", service
+        )
 
         # Fake some connections.
         service.connections = {
@@ -544,30 +543,36 @@ class TestClusterClientService(MAASTestCase):
         service._update_saved_rpc_info_state()
 
         # Ensure that the info state is set.
-        self.assertThat(service._rpc_info_state, Equals({
-            client.address[0]
-            for _, client in service.connections.items()
-        }))
+        self.assertThat(
+            service._rpc_info_state,
+            Equals(
+                {
+                    client.address[0]
+                    for _, client in service.connections.items()
+                }
+            ),
+        )
 
         # Check that the written rpc state is valid.
-        self.assertThat(service._get_saved_rpc_info_urls(), Equals([
-            'http://1.1.1.1:5240/MAAS',
-            'http://[::ffff]:5240/MAAS',
-            'http://3.3.3.3:5240/MAAS',
-            'http://example.com:5240/MAAS',
-        ]))
+        self.assertThat(
+            service._get_saved_rpc_info_urls(),
+            Equals(
+                [
+                    "http://1.1.1.1:5240/MAAS",
+                    "http://[::ffff]:5240/MAAS",
+                    "http://3.3.3.3:5240/MAAS",
+                    "http://example.com:5240/MAAS",
+                ]
+            ),
+        )
 
     @inlineCallbacks
     def test__build_rpc_info_urls(self):
         # Because this actually will try to resolve the URL's in the test we
         # keep them to localhost so it works on all systems.
-        maas_urls = [
-            "http://127.0.0.1:5240/"
-            for _ in range(3)
-        ]
+        maas_urls = ["http://127.0.0.1:5240/" for _ in range(3)]
         expected_urls = [
-            ([b'http://127.0.0.1:5240/rpc/'],
-             "http://127.0.0.1:5240/")
+            ([b"http://127.0.0.1:5240/rpc/"], "http://127.0.0.1:5240/")
             for url in maas_urls
         ]
         service = ClusterClientService(reactor)
@@ -577,163 +582,238 @@ class TestClusterClientService(MAASTestCase):
     def test__doUpdate_connect_503_error_is_logged_tersely(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = fail(web.error.Error("503"))
-        self.patch(clusterservice, 'Agent').return_value = mock_agent
+        self.patch(clusterservice, "Agent").return_value = mock_agent
 
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
         _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
-        _build_rpc_info_urls.return_value = succeed([
-            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
-        ])
+        _build_rpc_info_urls.return_value = succeed(
+            [([b"http://[::ffff:127.0.0.1]/MAAS"], "http://127.0.0.1/MAAS")]
+        )
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(mock_agent.request, MockCalledOnceWith(
-            b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-            Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})))
+        self.assertThat(
+            mock_agent.request,
+            MockCalledOnceWith(
+                b"GET",
+                ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+            ),
+        )
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
 
     def test__doUpdate_makes_parallel_requests(self):
         mock_agent = MagicMock()
-        mock_agent.request.return_value = (
-            always_fail_with(web.error.Error("503")))
-        self.patch(clusterservice, 'Agent').return_value = mock_agent
+        mock_agent.request.return_value = always_fail_with(
+            web.error.Error("503")
+        )
+        self.patch(clusterservice, "Agent").return_value = mock_agent
 
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
         _get_config_rpc_info_urls = self.patch(
-            service, "_get_config_rpc_info_urls")
+            service, "_get_config_rpc_info_urls"
+        )
         _get_config_rpc_info_urls.return_value = [
-            'http://127.0.0.1/MAAS',
-            'http://127.0.0.1/MAAS',
+            "http://127.0.0.1/MAAS",
+            "http://127.0.0.1/MAAS",
         ]
         _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
-        _build_rpc_info_urls.return_value = succeed([
-            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
-            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
-        ])
+        _build_rpc_info_urls.return_value = succeed(
+            [
+                ([b"http://[::ffff:127.0.0.1]/MAAS"], "http://127.0.0.1/MAAS"),
+                ([b"http://[::ffff:127.0.0.1]/MAAS"], "http://127.0.0.1/MAAS"),
+            ]
+        )
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(mock_agent.request, MockCallsMatch(
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']}))))
+        self.assertThat(
+            mock_agent.request,
+            MockCallsMatch(
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+            ),
+        )
         dump = logger.dump()
         self.assertIn(
             "Failed to contact region. (While requesting RPC info at "
-            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
+            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)",
+            dump,
+        )
 
     def test__doUpdate_makes_parallel_with_serial_requests(self):
         mock_agent = MagicMock()
-        mock_agent.request.return_value = (
-            always_fail_with(web.error.Error("503")))
-        self.patch(clusterservice, 'Agent').return_value = mock_agent
+        mock_agent.request.return_value = always_fail_with(
+            web.error.Error("503")
+        )
+        self.patch(clusterservice, "Agent").return_value = mock_agent
 
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
         _get_config_rpc_info_urls = self.patch(
-            service, "_get_config_rpc_info_urls")
+            service, "_get_config_rpc_info_urls"
+        )
         _get_config_rpc_info_urls.return_value = [
-            'http://127.0.0.1/MAAS',
-            'http://127.0.0.1/MAAS',
+            "http://127.0.0.1/MAAS",
+            "http://127.0.0.1/MAAS",
         ]
         _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
-        _build_rpc_info_urls.return_value = succeed([
-            ([
-                b'http://[::ffff:127.0.0.1]/MAAS',
-                b'http://127.0.0.1/MAAS'],
-             'http://127.0.0.1/MAAS'),
-            ([
-                b'http://[::ffff:127.0.0.1]/MAAS',
-                b'http://127.0.0.1/MAAS'],
-             'http://127.0.0.1/MAAS'),
-        ])
+        _build_rpc_info_urls.return_value = succeed(
+            [
+                (
+                    [
+                        b"http://[::ffff:127.0.0.1]/MAAS",
+                        b"http://127.0.0.1/MAAS",
+                    ],
+                    "http://127.0.0.1/MAAS",
+                ),
+                (
+                    [
+                        b"http://[::ffff:127.0.0.1]/MAAS",
+                        b"http://127.0.0.1/MAAS",
+                    ],
+                    "http://127.0.0.1/MAAS",
+                ),
+            ]
+        )
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(mock_agent.request, MockCallsMatch(
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://127.0.0.1/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://127.0.0.1/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            ))
+        self.assertThat(
+            mock_agent.request,
+            MockCallsMatch(
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://127.0.0.1/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://127.0.0.1/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+            ),
+        )
         dump = logger.dump()
         self.assertIn(
             "Failed to contact region. (While requesting RPC info at "
-            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
+            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)",
+            dump,
+        )
 
     def test__doUpdate_falls_back_to_rpc_info_state(self):
         mock_agent = MagicMock()
-        mock_agent.request.return_value = (
-            always_fail_with(web.error.Error("503")))
-        self.patch(clusterservice, 'Agent').return_value = mock_agent
+        mock_agent.request.return_value = always_fail_with(
+            web.error.Error("503")
+        )
+        self.patch(clusterservice, "Agent").return_value = mock_agent
 
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
         _get_config_rpc_info_urls = self.patch(
-            service, "_get_config_rpc_info_urls")
+            service, "_get_config_rpc_info_urls"
+        )
         _get_config_rpc_info_urls.return_value = [
-            'http://127.0.0.1/MAAS',
-            'http://127.0.0.1/MAAS',
+            "http://127.0.0.1/MAAS",
+            "http://127.0.0.1/MAAS",
         ]
         _get_saved_rpc_info_urls = self.patch(
-            service, "_get_saved_rpc_info_urls")
+            service, "_get_saved_rpc_info_urls"
+        )
         _get_saved_rpc_info_urls.return_value = [
-            'http://127.0.0.1/MAAS',
-            'http://127.0.0.1/MAAS',
+            "http://127.0.0.1/MAAS",
+            "http://127.0.0.1/MAAS",
         ]
         _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
         _build_rpc_info_urls.side_effect = [
-            succeed([
-                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
-                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
-            ]),
-            succeed([
-                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
-                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
-            ]),
+            succeed(
+                [
+                    (
+                        [b"http://[::ffff:127.0.0.1]/MAAS"],
+                        "http://127.0.0.1/MAAS",
+                    ),
+                    (
+                        [b"http://[::ffff:127.0.0.1]/MAAS"],
+                        "http://127.0.0.1/MAAS",
+                    ),
+                ]
+            ),
+            succeed(
+                [
+                    (
+                        [b"http://[::ffff:127.0.0.1]/MAAS"],
+                        "http://127.0.0.1/MAAS",
+                    ),
+                    (
+                        [b"http://[::ffff:127.0.0.1]/MAAS"],
+                        "http://127.0.0.1/MAAS",
+                    ),
+                ]
+            ),
         ]
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(mock_agent.request, MockCallsMatch(
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
-            call(
-                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']}))))
+        self.assertThat(
+            mock_agent.request,
+            MockCallsMatch(
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+                call(
+                    b"GET",
+                    ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                ),
+            ),
+        )
         dump = logger.dump()
         self.assertIn(
             "Failed to contact region. (While requesting RPC info at "
-            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
+            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)",
+            dump,
+        )
 
     def test_failed_update_is_logged(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -748,7 +828,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(_doUpdate, MockCalledOnceWith())
 
         dump = logger.dump()
-        self.assertIn('Connection was refused by other side.', dump)
+        self.assertIn("Connection was refused by other side.", dump)
 
     def test_update_connect_error_is_logged_tersely(self):
         mock_agent = MagicMock()
@@ -759,25 +839,29 @@ class TestClusterClientService(MAASTestCase):
 
         service = ClusterClientService(Clock())
         _get_config_rpc_info_urls = self.patch(
-            service, "_get_config_rpc_info_urls")
-        _get_config_rpc_info_urls.return_value = [
-            'http://127.0.0.1/MAAS',
-        ]
+            service, "_get_config_rpc_info_urls"
+        )
+        _get_config_rpc_info_urls.return_value = ["http://127.0.0.1/MAAS"]
         _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
-        _build_rpc_info_urls.return_value = succeed([
-            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
-        ])
+        _build_rpc_info_urls.return_value = succeed(
+            [([b"http://[::ffff:127.0.0.1]/MAAS"], "http://127.0.0.1/MAAS")]
+        )
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(mock_agent.request, MockCalledOnceWith(
-            b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-            Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})))
+        self.assertThat(
+            mock_agent.request,
+            MockCalledOnceWith(
+                b"GET",
+                ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+            ),
+        )
         dump = logger.dump()
         self.assertIn(
-            "Region not available: Connection was refused by other side.",
-            dump)
+            "Region not available: Connection was refused by other side.", dump
+        )
         self.assertIn("While requesting RPC info at", dump)
 
     def test_update_connect_includes_host(self):
@@ -787,71 +871,83 @@ class TestClusterClientService(MAASTestCase):
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
         service = ClusterClientService(Clock())
-        fqdn = '%s.example.com' % factory.make_hostname()
+        fqdn = "%s.example.com" % factory.make_hostname()
         _get_config_rpc_info_urls = self.patch(
-            service, "_get_config_rpc_info_urls")
-        _get_config_rpc_info_urls.return_value = [
-            'http://%s/MAAS' % fqdn,
-        ]
+            service, "_get_config_rpc_info_urls"
+        )
+        _get_config_rpc_info_urls.return_value = ["http://%s/MAAS" % fqdn]
         _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
-        _build_rpc_info_urls.return_value = succeed([
-            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://%s/MAAS' % fqdn)
-        ])
+        _build_rpc_info_urls.return_value = succeed(
+            [([b"http://[::ffff:127.0.0.1]/MAAS"], "http://%s/MAAS" % fqdn)]
+        )
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(mock_agent.request, MockCalledOnceWith(
-            b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-            Headers({'User-Agent': [ANY], 'Host': [fqdn]})))
+        self.assertThat(
+            mock_agent.request,
+            MockCalledOnceWith(
+                b"GET",
+                ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
+                Headers({"User-Agent": [ANY], "Host": [fqdn]}),
+            ),
+        )
 
     # The following represents an example response from the RPC info
     # view in maasserver. Event-loops listen on ephemeral ports, and
     # it's up to the RPC info view to direct clients to them.
-    example_rpc_info_view_response = json.dumps({
-        "eventloops": {
-            # An event-loop in pid 1001 on host1. This host has two
-            # configured IP addresses, 1.1.1.1 and 1.1.1.2.
-            "host1:pid=1001": [
-                ("::ffff:1.1.1.1", 1111),
-                ("::ffff:1.1.1.2", 2222),
-            ],
-            # An event-loop in pid 2002 on host1. This host has two
-            # configured IP addresses, 1.1.1.1 and 1.1.1.2.
-            "host1:pid=2002": [
-                ("::ffff:1.1.1.1", 3333),
-                ("::ffff:1.1.1.2", 4444),
-            ],
-            # An event-loop in pid 3003 on host2. This host has one
-            # configured IP address, 2.2.2.2.
-            "host2:pid=3003": [
-                ("::ffff:2.2.2.2", 5555),
-            ],
-        },
-    }).encode("ascii")
+    example_rpc_info_view_response = json.dumps(
+        {
+            "eventloops": {
+                # An event-loop in pid 1001 on host1. This host has two
+                # configured IP addresses, 1.1.1.1 and 1.1.1.2.
+                "host1:pid=1001": [
+                    ("::ffff:1.1.1.1", 1111),
+                    ("::ffff:1.1.1.2", 2222),
+                ],
+                # An event-loop in pid 2002 on host1. This host has two
+                # configured IP addresses, 1.1.1.1 and 1.1.1.2.
+                "host1:pid=2002": [
+                    ("::ffff:1.1.1.1", 3333),
+                    ("::ffff:1.1.1.2", 4444),
+                ],
+                # An event-loop in pid 3003 on host2. This host has one
+                # configured IP address, 2.2.2.2.
+                "host2:pid=3003": [("::ffff:2.2.2.2", 5555)],
+            }
+        }
+    ).encode("ascii")
 
     def test__doUpdate_calls__update_connections(self):
         maas_url = "http://localhost/%s/" % factory.make_name("path")
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
-        self.patch_autospec(socket, 'getaddrinfo').return_value = (
-            None, None, None, None, ('::ffff:127.0.0.1', 80, 0, 1))
+        self.patch_autospec(socket, "getaddrinfo").return_value = (
+            None,
+            None,
+            None,
+            None,
+            ("::ffff:127.0.0.1", 80, 0, 1),
+        )
         self.fakeAgentResponse(self.example_rpc_info_view_response)
         service = ClusterClientService(Clock())
         _update_connections = self.patch(service, "_update_connections")
         service.startService()
-        self.assertThat(_update_connections, MockCalledOnceWith({
-            "host2:pid=3003": [
-                ["::ffff:2.2.2.2", 5555],
-            ],
-            "host1:pid=2002": [
-                ["::ffff:1.1.1.1", 3333],
-                ["::ffff:1.1.1.2", 4444],
-            ],
-            "host1:pid=1001": [
-                ["::ffff:1.1.1.1", 1111],
-                ["::ffff:1.1.1.2", 2222],
-            ],
-        }))
+        self.assertThat(
+            _update_connections,
+            MockCalledOnceWith(
+                {
+                    "host2:pid=3003": [["::ffff:2.2.2.2", 5555]],
+                    "host1:pid=2002": [
+                        ["::ffff:1.1.1.1", 3333],
+                        ["::ffff:1.1.1.2", 4444],
+                    ],
+                    "host1:pid=1001": [
+                        ["::ffff:1.1.1.1", 1111],
+                        ["::ffff:1.1.1.2", 2222],
+                    ],
+                }
+            ),
+        )
 
     @inlineCallbacks
     def test__update_connections_initially(self):
@@ -870,13 +966,16 @@ class TestClusterClientService(MAASTestCase):
             call("host2:pid=3003", ("::ffff:2.2.2.2", 5555)),
         ]
         self.assertItemsEqual(
-            _make_connection_expected,
-            _make_connection.call_args_list)
-        self.assertEquals({
-            "host1:pid=1001": mock_client,
-            "host1:pid=2002": mock_client,
-            "host2:pid=3003": mock_client,
-        }, service.try_connections)
+            _make_connection_expected, _make_connection.call_args_list
+        )
+        self.assertEquals(
+            {
+                "host1:pid=1001": mock_client,
+                "host1:pid=2002": mock_client,
+                "host2:pid=3003": mock_client,
+            },
+            service.try_connections,
+        )
 
         self.assertEqual([], _drop_connection.mock_calls)
 
@@ -903,7 +1002,9 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertEqual(
             "Fully connected to all 4 event-loops on all 2 region "
-            "controllers (region1, region2).", logger.dump())
+            "controllers (region1, region2).",
+            logger.dump(),
+        )
 
     @inlineCallbacks
     def test__update_connections_connect_error_is_logged_tersely(self):
@@ -918,13 +1019,16 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertThat(
             _make_connection,
-            MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)))
+            MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)),
+        )
 
         self.assertEqual(
             "Making connections to event-loops: an-event-loop\n"
             "---\n"
             "Event-loop an-event-loop (::ffff:127.0.0.1:1234): Connection "
-            "was refused by other side.", logger.dump())
+            "was refused by other side.",
+            logger.dump(),
+        )
 
     @inlineCallbacks
     def test__update_connections_unknown_error_is_logged_with_stack(self):
@@ -939,7 +1043,8 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertThat(
             _make_connection,
-            MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)))
+            MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)),
+        )
 
         self.assertDocTestMatches(
             """\
@@ -950,7 +1055,8 @@ class TestClusterClientService(MAASTestCase):
             ...
             builtins.RuntimeError: Something went wrong.
             """,
-            logger.dump())
+            logger.dump(),
+        )
 
     def test__update_connections_when_there_are_existing_connections(self):
         service = ClusterClientService(Clock())
@@ -958,11 +1064,14 @@ class TestClusterClientService(MAASTestCase):
         _drop_connection = self.patch(service, "_drop_connection")
 
         host1client = ClusterClient(
-            ("::ffff:1.1.1.1", 1111), "host1:pid=1", service)
+            ("::ffff:1.1.1.1", 1111), "host1:pid=1", service
+        )
         host2client = ClusterClient(
-            ("::ffff:2.2.2.2", 2222), "host2:pid=2", service)
+            ("::ffff:2.2.2.2", 2222), "host2:pid=2", service
+        )
         host3client = ClusterClient(
-            ("::ffff:3.3.3.3", 3333), "host3:pid=3", service)
+            ("::ffff:3.3.3.3", 3333), "host3:pid=3", service
+        )
 
         # Fake some connections.
         service.connections = {
@@ -972,20 +1081,19 @@ class TestClusterClientService(MAASTestCase):
 
         # Request a new set of connections that overlaps with the
         # existing connections.
-        service._update_connections({
-            host1client.eventloop: [
-                host1client.address,
-            ],
-            host3client.eventloop: [
-                host3client.address,
-            ],
-        })
+        service._update_connections(
+            {
+                host1client.eventloop: [host1client.address],
+                host3client.eventloop: [host3client.address],
+            }
+        )
 
         # A connection is made for host3's event-loop, and the
         # connection to host2's event-loop is dropped.
         self.assertThat(
             _make_connection,
-            MockCalledOnceWith(host3client.eventloop, host3client.address))
+            MockCalledOnceWith(host3client.eventloop, host3client.address),
+        )
         self.assertThat(_drop_connection, MockCalledWith(host2client))
 
     @inlineCallbacks
@@ -997,16 +1105,15 @@ class TestClusterClientService(MAASTestCase):
         self.patch_autospec(service, "_update_connections")
         # Return urls from _get_config_rpc_info_urls and _build_rpc_info_urls.
         service._get_config_rpc_info_urls.return_value = [
-            'http://127.0.0.1/MAAS',
+            "http://127.0.0.1/MAAS"
         ]
-        service._build_rpc_info_urls.return_value = succeed([
-            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
-        ])
+        service._build_rpc_info_urls.return_value = succeed(
+            [([b"http://[::ffff:127.0.0.1]/MAAS"], "http://127.0.0.1/MAAS")]
+        )
         # Return None instead of a list of event-loop endpoints. This is the
         # response that the region will give when the advertising service is
         # not running.
-        service._parallel_fetch_rpc_info.return_value = succeed(
-            (None, None))
+        service._parallel_fetch_rpc_info.return_value = succeed((None, None))
         # Set the step to a bogus value so we can see it change.
         service.step = 999
 
@@ -1018,7 +1125,9 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service.step, Equals(service.INTERVAL_LOW))
         self.assertEqual(
             "Region is not advertising RPC endpoints. (While requesting RPC"
-            " info at http://127.0.0.1/MAAS)", logger.dump())
+            " info at http://127.0.0.1/MAAS)",
+            logger.dump(),
+        )
 
     def test__make_connection(self):
         service = ClusterClientService(Clock())
@@ -1027,28 +1136,31 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(connectProtocol.call_args_list, HasLength(1))
         self.assertThat(
             connectProtocol.call_args_list[0][0],
-            MatchesListwise((
-                # First argument is an IPv4 TCP client endpoint
-                # specification.
-                MatchesAll(
-                    IsInstance(TCP6ClientEndpoint),
-                    MatchesStructure.byEquality(
-                        _reactor=service.clock,
-                        _host="a.example.com",
-                        _port=1111,
+            MatchesListwise(
+                (
+                    # First argument is an IPv4 TCP client endpoint
+                    # specification.
+                    MatchesAll(
+                        IsInstance(TCP6ClientEndpoint),
+                        MatchesStructure.byEquality(
+                            _reactor=service.clock,
+                            _host="a.example.com",
+                            _port=1111,
+                        ),
                     ),
-                ),
-                # Second argument is a ClusterClient instance, the
-                # protocol to use for the connection.
-                MatchesAll(
-                    IsInstance(clusterservice.ClusterClient),
-                    MatchesStructure.byEquality(
-                        address=("a.example.com", 1111),
-                        eventloop="an-event-loop",
-                        service=service,
+                    # Second argument is a ClusterClient instance, the
+                    # protocol to use for the connection.
+                    MatchesAll(
+                        IsInstance(clusterservice.ClusterClient),
+                        MatchesStructure.byEquality(
+                            address=("a.example.com", 1111),
+                            eventloop="an-event-loop",
+                            service=service,
+                        ),
                     ),
-                ),
-            )))
+                )
+            ),
+        )
 
     def test__drop_connection(self):
         connection = Mock()
@@ -1056,15 +1168,15 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         service._drop_connection(connection)
         self.assertThat(
-            connection.transport.loseConnection,
-            MockCalledOnceWith())
+            connection.transport.loseConnection, MockCalledOnceWith()
+        )
 
     def test__add_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        connection.address = (':::ffff', 2222)
+        connection.address = (":::ffff", 2222)
         service.try_connections[endpoint] = connection
         service.add_connection(endpoint, connection)
         self.assertThat(service.try_connections, Equals({}))
@@ -1074,22 +1186,21 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        connection.address = (':::ffff', 2222)
+        connection.address = (":::ffff", 2222)
         service.add_connection(endpoint, connection)
-        self.assertThat(service.connections, Equals({
-            endpoint: connection,
-        }))
+        self.assertThat(service.connections, Equals({endpoint: connection}))
 
     def test__add_connection_calls__update_saved_rpc_info_state(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        connection.address = (':::ffff', 2222)
-        self.patch_autospec(service, '_update_saved_rpc_info_state')
+        connection.address = (":::ffff", 2222)
+        self.patch_autospec(service, "_update_saved_rpc_info_state")
         service.add_connection(endpoint, connection)
         self.assertThat(
-            service._update_saved_rpc_info_state, MockCalledOnceWith())
+            service._update_saved_rpc_info_state, MockCalledOnceWith()
+        )
 
     def test__remove_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
@@ -1143,17 +1254,14 @@ class TestClusterClientService(MAASTestCase):
             sentinel.eventloop03: DummyConnection(),
         }
         self.assertIn(
-            service.getClient(), {
-                common.Client(conn)
-                for conn in service.connections.values()
-            })
+            service.getClient(),
+            {common.Client(conn) for conn in service.connections.values()},
+        )
 
     def test_getClient_when_there_are_no_connections(self):
         service = ClusterClientService(Clock())
         service.connections = {}
-        self.assertRaises(
-            exceptions.NoConnectionsAvailable,
-            service.getClient)
+        self.assertRaises(exceptions.NoConnectionsAvailable, service.getClient)
 
     @inlineCallbacks
     def test_getClientNow_returns_current_connection(self):
@@ -1165,10 +1273,9 @@ class TestClusterClientService(MAASTestCase):
         }
         client = yield service.getClientNow()
         self.assertIn(
-            client, {
-                common.Client(conn)
-                for conn in service.connections.values()
-            })
+            client,
+            {common.Client(conn) for conn in service.connections.values()},
+        )
 
     @inlineCallbacks
     def test_getClientNow_calls__tryUpdate_when_there_are_no_connections(self):
@@ -1186,10 +1293,9 @@ class TestClusterClientService(MAASTestCase):
         self.patch(service, "_tryUpdate").side_effect = addConnections
         client = yield service.getClientNow()
         self.assertIn(
-            client, {
-                common.Client(conn)
-                for conn in service.connections.values()
-            })
+            client,
+            {common.Client(conn) for conn in service.connections.values()},
+        )
 
     def test_getClientNow_raises_exception_when_no_clients(self):
         service = ClusterClientService(Clock())
@@ -1197,11 +1303,12 @@ class TestClusterClientService(MAASTestCase):
 
         self.patch(service, "_tryUpdate").return_value = succeed(None)
         d = service.getClientNow()
-        d.addCallback(
-            lambda _: self.fail("Errback should have been called."))
+        d.addCallback(lambda _: self.fail("Errback should have been called."))
         d.addErrback(
             lambda failure: self.assertIsInstance(
-                failure.value, exceptions.NoConnectionsAvailable))
+                failure.value, exceptions.NoConnectionsAvailable
+            )
+        )
         return d
 
     def test__tryUpdate_prevents_concurrent_calls_to__doUpdate(self):
@@ -1236,9 +1343,7 @@ class TestClusterClientService(MAASTestCase):
         c2 = DummyConnection()
         service.connections[uuid2] = c2
         clients = service.getAllClients()
-        self.assertItemsEqual(clients, {
-            common.Client(c1), common.Client(c2),
-        })
+        self.assertItemsEqual(clients, {common.Client(c1), common.Client(c2)})
 
     def test_getAllClients_when_there_are_no_connections(self):
         service = ClusterClientService(Clock())
@@ -1249,42 +1354,60 @@ class TestClusterClientService(MAASTestCase):
 class TestClusterClientServiceIntervals(MAASTestCase):
 
     scenarios = (
-        ("initial", {
-            "time_running": 0,
-            "num_eventloops": None,
-            "num_connections": None,
-            "expected": ClusterClientService.INTERVAL_LOW,
-        }),
-        ("shortly-after-start", {
-            "time_running": 10,
-            "num_eventloops": 1,  # same as num_connections.
-            "num_connections": 1,  # same as num_eventloops.
-            "expected": ClusterClientService.INTERVAL_LOW,
-        }),
-        ("no-event-loops", {
-            "time_running": 1000,
-            "num_eventloops": 0,
-            "num_connections": sentinel.undefined,
-            "expected": ClusterClientService.INTERVAL_LOW,
-        }),
-        ("no-connections", {
-            "time_running": 1000,
-            "num_eventloops": 1,  # anything > 1.
-            "num_connections": 0,
-            "expected": ClusterClientService.INTERVAL_LOW,
-        }),
-        ("fewer-connections-than-event-loops", {
-            "time_running": 1000,
-            "num_eventloops": 2,  # anything > num_connections.
-            "num_connections": 1,  # anything > 0.
-            "expected": ClusterClientService.INTERVAL_MID,
-        }),
-        ("default", {
-            "time_running": 1000,
-            "num_eventloops": 3,  # same as num_connections.
-            "num_connections": 3,  # same as num_eventloops.
-            "expected": ClusterClientService.INTERVAL_HIGH,
-        }),
+        (
+            "initial",
+            {
+                "time_running": 0,
+                "num_eventloops": None,
+                "num_connections": None,
+                "expected": ClusterClientService.INTERVAL_LOW,
+            },
+        ),
+        (
+            "shortly-after-start",
+            {
+                "time_running": 10,
+                "num_eventloops": 1,  # same as num_connections.
+                "num_connections": 1,  # same as num_eventloops.
+                "expected": ClusterClientService.INTERVAL_LOW,
+            },
+        ),
+        (
+            "no-event-loops",
+            {
+                "time_running": 1000,
+                "num_eventloops": 0,
+                "num_connections": sentinel.undefined,
+                "expected": ClusterClientService.INTERVAL_LOW,
+            },
+        ),
+        (
+            "no-connections",
+            {
+                "time_running": 1000,
+                "num_eventloops": 1,  # anything > 1.
+                "num_connections": 0,
+                "expected": ClusterClientService.INTERVAL_LOW,
+            },
+        ),
+        (
+            "fewer-connections-than-event-loops",
+            {
+                "time_running": 1000,
+                "num_eventloops": 2,  # anything > num_connections.
+                "num_connections": 1,  # anything > 0.
+                "expected": ClusterClientService.INTERVAL_MID,
+            },
+        ),
+        (
+            "default",
+            {
+                "time_running": 1000,
+                "num_eventloops": 3,  # same as num_connections.
+                "num_connections": 3,  # same as num_eventloops.
+                "expected": ClusterClientService.INTERVAL_HIGH,
+            },
+        ),
     )
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -1294,8 +1417,11 @@ class TestClusterClientServiceIntervals(MAASTestCase):
         service.startService()
         service.clock.advance(self.time_running)
         self.assertEqual(
-            self.expected, service._calculate_interval(
-                self.num_eventloops, self.num_connections))
+            self.expected,
+            service._calculate_interval(
+                self.num_eventloops, self.num_connections
+            ),
+        )
 
 
 class TestClusterClient(MAASTestCase):
@@ -1304,9 +1430,12 @@ class TestClusterClient(MAASTestCase):
 
     def setUp(self):
         super(TestClusterClient, self).setUp()
-        self.useFixture(ClusterConfigurationFixture(
-            maas_url=factory.make_simple_http_url(),
-            cluster_uuid=factory.make_UUID()))
+        self.useFixture(
+            ClusterConfigurationFixture(
+                maas_url=factory.make_simple_http_url(),
+                cluster_uuid=factory.make_UUID(),
+            )
+        )
         self.maas_id = None
 
         def set_maas_id(maas_id):
@@ -1323,8 +1452,10 @@ class TestClusterClient(MAASTestCase):
 
     def make_running_client(self):
         client = clusterservice.ClusterClient(
-            address=("example.com", 1234), eventloop="eventloop:pid=12345",
-            service=make_inert_client_service())
+            address=("example.com", 1234),
+            eventloop="eventloop:pid=12345",
+            service=make_inert_client_service(),
+        )
         client.service.startService()
         return client
 
@@ -1382,8 +1513,8 @@ class TestClusterClient(MAASTestCase):
         self.assertEqual(client.eventloop, extract_result(wait_for_ready))
         self.assertEqual(client.service.try_connections, {})
         self.assertEqual(
-            client.service.connections,
-            {client.eventloop: client})
+            client.service.connections, {client.eventloop: client}
+        )
 
     def test_disconnects_when_there_is_an_existing_connection(self):
         client = self.make_running_client()
@@ -1406,8 +1537,8 @@ class TestClusterClient(MAASTestCase):
         # The connections list is unchanged because the new connection
         # immediately disconnects.
         self.assertEqual(
-            client.service.connections,
-            {client.eventloop: sentinel.connection})
+            client.service.connections, {client.eventloop: sentinel.connection}
+        )
         self.assertFalse(client.connected)
         self.assertIsNone(client.transport)
 
@@ -1446,8 +1577,8 @@ class TestClusterClient(MAASTestCase):
         self.assertIs(False, extract_result(client.authenticated.get()))
         # ready was set with AuthenticationFailed.
         self.assertRaises(
-            exceptions.AuthenticationFailed, extract_result,
-            client.ready.get())
+            exceptions.AuthenticationFailed, extract_result, client.ready.get()
+        )
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -1469,10 +1600,10 @@ class TestClusterClient(MAASTestCase):
 
         # authenticated errbacks with the error.
         self.assertRaises(
-            exception_type, extract_result, client.authenticated.get())
+            exception_type, extract_result, client.authenticated.get()
+        )
         # ready also errbacks with the same error.
-        self.assertRaises(
-            exception_type, extract_result, client.ready.get())
+        self.assertRaises(exception_type, extract_result, client.ready.get())
 
         # The log was written to.
         self.assertDocTestMatches(
@@ -1481,7 +1612,8 @@ class TestClusterClient(MAASTestCase):
             dropping connection.
             Traceback (most recent call last):...
             """,
-            logger.dump())
+            logger.dump(),
+        )
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -1502,8 +1634,8 @@ class TestClusterClient(MAASTestCase):
         self.assertIs(True, extract_result(client.authenticated.get()))
         # ready was set with AuthenticationFailed.
         self.assertRaises(
-            exceptions.RegistrationFailed, extract_result,
-            client.ready.get())
+            exceptions.RegistrationFailed, extract_result, client.ready.get()
+        )
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -1535,7 +1667,8 @@ class TestClusterClient(MAASTestCase):
             dropping connection.
             Traceback (most recent call last):...
             """,
-            logger.dump())
+            logger.dump(),
+        )
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -1547,9 +1680,7 @@ class TestClusterClient(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             client.handshakeFailed(Failure(ConnectionClosed()))
         # ready was set with ConnectionClosed.
-        self.assertRaises(
-            ConnectionClosed, extract_result,
-            client.ready.get())
+        self.assertRaises(ConnectionClosed, extract_result, client.ready.get())
         # Nothing was logged.
         self.assertEqual("", logger.output)
 
@@ -1563,7 +1694,8 @@ class TestClusterClient(MAASTestCase):
             {"ident": client.eventloop},  # Identify.
         ]
         callRemote.side_effect = lambda cmd, **kwargs: (
-            callRemote_return_values.pop(0))
+            callRemote_return_values.pop(0)
+        )
 
         transport = self.patch(client, "transport")
         logger = self.useFixture(TwistedLoggerFixture())
@@ -1571,10 +1703,12 @@ class TestClusterClient(MAASTestCase):
         yield client.secureConnection()
 
         self.assertThat(
-            callRemote, MockCallsMatch(
+            callRemote,
+            MockCallsMatch(
                 call(amp.StartTLS, **client.get_tls_parameters()),
                 call(region.Identify),
-            ))
+            ),
+        )
 
         # The connection is not dropped.
         self.assertThat(transport.loseConnection, MockNotCalled())
@@ -1586,7 +1720,8 @@ class TestClusterClient(MAASTestCase):
             ---
             Peer certificate: ...
             """,
-            logger.dump())
+            logger.dump(),
+        )
 
     @inlineCallbacks
     def test_secureConnection_disconnects_if_ident_does_not_match(self):
@@ -1604,8 +1739,7 @@ class TestClusterClient(MAASTestCase):
         yield client.secureConnection()
 
         # The connection is dropped.
-        self.assertThat(
-            transport.loseConnection, MockCalledOnceWith())
+        self.assertThat(transport.loseConnection, MockCalledOnceWith())
 
         # The log explains why.
         self.assertDocTestMatches(
@@ -1613,7 +1747,8 @@ class TestClusterClient(MAASTestCase):
             The remote event-loop identifies itself as bogus-name, but
             eventloop:pid=12345 was expected.
             """,
-            logger.dump())
+            logger.dump(),
+        )
 
     # XXX: blake_r 2015-02-26 bug=1426089: Failing because of an unknown
     # reason. This is commented out instead of using @skip because of
@@ -1678,8 +1813,8 @@ class TestClusterClient(MAASTestCase):
         self.addCleanup((yield connecting))
         yield getRegionClient()
         self.assertThat(
-            protocol.Authenticate,
-            MockCalledOnceWith(protocol, message=ANY))
+            protocol.Authenticate, MockCalledOnceWith(protocol, message=ANY)
+        )
 
     @inlineCallbacks
     def test_registerRackWithRegion_returns_True_when_accepted(self):
@@ -1696,17 +1831,17 @@ class TestClusterClient(MAASTestCase):
         self.assertDocTestMatches(
             "Rack controller '...' registered (via eventloop:pid=12345) with "
             "MAAS version 2.2 or below.",
-            logger.output)
+            logger.output,
+        )
 
     @inlineCallbacks
     def test_registerRackWithRegion_logs_version_if_supplied(self):
         client = self.make_running_client()
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = always_succeed_with({
-            "system_id": "...",
-            "version": "2.3.0"
-        })
+        callRemote.side_effect = always_succeed_with(
+            {"system_id": "...", "version": "2.3.0"}
+        )
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -1716,17 +1851,17 @@ class TestClusterClient(MAASTestCase):
         self.assertDocTestMatches(
             "Rack controller '...' registered (via eventloop:pid=12345) with "
             " MAAS version 2.3.0.",
-            logger.output)
+            logger.output,
+        )
 
     @inlineCallbacks
     def test_registerRackWithRegion_logs_unknown_version_if_empty(self):
         client = self.make_running_client()
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = always_succeed_with({
-            "system_id": "...",
-            "version": ""
-        })
+        callRemote.side_effect = always_succeed_with(
+            {"system_id": "...", "version": ""}
+        )
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -1736,7 +1871,8 @@ class TestClusterClient(MAASTestCase):
         self.assertDocTestMatches(
             "Rack controller '...' registered (via eventloop:pid=12345) with "
             " unknown MAAS version.",
-            logger.output)
+            logger.output,
+        )
 
     @inlineCallbacks
     def test_registerRackWithRegion_sets_localIdent(self):
@@ -1765,10 +1901,10 @@ class TestClusterClient(MAASTestCase):
     @inlineCallbacks
     def test_registerRackWithRegion_doesnt_read_maas_id_from_cache(self):
         set_maas_id(factory.make_string())
-        os.unlink(get_data_path('/var/lib/maas/maas_id'))
+        os.unlink(get_data_path("/var/lib/maas/maas_id"))
 
         maas_url = factory.make_simple_http_url()
-        hostname = platform.node().split('.')[0]
+        hostname = platform.node().split(".")[0]
         interfaces = get_all_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
@@ -1776,29 +1912,39 @@ class TestClusterClient(MAASTestCase):
         self.addCleanup((yield connecting))
         yield getRegionClient()
         self.assertThat(
-            protocol.RegisterRackController, MockCalledOnceWith(
-                protocol, system_id='', hostname=hostname,
-                interfaces=interfaces, url=urlparse(maas_url),
-                nodegroup_uuid=None, beacon_support=True,
-                version=get_maas_version()))
+            protocol.RegisterRackController,
+            MockCalledOnceWith(
+                protocol,
+                system_id="",
+                hostname=hostname,
+                interfaces=interfaces,
+                url=urlparse(maas_url),
+                nodegroup_uuid=None,
+                beacon_support=True,
+                version=get_maas_version(),
+            ),
+        )
         # Clear cache for the next test
         set_maas_id(None)
 
     @inlineCallbacks
     def test_registerRackWithRegion_sets_global_labels(self):
         mock_set_global_labels = self.patch(
-            clusterservice, 'set_global_labels')
+            clusterservice, "set_global_labels"
+        )
         client = self.make_running_client()
 
         system_id = factory.make_name("id")
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.side_effect = always_succeed_with(
-            {"system_id": system_id, "uuid": "a-b-c"})
+            {"system_id": system_id, "uuid": "a-b-c"}
+        )
 
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
         mock_set_global_labels.assert_called_once_with(
-            maas_uuid='a-b-c', service_type='rack')
+            maas_uuid="a-b-c", service_type="rack"
+        )
 
     @inlineCallbacks
     def test_registerRackWithRegion_returns_False_when_rejected(self):
@@ -1806,7 +1952,8 @@ class TestClusterClient(MAASTestCase):
 
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.return_value = fail(
-            exceptions.CannotRegisterRackController())
+            exceptions.CannotRegisterRackController()
+        )
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -1816,7 +1963,8 @@ class TestClusterClient(MAASTestCase):
         self.assertDocTestMatches(
             "Rack controller REJECTED by the region "
             "(via eventloop:pid=12345).",
-            logger.output)
+            logger.output,
+        )
 
     @inlineCallbacks
     def test_registerRackWithRegion_propagates_errors(self):
@@ -1837,8 +1985,9 @@ class TestClusterClient(MAASTestCase):
     def test_registerRackWithRegion_end_to_end(self):
         maas_url = factory.make_simple_http_url()
         hostname = "rackcontrol.example.com"
-        self.patch_autospec(clusterservice, 'gethostname').return_value = (
-            hostname)
+        self.patch_autospec(
+            clusterservice, "gethostname"
+        ).return_value = hostname
         interfaces = get_all_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
@@ -1846,11 +1995,18 @@ class TestClusterClient(MAASTestCase):
         self.addCleanup((yield connecting))
         yield getRegionClient()
         self.assertThat(
-            protocol.RegisterRackController, MockCalledOnceWith(
-                protocol, system_id='', hostname=hostname,
-                interfaces=interfaces, url=urlparse(maas_url),
-                nodegroup_uuid=None, beacon_support=True,
-                version=get_maas_version()))
+            protocol.RegisterRackController,
+            MockCalledOnceWith(
+                protocol,
+                system_id="",
+                hostname=hostname,
+                interfaces=interfaces,
+                url=urlparse(maas_url),
+                nodegroup_uuid=None,
+                beacon_support=True,
+                version=get_maas_version(),
+            ),
+        )
 
 
 class TestClusterClientCheckerService(MAASTestCase):
@@ -1864,55 +2020,56 @@ class TestClusterClientCheckerService(MAASTestCase):
 
     def test_init_sets_up_timer_correctly(self):
         service = ClusterClientCheckerService(
-            sentinel.client_service, sentinel.clock)
-        self.assertThat(service, MatchesStructure.byEquality(
-            call=(service.tryLoop, (), {}),
-            step=(30), client_service=sentinel.client_service,
-            clock=sentinel.clock))
+            sentinel.client_service, sentinel.clock
+        )
+        self.assertThat(
+            service,
+            MatchesStructure.byEquality(
+                call=(service.tryLoop, (), {}),
+                step=30,
+                client_service=sentinel.client_service,
+                clock=sentinel.clock,
+            ),
+        )
 
     def test_tryLoop_calls_loop(self):
         service = ClusterClientCheckerService(
-            sentinel.client_service, sentinel.clock)
+            sentinel.client_service, sentinel.clock
+        )
         mock_loop = self.patch(service, "loop")
         mock_loop.return_value = succeed(None)
         service.tryLoop()
-        self.assertThat(
-            mock_loop,
-            MockCalledOnceWith())
+        self.assertThat(mock_loop, MockCalledOnceWith())
 
     def test_loop_does_nothing_with_no_clients(self):
         mock_client_service = MagicMock()
         mock_client_service.getAllClients.return_value = []
-        service = ClusterClientCheckerService(
-            mock_client_service, reactor)
+        service = ClusterClientCheckerService(mock_client_service, reactor)
         # Test will timeout if this blocks longer than 5 seconds.
         return service.loop()
 
     @inlineCallbacks
     def test_loop_calls_ping_for_each_client(self):
-        clients = [
-            self.make_client()
-            for _ in range(3)
-        ]
+        clients = [self.make_client() for _ in range(3)]
         mock_client_service = MagicMock()
         mock_client_service.getAllClients.return_value = clients
-        service = ClusterClientCheckerService(
-            mock_client_service, reactor)
+        service = ClusterClientCheckerService(mock_client_service, reactor)
         yield service.loop()
         for client in clients:
             self.expectThat(
-                client, MockCalledOnceWith(common.Ping, _timeout=10))
+                client, MockCalledOnceWith(common.Ping, _timeout=10)
+            )
 
     @inlineCallbacks
     def test_ping_calls_loseConnection_on_failure(self):
         client = MagicMock()
         client.return_value = fail(factory.make_exception())
         mock_client_service = MagicMock()
-        service = ClusterClientCheckerService(
-            mock_client_service, reactor)
+        service = ClusterClientCheckerService(mock_client_service, reactor)
         yield service._ping(client)
         self.assertThat(
-            client._conn.transport.loseConnection, MockCalledOnceWith())
+            client._conn.transport.loseConnection, MockCalledOnceWith()
+        )
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
@@ -1922,21 +2079,21 @@ class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ListSupportedArchitectures.commandName)
+            cluster.ListSupportedArchitectures.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_returns_architectures(self):
         architectures = yield call_responder(
-            Cluster(), cluster.ListSupportedArchitectures, {})
+            Cluster(), cluster.ListSupportedArchitectures, {}
+        )
         # Assert that one of the built-in architectures is in the data
         # returned by ListSupportedArchitectures.
         self.assertIn(
-            {
-                'name': 'i386/generic',
-                'description': 'i386',
-            },
-            architectures['architectures'])
+            {"name": "i386/generic", "description": "i386"},
+            architectures["architectures"],
+        )
 
 
 class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
@@ -1946,7 +2103,8 @@ class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ListOperatingSystems.commandName)
+            cluster.ListOperatingSystems.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
@@ -1955,17 +2113,23 @@ class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
         # StubOS for details of the rules that are used to populate the
         # non-random elements.
         operating_systems = [
-            StubOS(factory.make_name("os"), releases=[
-                (factory.make_name("name"), factory.make_name("title"))
-                for _ in range(randint(2, 5))
-            ])
+            StubOS(
+                factory.make_name("os"),
+                releases=[
+                    (factory.make_name("name"), factory.make_name("title"))
+                    for _ in range(randint(2, 5))
+                ],
+            )
             for _ in range(randint(2, 5))
         ]
         self.patch(
-            osystems_rpc_module, "OperatingSystemRegistry",
-            [(os.name, os) for os in operating_systems])
+            osystems_rpc_module,
+            "OperatingSystemRegistry",
+            [(os.name, os) for os in operating_systems],
+        )
         osystems = yield call_responder(
-            Cluster(), cluster.ListOperatingSystems, {})
+            Cluster(), cluster.ListOperatingSystems, {}
+        )
         # The fully-populated output from gen_operating_systems() sent
         # back over the wire.
         expected_osystems = list(gen_operating_systems())
@@ -1982,32 +2146,38 @@ class TestClusterProtocol_GetOSReleaseTitle(MAASTestCase):
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.GetOSReleaseTitle.commandName)
+            cluster.GetOSReleaseTitle.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_calls_get_os_release_title(self):
-        title = factory.make_name('title')
+        title = factory.make_name("title")
         get_os_release_title = self.patch(
-            clusterservice, "get_os_release_title")
+            clusterservice, "get_os_release_title"
+        )
         get_os_release_title.return_value = title
         arguments = {
             "osystem": factory.make_name("osystem"),
             "release": factory.make_name("release"),
         }
         observed = yield call_responder(
-            Cluster(), cluster.GetOSReleaseTitle, arguments)
+            Cluster(), cluster.GetOSReleaseTitle, arguments
+        )
         expected = {"title": title}
         self.assertEqual(expected, observed)
         # The arguments are passed to the responder positionally.
-        self.assertThat(get_os_release_title, MockCalledOnceWith(
-            arguments["osystem"], arguments["release"]))
+        self.assertThat(
+            get_os_release_title,
+            MockCalledOnceWith(arguments["osystem"], arguments["release"]),
+        )
 
     @inlineCallbacks
     def test_exception_when_os_does_not_exist(self):
         # A remote NoSuchOperatingSystem exception is re-raised locally.
         get_os_release_title = self.patch(
-            clusterservice, "get_os_release_title")
+            clusterservice, "get_os_release_title"
+        )
         get_os_release_title.side_effect = exceptions.NoSuchOperatingSystem()
         arguments = {
             "osystem": factory.make_name("osystem"),
@@ -2015,7 +2185,8 @@ class TestClusterProtocol_GetOSReleaseTitle(MAASTestCase):
         }
         with ExpectedException(exceptions.NoSuchOperatingSystem):
             yield call_responder(
-                Cluster(), cluster.GetOSReleaseTitle, arguments)
+                Cluster(), cluster.GetOSReleaseTitle, arguments
+            )
 
 
 class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
@@ -2025,13 +2196,15 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ValidateLicenseKey.commandName)
+            cluster.ValidateLicenseKey.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_calls_validate_license_key(self):
         validate_license_key = self.patch(
-            clusterservice, "validate_license_key")
+            clusterservice, "validate_license_key"
+        )
         validate_license_key.return_value = factory.pick_bool()
         arguments = {
             "osystem": factory.make_name("osystem"),
@@ -2039,18 +2212,24 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
             "key": factory.make_name("key"),
         }
         observed = yield call_responder(
-            Cluster(), cluster.ValidateLicenseKey, arguments)
+            Cluster(), cluster.ValidateLicenseKey, arguments
+        )
         expected = {"is_valid": validate_license_key.return_value}
         self.assertEqual(expected, observed)
         # The arguments are passed to the responder positionally.
-        self.assertThat(validate_license_key, MockCalledOnceWith(
-            arguments["osystem"], arguments["release"], arguments["key"]))
+        self.assertThat(
+            validate_license_key,
+            MockCalledOnceWith(
+                arguments["osystem"], arguments["release"], arguments["key"]
+            ),
+        )
 
     @inlineCallbacks
     def test_exception_when_os_does_not_exist(self):
         # A remote NoSuchOperatingSystem exception is re-raised locally.
         validate_license_key = self.patch(
-            clusterservice, "validate_license_key")
+            clusterservice, "validate_license_key"
+        )
         validate_license_key.side_effect = exceptions.NoSuchOperatingSystem()
         arguments = {
             "osystem": factory.make_name("osystem"),
@@ -2059,7 +2238,8 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
         }
         with ExpectedException(exceptions.NoSuchOperatingSystem):
             yield call_responder(
-                Cluster(), cluster.ValidateLicenseKey, arguments)
+                Cluster(), cluster.ValidateLicenseKey, arguments
+            )
 
 
 class TestClusterProtocol_GetPreseedData(MAASTestCase):
@@ -2076,13 +2256,15 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
             "token_key": factory.make_name("token_key"),
             "token_secret": factory.make_name("token_secret"),
             "metadata_url": urlparse(
-                "https://%s/path/to/metadata" % factory.make_hostname()),
+                "https://%s/path/to/metadata" % factory.make_hostname()
+            ),
         }
 
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.GetPreseedData.commandName)
+            cluster.GetPreseedData.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
@@ -2091,26 +2273,33 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
         get_preseed_data.return_value = factory.make_name("data")
         arguments = self.make_arguments()
         observed = yield call_responder(
-            Cluster(), cluster.GetPreseedData, arguments)
+            Cluster(), cluster.GetPreseedData, arguments
+        )
         expected = {"data": get_preseed_data.return_value}
         self.assertEqual(expected, observed)
         # The arguments are passed to the responder positionally.
-        self.assertThat(get_preseed_data, MockCalledOnceWith(
-            arguments["osystem"], arguments["preseed_type"],
-            arguments["node_system_id"], arguments["node_hostname"],
-            arguments["consumer_key"], arguments["token_key"],
-            arguments["token_secret"], arguments["metadata_url"]))
+        self.assertThat(
+            get_preseed_data,
+            MockCalledOnceWith(
+                arguments["osystem"],
+                arguments["preseed_type"],
+                arguments["node_system_id"],
+                arguments["node_hostname"],
+                arguments["consumer_key"],
+                arguments["token_key"],
+                arguments["token_secret"],
+                arguments["metadata_url"],
+            ),
+        )
 
     @inlineCallbacks
     def test_exception_when_os_does_not_exist(self):
         # A remote NoSuchOperatingSystem exception is re-raised locally.
-        get_preseed_data = self.patch(
-            clusterservice, "get_preseed_data")
+        get_preseed_data = self.patch(clusterservice, "get_preseed_data")
         get_preseed_data.side_effect = exceptions.NoSuchOperatingSystem()
         arguments = self.make_arguments()
         with ExpectedException(exceptions.NoSuchOperatingSystem):
-            yield call_responder(
-                Cluster(), cluster.GetPreseedData, arguments)
+            yield call_responder(Cluster(), cluster.GetPreseedData, arguments)
 
     @inlineCallbacks
     def test_exception_when_preseed_not_implemented(self):
@@ -2118,13 +2307,14 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
         # Choose an operating system which has not overridden the
         # default compose_preseed.
         osystem_name = next(
-            osystem_name for osystem_name, osystem in OperatingSystemRegistry
-            if osystem.compose_preseed == OperatingSystem.compose_preseed)
+            osystem_name
+            for osystem_name, osystem in OperatingSystemRegistry
+            if osystem.compose_preseed == OperatingSystem.compose_preseed
+        )
         arguments = self.make_arguments()
         arguments["osystem"] = osystem_name
         with ExpectedException(exceptions.NoSuchOperatingSystem):
-            yield call_responder(
-                Cluster(), cluster.GetPreseedData, arguments)
+            yield call_responder(Cluster(), cluster.GetPreseedData, arguments)
 
 
 class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
@@ -2132,18 +2322,18 @@ class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     scenarios = (
-        ("power-on", {
-            "command": cluster.PowerOn,
-            "expected_power_change": "on",
-        }),
-        ("power-off", {
-            "command": cluster.PowerOff,
-            "expected_power_change": "off",
-        }),
-        ("power-cycle", {
-            "command": cluster.PowerCycle,
-            "expected_power_change": "cycle",
-        }),
+        (
+            "power-on",
+            {"command": cluster.PowerOn, "expected_power_change": "on"},
+        ),
+        (
+            "power-off",
+            {"command": cluster.PowerOff, "expected_power_change": "off"},
+        ),
+        (
+            "power-cycle",
+            {"command": cluster.PowerCycle, "expected_power_change": "cycle"},
+        ),
     )
 
     def test_is_registered(self):
@@ -2153,92 +2343,133 @@ class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
 
     def test_executes_maybe_change_power_state(self):
         maybe_change_power_state = self.patch(
-            clusterservice, "maybe_change_power_state")
+            clusterservice, "maybe_change_power_state"
+        )
 
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_type = factory.make_name("power_type")
-        context = {
-            factory.make_name("name"): factory.make_name("value"),
-        }
+        context = {factory.make_name("name"): factory.make_name("value")}
 
-        d = call_responder(Cluster(), self.command, {
-            "system_id": system_id,
-            "hostname": hostname,
-            "power_type": power_type,
-            "context": context,
-        })
+        d = call_responder(
+            Cluster(),
+            self.command,
+            {
+                "system_id": system_id,
+                "hostname": hostname,
+                "power_type": power_type,
+                "context": context,
+            },
+        )
 
         def check(response):
             self.assertThat(
                 maybe_change_power_state,
                 MockCalledOnceWith(
-                    system_id, hostname, power_type,
-                    power_change=self.expected_power_change, context=context))
+                    system_id,
+                    hostname,
+                    power_type,
+                    power_change=self.expected_power_change,
+                    context=context,
+                ),
+            )
+
         return d.addCallback(check)
 
     def test_power_on_can_propagate_UnknownPowerType(self):
-        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
-            exceptions.UnknownPowerType)
+        self.patch(
+            clusterservice, "maybe_change_power_state"
+        ).side_effect = exceptions.UnknownPowerType
 
-        d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "hostname": "hostname", "power_type": "type",
-            "context": {},
-        })
+        d = call_responder(
+            Cluster(),
+            self.command,
+            {
+                "system_id": "id",
+                "hostname": "hostname",
+                "power_type": "type",
+                "context": {},
+            },
+        )
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* UnknownPowerType to be raised.
         d.addCallback(self.fail)
 
         def check(failure):
             failure.trap(exceptions.UnknownPowerType)
+
         return d.addErrback(check)
 
     def test_power_on_can_propagate_NotImplementedError(self):
-        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
-            NotImplementedError)
+        self.patch(
+            clusterservice, "maybe_change_power_state"
+        ).side_effect = NotImplementedError
 
-        d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "hostname": "hostname", "power_type": "type",
-            "context": {},
-        })
+        d = call_responder(
+            Cluster(),
+            self.command,
+            {
+                "system_id": "id",
+                "hostname": "hostname",
+                "power_type": "type",
+                "context": {},
+            },
+        )
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* NotImplementedError to be raised.
         d.addCallback(self.fail)
 
         def check(failure):
             failure.trap(NotImplementedError)
+
         return d.addErrback(check)
 
     def test_power_on_can_propagate_PowerActionFail(self):
-        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
-            exceptions.PowerActionFail)
+        self.patch(
+            clusterservice, "maybe_change_power_state"
+        ).side_effect = exceptions.PowerActionFail
 
-        d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "hostname": "hostname", "power_type": "type",
-            "context": {},
-        })
+        d = call_responder(
+            Cluster(),
+            self.command,
+            {
+                "system_id": "id",
+                "hostname": "hostname",
+                "power_type": "type",
+                "context": {},
+            },
+        )
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* PowerActionFail to be raised.
         d.addCallback(self.fail)
 
         def check(failure):
             failure.trap(exceptions.PowerActionFail)
+
         return d.addErrback(check)
 
     def test_power_on_can_propagate_PowerActionAlreadyInProgress(self):
-        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
-            exceptions.PowerActionAlreadyInProgress)
+        self.patch(
+            clusterservice, "maybe_change_power_state"
+        ).side_effect = exceptions.PowerActionAlreadyInProgress
 
-        d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "hostname": "hostname", "power_type": "type",
-            "context": {},
-        })
+        d = call_responder(
+            Cluster(),
+            self.command,
+            {
+                "system_id": "id",
+                "hostname": "hostname",
+                "power_type": "type",
+                "context": {},
+            },
+        )
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* PowerActionFail to be raised.
         d.addCallback(self.fail)
 
         def check(failure):
             failure.trap(exceptions.PowerActionAlreadyInProgress)
+
         return d.addErrback(check)
 
 
@@ -2248,153 +2479,195 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
 
     def test_is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.PowerQuery.commandName)
+        responder = protocol.locateResponder(cluster.PowerQuery.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_returns_power_state(self):
-        state = random.choice(['on', 'off'])
+        state = random.choice(["on", "off"])
         perform_power_driver_query = self.patch(
-            power_module, "perform_power_driver_query")
+            power_module, "perform_power_driver_query"
+        )
         perform_power_driver_query.return_value = state
-        power_driver = random.choice([
-            driver
-            for _, driver in PowerDriverRegistry
-            if driver.queryable
-        ])
+        power_driver = random.choice(
+            [driver for _, driver in PowerDriverRegistry if driver.queryable]
+        )
         arguments = {
-            'system_id': factory.make_name('system'),
-            'hostname': factory.make_name('hostname'),
-            'power_type': power_driver.name,
-            'context': factory.make_name('context'),
+            "system_id": factory.make_name("system"),
+            "hostname": factory.make_name("hostname"),
+            "power_type": power_driver.name,
+            "context": factory.make_name("context"),
         }
 
         # Make sure power driver doesn't check for installed packages.
         self.patch_autospec(
-            power_driver, "detect_missing_packages").return_value = []
+            power_driver, "detect_missing_packages"
+        ).return_value = []
 
         observed = yield call_responder(
-            Cluster(), cluster.PowerQuery, arguments)
-        self.assertEqual({'state': state, 'error_msg': None}, observed)
+            Cluster(), cluster.PowerQuery, arguments
+        )
+        self.assertEqual({"state": state, "error_msg": None}, observed)
         self.assertThat(
             perform_power_driver_query,
             MockCalledOnceWith(
-                arguments['system_id'], arguments['hostname'],
-                arguments['power_type'], arguments['context']))
+                arguments["system_id"],
+                arguments["hostname"],
+                arguments["power_type"],
+                arguments["context"],
+            ),
+        )
 
     @inlineCallbacks
     def test_returns_power_error(self):
         perform_power_driver_query = self.patch(
-            power_module, "perform_power_driver_query")
-        perform_power_driver_query.side_effect = PowerError('Error message')
-        power_driver = random.choice([
-            driver
-            for _, driver in PowerDriverRegistry
-            if driver.queryable
-        ])
+            power_module, "perform_power_driver_query"
+        )
+        perform_power_driver_query.side_effect = PowerError("Error message")
+        power_driver = random.choice(
+            [driver for _, driver in PowerDriverRegistry if driver.queryable]
+        )
         arguments = {
-            'system_id': factory.make_name('system'),
-            'hostname': factory.make_name('hostname'),
-            'power_type': power_driver.name,
-            'context': factory.make_name('context'),
+            "system_id": factory.make_name("system"),
+            "hostname": factory.make_name("hostname"),
+            "power_type": power_driver.name,
+            "context": factory.make_name("context"),
         }
 
         # Make sure power driver doesn't check for installed packages.
         self.patch_autospec(
-            power_driver, "detect_missing_packages").return_value = []
+            power_driver, "detect_missing_packages"
+        ).return_value = []
 
         observed = yield call_responder(
-            Cluster(), cluster.PowerQuery, arguments)
+            Cluster(), cluster.PowerQuery, arguments
+        )
         self.assertEqual(
-            {'state': "error", 'error_msg': "Error message"}, observed)
+            {"state": "error", "error_msg": "Error message"}, observed
+        )
         self.assertThat(
             perform_power_driver_query,
             MockCalledOnceWith(
-                arguments['system_id'], arguments['hostname'],
-                arguments['power_type'], arguments['context']))
+                arguments["system_id"],
+                arguments["hostname"],
+                arguments["power_type"],
+                arguments["context"],
+            ),
+        )
 
 
 class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
     scenarios = (
-        ("DHCPv4", {
-            "dhcp_server": (dhcp, "DHCPv4Server"),
-            "command": cluster.ConfigureDHCPv4,
-            "make_network": factory.make_ipv4_network,
-            "make_shared_network": make_shared_network_v1,
-            "make_shared_network_kwargs": {},
-            "concurrency_lock": concurrency.dhcpv4,
-        }),
-        ("DHCPv4,V2", {
-            "dhcp_server": (dhcp, "DHCPv4Server"),
-            "command": cluster.ConfigureDHCPv4_V2,
-            "make_network": factory.make_ipv4_network,
-            "make_shared_network": make_shared_network,
-            "make_shared_network_kwargs": {"with_interface": True},
-            "concurrency_lock": concurrency.dhcpv4,
-        }),
-        ("DHCPv6", {
-            "dhcp_server": (dhcp, "DHCPv6Server"),
-            "command": cluster.ConfigureDHCPv6,
-            "make_network": factory.make_ipv6_network,
-            "make_shared_network": make_shared_network_v1,
-            "make_shared_network_kwargs": {},
-            "concurrency_lock": concurrency.dhcpv6,
-        }),
-        ("DHCPv6,V2", {
-            "dhcp_server": (dhcp, "DHCPv6Server"),
-            "command": cluster.ConfigureDHCPv6_V2,
-            "make_network": factory.make_ipv6_network,
-            "make_shared_network": make_shared_network,
-            "make_shared_network_kwargs": {"with_interface": True},
-            "concurrency_lock": concurrency.dhcpv6,
-        }),
+        (
+            "DHCPv4",
+            {
+                "dhcp_server": (dhcp, "DHCPv4Server"),
+                "command": cluster.ConfigureDHCPv4,
+                "make_network": factory.make_ipv4_network,
+                "make_shared_network": make_shared_network_v1,
+                "make_shared_network_kwargs": {},
+                "concurrency_lock": concurrency.dhcpv4,
+            },
+        ),
+        (
+            "DHCPv4,V2",
+            {
+                "dhcp_server": (dhcp, "DHCPv4Server"),
+                "command": cluster.ConfigureDHCPv4_V2,
+                "make_network": factory.make_ipv4_network,
+                "make_shared_network": make_shared_network,
+                "make_shared_network_kwargs": {"with_interface": True},
+                "concurrency_lock": concurrency.dhcpv4,
+            },
+        ),
+        (
+            "DHCPv6",
+            {
+                "dhcp_server": (dhcp, "DHCPv6Server"),
+                "command": cluster.ConfigureDHCPv6,
+                "make_network": factory.make_ipv6_network,
+                "make_shared_network": make_shared_network_v1,
+                "make_shared_network_kwargs": {},
+                "concurrency_lock": concurrency.dhcpv6,
+            },
+        ),
+        (
+            "DHCPv6,V2",
+            {
+                "dhcp_server": (dhcp, "DHCPv6Server"),
+                "command": cluster.ConfigureDHCPv6_V2,
+                "make_network": factory.make_ipv6_network,
+                "make_shared_network": make_shared_network,
+                "make_shared_network_kwargs": {"with_interface": True},
+                "concurrency_lock": concurrency.dhcpv6,
+            },
+        ),
     )
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         self.assertIsNotNone(
-            Cluster().locateResponder(self.command.commandName))
+            Cluster().locateResponder(self.command.commandName)
+        )
 
     @inlineCallbacks
     def test__executes_configure_dhcp(self):
         DHCPServer = self.patch_autospec(*self.dhcp_server)
         configure = self.patch_autospec(dhcp, "configure")
 
-        omapi_key = factory.make_name('key')
+        omapi_key = factory.make_name("key")
         failover_peers = [make_failover_peer_config()]
-        shared_networks = [self.make_shared_network(
-            **self.make_shared_network_kwargs)]
+        shared_networks = [
+            self.make_shared_network(**self.make_shared_network_kwargs)
+        ]
         shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers)
+            shared_networks, failover_peers
+        )
         hosts = [make_host()]
         interfaces = [make_interface()]
 
-        yield call_responder(Cluster(), self.command, {
-            'omapi_key': omapi_key,
-            'failover_peers': failover_peers,
-            'shared_networks': shared_networks,
-            'hosts': hosts,
-            'interfaces': interfaces,
-            })
+        yield call_responder(
+            Cluster(),
+            self.command,
+            {
+                "omapi_key": omapi_key,
+                "failover_peers": failover_peers,
+                "shared_networks": shared_networks,
+                "hosts": hosts,
+                "interfaces": interfaces,
+            },
+        )
 
         # The `shared_networks` structure is always the V2 style.
         dhcp.upgrade_shared_networks(shared_networks)
 
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
-        self.assertThat(configure, MockCalledOnceWith(
-            DHCPServer.return_value,
-            failover_peers, shared_networks, hosts, interfaces, None))
+        self.assertThat(
+            configure,
+            MockCalledOnceWith(
+                DHCPServer.return_value,
+                failover_peers,
+                shared_networks,
+                hosts,
+                interfaces,
+                None,
+            ),
+        )
 
     @inlineCallbacks
     def test__limits_concurrency(self):
         self.patch_autospec(*self.dhcp_server)
 
         def check_dhcp_locked(
-                server, failover_peers, shared_networks, hosts, interfaces,
-                global_dhcp_snippets):
+            server,
+            failover_peers,
+            shared_networks,
+            hosts,
+            interfaces,
+            global_dhcp_snippets,
+        ):
             self.assertTrue(self.concurrency_lock.locked)
             # While we're here, check this is the IO thread.
             self.expectThat(isInIOThread(), Is(True))
@@ -2402,87 +2675,118 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         self.patch(dhcp, "configure", check_dhcp_locked)
 
         self.assertFalse(self.concurrency_lock.locked)
-        yield call_responder(Cluster(), self.command, {
-            'omapi_key': factory.make_name('key'),
-            'failover_peers': [],
-            'shared_networks': [],
-            'hosts': [],
-            'interfaces': [],
-            })
+        yield call_responder(
+            Cluster(),
+            self.command,
+            {
+                "omapi_key": factory.make_name("key"),
+                "failover_peers": [],
+                "shared_networks": [],
+                "hosts": [],
+                "interfaces": [],
+            },
+        )
         self.assertFalse(self.concurrency_lock.locked)
 
     @inlineCallbacks
     def test__propagates_CannotConfigureDHCP(self):
         configure = self.patch_autospec(dhcp, "configure")
-        configure.side_effect = (
-            exceptions.CannotConfigureDHCP("Deliberate failure"))
-        omapi_key = factory.make_name('key')
+        configure.side_effect = exceptions.CannotConfigureDHCP(
+            "Deliberate failure"
+        )
+        omapi_key = factory.make_name("key")
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
         shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers)
+            shared_networks, failover_peers
+        )
         hosts = [make_host()]
         interfaces = [make_interface()]
 
         with ExpectedException(exceptions.CannotConfigureDHCP):
-            yield call_responder(Cluster(), self.command, {
-                'omapi_key': omapi_key,
-                'failover_peers': failover_peers,
-                'shared_networks': shared_networks,
-                'hosts': hosts,
-                'interfaces': interfaces,
-                })
+            yield call_responder(
+                Cluster(),
+                self.command,
+                {
+                    "omapi_key": omapi_key,
+                    "failover_peers": failover_peers,
+                    "shared_networks": shared_networks,
+                    "hosts": hosts,
+                    "interfaces": interfaces,
+                },
+            )
 
     @inlineCallbacks
     def test__times_out(self):
         self.patch_autospec(*self.dhcp_server)
-        self.patch(clusterservice, 'DHCP_TIMEOUT', 1)
+        self.patch(clusterservice, "DHCP_TIMEOUT", 1)
 
         def check_dhcp_locked(
-                server, failover_peers, shared_networks, hosts, interfaces,
-                global_dhcp_snippets):
+            server,
+            failover_peers,
+            shared_networks,
+            hosts,
+            interfaces,
+            global_dhcp_snippets,
+        ):
             # Pause longer than the timeout.
             return pause(5)
 
         self.patch(dhcp, "configure", check_dhcp_locked)
 
         with ExpectedException(exceptions.CannotConfigureDHCP):
-            yield call_responder(Cluster(), self.command, {
-                'omapi_key': factory.make_name('key'),
-                'failover_peers': [],
-                'shared_networks': [],
-                'hosts': [],
-                'interfaces': [],
-                })
+            yield call_responder(
+                Cluster(),
+                self.command,
+                {
+                    "omapi_key": factory.make_name("key"),
+                    "failover_peers": [],
+                    "shared_networks": [],
+                    "hosts": [],
+                    "interfaces": [],
+                },
+            )
 
 
 class TestClusterProtocol_ValidateDHCP(MAASTestCase):
 
     scenarios = (
-        ("DHCPv4", {
-            "dhcp_server": (dhcp, "DHCPv4Server"),
-            "command": cluster.ValidateDHCPv4Config,
-            "make_network": factory.make_ipv4_network,
-            "make_shared_network": make_shared_network_v1,
-        }),
-        ("DHCPv4,V2", {
-            "dhcp_server": (dhcp, "DHCPv4Server"),
-            "command": cluster.ValidateDHCPv4Config_V2,
-            "make_network": factory.make_ipv4_network,
-            "make_shared_network": make_shared_network,
-        }),
-        ("DHCPv6", {
-            "dhcp_server": (dhcp, "DHCPv6Server"),
-            "command": cluster.ValidateDHCPv6Config,
-            "make_network": factory.make_ipv6_network,
-            "make_shared_network": make_shared_network_v1,
-        }),
-        ("DHCPv6,V2", {
-            "dhcp_server": (dhcp, "DHCPv6Server"),
-            "command": cluster.ValidateDHCPv6Config_V2,
-            "make_network": factory.make_ipv6_network,
-            "make_shared_network": make_shared_network,
-        }),
+        (
+            "DHCPv4",
+            {
+                "dhcp_server": (dhcp, "DHCPv4Server"),
+                "command": cluster.ValidateDHCPv4Config,
+                "make_network": factory.make_ipv4_network,
+                "make_shared_network": make_shared_network_v1,
+            },
+        ),
+        (
+            "DHCPv4,V2",
+            {
+                "dhcp_server": (dhcp, "DHCPv4Server"),
+                "command": cluster.ValidateDHCPv4Config_V2,
+                "make_network": factory.make_ipv4_network,
+                "make_shared_network": make_shared_network,
+            },
+        ),
+        (
+            "DHCPv6",
+            {
+                "dhcp_server": (dhcp, "DHCPv6Server"),
+                "command": cluster.ValidateDHCPv6Config,
+                "make_network": factory.make_ipv6_network,
+                "make_shared_network": make_shared_network_v1,
+            },
+        ),
+        (
+            "DHCPv6,V2",
+            {
+                "dhcp_server": (dhcp, "DHCPv6Server"),
+                "command": cluster.ValidateDHCPv6Config_V2,
+                "make_network": factory.make_ipv6_network,
+                "make_shared_network": make_shared_network,
+            },
+        ),
     )
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -2495,76 +2799,92 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
 
     def test__is_registered(self):
         self.assertIsNotNone(
-            Cluster().locateResponder(self.command.commandName))
+            Cluster().locateResponder(self.command.commandName)
+        )
 
     @inlineCallbacks
     def test__validates_good_dhcp_config(self):
-        self.patch(dhcp, 'call_and_check').return_value = None
+        self.patch(dhcp, "call_and_check").return_value = None
 
-        omapi_key = factory.make_name('key')
+        omapi_key = factory.make_name("key")
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
         shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers)
+            shared_networks, failover_peers
+        )
         hosts = [make_host()]
         interfaces = [make_interface()]
 
-        response = yield call_responder(Cluster(), self.command, {
-            'omapi_key': omapi_key,
-            'failover_peers': failover_peers,
-            'shared_networks': shared_networks,
-            'hosts': hosts,
-            'interfaces': interfaces,
-            })
-        self.assertEquals(None, response['errors'])
+        response = yield call_responder(
+            Cluster(),
+            self.command,
+            {
+                "omapi_key": omapi_key,
+                "failover_peers": failover_peers,
+                "shared_networks": shared_networks,
+                "hosts": hosts,
+                "interfaces": interfaces,
+            },
+        )
+        self.assertEquals(None, response["errors"])
 
     @inlineCallbacks
     def test__validates_bad_dhcp_config(self):
         dhcpd_error = (
-            'Internet Systems Consortium DHCP Server 4.3.3\n'
-            'Copyright 2004-2015 Internet Systems Consortium.\n'
-            'All rights reserved.\n'
-            'For info, please visit https://www.isc.org/software/dhcp/\n'
-            '/tmp/maas-dhcpd-z5c7hfzt line 14: semicolon expected.\n'
-            'ignore \n'
-            '^\n'
-            'Configuration file errors encountered -- exiting\n'
-            '\n'
-            'If you think you have received this message due to a bug rather\n'
-            'than a configuration issue please read the section on submitting'
-            '\n'
-            'bugs on either our web page at www.isc.org or in the README file'
-            '\n'
-            'before submitting a bug.  These pages explain the proper\n'
-            'process and the information we find helpful for debugging..\n'
-            '\n'
-            'exiting.'
+            "Internet Systems Consortium DHCP Server 4.3.3\n"
+            "Copyright 2004-2015 Internet Systems Consortium.\n"
+            "All rights reserved.\n"
+            "For info, please visit https://www.isc.org/software/dhcp/\n"
+            "/tmp/maas-dhcpd-z5c7hfzt line 14: semicolon expected.\n"
+            "ignore \n"
+            "^\n"
+            "Configuration file errors encountered -- exiting\n"
+            "\n"
+            "If you think you have received this message due to a bug rather\n"
+            "than a configuration issue please read the section on submitting"
+            "\n"
+            "bugs on either our web page at www.isc.org or in the README file"
+            "\n"
+            "before submitting a bug.  These pages explain the proper\n"
+            "process and the information we find helpful for debugging..\n"
+            "\n"
+            "exiting."
         )
-        self.patch(dhcp, 'call_and_check').side_effect = ExternalProcessError(
-            returncode=1, cmd=("dhcpd",), output=dhcpd_error)
+        self.patch(dhcp, "call_and_check").side_effect = ExternalProcessError(
+            returncode=1, cmd=("dhcpd",), output=dhcpd_error
+        )
 
-        omapi_key = factory.make_name('key')
+        omapi_key = factory.make_name("key")
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
         shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers)
+            shared_networks, failover_peers
+        )
         hosts = [make_host()]
         interfaces = [make_interface()]
 
-        response = yield call_responder(Cluster(), self.command, {
-            'omapi_key': omapi_key,
-            'failover_peers': failover_peers,
-            'shared_networks': shared_networks,
-            'hosts': hosts,
-            'interfaces': interfaces,
-            })
-        self.assertEqual([{
-            'error': 'semicolon expected.',
-            'line_num': 14,
-            'line': 'ignore ',
-            'position': '^',
-            }],
-            response['errors'])
+        response = yield call_responder(
+            Cluster(),
+            self.command,
+            {
+                "omapi_key": omapi_key,
+                "failover_peers": failover_peers,
+                "shared_networks": shared_networks,
+                "hosts": hosts,
+                "interfaces": interfaces,
+            },
+        )
+        self.assertEqual(
+            [
+                {
+                    "error": "semicolon expected.",
+                    "line_num": 14,
+                    "line": "ignore ",
+                    "position": "^",
+                }
+            ],
+            response["errors"],
+        )
 
 
 class TestClusterProtocol_EvaluateTag(MAASTestCase):
@@ -2573,8 +2893,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.EvaluateTag.commandName)
+        responder = protocol.locateResponder(cluster.EvaluateTag.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
@@ -2584,27 +2903,26 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         self.patch_autospec(tags, "process_node_tags")
         rack_id = factory.make_name("rack")
 
-        nodes = [
-            {"system_id": factory.make_name("node")}
-            for _ in range(3)
-        ]
+        nodes = [{"system_id": factory.make_name("node")} for _ in range(3)]
 
         conn_cluster = Cluster()
         conn_cluster.service = MagicMock()
         conn_cluster.service.maas_url = factory.make_simple_http_url()
 
         response = yield call_responder(
-            conn_cluster, cluster.EvaluateTag, {
+            conn_cluster,
+            cluster.EvaluateTag,
+            {
                 "system_id": rack_id,
                 "tag_name": "all-nodes",
                 "tag_definition": "//*",
                 "tag_nsmap": [
-                    {"prefix": "foo",
-                     "uri": "http://foo.example.com/"},
+                    {"prefix": "foo", "uri": "http://foo.example.com/"}
                 ],
                 "credentials": "abc:def:ghi",
                 "nodes": nodes,
-            })
+            },
+        )
 
         self.assertEqual({}, response)
 
@@ -2621,35 +2939,40 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         resource_token = factory.make_name("rtok")
         resource_secret = factory.make_name("rsec")
         credentials = convert_tuple_to_string(
-            (consumer_key, resource_token, resource_secret))
+            (consumer_key, resource_token, resource_secret)
+        )
         rack_id = factory.make_name("rack")
-        nodes = [
-            {"system_id": factory.make_name("node")}
-            for _ in range(3)
-        ]
+        nodes = [{"system_id": factory.make_name("node")} for _ in range(3)]
 
         conn_cluster = Cluster()
         conn_cluster.service = MagicMock()
         conn_cluster.service.maas_url = factory.make_simple_http_url()
 
         yield call_responder(
-            conn_cluster, cluster.EvaluateTag, {
+            conn_cluster,
+            cluster.EvaluateTag,
+            {
                 "system_id": rack_id,
                 "tag_name": tag_name,
                 "tag_definition": tag_definition,
-                "tag_nsmap": [
-                    {"prefix": tag_ns_prefix, "uri": tag_ns_uri},
-                ],
+                "tag_nsmap": [{"prefix": tag_ns_prefix, "uri": tag_ns_uri}],
                 "credentials": credentials,
                 "nodes": nodes,
-            })
+            },
+        )
 
-        self.assertThat(evaluate_tag, MockCalledOnceWith(
-            rack_id, nodes, tag_name, tag_definition,
-            {tag_ns_prefix: tag_ns_uri},
-            (consumer_key, resource_token, resource_secret),
-            conn_cluster.service.maas_url,
-        ))
+        self.assertThat(
+            evaluate_tag,
+            MockCalledOnceWith(
+                rack_id,
+                nodes,
+                tag_name,
+                tag_definition,
+                {tag_ns_prefix: tag_ns_uri},
+                (consumer_key, resource_token, resource_secret),
+                conn_cluster.service.maas_url,
+            ),
+        )
 
 
 class MAASTestCaseThatWaitsForDeferredThreads(MAASTestCase):
@@ -2679,64 +3002,71 @@ class MAASTestCaseThatWaitsForDeferredThreads(MAASTestCase):
         return d
 
 
-class TestClusterProtocol_Refresh(
-        MAASTestCaseThatWaitsForDeferredThreads):
+class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.RefreshRackControllerInfo.commandName)
+            cluster.RefreshRackControllerInfo.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test__raises_refresh_already_in_progress_when_locked(self):
-        system_id = factory.make_name('system_id')
-        consumer_key = factory.make_name('consumer_key')
-        token_key = factory.make_name('token_key')
-        token_secret = factory.make_name('token_secret')
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
 
-        with NamedLock('refresh'):
+        with NamedLock("refresh"):
             with ExpectedException(exceptions.RefreshAlreadyInProgress):
                 yield call_responder(
-                    Cluster(), cluster.RefreshRackControllerInfo,
+                    Cluster(),
+                    cluster.RefreshRackControllerInfo,
                     {
                         "system_id": system_id,
                         "consumer_key": consumer_key,
                         "token_key": token_key,
                         "token_secret": token_secret,
-                    })
+                    },
+                )
 
     @inlineCallbacks
     def test__acquires_lock_when_refreshing_releases_when_done(self):
         def mock_refresh(*args, **kwargs):
-            lock = NamedLock('refresh')
+            lock = NamedLock("refresh")
             self.assertTrue(lock.is_locked())
-        self.patch(clusterservice, 'refresh', mock_refresh)
-        system_id = factory.make_name('system_id')
-        consumer_key = factory.make_name('consumer_key')
-        token_key = factory.make_name('token_key')
-        token_secret = factory.make_name('token_secret')
 
-        yield call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
-            "system_id": system_id,
-            "consumer_key": consumer_key,
-            "token_key": token_key,
-            "token_secret": token_secret,
-        })
+        self.patch(clusterservice, "refresh", mock_refresh)
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
 
-        lock = NamedLock('refresh')
+        yield call_responder(
+            Cluster(),
+            cluster.RefreshRackControllerInfo,
+            {
+                "system_id": system_id,
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+            },
+        )
+
+        lock = NamedLock("refresh")
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
     def test__releases_on_error(self):
         exception = factory.make_exception()
-        self.patch(clusterservice, 'refresh').side_effect = exception
-        system_id = factory.make_name('system_id')
-        consumer_key = factory.make_name('consumer_key')
-        token_key = factory.make_name('token_key')
-        token_secret = factory.make_name('token_secret')
+        self.patch(clusterservice, "refresh").side_effect = exception
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
 
         conn_cluster = Cluster()
         conn_cluster.service = MagicMock()
@@ -2744,12 +3074,15 @@ class TestClusterProtocol_Refresh(
 
         with TwistedLoggerFixture() as logger:
             yield call_responder(
-                conn_cluster, cluster.RefreshRackControllerInfo, {
+                conn_cluster,
+                cluster.RefreshRackControllerInfo,
+                {
                     "system_id": system_id,
                     "consumer_key": consumer_key,
                     "token_key": token_key,
                     "token_secret": token_secret,
-                })
+                },
+            )
 
         # The failure is logged
         self.assertDocTestMatches(
@@ -2763,129 +3096,149 @@ class TestClusterProtocol_Refresh(
         )
 
         # The lock is released
-        lock = NamedLock('refresh')
+        lock = NamedLock("refresh")
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
     def test__defers_refresh_to_thread(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.side_effect = [
             succeed(None),
-            succeed({
-                'hostname': '',
-                'architecture': '',
-                'osystem': '',
-                'distro_series': '',
-                'interfaces': {}
-            }),
+            succeed(
+                {
+                    "hostname": "",
+                    "architecture": "",
+                    "osystem": "",
+                    "distro_series": "",
+                    "interfaces": {},
+                }
+            ),
         ]
 
-        system_id = factory.make_name('system_id')
-        consumer_key = factory.make_name('consumer_key')
-        token_key = factory.make_name('token_key')
-        token_secret = factory.make_name('token_secret')
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
 
         conn_cluster = Cluster()
         conn_cluster.service = MagicMock()
         conn_cluster.service.maas_url = factory.make_simple_http_url()
 
-        yield call_responder(conn_cluster, cluster.RefreshRackControllerInfo, {
-            'system_id': system_id,
-            'consumer_key': consumer_key,
-            'token_key': token_key,
-            'token_secret': token_secret,
-        })
-
-        self.assertThat(
-            mock_deferToThread, MockAnyCall(
-                clusterservice.refresh, system_id, consumer_key, token_key,
-                token_secret, ANY))
-
-    @inlineCallbacks
-    def test_returns_extra_info(self):
-        self.patch_autospec(clusterservice, 'refresh')
-
-        system_id = factory.make_name('system_id')
-        consumer_key = factory.make_name('consumer_key')
-        token_key = factory.make_name('token_key')
-        token_secret = factory.make_name('token_secret')
-        hostname = factory.make_hostname()
-        architecture = factory.make_name('architecture')
-        osystem = factory.make_name('osystem')
-        distro_series = factory.make_name('distro_series')
-        maas_version = factory.make_name('maas_version')
-        self.patch_autospec(clusterservice, 'get_sys_info').return_value = {
-            'hostname': hostname,
-            'osystem': osystem,
-            'distro_series': distro_series,
-            'architecture': architecture,
-            'interfaces': {},
-            'maas_version': maas_version,
-        }
-
-        response = yield call_responder(
-            Cluster(), cluster.RefreshRackControllerInfo, {
+        yield call_responder(
+            conn_cluster,
+            cluster.RefreshRackControllerInfo,
+            {
                 "system_id": system_id,
                 "consumer_key": consumer_key,
                 "token_key": token_key,
                 "token_secret": token_secret,
-            })
+            },
+        )
+
+        self.assertThat(
+            mock_deferToThread,
+            MockAnyCall(
+                clusterservice.refresh,
+                system_id,
+                consumer_key,
+                token_key,
+                token_secret,
+                ANY,
+            ),
+        )
+
+    @inlineCallbacks
+    def test_returns_extra_info(self):
+        self.patch_autospec(clusterservice, "refresh")
+
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        hostname = factory.make_hostname()
+        architecture = factory.make_name("architecture")
+        osystem = factory.make_name("osystem")
+        distro_series = factory.make_name("distro_series")
+        maas_version = factory.make_name("maas_version")
+        self.patch_autospec(clusterservice, "get_sys_info").return_value = {
+            "hostname": hostname,
+            "osystem": osystem,
+            "distro_series": distro_series,
+            "architecture": architecture,
+            "interfaces": {},
+            "maas_version": maas_version,
+        }
+
+        response = yield call_responder(
+            Cluster(),
+            cluster.RefreshRackControllerInfo,
+            {
+                "system_id": system_id,
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+            },
+        )
 
         self.assertEqual(
             {
-                'hostname': hostname,
-                'osystem': osystem,
-                'distro_series': distro_series,
-                'architecture': architecture,
-                'maas_version': maas_version,
-                'interfaces': {},
-            }, response)
+                "hostname": hostname,
+                "osystem": osystem,
+                "distro_series": distro_series,
+                "architecture": architecture,
+                "maas_version": maas_version,
+                "interfaces": {},
+            },
+            response,
+        )
 
 
 class TestClusterProtocol_ScanNetworks(
-        MAASTestCaseThatWaitsForDeferredThreads):
+    MAASTestCaseThatWaitsForDeferredThreads
+):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ScanNetworks.commandName)
+        responder = protocol.locateResponder(cluster.ScanNetworks.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test__raises_refresh_already_in_progress_when_locked(self):
-        with NamedLock('scan-networks'):
-            with ExpectedException(
-                    exceptions.ScanNetworksAlreadyInProgress):
+        with NamedLock("scan-networks"):
+            with ExpectedException(exceptions.ScanNetworksAlreadyInProgress):
                 yield call_responder(
-                    Cluster(), cluster.ScanNetworks, {'scan_all': True})
+                    Cluster(), cluster.ScanNetworks, {"scan_all": True}
+                )
 
     @inlineCallbacks
     def test__acquires_lock_when_scanning_releases_when_done(self):
         def mock_scan(*args, **kwargs):
-            lock = NamedLock('scan-networks')
+            lock = NamedLock("scan-networks")
             self.assertTrue(lock.is_locked())
-        self.patch(
-            clusterservice, 'executeScanNetworksSubprocess', mock_scan)
 
-        yield call_responder(Cluster(), cluster.ScanNetworks, {
-            'scan_all': True})
+        self.patch(clusterservice, "executeScanNetworksSubprocess", mock_scan)
 
-        lock = NamedLock('scan-networks')
+        yield call_responder(
+            Cluster(), cluster.ScanNetworks, {"scan_all": True}
+        )
+
+        lock = NamedLock("scan-networks")
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
     def test__releases_on_error(self):
         exception = factory.make_exception()
-        mock_scan = self.patch(
-            clusterservice, 'executeScanNetworksSubprocess')
+        mock_scan = self.patch(clusterservice, "executeScanNetworksSubprocess")
         mock_scan.side_effect = exception
 
         with TwistedLoggerFixture() as logger:
             yield call_responder(
-                Cluster(), cluster.ScanNetworks, {'scan_all': True})
+                Cluster(), cluster.ScanNetworks, {"scan_all": True}
+            )
 
         # The failure is logged
         self.assertDocTestMatches(
@@ -2899,23 +3252,32 @@ class TestClusterProtocol_ScanNetworks(
         )
 
         # The lock is released
-        lock = NamedLock('scan-networks')
+        lock = NamedLock("scan-networks")
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
     def test__wraps_subprocess_scan_in_maybeDeferred(self):
         mock_maybeDeferred = self.patch_autospec(
-            clusterservice, 'maybeDeferred')
+            clusterservice, "maybeDeferred"
+        )
         mock_maybeDeferred.side_effect = (succeed(None),)
 
-        yield call_responder(Cluster(), cluster.ScanNetworks, {
-            'scan_all': True})
+        yield call_responder(
+            Cluster(), cluster.ScanNetworks, {"scan_all": True}
+        )
 
         self.assertThat(
-            mock_maybeDeferred, MockCalledOnceWith(
+            mock_maybeDeferred,
+            MockCalledOnceWith(
                 clusterservice.executeScanNetworksSubprocess,
-                cidrs=None, force_ping=None, interface=None, scan_all=True,
-                slow=None, threads=None))
+                cidrs=None,
+                force_ping=None,
+                interface=None,
+                scan_all=True,
+                slow=None,
+                threads=None,
+            ),
+        )
 
     def test_get_scan_all_networks_args_asserts_for_invalid_config(self):
         with ExpectedException(AssertionError, "Invalid scan parameters.*"):
@@ -2923,62 +3285,91 @@ class TestClusterProtocol_ScanNetworks(
 
     def test_get_scan_all_networks_args_returns_expected_binary_args(self):
         args = get_scan_all_networks_args(scan_all=True)
-        self.assertThat(args, Equals(
-            [get_maas_common_command().encode('utf-8'), b'scan-network']
-        ))
+        self.assertThat(
+            args,
+            Equals(
+                [get_maas_common_command().encode("utf-8"), b"scan-network"]
+            ),
+        )
 
     def test_get_scan_all_networks_args_sudo(self):
         is_dev_environment_mock = self.patch_autospec(
-            clusterservice, 'is_dev_environment')
+            clusterservice, "is_dev_environment"
+        )
         is_dev_environment_mock.return_value = False
         args = get_scan_all_networks_args(scan_all=True)
-        self.assertThat(args, Equals([
-            b'sudo', b'-n', get_maas_common_command().encode('utf-8'),
-            b'scan-network']
-        ))
+        self.assertThat(
+            args,
+            Equals(
+                [
+                    b"sudo",
+                    b"-n",
+                    get_maas_common_command().encode("utf-8"),
+                    b"scan-network",
+                ]
+            ),
+        )
 
     def test_get_scan_all_networks_args_returns_supplied_cidrs(self):
-        args = get_scan_all_networks_args(cidrs=[
-            IPNetwork('192.168.0.0/24'), IPNetwork('192.168.1.0/24')])
-        self.assertThat(args, Equals([
-            get_maas_common_command().encode('utf-8'),
-            b'scan-network',
-            b'192.168.0.0/24',
-            b'192.168.1.0/24'
-            ]
-        ))
+        args = get_scan_all_networks_args(
+            cidrs=[IPNetwork("192.168.0.0/24"), IPNetwork("192.168.1.0/24")]
+        )
+        self.assertThat(
+            args,
+            Equals(
+                [
+                    get_maas_common_command().encode("utf-8"),
+                    b"scan-network",
+                    b"192.168.0.0/24",
+                    b"192.168.1.0/24",
+                ]
+            ),
+        )
 
     def test_get_scan_all_networks_args_returns_supplied_interface(self):
-        args = get_scan_all_networks_args(interface='eth0')
-        self.assertThat(args, Equals([
-            get_maas_common_command().encode('utf-8'),
-            b'scan-network',
-            b'eth0'
-        ]
-        ))
+        args = get_scan_all_networks_args(interface="eth0")
+        self.assertThat(
+            args,
+            Equals(
+                [
+                    get_maas_common_command().encode("utf-8"),
+                    b"scan-network",
+                    b"eth0",
+                ]
+            ),
+        )
 
     def test_get_scan_all_networks_with_all_optional_arguments(self):
         threads = random.randint(1, 10)
         args = get_scan_all_networks_args(
-            scan_all=False, slow=True, threads=threads, force_ping=True,
-            interface='eth0', cidrs=[
-                IPNetwork('192.168.0.0/24'), IPNetwork('192.168.1.0/24')])
-        self.assertThat(args, Equals([
-            get_maas_common_command().encode('utf-8'),
-            b'scan-network',
-            b'--threads', str(threads).encode('utf-8'),
-            b'--ping',
-            b'--slow',
-            b'eth0',
-            b'192.168.0.0/24',
-            b'192.168.1.0/24'
-        ]
-        ))
+            scan_all=False,
+            slow=True,
+            threads=threads,
+            force_ping=True,
+            interface="eth0",
+            cidrs=[IPNetwork("192.168.0.0/24"), IPNetwork("192.168.1.0/24")],
+        )
+        self.assertThat(
+            args,
+            Equals(
+                [
+                    get_maas_common_command().encode("utf-8"),
+                    b"scan-network",
+                    b"--threads",
+                    str(threads).encode("utf-8"),
+                    b"--ping",
+                    b"--slow",
+                    b"eth0",
+                    b"192.168.0.0/24",
+                    b"192.168.1.0/24",
+                ]
+            ),
+        )
 
     @inlineCallbacks
     def test_spawnProcessAndNullifyStdout_nullifies_stdout(self):
         done, protocol = makeDeferredWithProcessProtocol()
-        args = [b"/bin/bash", b'-c', b"echo foo"]
+        args = [b"/bin/bash", b"-c", b"echo foo"]
         outReceived = Mock()
         protocol.outReceived = outReceived
         spawnProcessAndNullifyStdout(protocol, args)
@@ -2988,23 +3379,25 @@ class TestClusterProtocol_ScanNetworks(
     @inlineCallbacks
     def test_spawnProcessAndNullifyStdout_captures_stderr(self):
         done, protocol = makeDeferredWithProcessProtocol()
-        args = [b"/bin/bash", b'-c', b"echo foo >&2"]
+        args = [b"/bin/bash", b"-c", b"echo foo >&2"]
         errReceived = Mock()
         protocol.errReceived = errReceived
         spawnProcessAndNullifyStdout(protocol, args)
         yield done
-        self.assertThat(errReceived, MockCalledOnceWith(b'foo\n'))
+        self.assertThat(errReceived, MockCalledOnceWith(b"foo\n"))
 
     @inlineCallbacks
     def test_executeScanNetworksSubprocess(self):
         mock_scan_args = self.patch(
-            clusterservice, 'get_scan_all_networks_args')
-        mock_scan_args.return_value = [b"/bin/bash", b'-c', b"echo -n foo >&2"]
-        mock_log_msg = self.patch(clusterservice.log, 'msg')
+            clusterservice, "get_scan_all_networks_args"
+        )
+        mock_scan_args.return_value = [b"/bin/bash", b"-c", b"echo -n foo >&2"]
+        mock_log_msg = self.patch(clusterservice.log, "msg")
         d = executeScanNetworksSubprocess()
         yield d
         self.assertThat(
-            mock_log_msg, MockCalledOnceWith('Scan all networks: foo'))
+            mock_log_msg, MockCalledOnceWith("Scan all networks: foo")
+        )
 
 
 class TestClusterProtocol_AddChassis(MAASTestCase):
@@ -3013,431 +3406,596 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.AddChassis.commandName)
+        responder = protocol.locateResponder(cluster.AddChassis.commandName)
         self.assertIsNotNone(responder)
 
     def test_chassis_type_virsh_calls_probe_virsh_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        password = factory.make_name('password')
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        prefix_filter = factory.make_name('prefix_filter')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'virsh',
-            'hostname': hostname,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'prefix_filter': prefix_filter,
-            })
+        domain = factory.make_name("domain")
+        prefix_filter = factory.make_name("prefix_filter")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "virsh",
+                "hostname": hostname,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "prefix_filter": prefix_filter,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
+            mock_deferToThread,
+            MockCalledOnceWith(
                 clusterservice.probe_virsh_and_enlist,
-                user, hostname, password, prefix_filter, accept_all,
-                domain))
+                user,
+                hostname,
+                password,
+                prefix_filter,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_powerkvm_calls_probe_virsh_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        password = factory.make_name('password')
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        prefix_filter = factory.make_name('prefix_filter')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'powerkvm',
-            'hostname': hostname,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'prefix_filter': prefix_filter,
-            })
+        domain = factory.make_name("domain")
+        prefix_filter = factory.make_name("prefix_filter")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "powerkvm",
+                "hostname": hostname,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "prefix_filter": prefix_filter,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
+            mock_deferToThread,
+            MockCalledOnceWith(
                 clusterservice.probe_virsh_and_enlist,
-                user, hostname, password, prefix_filter, accept_all,
-                domain))
+                user,
+                hostname,
+                password,
+                prefix_filter,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_virsh_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        password = factory.make_name('password')
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        prefix_filter = factory.make_name('prefix_filter')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'powerkvm',
-            'hostname': hostname,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'prefix_filter': prefix_filter,
-            })
+        domain = factory.make_name("domain")
+        prefix_filter = factory.make_name("prefix_filter")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "powerkvm",
+                "hostname": hostname,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "prefix_filter": prefix_filter,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
-                "Failed to probe and enlist %s nodes: %s",
-                "virsh", fake_error))
+                "Failed to probe and enlist %s nodes: %s", "virsh", fake_error
+            ),
+        )
 
     def test_chassis_type_vmware_calls_probe_vmware_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        prefix_filter = factory.make_name('prefix_filter')
+        domain = factory.make_name("domain")
+        prefix_filter = factory.make_name("prefix_filter")
         port = random.choice([80, 443, 8080, 8443])
         protocol = random.choice(["http", "https"])
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'vmware',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'prefix_filter': prefix_filter,
-            'port': port,
-            'protocol': protocol,
-            })
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "vmware",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "prefix_filter": prefix_filter,
+                "port": port,
+                "protocol": protocol,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
+            mock_deferToThread,
+            MockCalledOnceWith(
                 clusterservice.probe_vmware_and_enlist,
-                user, hostname, username, password, port,
-                protocol, prefix_filter, accept_all, domain))
+                user,
+                hostname,
+                username,
+                password,
+                port,
+                protocol,
+                prefix_filter,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_vmware_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        prefix_filter = factory.make_name('prefix_filter')
+        domain = factory.make_name("domain")
+        prefix_filter = factory.make_name("prefix_filter")
         port = random.choice([80, 443, 8080, 8443])
         protocol = random.choice(["http", "https"])
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'vmware',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'prefix_filter': prefix_filter,
-            'port': port,
-            'protocol': protocol,
-            })
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "vmware",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "prefix_filter": prefix_filter,
+                "port": port,
+                "protocol": protocol,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
-                "Failed to probe and enlist %s nodes: %s",
-                "VMware", fake_error))
+                "Failed to probe and enlist %s nodes: %s", "VMware", fake_error
+            ),
+        )
 
     def test_chassis_type_recs_calls_probe_and_enlist_recs(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
+        domain = factory.make_name("domain")
         port = randint(2000, 4000)
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'recs_box',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'port': port,
-            })
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "recs_box",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "port": port,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_and_enlist_recs, user, hostname, port,
-                username, password, accept_all, domain))
+            mock_deferToThread,
+            MockCalledOnceWith(
+                clusterservice.probe_and_enlist_recs,
+                user,
+                hostname,
+                port,
+                username,
+                password,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_recs_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
+        domain = factory.make_name("domain")
         port = randint(2000, 4000)
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'recs_box',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'port': port,
-            })
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "recs_box",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "port": port,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
-                "RECS|Box", fake_error))
+                "RECS|Box",
+                fake_error,
+            ),
+        )
 
     def test_chassis_type_seamicro15k_calls_probe_seamicro15k_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        power_control = random.choice(['ipmi', 'restapi', 'restapi2'])
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'seamicro15k',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'power_control': power_control,
-            })
+        domain = factory.make_name("domain")
+        power_control = random.choice(["ipmi", "restapi", "restapi2"])
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "seamicro15k",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "power_control": power_control,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_seamicro15k_and_enlist, user, hostname,
-                username, password, power_control, accept_all, domain))
+            mock_deferToThread,
+            MockCalledOnceWith(
+                clusterservice.probe_seamicro15k_and_enlist,
+                user,
+                hostname,
+                username,
+                password,
+                power_control,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_seamicro15k_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        power_control = random.choice(['ipmi', 'restapi', 'restapi2'])
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'seamicro15k',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'power_control': power_control,
-            })
+        domain = factory.make_name("domain")
+        power_control = random.choice(["ipmi", "restapi", "restapi2"])
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "seamicro15k",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "power_control": power_control,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
-                "SeaMicro 15000", fake_error))
+                "SeaMicro 15000",
+                fake_error,
+            ),
+        )
 
     def test_chassis_type_mscm_calls_probe_mscm_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'mscm',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            })
+        domain = factory.make_name("domain")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "mscm",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_and_enlist_mscm, user, hostname,
-                username, password, accept_all, domain))
+            mock_deferToThread,
+            MockCalledOnceWith(
+                clusterservice.probe_and_enlist_mscm,
+                user,
+                hostname,
+                username,
+                password,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_mscm_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'mscm',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            })
+        domain = factory.make_name("domain")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "mscm",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
-                "Moonshot", fake_error))
+                "Moonshot",
+                fake_error,
+            ),
+        )
 
     def test_chassis_type_msftocs_calls_probe_msftocs_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
+        domain = factory.make_name("domain")
         port = randint(2000, 4000)
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'msftocs',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'port': port,
-            })
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "msftocs",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "port": port,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_and_enlist_msftocs, user, hostname, port,
-                username, password, accept_all, domain))
+            mock_deferToThread,
+            MockCalledOnceWith(
+                clusterservice.probe_and_enlist_msftocs,
+                user,
+                hostname,
+                port,
+                username,
+                password,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_msftocs_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
+        domain = factory.make_name("domain")
         port = randint(2000, 4000)
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'msftocs',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            'port': port,
-            })
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "msftocs",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+                "port": port,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
-                "MicrosoftOCS", fake_error))
+                "MicrosoftOCS",
+                fake_error,
+            ),
+        )
 
     def test_chassis_type_ucsm_calls_probe_ucsm_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
+            clusterservice, "deferToThread"
+        )
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'ucsm',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            })
+        domain = factory.make_name("domain")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "ucsm",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+            },
+        )
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_and_enlist_ucsm, user, hostname,
-                username, password, accept_all, domain))
+            mock_deferToThread,
+            MockCalledOnceWith(
+                clusterservice.probe_and_enlist_ucsm,
+                user,
+                hostname,
+                username,
+                password,
+                accept_all,
+                domain,
+            ),
+        )
 
     def test_chassis_type_ucsm_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
+        fake_error = factory.make_name("error")
+        self.patch(clusterservice, "maaslog")
         mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
+            clusterservice, "deferToThread"
+        )
         mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
+        user = factory.make_name("user")
         hostname = factory.make_hostname()
-        username = factory.make_name('username')
-        password = factory.make_name('password')
+        username = factory.make_name("username")
+        password = factory.make_name("password")
         accept_all = factory.pick_bool()
-        domain = factory.make_name('domain')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'ucsm',
-            'hostname': hostname,
-            'username': username,
-            'password': password,
-            'accept_all': accept_all,
-            'domain': domain,
-            })
+        domain = factory.make_name("domain")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "ucsm",
+                "hostname": hostname,
+                "username": username,
+                "password": password,
+                "accept_all": accept_all,
+                "domain": domain,
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
             MockAnyCall(
-                "Failed to probe and enlist %s nodes: %s",
-                "UCS", fake_error))
+                "Failed to probe and enlist %s nodes: %s", "UCS", fake_error
+            ),
+        )
 
     def test_chassis_type_unknown_logs_error_to_maaslog(self):
-        self.patch(clusterservice, 'maaslog')
-        user = factory.make_name('user')
-        chassis_type = factory.make_name('chassis_type')
-        call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': chassis_type,
-            'hostname': factory.make_hostname(),
-            })
+        self.patch(clusterservice, "maaslog")
+        user = factory.make_name("user")
+        chassis_type = factory.make_name("chassis_type")
+        call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": chassis_type,
+                "hostname": factory.make_hostname(),
+            },
+        )
         self.assertThat(
             clusterservice.maaslog.error,
-            MockAnyCall("Unknown chassis type %s" % chassis_type))
+            MockAnyCall("Unknown chassis type %s" % chassis_type),
+        )
 
     def test_returns_nothing(self):
-        self.patch_autospec(clusterservice, 'deferToThread')
-        user = factory.make_name('user')
-        response = call_responder(Cluster(), cluster.AddChassis, {
-            'user': user,
-            'chassis_type': 'virsh',
-            'hostname': factory.make_hostname(),
-            })
+        self.patch_autospec(clusterservice, "deferToThread")
+        user = factory.make_name("user")
+        response = call_responder(
+            Cluster(),
+            cluster.AddChassis,
+            {
+                "user": user,
+                "chassis_type": "virsh",
+                "hostname": factory.make_hostname(),
+            },
+        )
         self.assertEquals({}, response.result)
 
 
@@ -3447,93 +4005,110 @@ class TestClusterProtocol_DiscoverPod(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.DiscoverPod.commandName)
+        responder = protocol.locateResponder(cluster.DiscoverPod.commandName)
         self.assertIsNotNone(responder)
 
     def test_calls_discover_pod(self):
-        mock_discover_pod = self.patch_autospec(
-            pods, 'discover_pod')
-        mock_discover_pod.return_value = succeed({
-            "pod": DiscoveredPod(
-                architectures=['amd64/generic'],
-                cores=random.randint(1, 8),
-                cpu_speed=random.randint(1000, 3000),
-                memory=random.randint(1024, 8192),
-                local_storage=0,
-                hints=DiscoveredPodHints(
+        mock_discover_pod = self.patch_autospec(pods, "discover_pod")
+        mock_discover_pod.return_value = succeed(
+            {
+                "pod": DiscoveredPod(
+                    architectures=["amd64/generic"],
                     cores=random.randint(1, 8),
-                    cpu_speed=random.randint(1000, 2000),
-                    memory=random.randint(1024, 8192), local_storage=0),
-                machines=[]),
-            })
-        pod_type = factory.make_name('pod_type')
-        context = {
-            "data": factory.make_name("data"),
-        }
+                    cpu_speed=random.randint(1000, 3000),
+                    memory=random.randint(1024, 8192),
+                    local_storage=0,
+                    hints=DiscoveredPodHints(
+                        cores=random.randint(1, 8),
+                        cpu_speed=random.randint(1000, 2000),
+                        memory=random.randint(1024, 8192),
+                        local_storage=0,
+                    ),
+                    machines=[],
+                )
+            }
+        )
+        pod_type = factory.make_name("pod_type")
+        context = {"data": factory.make_name("data")}
         pod_id = random.randint(1, 100)
-        name = factory.make_name('pod')
-        call_responder(Cluster(), cluster.DiscoverPod, {
-            'type': pod_type,
-            'context': context,
-            'pod_id': pod_id,
-            'name': name,
-            })
+        name = factory.make_name("pod")
+        call_responder(
+            Cluster(),
+            cluster.DiscoverPod,
+            {
+                "type": pod_type,
+                "context": context,
+                "pod_id": pod_id,
+                "name": name,
+            },
+        )
         self.assertThat(
-            mock_discover_pod, MockCalledOnceWith(
-                pod_type, context, pod_id=pod_id, name=name))
+            mock_discover_pod,
+            MockCalledOnceWith(pod_type, context, pod_id=pod_id, name=name),
+        )
 
 
 class TestClusterProtocol_ComposeMachine(MAASTestCase):
-
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ComposeMachine.commandName)
+            cluster.ComposeMachine.commandName
+        )
         self.assertIsNotNone(responder)
 
     def test_calls_compose_machine(self):
-        mock_compose_machine = self.patch_autospec(
-            pods, 'compose_machine')
-        mock_compose_machine.return_value = succeed({
-            "machine": DiscoveredMachine(
-                hostname=factory.make_name('hostname'),
-                architecture='amd64/generic',
-                cores=random.randint(1, 8),
-                cpu_speed=random.randint(1000, 3000),
-                memory=random.randint(1024, 8192),
-                block_devices=[], interfaces=[]),
-            "hints": DiscoveredPodHints(
-                cores=random.randint(1, 8),
-                cpu_speed=random.randint(1000, 2000),
-                memory=random.randint(1024, 8192), local_storage=0),
-            })
-        pod_type = factory.make_name('pod_type')
-        context = {
-            "data": factory.make_name("data"),
-        }
+        mock_compose_machine = self.patch_autospec(pods, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            {
+                "machine": DiscoveredMachine(
+                    hostname=factory.make_name("hostname"),
+                    architecture="amd64/generic",
+                    cores=random.randint(1, 8),
+                    cpu_speed=random.randint(1000, 3000),
+                    memory=random.randint(1024, 8192),
+                    block_devices=[],
+                    interfaces=[],
+                ),
+                "hints": DiscoveredPodHints(
+                    cores=random.randint(1, 8),
+                    cpu_speed=random.randint(1000, 2000),
+                    memory=random.randint(1024, 8192),
+                    local_storage=0,
+                ),
+            }
+        )
+        pod_type = factory.make_name("pod_type")
+        context = {"data": factory.make_name("data")}
         request = RequestedMachine(
-            hostname=factory.make_name('hostname'),
-            architecture='amd64/generic',
+            hostname=factory.make_name("hostname"),
+            architecture="amd64/generic",
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),
             memory=random.randint(1024, 8192),
             block_devices=[
-                RequestedMachineBlockDevice(size=random.randint(8, 16))],
-            interfaces=[
-                RequestedMachineInterface()])
+                RequestedMachineBlockDevice(size=random.randint(8, 16))
+            ],
+            interfaces=[RequestedMachineInterface()],
+        )
         pod_id = random.randint(1, 100)
-        name = factory.make_name('pod')
-        call_responder(Cluster(), cluster.ComposeMachine, {
-            'type': pod_type,
-            'context': context,
-            'request': request,
-            'pod_id': pod_id,
-            'name': name,
-            })
+        name = factory.make_name("pod")
+        call_responder(
+            Cluster(),
+            cluster.ComposeMachine,
+            {
+                "type": pod_type,
+                "context": context,
+                "request": request,
+                "pod_id": pod_id,
+                "name": name,
+            },
+        )
         self.assertThat(
-            mock_compose_machine, MockCalledOnceWith(
-                pod_type, context, request, pod_id=pod_id, name=name))
+            mock_compose_machine,
+            MockCalledOnceWith(
+                pod_type, context, request, pod_id=pod_id, name=name
+            ),
+        )
 
 
 class TestClusterProtocol_DecomposeMachine(MAASTestCase):
@@ -3543,32 +4118,38 @@ class TestClusterProtocol_DecomposeMachine(MAASTestCase):
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.DecomposeMachine.commandName)
+            cluster.DecomposeMachine.commandName
+        )
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_calls_decompose_machine(self):
-        mock_decompose_machine = self.patch_autospec(
-            pods, 'decompose_machine')
-        mock_decompose_machine.return_value = succeed({
-            "hints": DiscoveredPodHints(
-                cores=1, cpu_speed=2, memory=3, local_storage=4),
-        })
-        pod_type = factory.make_name('pod_type')
-        context = {
-            "data": factory.make_name("data"),
-        }
+        mock_decompose_machine = self.patch_autospec(pods, "decompose_machine")
+        mock_decompose_machine.return_value = succeed(
+            {
+                "hints": DiscoveredPodHints(
+                    cores=1, cpu_speed=2, memory=3, local_storage=4
+                )
+            }
+        )
+        pod_type = factory.make_name("pod_type")
+        context = {"data": factory.make_name("data")}
         pod_id = random.randint(1, 100)
-        name = factory.make_name('pod')
-        yield call_responder(Cluster(), cluster.DecomposeMachine, {
-            'type': pod_type,
-            'context': context,
-            'pod_id': pod_id,
-            'name': name,
-            })
+        name = factory.make_name("pod")
+        yield call_responder(
+            Cluster(),
+            cluster.DecomposeMachine,
+            {
+                "type": pod_type,
+                "context": context,
+                "pod_id": pod_id,
+                "name": name,
+            },
+        )
         self.assertThat(
-            mock_decompose_machine, MockCalledOnceWith(
-                pod_type, context, pod_id=pod_id, name=name))
+            mock_decompose_machine,
+            MockCalledOnceWith(pod_type, context, pod_id=pod_id, name=name),
+        )
 
 
 class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
@@ -3578,64 +4159,67 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.DisableAndShutoffRackd.commandName)
+            cluster.DisableAndShutoffRackd.commandName
+        )
         self.assertIsNotNone(responder)
 
     def test_issues_restart_systemd(self):
-        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        mock_call_and_check = self.patch(clusterservice, "call_and_check")
         response = call_responder(
-            Cluster(), cluster.DisableAndShutoffRackd, {})
+            Cluster(), cluster.DisableAndShutoffRackd, {}
+        )
         self.assertEquals({}, response.result)
         self.assertEquals(2, mock_call_and_check.call_count)
 
     def test_issues_restart_snap(self):
-        self.patch(clusterservice, 'running_in_snap').return_value = True
-        self.patch(clusterservice, 'get_snap_path').return_value = '/'
-        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        self.patch(clusterservice, "running_in_snap").return_value = True
+        self.patch(clusterservice, "get_snap_path").return_value = "/"
+        mock_call_and_check = self.patch(clusterservice, "call_and_check")
         response = call_responder(
-            Cluster(), cluster.DisableAndShutoffRackd, {})
+            Cluster(), cluster.DisableAndShutoffRackd, {}
+        )
         self.assertEquals({}, response.result)
         self.assertEquals(1, mock_call_and_check.call_count)
 
     @inlineCallbacks
     def test_raises_error_on_failure_systemd(self):
-        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        mock_call_and_check = self.patch(clusterservice, "call_and_check")
         mock_call_and_check.side_effect = ExternalProcessError(
-            1, 'systemctl', 'failure')
+            1, "systemctl", "failure"
+        )
         with ExpectedException(exceptions.CannotDisableAndShutoffRackd):
-            yield call_responder(
-                Cluster(), cluster.DisableAndShutoffRackd, {})
+            yield call_responder(Cluster(), cluster.DisableAndShutoffRackd, {})
 
     @inlineCallbacks
     def test_raises_error_on_failure_snap(self):
-        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        mock_call_and_check = self.patch(clusterservice, "call_and_check")
         mock_call_and_check.side_effect = ExternalProcessError(
-            random.randint(1, 255), 'command-maas.wrapper', 'failure')
+            random.randint(1, 255), "command-maas.wrapper", "failure"
+        )
         with ExpectedException(exceptions.CannotDisableAndShutoffRackd):
-            yield call_responder(
-                Cluster(), cluster.DisableAndShutoffRackd, {})
+            yield call_responder(Cluster(), cluster.DisableAndShutoffRackd, {})
 
     def test_snap_ignores_signal_error_code_on_restart(self):
-        self.patch(clusterservice, 'running_in_snap').return_value = True
-        self.patch(clusterservice, 'get_snap_path').return_value = '/'
-        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        self.patch(clusterservice, "running_in_snap").return_value = True
+        self.patch(clusterservice, "get_snap_path").return_value = "/"
+        mock_call_and_check = self.patch(clusterservice, "call_and_check")
         mock_call_and_check.side_effect = ExternalProcessError(
-            -15, 'command-maas.wrapper', 'failure')
+            -15, "command-maas.wrapper", "failure"
+        )
         response = call_responder(
-            Cluster(), cluster.DisableAndShutoffRackd, {})
+            Cluster(), cluster.DisableAndShutoffRackd, {}
+        )
         self.assertEquals({}, response.result)
         self.assertEquals(1, mock_call_and_check.call_count)
 
 
-class TestClusterProtocol_CheckIPs(
-        MAASTestCaseThatWaitsForDeferredThreads):
+class TestClusterProtocol_CheckIPs(MAASTestCaseThatWaitsForDeferredThreads):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.CheckIPs.commandName)
+        responder = protocol.locateResponder(cluster.CheckIPs.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
@@ -3643,13 +4227,13 @@ class TestClusterProtocol_CheckIPs(
         ip_addresses = [
             {
                 # Always exists, returns exit code of `0`.
-                "ip_address": "127.0.0.1",
+                "ip_address": "127.0.0.1"
             },
             {
                 # Broadcast that `ping` by default doesn't allow ping to
                 # occur so the command returns exit code of `2`.
-                "ip_address": "255.255.255.255",
-            }
+                "ip_address": "255.255.255.255"
+            },
         ]
 
         # Fake `find_mac_via_arp` so its always returns a MAC address.
@@ -3658,21 +4242,33 @@ class TestClusterProtocol_CheckIPs(
         mock_find_mac_via_arp.return_value = fake_mac
 
         result = yield call_responder(
-            Cluster(), cluster.CheckIPs, {'ip_addresses': ip_addresses})
+            Cluster(), cluster.CheckIPs, {"ip_addresses": ip_addresses}
+        )
 
-        self.assertThat(result, MatchesDict({
-            "ip_addresses": MatchesListwise([
-                MatchesDict({
-                    "ip_address": Equals("127.0.0.1"),
-                    "used": Is(True),
-                    "interface": Is(None),
-                    "mac_address": Equals(fake_mac),
-                }),
-                MatchesDict({
-                    "ip_address": Equals("255.255.255.255"),
-                    "used": Is(False),
-                    "interface": Is(None),
-                    "mac_address": Is(None),
-                }),
-            ])
-        }))
+        self.assertThat(
+            result,
+            MatchesDict(
+                {
+                    "ip_addresses": MatchesListwise(
+                        [
+                            MatchesDict(
+                                {
+                                    "ip_address": Equals("127.0.0.1"),
+                                    "used": Is(True),
+                                    "interface": Is(None),
+                                    "mac_address": Equals(fake_mac),
+                                }
+                            ),
+                            MatchesDict(
+                                {
+                                    "ip_address": Equals("255.255.255.255"),
+                                    "used": Is(False),
+                                    "interface": Is(None),
+                                    "mac_address": Is(None),
+                                }
+                            ),
+                        ]
+                    )
+                }
+            ),
+        )

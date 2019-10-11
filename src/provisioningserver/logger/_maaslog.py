@@ -3,9 +3,7 @@
 
 """Logging for MAAS, redirects to syslog."""
 
-__all__ = [
-    "get_maas_logger",
-    ]
+__all__ = ["get_maas_logger"]
 
 from collections import deque
 import logging
@@ -19,7 +17,8 @@ class MAASLogger(logging.getLoggerClass()):
     def exception(self, *args, **kwargs):
         raise NotImplementedError(
             "Don't log exceptions to maaslog; use the default "
-            "Django logger instead")
+            "Django logger instead"
+        )
 
 
 class MAASSysLogHandler(logging.handlers.SysLogHandler):
@@ -61,15 +60,16 @@ class MAASSysLogHandler(logging.handlers.SysLogHandler):
             if self.ident:
                 msg = self.ident + msg
             if self.append_nul:
-                msg += '\000'
+                msg += "\000"
 
             # We need to convert record level to lowercase, maybe this will
             # change in the future.
-            prio = '<%d>' % self.encodePriority(
-                self.facility, self.mapPriority(record.levelname))
-            prio = prio.encode('utf-8')
+            prio = "<%d>" % self.encodePriority(
+                self.facility, self.mapPriority(record.levelname)
+            )
+            prio = prio.encode("utf-8")
             # Message is a string. Convert to bytes as required by RFC 5424
-            msg = msg.encode('utf-8')
+            msg = msg.encode("utf-8")
             msg = prio + msg
             if self.unixsocket:
                 try:

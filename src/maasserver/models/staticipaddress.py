@@ -10,22 +10,13 @@ from the dynamic range that the DHCP server itself allocates to unknown
 clients.
 """
 
-__all__ = [
-    'StaticIPAddress',
-]
+__all__ = ["StaticIPAddress"]
 
-from collections import (
-    defaultdict,
-    namedtuple,
-)
+from collections import defaultdict, namedtuple
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db import (
-    connection,
-    IntegrityError,
-    transaction,
-)
+from django.db import connection, IntegrityError, transaction
 from django.db.models import (
     CASCADE,
     DateTimeField,
@@ -34,10 +25,7 @@ from django.db.models import (
     Manager,
     PROTECT,
 )
-from maasserver import (
-    DefaultMeta,
-    locks,
-)
+from maasserver import DefaultMeta, locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -62,36 +50,33 @@ from provisioningserver.utils.enum import map_enum_reverse
 
 
 _mapping_base_fields = (
-    'fqdn',
-    'system_id',
-    'node_type',
-    'user_id',
-    'ttl',
-    'ip',
+    "fqdn",
+    "system_id",
+    "node_type",
+    "user_id",
+    "ttl",
+    "ip",
 )
 
-_special_mapping_result = _mapping_base_fields + (
-    'dnsresource_id',
-)
+_special_mapping_result = _mapping_base_fields + ("dnsresource_id",)
 
 _mapping_query_result = _mapping_base_fields + (
-    'is_boot',
-    'preference',
-    'family',
+    "is_boot",
+    "preference",
+    "family",
 )
 
-_interface_mapping_result = _mapping_base_fields + (
-    'iface_name',
-    'assigned',
-)
+_interface_mapping_result = _mapping_base_fields + ("iface_name", "assigned")
 
 SpecialMappingQueryResult = namedtuple(
-    'SpecialMappingQueryResult', _special_mapping_result)
+    "SpecialMappingQueryResult", _special_mapping_result
+)
 
-MappingQueryResult = namedtuple('MappingQueryResult', _mapping_query_result)
+MappingQueryResult = namedtuple("MappingQueryResult", _mapping_query_result)
 
 InterfaceMappingResult = namedtuple(
-    'InterfaceMappingResult', _interface_mapping_result)
+    "InterfaceMappingResult", _interface_mapping_result
+)
 
 
 class HostnameIPMapping:
@@ -99,8 +84,14 @@ class HostnameIPMapping:
        keeps life simple for the callers."""
 
     def __init__(
-            self, system_id=None, ttl=None, ips: set = None, node_type=None,
-            dnsresource_id=None, user_id=None):
+        self,
+        system_id=None,
+        ttl=None,
+        ips: set = None,
+        node_type=None,
+        dnsresource_id=None,
+        user_id=None,
+    ):
         self.system_id = system_id
         self.node_type = node_type
         self.ttl = ttl
@@ -110,8 +101,13 @@ class HostnameIPMapping:
 
     def __repr__(self):
         return "HostnameIPMapping(%r, %r, %r, %r, %r, %r)" % (
-            self.system_id, self.ttl, self.ips, self.node_type,
-            self.dnsresource_id, self.user_id)
+            self.system_id,
+            self.ttl,
+            self.ips,
+            self.node_type,
+            self.dnsresource_id,
+            self.user_id,
+        )
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -139,27 +135,30 @@ class StaticIPAddressManager(Manager):
         `None`, then the allocation has to be `USER_RESERVED`, and vice versa.
         """
         if alloc_type not in [
-                IPADDRESS_TYPE.AUTO,
-                IPADDRESS_TYPE.STICKY,
-                IPADDRESS_TYPE.USER_RESERVED,
-                ]:
+            IPADDRESS_TYPE.AUTO,
+            IPADDRESS_TYPE.STICKY,
+            IPADDRESS_TYPE.USER_RESERVED,
+        ]:
             raise ValueError(
-                "IP address type %r is not allowed to use allocate_new." % (
-                    alloc_type))
+                "IP address type %r is not allowed to use allocate_new."
+                % alloc_type
+            )
 
         if user is None:
             if alloc_type == IPADDRESS_TYPE.USER_RESERVED:
                 raise AssertionError(
-                    "Must provide user for USER_RESERVED alloc_type.")
+                    "Must provide user for USER_RESERVED alloc_type."
+                )
         else:
             if alloc_type != IPADDRESS_TYPE.USER_RESERVED:
                 raise AssertionError(
                     "Must not provide user for alloc_type other "
-                    "than USER_RESERVED.")
+                    "than USER_RESERVED."
+                )
 
     def _attempt_allocation(
-            self, requested_address, alloc_type, user=None,
-            subnet=None):
+        self, requested_address, alloc_type, user=None, subnet=None
+    ):
         """Attempt to allocate `requested_address`.
 
         All parameters must have been checked first.  This method relies on
@@ -188,8 +187,9 @@ class StaticIPAddressManager(Manager):
         except IntegrityError:
             # The address is already taken.
             raise StaticIPAddressUnavailable(
-                "The IP address %s is already in use." %
-                requested_address.format())
+                "The IP address %s is already in use."
+                % requested_address.format()
+            )
         else:
             # We deliberately do *not* save the user until now because it
             # might result in an IntegrityError, and we rely on the latter
@@ -200,7 +200,8 @@ class StaticIPAddressManager(Manager):
             return ipaddress
 
     def _attempt_allocation_of_free_address(
-            self, requested_address, alloc_type, user=None, subnet=None):
+        self, requested_address, alloc_type, user=None, subnet=None
+    ):
         """Attempt to allocate `requested_address`, which is known to be free.
 
         It is known to be free *in this transaction*, so this could still
@@ -249,8 +250,13 @@ class StaticIPAddressManager(Manager):
             return ipaddress
 
     def allocate_new(
-            self, subnet=None, alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-            requested_address=None, exclude_addresses=None):
+        self,
+        subnet=None,
+        alloc_type=IPADDRESS_TYPE.AUTO,
+        user=None,
+        requested_address=None,
+        exclude_addresses=None,
+    ):
         """Return a new StaticIPAddress.
 
         :param subnet: The subnet from which to allocate the address.
@@ -274,29 +280,39 @@ class StaticIPAddressManager(Manager):
         if subnet is None:
             if requested_address:
                 subnet = Subnet.objects.get_best_subnet_for_ip(
-                    requested_address)
+                    requested_address
+                )
             else:
                 raise StaticIPAddressOutOfRange(
-                    "Could not find an appropriate subnet.")
+                    "Could not find an appropriate subnet."
+                )
 
         if requested_address is None:
             requested_address = subnet.get_next_ip_for_allocation(
-                exclude_addresses=exclude_addresses)
+                exclude_addresses=exclude_addresses
+            )
             return self._attempt_allocation_of_free_address(
-                requested_address, alloc_type, user=user, subnet=subnet)
+                requested_address, alloc_type, user=user, subnet=subnet
+            )
         else:
             requested_address = IPAddress(requested_address)
             # Circular imports.
             from maasserver.models import StaticIPAddress
-            if StaticIPAddress.objects.filter(
-                ip=str(requested_address)).exclude(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED).count() > 0:
+
+            if (
+                StaticIPAddress.objects.filter(ip=str(requested_address))
+                .exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED)
+                .count()
+                > 0
+            ):
                 raise StaticIPAddressUnavailable(
-                    "The IP address %s is already in use." % requested_address)
+                    "The IP address %s is already in use." % requested_address
+                )
 
             subnet.validate_static_ip(requested_address)
             return self._attempt_allocation(
-                requested_address, alloc_type, user=user, subnet=subnet)
+                requested_address, alloc_type, user=user, subnet=subnet
+            )
 
     def _get_special_mappings(self, domain, raw_ttl=False):
         """Get the special mappings, possibly limited to a single Domain.
@@ -326,30 +342,36 @@ class StaticIPAddressManager(Manager):
             zone generation.
         :return: a (default) dict of hostname: HostnameIPMapping entries.
         """
-        default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        default_ttl = "%d" % Config.objects.get_config("default_dns_ttl")
         # raw_ttl says that we don't coalesce, but we need to pick one, so we
         # go with DNSResource if it is involved.
         if raw_ttl:
             ttl_clause = """COALESCE(dnsrr.address_ttl, node.address_ttl)"""
         else:
-            ttl_clause = """
+            ttl_clause = (
+                """
                 COALESCE(
                     dnsrr.address_ttl,
                     dnsrr.ttl,
                     node.address_ttl,
                     node.ttl,
-                    %s)""" % default_ttl
+                    %s)"""
+                % default_ttl
+            )
         # And here is the SQL query of doom.  Build up inner selects to get the
         # view of a DNSResource (and Node) that we need, and finally use
         # domain2 to handle the case where an FQDN is also the name of a domain
         # that we know.
-        sql_query = """
+        sql_query = (
+            """
             SELECT
                 COALESCE(dnsrr.fqdn, node.fqdn) AS fqdn,
                 node.system_id,
                 node.node_type,
                 staticip.user_id,
-                """ + ttl_clause + """ AS ttl,
+                """
+            + ttl_clause
+            + """ AS ttl,
                 staticip.ip,
                 dnsrr.id AS dnsresource_id
             FROM
@@ -410,6 +432,7 @@ class StaticIPAddressManager(Manager):
                  host(staticip.ip) != '' AND
                  staticip.temp_expires_on IS NULL) AND
                 """
+        )
 
         query_parms = []
         if isinstance(domain, Domain):
@@ -468,9 +491,11 @@ class StaticIPAddressManager(Manager):
         cursor.execute(sql_query, query_parms)
         for result in cursor.fetchall():
             result = SpecialMappingQueryResult(*result)
-            if result.fqdn is None or result.fqdn == '':
+            if result.fqdn is None or result.fqdn == "":
                 fqdn = "%s.%s" % (
-                    get_ip_based_hostname(result.ip), default_domain.name)
+                    get_ip_based_hostname(result.ip),
+                    default_domain.name,
+                )
             else:
                 fqdn = result.fqdn
             # It is possible that there are both Node and DNSResource entries
@@ -507,22 +532,28 @@ class StaticIPAddressManager(Manager):
         # DISTINCT ON returns the first matching row for any given
         # hostname, using the query's ordering.  Here, we're trying to
         # return the IPs for the oldest Interface address.
-        default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        default_ttl = "%d" % Config.objects.get_config("default_dns_ttl")
         if raw_ttl:
             ttl_clause = """node.address_ttl"""
         else:
-            ttl_clause = """
+            ttl_clause = (
+                """
                 COALESCE(
                     node.address_ttl,
                     domain.ttl,
-                    %s)""" % default_ttl
-        sql_query = """
+                    %s)"""
+                % default_ttl
+            )
+        sql_query = (
+            """
             SELECT DISTINCT ON (fqdn, is_boot, family)
                 CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
                 staticip.user_id,
-                """ + ttl_clause + """ AS ttl,
+                """
+            + ttl_clause
+            + """ AS ttl,
                 staticip.ip,
                 COALESCE(
                     node.boot_interface_id IS NOT NULL AND
@@ -569,6 +600,7 @@ class StaticIPAddressManager(Manager):
             JOIN maasserver_staticipaddress AS staticip ON
                 staticip.id = link.staticipaddress_id
             """
+        )
         if isinstance(domain_or_subnet, Domain):
             # The model has nodes in the parent domain, but they actually live
             # in the child domain.  And the parent needs the glue.  So we
@@ -583,7 +615,7 @@ class StaticIPAddressManager(Manager):
             WHERE
                 (domain2.id = %s OR node.domain_id = %s) AND
             """
-            query_parms = [domain_or_subnet.id, domain_or_subnet.id, ]
+            query_parms = [domain_or_subnet.id, domain_or_subnet.id]
         else:
             # For subnets, we need ALL the names, so that we can correctly
             # identify which ones should have the FQDN.  dns/zonegenerator.py
@@ -622,13 +654,16 @@ class StaticIPAddressManager(Manager):
                 interface.id,
                 inet 'fc00::/7' >> ip /* ULA after non-ULA */
             """
-        iface_sql_query = """
+        iface_sql_query = (
+            """
             SELECT
                 CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
                 node.owner_id AS user_id,
-                """ + ttl_clause + """ AS ttl,
+                """
+            + ttl_clause
+            + """ AS ttl,
                 staticip.ip,
                 interface.name,
                 alloc_type != 6 /* DISCOVERED */ AS assigned
@@ -643,6 +678,7 @@ class StaticIPAddressManager(Manager):
             JOIN maasserver_staticipaddress AS staticip ON
                 staticip.id = link.staticipaddress_id
             """
+        )
         if isinstance(domain_or_subnet, Domain):
             # This logic is similar to the logic in sql_query above.
             iface_sql_query += """
@@ -677,9 +713,9 @@ class StaticIPAddressManager(Manager):
         mapping = self._get_special_mappings(domain_or_subnet, raw_ttl)
         # All of the mappings that we got mean that we will only want to add
         # addresses for the boot interface (is_boot == True).
-        iface_is_boot = defaultdict(bool, {
-            hostname: True for hostname in mapping.keys()
-        })
+        iface_is_boot = defaultdict(
+            bool, {hostname: True for hostname in mapping.keys()}
+        )
         assigned_ips = defaultdict(bool)
         cursor.execute(sql_query, query_parms)
         # The records from the query provide, for each hostname (after
@@ -713,8 +749,7 @@ class StaticIPAddressManager(Manager):
             # node, then consider adding the IP.
             if result.assigned or not assigned_ips[result.fqdn]:
                 if result.ip not in mapping[result.fqdn].ips:
-                    entry = mapping[
-                        "%s.%s" % (result.iface_name, result.fqdn)]
+                    entry = mapping["%s.%s" % (result.iface_name, result.fqdn)]
                     entry.node_type = result.node_type
                     entry.system_id = result.system_id
                     if result.user_id is not None:
@@ -728,7 +763,8 @@ class StaticIPAddressManager(Manager):
         if family not in possible_families:
             raise ValueError(
                 "IP address family %r is not a member of "
-                "IPADDRESS_FAMILY." % family)
+                "IPADDRESS_FAMILY." % family
+            )
         return self.extra(
             where=["family(maasserver_staticipaddress.ip) = %s"],
             params=[family],
@@ -739,56 +775,73 @@ class StaticIPAddressManager(Manager):
         if family not in possible_families:
             raise ValueError(
                 "Subnet CIDR family %r is not a member of "
-                "IPADDRESS_FAMILY." % family)
+                "IPADDRESS_FAMILY." % family
+            )
         return self.extra(
-            tables=["maasserver_subnet"], where=[
+            tables=["maasserver_subnet"],
+            where=[
                 "maasserver_staticipaddress.subnet_id = maasserver_subnet.id",
                 "family(maasserver_subnet.cidr) = %s",
-            ], params=[family])
+            ],
+            params=[family],
+        )
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):
-
     class Meta(DefaultMeta):
         verbose_name = "Static IP Address"
         verbose_name_plural = "Static IP Addresses"
-        unique_together = ('alloc_type', 'ip')
+        unique_together = ("alloc_type", "ip")
 
     # IP can be none when a DHCP lease has expired: in this case the entry
     # in the StaticIPAddress only materializes the connection between an
     # interface and a subnet.
     ip = MAASIPAddressField(
-        unique=False, null=True, editable=False, blank=True,
-        default=None, verbose_name='IP')
+        unique=False,
+        null=True,
+        editable=False,
+        blank=True,
+        default=None,
+        verbose_name="IP",
+    )
 
     alloc_type = IntegerField(
-        editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO)
+        editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO
+    )
 
     # Subnet is only null for IP addresses allocate before the new networking
     # model.
     subnet = ForeignKey(
-        'Subnet', editable=True, blank=True, null=True, on_delete=CASCADE)
+        "Subnet", editable=True, blank=True, null=True, on_delete=CASCADE
+    )
 
     user = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False,
-        on_delete=PROTECT)
+        User,
+        default=None,
+        blank=True,
+        null=True,
+        editable=False,
+        on_delete=PROTECT,
+    )
 
     # Used only by DISCOVERED address to set the lease_time for an active
     # lease. Time is in seconds.
     lease_time = IntegerField(
-        default=0, editable=False, null=False, blank=False)
+        default=0, editable=False, null=False, blank=False
+    )
 
     # Used to mark a `StaticIPAddress` as temperary until the assignment
     # can be confirmed to be free in the subnet.
     temp_expires_on = DateTimeField(
-        null=True, blank=True, editable=False, db_index=True)
+        null=True, blank=True, editable=False, db_index=True
+    )
 
     objects = StaticIPAddressManager()
 
     def __str__(self):
         # Attempt to show the symbolic alloc_type name if possible.
         type_names = map_enum_reverse(IPADDRESS_TYPE)
-        strtype = type_names.get(self.alloc_type, '%s' % self.alloc_type)
+        strtype = type_names.get(self.alloc_type, "%s" % self.alloc_type)
         return "%s:type=%s" % (self.ip, strtype)
 
     @property
@@ -838,8 +891,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         """Return True if the IP address is only linked to one unknown
         interface."""
         interface_types = [
-            interface.type
-            for interface in self.interface_set.all()
+            interface.type for interface in self.interface_set.all()
         ]
         return interface_types == [INTERFACE_TYPE.UNKNOWN]
 
@@ -854,7 +906,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             for ip in StaticIPAddress.objects.filter(
                 interface__in=interfaces,
                 alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip__isnull=False).order_by('-id')
+                ip__isnull=False,
+            ).order_by("-id")
             if ip.ip
         ]
         if len(discovered_ips) > 0:
@@ -902,19 +955,26 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         if self.alloc_type == IPADDRESS_TYPE.USER_RESERVED:
             if not self.ip:
                 raise ValidationError(
-                    {'ip': ["IP address must be specified."]})
+                    {"ip": ["IP address must be specified."]}
+                )
         if self.alloc_type == IPADDRESS_TYPE.DHCP:
             if self.ip:
                 raise ValidationError(
-                    {'ip': ["IP address must not be specified."]})
+                    {"ip": ["IP address must not be specified."]}
+                )
 
         if self.ip and self.subnet and self.subnet.cidr:
             address = self.get_ipaddress()
             network = self.subnet.get_ipnetwork()
             if address not in network:
                 raise ValidationError(
-                    {'ip': ["IP address %s is not within the subnet: %s."
-                            % (str(address), str(network))]})
+                    {
+                        "ip": [
+                            "IP address %s is not within the subnet: %s."
+                            % (str(address), str(network))
+                        ]
+                    }
+                )
 
     def get_ipaddress(self):
         """Returns this StaticIPAddress wrapped in an IPAddress object.
@@ -929,8 +989,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     def get_mac_addresses(self):
         """Return set of all MAC's linked to this ip."""
         return set(
-            interface.mac_address
-            for interface in self.interface_set.all()
+            interface.mac_address for interface in self.interface_set.all()
         )
 
     def clean(self, *args, **kwargs):
@@ -955,8 +1014,11 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         self.subnet = subnet
         if interfaces is not None:
             for iface in interfaces:
-                if (iface is not None and subnet is not None and
-                        iface.vlan_id != subnet.vlan_id):
+                if (
+                    iface is not None
+                    and subnet is not None
+                    and iface.vlan_id != subnet.vlan_id
+                ):
                     iface.vlan = subnet.vlan
                     iface.save()
 
@@ -967,6 +1029,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         # Circular imports.
         # XXX mpontillo 2016-03-11 we should do the formatting client side.
         from maasserver.websockets.base import dehydrate_datetime
+
         data = {
             "ip": self.ip,
             "alloc_type": self.alloc_type,
@@ -988,8 +1051,10 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 }
                 if iface is not None:
                     data["node_summary"]["via"] = iface.get_name()
-                if (with_username and
-                        self.alloc_type != IPADDRESS_TYPE.DISCOVERED):
+                if (
+                    with_username
+                    and self.alloc_type != IPADDRESS_TYPE.DISCOVERED
+                ):
                     # If a user owns this node, overwrite any username we found
                     # earlier. A node's owner takes precedence.
                     if node.owner and node.owner.username:
@@ -1009,16 +1074,17 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 # This IP address is used as a BMC.
                 bmcs = [
                     {
-                        'id': bmc.id,
-                        'power_type': bmc.power_type,
-                        'nodes': [
+                        "id": bmc.id,
+                        "power_type": bmc.power_type,
+                        "nodes": [
                             {
-                                'system_id': node.system_id,
-                                'hostname': node.hostname,
+                                "system_id": node.system_id,
+                                "hostname": node.hostname,
                             }
                             for node in bmc.node_set.all()
                         ],
-                    } for bmc in self.bmc_set.all()
+                    }
+                    for bmc in self.bmc_set.all()
                 ]
                 data["bmcs"] = bmcs
         return data

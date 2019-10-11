@@ -3,10 +3,7 @@
 
 """Helpers for operating systems in testing."""
 
-__all__ = [
-    'make_usable_osystem',
-    'patch_usable_osystems',
-    ]
+__all__ = ["make_usable_osystem", "patch_usable_osystems"]
 
 from random import randint
 
@@ -33,30 +30,30 @@ def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
         we need to test that not supplying a release works correctly.
     """
     if osystem_name is None:
-        osystem_name = factory.make_name('os')
+        osystem_name = factory.make_name("os")
     if releases is None:
-        releases = [factory.make_name('release') for _ in range(3)]
-    rpc_releases = [
-        make_rpc_release(release)
-        for release in releases
-        ]
+        releases = [factory.make_name("release") for _ in range(3)]
+    rpc_releases = [make_rpc_release(release) for release in releases]
     if osystem_name not in OperatingSystemRegistry:
         OperatingSystemRegistry.register_item(osystem_name, CustomOS())
         testcase.addCleanup(
-            OperatingSystemRegistry.unregister_item, osystem_name)
+            OperatingSystemRegistry.unregister_item, osystem_name
+        )
     # Make sure the commissioning Ubuntu release and all created releases
     # are available to all architectures.
     architectures = [
-        node.architecture for node in Node.objects.distinct('architecture')]
+        node.architecture for node in Node.objects.distinct("architecture")
+    ]
     if len(architectures) == 0:
-        architectures.append('%s/generic' % factory.make_name('arch'))
+        architectures.append("%s/generic" % factory.make_name("arch"))
     for arch in architectures:
-        factory.make_default_ubuntu_release_bootable(arch.split('/')[0])
+        factory.make_default_ubuntu_release_bootable(arch.split("/")[0])
         for release in releases:
             factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.UPLOADED,
-                name=('%s/%s' % (osystem_name, release)),
-                architecture=arch)
+                name=("%s/%s" % (osystem_name, release)),
+                architecture=arch,
+            )
     return make_rpc_osystem(osystem_name, releases=rpc_releases)
 
 
@@ -76,25 +73,29 @@ def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
         osystems = [
             make_osystem_with_releases(testcase)
             for _ in range(randint(start, 2))
-            ]
+        ]
     os_releases = []
     for osystem in osystems:
-        for release in osystem['releases']:
-            os_releases.append({
-                'osystem': osystem['name'],
-                'release': release['name'],
-                'purpose': 'xinstall',
-                })
+        for release in osystem["releases"]:
+            os_releases.append(
+                {
+                    "osystem": osystem["name"],
+                    "release": release["name"],
+                    "purpose": "xinstall",
+                }
+            )
     # Make sure the Commissioning release is always available.
     ubuntu = factory.make_default_ubuntu_release_bootable()
-    os_releases.append({
-        'osystem': ubuntu.name.split('/')[0],
-        'release': ubuntu.name.split('/')[1],
-        'purpose': 'xinstall',
-        })
+    os_releases.append(
+        {
+            "osystem": ubuntu.name.split("/")[0],
+            "release": ubuntu.name.split("/")[1],
+            "purpose": "xinstall",
+        }
+    )
     testcase.patch(
-        boot_images,
-        'get_common_available_boot_images').return_value = os_releases
+        boot_images, "get_common_available_boot_images"
+    ).return_value = os_releases
 
 
 def make_usable_osystem(testcase, osystem_name=None, releases=None):
@@ -111,6 +112,7 @@ def make_usable_osystem(testcase, osystem_name=None, releases=None):
         we need to test that not supplying a release works correctly.
     """
     osystem = make_osystem_with_releases(
-        testcase, osystem_name=osystem_name, releases=releases)
+        testcase, osystem_name=osystem_name, releases=releases
+    )
     patch_usable_osystems(testcase, [osystem])
     return osystem

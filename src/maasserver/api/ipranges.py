@@ -5,34 +5,33 @@
 
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import IPRANGE_TYPE
-from maasserver.exceptions import (
-    MAASAPIForbidden,
-    MAASAPIValidationError,
-)
+from maasserver.exceptions import MAASAPIForbidden, MAASAPIValidationError
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange
 from piston3.utils import rc
 
 
 DISPLAYED_IPRANGE_FIELDS = (
-    'id',
-    'type',
-    'start_ip',
-    'end_ip',
-    'comment',
-    'user',
-    'subnet',
+    "id",
+    "type",
+    "start_ip",
+    "end_ip",
+    "comment",
+    "user",
+    "subnet",
 )
 
 
 def raise_error_if_not_owner(iprange, user):
     if not user.is_superuser and iprange.user_id != user.id:
         raise MAASAPIForbidden(
-            "Unable to modify IP range. You don't own the IP range.")
+            "Unable to modify IP range. You don't own the IP range."
+        )
 
 
 class IPRangesHandler(OperationsHandler):
     """Manage IP ranges."""
+
     api_doc_section_name = "IP Ranges"
     update = delete = None
     fields = DISPLAYED_IPRANGE_FIELDS
@@ -40,7 +39,7 @@ class IPRangesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('ipranges_handler', [])
+        return ("ipranges_handler", [])
 
     def read(self, request):
         """@description-title List all IP ranges
@@ -81,12 +80,15 @@ class IPRangesHandler(OperationsHandler):
         @error (content) "no-perms" The user does not have the permissions
         required to create an IP range.
         """
-        if ('type' in request.data and
-                request.data['type'] == IPRANGE_TYPE.DYNAMIC and
-                not request.user.is_superuser):
+        if (
+            "type" in request.data
+            and request.data["type"] == IPRANGE_TYPE.DYNAMIC
+            and not request.user.is_superuser
+        ):
             raise MAASAPIForbidden(
                 "Unable to create dynamic IP range. "
-                "You don't have sufficient privileges.")
+                "You don't have sufficient privileges."
+            )
 
         form = IPRangeForm(data=request.data, request=request)
         if form.is_valid():
@@ -97,6 +99,7 @@ class IPRangesHandler(OperationsHandler):
 
 class IPRangeHandler(OperationsHandler):
     """Manage IP range."""
+
     api_doc_section_name = "IP Range"
     create = None
     model = IPRange
@@ -108,7 +111,7 @@ class IPRangeHandler(OperationsHandler):
         iprange_id = "id"
         if iprange is not None:
             iprange_id = iprange.id
-        return ('iprange_handler', (iprange_id,))
+        return ("iprange_handler", (iprange_id,))
 
     def read(self, request, id):
         """@description-title Read an IP range

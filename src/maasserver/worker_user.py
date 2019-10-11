@@ -6,22 +6,24 @@
 Workers access the MAAS API under this user identity.
 """
 
-__all__ = [
-    'get_worker_user',
-    'user_name',
-    ]
+__all__ = ["get_worker_user", "user_name"]
 
 from django.contrib.auth.models import User
 
 
-user_name = 'MAAS'
+user_name = "MAAS"
 
 
 def get_worker_user():
     """Get the system user representing the rack controller workers."""
     worker_user, created = User.objects.get_or_create(
-        username=user_name, defaults=dict(
-            first_name="MAAS", last_name="Special user",
-            email="maas@localhost", is_staff=False,
-            is_superuser=False))
+        username=user_name,
+        defaults=dict(
+            first_name="MAAS",
+            last_name="Special user",
+            email="maas@localhost",
+            is_staff=False,
+            is_superuser=False,
+        ),
+    )
     return worker_user

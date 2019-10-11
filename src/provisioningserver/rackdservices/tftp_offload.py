@@ -11,29 +11,18 @@
 
 """
 
-__all__ = [
-    "TFTPOffloadService",
-]
+__all__ = ["TFTPOffloadService"]
 
 import os
 import shutil
 import tempfile
 
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import (
-    call,
-    callOut,
-)
+from provisioningserver.utils.twisted import call, callOut
 import tftp.backend
 from twisted.application.internet import StreamServerEndpointService
-from twisted.internet import (
-    interfaces,
-    protocol,
-)
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-)
+from twisted.internet import interfaces, protocol
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
 from twisted.python import context
 from twisted.python.filepath import FilePath
 from zope.interface import implementer
@@ -52,7 +41,8 @@ class TFTPOffloadService(StreamServerEndpointService):
         :param backend: An instance of `TFTPBackend`.
         """
         super(TFTPOffloadService, self).__init__(
-            endpoint, TFTPOffloadProtocolFactory(backend))
+            endpoint, TFTPOffloadProtocolFactory(backend)
+        )
 
 
 @implementer(interfaces.IProtocolFactory)
@@ -73,8 +63,7 @@ class TFTPOffloadProtocolFactory:
         return TFTPOffloadProtocol(self.backend, self.store)
 
     def doStart(self):
-        self.store = tempfile.mkdtemp(
-            prefix="maas.tftp.", suffix=".store")
+        self.store = tempfile.mkdtemp(prefix="maas.tftp.", suffix=".store")
 
     def doStop(self):
         store, self.store = self.store, None
@@ -149,20 +138,32 @@ class TFTPOffloadProtocol(protocol.Protocol):
             log.error(
                 "Message not properly terminated: local={local!r} "
                 "remote={remote!r} file_name={file_name!r} over={over!r} "
-                "rest={rest!r}", local=local, remote=remote,
-                file_name=file_name, over=over, rest=rest)
+                "rest={rest!r}",
+                local=local,
+                remote=remote,
+                file_name=file_name,
+                over=over,
+                rest=rest,
+            )
             self.transport.loseConnection()
         elif len(rest) != 0:
             log.error(
                 "Message had trailing garbage: local={local!r} "
                 "remote={remote!r} file_name={file_name!r} over={over!r} "
-                "rest={rest!r}", local=local, remote=remote,
-                file_name=file_name, over=over, rest=rest)
+                "rest={rest!r}",
+                local=local,
+                remote=remote,
+                file_name=file_name,
+                over=over,
+                rest=rest,
+            )
             self.transport.loseConnection()
         else:
             d = context.call(
                 {"local": (local.decode(), 0), "remote": (remote.decode(), 0)},
-                self.backend.get_reader, file_name)
+                self.backend.get_reader,
+                file_name,
+            )
             d.addCallbacks(self.prepareWriteResponse, self.writeError)
             d.addBoth(call, self.transport.loseConnection)
             d.addErrback(log.err, "Failure in TFTP back-end.")
@@ -175,12 +176,12 @@ class TFTPOffloadProtocol(protocol.Protocol):
         return d.addBoth(callOut, reader.finish)
 
     def writeFileResponse(self, reader):
-        return self.writeResponse(
-            reader.file_path, ephemeral=False)
+        return self.writeResponse(reader.file_path, ephemeral=False)
 
     def writeStreamedResponse(self, reader):
         return self.copyReader(reader).addCallback(
-            self.writeResponse, ephemeral=True)
+            self.writeResponse, ephemeral=True
+        )
 
     @inlineCallbacks
     def copyReader(self, reader):

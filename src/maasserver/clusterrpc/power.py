@@ -3,20 +3,14 @@
 
 """RPC helpers relating to nodes."""
 
-__all__ = [
-    "power_off_node",
-    "power_on_node",
-]
+__all__ = ["power_off_node", "power_on_node"]
 
 from functools import partial
 
 from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
 from maasserver.rpc import getAllClients
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.cluster import (
     PowerCycle,
     PowerDriverCheck,
@@ -25,11 +19,7 @@ from provisioningserver.rpc.cluster import (
     PowerQuery,
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    callOut,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList
 from twisted.protocols.amp import UnhandledCommand
@@ -58,7 +48,8 @@ def power_node(command, client, system_id, hostname, power_info):
     """
     log.debug(
         "{hostname}: Asking rack controller to power on/off node.",
-        hostname=hostname)
+        hostname=hostname,
+    )
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerOn can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -70,9 +61,12 @@ def power_node(command, client, system_id, hostname, power_info):
     # result gets consumed (Twisted will complain if an error is not
     # consumed).
     d = client(
-        command, system_id=system_id, hostname=hostname,
+        command,
+        system_id=system_id,
+        hostname=hostname,
         power_type=power_info.power_type,
-        context=power_info.power_parameters)
+        context=power_info.power_parameters,
+    )
 
     def eb_service_unavailable(failure):
         if failure.check(PowerActionAlreadyInProgress):
@@ -104,7 +98,8 @@ def power_cycle(client, system_id, hostname, power_info):
     """
     log.debug(
         "{hostname}: Asking rack controller(s) to power cycle node.",
-        hostname=hostname)
+        hostname=hostname,
+    )
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerCycle can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -116,9 +111,12 @@ def power_cycle(client, system_id, hostname, power_info):
     # result gets consumed (Twisted will complain if an error is not
     # consumed).
     d = client(
-        PowerCycle, system_id=system_id, hostname=hostname,
+        PowerCycle,
+        system_id=system_id,
+        hostname=hostname,
         power_type=power_info.power_type,
-        context=power_info.power_parameters)
+        context=power_info.power_parameters,
+    )
 
     def eb_service_unavailable(failure):
         if failure.check(PowerActionAlreadyInProgress):
@@ -146,7 +144,8 @@ def power_query(client, system_id, hostname, power_info):
     """
     log.debug(
         "{hostname}: Asking rack controller(s) to power query node.",
-        hostname=hostname)
+        hostname=hostname,
+    )
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerQuery can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -158,9 +157,12 @@ def power_query(client, system_id, hostname, power_info):
     # result gets consumed (Twisted will complain if an error is not
     # consumed).
     return client(
-        PowerQuery, system_id=system_id, hostname=hostname,
+        PowerQuery,
+        system_id=system_id,
+        hostname=hostname,
         power_type=power_info.power_type,
-        context=power_info.power_parameters)
+        context=power_info.power_parameters,
+    )
 
 
 @asynchronous(timeout=30)
@@ -178,6 +180,7 @@ def power_driver_check(client, power_type):
     :raises TimeoutError: If a response has not been received within 30
         seconds.
     """
+
     def extract_missing_packages(response):
         return response["missing_packages"]
 
@@ -188,7 +191,8 @@ def power_driver_check(client, power_type):
         # the power attempt will continue and any errors will be caught later.
         log.msg(
             "Unable to query cluster for power packages. Cluster does not"
-            "support the PowerDriverCheck RPC method. Returning OK.")
+            "support the PowerDriverCheck RPC method. Returning OK."
+        )
         return []
 
     d = client(PowerDriverCheck, power_type=power_type)
@@ -229,9 +233,11 @@ def power_query_all(system_id, hostname, power_info, timeout=60):
     for client in clients:
         d = client(
             PowerQuery,
-            system_id=system_id, hostname=hostname,
+            system_id=system_id,
+            hostname=hostname,
             power_type=power_info.power_type,
-            context=power_info.power_parameters)
+            context=power_info.power_parameters,
+        )
         deferreds.append(d)
         call_order.append(client.ident)
 
@@ -254,7 +260,8 @@ def power_query_all(system_id, hostname, power_info, timeout=60):
         return (
             pick_best_power_state(power_states),
             responded_rack_ids,
-            failed_rack_ids)
+            failed_rack_ids,
+        )
 
     # Process all defers and build the result.
     dList = DeferredList(deferreds, consumeErrors=True)

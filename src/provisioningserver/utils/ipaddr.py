@@ -49,19 +49,16 @@ state UP mode DEFAULT group default qlen 1000
 """
 
 __all__ = [
-    'parse_ip_addr',
-    'get_first_and_last_usable_host_in_network',
-    'get_machine_default_gateway_ip',
+    "parse_ip_addr",
+    "get_first_and_last_usable_host_in_network",
+    "get_machine_default_gateway_ip",
 ]
 
 import json
 import os
 import re
 
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import IPAddress, IPNetwork
 import netifaces
 from provisioningserver.utils.shell import call_and_check
 
@@ -83,7 +80,7 @@ def get_settings_dict(settings_line):
         settings = settings[:-1]
     return {
         settings[2 * i]: settings[2 * i + 1] for i in range(num_tokens // 2)
-        }
+    }
 
 
 def _parse_interface_definition(line):
@@ -98,13 +95,13 @@ def _parse_interface_definition(line):
 
     # This line is in the format:
     # <interface_index>: <interface_name>: <properties>
-    [index, name, properties] = map(str.strip, line.split(':'))
+    [index, name, properties] = map(str.strip, line.split(":"))
 
-    interface['index'] = int(index)
-    names = name.split('@')
-    interface['name'] = names[0]
+    interface["index"] = int(index)
+    names = name.split("@")
+    interface["name"] = names[0]
     if len(names) > 1:
-        interface['parent'] = names[1]
+        interface["parent"] = names[1]
 
     # Now parse the <properties> part from above.
     # This will be in the form "<FLAG1,FLAG2> key1 value1 key2 value2 ..."
@@ -112,11 +109,11 @@ def _parse_interface_definition(line):
     if matches:
         flags = matches.group(1)
         if len(flags) > 0:
-            flags = flags.split(',')
+            flags = flags.split(",")
         else:
             flags = []
-        interface['flags'] = flags
-        interface['settings'] = get_settings_dict(matches.group(2))
+        interface["flags"] = flags
+        interface["settings"] = get_settings_dict(matches.group(2))
     else:
         raise ValueError("Malformed 'ip addr' line (%s)" % line)
     return interface
@@ -131,10 +128,10 @@ def _add_additional_interface_properties(interface, line):
     :param line: unicode
     """
     settings = get_settings_dict(line)
-    mac = settings.get('link/ether')
+    mac = settings.get("link/ether")
     if mac is not None:
-        interface['mac'] = mac
-    address_types = ['inet', 'inet6']
+        interface["mac"] = mac
+    address_types = ["inet", "inet6"]
     for name in address_types:
         value = settings.get(name)
         if value is not None:
@@ -162,10 +159,10 @@ def parse_ip_addr(output):
     interfaces = {}
     interface = None
     for line in output.splitlines():
-        if re.match(r'^[0-9]', line):
+        if re.match(r"^[0-9]", line):
             interface = _parse_interface_definition(line)
             if interface is not None:
-                interfaces[interface['name']] = interface
+                interfaces[interface["name"]] = interface
         else:
             if interface is not None:
                 _add_additional_interface_properties(interface, line)
@@ -199,7 +196,8 @@ def get_bonded_interfaces(ifname, sys_class_net="/sys/class/net"):
     :return:list
     """
     bonding_slaves_file = os.path.join(
-        sys_class_net, ifname, 'bonding', 'slaves')
+        sys_class_net, ifname, "bonding", "slaves"
+    )
     if os.path.isfile(bonding_slaves_file):
         with open(bonding_slaves_file) as f:
             return f.read().split()
@@ -213,8 +211,7 @@ def get_bridged_interfaces(ifname, sys_class_net="/sys/class/net"):
 
     :return:list
     """
-    bridged_interfaces_dir = os.path.join(
-        sys_class_net, ifname, 'brif')
+    bridged_interfaces_dir = os.path.join(sys_class_net, ifname, "brif")
     if os.path.isdir(bridged_interfaces_dir):
         return os.listdir(bridged_interfaces_dir)
     else:
@@ -222,8 +219,8 @@ def get_bridged_interfaces(ifname, sys_class_net="/sys/class/net"):
 
 
 def get_interface_type(
-        ifname, sys_class_net="/sys/class/net",
-        proc_net="/proc/net"):
+    ifname, sys_class_net="/sys/class/net", proc_net="/proc/net"
+):
     """Heuristic to return the type of the given interface.
 
     The given interface must be able to be found in /sys/class/net/ifname.
@@ -256,9 +253,9 @@ def get_interface_type(
     """
     sys_path = os.path.join(sys_class_net, ifname)
     if not os.path.isdir(sys_path):
-        return 'missing'
+        return "missing"
 
-    sys_type_path = os.path.join(sys_path, 'type')
+    sys_type_path = os.path.join(sys_path, "type")
     with open(sys_type_path) as f:
         iftype = int(f.read().strip())
 
@@ -266,33 +263,33 @@ def get_interface_type(
     # The important thing here is that Ethernet maps to 1.
     # Currently, MAAS only runs on Ethernet interfaces.
     if iftype == 1:
-        bridge_dir = os.path.join(sys_path, 'bridge')
+        bridge_dir = os.path.join(sys_path, "bridge")
         if os.path.isdir(bridge_dir):
-            return 'ethernet.bridge'
-        bond_dir = os.path.join(sys_path, 'bonding')
+            return "ethernet.bridge"
+        bond_dir = os.path.join(sys_path, "bonding")
         if os.path.isdir(bond_dir):
-            return 'ethernet.bond'
+            return "ethernet.bond"
         if os.path.isfile(os.path.join(proc_net, "vlan", ifname)):
-            return 'ethernet.vlan'
-        if os.path.isfile(os.path.join(sys_path, 'tun_flags')):
-            return 'ethernet.tunnel'
-        device_path = os.path.join(sys_path, 'device')
+            return "ethernet.vlan"
+        if os.path.isfile(os.path.join(sys_path, "tun_flags")):
+            return "ethernet.tunnel"
+        device_path = os.path.join(sys_path, "device")
         if os.path.islink(device_path):
-            device_80211 = os.path.join(sys_path, 'device', 'ieee80211')
+            device_80211 = os.path.join(sys_path, "device", "ieee80211")
             if os.path.isdir(device_80211):
-                return 'ethernet.wireless'
+                return "ethernet.wireless"
             else:
-                return 'ethernet.physical'
+                return "ethernet.physical"
         else:
-            return 'ethernet'
+            return "ethernet"
     # ... however, we'll include some other commonly-seen interface types,
     # just for completeness.
     elif iftype == 772:
-        return 'loopback'
+        return "loopback"
     elif iftype == 768:
-        return 'ipip'
+        return "ipip"
     else:
-        return 'unknown-%d' % iftype
+        return "unknown-%d" % iftype
 
 
 def _parse_proc_net_bonding(file):
@@ -317,7 +314,8 @@ def _parse_proc_net_bonding(file):
 
 
 def annotate_with_proc_net_bonding_original_macs(
-        interfaces, proc_net="/proc/net"):
+    interfaces, proc_net="/proc/net"
+):
     """Repairs the MAC addresses of bond members in the specified structure.
 
     Given the specified interfaces structure, uses the data in
@@ -332,15 +330,17 @@ def annotate_with_proc_net_bonding_original_macs(
         bonds = os.listdir(proc_net_bonding)
         for bond in bonds:
             parent_macs = _parse_proc_net_bonding(
-                os.path.join(proc_net_bonding, bond))
+                os.path.join(proc_net_bonding, bond)
+            )
             for interface in parent_macs:
                 if interface in interfaces:
-                    interfaces[interface]['mac'] = parent_macs[interface]
+                    interfaces[interface]["mac"] = parent_macs[interface]
     return interfaces
 
 
 def annotate_with_driver_information(
-        interfaces, sys_class_net="/sys/class/net", proc_net="/proc/net"):
+    interfaces, sys_class_net="/sys/class/net", proc_net="/proc/net"
+):
     """Determines driver information for each of the given interfaces.
 
     Annotates the given dictionary to update it with driver information
@@ -351,21 +351,25 @@ def annotate_with_driver_information(
     :param sys_class_net: path to /sys/class/net
     """
     interfaces = annotate_with_proc_net_bonding_original_macs(
-        interfaces, proc_net=proc_net)
+        interfaces, proc_net=proc_net
+    )
     for name in interfaces:
         iface = interfaces[name]
         iftype = get_interface_type(
-            name, sys_class_net=sys_class_net, proc_net=proc_net)
-        interfaces[name]['type'] = iftype
-        if iftype == 'ethernet.bond':
+            name, sys_class_net=sys_class_net, proc_net=proc_net
+        )
+        interfaces[name]["type"] = iftype
+        if iftype == "ethernet.bond":
             bond_parents = get_bonded_interfaces(
-                name, sys_class_net=sys_class_net)
-            iface['bonded_interfaces'] = bond_parents
-        elif iftype == 'ethernet.vlan':
-            iface['vid'] = get_vid_from_ifname(name)
-        elif iftype == 'ethernet.bridge':
-            iface['bridged_interfaces'] = get_bridged_interfaces(
-                name, sys_class_net=sys_class_net)
+                name, sys_class_net=sys_class_net
+            )
+            iface["bonded_interfaces"] = bond_parents
+        elif iftype == "ethernet.vlan":
+            iface["vid"] = get_vid_from_ifname(name)
+        elif iftype == "ethernet.bridge":
+            iface["bridged_interfaces"] = get_bridged_interfaces(
+                name, sys_class_net=sys_class_net
+            )
     return interfaces
 
 
@@ -377,9 +381,9 @@ def get_vid_from_ifname(ifname):
     :return:int
     """
     vid = 0
-    iface_vid_re = re.compile(r'.*\.([0-9]+)$')
+    iface_vid_re = re.compile(r".*\.([0-9]+)$")
     iface_vid_match = iface_vid_re.match(ifname)
-    vlan_vid_re = re.compile(r'vlan([0-9]+)$')
+    vlan_vid_re = re.compile(r"vlan([0-9]+)$")
     vlan_vid_match = vlan_vid_re.match(ifname)
     if iface_vid_match:
         vid = int(iface_vid_match.group(1))
@@ -415,17 +419,19 @@ def get_mac_addresses():
         gathered.
     """
     ip_addr = get_ip_addr()
-    return list({
-        iface['mac']
-        for iface in ip_addr.values()
-        if iface.get('mac', '00:00:00:00:00:00') != '00:00:00:00:00:00'
-    })
+    return list(
+        {
+            iface["mac"]
+            for iface in ip_addr.values()
+            if iface.get("mac", "00:00:00:00:00:00") != "00:00:00:00:00:00"
+        }
+    )
 
 
 def get_machine_default_gateway_ip():
     """Return the default gateway IP for the machine."""
     gateways = netifaces.gateways()
-    defaults = gateways.get('default')
+    defaults = gateways.get("default")
     if not defaults:
         return
 
@@ -435,6 +441,6 @@ def get_machine_default_gateway_ip():
             return
         addresses = netifaces.ifaddresses(gw_info[1]).get(family)
         if addresses:
-            return addresses[0]['addr']
+            return addresses[0]["addr"]
 
     return default_ip(netifaces.AF_INET) or default_ip(netifaces.AF_INET6)

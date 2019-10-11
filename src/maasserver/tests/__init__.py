@@ -7,8 +7,8 @@ from django.apps import AppConfig
 
 
 class MAASServerTestsConfig(AppConfig):
-    name = 'maasserver.tests'
-    label = 'maasserver_tests'
+    name = "maasserver.tests"
+    label = "maasserver_tests"
 
 
-default_app_config = 'maasserver.tests.MAASServerTestsConfig'
+default_app_config = "maasserver.tests.MAASServerTestsConfig"

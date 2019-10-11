@@ -4,20 +4,20 @@
 """Enumerations meaningful to the metadataserver application."""
 
 __all__ = [
-    'HARDWARE_TYPE',
-    'HARDWARE_TYPE_CHOICES',
-    'RESULT_TYPE',
-    'RESULT_TYPE_CHOICES',
-    'SCRIPT_PARALLEL',
-    'SCRIPT_PARALLEL_CHOICES',
-    'SCRIPT_STATUS',
-    'SCRIPT_STATUS_CHOICES',
-    'SCRIPT_STATUS_FAILED',
-    'SCRIPT_STATUS_RUNNING',
-    'SCRIPT_STATUS_RUNNING_OR_PENDING',
-    'SIGNAL_STATUS',
-    'SIGNAL_STATUS_CHOICES',
-    ]
+    "HARDWARE_TYPE",
+    "HARDWARE_TYPE_CHOICES",
+    "RESULT_TYPE",
+    "RESULT_TYPE_CHOICES",
+    "SCRIPT_PARALLEL",
+    "SCRIPT_PARALLEL_CHOICES",
+    "SCRIPT_STATUS",
+    "SCRIPT_STATUS_CHOICES",
+    "SCRIPT_STATUS_FAILED",
+    "SCRIPT_STATUS_RUNNING",
+    "SCRIPT_STATUS_RUNNING_OR_PENDING",
+    "SIGNAL_STATUS",
+    "SIGNAL_STATUS_CHOICES",
+]
 
 
 class SIGNAL_STATUS:
@@ -100,8 +100,10 @@ SCRIPT_STATUS_CHOICES = (
     (SCRIPT_STATUS.FAILED_INSTALLING, "Failed installing dependencies"),
     (SCRIPT_STATUS.SKIPPED, "Skipped"),
     (SCRIPT_STATUS.APPLYING_NETCONF, "Applying custom network configuration"),
-    (SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-        "Failed to apply custom network configuration"),
+    (
+        SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+        "Failed to apply custom network configuration",
+    ),
 )
 
 
@@ -112,8 +114,9 @@ SCRIPT_STATUS_RUNNING = {
     SCRIPT_STATUS.RUNNING,
 }
 
-SCRIPT_STATUS_RUNNING_OR_PENDING = SCRIPT_STATUS_RUNNING.union({
-    SCRIPT_STATUS.PENDING})
+SCRIPT_STATUS_RUNNING_OR_PENDING = SCRIPT_STATUS_RUNNING.union(
+    {SCRIPT_STATUS.PENDING}
+)
 
 
 # ScriptResult statuses which are considered failed.

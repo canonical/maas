@@ -3,18 +3,9 @@
 
 """Osystem Drivers."""
 
-__all__ = [
-    "Node",
-    "OperatingSystem",
-    "OperatingSystemRegistry",
-    "Token",
-    ]
+__all__ = ["Node", "OperatingSystem", "OperatingSystemRegistry", "Token"]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import namedtuple
 import os
 
@@ -24,18 +15,19 @@ from provisioningserver.utils.registry import Registry
 
 class BOOT_IMAGE_PURPOSE:
     """The vocabulary of a `BootImage`'s purpose."""
+
     #: Usable for commissioning
-    COMMISSIONING = 'commissioning'
+    COMMISSIONING = "commissioning"
     #: Usable for install
-    INSTALL = 'install'
+    INSTALL = "install"
     #: Usable for fast-path install
-    XINSTALL = 'xinstall'
+    XINSTALL = "xinstall"
     #: Usable for diskless boot
-    DISKLESS = 'diskless'
+    DISKLESS = "diskless"
     #: Bootloader for enlistment, commissioning, and deployment
-    BOOTLOADER = 'bootloader'
+    BOOTLOADER = "bootloader"
     #: Usable for ephemeral boots
-    EPHEMERAL = 'ephemeral'
+    EPHEMERAL = "ephemeral"
 
 
 # A cluster-side representation of a Node, relevant to the osystem code,
@@ -52,11 +44,12 @@ def list_boot_images_for(osystem):
     """List all boot images for the given osystem."""
     # Circular import
     from provisioningserver.rpc.boot_images import list_boot_images
+
     return [
         image
         for image in list_boot_images()
-        if image['osystem'] == osystem.name
-        ]
+        if image["osystem"] == osystem.name
+    ]
 
 
 class OperatingSystem(metaclass=ABCMeta):
@@ -122,7 +115,7 @@ class OperatingSystem(metaclass=ABCMeta):
         for this operating system.
         """
         for image in list_boot_images_for(self):
-            release = image['release']
+            release = image["release"]
             if self.is_release_supported(release):
                 yield release
 
@@ -191,34 +184,42 @@ class OperatingSystem(metaclass=ABCMeta):
         raise NotImplementedError()
 
     def _find_image(
-            self, arch, subarch, release, label,
-            squashfs=False, tgz=False, dd=False, default_fname=None):
+        self,
+        arch,
+        subarch,
+        release,
+        label,
+        squashfs=False,
+        tgz=False,
+        dd=False,
+        default_fname=None,
+    ):
         filetypes = {}
         if squashfs:
-            filetypes.update({'squashfs': 'squashfs'})
+            filetypes.update({"squashfs": "squashfs"})
         if tgz:
-            filetypes.update({
-                'root-tgz': 'tgz',
-                'root-txz': 'txz',
-                'root-tbz': 'tbz',
-            })
+            filetypes.update(
+                {"root-tgz": "tgz", "root-txz": "txz", "root-tbz": "tbz"}
+            )
         if dd:
-            filetypes.update({
-                # root-dd maps to dd-tgz for backwards compatibility.
-                'root-dd': 'dd-tgz',
-                'root-dd.tar': 'dd-tar',
-                'root-dd.raw': 'dd-raw',
-                'root-dd.bz2': 'dd-bz2',
-                'root-dd.gz': 'dd-gz',
-                'root-dd.xz': 'dd-xz',
-                'root-dd.tar.bz2': 'dd-tbz',
-                'root-dd.tar.xz': 'dd-txz',
-            })
+            filetypes.update(
+                {
+                    # root-dd maps to dd-tgz for backwards compatibility.
+                    "root-dd": "dd-tgz",
+                    "root-dd.tar": "dd-tar",
+                    "root-dd.raw": "dd-raw",
+                    "root-dd.bz2": "dd-bz2",
+                    "root-dd.gz": "dd-gz",
+                    "root-dd.xz": "dd-xz",
+                    "root-dd.tar.bz2": "dd-tbz",
+                    "root-dd.tar.xz": "dd-txz",
+                }
+            )
 
         with ClusterConfiguration.open() as config:
             base_path = os.path.join(
-                config.tftp_root, self.name, arch,
-                subarch, release, label)
+                config.tftp_root, self.name, arch, subarch, release, label
+            )
 
         try:
             for fname in os.listdir(base_path):
@@ -273,6 +274,6 @@ builtin_osystems = [
     SUSEOS(),
     CaringoOS(),
     ESXi(),
-    ]
+]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)

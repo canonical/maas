@@ -3,41 +3,35 @@
 
 """Utilities for working with Ethernet packets."""
 
-__all__ = [
-    "Ethernet"
-]
+__all__ = ["Ethernet"]
 
 from collections import namedtuple
 import struct
 
 from netaddr import EUI
-from provisioningserver.utils.network import (
-    bytes_to_int,
-    hex_str_to_bytes,
-)
+from provisioningserver.utils.network import bytes_to_int, hex_str_to_bytes
 
 # Definitions for Ethernet packet used with `struct`.
-ETHERNET_PACKET = '!6s6s2s'
+ETHERNET_PACKET = "!6s6s2s"
 
 # 6 byte source MAC + 6 byte destination MAC + 2 byte Ethertype
 ETHERNET_HEADER_LEN = 14
 
-EthernetPacket = namedtuple('EthernetPacket', (
-    'dst_mac',
-    'src_mac',
-    'ethertype',
-))
+EthernetPacket = namedtuple(
+    "EthernetPacket", ("dst_mac", "src_mac", "ethertype")
+)
 
-VLAN_HEADER = '!2s2s'
+VLAN_HEADER = "!2s2s"
 VLAN_HEADER_LEN = 4
 
 
 class ETHERTYPE:
     """Enumeration to represent ethertypes that MAAS needs to understand."""
-    IPV4 = hex_str_to_bytes('0800')
-    IPV6 = hex_str_to_bytes('86dd')
-    ARP = hex_str_to_bytes('0806')
-    VLAN = hex_str_to_bytes('8100')
+
+    IPV4 = hex_str_to_bytes("0800")
+    IPV6 = hex_str_to_bytes("86dd")
+    ARP = hex_str_to_bytes("0806")
+    VLAN = hex_str_to_bytes("8100")
 
 
 class Ethernet:
@@ -68,7 +62,8 @@ class Ethernet:
             self.valid = False
             return
         packet = EthernetPacket._make(
-            struct.unpack(ETHERNET_PACKET, pkt_bytes[0:ETHERNET_HEADER_LEN]))
+            struct.unpack(ETHERNET_PACKET, pkt_bytes[0:ETHERNET_HEADER_LEN])
+        )
         payload_index = ETHERNET_HEADER_LEN
         if packet.ethertype == ETHERTYPE.VLAN:
             # We found an 802.1q encapsulated frame. The next four bytes are
@@ -78,7 +73,8 @@ class Ethernet:
                 return
             vid, ethertype = struct.unpack(
                 VLAN_HEADER,
-                pkt_bytes[payload_index:payload_index + VLAN_HEADER_LEN])
+                pkt_bytes[payload_index : payload_index + VLAN_HEADER_LEN],
+            )
             vid = bytes_to_int(vid)
             # The VLAN is the lower 12 bits; the upper 4 bits are for QoS.
             vid &= 0xFFF

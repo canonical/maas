@@ -4,19 +4,19 @@
 """Generic helpers for `netaddr` and network-related types."""
 
 __all__ = [
-    'clean_up_netifaces_address',
-    'find_ip_via_arp',
-    'find_mac_via_arp',
-    'get_all_addresses_for_interface',
-    'get_all_interface_addresses',
-    'is_loopback_address',
-    'make_network',
-    'reverseResolve',
-    'resolve_host_to_addrinfo',
-    'resolve_hostname',
-    'resolves_to_loopback_address',
-    'intersect_iprange',
-    'ip_range_within_network',
+    "clean_up_netifaces_address",
+    "find_ip_via_arp",
+    "find_mac_via_arp",
+    "get_all_addresses_for_interface",
+    "get_all_interface_addresses",
+    "is_loopback_address",
+    "make_network",
+    "reverseResolve",
+    "resolve_host_to_addrinfo",
+    "resolve_hostname",
+    "resolves_to_loopback_address",
+    "intersect_iprange",
+    "ip_range_within_network",
 ]
 
 import codecs
@@ -35,33 +35,17 @@ from socket import (
     IPPROTO_TCP,
 )
 import struct
-from typing import (
-    Iterable,
-    List,
-    Optional,
-    TypeVar,
-)
+from typing import Iterable, List, Optional, TypeVar
 from zlib import crc32
 
-from netaddr import (
-    EUI,
-    IPAddress,
-    IPNetwork,
-    IPRange,
-)
-from netaddr.core import (
-    AddrFormatError,
-    NotRegisteredError,
-)
+from netaddr import EUI, IPAddress, IPNetwork, IPRange
+from netaddr.core import AddrFormatError, NotRegisteredError
 import netifaces
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
-from provisioningserver.utils.shell import (
-    call_and_check,
-    get_env_with_locale,
-)
+from provisioningserver.utils.shell import call_and_check, get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IResolver
@@ -75,25 +59,18 @@ from twisted.names.error import (
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
-ENI_PARSED_ADDRESS_FAMILIES = [
-    "inet",
-    "inet6",
-]
+ENI_PARSED_ADDRESS_FAMILIES = ["inet", "inet6"]
 
 # Interface method in /etc/network/interfaces that MAAS chooses to parse. All
 # other methods are ignored.
-ENI_PARSED_METHODS = [
-    "static",
-    "manual",
-    "dhcp",
-]
+ENI_PARSED_METHODS = ["static", "manual", "dhcp"]
 
 # Hard-coded loopback interface information, since the loopback interface isn't
 # included in `get_all_interfaces_definition()`.
 LOOPBACK_INTERFACE_INFO = {
     "enabled": True,
     "index": 1,
-    "links": [{"address": "::1/128"}, {"address": "127.0.0.1/8"}]
+    "links": [{"address": "::1/128"}, {"address": "127.0.0.1/8"}],
 }
 
 
@@ -101,29 +78,32 @@ REVERSE_RESOLVE_RETRIES = (1, 2, 4, 8, 16)
 
 
 # Type hints for `outer_range` parameter (get_unused_ranges()).
-OuterRange = TypeVar('OuterRange', IPRange, IPNetwork, bytes, str)
+OuterRange = TypeVar("OuterRange", IPRange, IPNetwork, bytes, str)
 
 # Could be an `netaddr.IPAddress`, or something we could convert to one if it
 # were passed into the `netaddr.IPAddress` constructor.
-MaybeIPAddress = TypeVar('MaybeIPAddress', IPAddress, bytes, str, int)
+MaybeIPAddress = TypeVar("MaybeIPAddress", IPAddress, bytes, str, int)
 
 IPAddressOrNetwork = TypeVar(
-    'IPAddressOrNetwork', IPNetwork, IPAddress, bytes, str, int)
+    "IPAddressOrNetwork", IPNetwork, IPAddress, bytes, str, int
+)
 
 
 class IPRANGE_TYPE:
     """Well-known purpose types for IP ranges."""
-    UNUSED = 'unused'
-    GATEWAY_IP = 'gateway-ip'
-    DYNAMIC = 'dynamic'
-    PROPOSED_DYNAMIC = 'proposed-dynamic'
-    UNMANAGED = 'unmanaged'
+
+    UNUSED = "unused"
+    GATEWAY_IP = "gateway-ip"
+    DYNAMIC = "dynamic"
+    PROPOSED_DYNAMIC = "proposed-dynamic"
+    UNMANAGED = "unmanaged"
 
 
 class MAASIPRange(IPRange):
     """IPRange object whose default end address is the start address if not
     specified. Capable of storing a string to indicate the purpose of
     the range."""
+
     def __init__(self, start, end=None, flags=0, purpose=None):
         if purpose is None:
             purpose = set()
@@ -141,18 +121,20 @@ class MAASIPRange(IPRange):
     def __str__(self):
         range_str = str(IPAddress(self.first))
         if not self.first == self.last:
-            range_str += '-' + str(IPAddress(self.last))
+            range_str += "-" + str(IPAddress(self.last))
             range_str += " num_addresses={}".format(self.num_addresses)
         if self.purpose:
             range_str += " purpose=" + repr(self.purpose)
         return range_str
 
     def __repr__(self):
-        return ("%s('%s', '%s'%s%s)" %
-                (self.__class__.__name__,
-                 self._start, self._end,
-                 (" flags=%d" % self.flags if self.flags else ''),
-                 (" purpose=%s" % repr(self.purpose) if self.purpose else '')))
+        return "%s('%s', '%s'%s%s)" % (
+            self.__class__.__name__,
+            self._start,
+            self._end,
+            (" flags=%d" % self.flags if self.flags else ""),
+            (" purpose=%s" % repr(self.purpose) if self.purpose else ""),
+        )
 
     @property
     def num_addresses(self):
@@ -170,7 +152,8 @@ class MAASIPRange(IPRange):
 
 
 def _combine_overlapping_maasipranges(
-        ranges: Iterable[MAASIPRange]) -> List[MAASIPRange]:
+    ranges: Iterable[MAASIPRange],
+) -> List[MAASIPRange]:
     """Returns the specified ranges after combining any overlapping ranges.
 
     Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
@@ -190,7 +173,8 @@ def _combine_overlapping_maasipranges(
                 item = make_iprange(
                     min(item.first, previous_min),
                     max(item.last, previous_max),
-                    previous.purpose | item.purpose)
+                    previous.purpose | item.purpose,
+                )
         previous_min = item.first
         previous_max = item.last
         new_ranges.append(item)
@@ -198,7 +182,8 @@ def _combine_overlapping_maasipranges(
 
 
 def _coalesce_adjacent_purposes(
-        ranges: Iterable[MAASIPRange]) -> List[MAASIPRange]:
+    ranges: Iterable[MAASIPRange],
+) -> List[MAASIPRange]:
     """Combines and returns adjacent ranges that have an identical purpose.
 
     Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
@@ -212,8 +197,8 @@ def _coalesce_adjacent_purposes(
     for item in ranges:
         if previous_purpose is not None and previous_last is not None:
             adjacent_and_identical = (
-                item.first == (previous_last + 1) and
-                item.purpose == previous_purpose
+                item.first == (previous_last + 1)
+                and item.purpose == previous_purpose
             )
             if adjacent_and_identical:
                 new_ranges.pop()
@@ -315,8 +300,10 @@ class IPRangeStatistics:
             # IP address as the gateway.
             return None
         candidate = MAASIPRange(
-            largest_unused.first, largest_unused.last,
-            purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
+            largest_unused.first,
+            largest_unused.last,
+            purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC,
+        )
         # Adjust the largest unused block if it contains the suggested gateway.
         if self.suggested_gateway is not None:
             gateway_value = IPAddress(self.suggested_gateway).value
@@ -325,13 +312,17 @@ class IPRangeStatistics:
                 # or the last IP address in the range.
                 if gateway_value == candidate.first:
                     candidate = MAASIPRange(
-                        candidate.first + 1, candidate.last,
-                        purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
+                        candidate.first + 1,
+                        candidate.last,
+                        purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC,
+                    )
                 else:
                     # Must be the last address.
                     candidate = MAASIPRange(
-                        candidate.first, candidate.last - 1,
-                        purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
+                        candidate.first,
+                        candidate.last - 1,
+                        purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC,
+                    )
         if candidate is not None:
             first = candidate.first
             one_fourth_range = self.total_addresses >> 2
@@ -348,8 +339,8 @@ class IPRangeStatistics:
                 # Calculated an impossible range.
                 return None
             candidate = MAASIPRange(
-                first, candidate.last,
-                purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
+                first, candidate.last, purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC
+            )
         return candidate
 
     @property
@@ -389,7 +380,7 @@ class IPRangeStatistics:
             "available_string": self.available_percentage_string,
             "first_address": self.first_address,
             "last_address": self.last_address,
-            "ip_version": self.ip_version
+            "ip_version": self.ip_version,
         }
         if include_ranges:
             data["ranges"] = self.ranges.render_json()
@@ -405,7 +396,6 @@ class IPRangeStatistics:
 
 
 class MAASIPSet(set):
-
     def __init__(self, ranges, cidr=None):
         self.cidr = cidr
         self.ranges = ranges
@@ -441,8 +431,10 @@ class MAASIPSet(set):
         """
         if isinstance(search, IPRange):
             for item in self.ranges:
-                if (item.first <= search.first <= item.last and
-                        item.first <= search.last <= item.last):
+                if (
+                    item.first <= search.first <= item.last
+                    and item.first <= search.last <= item.last
+                ):
                     return item
         else:
             addr = IPAddress(search)
@@ -477,8 +469,9 @@ class MAASIPSet(set):
         range = self.find(ip)
         if range is None:
             raise ValueError(
-                "IP address %s does not exist in range (%s-%s)." % (
-                    ip, self.first, self.last))
+                "IP address %s does not exist in range (%s-%s)."
+                % (ip, self.first, self.last)
+            )
         return purpose in range.purpose
 
     def is_unused(self, ip) -> bool:
@@ -515,8 +508,10 @@ class MAASIPSet(set):
         :returns: a `MAASIPRange` if the largest unused block was found,
             or None if no IP addresses are unused.
         """
+
         class NullIPRange:
             """Throwaway class to represent an empty IP range."""
+
             def __init__(self):
                 self.size = 0
 
@@ -531,8 +526,7 @@ class MAASIPSet(set):
 
     def render_json(self, *args, **kwargs):
         return [
-            iprange.render_json(*args, **kwargs)
-            for iprange in self.ranges
+            iprange.render_json(*args, **kwargs) for iprange in self.ranges
         ]
 
     def __getitem__(self, item):
@@ -542,8 +536,8 @@ class MAASIPSet(set):
         return bool(self.find(item))
 
     def get_unused_ranges(
-            self, outer_range: OuterRange,
-            purpose=IPRANGE_TYPE.UNUSED) -> 'MAASIPSet':
+        self, outer_range: OuterRange, purpose=IPRANGE_TYPE.UNUSED
+    ) -> "MAASIPSet":
         """Calculates and returns a list of unused IP ranges, based on
         the supplied range of desired addresses.
 
@@ -554,7 +548,7 @@ class MAASIPSet(set):
             all addresses in the range will be considered unused.
         """
         if isinstance(outer_range, (bytes, str)):
-            if '/' in outer_range:
+            if "/" in outer_range:
                 outer_range = IPNetwork(outer_range)
         unused_ranges = []
         if type(outer_range) == IPNetwork:
@@ -579,7 +573,8 @@ class MAASIPSet(set):
             # range.
             if candidate_end - candidate_start >= 0:
                 unused_ranges.append(
-                    make_iprange(candidate_start, candidate_end, purpose))
+                    make_iprange(candidate_start, candidate_end, purpose)
+                )
             candidate_start = used_range.last + 1
         # Skip the broadcast address, if this is an IPv4 network
         if type(outer_range) == IPNetwork:
@@ -594,7 +589,8 @@ class MAASIPSet(set):
         # of the range we're checking against.
         if candidate_end - candidate_start >= 0:
             unused_ranges.append(
-                make_iprange(candidate_start, candidate_end, purpose))
+                make_iprange(candidate_start, candidate_end, purpose)
+            )
         return MAASIPSet(unused_ranges)
 
     def get_full_range(self, outer_range):
@@ -606,15 +602,15 @@ class MAASIPSet(set):
         # all cases where this could happen.
         assert len(full_range.ranges) > 0, (
             "get_full_range(): No ranges for CIDR: %s; "
-            "self=%r, unused_ranges=%r" % (
-                outer_range, self, unused_ranges))
+            "self=%r, unused_ranges=%r" % (outer_range, self, unused_ranges)
+        )
         return full_range
 
     def __repr__(self):
         item_repr = []
         for item in self.ranges:
             item_repr.append(item)
-        return '%s(%s)' % (self.__class__.__name__, item_repr)
+        return "%s(%s)" % (self.__class__.__name__, item_repr)
 
 
 def make_ipaddress(input: Optional[MaybeIPAddress]) -> Optional[IPAddress]:
@@ -653,8 +649,8 @@ def make_iprange(first, second=None, purpose="unknown") -> MAASIPRange:
 
 
 def make_network(
-        ip_address: MaybeIPAddress, netmask_or_bits: int,
-        cidr=False, **kwargs) -> IPNetwork:
+    ip_address: MaybeIPAddress, netmask_or_bits: int, cidr=False, **kwargs
+) -> IPNetwork:
     """Construct an `IPNetwork` with the given address and netmask or width.
 
     This is a thin wrapper for the `IPNetwork` constructor.  It's here because
@@ -687,7 +683,7 @@ def find_ip_via_arp(mac: str) -> str:
 
     :param mac: The mac address, e.g. '1c:6f:65:d5:56:98'.
     """
-    output = call_and_check(['arp', '-n'])
+    output = call_and_check(["arp", "-n"])
     output = output.decode("ascii").splitlines()
 
     for line in sorted(output):
@@ -713,7 +709,8 @@ def find_mac_via_arp(ip: str) -> str:
     ip = IPAddress(ip)
     # Use "C" locale; we're parsing output so we don't want any translations.
     output = call_and_check(
-        ['ip', 'neigh'], env=get_env_with_locale(locale='C'))
+        ["ip", "neigh"], env=get_env_with_locale(locale="C")
+    )
     output = output.decode("ascii").splitlines()
 
     for line in sorted(output):
@@ -721,7 +718,8 @@ def find_mac_via_arp(ip: str) -> str:
         if len(columns) < 4:
             raise Exception(
                 "Output line from 'ip neigh' does not look like a neighbour "
-                "entry: '%s'" % line)
+                "entry: '%s'" % line
+            )
         # Normal "ip neigh" output lines look like:
         #   <IP> dev <interface> lladdr <MAC> [router] <status>
         #
@@ -733,7 +731,7 @@ def find_mac_via_arp(ip: str) -> str:
         #   <IP> dev <interface>  FAILED
         #
         # Note the missing lladdr entry.
-        if IPAddress(columns[0]) == ip and columns[3] == 'lladdr':
+        if IPAddress(columns[0]) == ip and columns[3] == "lladdr":
             # Found matching IP address.  Return MAC.
             return columns[4]
     return None
@@ -749,7 +747,7 @@ def clean_up_netifaces_address(address: str, interface: str):
     each link, but may not actually be connected).  `IPAddress` doesn't parse
     that suffix, so we strip it off.
     """
-    return address.replace('%' + interface, '')
+    return address.replace("%" + interface, "")
 
 
 def get_all_addresses_for_interface(interface: str) -> Iterable[str]:
@@ -772,7 +770,8 @@ def get_all_addresses_for_interface(interface: str) -> Iterable[str]:
                 # interface name on link-local addresses.  Strip those off
                 # here.
                 yield clean_up_netifaces_address(
-                    inet6_address["addr"], interface)
+                    inet6_address["addr"], interface
+                )
 
 
 def get_all_interface_addresses() -> Iterable[str]:
@@ -782,8 +781,9 @@ def get_all_interface_addresses() -> Iterable[str]:
             yield address
 
 
-def resolve_host_to_addrinfo(hostname, ip_version=4, port=0,
-                             proto=IPPROTO_TCP):
+def resolve_host_to_addrinfo(
+    hostname, ip_version=4, port=0, proto=IPPROTO_TCP
+):
     """Wrapper around `getaddrinfo`: return address information for `hostname`.
 
     :param hostname: Host name (or IP address).
@@ -794,15 +794,12 @@ def resolve_host_to_addrinfo(hostname, ip_version=4, port=0,
         suitable for creating sockets and connecting.  If `hostname` does not
         resolve (for that `ip_version`), then the list is empty.
     """
-    addr_families = {
-        4: AF_INET,
-        6: AF_INET6,
-        0: 0,
-        }
+    addr_families = {4: AF_INET, 6: AF_INET6, 0: 0}
     assert ip_version in addr_families
     try:
         address_info = getaddrinfo(
-            hostname, port, family=addr_families[ip_version], proto=proto)
+            hostname, port, family=addr_families[ip_version], proto=proto
+        )
     except gaierror as e:
         if e.errno in (EAI_NONAME, EAI_NODATA):
             # Name does not resolve.
@@ -827,7 +824,8 @@ def resolve_hostname(hostname, ip_version=4):
     # about.
     return {
         IPAddress(sockaddr[0])
-        for family, socktype, proto, canonname, sockaddr in address_info}
+        for family, socktype, proto, canonname, sockaddr in address_info
+    }
 
 
 def intersect_iprange(network, iprange):
@@ -850,10 +848,8 @@ def ip_range_within_network(ip_range, network):
     # Make sure that ip_range is an IPRange and not an IPNetwork,
     # otherwise this won't work.
     if isinstance(ip_range, IPNetwork):
-        ip_range = IPRange(
-            IPAddress(network.first), IPAddress(network.last))
-    return all([
-        intersect_iprange(cidr, network) for cidr in ip_range.cidrs()])
+        ip_range = IPRange(IPAddress(network.first), IPAddress(network.last))
+    return all([intersect_iprange(cidr, network) for cidr in ip_range.cidrs()])
 
 
 def inet_ntop(value):
@@ -872,10 +868,10 @@ def parse_integer(value_string):
     :return:int
     """
     value_string = value_string.strip()
-    if value_string.lower().startswith('0x'):
+    if value_string.lower().startswith("0x"):
         # Hexadecimal.
         base = 16
-    elif value_string.lower().startswith('0b'):
+    elif value_string.lower().startswith("0b"):
         # Binary
         base = 2
     else:
@@ -887,7 +883,7 @@ def parse_integer(value_string):
 def bytes_to_hex(byte_string):
     """Utility function to convert the the specified `bytes` object into
     a string of hex characters."""
-    return codecs.encode(byte_string, 'hex')
+    return codecs.encode(byte_string, "hex")
 
 
 def bytes_to_int(byte_string):
@@ -901,11 +897,11 @@ def hex_str_to_bytes(data):
     and (assuming the characters that remain are hex digits) returns an
     equivalent `bytes` object."""
     data = data.strip()
-    if data.startswith('0x'):
+    if data.startswith("0x"):
         data = data[2:]
-    data = data.replace(':', '')
-    data = data.replace('-', '')
-    data = data.replace(' ', '')
+    data = data.replace(":", "")
+    data = data.replace("-", "")
+    data = data.replace(" ", "")
     try:
         return bytes.fromhex(data)
     except ValueError as e:
@@ -922,10 +918,11 @@ def ipv4_to_bytes(ipv4_address):
 
 def bytes_to_ipaddress(ip_address_bytes):
     if len(ip_address_bytes) == 4:
-        return IPAddress(struct.unpack('!L', ip_address_bytes)[0])
+        return IPAddress(struct.unpack("!L", ip_address_bytes)[0])
     if len(ip_address_bytes) == 16:
         most_significant, least_significant = struct.unpack(
-            "!QQ", ip_address_bytes)
+            "!QQ", ip_address_bytes
+        )
         return IPAddress((most_significant << 64) | least_significant)
     else:
         raise ValueError("Invalid IP address size: expected 4 or 16 bytes.")
@@ -933,7 +930,7 @@ def bytes_to_ipaddress(ip_address_bytes):
 
 def format_eui(eui):
     """Returns the specified netaddr.EUI object formatted in the MAAS style."""
-    return str(eui).replace('-', ':').lower()
+    return str(eui).replace("-", ":").lower()
 
 
 def get_eui_organization(eui):
@@ -945,7 +942,7 @@ def get_eui_organization(eui):
     try:
         registration = eui.oui.registration()
         # Note that `registration` is not a dictionary, so we can't use .get().
-        return registration['org']
+        return registration["org"]
     except UnicodeError:
         # See bug #1628761. Due to corrupt data in the OUI database, and/or
         # the fact that netaddr assumes all the data is ASCII, sometimes
@@ -1028,8 +1025,10 @@ def fix_link_gateways(links, iproute_info):
         cidr = str(ip_addr.cidr)
         if cidr in iproute_info:
             link["gateway"] = iproute_info[cidr]["via"]
-        elif ("default" in iproute_info and
-                IPAddress(iproute_info["default"]["via"]) in ip_addr):
+        elif (
+            "default" in iproute_info
+            and IPAddress(iproute_info["default"]["via"]) in ip_addr
+        ):
             link["gateway"] = iproute_info["default"]["via"]
 
 
@@ -1044,7 +1043,7 @@ def get_interface_children(interfaces: dict) -> dict:
     """
     children_map = {}
     for ifname in interfaces:
-        for parent in interfaces[ifname]['parents']:
+        for parent in interfaces[ifname]["parents"]:
             if parent in children_map:
                 children_map[parent].add(ifname)
             else:
@@ -1052,7 +1051,7 @@ def get_interface_children(interfaces: dict) -> dict:
     return children_map
 
 
-InterfaceChild = namedtuple('InterfaceChild', ('name', 'data'))
+InterfaceChild = namedtuple("InterfaceChild", ("name", "data"))
 
 
 def interface_children(ifname: str, interfaces: dict, children_map: dict):
@@ -1084,14 +1083,14 @@ def get_default_monitored_interfaces(interfaces: dict) -> list:
     # bonds), bond interfaces, and bridge interfaces without parents.
     for ifname in interfaces:
         interface = interfaces[ifname]
-        if not interface['enabled']:
+        if not interface["enabled"]:
             # Skip interfaces which are not link-up.
             continue
         iftype = interface.get("type", None)
         if iftype == "physical":
             should_monitor = True
             for child in interface_children(ifname, interfaces, children_map):
-                if child.data['type'] == 'bond':
+                if child.data["type"] == "bond":
                     # This interface is a bond member. Skip it, since would
                     # rather just monitor the bond interface.
                     should_monitor = False
@@ -1109,7 +1108,7 @@ def get_default_monitored_interfaces(interfaces: dict) -> list:
             # about) should therefore be monitored. (In other words, if
             # the bridge has zero parents, it is a virtual network, which
             # MAAS may be managing virtual machines on.)
-            if len(interface['parents']) == 0:
+            if len(interface["parents"]) == 0:
                 monitored_interfaces.append(ifname)
     return monitored_interfaces
 
@@ -1125,11 +1124,12 @@ def annotate_with_default_monitored_interfaces(interfaces: dict) -> None:
     # by default.
     monitored = set(get_default_monitored_interfaces(interfaces))
     for interface in interfaces:
-        interfaces[interface]['monitored'] = interface in monitored
+        interfaces[interface]["monitored"] = interface in monitored
 
 
 def get_all_interfaces_definition(
-        annotate_with_monitored: bool = True) -> dict:
+    annotate_with_monitored: bool = True,
+) -> dict:
     """Return interfaces definition by parsing "ip addr" and the running
     "dhclient" processes on the machine.
 
@@ -1161,9 +1161,11 @@ def get_all_interfaces_definition(
     ipaddr_info = {
         name: ipaddr
         for name, ipaddr in get_ip_addr().items()
-        if (ipaddr["type"] not in exclude_types and
-            not ipaddr["type"].startswith("unknown-") and
-            ipaddr.get('mac', '') != '00:00:00:00:00:00')
+        if (
+            ipaddr["type"] not in exclude_types
+            and not ipaddr["type"].startswith("unknown-")
+            and ipaddr.get("mac", "") != "00:00:00:00:00:00"
+        )
     }
     for name, ipaddr in ipaddr_info.items():
         iface_type = "physical"
@@ -1178,7 +1180,7 @@ def get_all_interfaces_definition(
                     parents.append(bond_nic)
         elif ipaddr["type"] == "ethernet.vlan":
             iface_type = "vlan"
-            parents.append(ipaddr['parent'])
+            parents.append(ipaddr["parent"])
             vid = ipaddr["vid"]
         elif ipaddr["type"] == "ethernet.bridge":
             iface_type = "bridge"
@@ -1192,9 +1194,9 @@ def get_all_interfaces_definition(
         # Create the interface definition will links for both IPv4 and IPv6.
         interface = {
             "type": iface_type,
-            "index": ipaddr['index'],
+            "index": ipaddr["index"],
             "links": [],
-            "enabled": True if 'UP' in ipaddr['flags'] else False,
+            "enabled": True if "UP" in ipaddr["flags"] else False,
             "parents": parents,
             "source": "ipaddr",
         }
@@ -1206,15 +1208,11 @@ def get_all_interfaces_definition(
         dhcp_address = dhclient_info.get(name, None)
         for address in ipaddr.get("inet", []) + ipaddr.get("inet6", []):
             if str(IPNetwork(address).ip) == dhcp_address:
-                interface["links"].append({
-                    "mode": "dhcp",
-                    "address": address,
-                })
+                interface["links"].append({"mode": "dhcp", "address": address})
             else:
-                interface["links"].append({
-                    "mode": "static",
-                    "address": address,
-                })
+                interface["links"].append(
+                    {"mode": "static", "address": address}
+                )
         fix_link_addresses(interface["links"])
         fix_link_gateways(interface["links"], iproute_info)
         interfaces[name] = interface
@@ -1266,11 +1264,12 @@ def enumerate_assigned_ips(ifdata):
     :return: generator yielding each IP address as a string.
     """
     links = ifdata["links"]
-    return (link['address'].split('/')[0] for link in links)
+    return (link["address"].split("/")[0] for link in links)
 
 
 def get_ifname_ifdata_for_destination(
-        destination_ip: IPAddressOrNetwork, interfaces: dict):
+    destination_ip: IPAddressOrNetwork, interfaces: dict
+):
     """Returns an (ifname, ifdata) tuple for the given destination.
 
     :param destination_ip: The destination IP address.
@@ -1335,7 +1334,8 @@ def is_loopback_address(hostname):
     except AddrFormatError:
         return hostname.lower() in {"localhost", "localhost."}
     return ip.is_loopback() or (
-        ip.is_ipv4_mapped() and ip.ipv4().is_loopback())
+        ip.is_ipv4_mapped() and ip.ipv4().is_loopback()
+    )
 
 
 @synchronous
@@ -1356,13 +1356,14 @@ def resolves_to_loopback_address(hostname):
     else:
         return any(
             is_loopback_address(sockaddr[0])
-            for _, _, _, _, sockaddr in addrinfo)
+            for _, _, _, _, sockaddr in addrinfo
+        )
 
 
 def preferred_hostnames_sort_key(fqdn: str):
     """Return the sort key for the given FQDN, to sort in "preferred" order."""
-    fqdn = fqdn.rstrip('.')
-    subdomains = fqdn.split('.')
+    fqdn = fqdn.rstrip(".")
+    subdomains = fqdn.split(".")
     # Sort by TLDs first.
     subdomains.reverse()
     key = (
@@ -1372,14 +1373,15 @@ def preferred_hostnames_sort_key(fqdn: str):
         # even though 'w' sorts after 'u'.
         -len(subdomains),
         # Second, sort by domain components.
-        subdomains
+        subdomains,
     )
     return key
 
 
 @inlineCallbacks
 def reverseResolve(
-        ip: MaybeIPAddress, resolver: IResolver = None) -> Optional[List[str]]:
+    ip: MaybeIPAddress, resolver: IResolver = None
+) -> Optional[List[str]]:
     """Using the specified IResolver, reverse-resolves the specifed `ip`.
 
     :return: a sorted list of resolved hostnames (which the specified IP
@@ -1392,12 +1394,13 @@ def reverseResolve(
     ip = IPAddress(ip)
     try:
         data = yield resolver.lookupPointer(
-            ip.reverse_dns, timeout=REVERSE_RESOLVE_RETRIES)
+            ip.reverse_dns, timeout=REVERSE_RESOLVE_RETRIES
+        )
         # I love the concise way in which I can ask the Twisted data structure
         # what the list of hostnames is. This is great.
         results = sorted(
             (rr.payload.name.name.decode("idna") for rr in data[0]),
-            key=preferred_hostnames_sort_key
+            key=preferred_hostnames_sort_key,
         )
     except AuthoritativeDomainError:
         # "Failed to reverse-resolve '%s': authoritative failure." % ip
@@ -1428,9 +1431,9 @@ def coerce_to_valid_hostname(hostname):
     :return: the resulting string, or None if the hostname could not be coerced
     """
     hostname = hostname.lower()
-    hostname = re.sub(r'[^a-z0-9-]+', '-', hostname)
-    hostname = hostname.strip('-')
-    if hostname == '' or len(hostname) > 64:
+    hostname = re.sub(r"[^a-z0-9-]+", "-", hostname)
+    hostname = hostname.strip("-")
+    if hostname == "" or len(hostname) > 64:
         return None
     return hostname
 
@@ -1493,12 +1496,14 @@ def get_source_address_for_ipaddress(destination_ip: IPAddress):
 def generate_mac_address():
     """Generate a random MAC address."""
     mac = [
-        0x52, 0x54, 0x00,
-        random.randint(0x00, 0xff),
-        random.randint(0x00, 0xff),
-        random.randint(0x00, 0xff)
+        0x52,
+        0x54,
+        0x00,
+        random.randint(0x00, 0xFF),
+        random.randint(0x00, 0xFF),
+        random.randint(0x00, 0xFF),
     ]
-    return ':'.join(map(lambda byte: "%02x" % byte, mac))
+    return ":".join(map(lambda byte: "%02x" % byte, mac))
 
 
 def convert_host_to_uri_str(host):
@@ -1513,7 +1518,7 @@ def convert_host_to_uri_str(host):
         elif ip.version == 4:
             return str(ip)
         else:
-            return '[%s]' % str(ip)
+            return "[%s]" % str(ip)
 
 
 def get_ifname_for_label(label: str) -> str:
@@ -1524,11 +1529,11 @@ def get_ifname_for_label(label: str) -> str:
     If the name is more than 15 characters, shortens it using a hash algorithm.
     """
     if label.isnumeric():
-        label = 'eth%d' % int(label)
+        label = "eth%d" % int(label)
     # Need to measure the length of the interface name in bytes, not
     # characters, since that is how it's represented in the kernel.
-    label = label.encode('utf-8')
+    label = label.encode("utf-8")
     if len(label) > 15:
-        ifname_hash = (b"%05x" % (crc32(label) & 0xffffffff))[-5:]
-        label = b"eth-%s-%s" % (ifname_hash, label[len(label) - 5:])
-    return label.decode('utf-8')
+        ifname_hash = (b"%05x" % (crc32(label) & 0xFFFFFFFF))[-5:]
+        label = b"eth-%s-%s" % (ifname_hash, label[len(label) - 5 :])
+    return label.decode("utf-8")

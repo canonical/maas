@@ -16,15 +16,11 @@ from provisioningserver.testing.bindfixture import (
     BINDServerResources,
 )
 from provisioningserver.utils.shell import get_env_with_locale
-from testtools.matchers import (
-    Contains,
-    FileExists,
-    Not,
-)
+from testtools.matchers import Contains, FileExists, Not
 from testtools.testcase import gather_details
 
 
-def dig_call(port=53, server='127.0.0.1', commands=None):
+def dig_call(port=53, server="127.0.0.1", commands=None):
     """Call `dig` with the given command.
 
     Note that calling dig without a command will perform an NS
@@ -42,19 +38,16 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     # The time and tries below are high so that tests pass in environments
     # that are much slower than the average developer's machine, so beware
     # before lowering. Many Bothans died to discover these parameters.
-    cmd = [
-        'dig', '+time=10', '+tries=5', '@%s' % server, '-p',
-        '%d' % port]
+    cmd = ["dig", "+time=10", "+tries=5", "@%s" % server, "-p", "%d" % port]
     if commands is not None:
         if not isinstance(commands, list):
-            commands = (commands, )
+            commands = (commands,)
         cmd.extend(commands)
     output = check_output(cmd, env=get_env_with_locale())
     return output.decode("utf-8").strip()
 
 
 class TestBINDFixture(MAASTestCase):
-
     def test_start_check_shutdown(self):
         # The fixture correctly starts and stops BIND.
         with BINDServer() as fixture:
@@ -77,7 +70,6 @@ class TestBINDFixture(MAASTestCase):
 
 
 class TestBINDServerResources(MAASTestCase):
-
     def test_defaults(self):
         with BINDServerResources() as resources:
             self.assertIsInstance(resources.port, int)
@@ -87,8 +79,7 @@ class TestBINDServerResources(MAASTestCase):
             self.assertIs(resources.include_in_options, None)
             self.assertIsInstance(resources.named_file, str)
             self.assertIsInstance(resources.conf_file, str)
-            self.assertIsInstance(
-                resources.rndcconf_file, str)
+            self.assertIsInstance(resources.rndcconf_file, str)
 
     def test_setUp_copies_executable(self):
         with BINDServerResources() as resources:
@@ -98,30 +89,36 @@ class TestBINDServerResources(MAASTestCase):
         with BINDServerResources() as resources:
             self.assertThat(
                 resources.conf_file,
-                FileContains(matcher=Contains(
-                    b'listen-on port %d' % resources.port)))
+                FileContains(
+                    matcher=Contains(b"listen-on port %d" % resources.port)
+                ),
+            )
             self.assertThat(
                 resources.rndcconf_file,
-                FileContains(matcher=Contains(
-                    b'default-port %d' % (
-                        resources.rndc_port))))
+                FileContains(
+                    matcher=Contains(
+                        b"default-port %d" % (resources.rndc_port)
+                    )
+                ),
+            )
             # This should ideally be in its own test but it's here to cut
             # test run time. See test_setUp_honours_include_in_options()
             # as its counterpart.
             self.assertThat(
                 resources.conf_file,
-                Not(FileContains(matcher=Contains(
-                    "forwarders"))))
+                Not(FileContains(matcher=Contains("forwarders"))),
+            )
 
     def test_setUp_honours_include_in_options(self):
         forwarders = "forwarders { 1.2.3.4; };"
         with BINDServerResources(include_in_options=forwarders) as resources:
-            expected_in_file = (
-                resources.homedir + '/' + forwarders).encode("ascii")
+            expected_in_file = (resources.homedir + "/" + forwarders).encode(
+                "ascii"
+            )
             self.assertThat(
                 resources.conf_file,
-                FileContains(matcher=Contains(
-                    expected_in_file)))
+                FileContains(matcher=Contains(expected_in_file)),
+            )
 
     def test_defaults_reallocated_after_teardown(self):
         seen_homedirs = set()

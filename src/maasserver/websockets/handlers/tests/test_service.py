@@ -13,7 +13,6 @@ from maasserver.websockets.handlers.service import ServiceHandler
 
 
 class TestServiceHandler(MAASServerTestCase):
-
     def dehydrate_service(self, service, for_list=False):
         data = {
             "id": service.id,
@@ -36,8 +35,8 @@ class TestServiceHandler(MAASServerTestCase):
         node = factory.make_RackController()
         service = factory.make_Service(node)
         self.assertEqual(
-            self.dehydrate_service(service),
-            handler.get({"id": service.id}))
+            self.dehydrate_service(service), handler.get({"id": service.id})
+        )
 
     def test_list(self):
         user = factory.make_User()
@@ -47,6 +46,6 @@ class TestServiceHandler(MAASServerTestCase):
         expected_services = [
             self.dehydrate_service(service, for_list=True)
             for service in Service.objects.all()
-            ]
+        ]
         self.assertGreater(len(expected_services), 0)
         self.assertItemsEqual(expected_services, handler.list({}))

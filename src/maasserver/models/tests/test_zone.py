@@ -6,10 +6,7 @@
 __all__ = []
 
 from maasserver.enum import NODE_TYPE
-from maasserver.models.zone import (
-    DEFAULT_ZONE_NAME,
-    Zone,
-)
+from maasserver.models.zone import DEFAULT_ZONE_NAME, Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -20,12 +17,14 @@ class TestZoneManager(MAASServerTestCase):
 
     def test_get_default_zone_returns_default_zone(self):
         self.assertEqual(
-            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
+            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name
+        )
 
     def test_get_default_zone_ignores_other_zones(self):
         factory.make_Zone()
         self.assertEqual(
-            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
+            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name
+        )
 
 
 class TestZone(MAASServerTestCase):
@@ -34,8 +33,8 @@ class TestZone(MAASServerTestCase):
     def test_init(self):
         node1 = factory.make_Node()
         node2 = factory.make_Node()
-        name = factory.make_name('name')
-        description = factory.make_name('description')
+        name = factory.make_name("name")
+        description = factory.make_name("description")
 
         zone = Zone(name=name, description=description)
         zone.save()
@@ -50,7 +49,8 @@ class TestZone(MAASServerTestCase):
                 node1.zone,
                 node2.zone,
             ),
-            (set([node1, node2]), name, description, zone, zone))
+            (set([node1, node2]), name, description, zone, zone),
+        )
 
     def test_delete_deletes_zone(self):
         zone = factory.make_Zone()
@@ -81,7 +81,8 @@ class TestZone(MAASServerTestCase):
         device1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
         device2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
         rack_controller = factory.make_Node(
-            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER)
+            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER
+        )
         self.assertEqual(zone.node_only_set.count(), 3)
         self.assertIn(node1, zone.node_only_set)
         self.assertIn(node2, zone.node_only_set)
@@ -99,7 +100,8 @@ class TestZone(MAASServerTestCase):
         device1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
         device2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
         rack_controller = factory.make_Node(
-            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER)
+            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER
+        )
         self.assertEqual(zone.device_only_set.count(), 2)
         self.assertNotIn(node1, zone.device_only_set)
         self.assertNotIn(node2, zone.device_only_set)
@@ -117,7 +119,8 @@ class TestZone(MAASServerTestCase):
         device1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
         device2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
         rack_controller = factory.make_Node(
-            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER)
+            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER
+        )
         self.assertEqual(zone.device_only_set.count(), 2)
         self.assertNotIn(node1, zone.rack_controller_only_set)
         self.assertNotIn(node2, zone.rack_controller_only_set)

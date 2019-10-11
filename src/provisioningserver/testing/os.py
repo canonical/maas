@@ -2,9 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for testing operating systems-related code."""
 
-__all__ = [
-    'FakeOS',
-    ]
+__all__ = ["FakeOS"]
 
 
 from maastesting.factory import factory
@@ -25,10 +23,7 @@ class FakeOS(OperatingSystem):
         self.title = name
         self.purpose = purpose
         if releases is None:
-            self.fake_list = [
-                factory.make_string()
-                for _ in range(3)
-                ]
+            self.fake_list = [factory.make_string() for _ in range(3)]
         else:
             self.fake_list = releases
 
@@ -53,15 +48,14 @@ def make_osystem(testcase, osystem, purpose=None, releases=None):
     if osystem not in OperatingSystemRegistry:
         fake = FakeOS(osystem, purpose, releases)
         OperatingSystemRegistry.register_item(fake.name, fake)
-        testcase.addCleanup(
-            OperatingSystemRegistry.unregister_item, osystem)
+        testcase.addCleanup(OperatingSystemRegistry.unregister_item, osystem)
         return fake
 
     else:
 
         obj = OperatingSystemRegistry[osystem]
         old_func = obj.get_boot_image_purposes
-        testcase.patch(obj, 'get_boot_image_purposes').return_value = purpose
+        testcase.patch(obj, "get_boot_image_purposes").return_value = purpose
 
         def reset_func(obj, old_func):
             obj.get_boot_image_purposes = old_func

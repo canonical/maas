@@ -32,7 +32,6 @@ from twisted.internet import ssl
 
 
 class TestGetSerial(MAASTestCase):
-
     def test_that_it_works_eh(self):
         nowish = datetime(2014, 0o3, 24, 16, 0o7, tzinfo=UTC)
         security_datetime = self.patch(security, "datetime")
@@ -46,19 +45,18 @@ class TestGetSerial(MAASTestCase):
 is_valid_region_certificate = MatchesAll(
     IsInstance(ssl.PrivateCertificate),
     AfterPreprocessing(
-        lambda cert: cert.getSubject(),
-        Equals({"commonName": b"MAAS Region"})),
+        lambda cert: cert.getSubject(), Equals({"commonName": b"MAAS Region"})
+    ),
     AfterPreprocessing(
-        lambda cert: cert.getPublicKey().original.bits(),
-        Equals(2048)),
+        lambda cert: cert.getPublicKey().original.bits(), Equals(2048)
+    ),
     AfterPreprocessing(
-        lambda cert: cert.privateKey.original.bits(),
-        Equals(2048)),
+        lambda cert: cert.privateKey.original.bits(), Equals(2048)
+    ),
 )
 
 
 class TestCertificateFunctions(MAASServerTestCase):
-
     def patch_serial(self):
         serial = self.getUniqueInteger()
         self.patch(security, "get_serial").return_value = serial
@@ -75,12 +73,14 @@ class TestCertificateFunctions(MAASServerTestCase):
         security.save_region_certificate(cert)
         self.assertEqual(
             cert.dumpPEM().decode("ascii"),
-            Config.objects.get_config("rpc_region_certificate"))
+            Config.objects.get_config("rpc_region_certificate"),
+        )
 
     def test_load_region_certificate(self):
         cert = security.generate_region_certificate()
         Config.objects.set_config(
-            "rpc_region_certificate", cert.dumpPEM().decode("ascii"))
+            "rpc_region_certificate", cert.dumpPEM().decode("ascii")
+        )
         self.assertEqual(cert, security.load_region_certificate())
 
     def test_load_region_certificate_when_none_exists(self):
@@ -98,20 +98,20 @@ class TestCertificateFunctions(MAASServerTestCase):
 
 
 is_valid_secret = MatchesAll(
-    IsInstance(bytes), AfterPreprocessing(
-        len, MatchesAny(Equals(16), GreaterThan(16))))
+    IsInstance(bytes),
+    AfterPreprocessing(len, MatchesAny(Equals(16), GreaterThan(16))),
+)
 
 
 class TestGetSharedSecret(MAASTransactionServerTestCase):
-
     def test__generates_new_secret_when_none_exists(self):
         secret = security.get_shared_secret()
         self.assertThat(secret, is_valid_secret)
 
     def test__same_secret_is_returned_on_subsequent_calls(self):
         self.assertEqual(
-            security.get_shared_secret(),
-            security.get_shared_secret())
+            security.get_shared_secret(), security.get_shared_secret()
+        )
 
     def test__uses_database_secret_when_none_on_fs(self):
         secret_before = security.get_shared_secret()
@@ -121,7 +121,8 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
         # The secret found in the database is written to the filesystem.
         self.assertThat(
             security.get_shared_secret_filesystem_path(),
-            FileContains(b2a_hex(secret_after)))
+            FileContains(b2a_hex(secret_after)),
+        )
 
     def test__uses_filesystem_secret_when_none_in_database(self):
         secret_before = security.get_shared_secret()
@@ -131,7 +132,8 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
         # The secret found on the filesystem is saved in the database.
         self.assertEqual(
             b2a_hex(secret_after).decode("ascii"),
-            Config.objects.get_config("rpc_shared_secret"))
+            Config.objects.get_config("rpc_shared_secret"),
+        )
 
     def test__errors_when_database_value_cannot_be_decoded(self):
         security.get_shared_secret()  # Ensure that the directory exists.
@@ -141,8 +143,7 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
     def test__errors_when_database_and_filesystem_values_differ(self):
         security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "666f6f")
-        write_text_file(
-            security.get_shared_secret_filesystem_path(), "626172")
+        write_text_file(security.get_shared_secret_filesystem_path(), "626172")
         self.assertRaises(AssertionError, security.get_shared_secret)
 
     def test__deals_fine_with_whitespace_in_database_value(self):

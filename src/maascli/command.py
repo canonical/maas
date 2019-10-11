@@ -3,15 +3,9 @@
 
 """Command-related classes."""
 
-__all__ = [
-    'Command',
-    'CommandError',
-    ]
+__all__ = ["Command", "CommandError"]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
+from abc import ABCMeta, abstractmethod
 
 
 class Command(metaclass=ABCMeta):

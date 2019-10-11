@@ -3,9 +3,7 @@
 
 """The DHCPSnippet handler for the WebSocket connection."""
 
-__all__ = [
-    "DHCPSnippetHandler",
-    ]
+__all__ = ["DHCPSnippetHandler"]
 
 from email.utils import format_datetime
 
@@ -26,19 +24,18 @@ from provisioningserver.events import EVENT_TYPES
 
 
 class DHCPSnippetHandler(TimestampedModelHandler):
-
     class Meta:
-        queryset = DHCPSnippet.objects.all().select_related('value', 'node')
-        pk = 'id'
+        queryset = DHCPSnippet.objects.all().select_related("value", "node")
+        pk = "id"
         allowed_methods = [
-            'list',
-            'get',
-            'create',
-            'update',
-            'delete',
-            'revert',
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "revert",
         ]
-        listen_channels = ['dhcpsnippet']
+        listen_channels = ["dhcpsnippet"]
         form = DHCPSnippetForm
 
     def dehydrate_node(self, node):
@@ -54,11 +51,11 @@ class DHCPSnippetHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add DHCPSnippet value history to `data`."""
-        data['history'] = [
+        data["history"] = [
             {
-                'id': value.id,
-                'value': value.data,
-                'created': format_datetime(value.created),
+                "id": value.id,
+                "value": value.data,
+                "created": format_datetime(value.created),
             }
             for value in obj.value.previous_versions()
         ]
@@ -116,24 +113,33 @@ class DHCPSnippetHandler(TimestampedModelHandler):
             raise HandlerPermissionError()
 
         dhcp_snippet = self.get_object(params)
-        revert_to = params.get('to')
+        revert_to = params.get("to")
         if revert_to is None:
-            raise HandlerValidationError('You must specify where to revert to')
+            raise HandlerValidationError("You must specify where to revert to")
         try:
             revert_to = int(revert_to)
         except ValueError:
             raise HandlerValidationError(
-                "%s is an invalid 'to' value" % revert_to)
+                "%s is an invalid 'to' value" % revert_to
+            )
         try:
+
             def gc_hook(value):
                 dhcp_snippet.value = value
                 dhcp_snippet.save()
+
             dhcp_snippet.value.revert(revert_to, gc_hook=gc_hook)
             request = HttpRequest()
             request.user = self.user
             create_audit_event(
-                EVENT_TYPES.SETTINGS, ENDPOINT.UI, request, None, description=(
-                    "Reverted DHCP snippet '%s' to revision '%s'." % (
-                        dhcp_snippet.name, revert_to)))
+                EVENT_TYPES.SETTINGS,
+                ENDPOINT.UI,
+                request,
+                None,
+                description=(
+                    "Reverted DHCP snippet '%s' to revision '%s'."
+                    % (dhcp_snippet.name, revert_to)
+                ),
+            )
         except ValueError as e:
             raise HandlerValidationError(e.args[0])

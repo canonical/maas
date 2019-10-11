@@ -3,23 +3,13 @@
 
 """NTP service configuration."""
 
-__all__ = [
-    "configure_rack",
-    "configure_region",
-    "normalise_address",
-]
+__all__ = ["configure_rack", "configure_region", "normalise_address"]
 
 from functools import partial
-from itertools import (
-    dropwhile,
-    groupby,
-)
+from itertools import dropwhile, groupby
 import re
 
-from netaddr import (
-    AddrFormatError,
-    IPAddress,
-)
+from netaddr import AddrFormatError, IPAddress
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import sudo_write_file
 
@@ -44,15 +34,11 @@ def configure(servers, peers, offset):
     ntp_maas_conf = _render_ntp_maas_conf(servers, peers, offset)
     ntp_maas_conf_path = get_tentative_data_path("etc", _ntp_maas_conf_name)
     sudo_write_file(
-        ntp_maas_conf_path,
-        ntp_maas_conf.encode("utf-8"),
-        mode=0o644)
+        ntp_maas_conf_path, ntp_maas_conf.encode("utf-8"), mode=0o644
+    )
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path)
     ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
-    sudo_write_file(
-        ntp_conf_path,
-        ntp_conf.encode("utf-8"),
-        mode=0o644)
+    sudo_write_file(ntp_conf_path, ntp_conf.encode("utf-8"), mode=0o644)
 
 
 configure_region = partial(configure, offset=0)
@@ -118,9 +104,10 @@ def _render_ntp_maas_conf(servers, peers, offset):
     ]
     servers = map(normalise_address, servers)
     lines.extend(
-        "%s %s iburst" % (
-            ("server" if isinstance(server, IPAddress) else "pool"), server)
-        for server in servers)
+        "%s %s iburst"
+        % (("server" if isinstance(server, IPAddress) else "pool"), server)
+        for server in servers
+    )
     peers = map(normalise_address, peers)
     # Note: `xleave` is needed here in order to take advantage of the increased
     # accuracy that comes with enabling hardware timestamps.
@@ -139,9 +126,7 @@ def _render_ntp_maas_conf(servers, peers, offset):
     return "\n".join(lines)
 
 
-_re_pool_or_server = re.compile(
-    r" ^ \s* (?: pool | server ) \b ",
-    re.VERBOSE)
+_re_pool_or_server = re.compile(r" ^ \s* (?: pool | server ) \b ", re.VERBOSE)
 
 
 def _is_pool_or_server_option(line):
@@ -167,7 +152,8 @@ def _disable_existing_pools_and_servers(lines):
 
 _re_maas_includefile = re.compile(
     r" ^ \s* include \s+ .* \b %s \b " % re.escape(_ntp_maas_conf_name),
-    re.VERBOSE)
+    re.VERBOSE,
+)
 
 
 def _is_maas_includefile_option(line):

@@ -4,18 +4,11 @@
 """Template objects."""
 
 __metaclass__ = type
-__all__ = [
-    "Template",
-    ]
+__all__ = ["Template"]
 
 import sys
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Manager,
-)
+from django.db.models import CASCADE, CharField, ForeignKey, Manager
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -23,18 +16,19 @@ from maasserver.utils.orm import get_one
 
 
 class TemplateManager(Manager):
-
     def get_by_filename(self, filename):
         return get_one(Template.objects.filter(filename=filename))
 
     def create_or_update_default(
-            self, filename, data, verbosity=0, stdout=sys.stdout):
+        self, filename, data, verbosity=0, stdout=sys.stdout
+    ):
         """Updates the template indexed with the specified filename with
         the specified data. Creates the template file if it does not exist yet.
         Optionally writes status to stdout (if verbosity > 0).
         """
         # Circular imports
         from maasserver.models import VersionedTextFile
+
         template = get_one(Template.objects.filter(filename=filename))
         if template is None:
             comment = "Imported default: %s" % filename
@@ -72,24 +66,40 @@ class Template(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         verbose_name = "Template"
         verbose_name_plural = "Templates"
 
     objects = TemplateManager()
 
     filename = CharField(
-        editable=True, max_length=64, blank=False, null=False, unique=True,
-        help_text="Template filename")
+        editable=True,
+        max_length=64,
+        blank=False,
+        null=False,
+        unique=True,
+        help_text="Template filename",
+    )
 
     default_version = ForeignKey(
-        "VersionedTextFile", on_delete=CASCADE, editable=False, blank=False,
-        null=False, related_name="default_templates",
-        help_text="Default data for this template.")
+        "VersionedTextFile",
+        on_delete=CASCADE,
+        editable=False,
+        blank=False,
+        null=False,
+        related_name="default_templates",
+        help_text="Default data for this template.",
+    )
 
     version = ForeignKey(
-        "VersionedTextFile", on_delete=CASCADE, editable=True, blank=True,
-        null=True, related_name="templates",
-        help_text="Custom data for this template.")
+        "VersionedTextFile",
+        on_delete=CASCADE,
+        editable=True,
+        blank=True,
+        null=True,
+        related_name="templates",
+        help_text="Custom data for this template.",
+    )
 
     @property
     def value(self):

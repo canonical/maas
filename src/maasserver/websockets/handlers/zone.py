@@ -3,9 +3,7 @@
 
 """The zone handler for the WebSocket connection."""
 
-__all__ = [
-    "ZoneHandler",
-    ]
+__all__ = ["ZoneHandler"]
 
 from collections import defaultdict
 
@@ -19,25 +17,20 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class ZoneHandler(TimestampedModelHandler):
-
     class Meta:
-        queryset = (
-            Zone.objects.all()
-            .prefetch_related('node_set'))
-        pk = 'id'
+        queryset = Zone.objects.all().prefetch_related("node_set")
+        pk = "id"
         form = ZoneForm
         form_requires_request = False
         allowed_methods = [
-            'create',
-            'update',
-            'delete',
-            'get',
-            'list',
-            'set_active',
+            "create",
+            "update",
+            "delete",
+            "get",
+            "list",
+            "set_active",
         ]
-        listen_channels = [
-            "zone",
-            ]
+        listen_channels = ["zone"]
 
     def delete(self, parameters):
         """Delete this Zone."""
@@ -48,14 +41,19 @@ class ZoneHandler(TimestampedModelHandler):
     def dehydrate(self, zone, data, for_list=False):
         node_count_by_type = defaultdict(
             int,
-            zone.node_set.values('node_type').annotate(
-                node_count=Count('node_type')).values_list(
-                    'node_type', 'node_count'))
-        data.update({
-            'devices_count': node_count_by_type[NODE_TYPE.DEVICE],
-            'machines_count': node_count_by_type[NODE_TYPE.MACHINE],
-            'controllers_count': (
-                node_count_by_type[NODE_TYPE.RACK_CONTROLLER] +
-                node_count_by_type[NODE_TYPE.REGION_CONTROLLER] +
-                node_count_by_type[NODE_TYPE.REGION_AND_RACK_CONTROLLER])})
+            zone.node_set.values("node_type")
+            .annotate(node_count=Count("node_type"))
+            .values_list("node_type", "node_count"),
+        )
+        data.update(
+            {
+                "devices_count": node_count_by_type[NODE_TYPE.DEVICE],
+                "machines_count": node_count_by_type[NODE_TYPE.MACHINE],
+                "controllers_count": (
+                    node_count_by_type[NODE_TYPE.RACK_CONTROLLER]
+                    + node_count_by_type[NODE_TYPE.REGION_CONTROLLER]
+                    + node_count_by_type[NODE_TYPE.REGION_AND_RACK_CONTROLLER]
+                ),
+            }
+        )
         return data

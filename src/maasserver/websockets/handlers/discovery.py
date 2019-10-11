@@ -3,9 +3,7 @@
 
 """The Discovery handler for the WebSocket connection."""
 
-__all__ = [
-    "DiscoveryHandler",
-    ]
+__all__ = ["DiscoveryHandler"]
 
 from datetime import datetime
 import time
@@ -24,19 +22,11 @@ maaslog = get_maas_logger("websockets.discovery")
 
 
 class DiscoveryHandler(ViewModelHandler):
-
     class Meta:
-        queryset = (
-            Discovery.objects.by_unknown_ip_and_mac()
-        )
-        batch_key = 'first_seen'
-        pk = 'discovery_id'
-        allowed_methods = [
-            'list',
-            'get',
-            'clear',
-            'delete_by_mac_and_ip',
-        ]
+        queryset = Discovery.objects.by_unknown_ip_and_mac()
+        batch_key = "first_seen"
+        pk = "discovery_id"
+        allowed_methods = ["list", "get", "clear", "delete_by_mac_and_ip"]
 
     def list(self, params):
         """List objects.
@@ -48,7 +38,7 @@ class DiscoveryHandler(ViewModelHandler):
         :param limit: Maximum number of objects to return.
         """
         if "start" in params:
-            params["start"] = datetime.fromtimestamp(float(params['start']))
+            params["start"] = datetime.fromtimestamp(float(params["start"]))
         return super(DiscoveryHandler, self).list(params)
 
     def dehydrate(self, obj, data, for_list=False):
@@ -64,8 +54,7 @@ class DiscoveryHandler(ViewModelHandler):
         # unique. This is because each discovery item is always created in
         # is own transaction. If this changes then the barch key needs to
         # be changed to something that is ordered and unique.
-        return str(
-            time.mktime(obj.timetuple()) + obj.microsecond / 1e6)
+        return str(time.mktime(obj.timetuple()) + obj.microsecond / 1e6)
 
     def clear(self, params=None):
         if params is None:
@@ -73,7 +62,7 @@ class DiscoveryHandler(ViewModelHandler):
         if not self.user.has_perm(NodePermission.admin, Discovery):
             raise HandlerPermissionError()
         if len(params) == 0:
-            params['all'] = True
+            params["all"] = True
         Discovery.objects.clear(**params)
 
     def delete_by_mac_and_ip(self, params=None):

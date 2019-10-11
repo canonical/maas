@@ -19,6 +19,7 @@ do it, to ensure that the migrations meet validation requirements.)
 
 __all__ = []
 
+
 def _migrate_links_forward(MACAddress, Interface):
     """Using the links from MACAddress to StaticIPAddress, create the link
     from each StaticIPAddress to its new Interface (which was created in a
@@ -28,7 +29,7 @@ def _migrate_links_forward(MACAddress, Interface):
         # In a sense, we're just guessing here. Grab the first interface
         # with a matching MAC. It should be the correct one, since
         # we only created PhyhsicalInterfaces when we migrated.
-        ifaces = Interface.objects.filter(mac=mac).order_by('id')
+        ifaces = Interface.objects.filter(mac=mac).order_by("id")
         # XXX can we log this?
         # if len(ifaces) > 1:
         #     print("More than one interface found for mac=%s" % mac)

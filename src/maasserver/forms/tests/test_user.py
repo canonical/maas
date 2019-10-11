@@ -6,11 +6,7 @@
 __all__ = []
 
 from django.contrib.auth.models import User
-from maasserver.forms import (
-    EditUserForm,
-    NewUserCreationForm,
-    ProfileForm,
-)
+from maasserver.forms import EditUserForm, NewUserCreationForm, ProfileForm
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -18,121 +14,128 @@ from testtools.matchers import MatchesRegex
 
 
 class TestUniqueEmailForms(MAASServerTestCase):
-
     def assertFormFailsValidationBecauseEmailNotUnique(self, form):
         self.assertFalse(form.is_valid())
-        self.assertIn('email', form._errors)
-        self.assertEqual(1, len(form._errors['email']))
+        self.assertIn("email", form._errors)
+        self.assertEqual(1, len(form._errors["email"]))
         # Cope with 'Email' and 'E-mail' in error message.
         self.assertThat(
-            form._errors['email'][0],
+            form._errors["email"][0],
             MatchesRegex(
-                r'User with this E-{0,1}mail address already exists.'))
+                r"User with this E-{0,1}mail address already exists."
+            ),
+        )
 
     def test_ProfileForm_fails_validation_if_email_taken(self):
-        another_email = '%s@example.com' % factory.make_string()
+        another_email = "%s@example.com" % factory.make_string()
         factory.make_User(email=another_email)
-        email = '%s@example.com' % factory.make_string()
+        email = "%s@example.com" % factory.make_string()
         user = factory.make_User(email=email)
-        form = ProfileForm(instance=user, data={'email': another_email})
+        form = ProfileForm(instance=user, data={"email": another_email})
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_ProfileForm_validates_if_email_unchanged(self):
-        email = '%s@example.com' % factory.make_string()
+        email = "%s@example.com" % factory.make_string()
         user = factory.make_User(email=email)
-        form = ProfileForm(instance=user, data={'email': email})
+        form = ProfileForm(instance=user, data={"email": email})
         self.assertTrue(form.is_valid())
 
     def test_NewUserCreationForm_fails_validation_if_email_taken(self):
-        email = '%s@example.com' % factory.make_string()
+        email = "%s@example.com" % factory.make_string()
         username = factory.make_string()
         password = factory.make_string()
         factory.make_User(email=email)
         form = NewUserCreationForm(
             {
-                'email': email,
-                'username': username,
-                'password1': password,
-                'password2': password,
-            })
+                "email": email,
+                "username": username,
+                "password1": password,
+                "password2": password,
+            }
+        )
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_EditUserForm_fails_validation_if_email_taken(self):
-        another_email = '%s@example.com' % factory.make_string()
+        another_email = "%s@example.com" % factory.make_string()
         factory.make_User(email=another_email)
-        email = '%s@example.com' % factory.make_string()
+        email = "%s@example.com" % factory.make_string()
         user = factory.make_User(email=email)
-        form = EditUserForm(instance=user, data={'email': another_email})
+        form = EditUserForm(instance=user, data={"email": another_email})
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_EditUserForm_validates_if_email_unchanged(self):
-        email = '%s@example.com' % factory.make_string()
+        email = "%s@example.com" % factory.make_string()
         user = factory.make_User(email=email)
         form = EditUserForm(
             instance=user,
-            data={
-                'email': email,
-                'username': factory.make_string(),
-            })
+            data={"email": email, "username": factory.make_string()},
+        )
         self.assertTrue(form.is_valid())
 
 
 class TestNewUserCreationForm(MAASServerTestCase):
-
     def test_saves_to_db_by_default(self):
-        password = factory.make_name('password')
+        password = factory.make_name("password")
         params = {
-            'email': '%s@example.com' % factory.make_string(),
-            'username': factory.make_name('user'),
-            'password1': password,
-            'password2': password,
+            "email": "%s@example.com" % factory.make_string(),
+            "username": factory.make_name("user"),
+            "password1": password,
+            "password2": password,
         }
         form = NewUserCreationForm(params)
         form.save()
-        self.assertIsNotNone(User.objects.get(username=params['username']))
+        self.assertIsNotNone(User.objects.get(username=params["username"]))
 
     def test_email_is_required(self):
-        password = factory.make_name('password')
+        password = factory.make_name("password")
         params = {
-            'email': '',
-            'username': factory.make_name('user'),
-            'password1': password,
-            'password2': password,
+            "email": "",
+            "username": factory.make_name("user"),
+            "password1": password,
+            "password2": password,
         }
         form = NewUserCreationForm(params)
         self.assertFalse(form.is_valid())
-        self.assertEqual(
-            {'email': ['This field is required.']},
-            form._errors)
+        self.assertEqual({"email": ["This field is required."]}, form._errors)
 
     def test_does_not_save_to_db_if_commit_is_False(self):
-        password = factory.make_name('password')
+        password = factory.make_name("password")
         params = {
-            'email': '%s@example.com' % factory.make_string(),
-            'username': factory.make_name('user'),
-            'password1': password,
-            'password2': password,
+            "email": "%s@example.com" % factory.make_string(),
+            "username": factory.make_name("user"),
+            "password1": password,
+            "password2": password,
         }
         form = NewUserCreationForm(params)
         form.save(commit=False)
         self.assertItemsEqual(
-            [], User.objects.filter(username=params['username']))
+            [], User.objects.filter(username=params["username"])
+        )
 
     def test_fields_order(self):
         form = NewUserCreationForm()
 
         self.assertEqual(
-            ['username', 'last_name', 'email', 'password1', 'password2',
-                'is_superuser'],
-            list(form.fields))
+            [
+                "username",
+                "last_name",
+                "email",
+                "password1",
+                "password2",
+                "is_superuser",
+            ],
+            list(form.fields),
+        )
 
     def test_password_not_required_with_external_auth(self):
         Config.objects.set_config(
-            'external_auth_url', 'http://auth.example.com')
+            "external_auth_url", "http://auth.example.com"
+        )
         form = NewUserCreationForm()
         params = {
-            'email': factory.make_email(),
-            'username': factory.make_name('user')}
+            "email": factory.make_email(),
+            "username": factory.make_name("user"),
+        }
         form = NewUserCreationForm(params)
         user = form.save()
         self.assertFalse(user.has_usable_password())

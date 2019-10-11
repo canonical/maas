@@ -3,26 +3,17 @@
 
 """The MAAS WebSockets protocol."""
 
-__all__ = [
-    "WebSocketProtocol",
-]
+__all__ = ["WebSocketProtocol"]
 
 from collections import deque
 from functools import partial
 from http.cookies import SimpleCookie
 import json
 from typing import Optional
-from urllib.parse import (
-    parse_qs,
-    urlparse,
-)
+from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
-from django.contrib.auth import (
-    BACKEND_SESSION_KEY,
-    load_backend,
-    SESSION_KEY,
-)
+from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
@@ -33,20 +24,11 @@ from maasserver.websockets import handlers
 from maasserver.websockets.websockets import STATUSES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
-from provisioningserver.utils.twisted import (
-    deferred,
-    synchronous,
-)
+from provisioningserver.utils.twisted import deferred, synchronous
 from provisioningserver.utils.url import splithost
 from twisted.internet import defer
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-)
-from twisted.internet.protocol import (
-    Factory,
-    Protocol,
-)
+from twisted.internet.defer import fail, inlineCallbacks
+from twisted.internet.protocol import Factory, Protocol
 from twisted.python.modules import getModule
 from twisted.web.server import NOT_DONE_YET
 
@@ -111,8 +93,7 @@ class WebSocketProtocol(Protocol):
 
         cookies = self.transport.cookies.decode("ascii")
         d = self.authenticate(
-            get_cookie(cookies, 'sessionid'),
-            get_cookie(cookies, 'csrftoken'),
+            get_cookie(cookies, "sessionid"), get_cookie(cookies, "csrftoken")
         )
 
         # Only add the client to the list of known clients if/when the
@@ -130,9 +111,10 @@ class WebSocketProtocol(Protocol):
                 # Create the request for the handlers for this connection.
                 self.request = HttpRequest()
                 self.request.user = self.user
-                self.request.META['HTTP_USER_AGENT'] = (
-                    self.transport.user_agent)
-                self.request.META['REMOTE_ADDR'] = self.transport.ip_address
+                self.request.META[
+                    "HTTP_USER_AGENT"
+                ] = self.transport.user_agent
+                self.request.META["REMOTE_ADDR"] = self.transport.ip_address
 
                 # XXX newell 2018-10-17 bug=1798479:
                 # Check that 'SERVER_NAME' and 'SERVER_PORT' are set.
@@ -145,13 +127,13 @@ class WebSocketProtocol(Protocol):
                 # ipv4 or an ipv6 address.
                 host, port = splithost(str(self.transport.host))
                 if host:
-                    self.request.META['SERVER_NAME'] = host
+                    self.request.META["SERVER_NAME"] = host
                 else:
-                    self.request.META['SERVER_NAME'] = 'localhost'
+                    self.request.META["SERVER_NAME"] = "localhost"
                 if port:
-                    self.request.META['SERVER_PORT'] = port
+                    self.request.META["SERVER_PORT"] = port
                 else:
-                    self.request.META['SERVER_PORT'] = 5248
+                    self.request.META["SERVER_PORT"] = 5248
 
                 # Be sure to process messages after the metadata is populated,
                 # in order to avoid bug #1802390.
@@ -172,7 +154,8 @@ class WebSocketProtocol(Protocol):
         msgFormat = "Closing connection: {status!r} ({reason!r})"
         log.debug(msgFormat, status=status, reason=reason)
         self.transport._receiver._transport.loseConnection(
-            status, reason.encode("utf-8"))
+            status, reason.encode("utf-8")
+        )
 
     def getMessageField(self, message, field):
         """Get `field` value from `message`.
@@ -183,7 +166,8 @@ class WebSocketProtocol(Protocol):
         if field not in message:
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR,
-                "Missing %s field in the received message." % field)
+                "Missing %s field in the received message." % field,
+            )
             return None
         return message[field]
 
@@ -203,8 +187,11 @@ class WebSocketProtocol(Protocol):
             # Get the user again prefetching the SSHKey for the user. This is
             # done so a query is not made for each action that is possible on
             # a node in the node listing.
-            return User.objects.filter(
-                id=user.id).prefetch_related('sshkey_set').first()
+            return (
+                User.objects.filter(id=user.id)
+                .prefetch_related("sshkey_set")
+                .first()
+            )
         else:
             return None
 
@@ -219,26 +206,22 @@ class WebSocketProtocol(Protocol):
         the connection is being dropped, and that processing should cease.
         """
         # Check the CSRF token.
-        tokens = parse_qs(
-            urlparse(self.transport.uri).query).get(b'csrftoken')
+        tokens = parse_qs(urlparse(self.transport.uri).query).get(b"csrftoken")
         # Convert tokens from bytes to str as the transport sends it
         # as ascii bytes and the cookie is decoded as unicode.
         if tokens is not None:
-            tokens = [
-                token.decode("ascii")
-                for token in tokens
-            ]
+            tokens = [token.decode("ascii") for token in tokens]
         if tokens is None or csrftoken not in tokens:
             # No csrftoken in the request or the token does not match.
-            self.loseConnection(
-                STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
+            self.loseConnection(STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
             return None
 
         # Authenticate user.
         def got_user(user):
             if user is None:
                 self.loseConnection(
-                    STATUSES.PROTOCOL_ERROR, "Failed to authenticate user.")
+                    STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
+                )
                 return None
             else:
                 return user
@@ -246,7 +229,8 @@ class WebSocketProtocol(Protocol):
         def got_user_error(failure):
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR,
-                "Error authenticating user: %s" % failure.getErrorMessage())
+                "Error authenticating user: %s" % failure.getErrorMessage(),
+            )
             return None
 
         d = deferToDatabase(self.getUserFromSessionId, session_id)
@@ -257,12 +241,13 @@ class WebSocketProtocol(Protocol):
     def dataReceived(self, data):
         """Received message from client and queue up the message."""
         try:
-            message = json.loads(data.decode('utf-8'))
+            message = json.loads(data.decode("utf-8"))
         except ValueError:
             # Only accept JSON data over the protocol. Close the connect
             # with invalid data.
             self.loseConnection(
-                STATUSES.PROTOCOL_ERROR, "Invalid data expecting JSON object.")
+                STATUSES.PROTOCOL_ERROR, "Invalid data expecting JSON object."
+            )
             return ""
         self.messages.append(message)
         self.processMessages()
@@ -287,7 +272,8 @@ class WebSocketProtocol(Protocol):
             if msg_type not in (MSG_TYPE.REQUEST, MSG_TYPE.PING):
                 # Only support request messages from the client.
                 self.loseConnection(
-                    STATUSES.PROTOCOL_ERROR, "Invalid message type.")
+                    STATUSES.PROTOCOL_ERROR, "Invalid message type."
+                )
                 return handledMessages
             if self.handleRequest(message, msg_type) is None:
                 # Handling of request has failed, stop processing the messages
@@ -304,10 +290,13 @@ class WebSocketProtocol(Protocol):
 
         if msg_type == MSG_TYPE.PING:
             self.sequence_number += 1
-            return defer.succeed(self.sendResult(
-                request_id=request_id,
-                result=self.sequence_number,
-                msg_type=MSG_TYPE.PING_REPLY))
+            return defer.succeed(
+                self.sendResult(
+                    request_id=request_id,
+                    result=self.sequence_number,
+                    msg_type=MSG_TYPE.PING_REPLY,
+                )
+            )
 
         # Decode the method to be called.
         msg_method = self.getMessageField(message, "method")
@@ -318,7 +307,8 @@ class WebSocketProtocol(Protocol):
         except ValueError:
             # Invalid method. Method format is "handler.method".
             self.loseConnection(
-                STATUSES.PROTOCOL_ERROR, "Invalid method formatting.")
+                STATUSES.PROTOCOL_ERROR, "Invalid method formatting."
+            )
             return None
 
         # Create the handler for the call.
@@ -326,14 +316,16 @@ class WebSocketProtocol(Protocol):
         if handler_class is None:
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR,
-                "Handler %s does not exist." % handler_name)
+                "Handler %s does not exist." % handler_name,
+            )
             return None
 
         handler = self.buildHandler(handler_class)
         d = handler.execute(method, message.get("params", {}))
         d.addCallbacks(
             partial(self.sendResult, request_id),
-            partial(self.sendError, request_id, handler, method))
+            partial(self.sendError, request_id, handler, method),
+        )
         return d
 
     def _json_encode(self, obj):
@@ -341,7 +333,7 @@ class WebSocketProtocol(Protocol):
         `sendResult` to be seamlessly decoded.
         """
         if isinstance(obj, bytes):
-            return obj.decode(encoding='utf-8', errors='ignore')
+            return obj.decode(encoding="utf-8", errors="ignore")
         else:
             raise TypeError("Could not convert object to JSON: %r" % obj)
 
@@ -352,9 +344,10 @@ class WebSocketProtocol(Protocol):
             "request_id": request_id,
             "rtype": RESPONSE_TYPE.SUCCESS,
             "result": result,
-            }
-        self.transport.write(json.dumps(
-            result_msg, default=self._json_encode).encode("ascii"))
+        }
+        self.transport.write(
+            json.dumps(result_msg, default=self._json_encode).encode("ascii")
+        )
         return result
 
     def sendError(self, request_id, handler, method, failure):
@@ -370,7 +363,11 @@ class WebSocketProtocol(Protocol):
         else:
             error = failure.getErrorMessage()
         why = "Error on request (%s) %s.%s: %s" % (
-            request_id, handler._meta.handler_name, method, error)
+            request_id,
+            handler._meta.handler_name,
+            method,
+            error,
+        )
         log.err(failure, why)
 
         error_msg = {
@@ -378,9 +375,10 @@ class WebSocketProtocol(Protocol):
             "request_id": request_id,
             "rtype": RESPONSE_TYPE.ERROR,
             "error": error,
-            }
+        }
         self.transport.write(
-            json.dumps(error_msg, default=self._json_encode).encode("ascii"))
+            json.dumps(error_msg, default=self._json_encode).encode("ascii")
+        )
         return None
 
     def sendNotify(self, name, action, data):
@@ -390,16 +388,16 @@ class WebSocketProtocol(Protocol):
             "name": name,
             "action": action,
             "data": data,
-            }
+        }
         self.transport.write(
-            json.dumps(notify_msg, default=self._json_encode).encode("ascii"))
+            json.dumps(notify_msg, default=self._json_encode).encode("ascii")
+        )
 
     def buildHandler(self, handler_class):
         """Return an initialised instance of `handler_class`."""
         handler_name = handler_class._meta.handler_name
         handler_cache = self.cache.setdefault(handler_name, {})
-        return handler_class(
-            self.user, handler_cache, self.request)
+        return handler_class(self.user, handler_cache, self.request)
 
 
 class WebSocketFactory(Factory):
@@ -438,15 +436,17 @@ class WebSocketFactory(Factory):
             # Only care about class that have _meta attribute, as that
             # means its a handler.
             cls = getattr(handlers, name)
-            if not hasattr(cls, '_meta'):
+            if not hasattr(cls, "_meta"):
                 continue
             meta = cls._meta
             # Skip over abstract handlers as they only provide helpers for
             # children classes and should not be exposed over the channel.
             if meta.abstract:
                 continue
-            if (meta.handler_name is not None and
-                    meta.handler_name not in self.handlers):
+            if (
+                meta.handler_name is not None
+                and meta.handler_name not in self.handlers
+            ):
                 self.handlers[meta.handler_name] = cls
 
     def getHandler(self, name):
@@ -458,14 +458,16 @@ class WebSocketFactory(Factory):
         for handler in self.handlers.values():
             for channel in handler._meta.listen_channels:
                 self.listener.register(
-                    channel, partial(self.onNotify, handler, channel))
+                    channel, partial(self.onNotify, handler, channel)
+                )
 
     @inlineCallbacks
     def onNotify(self, handler_class, channel, action, obj_id):
         for client in self.clients:
             handler = client.buildHandler(handler_class)
             data = yield deferToDatabase(
-                self.processNotify, handler, channel, action, obj_id)
+                self.processNotify, handler, channel, action, obj_id
+            )
             if data is not None:
                 (name, client_action, data) = data
                 client.sendNotify(name, client_action, data)
@@ -478,19 +480,21 @@ class WebSocketFactory(Factory):
         """Register for connected and disconnected events from the RPC
         service."""
         rpc_service = services.getServiceNamed("rpc")
-        rpc_service.events.connected.registerHandler(
-            self.updateRackController)
+        rpc_service.events.connected.registerHandler(self.updateRackController)
         rpc_service.events.disconnected.registerHandler(
-            self.updateRackController)
+            self.updateRackController
+        )
 
     def unregisterRPCEvents(self):
         """Unregister from connected and disconnected events from the RPC
         service."""
         rpc_service = services.getServiceNamed("rpc")
         rpc_service.events.connected.unregisterHandler(
-            self.updateRackController)
+            self.updateRackController
+        )
         rpc_service.events.disconnected.unregisterHandler(
-            self.updateRackController)
+            self.updateRackController
+        )
 
     def updateRackController(self, ident):
         """Called when a rack controller connects or disconnects from this
@@ -503,7 +507,8 @@ class WebSocketFactory(Factory):
         d.addErrback(
             log.err,
             "Failed to send 'update' notification for rack controller(%s) "
-            "when RPC event fired." % ident)
+            "when RPC event fired." % ident,
+        )
         return d
 
     def sendOnNotifyToController(self, system_id):
@@ -513,4 +518,5 @@ class WebSocketFactory(Factory):
             return fail("Unable to get the 'controller' handler.")
         else:
             return self.onNotify(
-                rack_handler, "controller", "update", system_id)
+                rack_handler, "controller", "update", system_id
+            )

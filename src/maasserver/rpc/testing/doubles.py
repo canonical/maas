@@ -3,11 +3,7 @@
 
 """Test doubles for the region's RPC implementation."""
 
-__all__ = [
-    "DummyClient",
-    "DummyClients",
-    "HandshakingRegionServer",
-]
+__all__ = ["DummyClient", "DummyClients", "HandshakingRegionServer"]
 
 from maasserver.rpc.regionservice import RegionServer
 from maastesting.factory import factory

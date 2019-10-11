@@ -3,30 +3,16 @@
 
 """Model definition for Neighbour."""
 
-__all__ = [
-    'Neighbour',
-]
+__all__ = ["Neighbour"]
 
-from django.db.models import (
-    CASCADE,
-    ForeignKey,
-    IntegerField,
-    Manager,
-)
+from django.db.models import CASCADE, ForeignKey, IntegerField, Manager
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
-from maasserver.fields import (
-    MAASIPAddressField,
-    MACAddressField,
-)
+from maasserver.fields import MAASIPAddressField, MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import (
-    get_one,
-    MAASQueriesMixin,
-    UniqueViolation,
-)
+from maasserver.utils.orm import get_one, MAASQueriesMixin, UniqueViolation
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import get_mac_organization
 
@@ -35,19 +21,21 @@ maaslog = get_maas_logger("neighbour")
 
 
 class NeighbourQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'ip': "__ip",
-            'mac': "__mac_address",
+            "ip": "__ip",
+            "mac": "__mac_address",
         }
         return super(NeighbourQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class NeighbourQuerySet(NeighbourQueriesMixin, QuerySet):
@@ -87,7 +75,8 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
             return ""
 
     def delete_and_log_obsolete_neighbours(
-            self, ip: str, mac: str, interface: str, vid: int) -> None:
+        self, ip: str, mac: str, interface: str, vid: int
+    ) -> None:
         """Removes any existing neighbours matching the specified values.
 
         Excludes the given MAC address from removal, since it will be updated
@@ -97,20 +86,27 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
         """
         deleted = False
         previous_bindings = self.filter(
-            interface=interface, ip=ip, vid=vid).exclude(mac_address=mac)
+            interface=interface, ip=ip, vid=vid
+        ).exclude(mac_address=mac)
         # Technically there should be just one existing mapping for this
         # (interface, ip, vid), but the defensive thing to do is to delete
         # them all.
         for binding in previous_bindings:
-            maaslog.info("%s: IP address %s%s moved from %s to %s" % (
-                interface.get_log_string(), ip, self.get_vid_log_snippet(vid),
-                binding.mac_address, mac))
+            maaslog.info(
+                "%s: IP address %s%s moved from %s to %s"
+                % (
+                    interface.get_log_string(),
+                    ip,
+                    self.get_vid_log_snippet(vid),
+                    binding.mac_address,
+                    mac,
+                )
+            )
             binding.delete()
             deleted = True
         return deleted
 
-    def get_current_binding(
-            self, ip: str, mac: str, interface: str, vid: int):
+    def get_current_binding(self, ip: str, mac: str, interface: str, vid: int):
         """Returns the current neighbour for the specified values.
 
         Returns None if an object representing the specified IP, MAC,
@@ -125,7 +121,8 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
             should never happen due to the `unique_together`.)
         """
         query = self.filter(
-            interface=interface, ip=ip, vid=vid, mac_address=mac)
+            interface=interface, ip=ip, vid=vid, mac_address=mac
+        )
         # If we get an exception here, it is most likely due to an unlikely
         # race condition. (either that, or the caller neglected to remove
         # obsolete bindings before calling this method.) Therefore, raise
@@ -140,7 +137,7 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
         data from the interface (and its related node) in order to provide
         useful, concise information about the neighbour.
         """
-        return self.select_related('interface__node').order_by('-updated')
+        return self.select_related("interface__node").order_by("-updated")
 
 
 class Neighbour(CleanSave, TimestampedModel):
@@ -157,14 +154,17 @@ class Neighbour(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         verbose_name = "Neighbour"
         verbose_name_plural = "Neighbours"
-        unique_together = (
-            ("interface", "vid", "mac_address", "ip")
-        )
+        unique_together = ("interface", "vid", "mac_address", "ip")
 
     # Observed IP address.
     ip = MAASIPAddressField(
-        unique=False, null=True, editable=False, blank=True,
-        default=None, verbose_name='IP')
+        unique=False,
+        null=True,
+        editable=False,
+        blank=True,
+        default=None,
+        verbose_name="IP",
+    )
 
     # Time the observation occurred in seconds since the epoch, as seen from
     # the rack controller.
@@ -181,12 +181,18 @@ class Neighbour(CleanSave, TimestampedModel):
 
     # Rack interface the neighbour was observed on.
     interface = ForeignKey(
-        Interface, unique=False, blank=False, null=False, editable=False,
-        on_delete=CASCADE)
+        Interface,
+        unique=False,
+        blank=False,
+        null=False,
+        editable=False,
+        on_delete=CASCADE,
+    )
 
     # Observed MAC address.
     mac_address = MACAddressField(
-        unique=False, null=True, blank=True, editable=False)
+        unique=False, null=True, blank=True, editable=False
+    )
 
     objects = NeighbourManager()
 

@@ -3,9 +3,7 @@
 
 """RPC helpers relating to configuration settings."""
 
-__all__ = [
-    "get_proxies",
-]
+__all__ = ["get_proxies"]
 
 from urllib.parse import urlparse
 

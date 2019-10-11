@@ -3,19 +3,12 @@
 
 """ORM-related test helpers."""
 
-__all__ = [
-    'PostCommitHooksTestMixin',
-    'reload_objects',
-    'rollback',
-]
+__all__ = ["PostCommitHooksTestMixin", "reload_objects", "rollback"]
 
 from contextlib import contextmanager
 
 from django.db import transaction
-from maasserver.utils.orm import (
-    gen_description_of_hooks,
-    post_commit_hooks,
-)
+from maasserver.utils.orm import gen_description_of_hooks, post_commit_hooks
 import testtools
 from testtools.matchers import HasLength
 
@@ -37,8 +30,7 @@ def reload_objects(model_class, model_objects):
     :rtype: Sequence of `model_class` objects.
     """
     assert all(isinstance(obj, model_class) for obj in model_objects)
-    return model_class.objects.filter(
-        id__in=[obj.id for obj in model_objects])
+    return model_class.objects.filter(id__in=[obj.id for obj in model_objects])
 
 
 class PostCommitHooksTestMixin(testtools.TestCase):
@@ -53,11 +45,14 @@ class PostCommitHooksTestMixin(testtools.TestCase):
         try:
             super(PostCommitHooksTestMixin, self).setUp()
             description_of_hooks = "\n".join(
-                gen_description_of_hooks(post_commit_hooks.hooks))
+                gen_description_of_hooks(post_commit_hooks.hooks)
+            )
             self.expectThat(
-                post_commit_hooks.hooks, HasLength(0),
+                post_commit_hooks.hooks,
+                HasLength(0),
                 "One or more post-commit tasks were present before "
-                "commencing this test:\n" + description_of_hooks)
+                "commencing this test:\n" + description_of_hooks,
+            )
         finally:
             # By this point we will have reported the leaked post-commit
             # tasks, so always reset them; we don't want to report them again,
@@ -67,11 +62,14 @@ class PostCommitHooksTestMixin(testtools.TestCase):
     def tearDown(self):
         try:
             description_of_hooks = "\n".join(
-                gen_description_of_hooks(post_commit_hooks.hooks))
+                gen_description_of_hooks(post_commit_hooks.hooks)
+            )
             self.expectThat(
-                post_commit_hooks.hooks, HasLength(0),
+                post_commit_hooks.hooks,
+                HasLength(0),
                 "One or more post-commit tasks were present at the end of "
-                "this test.\n" + description_of_hooks)
+                "this test.\n" + description_of_hooks,
+            )
             super(PostCommitHooksTestMixin, self).tearDown()
         finally:
             # By this point we will have reported the leaked post-commit

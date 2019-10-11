@@ -10,11 +10,7 @@ its previous trigger. All triggers will be added into the database via the
 `start_up` method for regiond.
 """
 
-__all__ = [
-    "register_all_triggers",
-    "register_procedure",
-    "register_trigger",
-    ]
+__all__ = ["register_all_triggers", "register_procedure", "register_trigger"]
 
 from contextlib import closing
 from textwrap import dedent
@@ -35,35 +31,32 @@ def register_procedure(procedure):
 # Event names: create/update/delete.
 # The majority of triggers use this convention; this is the default.
 EVENTS_CUD = (
-    ('insert', 'create', 'NEW'),
-    ('update', 'update', 'NEW'),
-    ('delete', 'delete', 'OLD'),
+    ("insert", "create", "NEW"),
+    ("update", "update", "NEW"),
+    ("delete", "delete", "OLD"),
 )
 
 # Event names: insert/update/delete.
 EVENTS_IUD = (
-    ('insert', 'insert', 'NEW'),
-    ('update', 'update', 'NEW'),
-    ('delete', 'delete', 'OLD'),
+    ("insert", "insert", "NEW"),
+    ("update", "update", "NEW"),
+    ("delete", "delete", "OLD"),
 )
 
 # Event names: link/update/unlink.
 EVENTS_LUU = (
-    ('insert', 'link', 'NEW'),
-    ('update', 'update', 'NEW'),
-    ('delete', 'unlink', 'OLD'),
+    ("insert", "link", "NEW"),
+    ("update", "update", "NEW"),
+    ("delete", "unlink", "OLD"),
 )
 
 # Event names: link/unlink.
-EVENTS_LU = (
-    ('insert', 'link', 'NEW'),
-    ('delete', 'unlink', 'OLD'),
-)
+EVENTS_LU = (("insert", "link", "NEW"), ("delete", "unlink", "OLD"))
 
 
 def register_triggers(
-        table, event_prefix, params=None, fields=None, events=None,
-        when="after"):
+    table, event_prefix, params=None, fields=None, events=None, when="after"
+):
     """Registers a set of triggers for insert, update, and delete.
 
     Event names will be determined based on MAAS convention, unless the
@@ -91,10 +84,15 @@ def register_triggers(
         if params is not None:
             event_params = {}
             for key, value in params.items():
-                event_params['%s.%s' % (pg_obj, key)] = value
+                event_params["%s.%s" % (pg_obj, key)] = value
         register_trigger(
-            table, '%s_%s_notify' % (event_prefix, maas_event_type),
-            pg_event, event_params, fields, when)
+            table,
+            "%s_%s_notify" % (event_prefix, maas_event_type),
+            pg_event,
+            event_params,
+            fields,
+            when,
+        )
 
 
 def _make_when_clause(is_update, params, fields):
@@ -108,24 +106,25 @@ def _make_when_clause(is_update, params, fields):
         will be checked.
     :return: the WHEN clause to use in the trigger.
     """
-    when_clause = ''
+    when_clause = ""
     if params is not None or (fields is not None and is_update):
         if params is None:
             params = {}
         if fields is None:
             fields = []
-        when_clause = 'WHEN ('
-        when_clause += ' AND '.join([
-            "%s = '%s'" % (key, value)
-            for key, value in params.items()
-        ])
+        when_clause = "WHEN ("
+        when_clause += " AND ".join(
+            ["%s = '%s'" % (key, value) for key, value in params.items()]
+        )
         if is_update and len(fields) > 0:
             if len(params) > 0:
                 when_clause += " AND ("
-            when_clause += ' OR '.join([
-                "NEW.%s IS DISTINCT FROM OLD.%s" % (field, field)
-                for field in fields
-            ])
+            when_clause += " OR ".join(
+                [
+                    "NEW.%s IS DISTINCT FROM OLD.%s" % (field, field)
+                    for field in fields
+                ]
+            )
             if len(params) > 0:
                 when_clause += ")"
         when_clause += ")"
@@ -133,30 +132,34 @@ def _make_when_clause(is_update, params, fields):
 
 
 def register_trigger(
-        table, procedure, event, params=None, fields=None, when="after"):
+    table, procedure, event, params=None, fields=None, when="after"
+):
     """Register `trigger` on `table` if it doesn't exist."""
     # Strip the "maasserver_" off the front of the table name.
     table_name = table
     if table.startswith("maasserver_"):
         table_name = table_name[11:]
     trigger_name = "%s_%s" % (table_name, procedure)
-    is_update = (event == "update")
+    is_update = event == "update"
     when_clause = _make_when_clause(is_update, params, fields)
-    trigger_sql = dedent("""\
+    trigger_sql = dedent(
+        """\
         DROP TRIGGER IF EXISTS {trigger_name} ON {table};
         CREATE TRIGGER {trigger_name}
         {when} {event} ON {table}
         FOR EACH ROW
         {when_clause}
         EXECUTE PROCEDURE {procedure}();
-        """)
+        """
+    )
     trigger_sql = trigger_sql.format(
         trigger_name=trigger_name,
         table=table,
         when=when.upper(),
         event=event.upper(),
         when_clause=when_clause,
-        procedure=procedure)
+        procedure=procedure,
+    )
     with closing(connection.cursor()) as cursor:
         cursor.execute(trigger_sql)
 
@@ -166,5 +169,6 @@ def register_all_triggers():
     """Register all triggers into the database."""
     from maasserver.triggers.system import register_system_triggers
     from maasserver.triggers.websocket import register_websocket_triggers
+
     register_system_triggers()
     register_websocket_triggers()

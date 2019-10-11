@@ -2,10 +2,7 @@
 
 from contextlib import closing
 
-from django.db import (
-    connection,
-    migrations,
-)
+from django.db import connection, migrations
 
 
 def remove_unneeded_event_triggers(apps, schema_editor):
@@ -20,10 +17,6 @@ def remove_unneeded_event_triggers(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0063_remove_orphaned_bmcs_and_ips'),
-    ]
+    dependencies = [("maasserver", "0063_remove_orphaned_bmcs_and_ips")]
 
-    operations = [
-        migrations.RunPython(remove_unneeded_event_triggers),
-    ]
+    operations = [migrations.RunPython(remove_unneeded_event_triggers)]

@@ -3,22 +3,23 @@
 from __future__ import unicode_literals
 
 import django.contrib.postgres.fields
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0171_remove_pod_host'),
-    ]
+    dependencies = [("maasserver", "0171_remove_pod_host")]
 
     operations = [
         migrations.AddField(
-            model_name='partition',
-            name='tags',
-            field=django.contrib.postgres.fields.ArrayField(base_field=models.TextField(), blank=True, default=list, null=True, size=None),
-        ),
+            model_name="partition",
+            name="tags",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.TextField(),
+                blank=True,
+                default=list,
+                null=True,
+                size=None,
+            ),
+        )
     ]

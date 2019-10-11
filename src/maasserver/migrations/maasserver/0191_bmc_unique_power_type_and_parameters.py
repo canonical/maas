@@ -7,9 +7,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0190_bmc_clean_duplicates'),
-    ]
+    dependencies = [("maasserver", "0190_bmc_clean_duplicates")]
 
     operations = [
         migrations.RunSQL(

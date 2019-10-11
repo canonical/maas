@@ -3,33 +3,20 @@
 
 """Status monitoring service."""
 
-__all__ = [
-    'mark_nodes_failed_after_expiring',
-    'StatusMonitorService',
-    ]
+__all__ = ["mark_nodes_failed_after_expiring", "StatusMonitorService"]
 
 from datetime import timedelta
 
 from django.db.models import Prefetch
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
-)
+from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
-from maasserver.node_status import (
-    get_node_timeout,
-    MONITORED_STATUSES,
-)
+from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models import (
-    Script,
-    ScriptResult,
-    ScriptSet,
-)
+from metadataserver.models import Script, ScriptResult, ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous
@@ -45,20 +32,21 @@ def mark_nodes_failed_after_expiring(now, node_timeout):
     current time is newer than the expired time.
     """
     expired_nodes = Node.objects.filter(
-        status__in=MONITORED_STATUSES, status_expires__isnull=False,
-        status_expires__lte=now)
+        status__in=MONITORED_STATUSES,
+        status_expires__isnull=False,
+        status_expires__lte=now,
+    )
     for node in expired_nodes:
         minutes = get_node_timeout(node.status, node_timeout)
-        maaslog.info("%s: Operation '%s' timed out after %s minutes." % (
-            node.hostname,
-            NODE_STATUS_CHOICES_DICT[node.status],
-            minutes,
-            ))
+        maaslog.info(
+            "%s: Operation '%s' timed out after %s minutes."
+            % (node.hostname, NODE_STATUS_CHOICES_DICT[node.status], minutes)
+        )
         node.mark_failed(
-            comment="Node operation '%s' timed out after %s minutes." % (
-                NODE_STATUS_CHOICES_DICT[node.status],
-                minutes,
-            ), script_result_status=SCRIPT_STATUS.ABORTED)
+            comment="Node operation '%s' timed out after %s minutes."
+            % (NODE_STATUS_CHOICES_DICT[node.status], minutes),
+            script_result_status=SCRIPT_STATUS.ABORTED,
+        )
 
 
 def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
@@ -77,31 +65,54 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
     # has begun it resets status_expires and checks for the heartbeat instead.
     qs = Node.objects.filter(
         status__in=[NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING],
-        status_expires=None)
+        status_expires=None,
+    )
     qs = qs.prefetch_related(
         Prefetch(
-            'current_commissioning_script_set',
+            "current_commissioning_script_set",
             ScriptSet.objects.prefetch_related(
-                Prefetch('scriptresult_set', ScriptResult.objects.defer(
-                    'output', 'stdout', 'stderr', 'result').prefetch_related(
-                        Prefetch('script', Script.objects.only(
-                            'script_type', 'name',
-                            'may_reboot', 'timeout')))))),
+                Prefetch(
+                    "scriptresult_set",
+                    ScriptResult.objects.defer(
+                        "output", "stdout", "stderr", "result"
+                    ).prefetch_related(
+                        Prefetch(
+                            "script",
+                            Script.objects.only(
+                                "script_type", "name", "may_reboot", "timeout"
+                            ),
+                        )
+                    ),
+                )
+            ),
+        ),
         Prefetch(
-            'current_testing_script_set',
+            "current_testing_script_set",
             ScriptSet.objects.prefetch_related(
-                Prefetch('scriptresult_set', ScriptResult.objects.defer(
-                    'output', 'stdout', 'stderr', 'result').prefetch_related(
-                        Prefetch('script', Script.objects.only(
-                            'script_type', 'name',
-                            'may_reboot', 'timeout')))))))
+                Prefetch(
+                    "scriptresult_set",
+                    ScriptResult.objects.defer(
+                        "output", "stdout", "stderr", "result"
+                    ).prefetch_related(
+                        Prefetch(
+                            "script",
+                            Script.objects.only(
+                                "script_type", "name", "may_reboot", "timeout"
+                            ),
+                        )
+                    ),
+                )
+            ),
+        ),
+    )
     for node in qs:
         if node.status == NODE_STATUS.COMMISSIONING:
             script_set = node.current_commissioning_script_set
         elif node.status == NODE_STATUS.TESTING:
             script_set = node.current_testing_script_set
         script_results = [
-            script_result for script_result in script_set
+            script_result
+            for script_result in script_set
             if script_result.status == SCRIPT_STATUS.RUNNING
         ]
         maybe_rebooting = False
@@ -109,8 +120,10 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
             if script_result.script and script_result.script.may_reboot:
                 maybe_rebooting = True
                 break
-        flatlined = (script_set.last_ping is not None and
-                     script_set.last_ping < heartbeat_expired)
+        flatlined = (
+            script_set.last_ping is not None
+            and script_set.last_ping < heartbeat_expired
+        )
         if maybe_rebooting and flatlined:
             # If the script currently running may_reboot and the nodes
             # heartbeat has flatlined assume the node is rebooting. Set the
@@ -118,39 +131,47 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
             # already passed.
             minutes = get_node_timeout(node.status, node_timeout)
             node.status_expires = (
-                now -
-                (now - script_set.last_ping) +
-                timedelta(minutes=minutes)
+                now - (now - script_set.last_ping) + timedelta(minutes=minutes)
             )
-            node.save(update_fields=['status_expires'])
+            node.save(update_fields=["status_expires"])
             continue
         elif flatlined:
             maaslog.info(
-                '%s: Has not been heard from for the last %s minutes' % (
-                    node.hostname, node_timeout))
+                "%s: Has not been heard from for the last %s minutes"
+                % (node.hostname, node_timeout)
+            )
             node.mark_failed(
                 comment=(
-                    'Node has not been heard from for the last %s minutes' %
-                    node_timeout),
-                script_result_status=SCRIPT_STATUS.TIMEDOUT)
+                    "Node has not been heard from for the last %s minutes"
+                    % node_timeout
+                ),
+                script_result_status=SCRIPT_STATUS.TIMEDOUT,
+            )
             if not node.enable_ssh:
                 maaslog.info(
-                    '%s: Stopped because SSH is disabled' % node.hostname)
-                node.stop(comment='Node stopped because SSH is disabled')
+                    "%s: Stopped because SSH is disabled" % node.hostname
+                )
+                node.stop(comment="Node stopped because SSH is disabled")
             continue
 
         # Check for scripts which have gone past their timeout.
         for script_result in script_results:
             timeout = None
             for param in script_result.parameters.values():
-                if param.get('type') == 'runtime':
-                    timeout = param.get('value')
+                if param.get("type") == "runtime":
+                    timeout = param.get("value")
                     break
-            if (timeout is None and script_result.name in NODE_INFO_SCRIPTS and
-                    'timeout' in NODE_INFO_SCRIPTS[script_result.name]):
-                timeout = NODE_INFO_SCRIPTS[script_result.name]['timeout']
-            elif (timeout is None and script_result.script is not None and
-                    script_result.script.timeout.seconds > 0):
+            if (
+                timeout is None
+                and script_result.name in NODE_INFO_SCRIPTS
+                and "timeout" in NODE_INFO_SCRIPTS[script_result.name]
+            ):
+                timeout = NODE_INFO_SCRIPTS[script_result.name]["timeout"]
+            elif (
+                timeout is None
+                and script_result.script is not None
+                and script_result.script.timeout.seconds > 0
+            ):
                 timeout = script_result.script.timeout
             else:
                 continue
@@ -159,20 +180,25 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
             # by signaling the region. If after 5 minutes past the timeout the
             # region hasn't recieved the signal mark_failed and stop the node.
             script_expires = (
-                script_result.started + timeout + timedelta(minutes=5))
+                script_result.started + timeout + timedelta(minutes=5)
+            )
             if script_expires < now:
                 script_result.status = SCRIPT_STATUS.TIMEDOUT
-                script_result.save(update_fields=['status'])
-                maaslog.info("%s: %s has run past it's timeout(%s)" % (
-                    node.hostname, script_result.name, str(timeout)))
+                script_result.save(update_fields=["status"])
+                maaslog.info(
+                    "%s: %s has run past it's timeout(%s)"
+                    % (node.hostname, script_result.name, str(timeout))
+                )
                 node.mark_failed(
-                    comment="%s has run past it's timeout(%s)" % (
-                        script_result.name, str(timeout)),
-                    script_result_status=SCRIPT_STATUS.ABORTED)
+                    comment="%s has run past it's timeout(%s)"
+                    % (script_result.name, str(timeout)),
+                    script_result_status=SCRIPT_STATUS.ABORTED,
+                )
                 if not node.enable_ssh:
                     maaslog.info(
-                        '%s: Stopped because SSH is disabled' % node.hostname)
-                    node.stop(comment='Node stopped because SSH is disabled')
+                        "%s: Stopped because SSH is disabled" % node.hostname
+                    )
+                    node.stop(comment="Node stopped because SSH is disabled")
                 break
 
 
@@ -181,7 +207,7 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
 def check_status():
     """Check the status_expires and script timeout on all nodes."""
     current_time = now()
-    node_timeout = Config.objects.get_config('node_timeout')
+    node_timeout = Config.objects.get_config("node_timeout")
     mark_nodes_failed_after_expiring(current_time, node_timeout)
     mark_nodes_failed_after_missing_script_timeout(current_time, node_timeout)
 
@@ -195,4 +221,5 @@ class StatusMonitorService(TimerService, object):
 
     def __init__(self, interval=60):
         super(StatusMonitorService, self).__init__(
-            interval, deferToDatabase, check_status)
+            interval, deferToDatabase, check_status
+        )

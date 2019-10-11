@@ -3,17 +3,11 @@
 
 """MAC-related utilities."""
 
-__all__ = [
-    'get_vendor_for_mac',
-    'is_mac',
-    ]
+__all__ = ["get_vendor_for_mac", "is_mac"]
 
 import re
 
-from netaddr import (
-    EUI,
-    NotRegisteredError,
-)
+from netaddr import EUI, NotRegisteredError
 
 
 def get_vendor_for_mac(mac):
@@ -27,10 +21,10 @@ def get_vendor_for_mac(mac):
         # UnicodeDecodeError can be raised if the name of the vendor cannot
         # be decoded from ascii. This is something broken in the netaddr
         # library, we are just catching the error here not to break the UI.
-        return 'Unknown Vendor'
+        return "Unknown Vendor"
 
 
 def is_mac(mac):
     """Return whether or not the string is a MAC address."""
-    m = re.search(r'^([0-9a-f]{2}[-:]){5}[0-9a-f]{2}$', str(mac), re.I)
+    m = re.search(r"^([0-9a-f]{2}[-:]){5}[0-9a-f]{2}$", str(mac), re.I)
     return m is not None

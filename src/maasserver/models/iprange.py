@@ -6,9 +6,7 @@
 Specifies all types of IP address ranges MAAS can work with, such as
 DHCP ranges and user-reserved ranges.
 """
-__all__ = [
-    'IPRange',
-]
+__all__ = ["IPRange"]
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -20,23 +18,13 @@ from django.db.models import (
     PROTECT,
     QuerySet,
 )
-from maasserver.enum import (
-    IPRANGE_TYPE,
-    IPRANGE_TYPE_CHOICES,
-)
+from maasserver.enum import IPRANGE_TYPE, IPRANGE_TYPE_CHOICES
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import (
-    MAASQueriesMixin,
-    transactional,
-)
+from maasserver.utils.orm import MAASQueriesMixin, transactional
 import netaddr
-from netaddr import (
-    AddrFormatError,
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_iprange
 
@@ -45,8 +33,7 @@ maaslog = get_maas_logger("iprange")
 
 
 class IPRangeQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # Circular imports.
 
         # This dict is used by the constraints code to identify objects
@@ -54,13 +41,16 @@ class IPRangeQueriesMixin(MAASQueriesMixin):
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'type': "__type",
-            'start_ip': "__start_ip",
-            'end_ip': "__end_ip",
+            "type": "__type",
+            "start_ip": "__start_ip",
+            "end_ip": "__end_ip",
         }
         return super(IPRangeQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class IPRangeQuerySet(IPRangeQueriesMixin, QuerySet):
@@ -102,35 +92,54 @@ class IPRange(CleanSave, TimestampedModel):
     objects = IPRangeManager()
 
     subnet = ForeignKey(
-        'Subnet', editable=True, blank=False, null=False, on_delete=CASCADE)
+        "Subnet", editable=True, blank=False, null=False, on_delete=CASCADE
+    )
 
     type = CharField(
-        max_length=20, editable=True, choices=IPRANGE_TYPE_CHOICES,
-        null=False, blank=False)
+        max_length=20,
+        editable=True,
+        choices=IPRANGE_TYPE_CHOICES,
+        null=False,
+        blank=False,
+    )
 
     start_ip = MAASIPAddressField(
-        null=False, editable=True, blank=False, verbose_name='Start IP')
+        null=False, editable=True, blank=False, verbose_name="Start IP"
+    )
 
     end_ip = MAASIPAddressField(
-        null=False, editable=True, blank=False, verbose_name='End IP')
+        null=False, editable=True, blank=False, verbose_name="End IP"
+    )
 
     user = ForeignKey(
-        User, default=None, blank=True, null=True, editable=True,
-        on_delete=PROTECT)
+        User,
+        default=None,
+        blank=True,
+        null=True,
+        editable=True,
+        on_delete=PROTECT,
+    )
 
     # In Django 1.8, CharFields with null=True, blank=True had a default
     # of '' (empty string), whereas with at least 1.11 that is None.
     # Force the former behaviour, since the documentation is not very clear
     # on what should happen.
     comment = CharField(
-        max_length=255, null=True, blank=True, editable=True, default='')
+        max_length=255, null=True, blank=True, editable=True, default=""
+    )
 
     def __repr__(self):
         return (
-            'IPRange(subnet_id=%r, start_ip=%r, end_ip=%r, type=%r, '
-            'user_id=%r, comment=%r)') % (
-            self.subnet_id, self.start_ip, self.end_ip, self.type,
-            self.user_id, self.comment)
+            "IPRange(subnet_id=%r, start_ip=%r, end_ip=%r, type=%r, "
+            "user_id=%r, comment=%r)"
+        ) % (
+            self.subnet_id,
+            self.start_ip,
+            self.end_ip,
+            self.type,
+            self.user_id,
+            self.comment,
+        )
 
     def __contains__(self, item):
         return item in self.netaddr_iprange
@@ -138,7 +147,7 @@ class IPRange(CleanSave, TimestampedModel):
     def _raise_validation_error(self, message, fields=None):
         if fields is None:
             # By default, highlight the start_ip and the end_ip.
-            fields = ['start_ip', 'end_ip']
+            fields = ["start_ip", "end_ip"]
         validation_errors = {}
         for field in fields:
             validation_errors[field] = [message]
@@ -157,40 +166,52 @@ class IPRange(CleanSave, TimestampedModel):
             # field is missing. So we need to check them again here, before
             # proceeding with the validation (and potentially crashing).
             self._raise_validation_error(
-                "Start IP address and end IP address are both required.")
+                "Start IP address and end IP address are both required."
+            )
         if end_ip.version != start_ip.version:
             self._raise_validation_error(
                 "Start IP address and end IP address must be in the same "
-                "address family.")
+                "address family."
+            )
         if end_ip < start_ip:
             self._raise_validation_error(
                 "End IP address must not be less than Start IP address.",
-                fields=['end_ip'])
+                fields=["end_ip"],
+            )
         if self.subnet_id is not None:
             cidr = IPNetwork(self.subnet.cidr)
             if start_ip not in cidr and end_ip not in cidr:
                 self._raise_validation_error(
-                    "IP addresses must be within subnet: %s." % cidr)
+                    "IP addresses must be within subnet: %s." % cidr
+                )
             if start_ip not in cidr:
                 self._raise_validation_error(
                     "Start IP address must be within subnet: %s." % cidr,
-                    fields=['start_ip'])
+                    fields=["start_ip"],
+                )
             if end_ip not in cidr:
                 self._raise_validation_error(
                     "End IP address must be within subnet: %s." % cidr,
-                    fields=['end_ip'])
+                    fields=["end_ip"],
+                )
             if cidr.network == start_ip:
                 self._raise_validation_error(
                     "Reserved network address cannot be included in IP range.",
-                    fields=['start_ip'])
+                    fields=["start_ip"],
+                )
             if cidr.version == 4 and cidr.broadcast == end_ip:
                 self._raise_validation_error(
                     "Broadcast address cannot be included in IP range.",
-                    fields=['end_ip'])
-        if (start_ip.version == 6 and self.type == IPRANGE_TYPE.DYNAMIC and
-                netaddr.IPRange(start_ip, end_ip).size < 256):
+                    fields=["end_ip"],
+                )
+        if (
+            start_ip.version == 6
+            and self.type == IPRANGE_TYPE.DYNAMIC
+            and netaddr.IPRange(start_ip, end_ip).size < 256
+        ):
             self._raise_validation_error(
-                "IPv6 dynamic range must be at least 256 addresses in size.")
+                "IPv6 dynamic range must be at least 256 addresses in size."
+            )
         self.clean_prevent_dupes_and_overlaps()
 
     @property
@@ -201,7 +222,7 @@ class IPRange(CleanSave, TimestampedModel):
         purpose = self.type
         # Using '-' instead of '_' is just for consistency.
         # APIs in previous MAAS releases used '-' in range types.
-        purpose = purpose.replace('_', '-')
+        purpose = purpose.replace("_", "-")
         return make_iprange(self.start_ip, self.end_ip, purpose=purpose)
 
     @transactional
@@ -215,29 +236,36 @@ class IPRange(CleanSave, TimestampedModel):
         valid_types = {choice[0] for choice in IPRANGE_TYPE_CHOICES}
 
         # If model is incomplete, save() will fail, so don't bother checking.
-        if (self.subnet_id is None or self.start_ip is None or
-                self.end_ip is None or self.type is None or
-                self.type not in valid_types):
+        if (
+            self.subnet_id is None
+            or self.start_ip is None
+            or self.end_ip is None
+            or self.type is None
+            or self.type not in valid_types
+        ):
             return
 
         # No dupe checking is required if the object hasn't been materially
         # modified.
-        if not self._state.has_any_changed(['type', 'start_ip', 'end_ip']):
+        if not self._state.has_any_changed(["type", "start_ip", "end_ip"]):
             return
 
         # Reserved ranges can overlap allocated IPs but not other ranges.
         # Dynamic ranges cannot overlap anything (no ranges or IPs).
         if self.type == IPRANGE_TYPE.RESERVED:
             unused = self.subnet.get_ipranges_available_for_reserved_range(
-                exclude_ip_ranges=[self])
+                exclude_ip_ranges=[self]
+            )
         else:
             unused = self.subnet.get_ipranges_available_for_dynamic_range(
-                exclude_ip_ranges=[self])
+                exclude_ip_ranges=[self]
+            )
 
         if len(unused) == 0:
             self._raise_validation_error(
-                "There is no room for any %s ranges on this subnet." % (
-                    self.type))
+                "There is no room for any %s ranges on this subnet."
+                % (self.type)
+            )
 
         message = "Requested %s range conflicts with an existing " % self.type
         if self.type == IPRANGE_TYPE.RESERVED:

@@ -3,15 +3,10 @@
 
 """Support for testing with `crochet`."""
 
-__all__ = [
-    "EventualResultCatchingMixin",
-    ]
+__all__ = ["EventualResultCatchingMixin"]
 
 import crochet
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
+from testtools.content import Content, UTF8_TEXT
 from testtools.matchers import Equals
 
 
@@ -40,13 +35,14 @@ class EventualResultCatchingMixin:
             # check the results.
             results = set()
             self.addCleanup(
-                self.__patchResults, registry,
-                self.__patchResults(registry, results))
+                self.__patchResults,
+                registry,
+                self.__patchResults(registry, results),
+            )
             # While unravelling clean-ups is a good time to check the results.
             # Any meaningful work represented by an EventualResult should have
             # done should been done by now.
-            self.addCleanup(
-                self.__checkResults, results)
+            self.addCleanup(self.__checkResults, results)
 
     def __patchResults(self, registry, results):
         with registry._lock:
@@ -99,10 +95,13 @@ class EventualResultCatchingMixin:
                 message = [block.encode("utf-8") for block in message]
                 self.addDetail(
                     "Unfired/unhandled EventualResult #%d" % fail_count,
-                    Content(UTF8_TEXT, lambda: message))
+                    Content(UTF8_TEXT, lambda: message),
+                )
 
         # Use expectThat() so that other clean-up tasks run to completion
         # before, at the last moment, the test is failed.
         self.expectThat(
-            fail_count, Equals(0), "Unfired and/or unhandled "
-            "EventualResult(s); see test details.")
+            fail_count,
+            Equals(0),
+            "Unfired and/or unhandled " "EventualResult(s); see test details.",
+        )

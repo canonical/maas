@@ -3,19 +3,14 @@
 
 """Utilities for the per-tenant file storage work."""
 
-__all__ = [
-    "get_bootstrap_node_owner",
-    ]
+__all__ = ["get_bootstrap_node_owner"]
 
 
-from maasserver.models import (
-    FileStorage,
-    Node,
-)
+from maasserver.models import FileStorage, Node
 import yaml
 
 
-PROVIDER_STATE_FILENAME = 'provider-state'
+PROVIDER_STATE_FILENAME = "provider-state"
 
 
 def get_bootstrap_node_owner():
@@ -26,7 +21,8 @@ def get_bootstrap_node_owner():
     """
     try:
         provider_file = FileStorage.objects.get(
-            filename=PROVIDER_STATE_FILENAME, owner=None)
+            filename=PROVIDER_STATE_FILENAME, owner=None
+        )
     except FileStorage.DoesNotExist:
         return None
     system_id = extract_bootstrap_node_system_id(provider_file.content)
@@ -51,8 +47,8 @@ def extract_bootstrap_node_system_id(content):
     except yaml.YAMLError:
         return None
     try:
-        parts = state['zookeeper-instances'][0].split('/')
+        parts = state["zookeeper-instances"][0].split("/")
     except (IndexError, TypeError):
         return None
-    system_id = [part for part in parts if part != ''][-1]
+    system_id = [part for part in parts if part != ""][-1]
     return system_id

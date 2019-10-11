@@ -25,7 +25,6 @@ def get_random_component():
 
 
 class PersistentErrorsUtilitiesTest(MAASServerTestCase):
-
     def test_register_persistent_error_registers_error(self):
         error_message = factory.make_string()
         component = get_random_component()
@@ -38,8 +37,7 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         component = get_random_component()
         register_persistent_error(component, error_message)
         register_persistent_error(component, error_message2)
-        self.assertItemsEqual(
-            [error_message2], get_persistent_errors())
+        self.assertItemsEqual([error_message2], get_persistent_errors())
 
     def test_discard_persistent_error_discards_error(self):
         error_message = factory.make_string()
@@ -70,9 +68,9 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         """When registering a persistent error that already has an error
         recorded for that component, reuse the error instead of deleting and
         recreating it."""
-        component = factory.make_name('component')
-        error1 = factory.make_name('error')
-        error2 = factory.make_name('error')
+        component = factory.make_name("component")
+        error1 = factory.make_name("error")
+        error2 = factory.make_name("error")
         register_persistent_error(component, error1)
         notification = Notification.objects.get(ident=component)
         self.assertEqual(notification.render(), error1)

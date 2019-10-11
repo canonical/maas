@@ -2,10 +2,7 @@
 
 import re
 
-from django.db import (
-    connection,
-    migrations,
-)
+from django.db import connection, migrations
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import timestampedmodel
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -47,14 +44,14 @@ def extract_ip_address(power_type, power_parameters):
     ip_extractor = power_driver.ip_extractor
     if not ip_extractor:
         return None
-    field_value = power_parameters.get(ip_extractor.get('field_name'))
+    field_value = power_parameters.get(ip_extractor.get("field_name"))
     if not field_value:
         return None
-    extraction_pattern = ip_extractor.get('pattern')
+    extraction_pattern = ip_extractor.get("pattern")
     if not extraction_pattern:
         return None
     match = re.match(extraction_pattern, field_value)
-    return match.group('address') if match else None
+    return match.group("address") if match else None
 
 
 # Copied from Node.update_power_type_and_parameters().
@@ -63,7 +60,7 @@ def create_staticipaddresses_for_bmcs(apps, schema_editor):
     BMC = apps.get_model("maasserver", "BMC")
     StaticIPAddress = apps.get_model("maasserver", "StaticIPAddress")
 
-    for bmc in BMC.objects.all().order_by('id'):
+    for bmc in BMC.objects.all().order_by("id"):
         # parse power_parameters and create new ip addresses
         new_ip = extract_ip_address(bmc.power_type, bmc.power_parameters)
         old_ip = bmc.ip_address.ip if bmc.ip_address else None
@@ -85,8 +82,12 @@ def create_staticipaddresses_for_bmcs(apps, schema_editor):
                         bmc.ip_address.save()
                     else:
                         ip_address = StaticIPAddress(
-                            created=now, updated=now, subnet_id=subnet_id,
-                            ip=new_ip, alloc_type=IPADDRESS_TYPE.STICKY)
+                            created=now,
+                            updated=now,
+                            subnet_id=subnet_id,
+                            ip=new_ip,
+                            alloc_type=IPADDRESS_TYPE.STICKY,
+                        )
                         ip_address.save()
                         bmc.ip_address = ip_address
                         bmc.save()
@@ -97,10 +98,6 @@ def create_staticipaddresses_for_bmcs(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0021_nodegroupinterface_to_iprange'),
-    ]
+    dependencies = [("maasserver", "0021_nodegroupinterface_to_iprange")]
 
-    operations = [
-        migrations.RunPython(create_staticipaddresses_for_bmcs),
-    ]
+    operations = [migrations.RunPython(create_staticipaddresses_for_bmcs)]

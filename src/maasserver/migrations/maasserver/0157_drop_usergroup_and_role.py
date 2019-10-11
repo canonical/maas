@@ -7,42 +7,16 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0156_drop_ssh_unique_key_index'),
-    ]
+    dependencies = [("maasserver", "0156_drop_ssh_unique_key_index")]
 
     operations = [
-        migrations.RemoveField(
-            model_name='role',
-            name='groups',
-        ),
-        migrations.RemoveField(
-            model_name='role',
-            name='resource_pools',
-        ),
-        migrations.RemoveField(
-            model_name='role',
-            name='users',
-        ),
-        migrations.RemoveField(
-            model_name='usergroup',
-            name='users',
-        ),
-        migrations.RemoveField(
-            model_name='usergroupmembership',
-            name='group',
-        ),
-        migrations.RemoveField(
-            model_name='usergroupmembership',
-            name='user',
-        ),
-        migrations.DeleteModel(
-            name='Role',
-        ),
-        migrations.DeleteModel(
-            name='UserGroup',
-        ),
-        migrations.DeleteModel(
-            name='UserGroupMembership',
-        ),
+        migrations.RemoveField(model_name="role", name="groups"),
+        migrations.RemoveField(model_name="role", name="resource_pools"),
+        migrations.RemoveField(model_name="role", name="users"),
+        migrations.RemoveField(model_name="usergroup", name="users"),
+        migrations.RemoveField(model_name="usergroupmembership", name="group"),
+        migrations.RemoveField(model_name="usergroupmembership", name="user"),
+        migrations.DeleteModel(name="Role"),
+        migrations.DeleteModel(name="UserGroup"),
+        migrations.DeleteModel(name="UserGroupMembership"),
     ]

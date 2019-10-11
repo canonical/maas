@@ -12,10 +12,7 @@ from maasserver.api.support import (
 from maasserver.dns.config import dns_force_reload
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.domain import DomainForm
-from maasserver.models import (
-    Domain,
-    GlobalDefault,
-)
+from maasserver.models import Domain, GlobalDefault
 from maasserver.models.dnspublication import zone_serial
 from maasserver.permissions import NodePermission
 from maasserver.sequence import INT_MAX
@@ -23,17 +20,18 @@ from piston3.utils import rc
 
 
 DISPLAYED_DOMAIN_FIELDS = (
-    'id',
-    'name',
-    'ttl',
-    'authoritative',
-    'resource_record_count',
-    'is_default',
+    "id",
+    "name",
+    "ttl",
+    "authoritative",
+    "resource_record_count",
+    "is_default",
 )
 
 
 class DomainsHandler(OperationsHandler):
     """Manage domains."""
+
     api_doc_section_name = "Domains"
     update = delete = None
     fields = DISPLAYED_DOMAIN_FIELDS
@@ -41,7 +39,7 @@ class DomainsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('domains_handler', [])
+        return ("domains_handler", [])
 
     def read(self, request):
         """@description-title List all domains
@@ -52,7 +50,7 @@ class DomainsHandler(OperationsHandler):
         domain objects.
         @success-example "success-json" [exkey=domains-read] placeholder text
         """
-        return Domain.objects.all().prefetch_related('globaldefault_set')
+        return Domain.objects.all().prefetch_related("globaldefault_set")
 
     @admin_method
     def create(self, request):
@@ -87,23 +85,27 @@ class DomainsHandler(OperationsHandler):
         @success (content) "success-text" No content returned.
         """
         try:
-            serial = int(request.data['serial'])
+            serial = int(request.data["serial"])
         except KeyError:
-            raise MAASAPIValidationError(
-                {'serial': 'Missing parameter'})
+            raise MAASAPIValidationError({"serial": "Missing parameter"})
         except ValueError:
             raise MAASAPIValidationError(
-                {'serial': 'Expected a serial number'})
+                {"serial": "Expected a serial number"}
+            )
         if serial == 0 or serial > INT_MAX:
             raise MAASAPIValidationError(
-                {'serial':
-                    'Expected a serial number between 1 and %d' % INT_MAX})
+                {
+                    "serial": "Expected a serial number between 1 and %d"
+                    % INT_MAX
+                }
+            )
         zone_serial.set_value(serial)
         dns_force_reload()
 
 
 class AnonDomainHandler(AnonymousOperationsHandler):
     """Anonymous access to domain."""
+
     read = create = update = delete = None
     model = Domain
     fields = DISPLAYED_DOMAIN_FIELDS
@@ -111,6 +113,7 @@ class AnonDomainHandler(AnonymousOperationsHandler):
 
 class DomainHandler(OperationsHandler):
     """Manage domain."""
+
     api_doc_section_name = "Domain"
     create = None
     model = Domain
@@ -122,7 +125,7 @@ class DomainHandler(OperationsHandler):
         domain_id = "id"
         if domain is not None:
             domain_id = domain.id
-        return ('domain_handler', (domain_id,))
+        return ("domain_handler", (domain_id,))
 
     @classmethod
     def name(cls, domain):
@@ -156,7 +159,8 @@ class DomainHandler(OperationsHandler):
             Not Found
         """
         return Domain.objects.get_domain_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update a domain
@@ -186,7 +190,8 @@ class DomainHandler(OperationsHandler):
             Not Found
         """
         domain = Domain.objects.get_domain_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         form = DomainForm(instance=domain, data=request.data)
         if form.is_valid():
             return form.save()
@@ -219,7 +224,8 @@ class DomainHandler(OperationsHandler):
             Not Found
         """
         domain = Domain.objects.get_domain_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         global_defaults = GlobalDefault.objects.instance()
         global_defaults.domain = domain
         global_defaults.save()
@@ -243,6 +249,7 @@ class DomainHandler(OperationsHandler):
             Not Found
         """
         domain = Domain.objects.get_domain_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         domain.delete()
         return rc.DELETED

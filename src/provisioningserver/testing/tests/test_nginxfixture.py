@@ -14,14 +14,10 @@ from provisioningserver.testing.nginxfixture import (
     NginxServer,
     NginxServerResources,
 )
-from testtools.matchers import (
-    Contains,
-    FileExists,
-)
+from testtools.matchers import Contains, FileExists
 
 
 class TestNginxFixture(MAASTestCase):
-
     def test_config(self):
         # The configuration can be passed in.
         config = NginxServerResources()
@@ -30,7 +26,6 @@ class TestNginxFixture(MAASTestCase):
 
 
 class TestNginxServerResources(MAASTestCase):
-
     def test_defaults(self):
         with NginxServerResources() as resources:
             self.assertIsInstance(resources.homedir, str)
@@ -47,8 +42,12 @@ class TestNginxServerResources(MAASTestCase):
         with NginxServerResources() as resources:
             self.assertThat(
                 resources.conf_file,
-                FileContains(matcher=Contains(
-                    b'pid %s;' % resources.pid_file.encode('ascii'))))
+                FileContains(
+                    matcher=Contains(
+                        b"pid %s;" % resources.pid_file.encode("ascii")
+                    )
+                ),
+            )
 
     def test_defaults_reallocated_after_teardown(self):
         seen_homedirs = set()

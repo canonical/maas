@@ -3,18 +3,11 @@
 
 """API handlers: `DHCPSnippet`."""
 
-__all__ = [
-    "DHCPSnippetHandler",
-    "DHCPSnippetsHandler",
-    ]
+__all__ = ["DHCPSnippetHandler", "DHCPSnippetsHandler"]
 
 from email.utils import format_datetime
 
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -25,15 +18,15 @@ from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_DHCP_SNIPPET_FIELDS = (
-    'id',
-    'name',
-    'value',
-    'history',
-    'description',
-    'enabled',
-    'node',
-    'subnet',
-    'global_snippet',
+    "id",
+    "name",
+    "value",
+    "history",
+    "description",
+    "enabled",
+    "node",
+    "subnet",
+    "global_snippet",
 )
 
 
@@ -43,6 +36,7 @@ class DHCPSnippetHandler(OperationsHandler):
 
     The DHCP snippet is identified by its id.
     """
+
     api_doc_section_name = "DHCP Snippet"
     create = None
     model = DHCPSnippet
@@ -55,7 +49,7 @@ class DHCPSnippetHandler(OperationsHandler):
             dhcp_snippet_id = dhcp_snippet.id
         else:
             dhcp_snippet_id = "id"
-        return ('dhcp_snippet_handler', (dhcp_snippet_id,))
+        return ("dhcp_snippet_handler", (dhcp_snippet_id,))
 
     @classmethod
     def value(handler, dhcp_snippet):
@@ -65,9 +59,9 @@ class DHCPSnippetHandler(OperationsHandler):
     def history(handler, dhcp_snippet):
         return [
             {
-                'id': value.id,
-                'value': value.data,
-                'created': format_datetime(value.created),
+                "id": value.id,
+                "value": value.data,
+                "created": format_datetime(value.created),
             }
             for value in dhcp_snippet.value.previous_versions()
         ]
@@ -158,8 +152,12 @@ class DHCPSnippetHandler(OperationsHandler):
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         dhcp_snippet.delete()
         create_audit_event(
-            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
-                "Deleted DHCP snippet '%s'." % dhcp_snippet.name))
+            EVENT_TYPES.SETTINGS,
+            ENDPOINT.API,
+            request,
+            None,
+            description=("Deleted DHCP snippet '%s'." % dhcp_snippet.name),
+        )
         return rc.DELETED
 
     @admin_method
@@ -186,26 +184,34 @@ class DHCPSnippetHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        revert_to = request.data.get('to')
+        revert_to = request.data.get("to")
         if revert_to is None:
-            raise MAASAPIValidationError('You must specify where to revert to')
+            raise MAASAPIValidationError("You must specify where to revert to")
         try:
             revert_to = int(revert_to)
         except ValueError:
             raise MAASAPIValidationError(
-                "%s is an invalid 'to' value" % revert_to)
+                "%s is an invalid 'to' value" % revert_to
+            )
 
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         try:
+
             def gc_hook(value):
                 dhcp_snippet.value = value
                 dhcp_snippet.save()
+
             dhcp_snippet.value.revert(revert_to, gc_hook=gc_hook)
             create_audit_event(
-                EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+                EVENT_TYPES.SETTINGS,
+                ENDPOINT.API,
+                request,
+                None,
                 description=(
-                    "Reverted DHCP snippet '%s' to revision '%s'." % (
-                        dhcp_snippet.name, revert_to)))
+                    "Reverted DHCP snippet '%s' to revision '%s'."
+                    % (dhcp_snippet.name, revert_to)
+                ),
+            )
             return dhcp_snippet
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])
@@ -213,12 +219,13 @@ class DHCPSnippetHandler(OperationsHandler):
 
 class DHCPSnippetsHandler(OperationsHandler):
     """Manage the collection of all DHCP snippets in MAAS."""
+
     api_doc_section_name = "DHCP Snippets"
     update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('dhcp_snippets_handler', [])
+        return ("dhcp_snippets_handler", [])
 
     def read(self, request):
         """@description-title List DHCP snippets
@@ -231,7 +238,8 @@ class DHCPSnippetsHandler(OperationsHandler):
         text
         """
         return DHCPSnippet.objects.all().select_related(
-            'value', 'subnet', 'node')
+            "value", "subnet", "node"
+        )
 
     @admin_method
     def create(Self, request):

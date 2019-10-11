@@ -3,36 +3,31 @@
 
 """API handlers: `BootSourceSelection`"""
 
-__all__ = [
-    'BootSourceSelectionHandler',
-    'BootSourceSelectionsHandler',
-    ]
+__all__ = ["BootSourceSelectionHandler", "BootSourceSelectionsHandler"]
 
 
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceSelectionForm
-from maasserver.models import (
-    BootSource,
-    BootSourceSelection,
-)
+from maasserver.models import BootSource, BootSourceSelection
 from piston3.utils import rc
 
 
 DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
-    'boot_source_id',
-    'id',
-    'os',
-    'release',
-    'arches',
-    'subarches',
-    'labels',
+    "boot_source_id",
+    "id",
+    "os",
+    "release",
+    "arches",
+    "subarches",
+    "labels",
 )
 
 
 class BootSourceSelectionHandler(OperationsHandler):
     """Manage a boot source selection."""
+
     api_doc_section_name = "Boot source selection"
     create = replace = None
 
@@ -58,10 +53,10 @@ class BootSourceSelectionHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=boot_source_id)
+        boot_source = get_object_or_404(BootSource, id=boot_source_id)
         return get_object_or_404(
-            BootSourceSelection, boot_source=boot_source, id=id)
+            BootSourceSelection, boot_source=boot_source, id=id
+        )
 
     def update(self, request, boot_source_id, id):
         """@description-title Update a boot-source selection
@@ -97,12 +92,13 @@ class BootSourceSelectionHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=boot_source_id)
+        boot_source = get_object_or_404(BootSource, id=boot_source_id)
         boot_source_selection = get_object_or_404(
-            BootSourceSelection, boot_source=boot_source, id=id)
+            BootSourceSelection, boot_source=boot_source, id=id
+        )
         form = BootSourceSelectionForm(
-            data=request.data, instance=boot_source_selection)
+            data=request.data, instance=boot_source_selection
+        )
         if form.is_valid():
             return form.save()
         else:
@@ -123,27 +119,28 @@ class BootSourceSelectionHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=boot_source_id)
+        boot_source = get_object_or_404(BootSource, id=boot_source_id)
         boot_source_selection = get_object_or_404(
-            BootSourceSelection, boot_source=boot_source, id=id)
+            BootSourceSelection, boot_source=boot_source, id=id
+        )
         boot_source_selection.delete()
         return rc.DELETED
 
     @classmethod
     def resource_uri(cls, bootsourceselection=None):
         if bootsourceselection is None:
-            id = 'id'
-            boot_source_id = 'boot_source_id'
+            id = "id"
+            boot_source_id = "boot_source_id"
         else:
             id = bootsourceselection.id
             boot_source = bootsourceselection.boot_source
             boot_source_id = boot_source.id
-        return ('boot_source_selection_handler', (boot_source_id, id))
+        return ("boot_source_selection_handler", (boot_source_id, id))
 
 
 class BootSourceSelectionsHandler(OperationsHandler):
     """Manage the collection of boot source selections."""
+
     api_doc_section_name = "Boot source selections"
 
     create = replace = update = delete = None
@@ -151,10 +148,10 @@ class BootSourceSelectionsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, boot_source=None):
         if boot_source is None:
-            boot_source_id = 'boot_source_id'
+            boot_source_id = "boot_source_id"
         else:
             boot_source_id = boot_source.id
-        return ('boot_source_selections_handler', [boot_source_id])
+        return ("boot_source_selections_handler", [boot_source_id])
 
     def read(self, request, boot_source_id):
         """@description-title List boot-source selections
@@ -173,8 +170,7 @@ class BootSourceSelectionsHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=boot_source_id)
+        boot_source = get_object_or_404(BootSource, id=boot_source_id)
         return BootSourceSelection.objects.filter(boot_source=boot_source)
 
     def create(self, request, boot_source_id):
@@ -209,10 +205,10 @@ class BootSourceSelectionsHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=boot_source_id)
+        boot_source = get_object_or_404(BootSource, id=boot_source_id)
         form = BootSourceSelectionForm(
-            data=request.data, boot_source=boot_source)
+            data=request.data, boot_source=boot_source
+        )
         if form.is_valid():
             return form.save()
         else:

@@ -3,39 +3,21 @@
 
 """API handlers: `SSHKey`."""
 
-__all__ = [
-    'SSHKeyHandler',
-    'SSHKeysHandler',
-    ]
+__all__ = ["SSHKeyHandler", "SSHKeysHandler"]
 
 import http.client
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.http import (
-    HttpResponse,
-    HttpResponseForbidden,
-)
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.audit import create_audit_event
-from maasserver.enum import (
-    ENDPOINT,
-    KEYS_PROTOCOL_TYPE,
-)
-from maasserver.exceptions import (
-    MAASAPIBadRequest,
-    MAASAPIValidationError,
-)
+from maasserver.enum import ENDPOINT, KEYS_PROTOCOL_TYPE
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
-from maasserver.models import (
-    KeySource,
-    SSHKey,
-)
+from maasserver.models import KeySource, SSHKey
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from piston3.emitters import JSONEmitter
@@ -50,6 +32,7 @@ DISPLAY_SSHKEY_FIELDS = ("id", "key", "keysource")
 
 class SSHKeysHandler(OperationsHandler):
     """Manage the collection of all the SSH keys in this MAAS."""
+
     api_doc_section_name = "SSH Keys"
 
     update = delete = None
@@ -86,7 +69,7 @@ class SSHKeysHandler(OperationsHandler):
         text
         """
         user = request.user
-        username = get_optional_param(request.POST, 'user')
+        username = get_optional_param(request.POST, "user")
         if username is not None and request.user.is_superuser:
             supplied_user = get_one(User.objects.filter(username=username))
             if supplied_user is not None:
@@ -95,25 +78,30 @@ class SSHKeysHandler(OperationsHandler):
                 # Raise an error so that the user can know that their
                 # attempt at specifying a user did not work.
                 raise MAASAPIValidationError(
-                    "Supplied username does not match any current users.")
+                    "Supplied username does not match any current users."
+                )
         elif username is not None and not request.user.is_superuser:
             raise MAASAPIValidationError(
                 "Only administrators can specify a user"
-                " when creating an SSH key.")
+                " when creating an SSH key."
+            )
 
         form = SSHKeyForm(user=user, data=request.data)
         if form.is_valid():
             sshkey = form.save(ENDPOINT.API, request)
             emitter = JSONEmitter(
-                sshkey, typemapper, None, DISPLAY_SSHKEY_FIELDS)
+                sshkey, typemapper, None, DISPLAY_SSHKEY_FIELDS
+            )
             stream = emitter.render(request)
             return HttpResponse(
-                stream, content_type='application/json; charset=utf-8',
-                status=int(http.client.CREATED))
+                stream,
+                content_type="application/json; charset=utf-8",
+                status=int(http.client.CREATED),
+            )
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @operation(idempotent=False, exported_as='import')
+    @operation(idempotent=False, exported_as="import")
     def import_ssh_keys(self, request):
         """@description-title Import SSH keys
         @description Import the requesting user's SSH keys for a given protocol
@@ -136,30 +124,36 @@ class SSHKeysHandler(OperationsHandler):
         @success-example "success-json" [exkey=ssh-keys-import] placeholder
         text
         """
-        keysource = request.data.get('keysource', None)
+        keysource = request.data.get("keysource", None)
         if keysource is not None:
-            if ':' in keysource:
-                protocol, auth_id = keysource.split(':', 1)
+            if ":" in keysource:
+                protocol, auth_id = keysource.split(":", 1)
             else:
                 protocol = KEYS_PROTOCOL_TYPE.LP
                 auth_id = keysource
             try:
                 keysource = KeySource.objects.save_keys_for_user(
-                    user=request.user, protocol=protocol, auth_id=auth_id)
+                    user=request.user, protocol=protocol, auth_id=auth_id
+                )
                 create_audit_event(
-                    EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-                    description="Imported SSH keys.")
+                    EVENT_TYPES.AUTHORISATION,
+                    ENDPOINT.API,
+                    request,
+                    None,
+                    description="Imported SSH keys.",
+                )
                 return keysource
             except (ImportSSHKeysError, RequestException) as e:
                 raise MAASAPIBadRequest(e.args[0])
         else:
             raise MAASAPIBadRequest(
                 "Importing SSH keys failed. "
-                "Input needs to be in protocol:auth_id or auth_id format.")
+                "Input needs to be in protocol:auth_id or auth_id format."
+            )
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('sshkeys_handler', [])
+        return ("sshkeys_handler", [])
 
 
 class SSHKeyHandler(OperationsHandler):
@@ -168,6 +162,7 @@ class SSHKeyHandler(OperationsHandler):
 
     SSH keys can be retrieved or deleted.
     """
+
     api_doc_section_name = "SSH Key"
 
     fields = DISPLAY_SSHKEY_FIELDS
@@ -217,12 +212,17 @@ class SSHKeyHandler(OperationsHandler):
             return HttpResponseForbidden(
                 "Can't delete a key you don't own.",
                 content_type=(
-                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET)
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                ),
             )
         key.delete()
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-            description="Deleted SSH key id='%s'." % id)
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.API,
+            request,
+            None,
+            description="Deleted SSH key id='%s'." % id,
+        )
         return rc.DELETED
 
     @classmethod
@@ -237,4 +237,4 @@ class SSHKeyHandler(OperationsHandler):
         keyid = "id"
         if sshkey is not None:
             keyid = sshkey.id
-        return ('sshkey_handler', (keyid, ))
+        return ("sshkey_handler", (keyid,))

@@ -7,10 +7,7 @@ __all__ = []
 
 from maasserver.models.rbacsync import RBACSync
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import (
-    Equals,
-    HasLength,
-)
+from testtools.matchers import Equals, HasLength
 
 
 class TestRBACSync(MAASServerTestCase):
@@ -22,26 +19,25 @@ class TestRBACSync(MAASServerTestCase):
         RBACSync.objects.all().delete()
 
     def test_changes(self):
-        resource_type = 'resource-pool'
+        resource_type = "resource-pool"
         synced = [
             RBACSync.objects.create(resource_type=resource_type)
             for _ in range(3)
-        ] + [
-            RBACSync.objects.create(resource_type='')
-        ]
+        ] + [RBACSync.objects.create(resource_type="")]
         self.assertThat(
-            RBACSync.objects.changes(resource_type), Equals(synced))
+            RBACSync.objects.changes(resource_type), Equals(synced)
+        )
 
     def test_clear_does_nothing_when_nothing(self):
         self.assertThat(RBACSync.objects.all(), HasLength(0))
-        RBACSync.objects.clear('resource-pool')
+        RBACSync.objects.clear("resource-pool")
         self.assertThat(RBACSync.objects.all(), HasLength(0))
 
     def test_clear_removes_all(self):
-        resource_type = 'resource-pool'
+        resource_type = "resource-pool"
         for _ in range(3):
             RBACSync.objects.create(resource_type=resource_type)
-        RBACSync.objects.create(resource_type='')
+        RBACSync.objects.create(resource_type="")
         self.assertThat(RBACSync.objects.all(), HasLength(4))
         RBACSync.objects.clear(resource_type)
         self.assertThat(RBACSync.objects.all(), HasLength(0))

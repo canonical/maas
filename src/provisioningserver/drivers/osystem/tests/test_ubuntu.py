@@ -16,12 +16,11 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
 class TestUbuntuOS(MAASTestCase):
-
     def get_lts_release(self):
         # XXX ltrager 2018-01-08 - Force the default to be bionic before
         # bionic release for testing with MAAS 2.4.0.
         # return UbuntuDistroInfo().lts()
-        return 'bionic'
+        return "bionic"
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()
@@ -29,27 +28,32 @@ class TestUbuntuOS(MAASTestCase):
             row_dict = row
             if not isinstance(row, dict):
                 row_dict = row.__dict__
-            if row_dict['series'] == release:
+            if row_dict["series"] == release:
                 return info._format("fullname", row)
         return None
 
     def test_get_boot_image_purposes(self):
         osystem = UbuntuOS()
-        archs = [factory.make_name('arch') for _ in range(2)]
-        subarchs = [factory.make_name('subarch') for _ in range(2)]
-        releases = [factory.make_name('release') for _ in range(2)]
-        labels = [factory.make_name('label') for _ in range(2)]
+        archs = [factory.make_name("arch") for _ in range(2)]
+        subarchs = [factory.make_name("subarch") for _ in range(2)]
+        releases = [factory.make_name("release") for _ in range(2)]
+        labels = [factory.make_name("label") for _ in range(2)]
         for arch, subarch, release, label in product(
-                archs, subarchs, releases, labels):
+            archs, subarchs, releases, labels
+        ):
             expected = osystem.get_boot_image_purposes(
-                arch, subarchs, release, label)
+                arch, subarchs, release, label
+            )
             self.assertIsInstance(expected, list)
-            self.assertEqual(expected, [
-                BOOT_IMAGE_PURPOSE.COMMISSIONING,
-                BOOT_IMAGE_PURPOSE.INSTALL,
-                BOOT_IMAGE_PURPOSE.XINSTALL,
-                BOOT_IMAGE_PURPOSE.DISKLESS,
-                ])
+            self.assertEqual(
+                expected,
+                [
+                    BOOT_IMAGE_PURPOSE.COMMISSIONING,
+                    BOOT_IMAGE_PURPOSE.INSTALL,
+                    BOOT_IMAGE_PURPOSE.XINSTALL,
+                    BOOT_IMAGE_PURPOSE.DISKLESS,
+                ],
+            )
 
     def test_is_release_supported(self):
         osystem = UbuntuOS()
@@ -59,7 +63,7 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_lts_release(self):
         # Canary so we know when the lts changes
         osystem = UbuntuOS()
-        self.assertEquals('bionic', osystem.get_lts_release())
+        self.assertEquals("bionic", osystem.get_lts_release())
 
     def test_get_default_release(self):
         osystem = UbuntuOS()
@@ -69,19 +73,22 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_supported_commissioning_releases(self):
         self.patch_autospec(UbuntuDistroInfo, "is_lts").return_value = True
         self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
-            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+            "precise",
+            "trusty",
+            "vivid",
+            "wily",
+            "xenial",
         ]
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
-        self.assertSequenceEqual(['vivid', 'wily', 'xenial'], releases)
+        self.assertSequenceEqual(["vivid", "wily", "xenial"], releases)
 
     def test_get_supported_commissioning_releases_excludes_non_lts(self):
-        supported = [
-            'precise', 'trusty', 'vivid', 'wily', 'xenial'
-        ]
+        supported = ["precise", "trusty", "vivid", "wily", "xenial"]
         self.patch_autospec(
-            UbuntuDistroInfo, "supported").return_value = supported
+            UbuntuDistroInfo, "supported"
+        ).return_value = supported
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
@@ -93,26 +100,52 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_supported_commissioning_releases_excludes_deprecated(self):
         """Make sure we remove 'precise' from the list."""
         self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
-            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+            "precise",
+            "trusty",
+            "vivid",
+            "wily",
+            "xenial",
         ]
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
-        self.assertNotIn('precise', releases)
-        self.assertNotIn('trusty', releases)
+        self.assertNotIn("precise", releases)
+        self.assertNotIn("trusty", releases)
 
     def test_get_supported_commissioning_releases_excludes_unsupported_lts(
-            self):
+        self,
+    ):
         self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
-            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+            "precise",
+            "trusty",
+            "vivid",
+            "wily",
+            "xenial",
         ]
         unsupported = [
-            'warty', 'hoary', 'breezy', 'dapper', 'edgy', 'feisty', 'gutsy',
-            'hardy', 'intrepid', 'jaunty', 'karmic', 'lucid', 'maverick',
-            'natty', 'oneiric', 'quantal', 'raring', 'saucy', 'utopic'
+            "warty",
+            "hoary",
+            "breezy",
+            "dapper",
+            "edgy",
+            "feisty",
+            "gutsy",
+            "hardy",
+            "intrepid",
+            "jaunty",
+            "karmic",
+            "lucid",
+            "maverick",
+            "natty",
+            "oneiric",
+            "quantal",
+            "raring",
+            "saucy",
+            "utopic",
         ]
         self.patch_autospec(
-            UbuntuDistroInfo, "unsupported").return_value = unsupported
+            UbuntuDistroInfo, "unsupported"
+        ).return_value = unsupported
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
@@ -129,5 +162,5 @@ class TestUbuntuOS(MAASTestCase):
         info = UbuntuDistroInfo()
         release = random.choice(info.all)
         self.assertEqual(
-            osystem.get_release_title(release),
-            self.get_release_title(release))
+            osystem.get_release_title(release), self.get_release_title(release)
+        )

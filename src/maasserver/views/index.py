@@ -3,12 +3,10 @@
 
 """Index view."""
 
-__all__ = [
-    "IndexView",
-    ]
+__all__ = ["IndexView"]
 
 from django.views.generic.base import TemplateView
 
 
 class IndexView(TemplateView):
-    template_name = 'maasserver/index.html'
+    template_name = "maasserver/index.html"

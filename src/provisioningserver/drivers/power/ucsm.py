@@ -19,29 +19,31 @@ from provisioningserver.drivers.power import PowerDriver
 
 
 def extract_ucsm_parameters(context):
-    url = context.get('power_address')
-    username = context.get('power_user')
-    password = context.get('power_pass')
-    uuid = context.get('uuid')
+    url = context.get("power_address")
+    username = context.get("power_user")
+    password = context.get("power_pass")
+    uuid = context.get("uuid")
     return url, username, password, uuid
 
 
 class UCSMPowerDriver(PowerDriver):
 
-    name = 'ucsm'
+    name = "ucsm"
     chassis = True
     description = "Cisco UCS Manager"
     settings = [
         make_setting_field(
-            'uuid', "Server UUID", scope=SETTING_SCOPE.NODE,
-            required=True),
-        make_setting_field('power_address', "URL for XML API", required=True),
-        make_setting_field('power_user', "API user"),
+            "uuid", "Server UUID", scope=SETTING_SCOPE.NODE, required=True
+        ),
+        make_setting_field("power_address", "URL for XML API", required=True),
+        make_setting_field("power_user", "API user"),
         make_setting_field(
-            'power_pass', "API password", field_type='password'),
+            "power_pass", "API password", field_type="password"
+        ),
     ]
     ip_extractor = make_ip_extractor(
-        'power_address', IP_EXTRACTOR_PATTERNS.URL)
+        "power_address", IP_EXTRACTOR_PATTERNS.URL
+    )
 
     def detect_missing_packages(self):
         # uses urllib2 http client - nothing to look for!
@@ -50,14 +52,14 @@ class UCSMPowerDriver(PowerDriver):
     def power_on(self, system_id, context):
         """Power on UCSM node."""
         url, username, password, uuid = extract_ucsm_parameters(context)
-        power_control_ucsm(
-            url, username, password, uuid, maas_power_mode='on')
+        power_control_ucsm(url, username, password, uuid, maas_power_mode="on")
 
     def power_off(self, system_id, context):
         """Power off UCSM node."""
         url, username, password, uuid = extract_ucsm_parameters(context)
         power_control_ucsm(
-            url, username, password, uuid, maas_power_mode='off')
+            url, username, password, uuid, maas_power_mode="off"
+        )
 
     def power_query(self, system_id, context):
         """Power query UCSM node."""

@@ -7,10 +7,7 @@ __all__ = []
 
 from django.contrib.auth.models import User
 from maasserver.exceptions import CannotDeleteUserException
-from maasserver.models import (
-    FileStorage,
-    UserProfile,
-)
+from maasserver.models import FileStorage, UserProfile
 from maasserver.models.user import (
     GENERIC_CONSUMER,
     get_auth_tokens,
@@ -19,14 +16,10 @@ from maasserver.models.user import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from piston3.models import (
-    Consumer,
-    Token,
-)
+from piston3.models import Consumer, Token
 
 
 class UserProfileTest(MAASServerTestCase):
-
     def test_profile_creation(self):
         # A profile is created each time a user is created.
         user = factory.make_User()
@@ -65,12 +58,10 @@ class UserProfileTest(MAASServerTestCase):
         profile_id = profile.id
         user_id = profile.user.id
         self.assertTrue(User.objects.filter(id=user_id).exists())
-        self.assertTrue(
-            UserProfile.objects.filter(id=profile_id).exists())
+        self.assertTrue(UserProfile.objects.filter(id=profile_id).exists())
         profile.delete()
         self.assertFalse(User.objects.filter(id=user_id).exists())
-        self.assertFalse(
-            UserProfile.objects.filter(id=profile_id).exists())
+        self.assertFalse(UserProfile.objects.filter(id=profile_id).exists())
 
     def test_delete_consumers_tokens(self):
         # Deleting a profile deletes the related tokens and consumers.
@@ -92,41 +83,40 @@ class UserProfileTest(MAASServerTestCase):
         filestorage = factory.make_FileStorage(owner=profile.user)
         filestorage_id = filestorage.id
         self.assertTrue(FileStorage.objects.filter(id=filestorage_id).exists())
-        self.assertTrue(
-            UserProfile.objects.filter(id=profile_id).exists())
+        self.assertTrue(UserProfile.objects.filter(id=profile_id).exists())
         profile.delete()
         self.assertFalse(
-            FileStorage.objects.filter(id=filestorage_id).exists())
-        self.assertFalse(
-            UserProfile.objects.filter(id=profile_id).exists())
+            FileStorage.objects.filter(id=filestorage_id).exists()
+        )
+        self.assertFalse(UserProfile.objects.filter(id=profile_id).exists())
 
     def test_delete_attached_nodes(self):
         # Cannot delete a user with nodes attached to it.
         profile = factory.make_User().userprofile
         factory.make_Node(owner=profile.user)
         error = self.assertRaises(CannotDeleteUserException, profile.delete)
-        self.assertIn('1 node(s)', str(error))
+        self.assertIn("1 node(s)", str(error))
 
     def test_delete_attached_static_ip_addresses(self):
         # Cannot delete a user with static IP address attached to it.
         profile = factory.make_User().userprofile
         factory.make_StaticIPAddress(user=profile.user)
         error = self.assertRaises(CannotDeleteUserException, profile.delete)
-        self.assertIn('1 static IP address(es)', str(error))
+        self.assertIn("1 static IP address(es)", str(error))
 
     def test_delete_attached_iprange(self):
         # Cannot delete a user with an IP range attached to it.
         profile = factory.make_User().userprofile
         factory.make_IPRange(user=profile.user)
         error = self.assertRaises(CannotDeleteUserException, profile.delete)
-        self.assertIn('1 IP range(s)', str(error))
+        self.assertIn("1 IP range(s)", str(error))
 
     def test_delete_attached_multiple_resources(self):
         profile = factory.make_User().userprofile
         factory.make_Node(owner=profile.user)
         factory.make_StaticIPAddress(user=profile.user)
         error = self.assertRaises(CannotDeleteUserException, profile.delete)
-        self.assertIn('1 static IP address(es), 1 node(s)', str(error))
+        self.assertIn("1 static IP address(es), 1 node(s)", str(error))
 
     def test_transfer_resources(self):
         user = factory.make_User()
@@ -148,5 +138,6 @@ class UserProfileTest(MAASServerTestCase):
         for _ in range(3):
             factory.make_User()
         usernames = set(
-            user.username for user in UserProfile.objects.all_users())
+            user.username for user in UserProfile.objects.all_users()
+        )
         self.assertTrue(set(SYSTEM_USERS).isdisjoint(usernames))

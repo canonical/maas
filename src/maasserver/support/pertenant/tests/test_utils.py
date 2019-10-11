@@ -22,36 +22,37 @@ def make_provider_state_file(node=None):
     """
     if node is None:
         node = factory.make_Node()
-    node_link = reverse('node_handler', args=[node.system_id])
-    content = 'zookeeper-instances: [%s]\n' % node_link
-    content_data = content.encode('ascii')
+    node_link = reverse("node_handler", args=[node.system_id])
+    content = "zookeeper-instances: [%s]\n" % node_link
+    content_data = content.encode("ascii")
     return factory.make_FileStorage(
-        filename=PROVIDER_STATE_FILENAME, content=content_data, owner=None)
+        filename=PROVIDER_STATE_FILENAME, content=content_data, owner=None
+    )
 
 
 class TestExtractBootstrapNodeSystemId(MAASServerTestCase):
-
     def test_parses_valid_provider_state_file(self):
         node = factory.make_Node()
         provider_state_file = make_provider_state_file(node=node)
         system_id = extract_bootstrap_node_system_id(
-            provider_state_file.content)
+            provider_state_file.content
+        )
         self.assertEqual(system_id, node.system_id)
 
     def test_returns_None_if_parsing_fails(self):
         invalid_contents = [
-            '%',  # invalid yaml
+            "%",  # invalid yaml
             sample_binary_data,  # binary content (invalid yaml)
-            'invalid content',  # invalid provider-state content
-            'zookeeper-instances: []',  # no instances listed
+            "invalid content",  # invalid provider-state content
+            "zookeeper-instances: []",  # no instances listed
         ]
         for invalid_content in invalid_contents:
             self.assertIsNone(
-                extract_bootstrap_node_system_id(invalid_content))
+                extract_bootstrap_node_system_id(invalid_content)
+            )
 
 
 class TestGetBootstrapNodeOwner(MAASServerTestCase):
-
     def test_returns_None_if_no_provider_state_file(self):
         self.assertIsNone(get_bootstrap_node_owner())
 
@@ -67,7 +68,8 @@ class TestGetBootstrapNodeOwner(MAASServerTestCase):
         self.assertIsNone(get_bootstrap_node_owner())
 
     def test_returns_None_if_invalid_yaml(self):
-        invalid_content = '%'.encode('ascii')
+        invalid_content = "%".encode("ascii")
         factory.make_FileStorage(
-            filename=PROVIDER_STATE_FILENAME, content=invalid_content)
+            filename=PROVIDER_STATE_FILENAME, content=invalid_content
+        )
         self.assertIsNone(get_bootstrap_node_owner())

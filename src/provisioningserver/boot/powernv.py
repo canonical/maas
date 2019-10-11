@@ -3,9 +3,7 @@
 
 """PowerNV Boot Method"""
 
-__all__ = [
-    'PowerNVBootMethod',
-    ]
+__all__ = ["PowerNVBootMethod"]
 
 import re
 
@@ -15,10 +13,7 @@ from provisioningserver.boot import (
     get_parameters,
     get_remote_mac,
 )
-from provisioningserver.boot.pxe import (
-    ARP_HTYPE,
-    re_mac_address,
-)
+from provisioningserver.boot.pxe import ARP_HTYPE, re_mac_address
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import typed
 from tftp.backend import FilesystemReader
@@ -27,7 +22,7 @@ from tftp.backend import FilesystemReader
 # PowerNV nodes. This prefix is set by the path-prefix dhcpd option.
 # We assume that the ARP HTYPE (hardware type) that PXELINUX sends is
 # always Ethernet.
-re_config_file = r'''
+re_config_file = r"""
     # Optional leading slash(es).
     ^/*
     ppc64el           # PowerNV pxe prefix, set by dhcpd
@@ -42,24 +37,25 @@ re_config_file = r'''
         default
     )
     $
-'''
+"""
 
 re_config_file = re_config_file.format(
-    htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
+    htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address
+)
 re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 # Due to the "ppc64el" prefix all files requested from the client using
 # relative paths will have that prefix. Capturing the path after that prefix
 # will give us the correct path in the local tftp root on disk.
-re_other_file = r'''
+re_other_file = r"""
     # Optional leading slash(es).
     ^/*
     ppc64el           # PowerNV PXE prefix, set by dhcpd.
     /
     (?P<path>.+)      # Capture path.
     $
-'''
+"""
 re_other_file = re_other_file.encode("ascii")
 re_other_file = re.compile(re_other_file, re.VERBOSE)
 
@@ -67,9 +63,9 @@ re_other_file = re.compile(re_other_file, re.VERBOSE)
 def format_bootif(mac):
     """Formats a mac address into the BOOTIF format, expected by
     the linux kernel."""
-    mac = mac.replace(':', '-')
+    mac = mac.replace(":", "-")
     mac = mac.lower()
-    return '%02x-%s' % (ARP_HTYPE.ETHERNET, mac)
+    return "%02x-%s" % (ARP_HTYPE.ETHERNET, mac)
 
 
 class PowerNVBootMethod(BootMethod):
@@ -103,11 +99,11 @@ class PowerNVBootMethod(BootMethod):
         params = self.get_params(backend, path)
         if params is None:
             return None
-        params['arch'] = "ppc64el"
-        if 'mac' not in params:
+        params["arch"] = "ppc64el"
+        if "mac" not in params:
             mac = get_remote_mac()
             if mac is not None:
-                params['mac'] = mac
+                params["mac"] = mac
         return params
 
     def get_reader(self, backend, kernel_params, mac=None, path=None, **extra):
@@ -125,18 +121,18 @@ class PowerNVBootMethod(BootMethod):
             # This is a request for a static file, not a configuration file.
             # The prefix was already trimmed by `match_path` so we need only
             # return a FilesystemReader for `path` beneath the backend's base.
-            target_path = backend.base.descendant(path.split('/'))
+            target_path = backend.base.descendant(path.split("/"))
             return FilesystemReader(target_path)
 
         # Return empty config for PowerNV local. PowerNV fails to
         # support the LOCALBOOT flag. Empty config will allow it
         # to select the first device.
-        if kernel_params.purpose == 'local':
+        if kernel_params.purpose == "local":
             return BytesReader("".encode("utf-8"))
 
         template = self.get_template(
-            kernel_params.purpose, kernel_params.arch,
-            kernel_params.subarch)
+            kernel_params.purpose, kernel_params.arch, kernel_params.subarch
+        )
         namespace = self.compose_template_namespace(kernel_params)
 
         # Modify the kernel_command to inject the BOOTIF. PowerNV fails to
@@ -144,10 +140,10 @@ class PowerNVBootMethod(BootMethod):
         def kernel_command(params):
             cmd_line = compose_kernel_command_line(params)
             if mac is not None:
-                return '%s BOOTIF=%s' % (cmd_line, format_bootif(mac))
+                return "%s BOOTIF=%s" % (cmd_line, format_bootif(mac))
             return cmd_line
 
-        namespace['kernel_command'] = kernel_command
+        namespace["kernel_command"] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
     @typed

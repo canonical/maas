@@ -16,7 +16,7 @@ from maastesting.utils import sample_binary_data
 class FileStorageTest(MAASServerTestCase):
     """Testing of the :class:`FileStorage` model."""
 
-    def make_data(self, including_text='data'):
+    def make_data(self, including_text="data"):
         """Return arbitrary data.
 
         :param including_text: Text to include in the data.  Leave something
@@ -28,17 +28,19 @@ class FileStorageTest(MAASServerTestCase):
         # Note that this won't automatically insert any non-ASCII bytes.
         # Proper handling of real binary data is tested separately.
         text = "%s %s" % (including_text, factory.make_string())
-        return text.encode('ascii')
+        return text.encode("ascii")
 
     def test_save_file_creates_storage(self):
         filename = factory.make_string()
         content = self.make_data()
         user = factory.make_User()
         storage = FileStorage.objects.save_file(
-            filename, BytesIO(content), user)
+            filename, BytesIO(content), user
+        )
         self.assertEqual(
             (filename, content, user),
-            (storage.filename, storage.content, storage.owner))
+            (storage.filename, storage.content, storage.owner),
+        )
 
     def test_storage_can_be_retrieved(self):
         filename = factory.make_string()
@@ -46,8 +48,8 @@ class FileStorageTest(MAASServerTestCase):
         factory.make_FileStorage(filename=filename, content=content)
         storage = FileStorage.objects.get(filename=filename)
         self.assertEqual(
-            (filename, content),
-            (storage.filename, storage.content))
+            (filename, content), (storage.filename, storage.content)
+        )
 
     def test_stores_binary_data(self):
         storage = factory.make_FileStorage(content=sample_binary_data)
@@ -57,15 +59,18 @@ class FileStorageTest(MAASServerTestCase):
         # If a file of the same name has already been stored, the
         # reference to the old data gets overwritten with one to the new
         # data.
-        filename = factory.make_name('filename')
+        filename = factory.make_name("filename")
         old_storage = factory.make_FileStorage(
-            filename=filename, content=self.make_data('old data'))
-        new_data = self.make_data('new-data')
+            filename=filename, content=self.make_data("old data")
+        )
+        new_data = self.make_data("new-data")
         new_storage = factory.make_FileStorage(
-            filename=filename, content=new_data)
+            filename=filename, content=new_data
+        )
         self.assertEqual(old_storage.filename, new_storage.filename)
         self.assertEqual(
-            new_data, FileStorage.objects.get(filename=filename).content)
+            new_data, FileStorage.objects.get(filename=filename).content
+        )
 
     def test_key_gets_generated(self):
         # The generated system_id looks good.

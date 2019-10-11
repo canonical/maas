@@ -3,17 +3,12 @@
 
 """DNSData objects."""
 
-__all__ = [
-    "DNSData",
-    ]
+__all__ = ["DNSData"]
 
 from collections import defaultdict
 import re
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection
 from django.db.models import (
     CASCADE,
@@ -34,20 +29,24 @@ from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 
 
-CNAME_LABEL = r'[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}'
-CNAME_SPEC = r'^(%s\.)*%s\.?$' % (CNAME_LABEL, CNAME_LABEL)
-SUPPORTED_RRTYPES = {'CNAME', 'MX', 'NS', 'SRV', 'SSHFP', 'TXT'}
+CNAME_LABEL = r"[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}"
+CNAME_SPEC = r"^(%s\.)*%s\.?$" % (CNAME_LABEL, CNAME_LABEL)
+SUPPORTED_RRTYPES = {"CNAME", "MX", "NS", "SRV", "SSHFP", "TXT"}
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."
 INVALID_MX_MSG = (
     "Invalid MX: Should be '<preference> <server>'."
-    " Range for preference is 0-65535.")
+    " Range for preference is 0-65535."
+)
 INVALID_SRV_MSG = (
     "Invalid SRV: Should be '<priority> <weight> <port> <server>'."
-    " Range for priority, weight, and port are 0-65536.")
+    " Range for priority, weight, and port are 0-65536."
+)
 INVALID_SSHFP_MSG = (
-    "Invalid SSHFP: Should be '<algorithm> <fptype> <fingerprint>'.")
+    "Invalid SSHFP: Should be '<algorithm> <fptype> <fingerprint>'."
+)
 CNAME_AND_OTHER_MSG = (
-    "CNAME records for a name cannot coexist with non-CNAME records.")
+    "CNAME records for a name cannot coexist with non-CNAME records."
+)
 MULTI_CNAME_MSG = "Only one CNAME can be associated with a name."
 DIFFERENT_TTL_MSG = "TTL of %d differs from other resource records TTL of %d."
 
@@ -58,8 +57,9 @@ def validate_rrtype(value):
     """Django validator: `value` must be a valid DNS RRtype name."""
     if value.upper() not in SUPPORTED_RRTYPES:
         raise ValidationError(
-            "%s is not one of %s." %
-            (value.upper(), " ".join(SUPPORTED_RRTYPES)))
+            "%s is not one of %s."
+            % (value.upper(), " ".join(SUPPORTED_RRTYPES))
+        )
 
 
 class HostnameRRsetMapping:
@@ -68,8 +68,13 @@ class HostnameRRsetMapping:
        rrdata) tuples."""
 
     def __init__(
-            self, system_id=None, rrset: set = None, node_type=None,
-            dnsresource_id=None, user_id=None):
+        self,
+        system_id=None,
+        rrset: set = None,
+        node_type=None,
+        dnsresource_id=None,
+        user_id=None,
+    ):
         self.system_id = system_id
         self.node_type = node_type
         self.dnsresource_id = dnsresource_id
@@ -78,26 +83,29 @@ class HostnameRRsetMapping:
 
     def __repr__(self):
         return "HostnameRRSetMapping(%r, %r, %r, %r, %r)" % (
-            self.system_id, self.rrset, self.node_type, self.dnsresource_id,
-            self.user_id)
+            self.system_id,
+            self.rrset,
+            self.node_type,
+            self.dnsresource_id,
+            self.user_id,
+        )
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
 
 class DNSDataQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
-        specifier_types = {
-            None: self._add_default_query,
-            'name': "__name",
-        }
+        specifier_types = {None: self._add_default_query, "name": "__name"}
         return super().get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class DNSDataQuerySet(QuerySet, DNSDataQueriesMixin):
@@ -136,19 +144,24 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
             raise PermissionDenied()
 
     def get_hostname_dnsdata_mapping(
-            self, domain, raw_ttl=False, with_ids=True):
+        self, domain, raw_ttl=False, with_ids=True
+    ):
         """Return hostname to RRset mapping for this domain."""
         cursor = connection.cursor()
-        default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        default_ttl = "%d" % Config.objects.get_config("default_dns_ttl")
         if raw_ttl:
             ttl_clause = """dnsdata.ttl"""
         else:
-            ttl_clause = """
+            ttl_clause = (
+                """
                 COALESCE(
                     dnsdata.ttl,
                     domain.ttl,
-                    %s)""" % default_ttl
-        sql_query = """
+                    %s)"""
+                % default_ttl
+            )
+        sql_query = (
+            """
             SELECT
                 dnsresource.id,
                 dnsresource.name,
@@ -157,7 +170,9 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 node.node_type,
                 node.user_id,
                 dnsdata.id,
-                """ + ttl_clause + """ AS ttl,
+                """
+            + ttl_clause
+            + """ AS ttl,
                 dnsdata.rrtype,
                 dnsdata.rrdata
             FROM maasserver_dnsdata AS dnsdata
@@ -218,20 +233,32 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 dnsdata.rrtype,
                 dnsdata.rrdata
             """
+        )
         # N.B.: The "node.hostname IS NULL" above is actually checking that
         # no node exists with the same name, in order to make sure that we do
         # not spill CNAME and other data.
         mapping = defaultdict(HostnameRRsetMapping)
         cursor.execute(sql_query, (domain.id,))
-        for (dnsresource_id, name, d_name, system_id, node_type,
-             user_id, dnsdata_id, ttl, rrtype, rrdata) in cursor.fetchall():
-            if name == '@' and d_name != domain.name:
-                name, d_name = d_name.split('.', 1)
+        for (
+            dnsresource_id,
+            name,
+            d_name,
+            system_id,
+            node_type,
+            user_id,
+            dnsdata_id,
+            ttl,
+            rrtype,
+            rrdata,
+        ) in cursor.fetchall():
+            if name == "@" and d_name != domain.name:
+                name, d_name = d_name.split(".", 1)
                 # Since we don't allow more than one label in dnsresource
                 # names, we should never ever be wrong in this assertion.
                 assert d_name == domain.name, (
-                    "Invalid domain; expected '%s' == '%s'" % (
-                        d_name, domain.name))
+                    "Invalid domain; expected '%s' == '%s'"
+                    % (d_name, domain.name)
+                )
             entry = mapping[name]
             entry.node_type = node_type
             entry.system_id = system_id
@@ -254,15 +281,20 @@ class DNSData(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         verbose_name = "DNSData"
         verbose_name_plural = "DNSData"
 
     objects = DNSDataManager()
 
     dnsresource = ForeignKey(
-        DNSResource, editable=True, blank=False, null=False,
+        DNSResource,
+        editable=True,
+        blank=False,
+        null=False,
         help_text="DNSResource which is the left-hand side.",
-        on_delete=CASCADE)
+        on_delete=CASCADE,
+    )
 
     # TTL for this resource.  Should be the same for all records of the same
     # RRType on a given label. (BIND will complain and pick one if they are not
@@ -271,12 +303,21 @@ class DNSData(CleanSave, TimestampedModel):
     ttl = PositiveIntegerField(default=None, null=True, blank=True)
 
     rrtype = CharField(
-        editable=True, max_length=8, blank=False, null=False, unique=False,
-        validators=[validate_rrtype], help_text="Resource record type")
+        editable=True,
+        max_length=8,
+        blank=False,
+        null=False,
+        unique=False,
+        validators=[validate_rrtype],
+        help_text="Resource record type",
+    )
 
     rrdata = TextField(
-        editable=True, blank=False, null=False,
-        help_text="Entire right-hand side of the resource record.")
+        editable=True,
+        blank=False,
+        null=False,
+        help_text="Entire right-hand side of the resource record.",
+    )
 
     def __unicode__(self):
         return "%s %s" % (self.rrtype, self.rrdata)
@@ -302,7 +343,8 @@ class DNSData(CleanSave, TimestampedModel):
             # SSHFP is <algo> <fptype> <fingerprint>.  Do minimal checking so
             # that we support future algorithms and types.
             spec = re.compile(
-                r"^(?P<algo>[0-9]+)\s+(?P<fptype>[0-9]+)\s+(?P<fp>.*)$")
+                r"^(?P<algo>[0-9]+)\s+(?P<fptype>[0-9]+)\s+(?P<fp>.*)$"
+            )
             res = spec.search(self.rrdata)
             if res is None:
                 raise ValidationError(INVALID_SSHFP_MSG)
@@ -315,8 +357,8 @@ class DNSData(CleanSave, TimestampedModel):
             res = spec.search(self.rrdata)
             if res is None:
                 raise ValidationError(INVALID_MX_MSG)
-            pref = int(res.groupdict()['pref'])
-            mxhost = res.groupdict()['mxhost']
+            pref = int(res.groupdict()["pref"])
+            mxhost = res.groupdict()["mxhost"]
             if pref < 0 or pref > 65535:
                 raise ValidationError(INVALID_MX_MSG)
             validate_domain_name(mxhost)
@@ -325,14 +367,15 @@ class DNSData(CleanSave, TimestampedModel):
         elif self.rrtype == "SRV":
             spec = re.compile(
                 r"^(?P<pri>[0-9]+)\s+(?P<weight>[0-9]+)\s+(?P<port>[0-9]+)\s+"
-                r"(?P<target>.*)")
+                r"(?P<target>.*)"
+            )
             res = spec.search(self.rrdata)
             if res is None:
                 raise ValidationError(INVALID_SRV_MSG)
-            srv_host = res.groupdict()['target']
-            pri = int(res.groupdict()['pri'])
-            weight = int(res.groupdict()['weight'])
-            port = int(res.groupdict()['port'])
+            srv_host = res.groupdict()["target"]
+            pri = int(res.groupdict()["pri"])
+            weight = int(res.groupdict()["weight"])
+            port = int(res.groupdict()["port"])
             if pri < 0 or pri > 65535:
                 raise ValidationError(INVALID_SRV_MSG)
             if weight < 0 or weight > 65535:
@@ -342,7 +385,7 @@ class DNSData(CleanSave, TimestampedModel):
             # srv_host can be '.', in which case "the service is decidedly not
             # available at this domain."  Otherwise, it must be a valid name
             # for an Address RRSet.
-            if srv_host != '.':
+            if srv_host != ".":
                 validate_domain_name(srv_host)
 
     def clean(self, *args, **kwargs):
@@ -355,12 +398,14 @@ class DNSData(CleanSave, TimestampedModel):
         # items that saving this would create, and reject things if needed.
         if self.id is None:
             num_cname = DNSData.objects.filter(
-                dnsresource_id=self.dnsresource_id,
-                rrtype="CNAME").count()
+                dnsresource_id=self.dnsresource_id, rrtype="CNAME"
+            ).count()
             if self.rrtype == "CNAME":
-                num_other = DNSData.objects.filter(
-                    dnsresource__id=self.dnsresource_id).exclude(
-                    rrtype="CNAME").count()
+                num_other = (
+                    DNSData.objects.filter(dnsresource__id=self.dnsresource_id)
+                    .exclude(rrtype="CNAME")
+                    .count()
+                )
                 # account for ipaddresses
                 num_other += self.dnsresource.ip_addresses.count()
                 if num_other > 0:
@@ -371,10 +416,10 @@ class DNSData(CleanSave, TimestampedModel):
                 if num_cname > 0:
                     raise ValidationError(CNAME_AND_OTHER_MSG)
             rrset = DNSData.objects.filter(
-                rrtype=self.rrtype,
-                dnsresource_id=self.dnsresource.id).exclude(
-                ttl=self.ttl)
+                rrtype=self.rrtype, dnsresource_id=self.dnsresource.id
+            ).exclude(ttl=self.ttl)
             if rrset.count() > 0:
                 maaslog.warning(
-                    DIFFERENT_TTL_MSG % (self.ttl, rrset.first().ttl))
+                    DIFFERENT_TTL_MSG % (self.ttl, rrset.first().ttl)
+                )
         super().clean(*args, **kwargs)

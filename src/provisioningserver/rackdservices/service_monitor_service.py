@@ -5,24 +5,16 @@
 on stays running."""
 
 
-__all__ = [
-    "ServiceMonitorService"
-]
+__all__ = ["ServiceMonitorService"]
 
 from datetime import timedelta
 
 from provisioningserver.config import is_dev_environment
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateServices
 from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils.twisted import (
-    pause,
-    retries,
-)
+from provisioningserver.utils.twisted import pause, retries
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 
@@ -40,11 +32,7 @@ class ServiceMonitorService(TimerService, object):
     # updating the status of "rackd". This is because its status all depends
     # on the connections across the multiple regions.
     ALWAYS_RUNNING_SERVICES = [
-        {
-            "name": "tftp",
-            "status": "running",
-            "status_info": "",
-        },
+        {"name": "tftp", "status": "running", "status_info": ""}
     ]
 
     check_interval = timedelta(seconds=30).total_seconds()
@@ -52,7 +40,8 @@ class ServiceMonitorService(TimerService, object):
     def __init__(self, client_service, clock):
         # Call self.monitorServices() every self.check_interval.
         super(ServiceMonitorService, self).__init__(
-            self.check_interval, self.monitorServices)
+            self.check_interval, self.monitorServices
+        )
         self.client_service = client_service
         self.clock = clock
 
@@ -63,13 +52,15 @@ class ServiceMonitorService(TimerService, object):
         if is_dev_environment():
             log.msg(
                 "Skipping check of services; they're not running under "
-                "the supervision of systemd.")
+                "the supervision of systemd."
+            )
         else:
             d = self._getConnection()
             d.addCallback(self._ensureServices)
             d.addCallback(self._updateRegion)
             d.addErrback(
-                log.err, "Failed to monitor services and update region.")
+                log.err, "Failed to monitor services and update region."
+            )
             return d
 
     @inlineCallbacks
@@ -85,7 +76,8 @@ class ServiceMonitorService(TimerService, object):
         else:
             maaslog.error(
                 "Can't update service statuses, no RPC "
-                "connection to region.")
+                "connection to region."
+            )
         return client
 
     @inlineCallbacks
@@ -102,9 +94,8 @@ class ServiceMonitorService(TimerService, object):
         if client:
             services = yield self._buildServices(services)
             yield client(
-                UpdateServices,
-                system_id=client.localIdent,
-                services=services)
+                UpdateServices, system_id=client.localIdent, services=services
+            )
 
     @inlineCallbacks
     def _buildServices(self, services):
@@ -113,9 +104,7 @@ class ServiceMonitorService(TimerService, object):
         for name, state in services.items():
             service = service_monitor.getServiceByName(name)
             status, status_info = yield state.getStatusInfo(service)
-            msg_services.append({
-                "name": name,
-                "status": status,
-                "status_info": status_info,
-            })
+            msg_services.append(
+                {"name": name, "status": status, "status_info": status_info}
+            )
         return msg_services

@@ -62,10 +62,12 @@ class APIClientTestCase(MAASTestCase):
             # with "HTTP_" and 1.11 does not.
             "HTTP_CONTENT_TYPE": headers["Content-Type"],
             "HTTP_CONTENT_LENGTH": headers["Content-Length"],
-            }
+        }
         parser = multipartparser.MultiPartParser(
-            META=meta, input_data=BytesIO(body.encode("ascii")),
-            upload_handlers=[handler])
+            META=meta,
+            input_data=BytesIO(body.encode("ascii")),
+            upload_handlers=[handler],
+        )
         return parser.parse()
 
     @classmethod
@@ -78,16 +80,18 @@ class APIClientTestCase(MAASTestCase):
         # JAM 2012-10-09 Importing emitters has a side effect of registering
         #   mime type handlers with utils.translate_mime.
         from piston3 import emitters
+
         emitters  # Imported for side-effects.
         from piston3.utils import translate_mime
 
-        environ = {'wsgi.input': BytesIO(body.encode("utf8"))}
+        environ = {"wsgi.input": BytesIO(body.encode("utf8"))}
         for name, value in headers.items():
-            environ[name.upper().replace('-', '_')] = value
-        environ['REQUEST_METHOD'] = 'POST'
-        environ['SCRIPT_NAME'] = ''
-        environ['PATH_INFO'] = ''
+            environ[name.upper().replace("-", "_")] = value
+        environ["REQUEST_METHOD"] = "POST"
+        environ["SCRIPT_NAME"] = ""
+        environ["PATH_INFO"] = ""
         from django.core.handlers.wsgi import WSGIRequest
+
         request = WSGIRequest(environ)
         translate_mime(request)
         return request.data

@@ -3,9 +3,7 @@
 
 """The IPRange handler for the WebSocket connection."""
 
-__all__ = [
-    "IPRangeHandler",
-    ]
+__all__ = ["IPRangeHandler"]
 
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange
@@ -19,24 +17,15 @@ maaslog = get_maas_logger("websockets.iprange")
 
 
 class IPRangeHandler(TimestampedModelHandler):
-
     class Meta:
-        queryset = IPRange.objects.all().select_related('user', 'subnet')
-        pk = 'id'
+        queryset = IPRange.objects.all().select_related("user", "subnet")
+        pk = "id"
         form = IPRangeForm
-        allowed_methods = [
-            'list',
-            'get',
-            'create',
-            'update',
-            'delete',
-        ]
-        listen_channels = [
-            "iprange",
-        ]
+        allowed_methods = ["list", "get", "create", "update", "delete"]
+        listen_channels = ["iprange"]
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        data['vlan'] = None if obj.subnet is None else obj.subnet.vlan_id
-        data['user'] = '' if obj.user is None else obj.user.username
+        data["vlan"] = None if obj.subnet is None else obj.subnet.vlan_id
+        data["user"] = "" if obj.user is None else obj.user.username
         return data

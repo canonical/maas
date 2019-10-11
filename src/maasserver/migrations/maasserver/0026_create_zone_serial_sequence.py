@@ -6,7 +6,7 @@ from django.db import migrations
 # maasserver.dns.config. This is done with a snippet of PL/pgSQL to support
 # PostgreSQL before 9.5, which does not support `CREATE SEQUENCE ... IF NOT
 # EXISTS`.
-sequence_create = ("""\
+sequence_create = """\
 DO
 $$
 BEGIN
@@ -16,19 +16,15 @@ EXCEPTION WHEN duplicate_table THEN
     -- Do nothing, it already exists.
 END
 $$ LANGUAGE plpgsql;
-""").format(minvalue=1, maxvalue=((2 ** 32) - 1))
-
-sequence_drop = (
-    "DROP SEQUENCE IF EXISTS maasserver_zone_serial_seq"
+""".format(
+    minvalue=1, maxvalue=((2 ** 32) - 1)
 )
+
+sequence_drop = "DROP SEQUENCE IF EXISTS maasserver_zone_serial_seq"
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0025_create_node_system_id_sequence'),
-    ]
+    dependencies = [("maasserver", "0025_create_node_system_id_sequence")]
 
-    operations = [
-        migrations.RunSQL(sequence_create, sequence_drop),
-    ]
+    operations = [migrations.RunSQL(sequence_create, sequence_drop)]

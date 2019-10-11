@@ -3,34 +3,26 @@
 
 """UEFI AMD64 Boot Method"""
 
-__all__ = [
-    'UEFIAMD64BootMethod',
-    ]
+__all__ = ["UEFIAMD64BootMethod"]
 
 from itertools import repeat
 import os
 import re
 from textwrap import dedent
 
-from provisioningserver.boot import (
-    BootMethod,
-    BytesReader,
-    get_parameters,
-)
-from provisioningserver.events import (
-    EVENT_TYPES,
-    try_send_rack_event,
-)
+from provisioningserver.boot import BootMethod, BytesReader, get_parameters
+from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
 
 
-maaslog = get_maas_logger('uefi_amd64')
+maaslog = get_maas_logger("uefi_amd64")
 
 
-CONFIG_FILE = dedent("""
+CONFIG_FILE = dedent(
+    """
     # MAAS GRUB2 pre-loader configuration file
 
     # Load based on MAC address first.
@@ -39,17 +31,17 @@ CONFIG_FILE = dedent("""
     # Failed to load based on MAC address.
     # Load amd64 by default, UEFI only supported by 64-bit
     configfile (pxe)/grub/grub.cfg-default-amd64
-    """)
+    """
+)
 
 # GRUB EFINET represents a MAC address in IEEE 802 colon-seperated
 # format. Required for UEFI as GRUB2 only presents the MAC address
 # in colon-seperated format.
-re_mac_address_octet = r'[0-9a-f]{2}'
-re_mac_address = re.compile(
-    ':'.join(repeat(re_mac_address_octet, 6)))
+re_mac_address_octet = r"[0-9a-f]{2}"
+re_mac_address = re.compile(":".join(repeat(re_mac_address_octet, 6)))
 
 # Match the grub/grub.cfg-* request for UEFI (aka. GRUB2)
-re_config_file = r'''
+re_config_file = r"""
     # Optional leading slash(es).
     ^/*
     grub/grub[.]cfg   # UEFI (aka. GRUB2) expects this.
@@ -64,23 +56,22 @@ re_config_file = r'''
           )?
     )
     $
-'''
+"""
 
-re_config_file = re_config_file.format(
-    re_mac_address=re_mac_address)
+re_config_file = re_config_file.format(re_mac_address=re_mac_address)
 re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
 class UEFIAMD64BootMethod(BootMethod):
 
-    name = 'uefi_amd64'
-    bios_boot_method = 'uefi'
-    template_subdir = 'uefi'
-    bootloader_arches = ['amd64']
-    bootloader_path = 'bootx64.efi'
-    bootloader_files = ['bootx64.efi', 'grubx64.efi']
-    arch_octet = ['00:07', '00:09']
+    name = "uefi_amd64"
+    bios_boot_method = "uefi"
+    template_subdir = "uefi"
+    bootloader_arches = ["amd64"]
+    bootloader_path = "bootx64.efi"
+    bootloader_files = ["bootx64.efi", "grubx64.efi"]
+    arch_octet = ["00:07", "00:09"]
     user_class = None
 
     def match_path(self, backend, path):
@@ -99,7 +90,7 @@ class UEFIAMD64BootMethod(BootMethod):
         # MAC address is in the wrong format, fix it
         mac = params.get("mac")
         if mac is not None:
-            params["mac"] = mac.replace(':', '-')
+            params["mac"] = mac.replace(":", "-")
 
         return params
 
@@ -112,6 +103,7 @@ class UEFIAMD64BootMethod(BootMethod):
             parameters generated in another component (for example, see
             `TFTPBackend.get_boot_method_reader`) won't cause this to break.
         """
+
         def kernel_command(params):
             """Return the kernel command, adjusted for UEFI to work.
 
@@ -121,17 +113,19 @@ class UEFIAMD64BootMethod(BootMethod):
             cc:{...}end_cc are hit, for whatever reason.  Escape _JUST_ those.
             """
             return re.sub(
-                r'cc:{(?P<inner>[^}]*)}end_cc', r'cc:\{\g<inner>\}end_cc',
-                compose_kernel_command_line(params))
+                r"cc:{(?P<inner>[^}]*)}end_cc",
+                r"cc:\{\g<inner>\}end_cc",
+                compose_kernel_command_line(params),
+            )
 
         template = self.get_template(
-            kernel_params.purpose, kernel_params.arch,
-            kernel_params.subarch)
+            kernel_params.purpose, kernel_params.arch, kernel_params.subarch
+        )
         namespace = self.compose_template_namespace(kernel_params)
         # Bug#1651452 - kernel command needs some extra escapes, but ONLY for
         # UEFI.  And so we fix it here, instead of in the common code.  See
         # also src/provisioningserver/kernel_opts.py.
-        namespace['kernel_command'] = kernel_command
+        namespace["kernel_command"] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
     def _find_and_copy_bootloaders(self, destination, log_missing=True):
@@ -142,27 +136,31 @@ class UEFIAMD64BootMethod(BootMethod):
             # when we copy make sure the right name is used.
             missing_files = []
 
-            if os.path.exists('/usr/lib/shim/shim.efi.signed'):
+            if os.path.exists("/usr/lib/shim/shim.efi.signed"):
                 atomic_symlink(
-                    '/usr/lib/shim/shim.efi.signed',
-                    os.path.join(destination, 'bootx64.efi'))
+                    "/usr/lib/shim/shim.efi.signed",
+                    os.path.join(destination, "bootx64.efi"),
+                )
             else:
-                missing_files.append('bootx64.efi')
+                missing_files.append("bootx64.efi")
 
             if os.path.exists(
-                    '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed'):
+                "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed"
+            ):
                 atomic_symlink(
-                    '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed',
-                    os.path.join(destination, 'grubx64.efi'))
+                    "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed",
+                    os.path.join(destination, "grubx64.efi"),
+                )
             else:
-                missing_files.append('grubx64.efi')
+                missing_files.append("grubx64.efi")
 
             if missing_files != [] and log_missing:
                 err_msg = (
                     "Unable to find a copy of %s in the SimpleStream and the "
                     "packages shim-signed, and grub-efi-amd64-signed are not "
-                    "installed. The %s bootloader type may not work." %
-                    (', '.join(missing_files), self.name))
+                    "installed. The %s bootloader type may not work."
+                    % (", ".join(missing_files), self.name)
+                )
                 try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
                 maaslog.error(err_msg)
                 return False
@@ -171,23 +169,23 @@ class UEFIAMD64BootMethod(BootMethod):
     @typed
     def link_bootloader(self, destination: str):
         super().link_bootloader(destination)
-        config_path = os.path.join(destination, 'grub')
-        config_dst = os.path.join(config_path, 'grub.cfg')
+        config_path = os.path.join(destination, "grub")
+        config_dst = os.path.join(config_path, "grub.cfg")
         if not os.path.exists(config_path):
             os.makedirs(config_path)
-        with open(config_dst, 'wb') as stream:
+        with open(config_dst, "wb") as stream:
             stream.write(CONFIG_FILE.encode("utf-8"))
 
 
 class UEFIAMD64HTTPBootMethod(UEFIAMD64BootMethod):
 
-    name = 'uefi_amd64_http'
-    bios_boot_method = 'uefi'
-    template_subdir = 'uefi'
-    bootloader_path = 'bootx64.efi'
+    name = "uefi_amd64_http"
+    bios_boot_method = "uefi"
+    template_subdir = "uefi"
+    bootloader_path = "bootx64.efi"
     bootloader_arches = []  # `UEFIAMD64BootMethod` provides this.
     bootloader_files = []  # `UEFIAMD64BootMethod` provides this.
-    arch_octet = ['00:0f', '00:10']
+    arch_octet = ["00:0f", "00:10"]
     user_class = None
     absolute_url_as_filename = True
     http_url = True

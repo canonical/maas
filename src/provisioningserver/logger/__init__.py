@@ -153,7 +153,4 @@ def set_verbosity(verbosity: int = None):
         verbosity_setter(verbosity)
 
 
-verbosity_setters = [
-    set_standard_verbosity,
-    set_twisted_verbosity,
-]
+verbosity_setters = [set_standard_verbosity, set_twisted_verbosity]

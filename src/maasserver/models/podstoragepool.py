@@ -3,9 +3,7 @@
 
 """Storage pool for a Pod."""
 
-__all__ = [
-    'PodStoragePool',
-    ]
+__all__ = ["PodStoragePool"]
 
 
 from django.db.models import (
@@ -27,8 +25,12 @@ class PodStoragePool(CleanSave, Model):
         """Needed for South to recognize this model."""
 
     pod = ForeignKey(
-        'BMC', blank=False, null=False,
-        related_name="storage_pools", on_delete=CASCADE)
+        "BMC",
+        blank=False,
+        null=False,
+        related_name="storage_pools",
+        on_delete=CASCADE,
+    )
 
     name = CharField(max_length=255, null=False, blank=False)
 
@@ -38,16 +40,16 @@ class PodStoragePool(CleanSave, Model):
 
     path = CharField(max_length=4095, null=False, blank=False)
 
-    storage = BigIntegerField(  # Bytes
-        blank=False, null=False, default=0)
+    storage = BigIntegerField(blank=False, null=False, default=0)  # Bytes
 
     def get_used_storage(self):
         """Calculate the used storage for this pod."""
         # Circular import.
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+
         query = PhysicalBlockDevice.objects.filter(storage_pool=self)
-        query = query.aggregate(size=Sum('size'))
-        size = query['size']
+        query = query.aggregate(size=Sum("size"))
+        size = query["size"]
         if size is None:
             size = 0
         return size

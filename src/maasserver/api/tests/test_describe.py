@@ -40,32 +40,39 @@ class TestDescribe(APITestCase.ForAnonymousAndUserAndAdmin):
     """Tests for the `describe` view."""
 
     def test_describe_returns_json(self):
-        response = self.client.get(reverse('describe'))
+        response = self.client.get(reverse("describe"))
         self.assertThat(
-            (response.status_code,
-             response['Content-Type'],
-             response.content,
-             response.content),
+            (
+                response.status_code,
+                response["Content-Type"],
+                response.content,
+                response.content,
+            ),
             MatchesListwise(
-                (Equals(http.client.OK),
-                 Equals("application/json"),
-                 StartsWith(b'{'),
-                 Contains(b'name'))),
-            response)
+                (
+                    Equals(http.client.OK),
+                    Equals("application/json"),
+                    StartsWith(b"{"),
+                    Contains(b"name"),
+                )
+            ),
+            response,
+        )
 
     def test_describe(self):
-        response = self.client.get(reverse('describe'))
+        response = self.client.get(reverse("describe"))
         description = json_load_bytes(response.content)
         self.assertSetEqual(
-            {"doc", "handlers", "resources", "hash"}, set(description))
+            {"doc", "handlers", "resources", "hash"}, set(description)
+        )
         self.assertIsInstance(description["handlers"], list)
 
     def test_describe_hash_is_the_api_hash(self):
-        response = self.client.get(reverse('describe'))
+        response = self.client.get(reverse("describe"))
         description = json_load_bytes(response.content)
         self.assertThat(
-            description["hash"], Equals(
-                get_api_description_hash()))
+            description["hash"], Equals(get_api_description_hash())
+        )
 
 
 class TestDescribeAbsoluteURIs(MAASTestCase):
@@ -74,35 +81,36 @@ class TestDescribeAbsoluteURIs(MAASTestCase):
     scenarios_schemes = (
         ("http", dict(scheme="http")),
         ("https", dict(scheme="https")),
-        )
+    )
 
     scenarios_paths = (
         ("script-at-root", dict(script_name="", path_info="")),
         ("script-below-root-1", dict(script_name="/foo/bar", path_info="")),
         ("script-below-root-2", dict(script_name="/foo", path_info="/bar")),
-        )
+    )
 
-    scenarios = multiply_scenarios(
-        scenarios_schemes, scenarios_paths)
+    scenarios = multiply_scenarios(scenarios_schemes, scenarios_paths)
 
     def make_params(self):
         """Create parameters for http request, based on current scenario."""
         return {
             "PATH_INFO": self.path_info,
             "SCRIPT_NAME": self.script_name,
-            "SERVER_NAME": factory.make_name('server').lower(),
+            "SERVER_NAME": factory.make_name("server").lower(),
             "wsgi.url_scheme": self.scheme,
         }
 
     def get_description(self, params):
         """GET the API description (at a random API path), as JSON."""
-        path = '/%s/describe' % factory.make_name('path')
+        path = "/%s/describe" % factory.make_name("path")
         request = RequestFactory().get(path, **params)
         response = describe(request)
         self.assertEqual(
-            http.client.OK, response.status_code,
+            http.client.OK,
+            response.status_code,
             "API description failed with code %s:\n%s"
-            % (response.status_code, response.content))
+            % (response.status_code, response.content),
+        )
         return json_load_bytes(response.content)
 
     def patch_script_prefix(self, script_name):
@@ -122,7 +130,7 @@ class TestDescribeAbsoluteURIs(MAASTestCase):
 
     def test_handler_uris_are_absolute(self):
         params = self.make_params()
-        server = params['SERVER_NAME']
+        server = params["SERVER_NAME"]
 
         # Without this, the test wouldn't be able to detect accidental
         # duplication of the script_name portion of the URL path:
@@ -132,16 +140,22 @@ class TestDescribeAbsoluteURIs(MAASTestCase):
         description = self.get_description(params)
 
         expected_uri = AfterPreprocessing(
-            urlparse, MatchesStructure(
-                scheme=Equals(self.scheme), hostname=Equals(server),
+            urlparse,
+            MatchesStructure(
+                scheme=Equals(self.scheme),
+                hostname=Equals(server),
                 # The path is always the script name followed by "api/"
                 # because all API calls are within the "api" tree.
-                path=StartsWith(self.script_name + "/api/")))
+                path=StartsWith(self.script_name + "/api/"),
+            ),
+        )
         expected_handler = MatchesAny(
-            Is(None), AfterPreprocessing(itemgetter("uri"), expected_uri))
+            Is(None), AfterPreprocessing(itemgetter("uri"), expected_uri)
+        )
         expected_resource = MatchesAll(
             AfterPreprocessing(itemgetter("anon"), expected_handler),
-            AfterPreprocessing(itemgetter("auth"), expected_handler))
+            AfterPreprocessing(itemgetter("auth"), expected_handler),
+        )
         resources = description["resources"]
         self.assertNotEqual([], resources)
         self.assertThat(resources, AllMatch(expected_resource))

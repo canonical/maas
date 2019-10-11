@@ -3,19 +3,14 @@
 
 """Environment-related utilities."""
 
-__all__ = [
-    'environment_variables',
-    ]
+__all__ = ["environment_variables"]
 
 from contextlib import contextmanager
 import os
 import threading
 
 from provisioningserver.path import get_data_path
-from provisioningserver.utils.fs import (
-    atomic_delete,
-    atomic_write,
-)
+from provisioningserver.utils.fs import atomic_delete, atomic_write
 
 
 @contextmanager
@@ -49,7 +44,7 @@ def get_maas_id():
     global _maas_id
     with _maas_id_lock:
         if _maas_id is None:
-            maas_id_path = get_data_path('/var/lib/maas/maas_id')
+            maas_id_path = get_data_path("/var/lib/maas/maas_id")
             try:
                 with open(maas_id_path, "r", encoding="ascii") as fp:
                     contents = fp.read().strip()
@@ -67,7 +62,7 @@ def set_maas_id(system_id):
     global _maas_id
     system_id = _normalise_maas_id(system_id)
     with _maas_id_lock:
-        maas_id_path = get_data_path('/var/lib/maas/maas_id')
+        maas_id_path = get_data_path("/var/lib/maas/maas_id")
         if system_id is None:
             try:
                 atomic_delete(maas_id_path)

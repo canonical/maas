@@ -4,21 +4,21 @@
 """Generic utilities for dealing with files and the filesystem."""
 
 __all__ = [
-    'atomic_copy',
-    'atomic_delete',
-    'atomic_symlink',
-    'atomic_write',
-    'FileLock',
-    'get_library_script_path',
-    'incremental_write',
-    'NamedLock',
-    'read_text_file',
-    'RunLock',
-    'sudo_delete_file',
-    'sudo_write_file',
-    'SystemLock',
-    'tempdir',
-    'write_text_file',
+    "atomic_copy",
+    "atomic_delete",
+    "atomic_symlink",
+    "atomic_write",
+    "FileLock",
+    "get_library_script_path",
+    "incremental_write",
+    "NamedLock",
+    "read_text_file",
+    "RunLock",
+    "sudo_delete_file",
+    "sudo_write_file",
+    "SystemLock",
+    "tempdir",
+    "write_text_file",
 ]
 
 import codecs
@@ -27,33 +27,17 @@ import errno
 import filecmp
 from itertools import count
 import os
-from os import (
-    chown,
-    rename,
-    stat,
-)
+from os import chown, rename, stat
 from random import randint
-from shutil import (
-    copyfile,
-    rmtree,
-)
+from shutil import copyfile, rmtree
 import string
-from subprocess import (
-    PIPE,
-    Popen,
-)
+from subprocess import PIPE, Popen
 import tempfile
 import threading
 from time import sleep
 
-from provisioningserver.path import (
-    get_data_path,
-    get_path,
-)
-from provisioningserver.utils import (
-    snappy,
-    sudo,
-)
+from provisioningserver.path import get_data_path, get_path
+from provisioningserver.utils import snappy, sudo
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
 from twisted.python.filepath import FilePath
@@ -69,14 +53,16 @@ def get_maas_common_command():
     """
     # Avoid circular imports.
     from provisioningserver.config import is_dev_environment
+
     if is_dev_environment():
         from maastesting import root
-        return os.path.join(root, 'bin/maas-common')
+
+        return os.path.join(root, "bin/maas-common")
     elif snappy.running_in_snap():
         # there's no maas-common in the snap as maas-rack is always present
-        return os.path.join(snappy.get_snap_path(), 'bin/maas-rack')
+        return os.path.join(snappy.get_snap_path(), "bin/maas-rack")
     else:
-        return get_path('usr/lib/maas/maas-common')
+        return get_path("usr/lib/maas/maas-common")
 
 
 def get_library_script_path(name):
@@ -94,8 +80,10 @@ def get_library_script_path(name):
     """
     # Avoid circular imports.
     from provisioningserver.config import is_dev_environment
+
     if is_dev_environment():
         from maastesting import root
+
         return os.path.join(root, "scripts", name)
     else:
         return os.path.join(get_path("/usr/lib/maas"), name)
@@ -110,11 +98,13 @@ def _write_temp_file(content, filename):
     suffix = ".tmp"
     try:
         temp_fd, temp_file = tempfile.mkstemp(
-            dir=directory, suffix=suffix, prefix=prefix)
+            dir=directory, suffix=suffix, prefix=prefix
+        )
     except OSError as error:
         if error.filename is None:
             error.filename = os.path.join(
-                directory, prefix + "XXXXXX" + suffix)
+                directory, prefix + "XXXXXX" + suffix
+            )
         raise
     else:
         with os.fdopen(temp_fd, "wb") as f:
@@ -145,7 +135,7 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
     :param mode: Access permissions for the file, if written.
     """
     if not isinstance(content, bytes):
-        raise TypeError("Content must be bytes, got: %r" % (content, ))
+        raise TypeError("Content must be bytes, got: %r" % (content,))
 
     temp_file = _write_temp_file(content, filename)
     os.chmod(temp_file, mode)
@@ -198,7 +188,7 @@ def atomic_copy(source, destination):
     # Copy new file next to the old one, to ensure that it is on the
     # same filesystem.  Once it is, we can replace the old one with an
     # atomic rename operation.
-    temp_file = '%s.new' % destination
+    temp_file = "%s.new" % destination
     if os.path.exists(temp_file):
         os.remove(temp_file)
     copyfile(source, temp_file)
@@ -214,7 +204,8 @@ def atomic_delete(filename):
     temporary file. Such a rename is atomic in POSIX.
     """
     fd, del_filename = tempfile.mkstemp(
-        ".deleted", ".", os.path.dirname(filename))
+        ".deleted", ".", os.path.dirname(filename)
+    )
     try:
         os.close(fd)
         rename(filename, del_filename)
@@ -295,8 +286,10 @@ def incremental_write(content, filename, mode=0o600):
 def _with_dev_python(*command):
     # Avoid circular imports.
     from provisioningserver.config import is_dev_environment
+
     if is_dev_environment():
         from maastesting import root
+
         interpreter = os.path.join(root, "bin", "py")
         command = interpreter, *command
     return command
@@ -314,8 +307,9 @@ def sudo_write_file(filename, contents, mode=0o644):
     :type contents: `bytes`.
     """
     from provisioningserver.config import is_dev_environment
+
     if not isinstance(contents, bytes):
-        raise TypeError("Content must be bytes, got: %r" % (contents, ))
+        raise TypeError("Content must be bytes, got: %r" % (contents,))
     if snappy.running_in_snap():
         atomic_write(contents, filename, mode=mode)
     else:
@@ -338,6 +332,7 @@ def sudo_delete_file(filename):
     When running in a snap this function calls `atomic_write` directly.
     """
     from provisioningserver.config import is_dev_environment
+
     if snappy.running_in_snap():
         atomic_delete(filename)
     else:
@@ -352,7 +347,7 @@ def sudo_delete_file(filename):
 
 
 @contextmanager
-def tempdir(suffix='', prefix='maas-', location=None):
+def tempdir(suffix="", prefix="maas-", location=None):
     """Context manager: temporary directory.
 
     Creates a temporary directory (yielding its path, as `unicode`), and
@@ -379,18 +374,18 @@ def tempdir(suffix='', prefix='maas-', location=None):
         rmtree(path, ignore_errors=True)
 
 
-def read_text_file(path, encoding='utf-8'):
+def read_text_file(path, encoding="utf-8"):
     """Read and decode the text file at the given path."""
     with codecs.open(path, encoding=encoding) as infile:
         return infile.read()
 
 
-def write_text_file(path, text, encoding='utf-8'):
+def write_text_file(path, text, encoding="utf-8"):
     """Write the given unicode text to the given file path.
 
     If the file existed, it will be overwritten.
     """
-    with open(path, 'w', encoding=encoding) as outfile:
+    with open(path, "w", encoding=encoding) as outfile:
         outfile.write(text)
 
 
@@ -450,6 +445,7 @@ class SystemLock:
         self.reactor = reactor
         if self.reactor is None:
             from twisted.internet import reactor
+
             self.reactor = reactor
 
     def __enter__(self):
@@ -565,18 +561,20 @@ class NamedLock(SystemLock):
     """
 
     ACCEPTABLE_CHARACTERS = frozenset().union(
-        string.ascii_letters, string.digits, "-")
+        string.ascii_letters, string.digits, "-"
+    )
 
     def __init__(self, name, reactor=None):
         if not isinstance(name, str):
             raise TypeError(
-                "Lock name must be str, not %s"
-                % type(name).__qualname__)
+                "Lock name must be str, not %s" % type(name).__qualname__
+            )
         elif not self.ACCEPTABLE_CHARACTERS.issuperset(name):
             illegal = set(name) - self.ACCEPTABLE_CHARACTERS
             raise ValueError(
                 "Lock name contains illegal characters: %s"
-                % "".join(sorted(illegal)))
+                % "".join(sorted(illegal))
+            )
         else:
             lockpath = get_data_path("run", "lock", "maas:%s" % name)
             super(NamedLock, self).__init__(lockpath, reactor=reactor)

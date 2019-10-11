@@ -3,9 +3,7 @@
 
 """Helpers for inspecting dhclient."""
 
-__all__ = [
-    'get_dhclient_info',
-    ]
+__all__ = ["get_dhclient_info"]
 
 import os
 import re
@@ -15,14 +13,15 @@ from provisioningserver.utils.ps import get_running_pids_with_command
 
 
 re_entry = re.compile(
-    r'''
+    r"""
     ^\s*              # Ignore leading whitespace on each line.
     lease             # Look only lease stanzas.
     \s+{              # Open bracket.
     ([^}]+)           # Capture the contents of lease.
     }                 # Close bracket.
-    ''',
-    re.MULTILINE | re.DOTALL | re.VERBOSE)
+    """,
+    re.MULTILINE | re.DOTALL | re.VERBOSE,
+)
 
 
 def get_lastest_fixed_address(lease_path):
@@ -51,17 +50,22 @@ def get_dhclient_info(proc_path="/proc"):
     dhclient.
     """
     dhclient_pids = get_running_pids_with_command(
-        "dhclient", proc_path=proc_path)
+        "dhclient", proc_path=proc_path
+    )
     dhclient_info = {}
     for pid in dhclient_pids:
         cmdline = read_text_file(
-            os.path.join(proc_path, str(pid), "cmdline")).split("\x00")
+            os.path.join(proc_path, str(pid), "cmdline")
+        ).split("\x00")
         if "-lf" in cmdline:
             idx_lf = cmdline.index("-lf")
             lease_path = cmdline[idx_lf + 1]  # After '-lf' option.
             interface_name = cmdline[-2]  # Last argument.
             ip_address = get_lastest_fixed_address(lease_path)
-            if (ip_address is not None and
-                    len(ip_address) > 0 and not ip_address.isspace()):
+            if (
+                ip_address is not None
+                and len(ip_address) > 0
+                and not ip_address.isspace()
+            ):
                 dhclient_info[interface_name] = ip_address
     return dhclient_info

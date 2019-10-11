@@ -98,7 +98,10 @@ def warn_unless(predicate, message):
     if not predicate:
         message = DEFAULT_LOG_FORMAT % dict(
             asctime=time.strftime(DEFAULT_LOG_FORMAT_DATE, time.localtime()),
-            name="global", levelname="warn", message=message)
+            name="global",
+            levelname="warn",
+            message=message,
+        )
         print(message, file=sys.__stdout__, flush=True)
 
 
@@ -108,4 +111,5 @@ def is_dev_environment():
     Lazy import to avoid circular import issues.
     """
     from provisioningserver.config import is_dev_environment
+
     return is_dev_environment()

@@ -3,10 +3,7 @@
 
 """Helper to obtain the MAAS server's address."""
 
-__all__ = [
-    'get_maas_facing_server_addresses',
-    'get_maas_facing_server_host',
-    ]
+__all__ = ["get_maas_facing_server_addresses", "get_maas_facing_server_host"]
 
 
 from urllib.parse import urlparse
@@ -39,8 +36,13 @@ def get_maas_facing_server_host(rack_controller=None, default_region_ip=None):
 
 
 def get_maas_facing_server_addresses(
-        rack_controller=None, ipv4=True, ipv6=True, link_local=False,
-        include_alternates=False, default_region_ip=None):
+    rack_controller=None,
+    ipv4=True,
+    ipv6=True,
+    link_local=False,
+    include_alternates=False,
+    default_region_ip=None,
+):
     """Return addresses for the MAAS server.
 
     The address is taken from the configured MAAS URL or `controller.url`.
@@ -69,10 +71,12 @@ def get_maas_facing_server_addresses(
 
     """
     hostname = get_maas_facing_server_host(
-        rack_controller, default_region_ip=default_region_ip)
+        rack_controller, default_region_ip=default_region_ip
+    )
     if ipv6 or ipv4:
         addresses = resolve_hostname(
-            hostname, 0 if (ipv6 and ipv4) else 4 if ipv4 else 6)
+            hostname, 0 if (ipv6 and ipv4) else 4 if ipv4 else 6
+        )
     else:
         addresses = set()
     if len(addresses) == 0:
@@ -89,6 +93,7 @@ def get_maas_facing_server_addresses(
             # Circular imports
             from maasserver.models import Subnet
             from maasserver.models import StaticIPAddress
+
             # Don't include more than one alternate IP address, per region,
             # per address-family.
             regions = set()
@@ -103,10 +108,13 @@ def get_maas_facing_server_addresses(
                         subnet=subnet,
                         interface__node__node_type__in=(
                             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                            NODE_TYPE.REGION_CONTROLLER))
+                            NODE_TYPE.REGION_CONTROLLER,
+                        ),
+                    )
                     region_ips = region_ips.prefetch_related(
-                        'interface_set__node')
-                    region_ips = region_ips.order_by('ip')
+                        "interface_set__node"
+                    )
+                    region_ips = region_ips.order_by("ip")
                     for region_ip in region_ips:
                         for iface in region_ip.interface_set.all():
                             ipa = region_ip.get_ipaddress()
@@ -114,8 +122,8 @@ def get_maas_facing_server_addresses(
                                 continue
                             # Pick at most one alternate IP address for each
                             # region, per address family.
-                            id_plus_family = (
-                                iface.node.system_id + str(ipa.version)
+                            id_plus_family = iface.node.system_id + str(
+                                ipa.version
                             )
                             if id_plus_family in regions:
                                 continue

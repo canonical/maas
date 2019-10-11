@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from django.db import (
-    connection,
-    migrations,
-    models,
-)
+from django.db import connection, migrations, models
 
 
 def drop_all_funcs(apps, schema_editor):
@@ -17,17 +13,14 @@ def drop_all_funcs(apps, schema_editor):
             "SELECT ns.nspname || '.' || proname || '(' || "
             "oidvectortypes(proargtypes) || ')' FROM pg_proc INNER JOIN "
             "pg_namespace ns ON (pg_proc.pronamespace = ns.oid) "
-            "WHERE ns.nspname = 'public';")
+            "WHERE ns.nspname = 'public';"
+        )
         for row in cursor.fetchall():
             cursor.execute("DROP FUNCTION %s CASCADE;" % row[0])
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0029_add_rdns_mode'),
-    ]
+    dependencies = [("maasserver", "0029_add_rdns_mode")]
 
-    operations = [
-        migrations.RunPython(drop_all_funcs)
-    ]
+    operations = [migrations.RunPython(drop_all_funcs)]

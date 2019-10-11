@@ -7,13 +7,11 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('piston3', '0002_auto_20151209_1652'),
-    ]
+    dependencies = [("piston3", "0002_auto_20151209_1652")]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='nonce',
-            unique_together=set([('token_key', 'consumer_key', 'key')]),
-        ),
+            name="nonce",
+            unique_together=set([("token_key", "consumer_key", "key")]),
+        )
     ]

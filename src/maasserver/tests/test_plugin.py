@@ -29,10 +29,7 @@ from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    ThreadPool,
-)
+from provisioningserver.utils.twisted import asynchronous, ThreadPool
 from testtools import monkey
 from testtools.matchers import IsInstance
 from twisted.application.service import MultiService
@@ -84,14 +81,14 @@ class TestServiceMaker(MAASTestCase):
     def assertConnectionsEnabled(self):
         for alias in connections:
             self.assertThat(
-                connections[alias],
-                IsInstance(BaseDatabaseWrapper))
+                connections[alias], IsInstance(BaseDatabaseWrapper)
+            )
 
     def assertConnectionsDisabled(self):
         for alias in connections:
             self.assertEqual(
-                DisabledDatabaseConnection,
-                type(connections[alias]))
+                DisabledDatabaseConnection, type(connections[alias])
+            )
 
 
 class TestRegionWorkerServiceMaker(TestServiceMaker):
@@ -106,7 +103,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
     def test_makeService_configures_pserv_debug(self):
         options = Options()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
-        mock_pserv = self.patch(service_maker, '_configurePservSettings')
+        mock_pserv = self.patch(service_maker, "_configurePservSettings")
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         service_maker.makeService(options)
@@ -131,11 +128,16 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
+            len(service.namedServices),
+            len(service.services),
+            "Not all services are named.",
+        )
         self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
+            logger.configure,
+            MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD
+            ),
+        )
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
 
     @asynchronous(timeout=5)
@@ -147,7 +149,9 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         # Set the environment variable to create the import services.
         self.useFixture(
             EnvironmentVariableFixture(
-                'MAAS_REGIOND_RUN_IMPORTER_SERVICE', 'true'))
+                "MAAS_REGIOND_RUN_IMPORTER_SERVICE", "true"
+            )
+        )
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
@@ -163,11 +167,16 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
+            len(service.namedServices),
+            len(service.services),
+            "Not all services are named.",
+        )
         self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
+            logger.configure,
+            MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD
+            ),
+        )
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
 
     @asynchronous(timeout=5)
@@ -201,7 +210,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
 
     def get_unused_pid(self):
         """Return a PID for a process that has just finished running."""
-        proc = Popen(['/bin/true'])
+        proc = Popen(["/bin/true"])
         proc.wait()
         return proc.pid
 
@@ -214,7 +223,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
     def test_makeService_configures_pserv_debug(self):
         options = Options()
         service_maker = RegionMasterServiceMaker("Harry", "Hill")
-        mock_pserv = self.patch(service_maker, '_configurePservSettings')
+        mock_pserv = self.patch(service_maker, "_configurePservSettings")
         # Disable _ensureConnection() its not allowed in the reactor.
         self.patch_autospec(service_maker, "_ensureConnection")
         # Disable _configureThreads() as it's too invasive right now.
@@ -252,23 +261,28 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
+            len(service.namedServices),
+            len(service.services),
+            "Not all services are named.",
+        )
         self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
+            logger.configure,
+            MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD
+            ),
+        )
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
 
     @asynchronous(timeout=5)
     def test_makeService_cleanup_prometheus_dir(self):
         tmpdir = Path(self.useFixture(TempDirectory()).path)
         self.useFixture(
-            EnvironmentVariableFixture(
-                'prometheus_multiproc_dir', str(tmpdir)))
+            EnvironmentVariableFixture("prometheus_multiproc_dir", str(tmpdir))
+        )
         pid = os.getpid()
-        file1 = tmpdir / 'histogram_{}.db'.format(pid)
+        file1 = tmpdir / "histogram_{}.db".format(pid)
         file1.touch()
-        file2 = tmpdir / 'histogram_{}.db'.format(self.get_unused_pid())
+        file2 = tmpdir / "histogram_{}.db".format(self.get_unused_pid())
         file2.touch()
 
         service_maker = RegionMasterServiceMaker("Harry", "Hill")
@@ -322,7 +336,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
     def test_makeService_configures_pserv_debug(self):
         options = Options()
         service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
-        mock_pserv = self.patch(service_maker, '_configurePservSettings')
+        mock_pserv = self.patch(service_maker, "_configurePservSettings")
         # Disable _ensureConnection() its not allowed in the reactor.
         self.patch_autospec(service_maker, "_ensureConnection")
         # Disable _configureThreads() as it's too invasive right now.
@@ -371,11 +385,16 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
+            len(service.namedServices),
+            len(service.services),
+            "Not all services are named.",
+        )
         self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
+            logger.configure,
+            MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD
+            ),
+        )
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
 
     @asynchronous(timeout=5)

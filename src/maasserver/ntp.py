@@ -3,23 +3,12 @@
 
 """NTP related functionality."""
 
-__all__ = [
-    "get_peers_for",
-    "get_servers_for",
-]
+__all__ = ["get_peers_for", "get_servers_for"]
 
-from typing import (
-    FrozenSet,
-    Iterable,
-    Optional,
-)
+from typing import FrozenSet, Iterable, Optional
 
 from maasserver.models.config import Config
-from maasserver.models.node import (
-    Node,
-    RackController,
-    RegionController,
-)
+from maasserver.models.node import Node, RackController, RegionController
 from maasserver.routablepairs import (
     get_routable_address_map,
     reduce_routable_address_map,

@@ -8,7 +8,7 @@ __all__ = [
     "get_maas_version_subversion",
     "get_maas_version_ui",
     "MAASVersion",
-    ]
+]
 
 from collections import namedtuple
 from functools import lru_cache
@@ -16,20 +16,18 @@ import re
 
 import pkg_resources
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import (
-    shell,
-    snappy,
-)
+from provisioningserver.utils import shell, snappy
 
 
-maaslog = get_maas_logger('version')
+maaslog = get_maas_logger("version")
 
 # the first requirement is always the required package itself
-DEFAULT_VERSION = pkg_resources.require('maas')[0].version
+DEFAULT_VERSION = pkg_resources.require("maas")[0].version
 
 # Only import apt_pkg and initialize when not running in a snap.
 if not snappy.running_in_snap():
     import apt_pkg
+
     apt_pkg.init()
 
 # Name of maas package to get version from.
@@ -44,8 +42,9 @@ def get_version_from_apt(*packages):
         cache = apt_pkg.Cache(None)
     except SystemError:
         maaslog.error(
-            'Installed version could not be determined. Ensure '
-            '/var/lib/dpkg/status is valid.')
+            "Installed version could not be determined. Ensure "
+            "/var/lib/dpkg/status is valid."
+        )
         return ""
 
     version = None
@@ -63,7 +62,7 @@ def get_version_from_apt(*packages):
 
 def extract_version_subversion(version):
     """Return a tuple (version, subversion) from the given apt version."""
-    main_version, subversion = re.split('[+|-]', version, 1)
+    main_version, subversion = re.split("[+|-]", version, 1)
     return main_version, subversion
 
 
@@ -73,8 +72,11 @@ def get_maas_repo_hash():
     :return: A string if MAAS is running from a git working tree, else `None`.
     """
     try:
-        return shell.call_and_check(['git', 'rev-parse', 'HEAD']).decode(
-            'ascii').strip()
+        return (
+            shell.call_and_check(["git", "rev-parse", "HEAD"])
+            .decode("ascii")
+            .strip()
+        )
     except shell.ExternalProcessError:
         # We may not be in a git repository, or any manner of other errors. For
         # the purposes of this function we don't care; simply say we don't
@@ -97,7 +99,7 @@ def get_maas_version_track_channel():
     # If the version is a devel version, then we always assume we can
     # get the snap from the latest edge channel; else, we return
     # the stable channel for such series.
-    if 'alpha' in series or 'beta' in series or 'rc' in series:
+    if "alpha" in series or "beta" in series or "rc" in series:
         return "latest/edge"
     else:
         # XXX - The snap store doesn't make it easy to create tracks
@@ -109,19 +111,22 @@ def get_maas_version_track_channel():
         return "latest/stable"
 
 
-MAASVersion = namedtuple('MAASVersion', (
-    'major',
-    'minor',
-    'point',
-    'qualifier_type_version',
-    'qualifier_version',
-    'revno',
-    'git_rev',
-    'short_version',
-    'extended_info',
-    'qualifier_type',
-    'is_snap',
-))
+MAASVersion = namedtuple(
+    "MAASVersion",
+    (
+        "major",
+        "minor",
+        "point",
+        "qualifier_type_version",
+        "qualifier_version",
+        "revno",
+        "git_rev",
+        "short_version",
+        "extended_info",
+        "qualifier_type",
+        "is_snap",
+    ),
+)
 
 
 def _coerce_to_int(string: str) -> int:
@@ -129,7 +134,7 @@ def _coerce_to_int(string: str) -> int:
 
     Returns 0 for an empty string.
     """
-    numbers = re.sub(r'[^\d]+', '', string)
+    numbers = re.sub(r"[^\d]+", "", string)
     if len(numbers) > 0:
         return int(numbers)
     else:
@@ -137,9 +142,9 @@ def _coerce_to_int(string: str) -> int:
 
 
 def get_version_tuple(maas_version: str) -> MAASVersion:
-    version_parts = re.split(r'[-|+]', maas_version, 1)
+    version_parts = re.split(r"[-|+]", maas_version, 1)
     short_version = version_parts[0]
-    major_minor_point = re.sub(r'~.*', '', short_version).split('.', 2)
+    major_minor_point = re.sub(r"~.*", "", short_version).split(".", 2)
     for i in range(3):
         try:
             major_minor_point[i] = _coerce_to_int(major_minor_point[i])
@@ -148,43 +153,49 @@ def get_version_tuple(maas_version: str) -> MAASVersion:
         except IndexError:
             major_minor_point.append(0)
     major, minor, point = major_minor_point
-    extended_info = ''
+    extended_info = ""
     if len(version_parts) > 1:
         extended_info = version_parts[1]
     qualifier_type = None
     qualifier_type_version = 0
     qualifier_version = 0
-    if '~' in short_version:
+    if "~" in short_version:
         # Parse the alpha/beta/rc version.
-        base_version, qualifier = short_version.split('~', 2)
-        qualifier_types = {
-            "rc": -1,
-            "beta": -2,
-            "alpha": -3
-        }
+        base_version, qualifier = short_version.split("~", 2)
+        qualifier_types = {"rc": -1, "beta": -2, "alpha": -3}
         # A release build won't have a qualifier, so its version should be
         # greater than releases qualified with alpha/beta/rc revisions.
-        qualifier_type = re.sub(r'[\d]+', '', qualifier)
+        qualifier_type = re.sub(r"[\d]+", "", qualifier)
         qualifier_version = _coerce_to_int(qualifier)
         qualifier_type_version = qualifier_types.get(qualifier_type, 0)
     revno = 0
-    git_rev = ''
+    git_rev = ""
     # If we find a '-g' or '.g', that means the extended info indicates a
     # git revision.
-    if '-g' in extended_info or '.g' in extended_info:
-        revno, git_rev = re.split(r'[-|.|+]', extended_info)[0:2]
+    if "-g" in extended_info or ".g" in extended_info:
+        revno, git_rev = re.split(r"[-|.|+]", extended_info)[0:2]
         # Strip any non-numeric characters from the revno, just in case.
         revno = _coerce_to_int(revno)
         # Remove anything that doesn't look like a hexadecimal character.
-        git_rev = re.sub(r'[^0-9a-f]+', '', git_rev)
-    is_snap = maas_version.endswith('-snap')
-    extended_info = re.sub(r'-*snap$', '', extended_info)
+        git_rev = re.sub(r"[^0-9a-f]+", "", git_rev)
+    is_snap = maas_version.endswith("-snap")
+    extended_info = re.sub(r"-*snap$", "", extended_info)
     # Remove unnecessary garbage from the extended info string.
-    if '-' in extended_info:
-        extended_info = '-'.join(extended_info.split('-')[0:2])
+    if "-" in extended_info:
+        extended_info = "-".join(extended_info.split("-")[0:2])
     return MAASVersion(
-        major, minor, point, qualifier_type_version, qualifier_version,
-        revno, git_rev, short_version, extended_info, qualifier_type, is_snap)
+        major,
+        minor,
+        point,
+        qualifier_type_version,
+        qualifier_version,
+        revno,
+        git_rev,
+        short_version,
+        extended_info,
+        qualifier_type,
+        is_snap,
+    )
 
 
 @lru_cache(maxsize=1)
@@ -239,11 +250,11 @@ def get_maas_doc_version():
     apt_version = get_maas_version()
     if apt_version:
         version, _ = extract_version_subversion(apt_version)
-        return '.'.join(version.split('~')[0].split('.')[:2])
+        return ".".join(version.split("~")[0].split(".")[:2])
     else:
-        return ''
+        return ""
 
 
 def get_maas_version_tuple():
     """Returns a tuple of the MAAS version without the svn rev."""
-    return tuple(int(x) for x in DEFAULT_VERSION.split('.'))
+    return tuple(int(x) for x in DEFAULT_VERSION.split("."))

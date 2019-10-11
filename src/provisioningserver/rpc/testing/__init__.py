@@ -11,10 +11,7 @@ __all__ = [
     "MockLiveClusterToRegionRPCFixture",
 ]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
+from abc import ABCMeta, abstractmethod
 import collections
 import itertools
 from os import path
@@ -38,26 +35,10 @@ from provisioningserver.security import (
     get_shared_secret_from_filesystem,
     set_shared_secret_on_filesystem,
 )
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    callOut,
-)
-from testtools.matchers import (
-    AllMatch,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-)
-from twisted.internet import (
-    defer,
-    endpoints,
-    reactor,
-    ssl,
-)
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
+from provisioningserver.utils.twisted import asynchronous, callOut
+from testtools.matchers import AllMatch, IsInstance, MatchesAll, MatchesDict
+from twisted.internet import defer, endpoints, reactor, ssl
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
@@ -81,7 +62,8 @@ def call_responder(protocol, command, arguments):
             # Convert remote errors back into local errors using the
             # command's error map if possible.
             error_type = command.reverseErrors.get(
-                error.value.errorCode, amp.UnknownRemoteError)
+                error.value.errorCode, amp.UnknownRemoteError
+            )
             return Failure(error_type(error.value.description))
         else:
             # Exceptions raised in responders that aren't declared in that
@@ -89,20 +71,27 @@ def call_responder(protocol, command, arguments):
             # in RemoteAmpError. This is because call_responder() bypasses the
             # network marshall/unmarshall steps, where these exceptions would
             # ordinarily get squashed.
-            return Failure(amp.UnknownRemoteError("%s: %s" % (
-                reflect.qual(error.type), reflect.safe_str(error.value))))
+            return Failure(
+                amp.UnknownRemoteError(
+                    "%s: %s"
+                    % (reflect.qual(error.type), reflect.safe_str(error.value))
+                )
+            )
+
     d.addErrback(eb_massage_error)
 
     return d
 
 
-are_valid_tls_parameters = MatchesDict({
-    "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
-    "tls_verifyAuthorities": MatchesAll(
-        IsInstance(collections.Sequence),
-        AllMatch(IsInstance(ssl.Certificate)),
-    ),
-})
+are_valid_tls_parameters = MatchesDict(
+    {
+        "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
+        "tls_verifyAuthorities": MatchesAll(
+            IsInstance(collections.Sequence),
+            AllMatch(IsInstance(ssl.Certificate)),
+        ),
+    }
+)
 
 
 class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
@@ -118,7 +107,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
     def __init__(self, maas_url=None):
         self.maas_url = maas_url
         if self.maas_url is None:
-            self.maas_url = 'http://localhost/MAAS'
+            self.maas_url = "http://localhost/MAAS"
 
     def checkServicesClean(self):
         # If services are running, what do we do with any existing RPC
@@ -130,11 +119,13 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         if provisioningserver.services.running:
             raise AssertionError(
                 "Please ensure that rack controller services are *not* "
-                "running before using this fixture.")
+                "running before using this fixture."
+            )
         if "rpc" in provisioningserver.services.namedServices:
             raise AssertionError(
                 "Please ensure that no RPC service is registered globally "
-                "before using this fixture.")
+                "before using this fixture."
+            )
 
     def asyncStart(self):
         # Check that no rack controller services are running and that there's
@@ -147,7 +138,8 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         # exist. The chicken-and-egg will be resolved by injecting a
         # connection later on.
         self.rpc_service._get_config_rpc_info_urls = (
-            self._get_config_rpc_info_urls)
+            self._get_config_rpc_info_urls
+        )
         self.rpc_service._build_rpc_info_urls = self._build_rpc_info_urls
         self.rpc_service._fetch_rpc_info = self._fetch_rpc_info
         # Finally, start the service. If the clock is advanced, this will do
@@ -162,7 +154,8 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         else:
             self.starting.cancel()
             self.stopping = defer.maybeDeferred(
-                self.rpc_service.disownServiceParent)
+                self.rpc_service.disownServiceParent
+            )
         # Ensure the cluster's services will be left in a consistent state.
         self.stopping.addCallback(callOut, self.checkServicesClean)
 
@@ -238,7 +231,8 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         protocol.Identify.return_value = {"ident": eventloop}
         protocol.Authenticate.side_effect = self._authenticate_with_cluster_key
         protocol.RegisterRackController.side_effect = always_succeed_with(
-            {"system_id": ""})
+            {"system_id": ""}
+        )
         protocol.StartTLS.return_value = get_tls_parameters_for_region()
         return protocol, self.addEventLoop(protocol)
 
@@ -263,9 +257,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
 
         Returns a dummy value.
         """
-        return [
-            ([ascii_url(self.maas_url)], self.maas_url),
-        ]
+        return [([ascii_url(self.maas_url)], self.maas_url)]
 
     def _fetch_rpc_info(self, url, orig_url):
         """Patch-in for `ClusterClientService._fetch_rpc_info`.
@@ -274,12 +266,15 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         service, thus new connections must be injected into the service.
         """
         connections = self.rpc_service.connections.items()
-        return ({
-            "eventloops": {
-                eventloop: [client.address]
-                for eventloop, client in connections
+        return (
+            {
+                "eventloops": {
+                    eventloop: [client.address]
+                    for eventloop, client in connections
+                }
             },
-        }, orig_url)
+            orig_url,
+        )
 
     def _authenticate_with_cluster_key(self, protocol, message):
         """Patch-in for `Authenticate` calls.
@@ -322,8 +317,10 @@ class MockClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         :return: py:class:`twisted.test.iosim.IOPump`
         """
         return iosim.connect(
-            region, iosim.makeFakeServer(region),
-            cluster, iosim.makeFakeClient(cluster),
+            region,
+            iosim.makeFakeServer(region),
+            cluster,
+            iosim.makeFakeClient(cluster),
             debug=False,  # Debugging is useful, but too noisy by default.
         )
 
@@ -441,7 +438,8 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
 
 # An iterable of names for new dynamically-created AMP protocol factories.
 amp_protocol_factory_names = (
-    "AMPTestProtocol#%d" % seq for seq in itertools.count(1))
+    "AMPTestProtocol#%d" % seq for seq in itertools.count(1)
+)
 
 
 def make_amp_protocol_factory(*commands):

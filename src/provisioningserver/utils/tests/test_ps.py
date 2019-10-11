@@ -22,7 +22,8 @@ from provisioningserver.utils.ps import (
 from provisioningserver.utils.shell import ExternalProcessError
 
 
-NOT_IN_CONTAINER = dedent("""\
+NOT_IN_CONTAINER = dedent(
+    """\
     11:freezer:/
     10:perf_event:/
     9:cpuset:/
@@ -34,9 +35,11 @@ NOT_IN_CONTAINER = dedent("""\
     3:pids:/init.scope
     2:hugetlb:/
     1:name=systemd:/init.scope
-    """)
+    """
+)
 
-IN_DOCKER_CONTAINER = dedent("""\
+IN_DOCKER_CONTAINER = dedent(
+    """\
     11:freezer:/system.slice/docker-8467.scope
     10:perf_event:/
     9:cpuset:/system.slice/docker-8467.scope
@@ -48,9 +51,11 @@ IN_DOCKER_CONTAINER = dedent("""\
     3:pids:/system.slice/docker-8467.scopeatomic_write
     2:hugetlb:/
     1:name=systemd:/system.slice/docker-8467.scope
-    """)
+    """
+)
 
-IN_LXC_CONTAINER = dedent("""\
+IN_LXC_CONTAINER = dedent(
+    """\
     11:hugetlb:/lxc/maas
     10:perf_event:/lxc/maas
     9:blkio:/lxc/maas
@@ -61,51 +66,35 @@ IN_LXC_CONTAINER = dedent("""\
     4:cpu:/lxc/maas
     3:name=systemd:/lxc/maas/init.scope
     2:cpuset:/lxc/maas
-    """)
+    """
+)
 
 
 class TestIsPIDRunning(MAASTestCase):
 
     scenarios = (
-        ("running", {
-            "result": True,
-            "exception": None,
-        }),
-        ("lookup-error", {
-            "result": False,
-            "exception": ProcessLookupError(),
-        }),
-        ("permission-error", {
-            "result": True,
-            "exception": PermissionError(),
-        }),
-        ("os-error", {
-            "result": False,
-            "exception": OSError(),
-        })
+        ("running", {"result": True, "exception": None}),
+        ("lookup-error", {"result": False, "exception": ProcessLookupError()}),
+        ("permission-error", {"result": True, "exception": PermissionError()}),
+        ("os-error", {"result": False, "exception": OSError()}),
     )
 
     def test__result(self):
         self.patch(ps_module.os, "kill").side_effect = self.exception
         self.assertEquals(
-            self.result, is_pid_running(random.randint(100, 200)))
+            self.result, is_pid_running(random.randint(100, 200))
+        )
 
 
 class TestIsPIDInContainer(MAASTestCase):
 
     scenarios = (
-        ("not_in_container", {
-            "result": False,
-            "cgroup": NOT_IN_CONTAINER,
-        }),
-        ("in_docker_container", {
-            "result": True,
-            "cgroup": IN_DOCKER_CONTAINER,
-        }),
-        ("in_lxc_container", {
-            "result": True,
-            "cgroup": IN_LXC_CONTAINER,
-        }),
+        ("not_in_container", {"result": False, "cgroup": NOT_IN_CONTAINER}),
+        (
+            "in_docker_container",
+            {"result": True, "cgroup": IN_DOCKER_CONTAINER},
+        ),
+        ("in_lxc_container", {"result": True, "cgroup": IN_LXC_CONTAINER}),
     )
 
     def test__result(self):
@@ -114,18 +103,19 @@ class TestIsPIDInContainer(MAASTestCase):
         pid_path = os.path.join(proc_path, str(pid))
         os.mkdir(pid_path)
         atomic_write(
-            self.cgroup.encode("ascii"),
-            os.path.join(pid_path, "cgroup"))
+            self.cgroup.encode("ascii"), os.path.join(pid_path, "cgroup")
+        )
         self.assertEqual(
-            self.result, is_pid_in_container(pid, proc_path=proc_path))
+            self.result, is_pid_in_container(pid, proc_path=proc_path)
+        )
 
 
 class TestRunningInContainer(MAASTestCase):
-
     def test__returns_False_when_ExternalProcessError(self):
         mock_call = self.patch(ps_module, "call_and_check")
         mock_call.side_effect = ExternalProcessError(
-            1, ["systemd-detect-virt", "-c"], output="none")
+            1, ["systemd-detect-virt", "-c"], output="none"
+        )
         running_in_container.cache_clear()
         self.assertFalse(running_in_container())
 
@@ -136,20 +126,17 @@ class TestRunningInContainer(MAASTestCase):
 
 
 class TestGetRunningPIDsWithCommand(MAASTestCase):
-
     def make_process(self, proc_path, pid, in_container=False, command=None):
         cgroup = NOT_IN_CONTAINER
         if in_container:
             cgroup = random.choice([IN_DOCKER_CONTAINER, IN_LXC_CONTAINER])
         pid_path = os.path.join(proc_path, str(pid))
         os.mkdir(pid_path)
-        atomic_write(
-            cgroup.encode("ascii"),
-            os.path.join(pid_path, "cgroup"))
+        atomic_write(cgroup.encode("ascii"), os.path.join(pid_path, "cgroup"))
         if command is not None:
             atomic_write(
-                command.encode("ascii"),
-                os.path.join(pid_path, "comm"))
+                command.encode("ascii"), os.path.join(pid_path, "comm")
+            )
 
     def make_init_process(self, proc_path, in_container=False):
         self.make_process(proc_path, 1, in_container=in_container)
@@ -158,72 +145,69 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = set(
-            random.randint(2, 999)
-            for _ in range(3)
-        )
+        pids_running_command = set(random.randint(2, 999) for _ in range(3))
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
         pids_not_running_command = set(
-            random.randint(1000, 1999)
-            for _ in range(3)
+            random.randint(1000, 1999) for _ in range(3)
         )
         for pid in pids_not_running_command:
             self.make_process(
-                proc_path, pid, command=factory.make_name("command"))
+                proc_path, pid, command=factory.make_name("command")
+            )
         pids_running_command_in_container = set(
-            random.randint(2000, 2999)
-            for _ in range(3)
+            random.randint(2000, 2999) for _ in range(3)
         )
         for pid in pids_running_command_in_container:
             self.make_process(
-                proc_path, pid,
-                in_container=True, command=command)
+                proc_path, pid, in_container=True, command=command
+            )
         mock_running_in_container = self.patch(
-            ps_module, "running_in_container")
+            ps_module, "running_in_container"
+        )
         mock_running_in_container.return_value = False
         self.assertItemsEqual(
             pids_running_command,
-            get_running_pids_with_command(command, proc_path=proc_path))
+            get_running_pids_with_command(command, proc_path=proc_path),
+        )
 
     def test_ignores_process_that_have_been_removed(self):
         proc_path = self.make_dir()
         self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = set(
-            random.randint(2, 999)
-            for _ in range(3)
-        )
+        pids_running_command = set(random.randint(2, 999) for _ in range(3))
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
             # Remove the comm file to test the exception handling.
             os.remove(os.path.join(proc_path, str(pid), "comm"))
         self.assertItemsEqual(
-            [],
-            get_running_pids_with_command(command, proc_path=proc_path))
+            [], get_running_pids_with_command(command, proc_path=proc_path)
+        )
 
     def test_returns_processes_when_running_in_container(self):
         proc_path = self.make_dir()
         self.make_init_process(proc_path, in_container=True)
         command = factory.make_name("command")
-        pids_running_command = set(
-            random.randint(2, 999)
-            for _ in range(3)
-        )
+        pids_running_command = set(random.randint(2, 999) for _ in range(3))
         for pid in pids_running_command:
             self.make_process(
-                proc_path, pid, in_container=True, command=command)
+                proc_path, pid, in_container=True, command=command
+            )
         pids_not_running_command = set(
-            random.randint(1000, 1999)
-            for _ in range(3)
+            random.randint(1000, 1999) for _ in range(3)
         )
         for pid in pids_not_running_command:
             self.make_process(
-                proc_path, pid,
-                in_container=True, command=factory.make_name("command"))
+                proc_path,
+                pid,
+                in_container=True,
+                command=factory.make_name("command"),
+            )
         mock_running_in_container = self.patch(
-            ps_module, "running_in_container")
+            ps_module, "running_in_container"
+        )
         mock_running_in_container.return_value = True
         self.assertItemsEqual(
             pids_running_command,
-            get_running_pids_with_command(command, proc_path=proc_path))
+            get_running_pids_with_command(command, proc_path=proc_path),
+        )

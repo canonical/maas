@@ -13,10 +13,7 @@ __all__ = [
 ]
 
 import collections
-from subprocess import (
-    CalledProcessError,
-    TimeoutExpired,
-)
+from subprocess import CalledProcessError, TimeoutExpired
 from time import sleep
 
 from provisioningserver.dns.config import (
@@ -99,9 +96,8 @@ def bind_reload_zones(zone_list):
             execute_rndc_command(("reload", name))
         except CalledProcessError as exc:
             maaslog.error(
-                "Reloading BIND zone %r failed (is it running?): %s",
-                name,
-                exc)
+                "Reloading BIND zone %r failed (is it running?): %s", name, exc
+            )
             ret = False
     return ret
 
@@ -137,7 +133,8 @@ def bind_write_options(upstream_dns, dnssec_validation):
     assert isinstance(upstream_dns, collections.Sequence)
 
     set_up_options_conf(
-        upstream_dns=upstream_dns, dnssec_validation=dnssec_validation)
+        upstream_dns=upstream_dns, dnssec_validation=dnssec_validation
+    )
 
 
 def bind_write_zones(zones):

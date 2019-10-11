@@ -3,9 +3,7 @@
 
 """Operating System class used for bootloaders."""
 
-__all__ = [
-    "BootLoaderOS",
-    ]
+__all__ = ["BootLoaderOS"]
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
@@ -15,12 +13,12 @@ from provisioningserver.drivers.osystem import (
 
 class BootLoaderOS(OperatingSystem):
 
-    name = 'bootloader'
-    title = 'Bootloader'
+    name = "bootloader"
+    title = "Bootloader"
 
     def get_default_release(self):
         # No Default bootloader as it depends on the arch.
-        return ''
+        return ""
 
     def get_release_title(self, release):
         # The title is the same as the release.

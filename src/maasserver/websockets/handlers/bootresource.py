@@ -3,9 +3,7 @@
 
 """The BootResource handler for the WebSocket connection."""
 
-__all__ = [
-    "BootResourceHandler",
-    ]
+__all__ = ["BootResourceHandler"]
 
 from collections import defaultdict
 import json
@@ -26,10 +24,7 @@ from maasserver.clusterrpc.boot_images import (
     get_common_available_boot_images,
     is_import_boot_images_running,
 )
-from maasserver.enum import (
-    BOOT_RESOURCE_TYPE,
-    NODE_STATUS,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS
 from maasserver.models import (
     BootResource,
     BootSource,
@@ -48,10 +43,7 @@ from maasserver.websockets.base import (
     HandlerError,
     HandlerValidationError,
 )
-from provisioningserver.config import (
-    DEFAULT_IMAGES_URL,
-    DEFAULT_KEYRINGS_PATH,
-)
+from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
@@ -60,11 +52,7 @@ from provisioningserver.import_images.download_descriptions import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.fs import tempdir
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    callOut,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
 from twisted.internet.defer import Deferred
 
 
@@ -81,7 +69,7 @@ def get_distro_series_info_row(series):
         # handle both cases for backwards compatibility.
         if not isinstance(row, dict):
             row = row.__dict__
-        if row['series'] == series:
+        if row["series"] == series:
             return row
     return None
 
@@ -91,36 +79,39 @@ def format_ubuntu_distro_series(series):
     row = get_distro_series_info_row(series)
     if row is None:
         return series
-    return row['version']
+    return row["version"]
 
 
 class BootResourceHandler(Handler):
-
     class Meta:
         allowed_methods = [
-            'poll',
-            'stop_import',
-            'save_ubuntu',
-            'save_ubuntu_core',
-            'save_other',
-            'fetch',
-            'delete_image',
+            "poll",
+            "stop_import",
+            "save_ubuntu",
+            "save_ubuntu_core",
+            "save_other",
+            "fetch",
+            "delete_image",
         ]
 
     def format_ubuntu_sources(self):
         """Return formatted Ubuntu sources."""
         sources = []
         for source in self.ubuntu_sources:
-            source_type = 'custom'
-            if (source.url == DEFAULT_IMAGES_URL and
-                    source.keyring_filename == DEFAULT_KEYRINGS_PATH):
-                source_type = 'maas.io'
-            sources.append({
-                'source_type': source_type,
-                'url': source.url,
-                'keyring_filename': source.keyring_filename,
-                'keyring_data': bytes(source.keyring_data).decode("ascii"),
-            })
+            source_type = "custom"
+            if (
+                source.url == DEFAULT_IMAGES_URL
+                and source.keyring_filename == DEFAULT_KEYRINGS_PATH
+            ):
+                source_type = "maas.io"
+            sources.append(
+                {
+                    "source_type": source_type,
+                    "url": source.url,
+                    "keyring_filename": source.keyring_filename,
+                    "keyring_data": bytes(source.keyring_data).decode("ascii"),
+                }
+            )
         return sources
 
     def get_ubuntu_release_selections(self):
@@ -147,21 +138,25 @@ class BootResourceHandler(Handler):
                 selected_releases.remove(release)
             if not checked and all_releases:
                 checked = True
-            releases.append({
-                'name': release,
-                'title': format_ubuntu_distro_series(release),
-                'checked': checked,
-                'deleted': False,
-                })
+            releases.append(
+                {
+                    "name": release,
+                    "title": format_ubuntu_distro_series(release),
+                    "checked": checked,
+                    "deleted": False,
+                }
+            )
         # If any selections still exist then they have been removed from the
         # stream but the selection still exists.
         for release in selected_releases:
-            releases.append({
-                'name': release,
-                'title': format_ubuntu_distro_series(release),
-                'checked': True,
-                'deleted': True,
-                })
+            releases.append(
+                {
+                    "name": release,
+                    "title": format_ubuntu_distro_series(release),
+                    "checked": True,
+                    "deleted": True,
+                }
+            )
         return releases
 
     def get_ubuntu_arch_selections(self):
@@ -189,26 +184,25 @@ class BootResourceHandler(Handler):
                 selected_arches.remove(arch)
             if not checked and all_arches:
                 checked = True
-            arches.append({
-                'name': arch,
-                'title': arch,
-                'checked': checked,
-                'deleted': False,
-                })
+            arches.append(
+                {
+                    "name": arch,
+                    "title": arch,
+                    "checked": checked,
+                    "deleted": False,
+                }
+            )
         # If any selections still exist then they have been removed from the
         # stream but the selection still exists.
         for arch in selected_arches:
-            arches.append({
-                'name': arch,
-                'title': arch,
-                'checked': True,
-                'deleted': True,
-                })
+            arches.append(
+                {"name": arch, "title": arch, "checked": True, "deleted": True}
+            )
         return arches
 
     def check_if_image_matches_resource(self, resource, image):
         """Return True if the resource matches the image."""
-        os, series = resource.name.split('/')
+        os, series = resource.name.split("/")
         arch, subarch = resource.split_arch()
         if os != image.os or series != image.release or arch != image.arch:
             return False
@@ -225,9 +219,11 @@ class BootResourceHandler(Handler):
 
     def get_other_synced_resources(self):
         """Return all synced resources that are not Ubuntu."""
-        resources = list(BootResource.objects.filter(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED).exclude(
-            name__startswith='ubuntu/').order_by('-name', 'architecture'))
+        resources = list(
+            BootResource.objects.filter(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            .exclude(name__startswith="ubuntu/")
+            .order_by("-name", "architecture")
+        )
         for resource in resources:
             self.add_resource_template_attributes(resource)
         return resources
@@ -237,7 +233,8 @@ class BootResourceHandler(Handler):
         resource.title = self.get_resource_title(resource)
         resource.arch, resource.subarch = resource.split_arch()
         resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
-            resource)
+            resource
+        )
         resource_set = resource.get_latest_set()
         if resource_set is None:
             resource.size = human_readable_bytes(0)
@@ -254,49 +251,52 @@ class BootResourceHandler(Handler):
                 if progress > 0:
                     resource.status = "Downloading %3.0f%%" % progress
                     resource.downloading = True
-                    resource.icon = 'in-progress'
+                    resource.icon = "in-progress"
                 else:
                     resource.status = "Queued for download"
                     resource.downloading = False
-                    resource.icon = 'queued'
+                    resource.icon = "queued"
             else:
                 # See if the resource also exists on all the clusters.
                 if resource in self.rack_resources:
                     resource.status = "Synced"
                     resource.downloading = False
-                    resource.icon = 'succeeded'
+                    resource.icon = "succeeded"
                 else:
                     resource.complete = False
                     if self.racks_syncing:
                         resource.status = "Syncing to rack controller(s)"
                         resource.downloading = True
-                        resource.icon = 'in-progress'
+                        resource.icon = "in-progress"
                     else:
                         resource.status = (
-                            "Waiting for rack controller(s) to sync")
+                            "Waiting for rack controller(s) to sync"
+                        )
                         resource.downloading = False
-                        resource.icon = 'waiting'
+                        resource.icon = "waiting"
 
     def format_ubuntu_core_images(self):
         """Return formatted other images for selection."""
         resources = self.get_other_synced_resources()
         images = []
-        for image in BootSourceCache.objects.filter(os='ubuntu-core'):
+        for image in BootSourceCache.objects.filter(os="ubuntu-core"):
             resource = self.get_matching_resource_for_image(resources, image)
-            if 'title' in image.extra and image.extra != '':
-                title = image.extra['title']
+            if "title" in image.extra and image.extra != "":
+                title = image.extra["title"]
             else:
-                osystem = OperatingSystemRegistry['ubuntu-core']
+                osystem = OperatingSystemRegistry["ubuntu-core"]
                 title = osystem.get_release_title(image.release)
             if title is None:
-                title = '%s/%s' % (image.os, image.release)
-            images.append({
-                'name': '%s/%s/%s/%s' % (
-                    image.os, image.arch, image.subarch, image.release),
-                'title': title,
-                'checked': True if resource else False,
-                'deleted': False,
-            })
+                title = "%s/%s" % (image.os, image.release)
+            images.append(
+                {
+                    "name": "%s/%s/%s/%s"
+                    % (image.os, image.arch, image.subarch, image.release),
+                    "title": title,
+                    "checked": True if resource else False,
+                    "deleted": False,
+                }
+            )
         return images
 
     def format_other_images(self):
@@ -304,24 +304,27 @@ class BootResourceHandler(Handler):
         resources = self.get_other_synced_resources()
         images = []
         qs = BootSourceCache.objects.exclude(
-            Q(os='ubuntu') | Q(os='ubuntu-core')).filter(bootloader_type=None)
+            Q(os="ubuntu") | Q(os="ubuntu-core")
+        ).filter(bootloader_type=None)
         for image in qs:
             resource = self.get_matching_resource_for_image(resources, image)
             title = None
-            if 'title' in image.extra and image.extra != '':
-                title = image.extra['title']
+            if "title" in image.extra and image.extra != "":
+                title = image.extra["title"]
             elif image.os in OperatingSystemRegistry:
                 osystem = OperatingSystemRegistry[image.os]
                 title = osystem.get_release_title(image.release)
             if not title:
-                title = '%s/%s' % (image.os, image.release)
-            images.append({
-                'name': '%s/%s/%s/%s' % (
-                    image.os, image.arch, image.subarch, image.release),
-                'title': title,
-                'checked': True if resource else False,
-                'deleted': False,
-            })
+                title = "%s/%s" % (image.os, image.release)
+            images.append(
+                {
+                    "name": "%s/%s/%s/%s"
+                    % (image.os, image.arch, image.subarch, image.release),
+                    "title": title,
+                    "checked": True if resource else False,
+                    "deleted": False,
+                }
+            )
         return images
 
     def node_has_architecture_for_resource(self, node, resource):
@@ -334,24 +337,26 @@ class BootResourceHandler(Handler):
         """Return number of nodes that are deploying the given
         os, series, and architecture."""
         if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
-            osystem = 'custom'
+            osystem = "custom"
             distro_series = resource.name
         else:
-            osystem, distro_series = resource.name.split('/')
+            osystem, distro_series = resource.name.split("/")
 
         # Count the number of nodes with same os/release and architecture.
         count = 0
         for node in self.nodes.filter(
-                osystem=osystem, distro_series=distro_series):
+            osystem=osystem, distro_series=distro_series
+        ):
             if self.node_has_architecture_for_resource(node, resource):
                 count += 1
 
         # Any node that is deployed without osystem and distro_series,
         # will be using the defaults.
-        if (self.default_osystem == osystem and
-                self.default_distro_series == distro_series):
-            for node in self.nodes.filter(
-                    osystem="", distro_series=""):
+        if (
+            self.default_osystem == osystem
+            and self.default_distro_series == distro_series
+        ):
+            for node in self.nodes.filter(osystem="", distro_series=""):
                 if self.node_has_architecture_for_resource(node, resource):
                     count += 1
         return count
@@ -395,18 +400,23 @@ class BootResourceHandler(Handler):
         last_update = None
         for resource in resources:
             last_update = self.pick_latest_datetime(
-                last_update, resource.updated)
+                last_update, resource.updated
+            )
             resource_set = resource.get_latest_set()
             if resource_set is not None:
                 last_update = self.pick_latest_datetime(
-                    last_update, resource_set.updated)
+                    last_update, resource_set.updated
+                )
         return last_update
 
     def get_number_of_nodes_for_resources(self, resources):
         """Return the number of nodes used by all resources."""
-        return sum([
-            self.get_number_of_nodes_deployed_for(resource)
-            for resource in resources])
+        return sum(
+            [
+                self.get_number_of_nodes_deployed_for(resource)
+                for resource in resources
+            ]
+        )
 
     def get_progress_for_resources(self, resources):
         """Return the overall progress for all resources."""
@@ -427,12 +437,12 @@ class BootResourceHandler(Handler):
         rtypes_with_split_names = [
             BOOT_RESOURCE_TYPE.SYNCED,
             BOOT_RESOURCE_TYPE.GENERATED,
-            ]
-        if 'title' in resource.extra and len(resource.extra['title']) > 0:
-            return resource.extra['title']
+        ]
+        if "title" in resource.extra and len(resource.extra["title"]) > 0:
+            return resource.extra["title"]
         elif resource.rtype in rtypes_with_split_names:
-            os, series = resource.name.split('/')
-            if resource.name.startswith('ubuntu/'):
+            os, series = resource.name.split("/")
+            if resource.name.startswith("ubuntu/"):
                 return format_ubuntu_distro_series(series)
             else:
                 title = None
@@ -471,29 +481,30 @@ class BootResourceHandler(Handler):
             if progress > 0:
                 resource.status = "Downloading %3.0f%%" % progress
                 resource.downloading = True
-                resource.icon = 'in-progress'
+                resource.icon = "in-progress"
             else:
                 resource.status = "Queued for download"
                 resource.downloading = False
-                resource.icon = 'queued'
+                resource.icon = "queued"
         else:
             # See if all the resources exist on all the racks.
             rack_has_resources = any(
-                res in group for res in self.rack_resources)
+                res in group for res in self.rack_resources
+            )
             if rack_has_resources:
                 resource.status = "Synced"
                 resource.downloading = False
-                resource.icon = 'succeeded'
+                resource.icon = "succeeded"
             else:
                 resource.complete = False
                 if self.racks_syncing:
                     resource.status = "Syncing to rack controller(s)"
                     resource.downloading = True
-                    resource.icon = 'in-progress'
+                    resource.icon = "in-progress"
                 else:
                     resource.status = "Waiting for rack controller(s) to sync"
                     resource.downloading = False
-                    resource.icon = 'waiting'
+                    resource.icon = "waiting"
         return resource
 
     def combine_resources(self, resources):
@@ -502,12 +513,12 @@ class BootResourceHandler(Handler):
         resource_group = defaultdict(list)
         for resource in resources:
             arch = resource.split_arch()[0]
-            key = '%s/%s' % (resource.name, arch)
+            key = "%s/%s" % (resource.name, arch)
             resource_group[key].append(resource)
         return [
             self.resource_group_to_resource(group)
             for _, group in resource_group.items()
-            ]
+        ]
 
     def poll(self, params):
         """Polling method that the websocket client calls.
@@ -518,7 +529,7 @@ class BootResourceHandler(Handler):
         possible as no rack information is cached on the region side.
         """
         try:
-            sources, releases, arches = get_os_info_from_boot_sources('ubuntu')
+            sources, releases, arches = get_os_info_from_boot_sources("ubuntu")
             self.connection_error = False
             self.ubuntu_sources = sources
             self.ubuntu_releases = releases
@@ -540,37 +551,46 @@ class BootResourceHandler(Handler):
         # "only" anyway, I don't think we ever had the benefit of prefetching
         # only those two fields.
         self.nodes = Node.objects.filter(
-            status__in=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
-        self.default_osystem = Config.objects.get_config(
-            'default_osystem')
+            status__in=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING]
+        )
+        self.default_osystem = Config.objects.get_config("default_osystem")
         self.default_distro_series = Config.objects.get_config(
-            'default_distro_series')
+            "default_distro_series"
+        )
 
         # Load list of boot resources that currently exist on all racks.
         rack_images = get_common_available_boot_images()
         self.racks_syncing = is_import_boot_images_running()
-        self.rack_resources = (
-            BootResource.objects.get_resources_matching_boot_images(
-                rack_images))
+        self.rack_resources = BootResource.objects.get_resources_matching_boot_images(
+            rack_images
+        )
 
         # Load all the resources and generate the JSON result.
-        resources = self.combine_resources(BootResource.objects.filter(
-            bootloader_type=None))
+        resources = self.combine_resources(
+            BootResource.objects.filter(bootloader_type=None)
+        )
         json_resources = [
             dict(
                 id=resource.id,
-                rtype=resource.rtype, name=resource.name,
-                title=resource.title, arch=resource.arch, size=resource.size,
-                complete=resource.complete, status=resource.status,
-                icon=resource.icon, downloading=resource.downloading,
+                rtype=resource.rtype,
+                name=resource.name,
+                title=resource.title,
+                arch=resource.arch,
+                size=resource.size,
+                complete=resource.complete,
+                status=resource.status,
+                icon=resource.icon,
+                downloading=resource.downloading,
                 numberOfNodes=resource.number_of_nodes,
                 lastUpdate=resource.last_update.strftime(
-                    "%a, %d %b. %Y %H:%M:%S")
+                    "%a, %d %b. %Y %H:%M:%S"
+                ),
             )
             for resource in resources
-            ]
+        ]
         commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
+            name="commissioning_distro_series"
+        )
         json_ubuntu = dict(
             sources=self.format_ubuntu_sources(),
             releases=self.format_ubuntu_releases(),
@@ -585,30 +605,32 @@ class BootResourceHandler(Handler):
             ubuntu=json_ubuntu,
             ubuntu_core_images=self.format_ubuntu_core_images(),
             other_images=self.format_other_images(),
-            )
+        )
         return json.dumps(data)
 
     def get_bootsource(self, params, from_db=False):
-        source_type = params.get('source_type', 'custom')
-        if source_type == 'maas.io':
+        source_type = params.get("source_type", "custom")
+        if source_type == "maas.io":
             url = DEFAULT_IMAGES_URL
             keyring_filename = DEFAULT_KEYRINGS_PATH
-            keyring_data = b''
-        elif source_type == 'custom':
-            url = params['url']
-            keyring_filename = params.get('keyring_filename', '')
-            keyring_data = params.get('keyring_data', '').encode('utf-8')
-            if keyring_filename == '' and keyring_data == b'':
+            keyring_data = b""
+        elif source_type == "custom":
+            url = params["url"]
+            keyring_filename = params.get("keyring_filename", "")
+            keyring_data = params.get("keyring_data", "").encode("utf-8")
+            if keyring_filename == "" and keyring_data == b"":
                 keyring_filename = DEFAULT_KEYRINGS_PATH
         else:
-            raise HandlerError('Unknown source_type: %s' % source_type)
+            raise HandlerError("Unknown source_type: %s" % source_type)
 
         if from_db:
             source, created = BootSource.objects.get_or_create(
                 url=url,
                 defaults={
-                    'keyring_filename': keyring_filename,
-                    'keyring_data': keyring_data})
+                    "keyring_filename": keyring_filename,
+                    "keyring_data": keyring_data,
+                },
+            )
             if not created:
                 source.keyring_filename = keyring_filename
                 source.keyring_data = keyring_data
@@ -642,21 +664,22 @@ class BootResourceHandler(Handler):
 
         @transactional
         def update_source(params):
-            os = 'ubuntu'
-            releases = params['releases']
-            arches = params['arches']
+            os = "ubuntu"
+            releases = params["releases"]
+            arches = params["arches"]
             boot_source = self.get_bootsource(params, from_db=True)
 
             # Remove all selections, that are not of release.
             BootSourceSelection.objects.filter(
-                boot_source=boot_source, os=os).exclude(
-                release__in=releases).delete()
+                boot_source=boot_source, os=os
+            ).exclude(release__in=releases).delete()
 
             if len(releases) > 0:
                 # Create or update the selections.
                 for release in releases:
                     selection, _ = BootSourceSelection.objects.get_or_create(
-                        boot_source=boot_source, os=os, release=release)
+                        boot_source=boot_source, os=os, release=release
+                    )
                     selection.arches = arches
                     selection.subarches = ["*"]
                     selection.labels = ["*"]
@@ -665,7 +688,8 @@ class BootResourceHandler(Handler):
                 # Create a selection that will cause nothing to be downloaded,
                 # since no releases are selected.
                 selection, _ = BootSourceSelection.objects.get_or_create(
-                    boot_source=boot_source, os=os, release="")
+                    boot_source=boot_source, os=os, release=""
+                )
                 selection.arches = arches
                 selection.subarches = ["*"]
                 selection.labels = ["*"]
@@ -680,7 +704,8 @@ class BootResourceHandler(Handler):
         d.addErrback(
             log.err,
             "Failed to start the image import. Unable to save the Ubuntu "
-            "image(s) source information.")
+            "image(s) source information.",
+        )
         return d
 
     @asynchronous(timeout=FOREVER)
@@ -693,20 +718,21 @@ class BootResourceHandler(Handler):
         @transactional
         def update_selections(params):
             # Remove all Ubuntu Core selections.
-            BootSourceSelection.objects.filter(os='ubuntu-core').delete()
+            BootSourceSelection.objects.filter(os="ubuntu-core").delete()
 
             # Break down the images into os/release with multiple arches.
             selections = defaultdict(list)
-            for image in params['images']:
-                os, arch, _, release = image.split('/', 4)
-                name = '%s/%s' % (os, release)
+            for image in params["images"]:
+                os, arch, _, release = image.split("/", 4)
+                name = "%s/%s" % (os, release)
                 selections[name].append(arch)
 
             # Create each selection for the source.
             for name, arches in selections.items():
-                os, release = name.split('/')
+                os, release = name.split("/")
                 cache = BootSourceCache.objects.filter(
-                    os=os, arch=arch, release=release).first()
+                    os=os, arch=arch, release=release
+                ).first()
                 if cache is None:
                     # It is possible the cache changed while waiting for the
                     # user to perform an action. Ignore the selection as its
@@ -715,8 +741,12 @@ class BootResourceHandler(Handler):
                 # Create the selection for the source.
                 BootSourceSelection.objects.create(
                     boot_source=cache.boot_source,
-                    os=os, release=release,
-                    arches=arches, subarches=["*"], labels=["*"])
+                    os=os,
+                    release=release,
+                    arches=arches,
+                    subarches=["*"],
+                    labels=["*"],
+                )
 
         notify = Deferred()
         d = stop_import_resources()
@@ -727,7 +757,8 @@ class BootResourceHandler(Handler):
         d.addErrback(
             log.err,
             "Failed to start the image import. Unable to save the Ubuntu Core "
-            "image(s) source information")
+            "image(s) source information",
+        )
         return d
 
     @asynchronous(timeout=FOREVER)
@@ -741,20 +772,22 @@ class BootResourceHandler(Handler):
         def update_selections(params):
             # Remove all selections that are not Ubuntu.
             BootSourceSelection.objects.exclude(
-                Q(os='ubuntu') | Q(os='ubuntu-core')).delete()
+                Q(os="ubuntu") | Q(os="ubuntu-core")
+            ).delete()
 
             # Break down the images into os/release with multiple arches.
             selections = defaultdict(list)
-            for image in params['images']:
-                os, arch, _, release = image.split('/', 4)
-                name = '%s/%s' % (os, release)
+            for image in params["images"]:
+                os, arch, _, release = image.split("/", 4)
+                name = "%s/%s" % (os, release)
                 selections[name].append(arch)
 
             # Create each selection for the source.
             for name, arches in selections.items():
-                os, release = name.split('/')
+                os, release = name.split("/")
                 cache = BootSourceCache.objects.filter(
-                    os=os, arch=arch, release=release).first()
+                    os=os, arch=arch, release=release
+                ).first()
                 if cache is None:
                     # It is possible the cache changed while waiting for the
                     # user to perform an action. Ignore the selection as its
@@ -763,8 +796,12 @@ class BootResourceHandler(Handler):
                 # Create the selection for the source.
                 BootSourceSelection.objects.create(
                     boot_source=cache.boot_source,
-                    os=os, release=release,
-                    arches=arches, subarches=["*"], labels=["*"])
+                    os=os,
+                    release=release,
+                    arches=arches,
+                    subarches=["*"],
+                    labels=["*"],
+                )
 
         notify = Deferred()
         d = stop_import_resources()
@@ -775,7 +812,8 @@ class BootResourceHandler(Handler):
         d.addErrback(
             log.err,
             "Failed to start the image import. Unable to save the non-Ubuntu "
-            "image(s) source information")
+            "image(s) source information",
+        )
         return d
 
     def fetch(self, params):
@@ -799,8 +837,8 @@ class BootResourceHandler(Handler):
             [source] = write_all_keyrings(keyrings_path, [source])
             try:
                 descriptions = download_all_image_descriptions(
-                    [source],
-                    user_agent=get_maas_user_agent())
+                    [source], user_agent=get_maas_user_agent()
+                )
             except Exception as error:
                 raise HandlerError(str(error))
         items = list(descriptions.items())
@@ -811,52 +849,54 @@ class BootResourceHandler(Handler):
         arches = {}
         for image_spec, product_info in items:
             # Only care about Ubuntu images.
-            if image_spec.os != 'ubuntu':
+            if image_spec.os != "ubuntu":
                 continue
             releases[image_spec.release] = {
-                'name': image_spec.release,
-                'title': product_info.get(
-                    'release_title',
-                    format_ubuntu_distro_series(image_spec.release)),
-                'checked': False,
-                'deleted': False,
+                "name": image_spec.release,
+                "title": product_info.get(
+                    "release_title",
+                    format_ubuntu_distro_series(image_spec.release),
+                ),
+                "checked": False,
+                "deleted": False,
             }
             arches[image_spec.arch] = {
-                'name': image_spec.arch,
-                'title': image_spec.arch,
-                'checked': False,
-                'deleted': False,
+                "name": image_spec.arch,
+                "title": image_spec.arch,
+                "checked": False,
+                "deleted": False,
             }
         if len(releases) == 0 or len(arches) == 0:
             raise HandlerError(err_msg)
-        return json.dumps({
-            'releases': list(releases.values()),
-            'arches': list(arches.values()),
-        })
+        return json.dumps(
+            {
+                "releases": list(releases.values()),
+                "arches": list(arches.values()),
+            }
+        )
 
     def delete_image(self, params):
         """Delete `BootResource` by its ID."""
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
-        if 'id' not in params:
-            raise HandlerValidationError({
-                'id': ['This field is required.']
-            })
+        if "id" not in params:
+            raise HandlerValidationError({"id": ["This field is required."]})
         # Convert resource into a set of resources that make up this image.
         # An image in UI is a set of resource each with different subarches
         # and kflavor.
-        resource = BootResource.objects.get(id=params['id'])
+        resource = BootResource.objects.get(id=params["id"])
         if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
-            os, release = resource.name.split('/')
-            arch, subarch = resource.architecture.split('/')
+            os, release = resource.name.split("/")
+            arch, subarch = resource.architecture.split("/")
             resources = BootResource.objects.filter(
-                name=resource.name, architecture__startswith=arch)
+                name=resource.name, architecture__startswith=arch
+            )
             # Remove the selection that provides the initial resource. All
             # other resources will come from the same selection.
             for selection in BootSourceSelection.objects.all():
                 if image_passes_filter(
-                        [selection.to_dict()],
-                        os, arch, subarch, release, '*'):
+                    [selection.to_dict()], os, arch, subarch, release, "*"
+                ):
                     # This selection provided this image, remove it.
                     selection.delete()
 

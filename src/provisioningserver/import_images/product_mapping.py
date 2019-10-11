@@ -3,9 +3,7 @@
 
 """The `ProductMapping` class."""
 
-__all__ = [
-    'map_products',
-    ]
+__all__ = ["map_products"]
 
 
 class ProductMapping:
@@ -31,10 +29,10 @@ class ProductMapping:
             version name.
         """
         return (
-            resource['content_id'],
-            resource['product_name'],
-            resource['version_name'],
-            )
+            resource["content_id"],
+            resource["product_name"],
+            resource["version_name"],
+        )
 
     def add(self, resource, subarch):
         """Add `subarch` to the list of subarches supported by a boot resource.

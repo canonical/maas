@@ -12,11 +12,7 @@ from provisioningserver.utils.constraints import (
     validate_constraint_label_name,
 )
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-)
+from testtools.matchers import Equals, HasLength, Is
 
 
 class ConstraintTestException(Exception):
@@ -25,35 +21,18 @@ class ConstraintTestException(Exception):
 
 
 class TestValidateLabelName(MAASTestCase):
-    EXPECTED_BAD_NAMES = [
-        '',
-        ' ',
-        '_',
-        '-',
-        ' ',
-        'a ',
-        'a ',
-        '-a',
-        '*',
-        '%',
-    ]
+    EXPECTED_BAD_NAMES = ["", " ", "_", "-", " ", "a ", "a ", "-a", "*", "%"]
 
-    EXPECTED_GOOD_NAMES = [
-        'a',
-        '0',
-        'A',
-        'a-',
-        'a-b',
-        'a_b',
-        'a_b',
-    ]
+    EXPECTED_GOOD_NAMES = ["a", "0", "A", "a-", "a-b", "a_b", "a_b"]
 
     def test__rejects_bad_names(self):
         for name in self.EXPECTED_BAD_NAMES:
             with ExpectedException(
-                    ConstraintTestException, msg='name=%s' % name):
+                ConstraintTestException, msg="name=%s" % name
+            ):
                 validate_constraint_label_name(
-                    name, exception_type=ConstraintTestException)
+                    name, exception_type=ConstraintTestException
+                )
 
     def test__accepts_good_names(self):
         for name in self.EXPECTED_GOOD_NAMES:
@@ -61,26 +40,29 @@ class TestValidateLabelName(MAASTestCase):
 
 
 class TestGetLabeledConstraintsMap(MAASTestCase):
-
     def test__missing_key_value_pair_raises(self):
         with ExpectedException(ConstraintTestException):
             parse_labeled_constraint_map(
-                "a:bc", exception_type=ConstraintTestException)
+                "a:bc", exception_type=ConstraintTestException
+            )
 
     def test__duplicate_label_raises(self):
         with ExpectedException(ConstraintTestException):
             parse_labeled_constraint_map(
-                "a:b=c;a:d=e", exception_type=ConstraintTestException)
+                "a:b=c;a:d=e", exception_type=ConstraintTestException
+            )
 
     def test__invalid_label_raises(self):
         with ExpectedException(ConstraintTestException):
             parse_labeled_constraint_map(
-                "*:b=c", exception_type=ConstraintTestException)
+                "*:b=c", exception_type=ConstraintTestException
+            )
 
     def test__label_with_no_constraints_raises(self):
         with ExpectedException(ConstraintTestException):
             parse_labeled_constraint_map(
-                "a:", exception_type=ConstraintTestException)
+                "a:", exception_type=ConstraintTestException
+            )
 
     def test__single_value_map(self):
         result = parse_labeled_constraint_map("a:b=c")
@@ -104,29 +86,32 @@ class TestGetLabeledConstraintsMap(MAASTestCase):
 
     def test__multiple_label_map(self):
         result = parse_labeled_constraint_map("foo:a=b;bar:c=d")
-        self.assertThat(result, Equals({
-            "foo": {"a": ["b"]},
-            "bar": {"c": ["d"]},
-        }))
+        self.assertThat(
+            result, Equals({"foo": {"a": ["b"]}, "bar": {"c": ["d"]}})
+        )
 
     def test__multiple_value_map_multiple_label_map(self):
         result = parse_labeled_constraint_map("foo:a=b,c=d;bar:e=f,g=h")
-        self.assertThat(result, Equals({
-            "foo": {"a": ["b"], "c": ["d"]},
-            "bar": {"e": ["f"], "g": ["h"]},
-        }))
+        self.assertThat(
+            result,
+            Equals(
+                {
+                    "foo": {"a": ["b"], "c": ["d"]},
+                    "bar": {"e": ["f"], "g": ["h"]},
+                }
+            ),
+        )
 
 
 class TestLabeledConstraintMap(MAASTestCase):
-
     def test__len__for_null_map(self):
         lcm = LabeledConstraintMap(None)
         self.assertThat(lcm, HasLength(0))
 
     def test__len__for_empty_map(self):
-        lcm = LabeledConstraintMap('')
+        lcm = LabeledConstraintMap("")
         self.assertThat(lcm, HasLength(0))
 
     def test__len__for_populated_map(self):
-        lcm = LabeledConstraintMap('eth0:space=1;eth1:space=2')
+        lcm = LabeledConstraintMap("eth0:space=1;eth1:space=2")
         self.assertThat(lcm, HasLength(2))

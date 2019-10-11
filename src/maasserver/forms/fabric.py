@@ -3,9 +3,7 @@
 
 """Fabric form."""
 
-__all__ = [
-    "FabricForm",
-]
+__all__ = ["FabricForm"]
 
 from maasserver.forms import MAASModelForm
 from maasserver.models.fabric import Fabric
@@ -16,8 +14,4 @@ class FabricForm(MAASModelForm):
 
     class Meta:
         model = Fabric
-        fields = (
-            'name',
-            'description',
-            'class_type',
-            )
+        fields = ("name", "description", "class_type")

@@ -3,21 +3,24 @@
 
 """User management for nodes' access to the metadata service."""
 
-__all__ = [
-    'get_node_init_user',
-    'user_name',
-    ]
+__all__ = ["get_node_init_user", "user_name"]
 
 from django.contrib.auth.models import User
 
 
-user_name = 'maas-init-node'
+user_name = "maas-init-node"
 
 
 def get_node_init_user():
     node_init_user, _ = User.objects.get_or_create(
-        username=user_name, defaults=dict(
-            first_name="Node-init user", last_name="Special user",
-            email="node-init-user@localhost", is_staff=False,
-            is_superuser=False, is_active=False))
+        username=user_name,
+        defaults=dict(
+            first_name="Node-init user",
+            last_name="Special user",
+            email="node-init-user@localhost",
+            is_staff=False,
+            is_superuser=False,
+            is_active=False,
+        ),
+    )
     return node_init_user

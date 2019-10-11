@@ -13,10 +13,7 @@ import sys
 import types
 from unittest.mock import sentinel
 
-from django.conf.urls import (
-    include,
-    url,
-)
+from django.conf.urls import include, url
 from django.core.exceptions import ImproperlyConfigured
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
@@ -42,10 +39,7 @@ from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.django_urls import reverse
-from maastesting.matchers import (
-    IsCallable,
-    MockCalledOnceWith,
-)
+from maastesting.matchers import IsCallable, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
@@ -72,8 +66,7 @@ class TestFindingResources(MAASTestCase):
     """Tests for API inspection support: finding resources."""
 
     def test_handler_path(self):
-        self.assertEqual(
-            '/MAAS/api/2.0/doc/', reverse('api-doc'))
+        self.assertEqual("/MAAS/api/2.0/doc/", reverse("api-doc"))
 
     @staticmethod
     def make_module():
@@ -111,10 +104,9 @@ class TestFindingResources(MAASTestCase):
     def test_urlpatterns_with_resource_hidden(self):
         # Resources for handlers with resource_uri attributes are discovered
         # in a urlconf module and returned, unless hidden = True.
-        handler = type("\\m/", (BaseHandler,), {
-            "resource_uri": True,
-            "hidden": True,
-            })
+        handler = type(
+            "\\m/", (BaseHandler,), {"resource_uri": True, "hidden": True}
+        )
         resource = Resource(handler)
         module = self.make_module()
         module.urlpatterns = [url("^metal", resource)]
@@ -133,6 +125,7 @@ class TestFindingResources(MAASTestCase):
     def test_smoke(self):
         # Resources are found for the MAAS API.
         from maasserver import urls_api as urlconf
+
         self.assertNotEqual(set(), find_api_resources(urlconf))
 
 
@@ -141,7 +134,7 @@ class TestFindingResourcesAPI(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_api_doc_accessibility(self):
         self.patch(sys, "stderr", StringIO())
-        response = self.client.get(reverse('api-doc'))
+        response = self.client.get(reverse("api-doc"))
         self.assertThat(response, HasStatusCode(http.client.OK))
         # No error or warning are emitted by docutils.
         self.assertEqual("", sys.stderr.getvalue())
@@ -179,10 +172,9 @@ class TestGeneratingDocs(MAASTestCase):
         docs = list(generate_api_docs(resources))
         sorted_handlers = sorted(
             [type(resource.handler) for resource in resources],
-            key=lambda handler_class: handler_class.__name__)
-        self.assertEqual(
-            sorted_handlers,
-            [doc.handler for doc in docs])
+            key=lambda handler_class: handler_class.__name__,
+        )
+        self.assertEqual(sorted_handlers, [doc.handler for doc in docs])
 
     def test_handler_without_resource_uri(self):
         # generate_api_docs() raises an exception if a handler does not have a
@@ -192,7 +184,8 @@ class TestGeneratingDocs(MAASTestCase):
         error = self.assertRaises(AssertionError, list, docs)
         self.assertEqual(
             "Missing resource_uri in %s" % type(resource.handler).__name__,
-            str(error))
+            str(error),
+        )
 
 
 class TestHandlers(MAASTestCase):
@@ -202,6 +195,7 @@ class TestHandlers(MAASTestCase):
 
     def test_handlers_have_section_title(self):
         from maasserver import urls_api as urlconf
+
         resources = find_api_resources(urlconf)
         handlers = []
         for doc in generate_api_docs(resources):
@@ -209,12 +203,14 @@ class TestHandlers(MAASTestCase):
         handlers_missing_section_name = [
             handler.__name__
             for handler in handlers
-            if not hasattr(handler, 'api_doc_section_name')
+            if not hasattr(handler, "api_doc_section_name")
         ]
         self.assertEqual(
-            [], handlers_missing_section_name,
-            "%d handlers are missing an api_doc_section_name field." % len(
-                handlers_missing_section_name))
+            [],
+            handlers_missing_section_name,
+            "%d handlers are missing an api_doc_section_name field."
+            % len(handlers_missing_section_name),
+        )
 
     def test_contains_documentation_from_handlers(self):
         # The documentation contains some of the text used in the docstrings
@@ -229,7 +225,7 @@ class TestHandlers(MAASTestCase):
             # Doc for a method parameter (:param: doc).
             "Prefix used to filter returned files.",
             # Doc for a rendered docstring containing annotations
-            "\"resource_uri\": \"/MAAS/api",
+            '"resource_uri": "/MAAS/api',
             # Doc for a rendered docstring containing annotations
             "Optional. A brief description of the new zone.",
         ]
@@ -238,17 +234,25 @@ class TestHandlers(MAASTestCase):
     def test_does_not_contain_documentation_warnings_syntax_errors(self):
         # We don't want any of these strings in the rendered docs ever.
         doc = render_api_docs()
-        self.assertThat(doc, Not(Contains("API_WARNING")), """
+        self.assertThat(
+            doc,
+            Not(Contains("API_WARNING")),
+            """
             The rendered API doc contains an API_WARNING flag. To fix this,
             render the doc using `bin/maas-region generate_api_doc`, and
             search for the API_WARNING flag to find the inline warning.
-        """)
-        self.assertThat(doc, Not(Contains("API_SYNTAX_ERROR")), """
+        """,
+        )
+        self.assertThat(
+            doc,
+            Not(Contains("API_SYNTAX_ERROR")),
+            """
             The rendered API doc contains an API_SYNTAX_ERROR flag. To fix
             this, render the doc using `bin/maas-region generate_api_doc`,
             and search for the API_SYNTAX_ERROR flag to find the inline
             warning.
-        """)
+        """,
+        )
 
 
 class ExampleHandler(OperationsHandler):
@@ -290,33 +294,40 @@ class TestDescribingAPI(MAASTestCase):
         super(TestDescribingAPI, self).setUp()
         # Override config maas url so that it's stable for testing.
         self.useFixture(
-            RegionConfigurationFixture(maas_url="http://example.com/"))
+            RegionConfigurationFixture(maas_url="http://example.com/")
+        )
 
     def test_describe_handler(self):
         # describe_handler() returns a description of a handler that can be
         # readily serialised into JSON, for example.
         expected_actions = [
-            {"doc": getdoc(ExampleHandler.idempotent_operation),
-             "method": "GET",
-             "name": "idempotent_operation",
-             "op": "idempotent_operation",
-             "restful": False},
-            {"doc": getdoc(ExampleHandler.non_idempotent_operation),
-             "method": "POST",
-             "name": "non_idempotent_operation",
-             "op": "non_idempotent_operation",
-             "restful": False},
-            {"doc": None,
-             "method": "PUT",
-             "name": "update",
-             "op": None,
-             "restful": True},
-            ]
+            {
+                "doc": getdoc(ExampleHandler.idempotent_operation),
+                "method": "GET",
+                "name": "idempotent_operation",
+                "op": "idempotent_operation",
+                "restful": False,
+            },
+            {
+                "doc": getdoc(ExampleHandler.non_idempotent_operation),
+                "method": "POST",
+                "name": "non_idempotent_operation",
+                "op": "non_idempotent_operation",
+                "restful": False,
+            },
+            {
+                "doc": None,
+                "method": "PUT",
+                "name": "update",
+                "op": None,
+                "restful": True,
+            },
+        ]
         observed = describe_handler(ExampleHandler)
         # The description contains several entries.
         self.assertSetEqual(
-            {"actions", "doc", "name", "params", "path"},
-            set(observed))
+            {"actions", "doc", "name", "params", "path"}, set(observed)
+        )
         self.assertEqual(ExampleHandler.__doc__, observed["doc"])
         self.assertEqual(ExampleHandler.__name__, observed["name"])
         self.assertEqual(("p_foo", "p_bar"), observed["params"])
@@ -326,6 +337,7 @@ class TestDescribingAPI(MAASTestCase):
         # Ensure that describe_handler() yields something sensible with a
         # "real" MAAS API handler.
         from maasserver.api.zones import ZoneHandler as handler
+
         description = describe_handler(handler)
         # The RUD of CRUD actions are still available, but the C(reate) action
         # has been overridden with custom non-ReSTful operations.
@@ -333,18 +345,16 @@ class TestDescribingAPI(MAASTestCase):
             "DELETE delete op=None restful=True",
             "GET read op=None restful=True",
             "PUT update op=None restful=True",
-            }
+        }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action
             for action in description["actions"]
-            }
+        }
         self.assertSetEqual(expected_actions, observed_actions)
         self.assertSetEqual({"name"}, set(description["params"]))
         # The path is a URI Template <http://tools.ietf.org/html/rfc6570>, the
         # components of which correspond to the parameters declared.
-        self.assertEqual(
-            "/MAAS/api/2.0/zones/{name}/",
-            description["path"])
+        self.assertEqual("/MAAS/api/2.0/zones/{name}/", description["path"])
 
     def test_describe_resource_anonymous_resource(self):
         # When the resource does not require authentication, any configured
@@ -356,7 +366,7 @@ class TestDescribingAPI(MAASTestCase):
             "anon": describe_handler(ExampleHandler),
             "auth": None,
             "name": "ExampleHandler",
-            }
+        }
         self.assertEqual(expected, describe_resource(resource))
 
     def test_describe_resource_authenticated_resource(self):
@@ -368,7 +378,7 @@ class TestDescribingAPI(MAASTestCase):
             "anon": None,
             "auth": describe_handler(ExampleHandler),
             "name": "ExampleHandler",
-            }
+        }
         self.assertEqual(expected, describe_resource(resource))
 
     def test_describe_resource_authenticated_resource_with_fallback(self):
@@ -381,7 +391,7 @@ class TestDescribingAPI(MAASTestCase):
             "anon": describe_handler(ExampleFallbackHandler),
             "auth": describe_handler(ExampleHandler),
             "name": "ExampleHandler",
-            }
+        }
         self.assertEqual(expected, describe_resource(resource))
 
     def test_describe_api_returns_description_document(self):
@@ -393,41 +403,50 @@ class TestDescribingAPI(MAASTestCase):
         is_operation = MatchesAny(Is(None), is_text)
 
         is_http_method = MatchesAny(
-            Equals("GET"), Equals("POST"),
-            Equals("PUT"), Equals("DELETE"),
+            Equals("GET"), Equals("POST"), Equals("PUT"), Equals("DELETE")
         )
 
-        is_action = MatchesDict({
-            "doc": is_text,
-            "method": is_http_method,
-            "name": is_text,
-            "op": is_operation,
-            "restful": is_bool,
-        })
+        is_action = MatchesDict(
+            {
+                "doc": is_text,
+                "method": is_http_method,
+                "name": is_text,
+                "op": is_operation,
+                "restful": is_bool,
+            }
+        )
 
-        is_handler = MatchesDict({
-            "actions": MatchesAll(is_list, AllMatch(is_action)),
-            "doc": is_text,
-            "name": is_text,
-            "params": is_tuple,
-            "path": is_text,
-        })
+        is_handler = MatchesDict(
+            {
+                "actions": MatchesAll(is_list, AllMatch(is_action)),
+                "doc": is_text,
+                "name": is_text,
+                "params": is_tuple,
+                "path": is_text,
+            }
+        )
 
-        is_resource = MatchesDict({
-            "anon": MatchesAny(Is(None), is_handler),
-            "auth": MatchesAny(Is(None), is_handler),
-            "name": is_text,
-        })
+        is_resource = MatchesDict(
+            {
+                "anon": MatchesAny(Is(None), is_handler),
+                "auth": MatchesAny(Is(None), is_handler),
+                "name": is_text,
+            }
+        )
 
         is_resource_list = MatchesAll(is_list, AllMatch(is_resource))
         is_legacy_handler_list = MatchesAll(is_list, AllMatch(is_handler))
 
         self.assertThat(
-            describe_api(), MatchesDict({
-                "doc": Equals("MAAS API"),
-                "resources": is_resource_list,
-                "handlers": is_legacy_handler_list,
-            }))
+            describe_api(),
+            MatchesDict(
+                {
+                    "doc": Equals("MAAS API"),
+                    "resources": is_resource_list,
+                    "handlers": is_legacy_handler_list,
+                }
+            ),
+        )
 
 
 class TestGeneratePowerTypesDoc(MAASTestCase):
@@ -438,19 +457,25 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
         self.assertThat(doc, ContainsAll(["Power types", "IPMI", "virsh"]))
 
     def test__generate_power_types_doc_generates_describes_power_type(self):
-        power_driver = random.choice([
-            driver
-            for _, driver in PowerDriverRegistry
-            if len(driver.settings) > 0
-        ])
+        power_driver = random.choice(
+            [
+                driver
+                for _, driver in PowerDriverRegistry
+                if len(driver.settings) > 0
+            ]
+        )
         doc = generate_power_types_doc()
         self.assertThat(
             doc,
-            ContainsAll([
-                power_driver.name,
-                power_driver.description,
-                power_driver.settings[0]['name'],
-                power_driver.settings[0]['label']]))
+            ContainsAll(
+                [
+                    power_driver.name,
+                    power_driver.description,
+                    power_driver.settings[0]["name"],
+                    power_driver.settings[0]["label"],
+                ]
+            ),
+        )
 
 
 class TestGeneratePodTypesDoc(MAASTestCase):
@@ -461,20 +486,14 @@ class TestGeneratePodTypesDoc(MAASTestCase):
         self.assertThat(doc, ContainsAll(["Pod types", "virsh"]))
 
     def test__generate_pod_types_doc_generates_describes_types(self):
-        pod_driver = random.choice([
-            driver
-            for _, driver in PodDriverRegistry
-        ])
+        pod_driver = random.choice([driver for _, driver in PodDriverRegistry])
         doc = generate_pod_types_doc()
         self.assertThat(
-            doc,
-            ContainsAll([
-                pod_driver.name,
-                pod_driver.description]))
+            doc, ContainsAll([pod_driver.name, pod_driver.description])
+        )
 
 
 class TestDescribeCanonical(MAASTestCase):
-
     def test__passes_True_False_and_None_through(self):
         self.expectThat(describe_canonical(True), Is(True))
         self.expectThat(describe_canonical(False), Is(False))
@@ -482,14 +501,14 @@ class TestDescribeCanonical(MAASTestCase):
 
     def test__passes_numbers_through(self):
         self.expectThat(
-            describe_canonical(1), MatchesAll(
-                IsInstance(int), Equals(1)))
+            describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
+        )
         self.expectThat(
-            describe_canonical(1), MatchesAll(
-                IsInstance(int), Equals(1)))
+            describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
+        )
         self.expectThat(
-            describe_canonical(1.0), MatchesAll(
-                IsInstance(float), Equals(1.0)))
+            describe_canonical(1.0), MatchesAll(IsInstance(float), Equals(1.0))
+        )
 
     def test__passes_unicode_strings_through(self):
         string = factory.make_string()
@@ -499,45 +518,40 @@ class TestDescribeCanonical(MAASTestCase):
     def test__decodes_byte_strings(self):
         string = factory.make_string().encode("utf-8")
         self.expectThat(
-            describe_canonical(string), MatchesAll(
-                IsInstance(str), Not(Is(string)),
-                Equals(string.decode("utf-8"))))
+            describe_canonical(string),
+            MatchesAll(
+                IsInstance(str),
+                Not(Is(string)),
+                Equals(string.decode("utf-8")),
+            ),
+        )
 
     def test__returns_sequences_as_tuples(self):
         self.expectThat(describe_canonical([1, 2, 3]), Equals((1, 2, 3)))
 
     def test__recursively_calls_sequence_elements(self):
-        self.expectThat(
-            describe_canonical([1, [2, 3]]),
-            Equals((1, (2, 3))))
+        self.expectThat(describe_canonical([1, [2, 3]]), Equals((1, (2, 3))))
 
     def test__sorts_sequences(self):
+        self.expectThat(describe_canonical([3, 1, 2]), Equals((1, 2, 3)))
         self.expectThat(
-            describe_canonical([3, 1, 2]),
-            Equals((1, 2, 3)))
-        self.expectThat(
-            describe_canonical([[1, 2], [1, 1]]),
-            Equals(((1, 1), (1, 2))))
+            describe_canonical([[1, 2], [1, 1]]), Equals(((1, 1), (1, 2)))
+        )
 
     def test__returns_mappings_as_tuples(self):
         self.expectThat(describe_canonical({1: 2}), Equals(((1, 2),)))
 
     def test__recursively_calls_mapping_keys_and_values(self):
         mapping = {"key\u1234".encode("utf-8"): ["b", "a", "r"]}
-        expected = (
-            ("key\u1234", ("a", "b", "r")),
-        )
-        self.expectThat(
-            describe_canonical(mapping),
-            Equals(expected))
+        expected = (("key\u1234", ("a", "b", "r")),)
+        self.expectThat(describe_canonical(mapping), Equals(expected))
 
     def test__sorts_mappings(self):
         self.expectThat(
-            describe_canonical({2: 1, 1: 1}),
-            Equals(((1, 1), (2, 1))))
+            describe_canonical({2: 1, 1: 1}), Equals(((1, 1), (2, 1)))
+        )
 
     def test__sorts_mappings_by_key_and_value(self):
-
         class inth(int):
             """An `int` that hashes independently from its value.
 
@@ -545,6 +559,7 @@ class TestDescribeCanonical(MAASTestCase):
             this is an abuse, but it helps to demonstrate a point here, that
             values are considered when sorting.
             """
+
             __hash__ = object.__hash__
 
         mapping = {
@@ -559,9 +574,7 @@ class TestDescribeCanonical(MAASTestCase):
             ((1, 2), "bar"),
             ((1, 2), "foo"),
         )
-        self.expectThat(
-            describe_canonical(mapping),
-            Equals(expected))
+        self.expectThat(describe_canonical(mapping), Equals(expected))
 
     def test__rejects_other_types(self):
         self.assertRaises(TypeError, describe_canonical, lambda: None)
@@ -578,17 +591,19 @@ class TestHashCanonical(MAASTestCase):
 
     def test__returns_hash_object(self):
         hasher = hash_canonical(factory.make_string())
-        self.assertThat(hasher, MatchesStructure(
-            block_size=Equals(64),
-            digest=IsCallable(),
-            digest_size=Equals(20),
-            hexdigest=IsCallable(),
-            name=Equals("sha1"),
-            update=IsCallable(),
-        ))
+        self.assertThat(
+            hasher,
+            MatchesStructure(
+                block_size=Equals(64),
+                digest=IsCallable(),
+                digest_size=Equals(20),
+                hexdigest=IsCallable(),
+                name=Equals("sha1"),
+                update=IsCallable(),
+            ),
+        )
 
     def test__misc_digests(self):
-
         def hexdigest(data):
             return hash_canonical(data).hexdigest()
 
@@ -596,25 +611,30 @@ class TestHashCanonical(MAASTestCase):
             return AfterPreprocessing(hexdigest, Equals(digest))
 
         self.expectThat(
-            None, has_digest("2be88ca4242c76e8253ac62474851065032d6833"))
+            None, has_digest("2be88ca4242c76e8253ac62474851065032d6833")
+        )
         self.expectThat(
-            False, has_digest("7cb6efb98ba5972a9b5090dc2e517fe14d12cb04"))
+            False, has_digest("7cb6efb98ba5972a9b5090dc2e517fe14d12cb04")
+        )
         self.expectThat(
-            True, has_digest("5ffe533b830f08a0326348a9160afafc8ada44db"))
+            True, has_digest("5ffe533b830f08a0326348a9160afafc8ada44db")
+        )
 
         self.expectThat(
-            (1, 2, 3), has_digest(
-                "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85"))
+            (1, 2, 3), has_digest("a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85")
+        )
         self.expectThat(
-            [1, 2, 3], has_digest(
-                "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85"))
+            [1, 2, 3], has_digest("a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85")
+        )
 
         self.expectThat(
-            ((1, 2), (3, 4)), has_digest(
-                "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"))
+            ((1, 2), (3, 4)),
+            has_digest("3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"),
+        )
         self.expectThat(
-            {1: 2, 3: 4}, has_digest(
-                "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"))
+            {1: 2, 3: 4},
+            has_digest("3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"),
+        )
 
 
 class TestGetAPIDescriptionHash(MAASTestCase):
@@ -638,7 +658,8 @@ class TestGetAPIDescriptionHash(MAASTestCase):
         # The hash is generated from the faked API description.
         self.assertThat(
             get_api_description_hash(),
-            Equals(api_description_hasher.hexdigest()))
+            Equals(api_description_hasher.hexdigest()),
+        )
 
     def test__caches_hash(self):
         # Fake the API description.
@@ -646,14 +667,17 @@ class TestGetAPIDescriptionHash(MAASTestCase):
         api_description_hasher = hash_canonical(api_description)
         # The description can only be fetched once before crashing.
         self.patch(doc_module, "describe_api").side_effect = [
-            api_description, factory.make_exception_type(),
+            api_description,
+            factory.make_exception_type(),
         ]
         # The hash is generated and cached.
         self.assertThat(
             get_api_description_hash(),
-            Equals(api_description_hasher.hexdigest()))
+            Equals(api_description_hasher.hexdigest()),
+        )
         self.assertThat(
             get_api_description_hash(),
-            Equals(api_description_hasher.hexdigest()))
+            Equals(api_description_hasher.hexdigest()),
+        )
         # Calling `describe_api` a second time would have failed.
         self.assertRaises(Exception, doc_module.describe_api)

@@ -24,11 +24,14 @@ class TestRegionControllerProcessEndpoint(MAASServerTestCase):
         region = factory.make_RegionController()
         pid = random.randint(1, 5000)
         process = RegionControllerProcess.objects.create(
-            pid=pid, region=region)
+            pid=pid, region=region
+        )
         address = factory.make_ip_address()
         port = random.randint(1, 5000)
         RegionControllerProcessEndpoint.objects.create(
-            process=process, address=address, port=port)
+            process=process, address=address, port=port
+        )
         with ExpectedException(ValidationError):
             RegionControllerProcessEndpoint.objects.create(
-                process=process, address=address, port=port)
+                process=process, address=address, port=port
+            )

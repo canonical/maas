@@ -2,10 +2,10 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
-    'power_control_seamicro15k_v09',
-    'power_control_seamicro15k_v2',
-    'probe_seamicro15k_and_enlist',
-    ]
+    "power_control_seamicro15k_v09",
+    "power_control_seamicro15k_v2",
+    "probe_seamicro15k_and_enlist",
+]
 
 import http.client
 import json
@@ -15,10 +15,7 @@ import urllib.parse
 import urllib.request
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.utils import (
-    commission_node,
-    create_node,
-)
+from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.url import compose_URL
 from seamicroclient import exceptions as seamicro_exceptions
@@ -29,13 +26,14 @@ maaslog = get_maas_logger("drivers.seamicro")
 
 
 class POWER_STATUS:
-    ON = 'Power-On'
-    OFF = 'Power-Off'
-    RESET = 'Reset'
+    ON = "Power-On"
+    OFF = "Power-Off"
+    RESET = "Reset"
 
 
 class SeaMicroError(Exception):
     """Failure talking to a SeaMicro chassis controller. """
+
     pass
 
 
@@ -71,8 +69,7 @@ class SeaMicroAPIV09:
             params = []
         params = [param for param in params if bool(param)]
         return (
-            urllib.parse.urljoin(self.url, location) +
-            '?' + '&'.join(params)
+            urllib.parse.urljoin(self.url, location) + "?" + "&".join(params)
         )
 
     def parse_response(self, url, response):
@@ -82,7 +79,8 @@ class SeaMicroAPIV09:
         if response.getcode() not in self.allowed_codes:
             raise SeaMicroAPIV09Error(
                 "got response code %s" % response.getcode(),
-                response_code=response.getcode())
+                response_code=response.getcode(),
+            )
         text = response.read()
 
         # Decode the response, it should be json. If not
@@ -95,15 +93,19 @@ class SeaMicroAPIV09:
 
         if not json_data:
             raise SeaMicroAPIV09Error(
-                'No JSON data found from %s: got %s' % (url, text))
-        json_rpc_code = int(json_data['error']['code'])
+                "No JSON data found from %s: got %s" % (url, text)
+            )
+        json_rpc_code = int(json_data["error"]["code"])
         if json_rpc_code not in self.allowed_codes:
             raise SeaMicroAPIV09Error(
-                'Got JSON RPC error code %d: %s for %s' % (
+                "Got JSON RPC error code %d: %s for %s"
+                % (
                     json_rpc_code,
-                    http.client.responses.get(json_rpc_code, 'Unknown!'),
-                    url),
-                response_code=json_rpc_code)
+                    http.client.responses.get(json_rpc_code, "Unknown!"),
+                    url,
+                ),
+                response_code=json_rpc_code,
+            )
         return json_data
 
     def get(self, location, params=None):
@@ -117,7 +119,7 @@ class SeaMicroAPIV09:
         response = urllib.request.urlopen(url)
         json_data = self.parse_response(url, response)
 
-        return json_data['result']
+        return json_data["result"]
 
     def put(self, location, params=None):
         """Dispatch a PUT request to a SeaMicro chassis.
@@ -129,12 +131,12 @@ class SeaMicroAPIV09:
         opener = urllib.request.build_opener(urllib.request.HTTPHandler)
         url = self.build_url(location, params)
         request = urllib.request.Request(url)
-        request.get_method = lambda: 'PUT'
-        request.add_header('content-type', 'text/json')
+        request.get_method = lambda: "PUT"
+        request.add_header("content-type", "text/json")
         response = opener.open(request)
         json_data = self.parse_response(url, response)
 
-        return json_data['result']
+        return json_data["result"]
 
     def is_logged_in(self):
         return self.token is not None
@@ -158,7 +160,7 @@ class SeaMicroAPIV09:
         """API v0.9 uses arbitrary indexing, this function converts a server
         id to an index that can be used for detailed outputs & commands.
         """
-        servers = self.servers()['serverId']
+        servers = self.servers()["serverId"]
         for idx, name in servers.items():
             if name == server_id:
                 return idx
@@ -168,11 +170,12 @@ class SeaMicroAPIV09:
         idx = self.server_index(server_id)
         if idx is None:
             raise SeaMicroAPIV09Error(
-                'Failed to retrieve server index, '
-                'invalid server_id: %s' % server_id)
+                "Failed to retrieve server index, "
+                "invalid server_id: %s" % server_id
+            )
 
-        location = 'servers/%s' % idx
-        params = ['action=%s' % new_status]
+        location = "servers/%s" % idx
+        params = ["action=%s" % new_status]
         if new_status in [POWER_STATUS.ON, POWER_STATUS.RESET]:
             if do_pxe:
                 params.append("using-pxe=true")
@@ -184,7 +187,7 @@ class SeaMicroAPIV09:
             else:
                 params.append("force=false")
         else:
-            raise SeaMicroAPIV09Error('Invalid power action: %s' % new_status)
+            raise SeaMicroAPIV09Error("Invalid power action: %s" % new_status)
 
         params.append(self.token)
         self.put(location, params=params)
@@ -206,19 +209,20 @@ def get_seamicro15k_api(version, ip, username, password):
 
     :return: api for version, None if version not supported
     """
-    if version == 'v0.9':
-        api = SeaMicroAPIV09(compose_URL('http:///v0.9/', ip))
+    if version == "v0.9":
+        api = SeaMicroAPIV09(compose_URL("http:///v0.9/", ip))
         try:
             api.login(username, password)
         except urllib.error.URLError:
             # Cannot reach using v0.9, might not be supported
             return None
         return api
-    elif version == 'v2.0':
-        url = compose_URL('http:///v2.0', ip)
+    elif version == "v2.0":
+        url = compose_URL("http:///v2.0", ip)
         try:
             api = seamicro_client.Client(
-                auth_url=url, username=username, password=password)
+                auth_url=url, username=username, password=password
+            )
         except seamicro_exceptions.ConnectionRefused:
             # Cannot reach using v2.0, might no be supported
             return None
@@ -233,20 +237,19 @@ def get_seamicro15k_servers(version, ip, username, password):
     """
     api = get_seamicro15k_api(version, ip, username, password)
     if api:
-        if version == 'v0.9':
+        if version == "v0.9":
             return (
-                (server['serverId'].split('/')[0], server['serverMacAddr'])
-                for server in
-                api.servers_all().values()
+                (server["serverId"].split("/")[0], server["serverMacAddr"])
+                for server in api.servers_all().values()
                 # There are 8 network cards attached to these boxes, we only
                 # use NIC 0 for PXE booting.
-                if server['serverNIC'] == '0'
+                if server["serverNIC"] == "0"
             )
-        elif version == 'v2.0':
+        elif version == "v2.0":
             servers = []
             for server in api.servers.list():
-                id = server.id.split('/')[0]
-                macs = [nic['macAddr'] for nic in server.nic.values()]
+                id = server.id.split("/")[0]
+                macs = [nic["macAddr"] for nic in server.nic.values()]
                 servers.append((id, macs))
             return servers
     return None
@@ -254,14 +257,15 @@ def get_seamicro15k_servers(version, ip, username, password):
 
 def select_seamicro15k_api_version(power_control):
     """Returns the lastest api version to use."""
-    if power_control == 'ipmi':
-        return ['v2.0', 'v0.9']
-    if power_control == 'restapi':
-        return ['v0.9']
-    if power_control == 'restapi2':
-        return ['v2.0']
+    if power_control == "ipmi":
+        return ["v2.0", "v0.9"]
+    if power_control == "restapi":
+        return ["v0.9"]
+    if power_control == "restapi2":
+        return ["v2.0"]
     raise SeaMicroError(
-        'Unsupported power control method: %s.' % power_control)
+        "Unsupported power control method: %s." % power_control
+    )
 
 
 def find_seamicro15k_servers(ip, username, password, power_control):
@@ -271,14 +275,20 @@ def find_seamicro15k_servers(ip, username, password, power_control):
         servers = get_seamicro15k_servers(version, ip, username, password)
         if servers is not None:
             return servers
-    raise SeaMicroError('Failure to retrieve servers.')
+    raise SeaMicroError("Failure to retrieve servers.")
 
 
 @synchronous
 def probe_seamicro15k_and_enlist(
-        user, ip, username, password, power_control=None, accept_all=False,
-        domain=None):
-    power_control = power_control or 'ipmi'
+    user,
+    ip,
+    username,
+    password,
+    power_control=None,
+    accept_all=False,
+    domain=None,
+):
+    power_control = power_control or "ipmi"
 
     maaslog.info("Probing for seamicro15k servers as %s@%s", username, ip)
 
@@ -286,24 +296,32 @@ def probe_seamicro15k_and_enlist(
 
     for system_id, macs in servers:
         params = {
-            'power_address': ip,
-            'power_user': username,
-            'power_pass': password,
-            'power_control': power_control,
-            'system_id': system_id
+            "power_address": ip,
+            "power_user": username,
+            "power_pass": password,
+            "power_control": power_control,
+            "system_id": system_id,
         }
         maaslog.info("Creating seamicro15k node with MACs: %s", macs)
         system_id = create_node(
-            macs, 'amd64', 'sm15k', params, domain=domain).wait(30)
+            macs, "amd64", "sm15k", params, domain=domain
+        ).wait(30)
 
         if accept_all:
             commission_node(system_id, user).wait(30)
 
 
-def power_control_seamicro15k_v09(ip, username, password, server_id,
-                                  power_change, retry_count=5, retry_wait=1):
-    server_id = '%s/0' % server_id
-    api = SeaMicroAPIV09(compose_URL('http:///v0.9/', ip))
+def power_control_seamicro15k_v09(
+    ip,
+    username,
+    password,
+    server_id,
+    power_change,
+    retry_count=5,
+    retry_wait=1,
+):
+    server_id = "%s/0" % server_id
+    api = SeaMicroAPIV09(compose_URL("http:///v0.9/", ip))
 
     while retry_count > 0:
         api.login(username, password)
@@ -325,12 +343,13 @@ def power_control_seamicro15k_v09(ip, username, password, server_id,
         break
 
 
-def power_control_seamicro15k_v2(ip, username, password, server_id,
-                                 power_change):
-    server_id = '%s/0' % server_id
-    api = get_seamicro15k_api('v2.0', ip, username, password)
+def power_control_seamicro15k_v2(
+    ip, username, password, server_id, power_change
+):
+    server_id = "%s/0" % server_id
+    api = get_seamicro15k_api("v2.0", ip, username, password)
     if api is None:
-        raise SeaMicroError('Unable to contact BMC controller.')
+        raise SeaMicroError("Unable to contact BMC controller.")
     server = api.servers.get(server_id)
     if power_change == "on":
         server.power_on(using_pxe=True)
@@ -339,10 +358,10 @@ def power_control_seamicro15k_v2(ip, username, password, server_id,
 
 
 def power_query_seamicro15k_v2(ip, username, password, server_id):
-    server_id = '%s/0' % server_id
-    api = get_seamicro15k_api('v2.0', ip, username, password)
+    server_id = "%s/0" % server_id
+    api = get_seamicro15k_api("v2.0", ip, username, password)
     if api is None:
-        raise SeaMicroError('Unable to contact BMC controller.')
+        raise SeaMicroError("Unable to contact BMC controller.")
     server = api.servers.get(server_id)
     if server.active:
         return "on"

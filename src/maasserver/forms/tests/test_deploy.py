@@ -17,28 +17,30 @@ class TestDeployForm(MAASServerTestCase):
     def test_uses_live_data(self):
         # The DeployForm uses the database rather than just relying on
         # hard-coded stuff.
-        osystem = factory.make_name('osystem')
-        release = factory.make_name('release')
+        osystem = factory.make_name("osystem")
+        release = factory.make_name("release")
         release_name = "%s/%s" % (osystem, release)
         factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=release_name)
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=release_name
+        )
         deploy_form = DeployForm()
-        os_choices = deploy_form.fields['default_osystem'].choices
+        os_choices = deploy_form.fields["default_osystem"].choices
         os_names = [name for name, title in os_choices]
-        release_choices = deploy_form.fields['default_distro_series'].choices
+        release_choices = deploy_form.fields["default_distro_series"].choices
         release_names = [name for name, title in release_choices]
         self.assertIn(osystem, os_names)
         self.assertIn(release_name, release_names)
 
     def test_accepts_new_values(self):
-        osystem = factory.make_name('osystem')
-        release = factory.make_name('release')
+        osystem = factory.make_name("osystem")
+        release = factory.make_name("release")
         release_name = "%s/%s" % (osystem, release)
         factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=release_name)
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=release_name
+        )
         params = {
-            'default_osystem': osystem,
-            'default_distro_series': release_name
-            }
+            "default_osystem": osystem,
+            "default_distro_series": release_name,
+        }
         form = DeployForm(data=params)
         self.assertTrue(form.is_valid(), form.errors)

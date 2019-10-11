@@ -3,10 +3,7 @@
 
 """API handlers: `Script`."""
 
-__all__ = [
-    'NodeScriptHandler',
-    'NodeScriptsHandler',
-    ]
+__all__ = ["NodeScriptHandler", "NodeScriptsHandler"]
 
 from base64 import b64encode
 from email.utils import format_datetime
@@ -14,20 +11,9 @@ from email.utils import format_datetime
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from formencode.validators import (
-    Bool,
-    Int,
-    String,
-)
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
-from maasserver.api.utils import (
-    get_mandatory_param,
-    get_optional_param,
-)
+from formencode.validators import Bool, Int, String
+from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -47,13 +33,14 @@ class NodeScriptsHandler(OperationsHandler):
 
     This functionality is only available to administrators.
     """
+
     api_doc_section_name = "Node Scripts"
 
     update = delete = None
 
     @classmethod
     def resource_uri(cls):
-        return ('scripts_handler', [])
+        return ("scripts_handler", [])
 
     @admin_method
     def create(self, request):
@@ -116,12 +103,12 @@ class NodeScriptsHandler(OperationsHandler):
         @success-example "success-json" [exkey=scripts-create] placeholder text
         """
         data = request.data.copy()
-        if 'script' in request.FILES:
-            data['script'] = request.FILES.get('script').read()
+        if "script" in request.FILES:
+            data["script"] = request.FILES.get("script").read()
         elif len(request.FILES) == 1:
             for name, script in request.FILES.items():
-                data['name'] = name
-                data['script'] = script.read()
+                data["name"] = name
+                data["script"] = script.read()
         form = ScriptForm(data=data)
         if form.is_valid():
             return form.save(request=request, endpoint=ENDPOINT.API)
@@ -156,7 +143,7 @@ class NodeScriptsHandler(OperationsHandler):
         """
         qs = Script.objects.all()
 
-        script_type = get_optional_param(request.GET, 'type')
+        script_type = get_optional_param(request.GET, "type")
         if script_type is not None:
             try:
                 script_type = translate_script_type(script_type)
@@ -165,7 +152,7 @@ class NodeScriptsHandler(OperationsHandler):
             else:
                 qs = qs.filter(script_type=script_type)
 
-        hardware_type = get_optional_param(request.GET, 'hardware_type')
+        hardware_type = get_optional_param(request.GET, "hardware_type")
         if hardware_type is not None:
             try:
                 hardware_type = translate_hardware_type(hardware_type)
@@ -175,15 +162,19 @@ class NodeScriptsHandler(OperationsHandler):
                 qs = qs.filter(hardware_type=hardware_type)
 
         include_script = get_optional_param(
-            request.GET, 'include_script', False, Bool)
-        filters = get_optional_param(request.GET, 'filters', None, String)
+            request.GET, "include_script", False, Bool
+        )
+        filters = get_optional_param(request.GET, "filters", None, String)
         if filters is not None:
-            filters = set(filters.split(','))
+            filters = set(filters.split(","))
 
         ret = []
         for script in qs:
-            if (filters is not None and script.name not in filters and
-                    filters.isdisjoint(script.tags)):
+            if (
+                filters is not None
+                and script.name not in filters
+                and filters.isdisjoint(script.tags)
+            ):
                 continue
             else:
                 script.include_script = include_script
@@ -195,31 +186,32 @@ class NodeScriptsHandler(OperationsHandler):
 class NodeScriptHandler(OperationsHandler):
     """Manage or view a custom script.
     """
+
     api_doc_section_name = "Node Script"
 
     fields = (
-        'id',
-        'name',
-        'title',
-        'description',
-        'tags',
-        'type',
-        'type_name',
-        'hardware_type',
-        'hardware_type_name',
-        'parallel',
-        'parallel_name',
-        'results',
-        'parameters',
-        'packages',
-        'timeout',
-        'destructive',
-        'for_hardware',
-        'may_reboot',
-        'recommission',
-        'history',
-        'default',
-        'apply_configured_networking',
+        "id",
+        "name",
+        "title",
+        "description",
+        "tags",
+        "type",
+        "type_name",
+        "hardware_type",
+        "hardware_type_name",
+        "parallel",
+        "parallel_name",
+        "results",
+        "parameters",
+        "packages",
+        "timeout",
+        "destructive",
+        "for_hardware",
+        "may_reboot",
+        "recommission",
+        "history",
+        "default",
+        "apply_configured_networking",
     )
     model = Script
 
@@ -228,10 +220,10 @@ class NodeScriptHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, script=None):
         # See the comment in NodeHandler.resource_uri
-        script_name = 'name'
+        script_name = "name"
         if script is not None:
             script_name = script.name
-        return ('script_handler', (script_name, ))
+        return ("script_handler", (script_name,))
 
     @classmethod
     def type(handler, script):
@@ -246,12 +238,12 @@ class NodeScriptHandler(OperationsHandler):
         results = []
         for script_ver in script.script.previous_versions():
             version = {
-                'id': script_ver.id,
-                'comment': script_ver.comment,
-                'created': format_datetime(script_ver.created),
+                "id": script_ver.id,
+                "comment": script_ver.comment,
+                "created": format_datetime(script_ver.created),
             }
-            if getattr(script, 'include_script', False):
-                version['data'] = b64encode(script_ver.data.encode())
+            if getattr(script, "include_script", False):
+                version["data"] = b64encode(script_ver.data.encode())
             results.append(version)
         return results
 
@@ -281,7 +273,8 @@ class NodeScriptHandler(OperationsHandler):
         else:
             script = get_object_or_404(Script, name=name)
         script.include_script = get_optional_param(
-            request.GET, 'include_script', False, Bool)
+            request.GET, "include_script", False, Bool
+        )
         return script
 
     @admin_method
@@ -308,8 +301,12 @@ class NodeScriptHandler(OperationsHandler):
 
         script.delete()
         create_audit_event(
-            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
-            description="Deleted script '%s'." % script.name)
+            EVENT_TYPES.SETTINGS,
+            ENDPOINT.API,
+            request,
+            None,
+            description="Deleted script '%s'." % script.name,
+        )
         return rc.DELETED
 
     @admin_method
@@ -386,12 +383,12 @@ class NodeScriptHandler(OperationsHandler):
             script = get_object_or_404(Script, name=name)
 
         data = request.data.copy()
-        if 'script' in request.FILES:
-            data['script'] = request.FILES.get('script').read()
+        if "script" in request.FILES:
+            data["script"] = request.FILES.get("script").read()
         elif len(request.FILES) == 1:
             for name, script_content in request.FILES.items():
-                data['name'] = name
-                data['script'] = script_content.read()
+                data["name"] = name
+                data["script"] = script_content.read()
 
         form = ScriptForm(instance=script, data=data)
         if form.is_valid():
@@ -424,18 +421,20 @@ class NodeScriptHandler(OperationsHandler):
             script = get_object_or_404(Script, id=int(name))
         else:
             script = get_object_or_404(Script, name=name)
-        revision = get_optional_param(request.GET, 'revision', None, Int)
+        revision = get_optional_param(request.GET, "revision", None, Int)
         if revision is None:
-            revision = get_optional_param(request.GET, 'rev', None, Int)
+            revision = get_optional_param(request.GET, "rev", None, Int)
         if revision is not None:
             for rev in script.script.previous_versions():
                 if rev.id == revision:
                     return HttpResponse(
-                        rev.data, content_type='application/binary')
+                        rev.data, content_type="application/binary"
+                    )
             raise MAASAPIValidationError("%s not found in history" % revision)
         else:
             return HttpResponse(
-                script.script.data, content_type='application/binary')
+                script.script.data, content_type="application/binary"
+            )
 
     @admin_method
     @operation(idempotent=False)
@@ -459,7 +458,7 @@ class NodeScriptHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        revert_to = get_mandatory_param(request.data, 'to', Int)
+        revert_to = get_mandatory_param(request.data, "to", Int)
 
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -472,12 +471,18 @@ class NodeScriptHandler(OperationsHandler):
             def gc_hook(value):
                 script.script = value
                 script.save()
+
             script.script.revert(revert_to, gc_hook=gc_hook)
             create_audit_event(
-                EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+                EVENT_TYPES.SETTINGS,
+                ENDPOINT.API,
+                request,
+                None,
                 description=(
-                    "Reverted script '%s' to revision '%s'." % (
-                        script.name, revert_to)))
+                    "Reverted script '%s' to revision '%s'."
+                    % (script.name, revert_to)
+                ),
+            )
             return script
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])
@@ -503,9 +508,9 @@ class NodeScriptHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        tag = get_mandatory_param(request.data, 'tag', String)
+        tag = get_mandatory_param(request.data, "tag", String)
 
-        if ',' in tag:
+        if "," in tag:
             raise MAASAPIValidationError('Tag may not contain a ",".')
 
         if name.isdigit():
@@ -516,9 +521,14 @@ class NodeScriptHandler(OperationsHandler):
         script.add_tag(tag)
         script.save()
         create_audit_event(
-            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+            EVENT_TYPES.SETTINGS,
+            ENDPOINT.API,
+            request,
+            None,
             description=(
-                "Added tag '%s' to script '%s'." % (tag, script.name)))
+                "Added tag '%s' to script '%s'." % (tag, script.name)
+            ),
+        )
         return script
 
     @admin_method
@@ -542,7 +552,7 @@ class NodeScriptHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        tag = get_mandatory_param(request.data, 'tag', String)
+        tag = get_mandatory_param(request.data, "tag", String)
 
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -552,7 +562,12 @@ class NodeScriptHandler(OperationsHandler):
         script.remove_tag(tag)
         script.save()
         create_audit_event(
-            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+            EVENT_TYPES.SETTINGS,
+            ENDPOINT.API,
+            request,
+            None,
             description=(
-                "Removed tag '%s' from script '%s'." % (tag, script.name)))
+                "Removed tag '%s' from script '%s'." % (tag, script.name)
+            ),
+        )
         return script

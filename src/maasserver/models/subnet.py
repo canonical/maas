@@ -3,23 +3,13 @@
 
 """Model for subnets."""
 
-__all__ = [
-    'create_cidr',
-    'get_allocated_ips',
-    'Subnet',
-]
+__all__ = ["create_cidr", "get_allocated_ips", "Subnet"]
 
 from operator import attrgetter
-from typing import (
-    Iterable,
-    Optional,
-)
+from typing import Iterable, Optional
 
 from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
     BooleanField,
@@ -44,19 +34,12 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import (
-    CIDRField,
-    MAASIPAddressField,
-)
+from maasserver.fields import CIDRField, MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
-from netaddr import (
-    AddrFormatError,
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
     IPRANGE_TYPE as MAASIPRANGE_TYPE,
@@ -73,7 +56,7 @@ maaslog = get_maas_logger("subnet")
 
 # Note: since subnets can be referenced in the API by name, if this regex is
 # updated, then the regex in urls_api.py also needs to be udpated.
-SUBNET_NAME_VALIDATOR = RegexValidator(r'^[.: \w/-]+$')
+SUBNET_NAME_VALIDATOR = RegexValidator(r"^[.: \w/-]+$")
 
 # Typing for list of IP addresses to exclude.
 IPAddressExcludeList = Optional[Iterable[MaybeIPAddress]]
@@ -81,6 +64,7 @@ IPAddressExcludeList = Optional[Iterable[MaybeIPAddress]]
 
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
+
     return VLAN.objects.get_default_vlan().id
 
 
@@ -102,7 +86,7 @@ def create_cidr(network, subnet_mask=None):
     else:
         network = make_ipaddress(network)
     if subnet_mask is None and isinstance(network, (bytes, str)):
-        if '/' in network:
+        if "/" in network:
             return str(IPNetwork(network).cidr)
         else:
             assert False, "Network passed as CIDR string must contain '/'."
@@ -111,7 +95,7 @@ def create_cidr(network, subnet_mask=None):
         mask = str(subnet_mask)
     else:
         mask = str(make_ipaddress(subnet_mask))
-    cidr = IPNetwork(network + '/' + mask).cidr
+    cidr = IPNetwork(network + "/" + mask).cidr
     return str(cidr)
 
 
@@ -129,8 +113,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
     def raw_subnets_containing_ip(self, ip):
         """Find the most specific Subnet the specified IP address belongs in.
         """
-        return self.raw(
-            self.find_subnets_with_ip_query, params=[str(ip)])
+        return self.raw(self.find_subnets_with_ip_query, params=[str(ip)])
 
     # Note: << is the postgresql "is contained within" operator.
     # See http://www.postgresql.org/docs/8.4/static/functions-net.html
@@ -165,8 +148,8 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         if ip.is_ipv4_mapped():
             ip = ip.ipv4()
         subnets = self.raw(
-            self.find_best_subnet_for_ip_query,
-            params=[str(ip)])
+            self.find_best_subnet_for_ip_query, params=[str(ip)]
+        )
 
         for subnet in subnets:
             return subnet  # This is stable because the query is ordered.
@@ -180,7 +163,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         except (ValueError, AddrFormatError) as e:
             raise ValidationError(e.message)
 
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         """Returns a Q object for objects matching the given specifiers.
 
         Allows a number of types to be prefixed in front of each specifier:
@@ -203,30 +186,29 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         :return:django.db.models.Q
         """
         # Circular imports.
-        from maasserver.models import (
-            Fabric,
-            Interface,
-            VLAN,
-        )
+        from maasserver.models import Fabric, Interface, VLAN
 
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'cidr': self._add_unvalidated_cidr_query,
-            'fabric': (Fabric.objects, 'vlan__subnet'),
-            'id': self._add_subnet_id_query,
-            'interface': (Interface.objects, 'ip_addresses__subnet'),
-            'ip': self._add_ip_in_subnet_query,
-            'name': "__name",
-            'space': self._add_space_query,
-            'vid': self._add_vlan_vid_query,
-            'vlan': (VLAN.objects, 'subnet'),
+            "cidr": self._add_unvalidated_cidr_query,
+            "fabric": (Fabric.objects, "vlan__subnet"),
+            "id": self._add_subnet_id_query,
+            "interface": (Interface.objects, "ip_addresses__subnet"),
+            "ip": self._add_ip_in_subnet_query,
+            "name": "__name",
+            "space": self._add_space_query,
+            "vid": self._add_vlan_vid_query,
+            "vlan": (VLAN.objects, "subnet"),
         }
         return super(SubnetQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
     def _add_default_query(self, current_q, op, item):
         """If the item we're matching is an integer, first try to locate the
@@ -250,6 +232,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         """Query for a related VLAN with the specified space."""
         # Circular imports.
         from maasserver.models import Space
+
         if space == Space.UNDEFINED:
             current_q = op(current_q, Q(vlan__space__isnull=True))
         else:
@@ -302,6 +285,7 @@ class SubnetManager(Manager, SubnetQueriesMixin):
         """Create a subnet from the given CIDR."""
         name = "subnet-" + str(cidr)
         from maasserver.models import VLAN
+
         if vlan is None:
             vlan = VLAN.objects.get_default_vlan()
         return self.create(name=name, cidr=cidr, vlan=vlan)
@@ -325,8 +309,7 @@ class SubnetManager(Manager, SubnetQueriesMixin):
         """
         query = self.filter(active_discovery=True)
         return [
-            IPNetwork(cidr)
-            for cidr in query.values_list('cidr', flat=True)
+            IPNetwork(cidr) for cidr in query.values_list("cidr", flat=True)
         ]
 
     def get_subnet_or_404(self, specifiers, user, perm):
@@ -355,50 +338,61 @@ class SubnetManager(Manager, SubnetQueriesMixin):
 
 
 class Subnet(CleanSave, TimestampedModel):
-
     def __init__(self, *args, **kwargs):
-        assert 'space' not in kwargs, "Subnets can no longer be in spaces."
+        assert "space" not in kwargs, "Subnets can no longer be in spaces."
         super().__init__(*args, **kwargs)
 
     objects = SubnetManager()
 
     name = CharField(
-        blank=False, editable=True, max_length=255,
+        blank=False,
+        editable=True,
+        max_length=255,
         validators=[SUBNET_NAME_VALIDATOR],
-        help_text="Identifying name for this subnet.")
+        help_text="Identifying name for this subnet.",
+    )
 
     description = TextField(null=False, blank=True)
 
     vlan = ForeignKey(
-        'VLAN', default=get_default_vlan, editable=True, blank=False,
-        null=False, on_delete=PROTECT)
+        "VLAN",
+        default=get_default_vlan,
+        editable=True,
+        blank=False,
+        null=False,
+        on_delete=PROTECT,
+    )
 
     # XXX:fabric: unique constraint should be relaxed once proper support for
     # fabrics is implemented. The CIDR must be unique within a Fabric, not
     # globally unique.
-    cidr = CIDRField(
-        blank=False, unique=True, editable=True, null=False)
+    cidr = CIDRField(blank=False, unique=True, editable=True, null=False)
 
     rdns_mode = IntegerField(
-        choices=RDNS_MODE_CHOICES, editable=True,
-        default=RDNS_MODE.DEFAULT)
+        choices=RDNS_MODE_CHOICES, editable=True, default=RDNS_MODE.DEFAULT
+    )
 
     gateway_ip = MAASIPAddressField(blank=True, editable=True, null=True)
 
     dns_servers = ArrayField(
-        TextField(), blank=True, editable=True, null=True, default=list)
+        TextField(), blank=True, editable=True, null=True, default=list
+    )
 
     allow_dns = BooleanField(
-        editable=True, blank=False, null=False, default=True)
+        editable=True, blank=False, null=False, default=True
+    )
 
     allow_proxy = BooleanField(
-        editable=True, blank=False, null=False, default=True)
+        editable=True, blank=False, null=False, default=True
+    )
 
     active_discovery = BooleanField(
-        editable=True, blank=False, null=False, default=False)
+        editable=True, blank=False, null=False, default=False
+    )
 
     managed = BooleanField(
-        editable=True, blank=False, null=False, default=True)
+        editable=True, blank=False, null=False, default=True
+    )
 
     @property
     def label(self):
@@ -434,11 +428,10 @@ class Subnet(CleanSave, TimestampedModel):
         self.cidr = cidr
 
     def __str__(self):
-        return "%s:%s(vid=%s)" % (
-            self.name, self.cidr, self.vlan.vid)
+        return "%s:%s(vid=%s)" % (self.name, self.cidr, self.vlan.vid)
 
     def validate_gateway_ip(self):
-        if self.gateway_ip is None or self.gateway_ip == '':
+        if self.gateway_ip is None or self.gateway_ip == "":
             return
         gateway_addr = IPAddress(self.gateway_ip)
         network = self.get_ipnetwork()
@@ -453,13 +446,13 @@ class Subnet(CleanSave, TimestampedModel):
         else:
             # The gateway is not valid for the network.
             message = "Gateway IP must be within CIDR range."
-            raise ValidationError({'gateway_ip': [message]})
+            raise ValidationError({"gateway_ip": [message]})
 
     def clean_fields(self, *args, **kwargs):
         # XXX mpontillo 2016-03-16: this function exists due to bug #1557767.
         # This workaround exists to prevent potential unintended consequences
         # of making the name optional.
-        if (self.name is None or self.name == '') and self.cidr is not None:
+        if (self.name is None or self.name == "") and self.cidr is not None:
             self.name = str(self.cidr)
         super().clean_fields(*args, **kwargs)
 
@@ -471,7 +464,8 @@ class Subnet(CleanSave, TimestampedModel):
         if self.vlan.dhcp_on and self.get_dynamic_ranges().exists():
             raise ValidationError(
                 "Cannot delete a subnet that is actively servicing a dynamic "
-                "IP range. (Delete the dynamic range or disable DHCP first.)")
+                "IP range. (Delete the dynamic range or disable DHCP first.)"
+            )
         super().delete(*args, **kwargs)
 
     def get_allocated_ips(self):
@@ -487,7 +481,7 @@ class Subnet(CleanSave, TimestampedModel):
 
         The result can be cached by calling cache_allocated_ips().
         """
-        ips = getattr(self, '_cached_allocated_ips', None)
+        ips = getattr(self, "_cached_allocated_ips", None)
         if ips is None:
             [(_, ips)] = list(get_allocated_ips([self]))
         return ips
@@ -501,7 +495,8 @@ class Subnet(CleanSave, TimestampedModel):
         self._cached_allocated_ips = ips
 
     def _get_ranges_for_allocated_ips(
-            self, ipnetwork: IPNetwork, ignore_discovered_ips: bool) -> set:
+        self, ipnetwork: IPNetwork, ignore_discovered_ips: bool
+    ) -> set:
         """Returns a set of MAASIPRange objects created from the set of allocated
         StaticIPAddress objects.
         """
@@ -511,20 +506,25 @@ class Subnet(CleanSave, TimestampedModel):
         # slow.
         ips = self.get_allocated_ips()
         for ip, alloc_type in ips:
-            if ip and not (ignore_discovered_ips and (
-                    alloc_type == IPADDRESS_TYPE.DISCOVERED)):
+            if ip and not (
+                ignore_discovered_ips
+                and (alloc_type == IPADDRESS_TYPE.DISCOVERED)
+            ):
                 ip = IPAddress(ip)
                 if ip in ipnetwork:
                     ranges.add(make_iprange(ip, purpose="assigned-ip"))
         return ranges
 
     def get_ipranges_in_use(
-            self, exclude_addresses: IPAddressExcludeList = None,
-            ranges_only: bool = False, include_reserved: bool = True,
-            with_neighbours: bool = False,
-            ignore_discovered_ips: bool = False,
-            exclude_ip_ranges: list = None,
-            cached_staticroutes: list = None) -> MAASIPSet:
+        self,
+        exclude_addresses: IPAddressExcludeList = None,
+        ranges_only: bool = False,
+        include_reserved: bool = True,
+        with_neighbours: bool = False,
+        ignore_discovered_ips: bool = False,
+        exclude_ip_ranges: list = None,
+        cached_staticroutes: list = None,
+    ) -> MAASIPSet:
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
 
@@ -553,16 +553,21 @@ class Subnet(CleanSave, TimestampedModel):
             first_plus_one = str(IPAddress(network.first + 1))
             second = str(IPAddress(network.first + 0xFFFFFFFF))
             if network.prefixlen == 64:
-                ranges |= {make_iprange(
-                    first_plus_one, second, purpose="reserved")}
+                ranges |= {
+                    make_iprange(first_plus_one, second, purpose="reserved")
+                }
             # Reserve the subnet router anycast address, except for /127 and
             # /128 networks. (See RFC 6164, and RFC 4291 section 2.6.1.)
             if network.prefixlen < 127:
-                ranges |= {make_iprange(
-                    first, first, purpose="rfc-4291-2.6.1")}
+                ranges |= {
+                    make_iprange(first, first, purpose="rfc-4291-2.6.1")
+                }
         if not ranges_only:
-            if (self.gateway_ip is not None and self.gateway_ip != '' and
-                    self.gateway_ip in network):
+            if (
+                self.gateway_ip is not None
+                and self.gateway_ip != ""
+                and self.gateway_ip in network
+            ):
                 ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
             if self.dns_servers is not None:
                 ranges |= set(
@@ -572,17 +577,19 @@ class Subnet(CleanSave, TimestampedModel):
                 )
             if cached_staticroutes is not None:
                 static_routes = [
-                    static_route for static_route in cached_staticroutes
+                    static_route
+                    for static_route in cached_staticroutes
                     if static_route.source == self
                 ]
             else:
                 static_routes = StaticRoute.objects.filter(source=self)
             for static_route in static_routes:
                 ranges |= {
-                    make_iprange(
-                        static_route.gateway_ip, purpose="gateway-ip")}
+                    make_iprange(static_route.gateway_ip, purpose="gateway-ip")
+                }
             ranges |= self._get_ranges_for_allocated_ips(
-                network, ignore_discovered_ips)
+                network, ignore_discovered_ips
+            )
             ranges |= set(
                 make_iprange(address, purpose="excluded")
                 for address in exclude_addresses
@@ -590,29 +597,39 @@ class Subnet(CleanSave, TimestampedModel):
             )
         if include_reserved:
             ranges |= self.get_reserved_maasipset(
-                exclude_ip_ranges=exclude_ip_ranges)
+                exclude_ip_ranges=exclude_ip_ranges
+            )
         ranges |= self.get_dynamic_maasipset(
-            exclude_ip_ranges=exclude_ip_ranges)
+            exclude_ip_ranges=exclude_ip_ranges
+        )
         if with_neighbours:
             ranges |= self.get_maasipset_for_neighbours()
         return MAASIPSet(ranges)
 
     def get_ipranges_available_for_reserved_range(
-            self, exclude_ip_ranges: list = None):
+        self, exclude_ip_ranges: list = None
+    ):
         return self.get_ipranges_not_in_use(
-            ranges_only=True, exclude_ip_ranges=exclude_ip_ranges)
+            ranges_only=True, exclude_ip_ranges=exclude_ip_ranges
+        )
 
     def get_ipranges_available_for_dynamic_range(
-            self, exclude_ip_ranges: list = None):
+        self, exclude_ip_ranges: list = None
+    ):
         return self.get_ipranges_not_in_use(
-            ranges_only=False, ignore_discovered_ips=True,
-            exclude_ip_ranges=exclude_ip_ranges)
+            ranges_only=False,
+            ignore_discovered_ips=True,
+            exclude_ip_ranges=exclude_ip_ranges,
+        )
 
     def get_ipranges_not_in_use(
-            self, exclude_addresses: IPAddressExcludeList = None,
-            ranges_only: bool = False, ignore_discovered_ips: bool = False,
-            with_neighbours: bool = False,
-            exclude_ip_ranges: list = None) -> MAASIPSet:
+        self,
+        exclude_addresses: IPAddressExcludeList = None,
+        ranges_only: bool = False,
+        ignore_discovered_ips: bool = False,
+        with_neighbours: bool = False,
+        exclude_ip_ranges: list = None,
+    ) -> MAASIPSet:
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
 
@@ -630,7 +647,8 @@ class Subnet(CleanSave, TimestampedModel):
             ranges_only=ranges_only,
             with_neighbours=with_neighbours,
             ignore_discovered_ips=ignore_discovered_ips,
-            exclude_ip_ranges=exclude_ip_ranges)
+            exclude_ip_ranges=exclude_ip_ranges,
+        )
         if self.managed or ranges_only:
             not_in_use = in_use.get_unused_ranges(self.get_ipnetwork())
         else:
@@ -671,17 +689,20 @@ class Subnet(CleanSave, TimestampedModel):
             #                   not_in_use: |    |    | n  |    |    |    |
             #                               +----+----+----+----+----+----+
             unused = in_use.get_unused_ranges(
-                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNMANAGED)
+                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNMANAGED
+            )
             unmanaged_in_use = self.get_ipranges_in_use(
                 exclude_addresses=exclude_addresses,
                 ranges_only=ranges_only,
                 include_reserved=False,
                 with_neighbours=with_neighbours,
                 ignore_discovered_ips=ignore_discovered_ips,
-                exclude_ip_ranges=exclude_ip_ranges)
+                exclude_ip_ranges=exclude_ip_ranges,
+            )
             unmanaged_in_use |= unused
             not_in_use = unmanaged_in_use.get_unused_ranges(
-                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNUSED)
+                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNUSED
+            )
         return not_in_use
 
     def get_maasipset_for_neighbours(self) -> MAASIPSet:
@@ -691,6 +712,7 @@ class Subnet(CleanSave, TimestampedModel):
         """
         # Circular imports.
         from maasserver.models import Discovery
+
         # Note: we only need unknown IP addresses here, because the known
         # IP addresses should already be covered by get_ipranges_in_use().
         neighbours = Discovery.objects.filter(subnet=self).by_unknown_ip()
@@ -711,21 +733,25 @@ class Subnet(CleanSave, TimestampedModel):
         """
         # Circular imports.
         from maasserver.models import Discovery
+
         # Note: for the purposes of this function, being in part of a "used"
         # range (such as a router IP address or reserved range) makes it
         # "known". So we need to avoid those here in order to avoid stepping
         # on network infrastructure, reserved ranges, etc.
         unused = self.get_ipranges_not_in_use(ignore_discovered_ips=True)
-        least_recent_neighbours = Discovery.objects.filter(
-            subnet=self).by_unknown_ip().order_by('last_seen')
+        least_recent_neighbours = (
+            Discovery.objects.filter(subnet=self)
+            .by_unknown_ip()
+            .order_by("last_seen")
+        )
         for neighbor in least_recent_neighbours:
             if neighbor.ip in unused:
                 return neighbor
         return None
 
     def get_iprange_usage(
-            self, with_neighbours=False,
-            cached_staticroutes=None) -> MAASIPSet:
+        self, with_neighbours=False, cached_staticroutes=None
+    ) -> MAASIPSet:
         """Returns both the reserved and unreserved IP ranges in this Subnet.
         (This prevents a potential race condition that could occur if an IP
         address is allocated or deallocated between calls.)
@@ -733,14 +759,17 @@ class Subnet(CleanSave, TimestampedModel):
         :returns: A tuple indicating the (reserved, unreserved) ranges.
         """
         reserved_ranges = self.get_ipranges_in_use(
-            cached_staticroutes=cached_staticroutes)
+            cached_staticroutes=cached_staticroutes
+        )
         if with_neighbours is True:
             reserved_ranges |= self.get_maasipset_for_neighbours()
         return reserved_ranges.get_full_range(self.get_ipnetwork())
 
     def get_next_ip_for_allocation(
-            self, exclude_addresses: Optional[Iterable] = None,
-            avoid_observed_neighbours: bool = True):
+        self,
+        exclude_addresses: Optional[Iterable] = None,
+        avoid_observed_neighbours: bool = True,
+    ):
         """Heuristic to return the "best" address from this subnet to use next.
 
         :param exclude_addresses: Optional list of addresses to exclude.
@@ -754,15 +783,18 @@ class Subnet(CleanSave, TimestampedModel):
             exclude_addresses = []
         free_ranges = self.get_ipranges_not_in_use(
             exclude_addresses=exclude_addresses,
-            with_neighbours=avoid_observed_neighbours)
+            with_neighbours=avoid_observed_neighbours,
+        )
         if len(free_ranges) == 0 and avoid_observed_neighbours is True:
             # Try again recursively, but this time consider neighbours to be
             # "free" IP addresses. (We'll pick the least recently seen IP.)
             return self.get_next_ip_for_allocation(
-                exclude_addresses, avoid_observed_neighbours=False)
+                exclude_addresses, avoid_observed_neighbours=False
+            )
         elif len(free_ranges) == 0:
             raise StaticIPAddressExhaustion(
-                "No more IPs available in subnet: %s." % self.cidr)
+                "No more IPs available in subnet: %s." % self.cidr
+            )
         # The first time through this function, we aren't trying to avoid
         # observed neighbours. In fact, `free_ranges` only contains completely
         # unused ranges. So we don't need to check for the least recently seen
@@ -775,40 +807,52 @@ class Subnet(CleanSave, TimestampedModel):
             if discovery is not None:
                 maaslog.warning(
                     "Next IP address to allocate from '%s' has been observed "
-                    "previously: %s was last claimed by %s via %s at %s." % (
-                        self.label, discovery.ip, discovery.mac_address,
+                    "previously: %s was last claimed by %s via %s at %s."
+                    % (
+                        self.label,
+                        discovery.ip,
+                        discovery.mac_address,
                         discovery.observer_interface.get_log_string(),
-                        discovery.last_seen))
+                        discovery.last_seen,
+                    )
+                )
                 return str(discovery.ip)
         # The purpose of this is to that we ensure we always get an IP address
         # from the *smallest* free contiguous range. This way, larger ranges
         # can be preserved in case they need to be used for applications
         # requiring them.
-        free_range = min(free_ranges, key=attrgetter('num_addresses'))
+        free_range = min(free_ranges, key=attrgetter("num_addresses"))
         return str(IPAddress(free_range.first))
 
     def render_json_for_related_ips(
-            self, with_username=True, with_summary=True):
+        self, with_username=True, with_summary=True
+    ):
         """Render a representation of this subnet's related IP addresses,
         suitable for converting to JSON. Optionally exclude user and node
         information."""
         ip_addresses = self.staticipaddress_set.all()
         if with_username:
-            ip_addresses = ip_addresses.prefetch_related('user')
+            ip_addresses = ip_addresses.prefetch_related("user")
         if with_summary:
             ip_addresses = ip_addresses.prefetch_related(
-                'interface_set', 'interface_set__node',
-                'interface_set__node__domain',
-                'bmc_set', 'bmc_set__node_set',
-                'dnsresource_set', 'dnsresource_set__domain',
+                "interface_set",
+                "interface_set__node",
+                "interface_set__node__domain",
+                "bmc_set",
+                "bmc_set__node_set",
+                "dnsresource_set",
+                "dnsresource_set__domain",
             )
-        return sorted([
-            ip.render_json(
-                with_username=with_username,
-                with_summary=with_summary)
-            for ip in ip_addresses
-            if ip.ip
-            ], key=lambda json: IPAddress(json['ip']))
+        return sorted(
+            [
+                ip.render_json(
+                    with_username=with_username, with_summary=with_summary
+                )
+                for ip in ip_addresses
+                if ip.ip
+            ],
+            key=lambda json: IPAddress(json["ip"]),
+        )
 
     def get_dynamic_ranges(self):
         return self.iprange_set.filter(type=IPRANGE_TYPE.DYNAMIC)
@@ -847,17 +891,20 @@ class Subnet(CleanSave, TimestampedModel):
         """
         if ip not in self.get_ipnetwork():
             raise StaticIPAddressOutOfRange(
-                "%s is not within subnet CIDR: %s" % (ip, self.cidr))
+                "%s is not within subnet CIDR: %s" % (ip, self.cidr)
+            )
         for iprange in self.get_reserved_maasipset():
             if ip in iprange:
                 raise StaticIPAddressUnavailable(
-                    "%s is within the reserved range from %s to %s" % (
-                        ip, IPAddress(iprange.first), IPAddress(iprange.last)))
+                    "%s is within the reserved range from %s to %s"
+                    % (ip, IPAddress(iprange.first), IPAddress(iprange.last))
+                )
         for iprange in self.get_dynamic_maasipset():
             if ip in iprange:
                 raise StaticIPAddressUnavailable(
-                    "%s is within the dynamic range from %s to %s" % (
-                        ip, IPAddress(iprange.first), IPAddress(iprange.last)))
+                    "%s is within the dynamic range from %s to %s"
+                    % (ip, IPAddress(iprange.first), IPAddress(iprange.last))
+                )
 
     def get_reserved_maasipset(self, exclude_ip_ranges: list = None):
         if exclude_ip_ranges is None:
@@ -865,8 +912,8 @@ class Subnet(CleanSave, TimestampedModel):
         reserved_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
             for iprange in self.iprange_set.all()
-            if iprange.type == IPRANGE_TYPE.RESERVED and
-            iprange not in exclude_ip_ranges
+            if iprange.type == IPRANGE_TYPE.RESERVED
+            and iprange not in exclude_ip_ranges
         )
         return reserved_ranges
 
@@ -876,8 +923,8 @@ class Subnet(CleanSave, TimestampedModel):
         dynamic_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
             for iprange in self.iprange_set.all()
-            if iprange.type == IPRANGE_TYPE.DYNAMIC and
-            iprange not in exclude_ip_ranges
+            if iprange.type == IPRANGE_TYPE.DYNAMIC
+            and iprange not in exclude_ip_ranges
         )
         return dynamic_ranges
 
@@ -924,8 +971,10 @@ class Subnet(CleanSave, TimestampedModel):
         ident = "ip_exhaustion__subnet_%d" % self.id
         # Circular imports.
         from maasserver.models import Config, Notification
+
         threshold = Config.objects.get_config(
-            'subnet_ip_exhaustion_threshold_count')
+            "subnet_ip_exhaustion_threshold_count"
+        )
         notification = Notification.objects.filter(ident=ident).first()
         delete_notification = False
         if threshold > 0:
@@ -939,19 +988,26 @@ class Subnet(CleanSave, TimestampedModel):
             # exhaustion on a /30, for example: the admin already knows it's
             # small, so we would just be annoying them.
             subnet_is_reasonably_large_relative_to_threshold = (
-                threshold * 3 <= statistics.total_addresses)
-            if (meets_warning_threshold and
-                    subnet_is_reasonably_large_relative_to_threshold):
+                threshold * 3 <= statistics.total_addresses
+            )
+            if (
+                meets_warning_threshold
+                and subnet_is_reasonably_large_relative_to_threshold
+            ):
                 notification_text = (
                     "IP address exhaustion imminent on subnet: %s. "
                     "There are %d free addresses out of %d "
-                    "(%s used).") % (
-                        self.label, statistics.num_available,
-                        statistics.total_addresses,
-                        statistics.usage_percentage_string)
+                    "(%s used)."
+                ) % (
+                    self.label,
+                    statistics.num_available,
+                    statistics.total_addresses,
+                    statistics.usage_percentage_string,
+                )
                 if notification is None:
                     Notification.objects.create_warning_for_admins(
-                        notification_text, ident=ident)
+                        notification_text, ident=ident
+                    )
                 else:
                     # Note: This will update the notification, but will not
                     # bring it back for those who have dismissed it. Maybe we
@@ -983,9 +1039,11 @@ def get_allocated_ips(subnets):
 
     mapping = {subnet.id: [] for subnet in subnets}
     ips = StaticIPAddress.objects.filter(
-        subnet__id__in=mapping.keys(), ip__isnull=False)
+        subnet__id__in=mapping.keys(), ip__isnull=False
+    )
     for subnet_id, ip, alloc_type in ips.values_list(
-            'subnet_id', 'ip', 'alloc_type'):
+        "subnet_id", "ip", "alloc_type"
+    ):
         mapping[subnet_id].append((ip, alloc_type))
     for subnet in subnets:
         yield subnet, mapping[subnet.id]

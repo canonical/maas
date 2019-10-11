@@ -27,46 +27,65 @@ from provisioningserver.utils.shell import (
 
 
 class DLIPowerDriver(PowerDriver):
-    name = 'dli'
+    name = "dli"
     chassis = True
     description = "Digital Loggers, Inc. PDU"
     settings = [
         make_setting_field(
-            'outlet_id', "Outlet ID", scope=SETTING_SCOPE.NODE,
-            required=True),
-        make_setting_field('power_address', "Power address", required=True),
-        make_setting_field('power_user', "Power user"),
+            "outlet_id", "Outlet ID", scope=SETTING_SCOPE.NODE, required=True
+        ),
+        make_setting_field("power_address", "Power address", required=True),
+        make_setting_field("power_user", "Power user"),
         make_setting_field(
-            'power_pass', "Power password", field_type='password'),
+            "power_pass", "Power password", field_type="password"
+        ),
     ]
-    ip_extractor = make_ip_extractor('power_address')
+    ip_extractor = make_ip_extractor("power_address")
     queryable = False
 
     def detect_missing_packages(self):
-        if not shell.has_command_available('wget'):
-            return ['wget']
+        if not shell.has_command_available("wget"):
+            return ["wget"]
         return []
 
     def _set_outlet_state(
-            self, power_change, outlet_id=None, power_user=None,
-            power_pass=None, power_address=None, **extra):
+        self,
+        power_change,
+        outlet_id=None,
+        power_user=None,
+        power_pass=None,
+        power_address=None,
+        **extra
+    ):
         """Power DLI outlet ON/OFF."""
         try:
-            url = 'http://%s:%s@%s/outlet?%s=%s' % (
-                power_user, power_pass, power_address, outlet_id, power_change)
+            url = "http://%s:%s@%s/outlet?%s=%s" % (
+                power_user,
+                power_pass,
+                power_address,
+                outlet_id,
+                power_change,
+            )
             # --auth-no-challenge: send Basic HTTP authentication
             # information without first waiting for the server's challenge.
             call_and_check(
-                ['wget', '--auth-no-challenge', '-O', '/dev/null', url],
-                env=get_env_with_locale())
+                ["wget", "--auth-no-challenge", "-O", "/dev/null", url],
+                env=get_env_with_locale(),
+            )
         except ExternalProcessError as e:
             raise PowerActionError(
-                "Failed to power %s outlet %s: %s" % (
-                    power_change, outlet_id, e.output_as_unicode))
+                "Failed to power %s outlet %s: %s"
+                % (power_change, outlet_id, e.output_as_unicode)
+            )
 
     def _query_outlet_state(
-            self, outlet_id=None, power_user=None,
-            power_pass=None, power_address=None, **extra):
+        self,
+        outlet_id=None,
+        power_user=None,
+        power_pass=None,
+        power_address=None,
+        **extra
+    ):
         """Query DLI outlet power state.
 
         Sample snippet of query output from DLI:
@@ -85,48 +104,55 @@ class DLIPowerDriver(PowerDriver):
         ...
         """
         try:
-            url = 'http://%s:%s@%s/index.htm' % (
-                power_user, power_pass, power_address)
+            url = "http://%s:%s@%s/index.htm" % (
+                power_user,
+                power_pass,
+                power_address,
+            )
             # --auth-no-challenge: send Basic HTTP authentication
             # information without first waiting for the server's challenge.
             wget_output = call_and_check(
-                ['wget', '--auth-no-challenge', '-qO-', url],
-                env=get_env_with_locale())
-            wget_output = wget_output.decode('utf-8')
+                ["wget", "--auth-no-challenge", "-qO-", url],
+                env=get_env_with_locale(),
+            )
+            wget_output = wget_output.decode("utf-8")
             match = re.search("<!-- state=([0-9a-fA-F]+)", wget_output)
             if match is None:
                 raise PowerError(
                     "Unable to extract power state for outlet %s from "
-                    "wget output: %s" % (outlet_id, wget_output))
+                    "wget output: %s" % (outlet_id, wget_output)
+                )
             else:
                 state = match.group(1)
                 # state is a bitmap of the DLI's oulet states, where bit 0
                 # corresponds to oulet 1's power state, bit 1 corresponds to
                 # outlet 2's power state, etc., encoded as hexadecimal.
                 if (int(state, 16) & (1 << int(outlet_id) - 1)) > 0:
-                    return 'on'
+                    return "on"
                 else:
-                    return 'off'
+                    return "off"
         except ExternalProcessError as e:
             raise PowerActionError(
-                "Failed to power query outlet %s: %s" % (
-                    outlet_id, e.output_as_unicode))
+                "Failed to power query outlet %s: %s"
+                % (outlet_id, e.output_as_unicode)
+            )
 
     def power_on(self, system_id, context):
         """Power on DLI outlet."""
         # Power off the outlet if it is currently on
-        if self._query_outlet_state(**context) == 'on':
-            self._set_outlet_state('OFF', **context)
+        if self._query_outlet_state(**context) == "on":
+            self._set_outlet_state("OFF", **context)
             sleep(1)
-            if self._query_outlet_state(**context) != 'off':
+            if self._query_outlet_state(**context) != "off":
                 raise PowerError(
                     "Unable to power off outlet %s that is already on."
-                    % context['outlet_id'])
-        self._set_outlet_state('ON', **context)
+                    % context["outlet_id"]
+                )
+        self._set_outlet_state("ON", **context)
 
     def power_off(self, system_id, context):
         """Power off DLI outlet."""
-        self._set_outlet_state('OFF', **context)
+        self._set_outlet_state("OFF", **context)
 
     def power_query(self, system_id, context):
         """Power query DLI outlet."""

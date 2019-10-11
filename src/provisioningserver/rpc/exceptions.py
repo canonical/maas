@@ -31,7 +31,7 @@ __all__ = [
 class NoConnectionsAvailable(Exception):
     """There is no connection available."""
 
-    def __init__(self, message='', uuid=None):
+    def __init__(self, message="", uuid=None):
         super(NoConnectionsAvailable, self).__init__(message)
         self.uuid = uuid
 
@@ -41,9 +41,7 @@ class NoSuchEventType(Exception):
 
     @classmethod
     def from_name(cls, name):
-        return cls(
-            "Event type with name=%s could not be found." % name
-        )
+        return cls("Event type with name=%s could not be found." % name)
 
 
 class NoSuchNode(Exception):
@@ -51,9 +49,7 @@ class NoSuchNode(Exception):
 
     @classmethod
     def from_system_id(cls, system_id):
-        return cls(
-            "Node with system_id=%s could not be found." % system_id
-        )
+        return cls("Node with system_id=%s could not be found." % system_id)
 
     @classmethod
     def from_mac_address(cls, mac_address):
@@ -72,8 +68,7 @@ class NoSuchCluster(Exception):
     @classmethod
     def from_uuid(cls, uuid):
         return cls(
-            "The rack controller with UUID %s could not "
-            "be found." % uuid
+            "The rack controller with UUID %s could not " "be found." % uuid
         )
 
 

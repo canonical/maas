@@ -5,14 +5,8 @@
 
 from django.forms.utils import ErrorList
 from formencode.validators import StringBool
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
-from maasserver.api.utils import (
-    get_mandatory_param,
-    get_optional_param,
-)
+from maasserver.api.support import operation, OperationsHandler
+from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -39,10 +33,7 @@ from maasserver.forms.interface_link import (
     InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,
 )
-from maasserver.models import (
-    Machine,
-    Node,
-)
+from maasserver.models import Machine, Node
 from maasserver.models.interface import (
     BondInterface,
     BridgeInterface,
@@ -60,55 +51,59 @@ MISSING_FIELD = "This field is required."
 BLANK_FIELD = "This field cannot be blank."
 
 DISPLAYED_INTERFACE_FIELDS = (
-    'system_id',
-    'id',
-    'name',
-    'type',
-    'vlan',
-    'mac_address',
-    'parents',
-    'children',
-    'tags',
-    'enabled',
-    'links',
-    'params',
-    'discovered',
-    'effective_mtu',
-    'vendor',
-    'product',
-    'firmware_version',
-    'link_connected',
-    'interface_speed',
-    'link_speed',
-    'numa_node',
-    'sriov_max_vf',
+    "system_id",
+    "id",
+    "name",
+    "type",
+    "vlan",
+    "mac_address",
+    "parents",
+    "children",
+    "tags",
+    "enabled",
+    "links",
+    "params",
+    "discovered",
+    "effective_mtu",
+    "vendor",
+    "product",
+    "firmware_version",
+    "link_connected",
+    "interface_speed",
+    "link_speed",
+    "numa_node",
+    "sriov_max_vf",
 )
 
 INTERFACES_PREFETCH = [
-    'vlan__primary_rack',
-    'vlan__secondary_rack',
-    'vlan__fabric__vlan_set',
-    'vlan__space',
-    'numa_node',
-    'parents',
-    'ip_addresses__subnet',
+    "vlan__primary_rack",
+    "vlan__secondary_rack",
+    "vlan__fabric__vlan_set",
+    "vlan__space",
+    "numa_node",
+    "parents",
+    "ip_addresses__subnet",
     # Prefetch 3 levels deep, anything more will require extra queries.
-    'children_relationships__child__vlan',
-    ('children_relationships__child__'
-     'children_relationships__child__vlan'),
-    ('children_relationships__child__'
-     'children_relationships__child__'
-     'children_relationships__child__vlan'),
+    "children_relationships__child__vlan",
+    ("children_relationships__child__" "children_relationships__child__vlan"),
+    (
+        "children_relationships__child__"
+        "children_relationships__child__"
+        "children_relationships__child__vlan"
+    ),
 ]
 
 ALLOWED_STATES = (
-    NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING,
-    NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN,
+    NODE_STATUS.READY,
+    NODE_STATUS.FAILED_TESTING,
+    NODE_STATUS.ALLOCATED,
+    NODE_STATUS.BROKEN,
 )
 
 
 def raise_error_for_invalid_state_on_allocated_operations(
-        node, user, operation, extra_states=None):
+    node, user, operation, extra_states=None
+):
     """Raises `NodeStateViolation` when the status of the node is not
     READY or BROKEN.
 
@@ -125,17 +120,20 @@ def raise_error_for_invalid_state_on_allocated_operations(
     if node.status not in allowed:
         raise NodeStateViolation(
             "Cannot %s interface because the machine is not Ready, Allocated, "
-            "or Broken." % operation)
+            "or Broken." % operation
+        )
 
 
 def raise_error_if_controller(node, operation):
     if node.is_controller:
         raise MAASAPIForbidden(
-            "Cannot %s interface on a controller." % operation)
+            "Cannot %s interface on a controller." % operation
+        )
 
 
 class InterfacesHandler(OperationsHandler):
     """Manage interfaces on a node."""
+
     api_doc_section_name = "Interfaces"
     create = update = delete = None
     fields = DISPLAYED_INTERFACE_FIELDS
@@ -143,7 +141,7 @@ class InterfacesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('interfaces_handler', ["system_id"])
+        return ("interfaces_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title List interfaces
@@ -164,9 +162,11 @@ class InterfacesHandler(OperationsHandler):
             Not Found
         """
         node = Node.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         interfaces = prefetch_queryset(
-            node.interface_set.all(), INTERFACES_PREFETCH)
+            node.interface_set.all(), INTERFACES_PREFETCH
+        )
         # Preload the node on the interface, no need for another query.
         for interface in interfaces:
             interface.node = node
@@ -210,7 +210,8 @@ class InterfacesHandler(OperationsHandler):
             Not Found
         """
         node = Node.objects.get_node_or_404(
-            system_id, request.user, NodePermission.edit)
+            system_id, request.user, NodePermission.edit
+        )
         raise_error_if_controller(node, "create")
         # Machine type nodes require the node needs to be in the correct state
         # and that the user has admin permissions.
@@ -218,7 +219,8 @@ class InterfacesHandler(OperationsHandler):
             if not request.user.has_perm(NodePermission.admin, node):
                 raise MAASAPIForbidden()
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "create")
+                node, request.user, "create"
+            )
         form = PhysicalInterfaceForm(node=node, data=request.data)
         if form.is_valid():
             return form.save()
@@ -228,13 +230,17 @@ class InterfacesHandler(OperationsHandler):
             # required. We clean up this response to not provide duplicate
             # information.
             if "mac_address" in form.errors:
-                if (MISSING_FIELD in form.errors["mac_address"] and
-                        BLANK_FIELD in form.errors["mac_address"]):
-                    form.errors["mac_address"] = ErrorList([
-                        error
-                        for error in form.errors["mac_address"]
-                        if error != BLANK_FIELD
-                    ])
+                if (
+                    MISSING_FIELD in form.errors["mac_address"]
+                    and BLANK_FIELD in form.errors["mac_address"]
+                ):
+                    form.errors["mac_address"] = ErrorList(
+                        [
+                            error
+                            for error in form.errors["mac_address"]
+                            if error != BLANK_FIELD
+                        ]
+                    )
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
@@ -336,9 +342,11 @@ class InterfacesHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         raise_error_for_invalid_state_on_allocated_operations(
-            machine, request.user, "create bond")
+            machine, request.user, "create bond"
+        )
         form = BondInterfaceForm(node=machine, data=request.data)
         if form.is_valid():
             return form.save()
@@ -380,21 +388,23 @@ class InterfacesHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         raise_error_for_invalid_state_on_allocated_operations(
-            machine, request.user, "create VLAN")
+            machine, request.user, "create VLAN"
+        )
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()
-        if 'parent' in request.data:
-            request.data['parents'] = request.data['parent']
+        if "parent" in request.data:
+            request.data["parents"] = request.data["parent"]
         form = VLANInterfaceForm(node=machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             # Replace parents with parent so it matches the API parameter.
-            if 'parents' in form.errors:
-                form.errors['parent'] = form.errors.pop('parents')
+            if "parents" in form.errors:
+                form.errors["parent"] = form.errors.pop("parents")
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
@@ -446,30 +456,32 @@ class InterfacesHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         raise_error_for_invalid_state_on_allocated_operations(
-            machine, request.user, "create bridge")
+            machine, request.user, "create bridge"
+        )
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()
-        if 'parent' in request.data:
-            request.data['parents'] = request.data['parent']
+        if "parent" in request.data:
+            request.data["parents"] = request.data["parent"]
         if machine.status == NODE_STATUS.ALLOCATED:
-            form = AcquiredBridgeInterfaceForm(
-                node=machine, data=request.data)
+            form = AcquiredBridgeInterfaceForm(node=machine, data=request.data)
         else:
             form = BridgeInterfaceForm(node=machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             # Replace parents with parent so it matches the API parameter.
-            if 'parents' in form.errors:
-                form.errors['parent'] = form.errors.pop('parents')
+            if "parents" in form.errors:
+                form.errors["parent"] = form.errors.pop("parents")
             raise MAASAPIValidationError(form.errors)
 
 
 class InterfaceHandler(OperationsHandler):
     """Manage a node's or device's interface."""
+
     api_doc_section_name = "Interface"
     create = None
     model = Interface
@@ -485,7 +497,7 @@ class InterfaceHandler(OperationsHandler):
             node = interface.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('interface_handler', (system_id, interface_id))
+        return ("interface_handler", (system_id, interface_id))
 
     @classmethod
     def system_id(cls, interface):
@@ -501,16 +513,12 @@ class InterfaceHandler(OperationsHandler):
 
     @classmethod
     def parents(cls, interface):
-        return sorted(
-            nic.name
-            for nic in interface.parents.all()
-        )
+        return sorted(nic.name for nic in interface.parents.all())
 
     @classmethod
     def children(cls, interface):
         return sorted(
-            nic.child.name
-            for nic in interface.children_relationships.all()
+            nic.child.name for nic in interface.children_relationships.all()
         )
 
     @classmethod
@@ -552,7 +560,8 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         return Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def update(self, request, system_id, id):
         """@description-title Update an interface
@@ -716,19 +725,27 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
         node = interface.get_node()
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "update interface",
-                extra_states=[NODE_STATUS.DEPLOYED])
+                node,
+                request.user,
+                "update interface",
+                extra_states=[NODE_STATUS.DEPLOYED],
+            )
         if node.is_controller:
             if interface.type == INTERFACE_TYPE.VLAN:
                 raise MAASAPIForbidden(
-                    "Cannot modify VLAN interface on controller.")
+                    "Cannot modify VLAN interface on controller."
+                )
             interface_form = ControllerInterfaceForm
         elif node.status == NODE_STATUS.DEPLOYED:
             interface_form = DeployedInterfaceForm
@@ -738,17 +755,19 @@ class InterfaceHandler(OperationsHandler):
         # have one parent.
         if interface.type == INTERFACE_TYPE.VLAN:
             request.data = request.data.copy()
-            if 'parent' in request.data:
-                request.data['parents'] = request.data['parent']
+            if "parent" in request.data:
+                request.data["parents"] = request.data["parent"]
         form = interface_form(instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             # Replace parents with parent so it matches the API parameter, if
             # the interface being editted was a VLAN interface.
-            if (interface.type == INTERFACE_TYPE.VLAN and
-                    'parents' in form.errors):
-                form.errors['parent'] = form.errors.pop('parents')
+            if (
+                interface.type == INTERFACE_TYPE.VLAN
+                and "parents" in form.errors
+            ):
+                form.errors["parent"] = form.errors.pop("parents")
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, system_id, id):
@@ -769,15 +788,20 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
         node = interface.get_node()
         raise_error_if_controller(node, "delete interface")
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                interface.node, request.user, "delete interface")
+                interface.node, request.user, "delete interface"
+            )
         interface.delete()
         return rc.DELETED
 
@@ -841,17 +865,23 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         force = get_optional_param(
-            request.POST, 'force', default=False, validator=StringBool)
+            request.POST, "force", default=False, validator=StringBool
+        )
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "link subnet")
+                node, request.user, "link subnet"
+            )
             allowed_modes = [
                 INTERFACE_LINK_TYPE.AUTO,
                 INTERFACE_LINK_TYPE.DHCP,
@@ -862,8 +892,11 @@ class InterfaceHandler(OperationsHandler):
             # Devices can only be set in static IP mode.
             allowed_modes = [INTERFACE_LINK_TYPE.STATIC]
         form = InterfaceLinkForm(
-            instance=interface, data=request.data, allowed_modes=allowed_modes,
-            force=force)
+            instance=interface,
+            data=request.data,
+            allowed_modes=allowed_modes,
+            force=force,
+        )
         if form.is_valid():
             return form.save()
         else:
@@ -891,15 +924,20 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
         node = interface.get_node()
         raise_error_if_controller(node, "disconnect")
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "disconnect")
+                node, request.user, "disconnect"
+            )
         interface.ip_addresses.all().delete()
         interface.vlan = None
         interface.save()
@@ -931,15 +969,20 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "unlink subnet")
+                node, request.user, "unlink subnet"
+            )
         form = InterfaceUnlinkForm(instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
@@ -980,17 +1023,23 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "set default gateway")
+                node, request.user, "set default gateway"
+            )
         form = InterfaceSetDefaultGatwayForm(
-            instance=interface, data=request.data)
+            instance=interface, data=request.data
+        )
         if form.is_valid():
             return form.save()
         else:
@@ -1025,9 +1074,13 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
-        interface.add_tag(get_mandatory_param(request.POST, 'tag'))
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
+        interface.add_tag(get_mandatory_param(request.POST, "tag"))
         interface.save()
         return interface
 
@@ -1060,9 +1113,13 @@ class InterfaceHandler(OperationsHandler):
             Not Found
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user,
-            NodePermission.admin, NodePermission.edit)
-        interface.remove_tag(get_mandatory_param(request.POST, 'tag'))
+            system_id,
+            id,
+            request.user,
+            NodePermission.admin,
+            NodePermission.edit,
+        )
+        interface.remove_tag(get_mandatory_param(request.POST, "tag"))
         interface.save()
         return interface
 
@@ -1077,6 +1134,7 @@ class PhysicaInterfaceHandler(InterfaceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = PhysicalInterface
 
@@ -1091,6 +1149,7 @@ class BondInterfaceHandler(InterfaceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = BondInterface
 
@@ -1105,6 +1164,7 @@ class VLANInterfaceHandler(InterfaceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = VLANInterface
 
@@ -1119,5 +1179,6 @@ class BridgeInterfaceHandler(InterfaceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = BridgeInterface

@@ -23,14 +23,15 @@ TEMPLATES = {}
 import_settings(settings)
 
 prevent_migrations = StringBool().to_python(
-    os.environ.get("MAAS_PREVENT_MIGRATIONS", 0))
+    os.environ.get("MAAS_PREVENT_MIGRATIONS", 0)
+)
 
 if prevent_migrations:
     INSTALLED_APPS += ("maasserver.tests", "metadataserver.tests")
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.
-TEST_RUNNER = 'maastesting.djangoloader.MAASDjangoTestRunner'
+TEST_RUNNER = "maastesting.djangoloader.MAASDjangoTestRunner"
 
 # Don't connect to the DNS server in development because bind is not running
 # and no access to write into the required directories.
@@ -50,25 +51,27 @@ PROXY_CONNECT = False
 DEBUG = True
 DEBUG_QUERIES = os.environ.get("MAAS_DEBUG_QUERIES", "0") == "1"
 DEBUG_QUERIES_LOG_ALL = (
-    os.environ.get("MAAS_DEBUG_QUERIES_LOG_ALL", "0") == "1")
+    os.environ.get("MAAS_DEBUG_QUERIES_LOG_ALL", "0") == "1"
+)
 
 # Invalid strings should be visible.
-TEMPLATES[0]['OPTIONS']['string_if_invalid'] = '#### INVALID STRING ####'
-TEMPLATES[0]['OPTIONS']['debug'] = DEBUG
+TEMPLATES[0]["OPTIONS"]["string_if_invalid"] = "#### INVALID STRING ####"
+TEMPLATES[0]["OPTIONS"]["debug"] = DEBUG
 YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
 STATIC_ROOT = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "static")
+    os.path.dirname(os.path.dirname(__file__)), "static"
+)
 
 DATABASES = {
-    'default': {
+    "default": {
         # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'maas',
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": "maas",
         # For PostgreSQL, a "hostname" starting with a slash indicates a
         # Unix socket directory.
-        'HOST': abspath('db'),
-    },
+        "HOST": abspath("db"),
+    }
 }
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
@@ -77,7 +80,7 @@ DATABASES = {
 # path. See MediaRootFixture for details.
 MEDIA_ROOT = abspath("media/development.%d" % os.getpid())
 
-INTERNAL_IPS = ('127.0.0.1', '::1')
+INTERNAL_IPS = ("127.0.0.1", "::1")
 
 # Make all nodes' metadata visible.  This is not safe; do not enable it
 # on a production MAAS.
@@ -87,7 +90,7 @@ ALLOW_UNSAFE_METADATA_ACCESS = True
 PRESEED_TEMPLATE_LOCATIONS = (
     abspath("etc/preseeds"),
     abspath("contrib/preseeds_v2"),
-    )
+)
 
 # Prevent migrations from running in development mode. This causes django to
 # fallback to the syncdb behaviour. This is faster for development and a
@@ -96,23 +99,22 @@ PRESEED_TEMPLATE_LOCATIONS = (
 # Each module here points to a non-existing module. This just seems wrong, but
 # this is exactly what django upstream does to test django.
 prevent_migrations = StringBool().to_python(
-    os.environ.get("MAAS_PREVENT_MIGRATIONS", 0))
+    os.environ.get("MAAS_PREVENT_MIGRATIONS", 0)
+)
 if prevent_migrations:
     MIGRATION_MODULES = {
-        'auth': 'maastesting.empty',
-        'contenttypes': 'maastesting.empty',
-        'sessions': 'maastesting.empty',
-        'sites': 'maastesting.empty',
-        'piston3': 'maastesting.empty',
-        'maasserver': 'maastesting.empty',
-        'maasserver.tests': 'maastesting.empty',
-        'metadataserver': 'maastesting.empty',
-        'metadataserver.tests': 'maastesting.empty',
+        "auth": "maastesting.empty",
+        "contenttypes": "maastesting.empty",
+        "sessions": "maastesting.empty",
+        "sites": "maastesting.empty",
+        "piston3": "maastesting.empty",
+        "maasserver": "maastesting.empty",
+        "maasserver.tests": "maastesting.empty",
+        "metadataserver": "maastesting.empty",
+        "metadataserver.tests": "maastesting.empty",
     }
 
-PASSWORD_HASHERS = (
-    'django.contrib.auth.hashers.MD5PasswordHasher',
-)
+PASSWORD_HASHERS = ("django.contrib.auth.hashers.MD5PasswordHasher",)
 
 # This tells django-nose to load the given Nose plugins.
 NOSE_PLUGINS = [

@@ -18,25 +18,22 @@ from maasserver.utils.orm import reload_object
 
 def get_zone_uri(zone):
     """Return a zone's URI on the API."""
-    return reverse('zone_handler', args=[zone.name])
+    return reverse("zone_handler", args=[zone.name])
 
 
 class TestZoneAPI(APITestCase.ForUser):
-
     def test_handler_path(self):
         self.assertEqual(
-            '/MAAS/api/2.0/zones/name/',
-            reverse('zone_handler', args=['name']))
+            "/MAAS/api/2.0/zones/name/", reverse("zone_handler", args=["name"])
+        )
 
     def test_POST_is_prohibited(self):
         self.become_admin()
         zone = factory.make_Zone()
         response = self.client.post(
             get_zone_uri(zone),
-            {
-                'name': zone.name,
-                'description': zone.description,
-            })
+            {"name": zone.name, "description": zone.description},
+        )
         self.assertEqual(http.client.METHOD_NOT_ALLOWED, response.status_code)
 
     def test_GET_returns_zone(self):
@@ -44,10 +41,12 @@ class TestZoneAPI(APITestCase.ForUser):
         response = self.client.get(get_zone_uri(zone))
         self.assertEqual(http.client.OK, response.status_code)
         returned_zone = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
         self.assertEqual(
             (zone.name, zone.description),
-            (returned_zone['name'], returned_zone['description']))
+            (returned_zone["name"], returned_zone["description"]),
+        )
 
     def test_PUT_updates_zone(self):
         self.become_admin()
@@ -55,8 +54,8 @@ class TestZoneAPI(APITestCase.ForUser):
         new_description = factory.make_string()
 
         response = self.client.put(
-            get_zone_uri(zone),
-            {'description': new_description})
+            get_zone_uri(zone), {"description": new_description}
+        )
         self.assertEqual(http.client.OK, response.status_code)
 
         zone = reload_object(zone)
@@ -65,16 +64,16 @@ class TestZoneAPI(APITestCase.ForUser):
     def test_PUT_requires_admin(self):
         zone = factory.make_Zone()
         response = self.client.put(
-            get_zone_uri(zone),
-            {'description': factory.make_string()})
+            get_zone_uri(zone), {"description": factory.make_string()}
+        )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_zone_name(self):
         self.become_admin()
         zone = factory.make_Zone()
-        new_name = factory.make_name('zone-new')
+        new_name = factory.make_name("zone-new")
 
-        response = self.client.put(get_zone_uri(zone), {'name': new_name})
+        response = self.client.put(get_zone_uri(zone), {"name": new_name})
         self.assertEqual(http.client.OK, response.status_code)
 
         zone = reload_object(zone)
@@ -83,10 +82,8 @@ class TestZoneAPI(APITestCase.ForUser):
     def test_PUT_rejects_change_of_default_zone_name(self):
         self.become_admin()
         zone = Zone.objects.get_default_zone()
-        new_name = factory.make_name('zone')
-        response = self.client.put(
-            get_zone_uri(zone),
-            {'name': new_name})
+        new_name = factory.make_name("zone")
+        response = self.client.put(get_zone_uri(zone), {"name": new_name})
         self.assertEqual(http.client.OK, response.status_code)
         zone = reload_object(zone)
         self.assertEqual(new_name, zone.name)
@@ -97,8 +94,8 @@ class TestZoneAPI(APITestCase.ForUser):
         node = factory.make_Node(zone=zone)
 
         response = self.client.put(
-            get_zone_uri(zone),
-            {'name': factory.make_name('new')})
+            get_zone_uri(zone), {"name": factory.make_name("new")}
+        )
         self.assertEqual(http.client.OK, response.status_code)
 
         node = reload_object(node)
@@ -115,7 +112,8 @@ class TestZoneAPI(APITestCase.ForUser):
     def test_DELETE_rejects_deletion_of_default_zone(self):
         self.become_admin()
         response = self.client.delete(
-            get_zone_uri(Zone.objects.get_default_zone()))
+            get_zone_uri(Zone.objects.get_default_zone())
+        )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIsNotNone(Zone.objects.get_default_zone())
 
@@ -135,8 +133,11 @@ class TestZoneAPI(APITestCase.ForUser):
                 http.client.BAD_REQUEST.value,
                 "This zone is the default zone, it cannot be deleted.",
             ),
-            (response.status_code,
-             response.content.decode(settings.DEFAULT_CHARSET)))
+            (
+                response.status_code,
+                response.content.decode(settings.DEFAULT_CHARSET),
+            ),
+        )
 
     def test_DELETE_sets_foreign_keys_to_default(self):
         default_zone = Zone.objects.get_default_zone()

@@ -9,10 +9,7 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.logger._tftp import observe_tftp
 from provisioningserver.logger.testing import make_event
-from testtools.matchers import (
-    Contains,
-    Is,
-)
+from testtools.matchers import Contains, Is
 from twisted.logger import LogLevel
 
 

@@ -4,26 +4,23 @@
 """Preseed generation."""
 
 __all__ = [
-    'CURTIN_ERROR_TARFILE',
-    'CURTIN_INSTALL_LOG',
-    'compose_enlistment_preseed_url',
-    'compose_preseed_url',
-    'curtin_supports_webhook_events',
-    'get_curtin_userdata',
-    'get_enlist_preseed',
-    'get_preseed',
-    'get_preseed_context',
-    'OS_WITH_IPv6_SUPPORT',
-    ]
+    "CURTIN_ERROR_TARFILE",
+    "CURTIN_INSTALL_LOG",
+    "compose_enlistment_preseed_url",
+    "compose_preseed_url",
+    "curtin_supports_webhook_events",
+    "get_curtin_userdata",
+    "get_enlist_preseed",
+    "get_preseed",
+    "get_preseed_context",
+    "OS_WITH_IPv6_SUPPORT",
+]
 
 from collections import namedtuple
 import json
 import os.path
 from pipes import quote
-from urllib.parse import (
-    urlencode,
-    urlparse,
-)
+from urllib.parse import urlencode, urlparse
 
 from crochet import TimeoutError
 from curtin.config import merge_config
@@ -41,29 +38,16 @@ from maasserver.compose_preseed import (
     get_cloud_init_reporting,
     RSYSLOG_PORT,
 )
-from maasserver.enum import (
-    FILESYSTEM_TYPE,
-    PRESEED_TYPE,
-)
-from maasserver.exceptions import (
-    ClusterUnavailable,
-    MissingBootImage,
-)
-from maasserver.models import (
-    BootResource,
-    Config,
-    PackageRepository,
-)
+from maasserver.enum import FILESYSTEM_TYPE, PRESEED_TYPE
+from maasserver.exceptions import ClusterUnavailable, MissingBootImage
+from maasserver.models import BootResource, Config, PackageRepository
 from maasserver.models.filesystem import Filesystem
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
-from maasserver.utils import (
-    absolute_reverse,
-    get_default_region_ip,
-)
+from maasserver.utils import absolute_reverse, get_default_region_ip
 from maasserver.utils.curtin import (
     curtin_supports_centos_curthook,
     curtin_supports_custom_storage,
@@ -74,10 +58,7 @@ from maasserver.utils.osystems import get_release_version_from_string
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import typed
 from provisioningserver.utils.url import compose_URL
@@ -89,11 +70,11 @@ maaslog = get_maas_logger("preseed")
 
 log = LegacyLogger()
 
-GENERIC_FILENAME = 'generic'
+GENERIC_FILENAME = "generic"
 
 
 # Node operating systems which we can deploy with IPv6 networking.
-OS_WITH_IPv6_SUPPORT = ['ubuntu']
+OS_WITH_IPv6_SUPPORT = ["ubuntu"]
 
 
 # The path to the Curtin installation log. Curtin uploads this file to MAAS
@@ -107,10 +88,7 @@ CURTIN_ERROR_TARFILE = "/tmp/curtin-logs.tar"
 
 
 NetworkYAMLSettings = namedtuple(
-    "NetworkYAMLSettings", (
-        "version",
-        "source_routing",
-    )
+    "NetworkYAMLSettings", ("version", "source_routing")
 )
 
 
@@ -122,40 +100,43 @@ def get_enlist_preseed(request, rack_controller=None):
     :rtype: unicode.
     """
     return render_enlistment_preseed(
-        request, PRESEED_TYPE.ENLIST, rack_controller=rack_controller)
+        request, PRESEED_TYPE.ENLIST, rack_controller=rack_controller
+    )
 
 
 def curtin_maas_reporter(request, node, events_support=True):
     token = NodeKey.objects.get_token_for_node(node)
     if events_support:
         return {
-            'reporting': {
-                'maas': {
-                    'type': 'webhook',
-                    'endpoint': request.build_absolute_uri(reverse(
-                        'metadata-status', args=[node.system_id])),
-                    'consumer_key': token.consumer.key,
-                    'token_key': token.key,
-                    'token_secret': token.secret,
-                },
+            "reporting": {
+                "maas": {
+                    "type": "webhook",
+                    "endpoint": request.build_absolute_uri(
+                        reverse("metadata-status", args=[node.system_id])
+                    ),
+                    "consumer_key": token.consumer.key,
+                    "token_key": token.key,
+                    "token_secret": token.secret,
+                }
             },
-            'install': {
-                'log_file': CURTIN_INSTALL_LOG,
-                'error_tarfile': CURTIN_ERROR_TARFILE,
-                'post_files': [CURTIN_INSTALL_LOG, CURTIN_ERROR_TARFILE],
-            }
+            "install": {
+                "log_file": CURTIN_INSTALL_LOG,
+                "error_tarfile": CURTIN_ERROR_TARFILE,
+                "post_files": [CURTIN_INSTALL_LOG, CURTIN_ERROR_TARFILE],
+            },
         }
     else:
-        version = 'latest'
+        version = "latest"
         return {
-            'reporter': {
-                'maas': {
-                    'url': request.build_absolute_uri(reverse(
-                        'curtin-metadata-version', args=[version])) + (
-                            '?op=signal'),
-                    'consumer_key': token.consumer.key,
-                    'token_key': token.key,
-                    'token_secret': token.secret,
+            "reporter": {
+                "maas": {
+                    "url": request.build_absolute_uri(
+                        reverse("curtin-metadata-version", args=[version])
+                    )
+                    + "?op=signal",
+                    "consumer_key": token.consumer.key,
+                    "token_key": token.key,
+                    "token_secret": token.secret,
                 }
             }
         }
@@ -168,7 +149,8 @@ def compose_curtin_maas_reporter(request, node):
     that matches what the locally installed Curtin uses.
     """
     reporter = curtin_maas_reporter(
-        request, node, curtin_supports_webhook_events())
+        request, node, curtin_supports_webhook_events()
+    )
     return [yaml.safe_dump(reporter)]
 
 
@@ -177,44 +159,40 @@ def get_curtin_cloud_config(request, node):
        Ubuntu core (by curtin)."""
     token = NodeKey.objects.get_token_for_node(node)
     datasource = {
-        'datasource': {
-            'MAAS': {
-                'consumer_key': token.consumer.key,
-                'token_key': token.key,
-                'token_secret': token.secret,
-                'metadata_url': request.build_absolute_uri(reverse(
-                    'metadata')),
+        "datasource": {
+            "MAAS": {
+                "consumer_key": token.consumer.key,
+                "token_key": token.key,
+                "token_secret": token.secret,
+                "metadata_url": request.build_absolute_uri(
+                    reverse("metadata")
+                ),
             }
         }
     }
     config = {
-        'maas-datasource': {
-            'path': '/etc/cloud/cloud.cfg.d/90_maas_datasource.cfg',
-            'content': 'datasource_list: [ MAAS ]',
+        "maas-datasource": {
+            "path": "/etc/cloud/cloud.cfg.d/90_maas_datasource.cfg",
+            "content": "datasource_list: [ MAAS ]",
         },
-        'maas-cloud-config': {
-            'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_config.cfg',
-            'content': "#cloud-config\n%s" % yaml.safe_dump(datasource)
+        "maas-cloud-config": {
+            "path": "/etc/cloud/cloud.cfg.d/90_maas_cloud_config.cfg",
+            "content": "#cloud-config\n%s" % yaml.safe_dump(datasource),
         },
     }
     # Add the Ubuntu SSO email if its set on the user.
     if node.owner is not None and node.owner.email:
-        config['maas-ubuntu-sso'] = {
-            'path': '/etc/cloud/cloud.cfg.d/90_maas_ubuntu_sso.cfg',
-            'content': "#cloud-config\n%s" % yaml.safe_dump({
-                'snappy': {
-                    'email': node.owner.email
-                }
-            })
+        config["maas-ubuntu-sso"] = {
+            "path": "/etc/cloud/cloud.cfg.d/90_maas_ubuntu_sso.cfg",
+            "content": "#cloud-config\n%s"
+            % yaml.safe_dump({"snappy": {"email": node.owner.email}}),
         }
-    config['maas-reporting'] = {
-        'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_init_reporting.cfg',
-        'content': '#cloud-config\n%s' % yaml.safe_dump(
-            get_cloud_init_reporting(request, node, token))
+    config["maas-reporting"] = {
+        "path": "/etc/cloud/cloud.cfg.d/90_maas_cloud_init_reporting.cfg",
+        "content": "#cloud-config\n%s"
+        % yaml.safe_dump(get_cloud_init_reporting(request, node, token)),
     }
-    return {
-        'cloudconfig': config
-    }
+    return {"cloudconfig": config}
 
 
 def compose_curtin_cloud_config(request, node):
@@ -229,7 +207,7 @@ def compose_curtin_archive_config(request, node):
     configuration along, provided that repositories are only available
     for Ubuntu.
     """
-    if node.osystem in ['ubuntu', 'custom']:
+    if node.osystem in ["ubuntu", "custom"]:
         archives = get_archive_config(request, node)
         return [yaml.safe_dump(archives)]
     return []
@@ -245,19 +223,19 @@ def compose_curtin_swap_preseed(node):
     block device or partition, this will suppress the creation of a swap file.
     """
     if node.swap_size is None:
-        swap_filesystems = (
-            Filesystem.objects.filter_by_node(node).filter(
-                fstype=FILESYSTEM_TYPE.SWAP))
+        swap_filesystems = Filesystem.objects.filter_by_node(node).filter(
+            fstype=FILESYSTEM_TYPE.SWAP
+        )
         if swap_filesystems.exists():
             # Suppress creation of a swap file.
-            swap_config = {'swap': {'size': '0B'}}
+            swap_config = {"swap": {"size": "0B"}}
             return [yaml.safe_dump(swap_config)]
         else:
             # Leave the decision up to Curtin.
             return []
     else:
         # Make a swap file of `swap_size` bytes.
-        swap_config = {'swap': {'size': '%dB' % node.swap_size}}
+        swap_config = {"swap": {"size": "%dB" % node.swap_size}}
         return [yaml.safe_dump(swap_config)]
 
 
@@ -269,12 +247,7 @@ def compose_curtin_kernel_preseed(node):
     Curtin figure out which kernel should be installed"""
     kpackage = BootResource.objects.get_kpackage_for_node(node)
     if kpackage:
-        kernel_config = {
-            'kernel': {
-                'package': kpackage,
-                'mapping': {},
-                },
-            }
+        kernel_config = {"kernel": {"package": kpackage, "mapping": {}}}
         return [yaml.safe_dump(kernel_config)]
     return []
 
@@ -284,16 +257,14 @@ def compose_curtin_verbose_preseed():
     to run with high verbosity.
     """
     if Config.objects.get_config("curtin_verbose"):
-        return [yaml.safe_dump({
-            "verbosity": 3,
-            "showtrace": True,
-            })]
+        return [yaml.safe_dump({"verbosity": 3, "showtrace": True})]
     else:
         return []
 
 
 NETWORK_YAML_DEFAULT_SETTINGS = NetworkYAMLSettings(
-    version=1, source_routing=False)
+    version=1, source_routing=False
+)
 
 
 def get_network_yaml_settings(osystem, release):
@@ -303,10 +274,10 @@ def get_network_yaml_settings(osystem, release):
     :param release: The operating system release name.
     :return: NetworkYAMLSettings namedtuple.
     """
-    force_v1 = Config.objects.get_config('force_v1_network_yaml')
+    force_v1 = Config.objects.get_config("force_v1_network_yaml")
     if force_v1:
         return NETWORK_YAML_DEFAULT_SETTINGS
-    elif osystem == 'ubuntu':
+    elif osystem == "ubuntu":
         release_version = get_release_version_from_string(release)
         # Ubuntu 18.04 "bionic" and greater support source routing policies.
         if release_version >= (18, 4, 0):
@@ -315,11 +286,11 @@ def get_network_yaml_settings(osystem, release):
         # not source routing policies.
         elif release_version >= (16, 4, 0):
             return NetworkYAMLSettings(version=2, source_routing=False)
-    elif osystem == 'ubuntu-core':
+    elif osystem == "ubuntu-core":
         # XXX Ubuntu Core 18+ likely supports routing policies, and could
         # support source routing. But this needs testing.
         return NetworkYAMLSettings(version=2, source_routing=False)
-    elif osystem == 'esxi':
+    elif osystem == "esxi":
         # XXX esxi will gain support for version 2 YAML soon.
         return NetworkYAMLSettings(version=1, source_routing=False)
     return NETWORK_YAML_DEFAULT_SETTINGS
@@ -339,20 +310,21 @@ def get_curtin_yaml_config(request, node):
     verbose_config = compose_curtin_verbose_preseed()
     network_yaml_settings = get_network_yaml_settings(osystem, release)
     network_config = compose_curtin_network_config(
-        node, version=network_yaml_settings.version,
-        source_routing=network_yaml_settings.source_routing)
+        node,
+        version=network_yaml_settings.version,
+        source_routing=network_yaml_settings.source_routing,
+    )
 
-    if osystem not in [
-            'ubuntu', 'ubuntu-core', 'centos', 'rhel', 'windows']:
+    if osystem not in ["ubuntu", "ubuntu-core", "centos", "rhel", "windows"]:
         maaslog.warning(
             "%s: Custom network configuration is not supported on '%s' "
             "('%s'). It is only supported on Ubuntu, Ubuntu-Core, CentOS, "
             "RHEL, and Windows. Please verify that this image supports custom "
-            "network configuration." % (
-                node.hostname, osystem, release))
+            "network configuration." % (node.hostname, osystem, release)
+        )
 
     if curtin_supports_custom_storage():
-        if osystem in ['windows', 'ubuntu-core', 'esxi']:
+        if osystem in ["windows", "ubuntu-core", "esxi"]:
             # Windows, ubuntu-core, and ESXi do not support custom storage.
             # Custom storage is still passed to allow Curtin to correctly
             # select the boot device.
@@ -361,7 +333,7 @@ def get_curtin_yaml_config(request, node):
             # doesn't support it, the storage config is not passed for
             # backwards compatibility.
             supports_custom_storage = curtin_supports_custom_storage_for_dd()
-        elif osystem != 'ubuntu':
+        elif osystem != "ubuntu":
             # CentOS/RHEL storage is now natively supported by Curtin. Other
             # GNU/Linux distributions may work as well. If Curtin lacks support
             # don't send storage configuration for backwards compatibility.
@@ -379,13 +351,21 @@ def get_curtin_yaml_config(request, node):
         storage_config = []
         maaslog.warning(
             "%s: cannot deploy '%s' ('%s') with custom storage config; "
-            "missing support from Curtin. Default to flat storage layout." %
-            (node.hostname, node.osystem, node.distro_series))
+            "missing support from Curtin. Default to flat storage layout."
+            % (node.hostname, node.osystem, node.distro_series)
+        )
 
     return (
-        storage_config + archive_config + reporter_config + network_config +
-        swap_config + kernel_config + verbose_config + cloud_config +
-        [main_config])
+        storage_config
+        + archive_config
+        + reporter_config
+        + network_config
+        + swap_config
+        + kernel_config
+        + verbose_config
+        + cloud_config
+        + [main_config]
+    )
 
 
 def get_curtin_merged_config(request, node):
@@ -408,7 +388,8 @@ def get_curtin_userdata(request, node):
     # deploying node.
     return pack_install(
         configs=get_curtin_yaml_config(request, node),
-        args=[get_curtin_installer_url(node)])
+        args=[get_curtin_installer_url(node)],
+    )
 
 
 def get_curtin_image(node):
@@ -419,68 +400,74 @@ def get_curtin_image(node):
     rack_controller = node.get_boot_rack_controller()
     try:
         images = get_boot_images_for(
-            rack_controller, osystem, arch, subarch, series)
+            rack_controller, osystem, arch, subarch, series
+        )
     except (NoConnectionsAvailable, TimeoutError):
         logger.error(
             "Unable to get RPC connection for rack controller '%s' (%s)",
-            rack_controller.hostname, rack_controller.system_id)
+            rack_controller.hostname,
+            rack_controller.system_id,
+        )
         raise ClusterUnavailable(
-            "Unable to get RPC connection for rack controller '%s' (%s)" %
-            (rack_controller.hostname, rack_controller.system_id))
+            "Unable to get RPC connection for rack controller '%s' (%s)"
+            % (rack_controller.hostname, rack_controller.system_id)
+        )
     # A matching subarch may be a newer subarch which contains support for
     # an older one. e.g Xenial hwe-16.04 will match for ga-16.04. First
     # try to find the subarch we are deploying, if that isn't found allow
     # a newer version.
     for image in images:
-        if (image['purpose'] == 'xinstall' and
-                image['subarchitecture'] == subarch):
+        if (
+            image["purpose"] == "xinstall"
+            and image["subarchitecture"] == subarch
+        ):
             return image
     for image in images:
-        if image['purpose'] == 'xinstall':
+        if image["purpose"] == "xinstall":
             return image
     raise MissingBootImage(
         "Error generating the URL of curtin's image file.  "
         "No image could be found for the given selection: "
-        "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall." % (
-            osystem,
-            arch,
-            subarch,
-            series,
-        ))
+        "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall."
+        % (osystem, arch, subarch, series)
+    )
 
 
 def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
     osystem = node.get_osystem()
     series = node.get_distro_series()
-    arch, subarch = node.architecture.split('/')
+    arch, subarch = node.architecture.split("/")
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
     image = get_curtin_image(node)
-    if image['xinstall_type'] == 'squashfs':
+    if image["xinstall_type"] == "squashfs":
         # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and drop
         # of iscsi), precise is no longer deployable. To address a squashfs
         # image is made available allowing it to be deployed in the
         # commissioning ephemeral environment.
-        if series == 'precise':
+        if series == "precise":
             url_prepend = "fsimage:"
         else:
-            return 'cp:///media/root-ro'
-    elif image['xinstall_type'] in {'tgz', 'tbz', 'txz'}:
-        url_prepend = ''
+            return "cp:///media/root-ro"
+    elif image["xinstall_type"] in {"tgz", "tbz", "txz"}:
+        url_prepend = ""
     else:
-        url_prepend = '%s:' % image['xinstall_type']
-    dyn_uri = '/'.join([
-        osystem,
-        arch,
-        subarch,
-        series,
-        image['label'],
-        image['xinstall_path'],
-        ])
+        url_prepend = "%s:" % image["xinstall_type"]
+    dyn_uri = "/".join(
+        [
+            osystem,
+            arch,
+            subarch,
+            series,
+            image["label"],
+            image["xinstall_path"],
+        ]
+    )
     url = compose_URL(
-        'http://:5248/images/%s' % dyn_uri, str(node.boot_cluster_ip))
+        "http://:5248/images/%s" % dyn_uri, str(node.boot_cluster_ip)
+    )
     return url_prepend + url
 
 
@@ -492,20 +479,20 @@ def get_curtin_config(request, node):
     """
     osystem = node.get_osystem()
     series = node.get_distro_series()
-    template = load_preseed_template(
-        node, 'curtin_userdata', osystem, series)
+    template = load_preseed_template(node, "curtin_userdata", osystem, series)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        request, osystem, series, rack_controller=rack_controller)
-    context.update(
-        get_node_preseed_context(
-            request, node, osystem, series))
-    context.update(
-        get_curtin_context(request, node))
+        request, osystem, series, rack_controller=rack_controller
+    )
+    context.update(get_node_preseed_context(request, node, osystem, series))
+    context.update(get_curtin_context(request, node))
     deprecated_context_variables = [
-        'main_archive_hostname', 'main_archive_directory',
-        'ports_archive_hostname', 'ports_archive_directory',
-        'enable_http_proxy']
+        "main_archive_hostname",
+        "main_archive_directory",
+        "ports_archive_hostname",
+        "ports_archive_directory",
+        "enable_http_proxy",
+    ]
     deprecated_config_variables = []
     for var in deprecated_context_variables:
         if var not in context:
@@ -513,48 +500,56 @@ def get_curtin_config(request, node):
     context.update(get_node_deprecated_preseed_context())
     config = yaml.safe_load(template.substitute(**context))
     # Remove deprecated config from the curtin preseed.
-    if 'power_state' in config:
-        del config['power_state']
-        deprecated_config_variables.append('power_state')
-    if 'apt_proxy' in config:
-        deprecated_config_variables.append('apt_proxy')
-        del config['apt_proxy']
-    if 'apt_mirrors' in config:
-        deprecated_config_variables.append('apt_mirrors')
-        del config['apt_mirrors']
+    if "power_state" in config:
+        del config["power_state"]
+        deprecated_config_variables.append("power_state")
+    if "apt_proxy" in config:
+        deprecated_config_variables.append("apt_proxy")
+        del config["apt_proxy"]
+    if "apt_mirrors" in config:
+        deprecated_config_variables.append("apt_mirrors")
+        del config["apt_mirrors"]
     if deprecated_context_variables:
         log.warn(
             "WARNING: '%s' contains deprecated preseed "
-            "variables. Please remove: %s" % (
-                template.name, ", ".join(deprecated_context_variables)))
+            "variables. Please remove: %s"
+            % (template.name, ", ".join(deprecated_context_variables))
+        )
     if deprecated_config_variables:
         log.warn(
             "WARNING: '%s' contains deprecated preseed "
-            "configuration. Please remove: %s" % (
-                template.name, ", ".join(deprecated_config_variables)))
+            "configuration. Please remove: %s"
+            % (template.name, ", ".join(deprecated_config_variables))
+        )
     # Precise does not support cloud-init performing the reboot, so curtin
     # must have this statement.
     if node.distro_series == "precise":
-        config['power_state'] = {'mode': 'reboot'}
+        config["power_state"] = {"mode": "reboot"}
     # Ensure we always set debconf_selections for grub to ensure it doesn't
     # overwrite the config sent by MAAS. See LP: #1642298
-    grub2_debconf = {'grub2': 'grub2   grub2/update_nvram  boolean false'}
-    if 'debconf_selections' in config:
-        config['debconf_selections'].update(grub2_debconf)
+    grub2_debconf = {"grub2": "grub2   grub2/update_nvram  boolean false"}
+    if "debconf_selections" in config:
+        config["debconf_selections"].update(grub2_debconf)
     else:
-        config['debconf_selections'] = grub2_debconf
-    if 's390x' in node.architecture:
-        command = {'maas_00': 'chreipl node /dev/' + node.get_boot_disk().name}
-        config['late_commands'].update(command)
-    if node.osystem in ['centos', 'rhel'] and context['http_proxy']:
+        config["debconf_selections"] = grub2_debconf
+    if "s390x" in node.architecture:
+        command = {"maas_00": "chreipl node /dev/" + node.get_boot_disk().name}
+        config["late_commands"].update(command)
+    if node.osystem in ["centos", "rhel"] and context["http_proxy"]:
         # The echo command must be one argument so direction works.
-        config['late_commands'].update({
-            'yum_proxy': [
-                'curtin', 'in-target', '--', 'bash', '-c',
-                'echo -e "\\n# Proxy configured by MAAS\\n'
-                'proxy=%s\\n" >> /etc/yum.conf' % context['http_proxy'],
-            ]
-        })
+        config["late_commands"].update(
+            {
+                "yum_proxy": [
+                    "curtin",
+                    "in-target",
+                    "--",
+                    "bash",
+                    "-c",
+                    'echo -e "\\n# Proxy configured by MAAS\\n'
+                    'proxy=%s\\n" >> /etc/yum.conf' % context["http_proxy"],
+                ]
+            }
+        )
 
     return yaml.safe_dump(config)
 
@@ -568,8 +563,9 @@ def get_curtin_context(request, node):
     """
     token = NodeKey.objects.get_token_for_node(node)
     return {
-        'curtin_preseed': compose_debconf_cloud_init_preseed(
-            request, node, token)
+        "curtin_preseed": compose_debconf_cloud_init_preseed(
+            request, node, token
+        )
     }
 
 
@@ -580,10 +576,10 @@ def get_preseed_type_for(node):
     preseed will be used. Otherwise the node will use the curtin installer.
     """
     is_commissioning_preseed = (
-        node.status in COMMISSIONING_LIKE_STATUSES or
-        node.get_boot_purpose() == 'poweroff' or
-        node.ephemeral_deployment
-        )
+        node.status in COMMISSIONING_LIKE_STATUSES
+        or node.get_boot_purpose() == "poweroff"
+        or node.ephemeral_deployment
+    )
     if is_commissioning_preseed:
         return PRESEED_TYPE.COMMISSIONING
     else:
@@ -602,26 +598,35 @@ def get_preseed(request, node) -> bytes:
     :return: The rendered preseed string.
     :rtype: unicode.
     """
-    config = Config.objects.get_configs([
-        'commissioning_osystem', 'commissioning_distro_series'])
+    config = Config.objects.get_configs(
+        ["commissioning_osystem", "commissioning_distro_series"]
+    )
     if node.status in COMMISSIONING_LIKE_STATUSES or node.ephemeral_deployment:
         return render_preseed(
-            request, node, PRESEED_TYPE.COMMISSIONING,
-            osystem=config['commissioning_osystem'],
-            release=config['commissioning_distro_series'])
+            request,
+            node,
+            PRESEED_TYPE.COMMISSIONING,
+            osystem=config["commissioning_osystem"],
+            release=config["commissioning_distro_series"],
+        )
     else:
         return render_preseed(
-            request, node, get_preseed_type_for(node),
-            osystem=node.get_osystem(config['commissioning_osystem']),
+            request,
+            node,
+            get_preseed_type_for(node),
+            osystem=node.get_osystem(config["commissioning_osystem"]),
             release=node.get_distro_series(
-                config['commissioning_distro_series']))
+                config["commissioning_distro_series"]
+            ),
+        )
 
 
 UBUNTU_NAME = UbuntuOS().name
 
 
-def get_preseed_filenames(node, prefix='', osystem='', release='',
-                          default=False):
+def get_preseed_filenames(
+    node, prefix="", osystem="", release="", default=False
+):
     """List possible preseed template filenames for the given node.
 
     :param node: The node to return template preseed filenames for.
@@ -665,7 +670,7 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
     """
     elements = []
     # Add prefix.
-    if prefix != '':
+    if prefix != "":
         elements.append(prefix)
         has_prefix = True
     else:
@@ -686,13 +691,14 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
         # Backward-compatibility fix for 1439366: also generate a filename
         # with the 'osystem' omitted when deploying with Ubuntu.
         if osystem == UBUNTU_NAME:
-            should_emit = (
-                (not has_prefix and len(elements) > 1) or
-                (has_prefix and len(elements) > 2))
+            should_emit = (not has_prefix and len(elements) > 1) or (
+                has_prefix and len(elements) > 2
+            )
             if should_emit:
                 cutoff = 1 if has_prefix else 0
                 yield compose_filename(
-                    elements[:cutoff] + elements[cutoff + 1:])
+                    elements[:cutoff] + elements[cutoff + 1 :]
+                )
         elements.pop()
     if default:
         yield GENERIC_FILENAME
@@ -700,12 +706,12 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
 
 def split_subarch(architecture):
     """Split the architecture and the subarchitecture."""
-    return architecture.split('/')
+    return architecture.split("/")
 
 
 def compose_filename(elements):
     """Create a preseed filename from a list of elements."""
-    return '_'.join(elements)
+    return "_".join(elements)
 
 
 def get_preseed_template(filenames):
@@ -736,7 +742,7 @@ def get_escape_singleton():
     # Bug#1642996: We need to keep escape.shell in 2.X, for backwards
     # compatibility.  Any bugs filed about how it doesn't work should be marked
     # as a dup of Bug#1643595, and the user told to change to escape.json.
-    Escape = namedtuple('Escape', ['json', 'shell'])
+    Escape = namedtuple("Escape", ["json", "shell"])
     return Escape(json=json.dumps, shell=quote)
 
 
@@ -747,8 +753,8 @@ class PreseedTemplate(tempita.Template):
     various formats used in the template."""
 
     default_namespace = dict(
-        tempita.Template.default_namespace,
-        escape=get_escape_singleton())
+        tempita.Template.default_namespace, escape=get_escape_singleton()
+    )
 
 
 class TemplateNotFoundError(Exception):
@@ -759,7 +765,7 @@ class TemplateNotFoundError(Exception):
         self.name = name
 
 
-def load_preseed_template(node, prefix, osystem='', release=''):
+def load_preseed_template(node, prefix, osystem="", release=""):
     """Find and load a `PreseedTemplate` for the given node.
 
     :param node: See `get_preseed_filenames`.
@@ -774,15 +780,17 @@ def load_preseed_template(node, prefix, osystem='', release=''):
         It is defined to preserve the context (node, name, release, default)
         since this will be called (by Tempita) called out of scope.
         """
-        filenames = list(get_preseed_filenames(
-            node, name, osystem, release, default))
+        filenames = list(
+            get_preseed_filenames(node, name, osystem, release, default)
+        )
         filepath, content = get_preseed_template(filenames)
         if filepath is None:
             raise TemplateNotFoundError(name)
         # This is where the closure happens: pass `get_template` when
         # instanciating PreseedTemplate.
         return PreseedTemplate(
-            content, name=filepath, get_template=get_template)
+            content, name=filepath, get_template=get_template
+        )
 
     return get_template(prefix, None, default=True)
 
@@ -797,8 +805,7 @@ def get_netloc_and_path(url):
     return parsed_url.netloc, parsed_url.path.lstrip("/")
 
 
-def get_preseed_context(
-        request, osystem='', release='', rack_controller=None):
+def get_preseed_context(request, osystem="", release="", rack_controller=None):
     """Return the node-independent context dictionary to be used to render
     preseed templates.
 
@@ -810,30 +817,30 @@ def get_preseed_context(
     """
     region_ip = get_default_region_ip(request)
     server_host = get_maas_facing_server_host(
-        rack_controller=rack_controller, default_region_ip=region_ip)
-    server_url = request.build_absolute_uri(reverse('machines_handler'))
-    metadata_enlist_url = request.build_absolute_uri(reverse('enlist'))
-    configs = Config.objects.get_configs(['remote_syslog', 'maas_syslog_port'])
-    syslog = configs['remote_syslog']
+        rack_controller=rack_controller, default_region_ip=region_ip
+    )
+    server_url = request.build_absolute_uri(reverse("machines_handler"))
+    metadata_enlist_url = request.build_absolute_uri(reverse("enlist"))
+    configs = Config.objects.get_configs(["remote_syslog", "maas_syslog_port"])
+    syslog = configs["remote_syslog"]
     http_proxy = get_apt_proxy(request, rack_controller)
     if not syslog:
-        syslog_port = configs['maas_syslog_port']
+        syslog_port = configs["maas_syslog_port"]
         if not syslog_port:
             syslog_port = RSYSLOG_PORT
-        syslog = '%s:%d' % (server_host, syslog_port)
+        syslog = "%s:%d" % (server_host, syslog_port)
     return {
-        'osystem': osystem,
-        'release': release,
-        'server_host': server_host,
-        'server_url': server_url,
-        'syslog_host_port': syslog,
-        'metadata_enlist_url': metadata_enlist_url,
-        'http_proxy': http_proxy,
-        }
+        "osystem": osystem,
+        "release": release,
+        "server_host": server_host,
+        "server_url": server_url,
+        "syslog_host_port": syslog,
+        "metadata_enlist_url": metadata_enlist_url,
+        "http_proxy": http_proxy,
+    }
 
 
-def get_node_preseed_context(
-        request, node, osystem='', release=''):
+def get_node_preseed_context(request, node, osystem="", release=""):
     """Return the node-dependent context dictionary to be used to render
     preseed templates.
 
@@ -844,20 +851,23 @@ def get_node_preseed_context(
     :rtype: dict.
     """
     node_disable_pxe_url = request.build_absolute_uri(
-        reverse('metadata-node-by-id', args=['latest', node.system_id]))
-    node_disable_pxe_data = urlencode({'op': 'netboot_off'})
+        reverse("metadata-node-by-id", args=["latest", node.system_id])
+    )
+    node_disable_pxe_data = urlencode({"op": "netboot_off"})
     driver = get_third_party_driver(node)
     return {
-        'third_party_drivers': (
-            Config.objects.get_config('enable_third_party_drivers')),
-        'driver': driver,
-        'driver_package': driver.get('package', ''),
-        'node': node,
-        'preseed_data': compose_preseed(
-            request, get_preseed_type_for(node), node),
-        'node_disable_pxe_url': node_disable_pxe_url,
-        'node_disable_pxe_data': node_disable_pxe_data,
-        'license_key': node.get_effective_license_key(),
+        "third_party_drivers": (
+            Config.objects.get_config("enable_third_party_drivers")
+        ),
+        "driver": driver,
+        "driver_package": driver.get("package", ""),
+        "node": node,
+        "preseed_data": compose_preseed(
+            request, get_preseed_type_for(node), node
+        ),
+        "node_disable_pxe_url": node_disable_pxe_url,
+        "node_disable_pxe_data": node_disable_pxe_data,
+        "license_key": node.get_effective_license_key(),
     }
 
 
@@ -871,21 +881,24 @@ def get_node_deprecated_preseed_context():
     :rtype: dict.
     """
     main_archive_hostname, main_archive_directory = get_netloc_and_path(
-        PackageRepository.get_main_archive().url)
+        PackageRepository.get_main_archive().url
+    )
     ports_archive_hostname, ports_archive_directory = get_netloc_and_path(
-        PackageRepository.get_ports_archive().url)
+        PackageRepository.get_ports_archive().url
+    )
 
     return {
-        'main_archive_hostname': main_archive_hostname,
-        'main_archive_directory': main_archive_directory,
-        'ports_archive_hostname': ports_archive_hostname,
-        'ports_archive_directory': ports_archive_directory,
-        'enable_http_proxy': Config.objects.get_config('enable_http_proxy'),
+        "main_archive_hostname": main_archive_hostname,
+        "main_archive_directory": main_archive_directory,
+        "ports_archive_hostname": ports_archive_hostname,
+        "ports_archive_directory": ports_archive_directory,
+        "enable_http_proxy": Config.objects.get_config("enable_http_proxy"),
     }
 
 
 def render_enlistment_preseed(
-        request, prefix, osystem='', release='', rack_controller=None):
+    request, prefix, osystem="", release="", rack_controller=None
+):
     """Return the enlistment preseed.
 
     :param prefix: See `get_preseed_filenames`.
@@ -897,17 +910,18 @@ def render_enlistment_preseed(
     """
     template = load_preseed_template(None, prefix, osystem, release)
     context = get_preseed_context(
-        request, osystem, release, rack_controller=rack_controller)
-    context['preseed_data'] = compose_enlistment_preseed(
-        request, rack_controller, context)
+        request, osystem, release, rack_controller=rack_controller
+    )
+    context["preseed_data"] = compose_enlistment_preseed(
+        request, rack_controller, context
+    )
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
     return template.substitute(**snippets).encode("utf-8")
 
 
-def render_preseed(
-        request, node, prefix, osystem='', release=''):
+def render_preseed(request, node, prefix, osystem="", release=""):
     """Return the preseed for the given node.
 
     :param node: See `get_preseed_filenames`.
@@ -920,15 +934,15 @@ def render_preseed(
     template = load_preseed_template(node, prefix, osystem, release)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        request, osystem, release, rack_controller=rack_controller)
-    context.update(
-        get_node_preseed_context(
-            request, node, osystem, release))
+        request, osystem, release, rack_controller=rack_controller
+    )
+    context.update(get_node_preseed_context(request, node, osystem, release))
     return template.substitute(**context).encode("utf-8")
 
 
 def compose_enlistment_preseed_url(
-        *, rack_controller=None, base_url=None, default_region_ip=None):
+    *, rack_controller=None, base_url=None, default_region_ip=None
+):
     """Compose enlistment preseed URL.
 
     :param rack_controller: The rack controller used to generate the preseed.
@@ -937,21 +951,25 @@ def compose_enlistment_preseed_url(
     """
     # Always uses the latest version of the metadata API.
     if base_url is None:
-        base_url = (
-            rack_controller.url
-            if rack_controller is not None
-            else None)
-    version = 'latest'
+        base_url = rack_controller.url if rack_controller is not None else None
+    version = "latest"
     return absolute_reverse(
-        'metadata-enlist-preseed', default_region_ip=default_region_ip,
-        args=[version], query={'op': 'get_enlist_preseed'}, base_url=base_url)
+        "metadata-enlist-preseed",
+        default_region_ip=default_region_ip,
+        args=[version],
+        query={"op": "get_enlist_preseed"},
+        base_url=base_url,
+    )
 
 
 def compose_preseed_url(node, *, base_url=None, default_region_ip=None):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
-    version = 'latest'
+    version = "latest"
     return absolute_reverse(
-        'metadata-node-by-id', default_region_ip=default_region_ip,
-        args=[version, node.system_id], query={'op': 'get_preseed'},
-        base_url=base_url)
+        "metadata-node-by-id",
+        default_region_ip=default_region_ip,
+        args=[version, node.system_id],
+        query={"op": "get_preseed"},
+        base_url=base_url,
+    )

@@ -3,48 +3,35 @@
 
 """Model for a running service on regiond or rackd."""
 
-__all__ = [
-    'Service',
-    ]
+__all__ = ["Service"]
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Manager,
-)
+from django.db.models import CASCADE, CharField, ForeignKey, Manager
 from maasserver import DefaultMeta
-from maasserver.enum import (
-    NODE_TYPE,
-    SERVICE_STATUS,
-    SERVICE_STATUS_CHOICES,
-)
+from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 # Services that run on the region controller. NOTE that this needs to include
 # services overseen by the region's ServiceMonitor.
-REGION_SERVICES = frozenset({
-    "regiond",
-    "bind9",
-    "ntp_region",
-    "proxy",
-    "syslog_region",
-})
+REGION_SERVICES = frozenset(
+    {"regiond", "bind9", "ntp_region", "proxy", "syslog_region"}
+)
 
 # Services that run on the rack controller. NOTE that this needs to include
 # services overseen by the rack's ServiceMonitor.
-RACK_SERVICES = frozenset({
-    "rackd",
-    "tftp",
-    "http",
-    "dhcpd",
-    "dhcpd6",
-    "ntp_rack",
-    "dns_rack",
-    "proxy_rack",
-    "syslog_rack",
-})
+RACK_SERVICES = frozenset(
+    {
+        "rackd",
+        "tftp",
+        "http",
+        "dhcpd",
+        "dhcpd6",
+        "ntp_rack",
+        "dns_rack",
+        "proxy_rack",
+        "syslog_rack",
+    }
+)
 
 # Statuses that should be set on each service when node is marked dead. NOTE
 # that this needs to include services overseen by the rack's ServiceMonitor.
@@ -78,8 +65,7 @@ class ServiceManager(Manager):
         """
         # Grab all current services for the node.
         services = {
-            service.name: service
-            for service in self.filter(node=node)
+            service.name: service for service in self.filter(node=node)
         }
 
         # Expected services that should be on the node.
@@ -102,9 +88,10 @@ class ServiceManager(Manager):
         for service in expected_services:
             if service not in services:
                 self.create(
-                    node=node, name=service, status=SERVICE_STATUS.UNKNOWN)
+                    node=node, name=service, status=SERVICE_STATUS.UNKNOWN
+                )
 
-    def update_service_for(self, node, service, status, status_info=''):
+    def update_service_for(self, node, service, status, status_info=""):
         """Update `service` for `node` with `status`."""
         update_fields = []
         service = self.get(node=node, name=service)
@@ -137,24 +124,34 @@ class Service(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         unique_together = ("node", "name")
         ordering = ["id"]
 
     objects = ServiceManager()
 
-    node = ForeignKey('Node', null=False, editable=False, on_delete=CASCADE)
+    node = ForeignKey("Node", null=False, editable=False, on_delete=CASCADE)
 
     name = CharField(
-        max_length=255, null=False, blank=False, editable=False,
-        help_text="Name of service. (e.g. maas-dhcpd)")
+        max_length=255,
+        null=False,
+        blank=False,
+        editable=False,
+        help_text="Name of service. (e.g. maas-dhcpd)",
+    )
 
     status = CharField(
-        max_length=10, null=False, blank=False,
-        choices=SERVICE_STATUS_CHOICES, default=SERVICE_STATUS.UNKNOWN,
-        editable=False)
+        max_length=10,
+        null=False,
+        blank=False,
+        choices=SERVICE_STATUS_CHOICES,
+        default=SERVICE_STATUS.UNKNOWN,
+        editable=False,
+    )
 
     status_info = CharField(
-        max_length=255, null=False, blank=True, editable=False)
+        max_length=255, null=False, blank=True, editable=False
+    )
 
     def __str__(self):
         info = "%s - %s" % (self.name, self.status)

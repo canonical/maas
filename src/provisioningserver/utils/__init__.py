@@ -16,10 +16,7 @@ __all__ = [
 ]
 
 from collections import Iterable
-from functools import (
-    lru_cache,
-    reduce,
-)
+from functools import lru_cache, reduce
 from itertools import chain
 import os
 from pipes import quote
@@ -48,6 +45,7 @@ def locate_config(*path: Tuple[str]):
     else:
         # Avoid circular imports.
         from provisioningserver.path import get_tentative_data_path
+
         return get_tentative_data_path("etc", "maas", path)
 
 
@@ -58,16 +56,16 @@ def locate_template(*path: Tuple[str]):
                  Python library provisioning server is located in.
     """
     return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            '..', 'templates', *path))
+        os.path.join(os.path.dirname(__file__), "..", "templates", *path)
+    )
 
 
 @lru_cache(256)
 def load_template(*path: Tuple[str]):
     """Load the template."""
     return tempita.Template.from_filename(
-        locate_template(*path), encoding="UTF-8")
+        locate_template(*path), encoding="UTF-8"
+    )
 
 
 def dict_depth(d, depth=0):
@@ -79,7 +77,7 @@ def dict_depth(d, depth=0):
 
 def split_lines(input, separator):
     """Split each item from `input` into a key/value pair."""
-    return (line.split(separator, 1) for line in input if line.strip() != '')
+    return (line.split(separator, 1) for line in input if line.strip() != "")
 
 
 def strip_pairs(input):
@@ -97,7 +95,7 @@ def parse_key_value_file(file_name, separator=":"):
     :param file_name: Name of file to parse.
     :param separator: The text that separates each key from its value.
     """
-    with open(file_name, 'r', encoding="utf-8") as input:
+    with open(file_name, "r", encoding="utf-8") as input:
         return dict(strip_pairs(split_lines(input, separator)))
 
 
@@ -110,8 +108,7 @@ class Safe:
         self.value = value
 
     def __repr__(self):
-        return "<%s %r>" % (
-            self.__class__.__name__, self.value)
+        return "<%s %r>" % (self.__class__.__name__, self.value)
 
 
 class ShellTemplate(tempita.Template):
@@ -128,9 +125,7 @@ class ShellTemplate(tempita.Template):
 
     """
 
-    default_namespace = dict(
-        tempita.Template.default_namespace,
-        safe=Safe)
+    default_namespace = dict(tempita.Template.default_namespace, safe=Safe)
 
     def _repr(self, value, pos):
         """Shell-quote the value by default."""
@@ -173,6 +168,7 @@ def flatten(*things):
 
     :return: An iterator.
     """
+
     def _flatten(things):
         if isinstance(things, str):
             # String-like objects are treated as leaves; iterating through a
@@ -201,7 +197,7 @@ def sudo(command_args):
     if snappy.running_in_snap():
         return command_args
     else:
-        return ['sudo', '-n', *command_args]
+        return ["sudo", "-n", *command_args]
 
 
 class CircularDependency(ValueError):
@@ -297,6 +293,7 @@ def convert_size_to_bytes(value):
         multiplier = CAPACITY_UNITS[capacity_unit]
     else:
         raise UnknownCapacityUnitError(
-            "Unknown capacity unit '%s'" % capacity_unit)
+            "Unknown capacity unit '%s'" % capacity_unit
+        )
     # Convert value to bytes.
     return int(capacity_value * multiplier)

@@ -32,20 +32,24 @@ class ByteString(formencode.FancyValidator):
     not_empty = None
     accept_python = False
     messages = {
-        "noneType": (
-            "The input must be a byte string (not None)"),
+        "noneType": "The input must be a byte string (not None)",
         "badType": (
-            "The input must be a byte string (not a "
-            "%(type)s: %(value)r)"),
+            "The input must be a byte string (not a " "%(type)s: %(value)r)"
+        ),
     }
 
     def _validate(self, value, state=None):
         if not isinstance(value, bytes):
             raise formencode.Invalid(
                 self.message(
-                    'badType', state, value=value,
-                    type=type(value).__qualname__),
-                value, state)
+                    "badType",
+                    state,
+                    value=value,
+                    type=type(value).__qualname__,
+                ),
+                value,
+                state,
+            )
 
     _validate_python = _validate
     _validate_other = _validate
@@ -63,20 +67,24 @@ class UnicodeString(formencode.FancyValidator):
     not_empty = None
     accept_python = False
     messages = {
-        "noneType": (
-            "The input must be a Unicode string (not None)"),
+        "noneType": "The input must be a Unicode string (not None)",
         "badType": (
-            "The input must be a Unicode string (not a "
-            "%(type)s: %(value)r)"),
+            "The input must be a Unicode string (not a " "%(type)s: %(value)r)"
+        ),
     }
 
     def _validate(self, value, state=None):
         if not isinstance(value, str):
             raise formencode.Invalid(
                 self.message(
-                    'badType', state, value=value,
-                    type=type(value).__qualname__),
-                value, state)
+                    "badType",
+                    state,
+                    value=value,
+                    type=type(value).__qualname__,
+                ),
+                value,
+                state,
+            )
 
     _validate_python = _validate
     _validate_other = _validate
@@ -92,9 +100,7 @@ class UUIDString(formencode.FancyValidator):
     """
 
     accept_python = False
-    messages = {
-        "notUUID": "%(value)r Failed to parse UUID",
-    }
+    messages = {"notUUID": "%(value)r Failed to parse UUID"}
 
     def _convert(self, value, state=None):
         if isinstance(value, uuid.UUID):
@@ -104,8 +110,8 @@ class UUIDString(formencode.FancyValidator):
                 uuid.UUID(value)
             except Exception:
                 raise formencode.Invalid(
-                    self.message("notUUID", state, value=value),
-                    value, state)
+                    self.message("notUUID", state, value=value), value, state
+                )
             else:
                 return value
 
@@ -120,9 +126,7 @@ class DirectoryString(formencode.FancyValidator):
     """
 
     accept_python = False
-    messages = {
-        "notDir": "%(value)r does not exist or is not a directory",
-    }
+    messages = {"notDir": "%(value)r does not exist or is not a directory"}
 
     def _validate_other(self, value, state=None):
         # Only validate on the way _in_; it's not the store's fault if it
@@ -131,8 +135,8 @@ class DirectoryString(formencode.FancyValidator):
             return value
         else:
             raise formencode.Invalid(
-                self.message("notDir", state, value=value),
-                value, state)
+                self.message("notDir", state, value=value), value, state
+            )
 
 
 class ExtendedURL(formencode.validators.URL):
@@ -149,7 +153,8 @@ class ExtendedURL(formencode.validators.URL):
     # groupings.  We'll catch that later on when we cannot convert it to an
     # ipv6 address, rather than individually handling all of the possible
     # combinations for ::-containing addresses.
-    url_re = re.compile(r'''
+    url_re = re.compile(
+        r"""
         ^(http|https)://
         (?:[%:\w]*@)?                              # authenticator
         (?:                                        # ip or domain
@@ -170,7 +175,9 @@ class ExtendedURL(formencode.validators.URL):
         # files/delims/etc
         (?P<path>/[a-z0-9\-\._~:/\?#\[\]@!%\$&\'\(\)\*\+,;=]*)?
         $
-    ''', re.IGNORECASE | re.VERBOSE)
+    """,
+        re.IGNORECASE | re.VERBOSE,
+    )
 
 
 class Schema(formencode.Schema):

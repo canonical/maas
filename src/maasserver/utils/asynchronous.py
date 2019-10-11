@@ -3,10 +3,7 @@
 
 """Utilities for working with asynchronous operations."""
 
-__all__ = [
-    'DeferredHooks',
-    "gather",
-]
+__all__ = ["DeferredHooks", "gather"]
 
 from collections import deque
 from contextlib import contextmanager
@@ -24,11 +21,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    Deferred,
-    maybeDeferred,
-)
+from twisted.internet.defer import CancelledError, Deferred, maybeDeferred
 
 
 log = LegacyLogger()
@@ -51,7 +44,8 @@ class UseOnceIterator:
     def __next__(self):
         if self.has_run_once:
             raise IteratorReusedError(
-                "It is not possible to reuse a UseOnceIterator.")
+                "It is not possible to reuse a UseOnceIterator."
+            )
         try:
             return next(self.iterable)
         except StopIteration:

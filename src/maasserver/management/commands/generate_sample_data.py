@@ -3,9 +3,7 @@
 
 """Django command: generate sample data."""
 
-__all__ = [
-    "Command",
-]
+__all__ = ["Command"]
 
 from django.core.management.base import BaseCommand
 
@@ -20,7 +18,9 @@ class Command(BaseCommand):
         except ImportError:
             print(
                 "Sample data generation is available only in development "
-                "and test environments.", file=self.stderr)
+                "and test environments.",
+                file=self.stderr,
+            )
             raise SystemExit(1)
         else:
             sampledata.populate()

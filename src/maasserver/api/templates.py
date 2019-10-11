@@ -26,9 +26,7 @@ for function_def in function_defs:
 
 """
 
-__all__ = [
-    "APITemplateRenderer",
-]
+__all__ = ["APITemplateRenderer"]
 
 import tempita
 

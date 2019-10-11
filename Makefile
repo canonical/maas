@@ -96,7 +96,7 @@ install-dependencies:
 		$(foreach deps,$(REQUIRED_DEPS_FILES),$(call list_required,$(deps)))
 	sudo DEBIAN_FRONTEND=noninteractive apt purge -y \
 		$(foreach deps,$(FORBIDDEN_DEPS_FILES),$(call list_required,$(deps)))
-	if [ -x /usr/bin/snap ]; then sudo snap install --classic snapcraft; fi
+	if [ -x /usr/bin/snap ]; then cat required-packages/snaps | xargs -L1 sudo snap install; fi
 .PHONY: install-dependencies
 
 sudoers:
@@ -108,7 +108,7 @@ $(VENV): requirements.txt
 	python3 -m venv --system-site-packages --clear $@
 	$(VENV)/bin/pip install -r requirements.txt
 
-bin/flake8 bin/coverage \
+bin/black bin/coverage \
   bin/postgresfixture \
   bin/maas bin/rackd bin/regiond \
   bin/maas-region bin/maas-rack bin/maas-common \
@@ -121,9 +121,8 @@ bin/flake8 bin/coverage \
 bin/py:
 	ln -sf ../$(VENV)/bin/ipython $@
 
-# bin/flake8 is needed for checking lint and bin/node-sass is needed for
-# checking css.
-bin/test.testing: bin/flake8 bin/node-sass
+# bin/node-sass is needed for checking css.
+bin/test.testing: bin/node-sass
 
 bin/database: bin/postgresfixture
 	ln -sf $(notdir $<) $@
@@ -290,9 +289,7 @@ coverage/index.html: bin/coverage .coverage
 .coverage:
 	@$(error Use `$(MAKE) test` to generate coverage)
 
-lint: \
-    lint-py lint-py-complexity lint-py-imports lint-py-linefeeds \
-    lint-js lint-go
+lint: lint-py lint-py-imports lint-py-linefeeds lint-js lint-go
 .PHONY: lint
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
@@ -304,31 +301,16 @@ lint-css:
 	    -print0 | xargs -r0 $(pocketlint) --max-length=120
 .PHONY: lint-css
 
-# Python lint checks are time-intensive, but flake8 now knows how to run
-# parallel jobs, and does so by default.
-lint-py: sources = setup.py src
-lint-py: bin/flake8
-	@find $(sources) -name '*.py' \
-	  ! -path '*/migrations/*' -print0 | xargs -r0 bin/flake8 --config=.flake8
+lint-py: sources = $(wildcard *.py contrib/*.py) src utilities etc
+lint-py: bin/black
+	@bin/black $(sources) --check
 .PHONY: lint-py
-
-# Ignore tests when checking complexity. The maximum complexity ought to
-# be close to 10 but MAAS has many functions that are over that so we
-# start with a much higher number. Over time we can ratchet it down.
-lint-py-complexity: maximum=26
-lint-py-complexity: sources = setup.py src
-lint-py-complexity: bin/flake8
-	@find $(sources) -name '*.py' \
-	  ! -path '*/migrations/*' \
-	  ! -path '*/tests/*' ! -path '*/testing/*' ! -name 'testing.py' \
-	  -print0 | xargs -r0 bin/flake8 --config=.flake8 --max-complexity=$(maximum)
-.PHONY: lint-py-complexity
 
 # Statically check imports against policy.
 lint-py-imports: sources = setup.py src
 lint-py-imports:
 	@utilities/check-imports
-	@find $(sources) -name '*.py' \
+	@find $(sources) -type f -name '*.py' \
 	  ! -path '*/migrations/*' \
 	  -print0 | xargs -r0 utilities/find-early-imports
 .PHONY: lint-py-imports
@@ -365,18 +347,13 @@ format.parallel:
 .PHONY: format.parallel
 
 # Apply automated formatting to all Python, Sass and Javascript files.
-format: format-imports format-lineendings format-js format-go
+format: format-python format-js format-go
 .PHONY: format
 
-format-imports: sources = $(wildcard *.py contrib/*.py) src utilities etc
-format-imports:
-	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
-.PHONY: format-imports
-
-# TODO: This should be done in .gitattributes
-format-lineendings:
-	@find src/ -type f -exec file "{}" ";" | grep CRLF | cut -d ':' -f1 | xargs dos2unix
-.PHONY: format-lineendings
+format-python: sources = $(wildcard *.py contrib/*.py) src utilities etc
+format-python: bin/black
+	@bin/black -q $(sources)
+.PHONY: format-python
 
 format-js: bin/yarn
 	@bin/yarn -s prettier --loglevel warn

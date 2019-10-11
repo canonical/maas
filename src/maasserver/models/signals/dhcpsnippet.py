@@ -3,9 +3,7 @@
 
 """Respond to DHCPSnippet changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from django.db.models.signals import post_delete
 from maasserver.models import DHCPSnippet
@@ -22,7 +20,8 @@ def post_delete_dhcp_snippet_clean_values(sender, instance, **kwargs):
 
 
 signals.watch(
-    post_delete, post_delete_dhcp_snippet_clean_values, sender=DHCPSnippet)
+    post_delete, post_delete_dhcp_snippet_clean_values, sender=DHCPSnippet
+)
 
 # Enable all signals by default.
 signals.enable()

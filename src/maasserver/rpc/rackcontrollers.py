@@ -13,10 +13,7 @@ __all__ = [
 from typing import Optional
 
 from django.db.models import Q
-from maasserver import (
-    locks,
-    worker_user,
-)
+from maasserver import locks, worker_user
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
     ControllerInfo,
@@ -29,10 +26,7 @@ from maasserver.models import (
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils import synchronised
-from maasserver.utils.orm import (
-    transactional,
-    with_connection,
-)
+from maasserver.utils.orm import transactional, with_connection
 from metadataserver.models import ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode
@@ -40,7 +34,7 @@ from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
-maaslog = get_maas_logger('rpc.rackcontrollers')
+maaslog = get_maas_logger("rpc.rackcontrollers")
 
 
 @synchronous
@@ -48,15 +42,15 @@ maaslog = get_maas_logger('rpc.rackcontrollers')
 def handle_upgrade(rack_controller, nodegroup_uuid):
     """Handle upgrading from MAAS 1.9. Set the VLAN the rack controller
     should manage."""
-    if (nodegroup_uuid is not None and
-            len(nodegroup_uuid) > 0 and
-            not nodegroup_uuid.isspace()):
+    if (
+        nodegroup_uuid is not None
+        and len(nodegroup_uuid) > 0
+        and not nodegroup_uuid.isspace()
+    ):
         ng_to_racks = NodeGroupToRackController.objects.filter(
-            uuid=nodegroup_uuid)
-        vlans = [
-            ng_to_rack.subnet.vlan
-            for ng_to_rack in ng_to_racks
-        ]
+            uuid=nodegroup_uuid
+        )
+        vlans = [ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks]
         # The VLAN object can only be related to a RackController
         for nic in rack_controller.interface_set.all():
             if nic.vlan in vlans:
@@ -65,7 +59,8 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
                 nic.vlan.save()
                 maaslog.info(
                     "DHCP setting from NodeGroup(%s) have been migrated "
-                    "to %s." % (nodegroup_uuid, nic.vlan))
+                    "to %s." % (nodegroup_uuid, nic.vlan)
+                )
         for ng_to_rack in ng_to_racks:
             ng_to_rack.delete()
 
@@ -75,8 +70,14 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
 @synchronised(locks.startup)
 @transactional
 def register(
-        system_id=None, hostname='', interfaces=None,
-        url=None, is_loopback=None, create_fabrics=True, version=None):
+    system_id=None,
+    hostname="",
+    interfaces=None,
+    url=None,
+    is_loopback=None,
+    create_fabrics=True,
+    version=None,
+):
     """Register a new rack controller if not already registered.
 
     Attempt to see if the rack controller was already registered as a node.
@@ -96,10 +97,11 @@ def register(
     # If hostname is actually a FQDN, split the domain off and
     # create it as non-authoritative domain if it does not exist already.
     domain = Domain.objects.get_default_domain()
-    if hostname.find('.') > 0:
-        hostname, domainname = hostname.split('.', 1)
+    if hostname.find(".") > 0:
+        hostname, domainname = hostname.split(".", 1)
         (domain, _) = Domain.objects.get_or_create(
-            name=domainname, defaults={'authoritative': False})
+            name=domainname, defaults={"authoritative": False}
+        )
 
     this_region = RegionController.objects.get_running_controller()
     node = find(system_id, hostname, interfaces)
@@ -108,26 +110,38 @@ def register(
         node = RackController.objects.create(hostname=hostname, domain=domain)
         maaslog.info(
             "New rack controller '%s' running version %s was created by "
-            "region '%s' upon first connection.", node.hostname, version_log,
-            this_region.hostname)
+            "region '%s' upon first connection.",
+            node.hostname,
+            version_log,
+            this_region.hostname,
+        )
     elif node.is_rack_controller:
         # Only the master process logs to the maaslog.
         maaslog.info(
             "Existing rack controller '%s' running version %s has "
-            "connected to region '%s'.", node.hostname, version_log,
-            this_region.hostname)
+            "connected to region '%s'.",
+            node.hostname,
+            version_log,
+            this_region.hostname,
+        )
     elif node.is_region_controller:
         maaslog.info(
             "Region controller '%s' running version %s converted into a "
-            "region and rack controller.", node.hostname, version_log)
+            "region and rack controller.",
+            node.hostname,
+            version_log,
+        )
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         node.pool = None
         node.save()
     else:
         maaslog.info(
             "Region controller '%s' converted '%s' running version %s into a "
-            "rack controller.", this_region.hostname, node.hostname,
-            version_log)
+            "rack controller.",
+            this_region.hostname,
+            node.hostname,
+            version_log,
+        )
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.pool = None
         node.save()
@@ -144,7 +158,7 @@ def register(
     # Update `rackcontroller.url` from the given URL, if it has changed.
     if url is not None:
         if is_loopback:
-            rackcontroller.url = ''
+            rackcontroller.url = ""
         elif not is_loopback:
             rackcontroller.url = url.geturl()
     if rackcontroller.owner is None:
@@ -168,12 +182,14 @@ def find(system_id: Optional[str], hostname: str, interfaces: dict):
     :return: An instance of :class:`Node` or `None`
     """
     mac_addresses = {
-        interface["mac_address"] for interface in interfaces.values()
+        interface["mac_address"]
+        for interface in interfaces.values()
         if "mac_address" in interface
     }
     query = (
-        Q(system_id=system_id) | Q(hostname=hostname) |
-        Q(interface__mac_address__in=mac_addresses)
+        Q(system_id=system_id)
+        | Q(hostname=hostname)
+        | Q(interface__mac_address__in=mac_addresses)
     )
     return Node.objects.filter(query).first()
 
@@ -187,8 +203,11 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
     :param dhcp_ip: The IP address of the responding DHCP server.
     """
     rack_controller = RackController.objects.get(system_id=system_id)
-    interface = rack_controller.interface_set.filter(
-        name=interface_name).select_related("vlan").first()
+    interface = (
+        rack_controller.interface_set.filter(name=interface_name)
+        .select_related("vlan")
+        .first()
+    )
     if interface is not None:
         if dhcp_ip is not None:
             sip = StaticIPAddress.objects.filter(ip=dhcp_ip).first()
@@ -198,17 +217,23 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
                 rack_interfaces_serving_dhcp = sip.interface_set.filter(
                     node__node_type__in=[
                         NODE_TYPE.RACK_CONTROLLER,
-                        NODE_TYPE.REGION_AND_RACK_CONTROLLER],
-                    vlan__dhcp_on=True)
+                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                    ],
+                    vlan__dhcp_on=True,
+                )
                 if rack_interfaces_serving_dhcp.exists():
                     # Not external. It's a MAAS DHCP server.
                     dhcp_ip = None
         if interface.vlan is None:
             maaslog.warning(
                 "%s: Detected an external DHCP server on an interface with no "
-                "VLAN defined: '%s': %s" % (
-                    rack_controller.hostname, interface.get_log_string(),
-                    dhcp_ip))
+                "VLAN defined: '%s': %s"
+                % (
+                    rack_controller.hostname,
+                    interface.get_log_string(),
+                    dhcp_ip,
+                )
+            )
         else:
             if interface.vlan.external_dhcp != dhcp_ip:
                 interface.vlan.external_dhcp = dhcp_ip
@@ -262,5 +287,6 @@ def update_last_image_sync(system_id):
 
     for :py:class:`~provisioningserver.rpc.region.UpdateLastImageSync.
     """
-    RackController.objects.filter(
-        system_id=system_id).update(last_image_sync=now())
+    RackController.objects.filter(system_id=system_id).update(
+        last_image_sync=now()
+    )

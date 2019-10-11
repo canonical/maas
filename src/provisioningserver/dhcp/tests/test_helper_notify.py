@@ -11,25 +11,15 @@ from unittest.mock import sentinel
 
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rackdservices import lease_socket_service
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
 from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.twisted import DeferredValue
-from testtools.matchers import (
-    Equals,
-    IsInstance,
-    MatchesDict,
-)
-from twisted.internet import (
-    defer,
-    reactor,
-)
+from testtools.matchers import Equals, IsInstance, MatchesDict
+from twisted.internet import defer, reactor
 
 
 class TestDHCPNotify(MAASTestCase):
@@ -40,17 +30,18 @@ class TestDHCPNotify(MAASTestCase):
         path = self.make_dir()
         socket_path = os.path.join(path, "dhcpd.sock")
         self.patch(
-            lease_socket_service, "get_socket_path").return_value = socket_path
+            lease_socket_service, "get_socket_path"
+        ).return_value = socket_path
         return socket_path
 
     def catch_packet_on_socket(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, reactor)
+        service = LeaseSocketService(sentinel.service, reactor)
         dv = DeferredValue()
 
         def mock_processNotification(*args, **kwargs):
             dv.set(args)
+
         self.patch(service, "processNotification", mock_processNotification)
 
         return socket_path, service, dv
@@ -68,25 +59,39 @@ class TestDHCPNotify(MAASTestCase):
         service.startService()
         self.addCleanup(service.stopService)
 
-        call_and_check([
-            "%s/scripts/maas-dhcp-helper" % root,
-            "notify",
-            '--action', action,
-            '--mac', mac,
-            '--ip-family', ip_family,
-            '--ip', ip,
-            '--lease-time', str(lease_time),
-            '--hostname', hostname,
-            '--socket', socket_path,
-        ])
+        call_and_check(
+            [
+                "%s/scripts/maas-dhcp-helper" % root,
+                "notify",
+                "--action",
+                action,
+                "--mac",
+                mac,
+                "--ip-family",
+                ip_family,
+                "--ip",
+                ip,
+                "--lease-time",
+                str(lease_time),
+                "--hostname",
+                hostname,
+                "--socket",
+                socket_path,
+            ]
+        )
         yield done.get(timeout=10)
 
-        self.assertThat(done.value[0], MatchesDict({
-            "action": Equals(action),
-            "mac": Equals(mac),
-            "ip_family": Equals(ip_family),
-            "ip": Equals(ip),
-            "timestamp": IsInstance(int),
-            "lease_time": Equals(lease_time),
-            "hostname": Equals(hostname),
-        }))
+        self.assertThat(
+            done.value[0],
+            MatchesDict(
+                {
+                    "action": Equals(action),
+                    "mac": Equals(mac),
+                    "ip_family": Equals(ip_family),
+                    "ip": Equals(ip),
+                    "timestamp": IsInstance(int),
+                    "lease_time": Equals(lease_time),
+                    "hostname": Equals(hostname),
+                }
+            ),
+        )

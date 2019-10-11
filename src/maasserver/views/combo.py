@@ -3,27 +3,20 @@
 
 """Combo view."""
 
-__all__ = [
-    'merge_view',
-    ]
+__all__ = ["merge_view"]
 
 import os
 
 from convoy.combo import combine_files
 from django.conf import settings
-from django.http import (
-    HttpResponse,
-    HttpResponseNotFound,
-)
+from django.http import HttpResponse, HttpResponseNotFound
 
 
 MERGE_VIEWS = {
     "jquery.js": {
         "location": settings.JQUERY_LOCATION,
         "content_type": "text/javascript; charset=UTF-8",
-        "files": [
-            "jquery.min.js",
-        ]
+        "files": ["jquery.min.js"],
     },
     "angular.js": {
         "location": settings.ANGULARJS_LOCATION,
@@ -33,12 +26,12 @@ MERGE_VIEWS = {
             "angular-route.min.js",
             "angular-cookies.min.js",
             "angular-sanitize.min.js",
-        ]
+        ],
     },
 }
 
 
-def get_absolute_location(location=''):
+def get_absolute_location(location=""):
     """Return the absolute location of a static resource.
 
     This utility exist to deal with the various places where MAAS can find
@@ -69,8 +62,16 @@ def merge_view(request, filename):
     if location is None:
         location = get_absolute_location()
     content = "".join(
-        [content.decode('utf-8') for content in combine_files(
-            merge_info["files"], location,
-            resource_prefix='/', rewrite_urls=True)])
+        [
+            content.decode("utf-8")
+            for content in combine_files(
+                merge_info["files"],
+                location,
+                resource_prefix="/",
+                rewrite_urls=True,
+            )
+        ]
+    )
     return HttpResponse(
-        content_type=merge_info["content_type"], status=200, content=content)
+        content_type=merge_info["content_type"], status=200, content=content
+    )

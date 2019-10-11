@@ -3,12 +3,7 @@
 
 """Snap management commands."""
 
-__all__ = [
-    'cmd_config',
-    'cmd_init',
-    'cmd_migrate',
-    'cmd_status',
-    ]
+__all__ = ["cmd_config", "cmd_init", "cmd_migrate", "cmd_status"]
 
 import argparse
 from collections import OrderedDict
@@ -53,86 +48,127 @@ available modes:
     none        - not configured\
 """
 
-DEFAULT_OPERATION_MODE = 'all'
+DEFAULT_OPERATION_MODE = "all"
 
-ARGUMENTS = OrderedDict([
-    ('mode', {
-        'choices': ['all', 'region+rack', 'region', 'rack', 'none'],
-        'help': (
-            'Set the mode of the MAAS snap (all, region+rack, region, '
-            'rack, or none).'),
-    }),
-    ('maas-url', {
-        'help': (
-            'URL that MAAS should use for communicate from the nodes to '
-            'MAAS and other controllers of MAAS.'),
-    }),
-    ('database-host', {
-        'help': (
-            'Hostname or IP address that should be used to communicate to '
-            'the database. Only used when in \'region+rack\' or '
-            '\'region\' mode.'),
-    }),
-    ('database-port', {
-        'help': (
-            'Optional option to set the port that should be used to '
-            'communicate to the database. Only used when in '
-            '\'region+rack\' or \'region\' mode.'),
-    }),
-    ('database-name', {
-        'help': (
-            'Database name for MAAS to use. Only used when in '
-            '\'region+rack\' or \'region\' mode.'),
-    }),
-    ('database-user', {
-        'help': (
-            'Database username to authenticate to the database. Only used '
-            'when in \'region+rack\' or \'region\' mode.'),
-    }),
-    ('database-pass', {
-        'help': (
-            'Database password to authenticate to the database. Only used '
-            'when in \'region+rack\' or \'region\' mode.'),
-    }),
-    ('secret', {
-        'help': (
-            'Secret token required for the rack controller to talk '
-            'to the region controller(s). Only used when in \'rack\' mode.'),
-    }),
-    ('num-workers', {
-        'type': int,
-        'help': (
-            'Number of regiond worker process to run.'),
-    }),
-    ('enable-debug', {
-        'action': 'store_true',
-        'help': (
-            'Enable debug mode for detailed error and log reporting.'),
-    }),
-    ('disable-debug', {
-        'action': 'store_true',
-        'help': 'Disable debug mode.',
-    }),
-    ('enable-debug-queries', {
-        'action': 'store_true',
-        'help': (
-            'Enable query debugging. Reports number of queries and time for '
-            'all actions performed. Requires debug to also be True. mode for '
-            'detailed error and log reporting.'),
-    }),
-    ('disable-debug-queries', {
-        'action': 'store_true',
-        'help': 'Disable query debugging.',
-    }),
-])
+ARGUMENTS = OrderedDict(
+    [
+        (
+            "mode",
+            {
+                "choices": ["all", "region+rack", "region", "rack", "none"],
+                "help": (
+                    "Set the mode of the MAAS snap (all, region+rack, region, "
+                    "rack, or none)."
+                ),
+            },
+        ),
+        (
+            "maas-url",
+            {
+                "help": (
+                    "URL that MAAS should use for communicate from the nodes to "
+                    "MAAS and other controllers of MAAS."
+                )
+            },
+        ),
+        (
+            "database-host",
+            {
+                "help": (
+                    "Hostname or IP address that should be used to communicate to "
+                    "the database. Only used when in 'region+rack' or "
+                    "'region' mode."
+                )
+            },
+        ),
+        (
+            "database-port",
+            {
+                "help": (
+                    "Optional option to set the port that should be used to "
+                    "communicate to the database. Only used when in "
+                    "'region+rack' or 'region' mode."
+                )
+            },
+        ),
+        (
+            "database-name",
+            {
+                "help": (
+                    "Database name for MAAS to use. Only used when in "
+                    "'region+rack' or 'region' mode."
+                )
+            },
+        ),
+        (
+            "database-user",
+            {
+                "help": (
+                    "Database username to authenticate to the database. Only used "
+                    "when in 'region+rack' or 'region' mode."
+                )
+            },
+        ),
+        (
+            "database-pass",
+            {
+                "help": (
+                    "Database password to authenticate to the database. Only used "
+                    "when in 'region+rack' or 'region' mode."
+                )
+            },
+        ),
+        (
+            "secret",
+            {
+                "help": (
+                    "Secret token required for the rack controller to talk "
+                    "to the region controller(s). Only used when in 'rack' mode."
+                )
+            },
+        ),
+        (
+            "num-workers",
+            {"type": int, "help": "Number of regiond worker process to run."},
+        ),
+        (
+            "enable-debug",
+            {
+                "action": "store_true",
+                "help": (
+                    "Enable debug mode for detailed error and log reporting."
+                ),
+            },
+        ),
+        (
+            "disable-debug",
+            {"action": "store_true", "help": "Disable debug mode."},
+        ),
+        (
+            "enable-debug-queries",
+            {
+                "action": "store_true",
+                "help": (
+                    "Enable query debugging. Reports number of queries and time for "
+                    "all actions performed. Requires debug to also be True. mode for "
+                    "detailed error and log reporting."
+                ),
+            },
+        ),
+        (
+            "disable-debug-queries",
+            {"action": "store_true", "help": "Disable query debugging."},
+        ),
+    ]
+)
 
-NON_ROOT_USER = 'snap_daemon'
+NON_ROOT_USER = "snap_daemon"
 
 
 def get_default_gateway_ip():
     """Return the default gateway IP."""
     gateways = netifaces.gateways()
-    defaults = gateways.get('default')
+    defaults = gateways.get("default")
     if not defaults:
         return
 
@@ -142,7 +178,7 @@ def get_default_gateway_ip():
             return
         addresses = netifaces.ifaddresses(gw_info[1]).get(family)
         if addresses:
-            return addresses[0]['addr']
+            return addresses[0]["addr"]
 
     return default_ip(netifaces.AF_INET) or default_ip(netifaces.AF_INET6)
 
@@ -151,13 +187,13 @@ def get_default_url():
     """Return the best default URL for MAAS."""
     gateway_ip = get_default_gateway_ip()
     if not gateway_ip:
-        gateway_ip = 'localhost'
-    return 'http://%s:5240/MAAS' % gateway_ip
+        gateway_ip = "localhost"
+    return "http://%s:5240/MAAS" % gateway_ip
 
 
 def get_mode_filepath():
     """Return the path to the 'snap_mode' file."""
-    return os.path.join(os.environ['SNAP_COMMON'], 'snap_mode')
+    return os.path.join(os.environ["SNAP_COMMON"], "snap_mode")
 
 
 def get_current_mode():
@@ -172,7 +208,7 @@ def get_current_mode():
 
 def get_base_db_dir():
     """Return the base dir for postgres."""
-    return os.path.join(os.environ['SNAP_COMMON'], 'postgres')
+    return os.path.join(os.environ["SNAP_COMMON"], "postgres")
 
 
 def set_current_mode(mode):
@@ -183,34 +219,38 @@ def set_current_mode(mode):
 
 def render_supervisord(mode):
     """Render the 'supervisord.conf' based on the mode."""
-    conf_vars = {
-        'postgresql': False,
-        'regiond': False,
-        'rackd': False,
-    }
-    if mode == 'all':
-        conf_vars['postgresql'] = True
-    if mode in ['all', 'region+rack', 'region']:
-        conf_vars['regiond'] = True
-    if mode in ['all', 'region+rack', 'rack']:
-        conf_vars['rackd'] = True
+    conf_vars = {"postgresql": False, "regiond": False, "rackd": False}
+    if mode == "all":
+        conf_vars["postgresql"] = True
+    if mode in ["all", "region+rack", "region"]:
+        conf_vars["regiond"] = True
+    if mode in ["all", "region+rack", "rack"]:
+        conf_vars["rackd"] = True
     template = tempita.Template.from_filename(
         os.path.join(
-            os.environ['SNAP'], 'usr', 'share', 'maas',
-            'supervisord.conf.template'), encoding="UTF-8")
+            os.environ["SNAP"],
+            "usr",
+            "share",
+            "maas",
+            "supervisord.conf.template",
+        ),
+        encoding="UTF-8",
+    )
     rendered = template.substitute(conf_vars)
     conf_path = os.path.join(
-        os.environ['SNAP_DATA'], 'supervisord', 'supervisord.conf')
-    with open(conf_path, 'w') as fp:
+        os.environ["SNAP_DATA"], "supervisord", "supervisord.conf"
+    )
+    with open(conf_path, "w") as fp:
         fp.write(rendered)
 
 
 def get_supervisord_pid():
     """Get the running supervisord pid."""
     pid_path = os.path.join(
-        os.environ['SNAP_DATA'], 'supervisord', 'supervisord.pid')
+        os.environ["SNAP_DATA"], "supervisord", "supervisord.pid"
+    )
     if os.path.exists(pid_path):
-        with open(pid_path, 'r') as fp:
+        with open(pid_path, "r") as fp:
             return int(fp.read().strip())
     else:
         return None
@@ -227,14 +267,17 @@ def sighup_supervisord():
     # Wait for supervisord to be running successfully.
     time.sleep(0.5)
     while True:
-        process = subprocess.Popen([
-            os.path.join(
-                os.environ['SNAP'], 'bin', 'run-supervisorctl'),
-            'status'], stdout=subprocess.PIPE)
+        process = subprocess.Popen(
+            [
+                os.path.join(os.environ["SNAP"], "bin", "run-supervisorctl"),
+                "status",
+            ],
+            stdout=subprocess.PIPE,
+        )
         process.wait()
-        output = process.stdout.read().decode('utf-8')
+        output = process.stdout.read().decode("utf-8")
         # Error message is printed until supervisord is running correctly.
-        if 'error:' in output:
+        if "error:" in output:
             time.sleep(1)
         else:
             break
@@ -242,7 +285,7 @@ def sighup_supervisord():
 
 def print_config_value(config, key, hidden=False):
     """Print the configuration value to stdout."""
-    template = '{key}=(hidden)' if hidden else '{key}={value}'
+    template = "{key}=(hidden)" if hidden else "{key}={value}"
     print_msg(template.format(key=key, value=config.get(key)))
 
 
@@ -250,9 +293,10 @@ def get_rpc_secret():
     """Get the current RPC secret."""
     secret = None
     secret_path = os.path.join(
-        os.environ['SNAP_DATA'], 'var', 'lib', 'maas', 'secret')
+        os.environ["SNAP_DATA"], "var", "lib", "maas", "secret"
+    )
     if os.path.exists(secret_path):
-        with open(secret_path, 'r') as fp:
+        with open(secret_path, "r") as fp:
             secret = fp.read().strip()
     if secret:
         return secret
@@ -263,10 +307,11 @@ def get_rpc_secret():
 def set_rpc_secret(secret):
     """Write/delete the RPC secret."""
     secret_path = os.path.join(
-        os.environ['SNAP_DATA'], 'var', 'lib', 'maas', 'secret')
+        os.environ["SNAP_DATA"], "var", "lib", "maas", "secret"
+    )
     if secret:
         # Write the secret.
-        with open(secret_path, 'w') as fp:
+        with open(secret_path, "w") as fp:
             fp.write(secret)
     else:
         # Delete the secret.
@@ -275,37 +320,39 @@ def set_rpc_secret(secret):
 
 
 def print_config(
-        parsable=False, show_database_password=False, show_secret=False):
+    parsable=False, show_database_password=False, show_secret=False
+):
     """Print the config output."""
     current_mode = get_current_mode()
     config = MAASConfiguration().get()
     if parsable:
-        print_msg('mode=%s' % current_mode)
+        print_msg("mode=%s" % current_mode)
     else:
-        print_msg('Mode: %s' % current_mode)
-    if current_mode != 'none':
+        print_msg("Mode: %s" % current_mode)
+    if current_mode != "none":
         if not parsable:
-            print_msg('Settings:')
-        print_config_value(config, 'maas_url')
-        if current_mode in ['region+rack', 'region']:
-            print_config_value(config, 'database_host')
-            print_config_value(config, 'database_port')
-            print_config_value(config, 'database_name')
-            print_config_value(config, 'database_user')
+            print_msg("Settings:")
+        print_config_value(config, "maas_url")
+        if current_mode in ["region+rack", "region"]:
+            print_config_value(config, "database_host")
+            print_config_value(config, "database_port")
+            print_config_value(config, "database_name")
+            print_config_value(config, "database_user")
             print_config_value(
-                config, 'database_pass', hidden=(not show_database_password))
-        if current_mode == 'rack':
+                config, "database_pass", hidden=(not show_database_password)
+            )
+        if current_mode == "rack":
             secret = "(hidden)"
             if show_secret:
                 secret = get_rpc_secret()
-            print_msg('secret=%s' % secret)
-        if current_mode != 'rack':
-            if 'num_workers' in config:
-                print_config_value(config, 'num_workers')
-            if 'debug' in config:
-                print_config_value(config, 'debug')
-            if 'debug_queries' in config:
-                print_config_value(config, 'debug_queries')
+            print_msg("secret=%s" % secret)
+        if current_mode != "rack":
+            if "num_workers" in config:
+                print_config_value(config, "num_workers")
+            if "debug" in config:
+                print_config_value(config, "debug")
+            if "debug_queries" in config:
+                print_config_value(config, "debug_queries")
 
 
 def change_user(username, effective=False):
@@ -326,7 +373,7 @@ def privileges_dropped():
     """Context manager to run things as non-root user."""
     change_user(NON_ROOT_USER, effective=True)
     yield
-    change_user('root', effective=True)
+    change_user("root", effective=True)
 
 
 def run_with_drop_privileges(cmd, *args, **kwargs):
@@ -338,6 +385,7 @@ def run_with_drop_privileges(cmd, *args, **kwargs):
         cmd(*args, **kwargs)
         sys.exit(0)
     else:
+
         def signal_handler(signal, frame):
             with privileges_dropped():
                 os.kill(pid, signal)
@@ -353,11 +401,20 @@ def run_with_drop_privileges(cmd, *args, **kwargs):
 
 def run_sql(sql):
     """Run sql command through `psql`."""
-    subprocess.check_output([
-        os.path.join(os.environ['SNAP'], 'bin', 'psql'),
-        '-h', os.path.join(get_base_db_dir(), 'sockets'),
-        '-d', 'postgres', '-U', 'postgres', '-c', sql],
-        stderr=subprocess.STDOUT)
+    subprocess.check_output(
+        [
+            os.path.join(os.environ["SNAP"], "bin", "psql"),
+            "-h",
+            os.path.join(get_base_db_dir(), "sockets"),
+            "-d",
+            "postgres",
+            "-U",
+            "postgres",
+            "-c",
+            sql,
+        ],
+        stderr=subprocess.STDOUT,
+    )
 
 
 def wait_for_postgresql(timeout=60):
@@ -365,12 +422,13 @@ def wait_for_postgresql(timeout=60):
     end_time = time.time() + timeout
     while True:
         try:
-            run_sql('SELECT now();')
+            run_sql("SELECT now();")
         except subprocess.CalledProcessError:
             if time.time() > end_time:
                 raise TimeoutError(
-                    "Unable to connect to postgresql after %s seconds." % (
-                        timeout))
+                    "Unable to connect to postgresql after %s seconds."
+                    % timeout
+                )
             else:
                 time.sleep(1)
         else:
@@ -380,23 +438,37 @@ def wait_for_postgresql(timeout=60):
 def start_postgres():
     """Start postgresql."""
     base_db_dir = get_base_db_dir()
-    subprocess.check_output([
-        os.path.join(os.environ['SNAP'], 'bin', 'pg_ctl'),
-        'start', '-w', '-D', os.path.join(base_db_dir, 'data'),
-        '-l',
-        os.path.join(
-            os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log'),
-        '-o', '-k "%s" -h ""' % os.path.join(base_db_dir, 'sockets')],
-        stderr=subprocess.STDOUT)
+    subprocess.check_output(
+        [
+            os.path.join(os.environ["SNAP"], "bin", "pg_ctl"),
+            "start",
+            "-w",
+            "-D",
+            os.path.join(base_db_dir, "data"),
+            "-l",
+            os.path.join(
+                os.environ["SNAP_COMMON"], "log", "postgresql-init.log"
+            ),
+            "-o",
+            '-k "%s" -h ""' % os.path.join(base_db_dir, "sockets"),
+        ],
+        stderr=subprocess.STDOUT,
+    )
     wait_for_postgresql()
 
 
 def stop_postgres():
     """Stop postgresql."""
-    subprocess.check_output([
-        os.path.join(os.environ['SNAP'], 'bin', 'pg_ctl'),
-        'stop', '-w', '-D', os.path.join(get_base_db_dir(), 'data')],
-        stderr=subprocess.STDOUT)
+    subprocess.check_output(
+        [
+            os.path.join(os.environ["SNAP"], "bin", "pg_ctl"),
+            "stop",
+            "-w",
+            "-D",
+            os.path.join(get_base_db_dir(), "data"),
+        ],
+        stderr=subprocess.STDOUT,
+    )
 
 
 @contextmanager
@@ -409,40 +481,50 @@ def with_postgresql():
 
 def create_db(config):
     """Create the database and user."""
-    run_sql("CREATE USER %s WITH PASSWORD '%s';" % (
-        config['database_user'], config['database_pass']))
-    run_sql("CREATE DATABASE %s;" % config['database_name'])
-    run_sql("GRANT ALL PRIVILEGES ON DATABASE %s to %s;" % (
-        config['database_name'], config['database_user']))
+    run_sql(
+        "CREATE USER %s WITH PASSWORD '%s';"
+        % (config["database_user"], config["database_pass"])
+    )
+    run_sql("CREATE DATABASE %s;" % config["database_name"])
+    run_sql(
+        "GRANT ALL PRIVILEGES ON DATABASE %s to %s;"
+        % (config["database_name"], config["database_user"])
+    )
 
 
 def migrate_db(capture=False):
     """Migrate the database."""
     if capture:
-        process = subprocess.Popen([
-            os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
-            'dbupgrade'],
+        process = subprocess.Popen(
+            [
+                os.path.join(os.environ["SNAP"], "bin", "maas-region"),
+                "dbupgrade",
+            ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
+            stderr=subprocess.STDOUT,
+        )
         ret = process.wait()
-        output = process.stdout.read().decode('utf-8')
+        output = process.stdout.read().decode("utf-8")
         if ret != 0:
             clear_line()
-            print_msg('Failed to perfom migrations:')
+            print_msg("Failed to perfom migrations:")
             print_msg(output)
-            print_msg('')
+            print_msg("")
             sys.exit(ret)
     else:
-        subprocess.check_call([
-            os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
-            'dbupgrade'])
+        subprocess.check_call(
+            [
+                os.path.join(os.environ["SNAP"], "bin", "maas-region"),
+                "dbupgrade",
+            ]
+        )
 
 
 def init_db():
     """Initialize the database."""
     config_data = MAASConfiguration().get()
     base_db_dir = get_base_db_dir()
-    db_path = os.path.join(base_db_dir, 'data')
+    db_path = os.path.join(base_db_dir, "data")
     if not os.path.exists(base_db_dir):
         os.mkdir(base_db_dir)
         # allow both root and non-root user to create/delete directories under
@@ -454,24 +536,34 @@ def init_db():
     os.mkdir(db_path)
     shutil.chown(db_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
     log_path = os.path.join(
-        os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log')
+        os.environ["SNAP_COMMON"], "log", "postgresql-init.log"
+    )
     if not os.path.exists(log_path):
-        open(log_path, 'a').close()
+        open(log_path, "a").close()
     shutil.chown(log_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
-    socket_path = os.path.join(get_base_db_dir(), 'sockets')
+    socket_path = os.path.join(get_base_db_dir(), "sockets")
     if not os.path.exists(socket_path):
         os.mkdir(socket_path)
         os.chmod(socket_path, 0o775)
         shutil.chown(socket_path, user=NON_ROOT_USER)  # keep root as group
 
     def _init_db():
-        subprocess.check_output([
-            os.path.join(os.environ['SNAP'], 'bin', 'initdb'),
-            '-D', os.path.join(get_base_db_dir(), 'data'),
-            '-U', 'postgres', '-E', 'UTF8', '--locale=C'],
-            stderr=subprocess.STDOUT)
+        subprocess.check_output(
+            [
+                os.path.join(os.environ["SNAP"], "bin", "initdb"),
+                "-D",
+                os.path.join(get_base_db_dir(), "data"),
+                "-U",
+                "postgres",
+                "-E",
+                "UTF8",
+                "--locale=C",
+            ],
+            stderr=subprocess.STDOUT,
+        )
         with with_postgresql():
             create_db(config_data)
+
     run_with_drop_privileges(_init_db)
 
 
@@ -479,7 +571,8 @@ def clear_line():
     """Resets the current line when in a terminal."""
     if sys.stdout.isatty():
         print_msg(
-            '\r' + ' ' * int(os.environ.get('COLUMNS', 0)), newline=False)
+            "\r" + " " * int(os.environ.get("COLUMNS", 0)), newline=False
+        )
 
 
 def perform_work(msg, cmd, *args, **kwargs):
@@ -494,29 +587,28 @@ def perform_work(msg, cmd, *args, **kwargs):
         return cmd(*args, **kwargs)
 
     spinner = {
-        0: '/',
-        1: '-',
-        2: '\\',
-        3: '|',
-        4: '/',
-        5: '-',
-        6: '\\',
-        7: '|',
+        0: "/",
+        1: "-",
+        2: "\\",
+        3: "|",
+        4: "/",
+        5: "-",
+        6: "\\",
+        7: "|",
     }
 
     def _write_msg(evnt):
         idx = 0
         while not evnt.is_set():
             # Print the message with a spinner until the work is complete.
-            print_msg(
-                "\r[%s] %s" % (spinner[idx], msg), newline=False)
+            print_msg("\r[%s] %s" % (spinner[idx], msg), newline=False)
             idx += 1
             if idx == 8:
                 idx = 0
             time.sleep(0.25)
         # Clear the line so previous message is not show if the next message
         # is not as long as this message.
-        print_msg('\r' + ' ' * (len(msg) + 4), newline=False)
+        print_msg("\r" + " " * (len(msg) + 4), newline=False)
 
     # Spawn a thread to print the message, while performing the work in the
     # current execution thread.
@@ -552,8 +644,9 @@ def prompt_for_maas_url():
             url = default_url
         if url == "help":
             print_msg(
-                'URL that MAAS should use for communicate from the nodes '
-                'to MAAS and other controllers of MAAS.')
+                "URL that MAAS should use for communicate from the nodes "
+                "to MAAS and other controllers of MAAS."
+            )
     return url
 
 
@@ -577,24 +670,33 @@ class cmd_init(SnappyCommand):
     def __init__(self, parser):
         super(cmd_init, self).__init__(parser)
         for argument, kwargs in ARGUMENTS.items():
-            parser.add_argument('--%s' % argument, **kwargs)
+            parser.add_argument("--%s" % argument, **kwargs)
         parser.add_argument(
-            '--force', action='store_true',
+            "--force",
+            action="store_true",
             help=(
                 "Skip confirmation questions when initialization has "
-                "already been performed."))
+                "already been performed."
+            ),
+        )
         parser.add_argument(
-            '--enable-candid', default=False, action="store_true",
-            help=("Enable configuring the use of an external Candid server. "
-                  "This feature is currently experimental. "
-                  "If this isn't enabled, all --candid-* arguments "
-                  "will be ignored."))
+            "--enable-candid",
+            default=False,
+            action="store_true",
+            help=(
+                "Enable configuring the use of an external Candid server. "
+                "This feature is currently experimental. "
+                "If this isn't enabled, all --candid-* arguments "
+                "will be ignored."
+            ),
+        )
         add_candid_options(parser)
         add_rbac_options(parser)
         parser.add_argument(
-            '--skip-admin', action='store_true',
-            help=(
-                "Skip the admin creation when initializing in 'all' mode."))
+            "--skip-admin",
+            action="store_true",
+            help="Skip the admin creation when initializing in 'all' mode.",
+        )
         add_create_admin_options(parser)
 
     def handle(self, options):
@@ -603,106 +705,127 @@ class cmd_init(SnappyCommand):
 
         mode = options.mode
         current_mode = get_current_mode()
-        if current_mode != 'none':
+        if current_mode != "none":
             if not options.force:
-                init_text = 'initialize again'
-                if mode == 'none':
-                    init_text = 'de-initialize'
+                init_text = "initialize again"
+                if mode == "none":
+                    init_text = "de-initialize"
                 else:
-                    print_msg('Controller has already been initialized.')
+                    print_msg("Controller has already been initialized.")
                 initialize = prompt_for_choices(
-                    'Are you sure you want to %s '
-                    '(yes/no) [default=no]? ' % init_text,
-                    ['yes', 'no'], default='no')
-                if initialize == 'no':
+                    "Are you sure you want to %s "
+                    "(yes/no) [default=no]? " % init_text,
+                    ["yes", "no"],
+                    default="no",
+                )
+                if initialize == "no":
                     sys.exit(0)
 
         if not mode:
             mode = prompt_for_choices(
                 "Mode ({choices}) [default={default}]? ".format(
-                    choices='/'.join(ARGUMENTS['mode']['choices']),
-                    default=DEFAULT_OPERATION_MODE),
-                ARGUMENTS['mode']['choices'],
-                default=DEFAULT_OPERATION_MODE, help_text=OPERATION_MODES)
-        if current_mode == 'all' and mode != 'all' and not options.force:
+                    choices="/".join(ARGUMENTS["mode"]["choices"]),
+                    default=DEFAULT_OPERATION_MODE,
+                ),
+                ARGUMENTS["mode"]["choices"],
+                default=DEFAULT_OPERATION_MODE,
+                help_text=OPERATION_MODES,
+            )
+        if current_mode == "all" and mode != "all" and not options.force:
             print_msg(
-                'This will disconnect your MAAS from the running database.')
+                "This will disconnect your MAAS from the running database."
+            )
             disconnect = prompt_for_choices(
-                'Are you sure you want to disconnect the database '
-                '(yes/no) [default=no]? ', ['yes', 'no'], default='no')
-            if disconnect == 'no':
+                "Are you sure you want to disconnect the database "
+                "(yes/no) [default=no]? ",
+                ["yes", "no"],
+                default="no",
+            )
+            if disconnect == "no":
                 return 0
-        elif current_mode == 'all' and mode == 'all' and not options.force:
+        elif current_mode == "all" and mode == "all" and not options.force:
             print_msg(
-                'This will re-initialize your entire database and all '
-                'current data will be lost.')
+                "This will re-initialize your entire database and all "
+                "current data will be lost."
+            )
             reinit_db = prompt_for_choices(
-                'Are you sure you want to re-initialize the database '
-                '(yes/no) [default=no]? ', ['yes', 'no'], default='no')
-            if reinit_db == 'no':
+                "Are you sure you want to re-initialize the database "
+                "(yes/no) [default=no]? ",
+                ["yes", "no"],
+                default="no",
+            )
+            if reinit_db == "no":
                 return 0
 
         maas_url = options.maas_url
-        if mode != 'none' and not maas_url:
+        if mode != "none" and not maas_url:
             maas_url = prompt_for_maas_url()
         database_host = database_name = None
         database_user = database_pass = None
         rpc_secret = None
-        if mode == 'all':
-            database_host = os.path.join(get_base_db_dir(), 'sockets')
-            database_name = 'maasdb'
-            database_user = 'maas'
-            database_pass = ''.join(
+        if mode == "all":
+            database_host = os.path.join(get_base_db_dir(), "sockets")
+            database_name = "maasdb"
+            database_user = "maas"
+            database_pass = "".join(
                 random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(10))
-        if mode in ['region', 'region+rack']:
+                for _ in range(10)
+            )
+        if mode in ["region", "region+rack"]:
             database_host = options.database_host
             if not database_host:
                 database_host = required_prompt(
                     "Database host: ",
-                    help_text=ARGUMENTS['database-host']['help'])
+                    help_text=ARGUMENTS["database-host"]["help"],
+                )
             database_name = options.database_name
             if not database_name:
                 database_name = required_prompt(
                     "Database name: ",
-                    help_text=ARGUMENTS['database-name']['help'])
+                    help_text=ARGUMENTS["database-name"]["help"],
+                )
             database_user = options.database_user
             if not database_user:
                 database_user = required_prompt(
                     "Database user: ",
-                    help_text=ARGUMENTS['database-user']['help'])
+                    help_text=ARGUMENTS["database-user"]["help"],
+                )
             database_pass = options.database_pass
             if not database_pass:
                 database_pass = required_prompt(
                     "Database password: ",
-                    help_text=ARGUMENTS['database-pass']['help'])
-        if mode == 'rack':
+                    help_text=ARGUMENTS["database-pass"]["help"],
+                )
+        if mode == "rack":
             rpc_secret = options.secret
             if not rpc_secret:
                 rpc_secret = required_prompt(
-                    "Secret: ",
-                    help_text=ARGUMENTS['secret']['help'])
+                    "Secret: ", help_text=ARGUMENTS["secret"]["help"]
+                )
 
         # Stop all services if in another mode.
-        if current_mode != 'none':
+        if current_mode != "none":
+
             def stop_services():
-                render_supervisord('none')
+                render_supervisord("none")
                 sighup_supervisord()
-            perform_work('Stopping services', stop_services)
+
+            perform_work("Stopping services", stop_services)
 
         # Configure the settings.
         settings = {
-            'maas_url': maas_url,
-            'database_host': database_host,
-            'database_name': database_name,
-            'database_user': database_user,
-            'database_pass': database_pass}
+            "maas_url": maas_url,
+            "database_host": database_host,
+            "database_name": database_name,
+            "database_user": database_user,
+            "database_pass": database_pass,
+        }
 
         # Add the port to the configuration if exists. By default
         # MAAS handles picking the port automatically in the backend
         # if none provided.
         if options.database_port:
-            settings['database_port'] = options.database_port
+            settings["database_port"] = options.database_port
 
         MAASConfiguration().update(settings)
         set_rpc_secret(rpc_secret)
@@ -712,32 +835,38 @@ class cmd_init(SnappyCommand):
 
     def _finalize_init(self, mode, options):
         # When in 'all' mode configure the database.
-        if mode == 'all':
-            perform_work('Initializing database', init_db)
+        if mode == "all":
+            perform_work("Initializing database", init_db)
 
         # Configure mode.
         def start_services():
             render_supervisord(mode)
             set_current_mode(mode)
             sighup_supervisord()
-        perform_work(
-            'Starting services' if mode != 'none' else 'Stopping services',
-            start_services)
 
-        if mode == 'all':
+        perform_work(
+            "Starting services" if mode != "none" else "Stopping services",
+            start_services,
+        )
+
+        if mode == "all":
             # When in 'all' mode configure the database and create admin user.
-            perform_work('Waiting for postgresql', wait_for_postgresql)
+            perform_work("Waiting for postgresql", wait_for_postgresql)
             perform_work(
                 "Performing database migrations",
-                migrate_db, capture=sys.stdout.isatty())
+                migrate_db,
+                capture=sys.stdout.isatty(),
+            )
             clear_line()
             init_maas(options)
-        elif mode in ['region', 'region+rack']:
+        elif mode in ["region", "region+rack"]:
             # When in 'region' or 'region+rack' the migrations for the database
             # must be at the same level as this controller.
             perform_work(
                 "Performing database migrations",
-                migrate_db, capture=sys.stdout.isatty())
+                migrate_db,
+                capture=sys.stdout.isatty(),
+            )
         else:
             clear_line()
 
@@ -747,87 +876,94 @@ class cmd_config(SnappyCommand):
 
     # Required options based on mode.
     required_options = {
-        'all': ['maas_url'],
-        'region+rack': [
-            'maas_url',
-            'database_host',
-            'database_name',
-            'database_user',
-            'database_pass',
-            ],
-        'region': [
-            'maas_url',
-            'database_host',
-            'database_name',
-            'database_user',
-            'database_pass',
-            ],
-        'rack': [
-            'maas_url',
-            'secret',
-            ],
-        'none': [],
+        "all": ["maas_url"],
+        "region+rack": [
+            "maas_url",
+            "database_host",
+            "database_name",
+            "database_user",
+            "database_pass",
+        ],
+        "region": [
+            "maas_url",
+            "database_host",
+            "database_name",
+            "database_user",
+            "database_pass",
+        ],
+        "rack": ["maas_url", "secret"],
+        "none": [],
     }
 
     # Required flags that are in .conf.
     setting_flags = (
-        'maas_url',
-        'database_host', 'database_name',
-        'database_user', 'database_pass')
+        "maas_url",
+        "database_host",
+        "database_name",
+        "database_user",
+        "database_pass",
+    )
 
     # Optional flags that are in .conf.
     optional_flags = {
-        'num_workers': {
-            'type': 'int',
-            'config': 'num_workers',
+        "num_workers": {"type": "int", "config": "num_workers"},
+        "enable_debug": {
+            "type": "store_true",
+            "set_value": True,
+            "config": "debug",
         },
-        'enable_debug': {
-            'type': 'store_true',
-            'set_value': True,
-            'config': 'debug',
+        "disable_debug": {
+            "type": "store_true",
+            "set_value": False,
+            "config": "debug",
         },
-        'disable_debug': {
-            'type': 'store_true',
-            'set_value': False,
-            'config': 'debug',
+        "enable_debug_queries": {
+            "type": "store_true",
+            "set_value": True,
+            "config": "debug_queries",
         },
-        'enable_debug_queries': {
-            'type': 'store_true',
-            'set_value': True,
-            'config': 'debug_queries',
-        },
-        'disable_debug_queries': {
-            'type': 'store_true',
-            'set_value': False,
-            'config': 'debug_queries',
+        "disable_debug_queries": {
+            "type": "store_true",
+            "set_value": False,
+            "config": "debug_queries",
         },
     }
 
     def __init__(self, parser):
         super(cmd_config, self).__init__(parser)
         parser.add_argument(
-            '--show', action='store_true',
+            "--show",
+            action="store_true",
             help=(
                 "Show the current configuration. Default when no parameters "
-                "are provided."))
+                "are provided."
+            ),
+        )
         parser.add_argument(
-            '--show-database-password', action='store_true',
-            help="Show the hidden database password.")
+            "--show-database-password",
+            action="store_true",
+            help="Show the hidden database password.",
+        )
         parser.add_argument(
-            '--show-secret', action='store_true',
-            help="Show the hidden secret.")
+            "--show-secret",
+            action="store_true",
+            help="Show the hidden secret.",
+        )
         for argument, kwargs in ARGUMENTS.items():
-            parser.add_argument('--%s' % argument, **kwargs)
+            parser.add_argument("--%s" % argument, **kwargs)
         parser.add_argument(
-            '--force', action='store_true',
-            help=(
-                "Force leaving 'all' mode and cause loss of database."))
+            "--force",
+            action="store_true",
+            help="Force leaving 'all' mode and cause loss of database.",
+        )
         parser.add_argument(
-            '--parsable', action='store_true',
-            help=(
-                "Output the current configuration in a parsable format."))
+            "--parsable",
+            action="store_true",
+            help="Output the current configuration in a parsable format.",
+        )
         parser.add_argument(
-            '--render', action='store_true', help=argparse.SUPPRESS)
+            "--render", action="store_true", help=argparse.SUPPRESS
+        )
 
     def _validate_mode(self, options):
         """Validate the parameters are correct for changing the mode."""
@@ -838,12 +974,12 @@ class cmd_config(SnappyCommand):
                 missing_flags = []
                 for flag in self.required_options[options.mode]:
                     if not getattr(options, flag):
-                        missing_flags.append(
-                            '--%s' % flag.replace('_', '-'))
+                        missing_flags.append("--%s" % flag.replace("_", "-"))
                 if len(missing_flags) > 0:
                     print_msg(
-                        "Changing mode to '%s' requires parameters: %s" % (
-                            options.mode, ', '.join(missing_flags)))
+                        "Changing mode to '%s' requires parameters: %s"
+                        % (options.mode, ", ".join(missing_flags))
+                    )
                     sys.exit(1)
 
     def _validate_flags(self, options, running_mode):
@@ -851,14 +987,16 @@ class cmd_config(SnappyCommand):
         Validate the flags are correct for the current mode or the new mode.
         """
         invalid_flags = []
-        for flag in self.setting_flags + ('secret', ):
-            if (flag not in self.required_options[running_mode] and
-                    getattr(options, flag)):
-                invalid_flags.append('--%s' % flag.replace('_', '-'))
+        for flag in self.setting_flags + ("secret",):
+            if flag not in self.required_options[running_mode] and getattr(
+                options, flag
+            ):
+                invalid_flags.append("--%s" % flag.replace("_", "-"))
         if len(invalid_flags) > 0:
             print_msg(
-                "Following flags are not supported in '%s' mode: %s" % (
-                    running_mode, ', '.join(invalid_flags)))
+                "Following flags are not supported in '%s' mode: %s"
+                % (running_mode, ", ".join(invalid_flags))
+            )
             sys.exit(1)
 
     def handle(self, options):
@@ -878,18 +1016,24 @@ class cmd_config(SnappyCommand):
         in_config_mode = options.show
         if not in_config_mode:
             in_config_mode = not any(
-                (getattr(options, flag) is not None and
-                 getattr(options, flag) is not False)
+                (
+                    getattr(options, flag) is not None
+                    and getattr(options, flag) is not False
+                )
                 for flag in (
-                    ('mode', 'secret') + self.setting_flags +
-                    tuple(self.optional_flags.keys()))
+                    ("mode", "secret")
+                    + self.setting_flags
+                    + tuple(self.optional_flags.keys())
+                )
             )
 
         # Config mode returns the current config of the snap.
         if in_config_mode:
             return print_config(
                 options.parsable,
-                options.show_database_password, options.show_secret)
+                options.show_database_password,
+                options.show_secret,
+            )
         else:
             restart_required = False
             changed_to_all = False
@@ -904,43 +1048,49 @@ class cmd_config(SnappyCommand):
 
             # Changing the mode to from all requires --force.
             if options.mode is not None:
-                if current_mode == 'all' and options.mode != 'all':
+                if current_mode == "all" and options.mode != "all":
                     if not options.force:
                         print_msg(
                             "Changing mode from 'all' to '%s' will "
                             "disconnect the database and all data will "
                             "be lost. Use '--force' if your sure you want "
-                            "to do this." % options.mode)
+                            "to do this." % options.mode
+                        )
                         sys.exit(1)
-                elif current_mode != 'all' and options.mode == 'all':
+                elif current_mode != "all" and options.mode == "all":
                     # Changing mode to all requires services to be stopped and
                     # a new database to be initialized.
                     changed_to_all = True
 
                     def stop_services():
-                        render_supervisord('none')
+                        render_supervisord("none")
                         sighup_supervisord()
-                    perform_work('Stopping services', stop_services)
+
+                    perform_work("Stopping services", stop_services)
 
                     # Configure the new database settings.
                     options.database_host = os.path.join(
-                        get_base_db_dir(), 'sockets')
-                    options.database_name = 'maasdb'
-                    options.database_user = 'maas'
-                    options.database_pass = ''.join(
-                        random.choice(
-                            string.ascii_uppercase + string.digits)
-                        for _ in range(10))
+                        get_base_db_dir(), "sockets"
+                    )
+                    options.database_name = "maasdb"
+                    options.database_user = "maas"
+                    options.database_pass = "".join(
+                        random.choice(string.ascii_uppercase + string.digits)
+                        for _ in range(10)
+                    )
                     MAASConfiguration().write_to_file(
-                        {'maas_url': options.maas_url,
-                         'database_host': options.database_host,
-                         'database_name': options.database_name,
-                         'database_user': options.database_user,
-                         'database_pass': options.database_pass},
-                        'regiond.conf')
+                        {
+                            "maas_url": options.maas_url,
+                            "database_host": options.database_host,
+                            "database_name": options.database_name,
+                            "database_user": options.database_user,
+                            "database_pass": options.database_pass,
+                        },
+                        "regiond.conf",
+                    )
 
                     # Initialize the database before starting the services.
-                    perform_work('Initializing database', init_db)
+                    perform_work("Initializing database", init_db)
                 if options.mode != current_mode:
                     render_supervisord(options.mode)
                     set_current_mode(options.mode)
@@ -960,8 +1110,9 @@ class cmd_config(SnappyCommand):
                 for flag in self.setting_flags:
                     flag_value = getattr(options, flag)
                     should_update = (
-                        flag_value is not None and
-                        current_config.get(flag) != flag_value)
+                        flag_value is not None
+                        and current_config.get(flag) != flag_value
+                    )
                     if should_update:
                         config_manager.update({flag: flag_value})
                         restart_required = True
@@ -974,17 +1125,18 @@ class cmd_config(SnappyCommand):
             # Update any optional settings.
             for flag, flag_info in self.optional_flags.items():
                 flag_value = getattr(options, flag)
-                if flag_info['type'] != 'store_true':
-                    flag_key = flag_info['config']
+                if flag_info["type"] != "store_true":
+                    flag_key = flag_info["config"]
                     should_update = (
-                        flag_value is not None and
-                        current_config.get(flag_key) != flag_value)
+                        flag_value is not None
+                        and current_config.get(flag_key) != flag_value
+                    )
                     if should_update:
                         config_manager.update({flag_key: flag_value})
                         restart_required = True
                 elif flag_value:
-                    flag_key = flag_info['config']
-                    flag_value = flag_info['set_value']
+                    flag_key = flag_info["config"]
+                    flag_value = flag_info["set_value"]
                     if current_config.get(flag_key) != flag_value:
                         config_manager.update({flag_key: flag_value})
                         restart_required = True
@@ -992,17 +1144,21 @@ class cmd_config(SnappyCommand):
             # Restart the supervisor as its required.
             if restart_required:
                 perform_work(
-                    'Restarting services'
-                    if running_mode != 'none' else 'Stopping services',
-                    sighup_supervisord)
+                    "Restarting services"
+                    if running_mode != "none"
+                    else "Stopping services",
+                    sighup_supervisord,
+                )
                 clear_line()
 
             # Perform migrations when switching to all.
             if changed_to_all:
-                perform_work('Waiting for postgresql', wait_for_postgresql)
+                perform_work("Waiting for postgresql", wait_for_postgresql)
                 perform_work(
                     "Performing database migrations",
-                    migrate_db, capture=sys.stdout.isatty())
+                    migrate_db,
+                    capture=sys.stdout.isatty(),
+                )
                 clear_line()
 
 
@@ -1010,23 +1166,29 @@ class cmd_status(SnappyCommand):
     """Status of controller services."""
 
     def handle(self, options):
-        if get_current_mode() == 'none':
-            print_msg('MAAS is not configured')
+        if get_current_mode() == "none":
+            print_msg("MAAS is not configured")
             sys.exit(1)
         else:
-            process = subprocess.Popen([
-                os.path.join(
-                    os.environ['SNAP'], 'bin', 'run-supervisorctl'),
-                'status'], stdout=subprocess.PIPE)
+            process = subprocess.Popen(
+                [
+                    os.path.join(
+                        os.environ["SNAP"], "bin", "run-supervisorctl"
+                    ),
+                    "status",
+                ],
+                stdout=subprocess.PIPE,
+            )
             ret = process.wait()
-            output = process.stdout.read().decode('utf-8')
+            output = process.stdout.read().decode("utf-8")
             if ret == 0:
                 print_msg(output, newline=False)
             else:
-                if 'error:' in output:
+                if "error:" in output:
                     print_msg(
-                        'MAAS supervisor is currently restarting. '
-                        'Please wait and try again.')
+                        "MAAS supervisor is currently restarting. "
+                        "Please wait and try again."
+                    )
                     sys.exit(-1)
                 else:
                     print_msg(output, newline=False)
@@ -1042,7 +1204,8 @@ class cmd_migrate(SnappyCommand):
         # is in 'all' mode. Postgresql is not running when the migrate is
         # called.
         parser.add_argument(
-            '--configure', action='store_true', help=argparse.SUPPRESS)
+            "--configure", action="store_true", help=argparse.SUPPRESS
+        )
 
     def handle(self, options):
         if os.getuid() != 0:
@@ -1052,23 +1215,24 @@ class cmd_migrate(SnappyCommand):
         # the database when running in all mode.
         if options.configure:
             current_mode = get_current_mode()
-            if current_mode == 'all':
+            if current_mode == "all":
                 wait_for_postgresql()
                 sys.exit(migrate_db())
-            elif current_mode in ['region', 'region+rack']:
+            elif current_mode in ["region", "region+rack"]:
                 sys.exit(migrate_db())
             else:
                 # In 'rack' or 'none' mode, nothing to do.
                 sys.exit(0)
 
         mode = get_current_mode()
-        if mode == 'none':
-            print_msg('MAAS is not configured')
+        if mode == "none":
+            print_msg("MAAS is not configured")
             sys.exit(1)
-        elif mode == 'rack':
+        elif mode == "rack":
             print_msg(
                 "Mode 'rack' is not connected to a database. "
-                "No migrations to perform.")
+                "No migrations to perform."
+            )
             sys.exit(1)
         else:
             sys.exit(migrate_db())

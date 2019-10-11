@@ -4,12 +4,12 @@
 """Custom test-case classes."""
 
 __all__ = [
-    'MAASLegacyServerTestCase',
-    'MAASLegacyTransactionServerTestCase',
-    'MAASServerTestCase',
-    'MAASTransactionServerTestCase',
-    'SerializationFailureTestCase',
-    'UniqueViolationTestCase',
+    "MAASLegacyServerTestCase",
+    "MAASLegacyTransactionServerTestCase",
+    "MAASServerTestCase",
+    "MAASTransactionServerTestCase",
+    "SerializationFailureTestCase",
+    "UniqueViolationTestCase",
 ]
 
 from itertools import count
@@ -22,10 +22,7 @@ from django.db import (
     reset_queries,
     transaction,
 )
-from django.db.utils import (
-    IntegrityError,
-    OperationalError,
-)
+from django.db.utils import IntegrityError, OperationalError
 from maasserver.fields import register_mac_type
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
@@ -35,10 +32,7 @@ from maasserver.testing.fixtures import (
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.testing.resources import DjangoDatabasesManager
 from maasserver.testing.testclient import MAASSensibleClient
-from maasserver.utils.orm import (
-    is_serialization_failure,
-    is_unique_violation,
-)
+from maasserver.utils.orm import is_serialization_failure, is_unique_violation
 from maastesting.djangotestcase import (
     DjangoTestCase,
     DjangoTransactionTestCase,
@@ -95,15 +89,16 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
         # XXX: allenap bug=1427628 2015-03-03: These should not be here.
         # Disconnect the status transition event to speed up tests.
-        self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', False)
+        self.patch(signals.events, "STATE_TRANSITION_EVENT_CONNECT", False)
 
     def assertNotInTransaction(self):
-        self.assertFalse(connection.in_atomic_block, (
-            "Default connection is engaged in a transaction."))
+        self.assertFalse(
+            connection.in_atomic_block,
+            "Default connection is engaged in a transaction.",
+        )
 
 
-class MAASLegacyServerTestCase(
-        MAASRegionTestCaseBase, DjangoTestCase):
+class MAASLegacyServerTestCase(MAASRegionTestCaseBase, DjangoTestCase):
     """Legacy :class:`TestCase` variant for region testing.
 
     :deprecated: Do NOT use in new tests.
@@ -120,7 +115,8 @@ class MAASLegacyServerTestCase(
 
 
 class MAASLegacyTransactionServerTestCase(
-        MAASRegionTestCaseBase, DjangoTransactionTestCase):
+    MAASRegionTestCaseBase, DjangoTransactionTestCase
+):
     """Legacy :class:`TestCase` variant for *transaction* region testing.
 
     :deprecated: Do NOT use in new tests.
@@ -139,9 +135,7 @@ class MAASLegacyTransactionServerTestCase(
 class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for region testing."""
 
-    resources = (
-        ("databases", DjangoDatabasesManager(assume_dirty=False)),
-    )
+    resources = (("databases", DjangoDatabasesManager(assume_dirty=False)),)
 
     # The database may be used in tests. See `MAASTestCase` for details.
     database_use_permitted = True
@@ -154,10 +148,12 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
 
     def beginTransaction(self):
         """Begin new transaction using Django's `atomic`."""
+
         def fail_on_commit():
             raise AssertionError(
                 "Tests using MAASServerTestCase aren't allowed to commit. "
-                "Use MAASTransactionServerTestCase instead.")
+                "Use MAASTransactionServerTestCase instead."
+            )
 
         self.assertNotInTransaction()
         self.__atomic = transaction.atomic()
@@ -176,9 +172,7 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
 class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for *transaction* region testing."""
 
-    resources = (
-        ("databases", DjangoDatabasesManager(assume_dirty=True)),
-    )
+    resources = (("databases", DjangoDatabasesManager(assume_dirty=True)),)
 
     # The database may be used in tests. See `MAASTestCase` for details.
     database_use_permitted = True
@@ -191,8 +185,8 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
 
 
 class SerializationFailureTestCase(
-        MAASTransactionServerTestCase, PostCommitHooksTestMixin):
-
+    MAASTransactionServerTestCase, PostCommitHooksTestMixin
+):
     def create_stest_table(self):
         with connection.cursor() as cursor:
             cursor.execute("CREATE TABLE IF NOT EXISTS stest (a INTEGER)")
@@ -275,8 +269,8 @@ class SerializationFailureTestCase(
 
 
 class UniqueViolationTestCase(
-        MAASTransactionServerTestCase, PostCommitHooksTestMixin):
-
+    MAASTransactionServerTestCase, PostCommitHooksTestMixin
+):
     def create_uvtest_table(self):
         with connection.cursor() as cursor:
             cursor.execute("DROP TABLE IF EXISTS uvtest")
@@ -340,8 +334,8 @@ class UniqueViolationTestCase(
         def set_repeatable_read():
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SET TRANSACTION ISOLATION LEVEL "
-                    "REPEATABLE READ")
+                    "SET TRANSACTION ISOLATION LEVEL " "REPEATABLE READ"
+                )
 
         # Both threads / database sessions will attempt to insert this.
         conflicting_value = next(self.conflicting_values)
@@ -357,7 +351,8 @@ class UniqueViolationTestCase(
                     with connection.cursor() as cursor:
                         cursor.execute(
                             "INSERT INTO uvtest VALUES (%s)",
-                            [conflicting_value])
+                            [conflicting_value],
+                        )
             finally:
                 close_old_connections()
 
@@ -367,13 +362,17 @@ class UniqueViolationTestCase(
             # repeatable reads.
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT 1 FROM uvtest WHERE a = %s",
-                    [conflicting_value])
-                self.assertIsNone(cursor.fetchone(), (
-                    "We've seen through PostgreSQL impenetrable transaction "
-                    "isolation — or so we once thought — to witness a "
-                    "conflicting value from another database session. "
-                    "Needless to say, this requires investigation."))
+                    "SELECT 1 FROM uvtest WHERE a = %s", [conflicting_value]
+                )
+                self.assertIsNone(
+                    cursor.fetchone(),
+                    (
+                        "We've seen through PostgreSQL impenetrable transaction "
+                        "isolation — or so we once thought — to witness a "
+                        "conflicting value from another database session. "
+                        "Needless to say, this requires investigation."
+                    ),
+                )
 
             # Run do_conflicting_insert() in a separate thread and wait for it
             # to commit and return.
@@ -384,19 +383,23 @@ class UniqueViolationTestCase(
             # Still no sign of that conflicting value from here.
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT 1 FROM uvtest WHERE a = %s",
-                    [conflicting_value])
-                self.assertIsNone(cursor.fetchone(), (
-                    "PostgreSQL, once thought of highly in transactional "
-                    "circles, has dropped its kimono and disgraced itself "
-                    "with its wanton exhibition of conflicting values from "
-                    "another's session."))
+                    "SELECT 1 FROM uvtest WHERE a = %s", [conflicting_value]
+                )
+                self.assertIsNone(
+                    cursor.fetchone(),
+                    (
+                        "PostgreSQL, once thought of highly in transactional "
+                        "circles, has dropped its kimono and disgraced itself "
+                        "with its wanton exhibition of conflicting values from "
+                        "another's session."
+                    ),
+                )
 
             # Inserting the same row will trigger a unique violation.
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO uvtest VALUES (%s)",
-                    [conflicting_value])
+                    "INSERT INTO uvtest VALUES (%s)", [conflicting_value]
+                )
 
         if connection.in_atomic_block:
             # We're already in a transaction.

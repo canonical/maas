@@ -33,24 +33,15 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from testtools.matchers import StartsWith
 from twisted.internet.address import IPv6Address
-from twisted.internet.protocol import (
-    Factory,
-    Protocol,
-)
+from twisted.internet.protocol import Factory, Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
 from twisted.test.proto_helpers import (
     AccumulatingProtocol,
     StringTransportWithDisconnection,
 )
 from twisted.web.http_headers import Headers
-from twisted.web.resource import (
-    IResource,
-    Resource,
-)
-from twisted.web.server import (
-    NOT_DONE_YET,
-    Request,
-)
+from twisted.web.resource import IResource, Resource
+from twisted.web.server import NOT_DONE_YET, Request
 from twisted.web.test.test_web import (
     DummyChannel,
     DummyRequest as DummyRequestBase,
@@ -136,7 +127,8 @@ class TestFrameHelpers(MAASTestCase):
         """
         frame = [b"\x81\x05Hello"]
         error = self.assertRaises(
-            _WSException, list, _parseFrames(frame, needMask=True))
+            _WSException, list, _parseFrames(frame, needMask=True)
+        )
         self.assertEqual("Received data not masked", str(error))
 
     def test_parseUnmaskedHugeText(self):
@@ -216,7 +208,8 @@ class TestFrameHelpers(MAASTestCase):
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
         self.assertEqual(
-            frames[0], (CONTROLS.CLOSE, (STATUSES.NONE, b""), True))
+            frames[0], (CONTROLS.CLOSE, (STATUSES.NONE, b""), True)
+        )
         self.assertEqual(frame, [])
 
     def test_parseCloseReason(self):
@@ -229,7 +222,8 @@ class TestFrameHelpers(MAASTestCase):
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
         self.assertEqual(
-            frames[0], (CONTROLS.CLOSE, (STATUSES.NORMAL, b"No reason"), True))
+            frames[0], (CONTROLS.CLOSE, (STATUSES.NORMAL, b"No reason"), True)
+        )
         self.assertEqual(frame, [])
 
     def test_parsePartialNoLength(self):
@@ -378,10 +372,12 @@ class WebSocketsProtocolTest(MAASTestCase):
         then write it back encoded into frames.
         """
         self.protocol.dataReceived(
-            _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"abcd"))
+            _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"abcd")
+        )
         self.assertEqual(b"\x81\x05Hello", self.transport.value())
-        self.assertEqual([(CONTROLS.TEXT, b"Hello", True)],
-                         self.receiver.received)
+        self.assertEqual(
+            [(CONTROLS.TEXT, b"Hello", True)], self.receiver.received
+        )
 
     def test_ping(self):
         """
@@ -389,10 +385,12 @@ class WebSocketsProtocolTest(MAASTestCase):
         and the application receiver is notified about it.
         """
         self.protocol.dataReceived(
-            _makeFrame(b"Hello", CONTROLS.PING, True, mask=b"abcd"))
+            _makeFrame(b"Hello", CONTROLS.PING, True, mask=b"abcd")
+        )
         self.assertEqual(b"\x8a\x05Hello", self.transport.value())
-        self.assertEqual([(CONTROLS.PING, b"Hello", True)],
-                         self.receiver.received)
+        self.assertEqual(
+            [(CONTROLS.PING, b"Hello", True)], self.receiver.received
+        )
 
     def test_close(self):
         """
@@ -401,11 +399,12 @@ class WebSocketsProtocolTest(MAASTestCase):
         """
         with TwistedLoggerFixture() as logger:
             self.protocol.dataReceived(
-                _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd"))
+                _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd")
+            )
         self.assertFalse(self.transport.connected)
         self.assertEqual(
-            ["Closing connection: <STATUSES=NONE>"],
-            logger.messages)
+            ["Closing connection: <STATUSES=NONE>"], logger.messages
+        )
 
     def test_invalidFrame(self):
         """
@@ -466,7 +465,8 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
         underlying protocol.
         """
         self.protocol.dataReceived(
-            _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"abcd"))
+            _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"abcd")
+        )
         self.assertEqual(b"Hello", self.accumulatingProtocol.data)
 
     def test_controlFrames(self):
@@ -475,11 +475,14 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
         to the underlying protocol.
         """
         self.protocol.dataReceived(
-            _makeFrame(b"Hello", CONTROLS.PING, True, mask=b"abcd"))
+            _makeFrame(b"Hello", CONTROLS.PING, True, mask=b"abcd")
+        )
         self.protocol.dataReceived(
-            _makeFrame(b"Hello", CONTROLS.PONG, True, mask=b"abcd"))
+            _makeFrame(b"Hello", CONTROLS.PONG, True, mask=b"abcd")
+        )
         self.protocol.dataReceived(
-            _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd"))
+            _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd")
+        )
         self.assertEqual(b"", self.accumulatingProtocol.data)
 
     def test_loseConnection(self):
@@ -511,15 +514,19 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
         """
         L{WebSocketsProtocolWrapper.getHost} returns the transport C{getHost}.
         """
-        self.assertEqual(self.transport.getHost(),
-                         self.accumulatingProtocol.transport.getHost())
+        self.assertEqual(
+            self.transport.getHost(),
+            self.accumulatingProtocol.transport.getHost(),
+        )
 
     def test_getPeer(self):
         """
         L{WebSocketsProtocolWrapper.getPeer} returns the transport C{getPeer}.
         """
-        self.assertEqual(self.transport.getPeer(),
-                         self.accumulatingProtocol.transport.getPeer())
+        self.assertEqual(
+            self.transport.getPeer(),
+            self.accumulatingProtocol.transport.getPeer(),
+        )
 
     def test_connectionLost(self):
         """
@@ -539,7 +546,6 @@ class WebSocketsResourceTest(MAASTestCase):
         super(WebSocketsResourceTest, self).setUp()
 
         class SavingEchoFactory(Factory):
-
             def buildProtocol(oself, addr):
                 return self.echoProtocol
 
@@ -559,8 +565,12 @@ class WebSocketsResourceTest(MAASTestCase):
         result = self.resource.render(request)
         self.assertEqual(b"", result)
         self.assertEqual(
-            {}, {name: value for name, value in
-                 request.responseHeaders.getAllRawHeaders()})
+            {},
+            {
+                name: value
+                for name, value in request.responseHeaders.getAllRawHeaders()
+            },
+        )
         self.assertEqual([], request.written)
         self.assertEqual(400, request.responseCode)
 
@@ -574,15 +584,19 @@ class WebSocketsResourceTest(MAASTestCase):
         called.
         """
         self.assertRaises(
-            RuntimeError, self.resource.getChildWithDefault, b"foo",
-            DummyRequest(b"/"))
+            RuntimeError,
+            self.resource.getChildWithDefault,
+            b"foo",
+            DummyRequest(b"/"),
+        )
 
     def test_putChild(self):
         """
         L{WebSocketsResource.putChild} raises C{RuntimeError} when called.
         """
         self.assertRaises(
-            RuntimeError, self.resource.putChild, b"foo", Resource())
+            RuntimeError, self.resource.putChild, b"foo", Resource()
+        )
 
     def test_IResource(self):
         """
@@ -598,31 +612,38 @@ class WebSocketsResourceTest(MAASTestCase):
         protocol provided by the user factory.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({
-            b"user-agent": [b"user-agent"],
-            b"host": [b"host"],
-        })
+        request.requestHeaders = Headers(
+            {b"user-agent": [b"user-agent"], b"host": [b"host"]}
+        )
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            {b"Connection": [b"Upgrade"],
-             b"Upgrade": [b"WebSocket"],
-             b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="]},
-            {name: value
-             for name, value in request.responseHeaders.getAllRawHeaders()})
+            {
+                b"Connection": [b"Upgrade"],
+                b"Upgrade": [b"WebSocket"],
+                b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="],
+            },
+            {
+                name: value
+                for name, value in request.responseHeaders.getAllRawHeaders()
+            },
+        )
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
         self.assertIdentical(None, request.transport)
-        self.assertIsInstance(transport.protocol._receiver,
-                              SavingEchoReceiver)
+        self.assertIsInstance(transport.protocol._receiver, SavingEchoReceiver)
         self.assertEqual(request.getHeader(b"cookie"), transport.cookies)
         self.assertEqual(request.uri, transport.uri)
 
@@ -641,28 +662,39 @@ class WebSocketsResourceTest(MAASTestCase):
         self.resource = WebSocketsResource(lookupProtocol)
 
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({
-            b"sec-websocket-protocol": [b"foo", b"bar"],
-            b"user-agent": [b"user-agent"],
-            b"host": [b"host"],
-        })
+        request.requestHeaders = Headers(
+            {
+                b"sec-websocket-protocol": [b"foo", b"bar"],
+                b"user-agent": [b"user-agent"],
+                b"host": [b"host"],
+            }
+        )
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
-        self.assertEqual({
-            b"Connection": [b"Upgrade"],
-            b"Upgrade": [b"WebSocket"],
-            b"Sec-Websocket-Protocol": [b"bar"],
-            b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="]},
-            {name: value for name, value in
-                request.responseHeaders.getAllRawHeaders()})
+        self.assertEqual(
+            {
+                b"Connection": [b"Upgrade"],
+                b"Upgrade": [b"WebSocket"],
+                b"Sec-Websocket-Protocol": [b"bar"],
+                b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="],
+            },
+            {
+                name: value
+                for name, value in request.responseHeaders.getAllRawHeaders()
+            },
+        )
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
 
@@ -672,11 +704,15 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request.
         """
         request = DummyRequest(b"/")
-        self.update_headers(request, headers={
-            b"upgrade": b"wrong",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"wrong",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         self.assertRequestFail(request)
 
     def test_renderNoUpgrade(self):
@@ -685,10 +721,14 @@ class WebSocketsResourceTest(MAASTestCase):
         failed request.
         """
         request = DummyRequest(b"/")
-        self.update_headers(request, headers={
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         self.assertRequestFail(request)
 
     def test_renderPOST(self):
@@ -698,11 +738,15 @@ class WebSocketsResourceTest(MAASTestCase):
         """
         request = DummyRequest(b"/")
         request.method = b"POST"
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         self.assertRequestFail(request)
 
     def test_renderWrongConnection(self):
@@ -711,11 +755,15 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request.
         """
         request = DummyRequest(b"/")
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Wrong",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Wrong",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         self.assertRequestFail(request)
 
     def test_renderNoConnection(self):
@@ -724,10 +772,14 @@ class WebSocketsResourceTest(MAASTestCase):
         failed request.
         """
         request = DummyRequest(b"/")
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         self.assertRequestFail(request)
 
     def test_renderNoKey(self):
@@ -736,10 +788,14 @@ class WebSocketsResourceTest(MAASTestCase):
         returns a failed request.
         """
         request = DummyRequest(b"/")
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-version": b"13",
+            },
+        )
         self.assertRequestFail(request)
 
     def test_renderWrongVersion(self):
@@ -749,16 +805,21 @@ class WebSocketsResourceTest(MAASTestCase):
         """
         request = DummyRequest(b"/")
 
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"11"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"11",
+            },
+        )
         result = self.resource.render(request)
         self.assertEqual(b"", result)
         self.assertEqual(
-            ['13'],
-            request.responseHeaders.getRawHeaders("sec-websocket-version"))
+            ["13"],
+            request.responseHeaders.getRawHeaders("sec-websocket-version"),
+        )
         self.assertEqual([], request.written)
         self.assertEqual(400, request.responseCode)
 
@@ -768,22 +829,29 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request with a C{502} code.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({
-            b"user-agent": [b"user-agent"],
-            b"host": [b"host"],
-        })
+        request.requestHeaders = Headers(
+            {b"user-agent": [b"user-agent"], b"host": [b"host"]}
+        )
         request.transport = StringTransportWithDisconnection()
         self.echoProtocol = None
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         result = self.resource.render(request)
         self.assertEqual(b"", result)
         self.assertEqual(
-            {}, {name: value for name, value in
-                 request.responseHeaders.getAllRawHeaders()})
+            {},
+            {
+                name: value
+                for name, value in request.responseHeaders.getAllRawHeaders()
+            },
+        )
         self.assertEqual([], request.written)
         self.assertEqual(502, request.responseCode)
 
@@ -793,35 +861,44 @@ class WebSocketsResourceTest(MAASTestCase):
         the protocol of the C{TLSMemoryBIOProtocol} instance.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({
-            b"user-agent": [b"user-agent"],
-            b"host": [b"host"],
-        })
+        request.requestHeaders = Headers(
+            {b"user-agent": [b"user-agent"], b"host": [b"host"]}
+        )
         transport = StringTransportWithDisconnection()
         secureProtocol = TLSMemoryBIOProtocol(Factory(), Protocol())
         transport.protocol = secureProtocol
         request.transport = transport
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
-        self.assertEqual({
-            b"Connection": [b"Upgrade"],
-            b"Upgrade": [b"WebSocket"],
-            b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="]},
-            {name: value for name, value in
-             request.responseHeaders.getAllRawHeaders()})
+        self.assertEqual(
+            {
+                b"Connection": [b"Upgrade"],
+                b"Upgrade": [b"WebSocket"],
+                b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="],
+            },
+            {
+                name: value
+                for name, value in request.responseHeaders.getAllRawHeaders()
+            },
+        )
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
         self.assertIdentical(None, request.transport)
         self.assertIsInstance(
-            transport.protocol.wrappedProtocol, WebSocketsProtocol)
+            transport.protocol.wrappedProtocol, WebSocketsProtocol
+        )
         self.assertIsInstance(
-            transport.protocol.wrappedProtocol._receiver,
-            SavingEchoReceiver)
+            transport.protocol.wrappedProtocol._receiver, SavingEchoReceiver
+        )
 
     def test_renderRealRequest(self):
         """
@@ -839,23 +916,30 @@ class WebSocketsResourceTest(MAASTestCase):
             b"sec-websocket-version": b"13",
             b"user-agent": b"user-agent",
             b"client": b"client",
-            b"host": b"host"}
+            b"host": b"host",
+        }
         for key, value in headers.items():
             request.requestHeaders.setRawHeaders(key, [value])
         request.method = b"GET"
         request.clientproto = b"HTTP/1.1"
-        request.client = IPv6Address('TCP', 'fe80::1', '80')
+        request.client = IPv6Address("TCP", "fe80::1", "80")
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            [(b"Connection", [b"Upgrade"]),
-             (b"Sec-Websocket-Accept", [b"oYBv54i42V5dw6KnZqOFroecUTc="]),
-             (b"Upgrade", [b"WebSocket"])],
-            sorted(request.responseHeaders.getAllRawHeaders()))
+            [
+                (b"Connection", [b"Upgrade"]),
+                (b"Sec-Websocket-Accept", [b"oYBv54i42V5dw6KnZqOFroecUTc="]),
+                (b"Upgrade", [b"WebSocket"]),
+            ],
+            sorted(request.responseHeaders.getAllRawHeaders()),
+        )
         self.assertThat(
-            channel.transport.value(), StartsWith(
+            channel.transport.value(),
+            StartsWith(
                 b"HTTP/1.1 101 Switching Protocols\r\n"
-                b"Transfer-Encoding: chunked\r\n"))
+                b"Transfer-Encoding: chunked\r\n"
+            ),
+        )
         self.assertEqual(101, request.code)
         self.assertIdentical(None, request.transport)
 
@@ -872,20 +956,24 @@ class WebSocketsResourceTest(MAASTestCase):
         self.resource = WebSocketsResource(lookupProtocol)
 
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({
-            b"user-agent": [b"user-agent"],
-            b"host": [b"host"],
-        })
+        request.requestHeaders = Headers(
+            {b"user-agent": [b"user-agent"], b"host": [b"host"]}
+        )
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
-        self.update_headers(request, headers={
-            b"upgrade": b"Websocket",
-            b"connection": b"Upgrade",
-            b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"})
+        self.update_headers(
+            request,
+            headers={
+                b"upgrade": b"Websocket",
+                b"connection": b"Upgrade",
+                b"sec-websocket-key": b"secure",
+                b"sec-websocket-version": b"13",
+            },
+        )
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertIsInstance(transport.protocol, WebSocketsProtocolWrapper)
-        self.assertIsInstance(transport.protocol.wrappedProtocol,
-                              AccumulatingProtocol)
+        self.assertIsInstance(
+            transport.protocol.wrappedProtocol, AccumulatingProtocol
+        )

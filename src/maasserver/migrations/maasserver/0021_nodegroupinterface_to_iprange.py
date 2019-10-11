@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 
 # This is a copy/paste from maasserver/models/subnet.py; since migrations don't
 # have access to the full model class (and the model class might change over
@@ -39,7 +36,7 @@ find_best_subnet_for_ip_query = """
 
 
 def get_valid_ip_range(low, high):
-    if low is not None and low != '' and high is not None and high != '':
+    if low is not None and low != "" and high is not None and high != "":
         return low, high
     else:
         return None, None
@@ -48,18 +45,22 @@ def get_valid_ip_range(low, high):
 def add_ip_range(IPRange, Subnet, type, low, high, ngi):
     if low is not None and high is not None:
         subnets = Subnet.objects.raw(
-            find_best_subnet_for_ip_query, [low, high])
+            find_best_subnet_for_ip_query, [low, high]
+        )
         for subnet in subnets:
             # There will only ever be one or zero due to the LIMIT 1.
             comment = "Migrated from MAAS 1.x"
             iprange, created = IPRange.objects.get_or_create(
-                start_ip=low, end_ip=high, defaults={
-                    'comment': comment,
-                    'created': ngi.created,
-                    'updated': ngi.updated,
-                    'type': type,
-                    'subnet': subnet
-            })
+                start_ip=low,
+                end_ip=high,
+                defaults={
+                    "comment": comment,
+                    "created": ngi.created,
+                    "updated": ngi.updated,
+                    "type": type,
+                    "subnet": subnet,
+                },
+            )
             # When migrating ranges, put more trust in managed interfaces.
             # (Just in case a disabled or unmanaged range overlaps exactly with
             # a managed range.)
@@ -78,19 +79,17 @@ def create_ipranges_from_nodegroupinterfaces(apps, schema_editor):
     Subnet = apps.get_model("maasserver", "Subnet")
     for ngi in NodeGroupInterface.objects.all():
         low, high = get_valid_ip_range(ngi.ip_range_low, ngi.ip_range_high)
-        add_ip_range(IPRange, Subnet, 'dynamic', low, high, ngi)
+        add_ip_range(IPRange, Subnet, "dynamic", low, high, ngi)
         low, high = get_valid_ip_range(
-            ngi.static_ip_range_low, ngi.static_ip_range_high)
-        add_ip_range(
-            IPRange, Subnet, 'managed_static', low, high, ngi)
+            ngi.static_ip_range_low, ngi.static_ip_range_high
+        )
+        add_ip_range(IPRange, Subnet, "managed_static", low, high, ngi)
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0020_nodegroup_to_rackcontroller'),
-    ]
+    dependencies = [("maasserver", "0020_nodegroup_to_rackcontroller")]
 
     operations = [
-        migrations.RunPython(create_ipranges_from_nodegroupinterfaces),
+        migrations.RunPython(create_ipranges_from_nodegroupinterfaces)
     ]

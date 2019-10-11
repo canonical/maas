@@ -3,16 +3,11 @@
 
 """Model for a source of boot resources."""
 
-__all__ = [
-    'BootSource',
-    ]
+__all__ = ["BootSource"]
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import (
-    FilePathField,
-    URLField,
-)
+from django.db.models import FilePathField, URLField
 from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
@@ -26,15 +21,19 @@ class BootSource(CleanSave, TimestampedModel):
         """Needed for South to recognize this model."""
 
     url = URLField(
-        blank=False, unique=True, help_text="The URL of the BootSource.")
+        blank=False, unique=True, help_text="The URL of the BootSource."
+    )
 
     keyring_filename = FilePathField(
-        blank=True, max_length=4096,
-        help_text="The path to the keyring file for this BootSource.")
+        blank=True,
+        max_length=4096,
+        help_text="The path to the keyring file for this BootSource.",
+    )
 
     keyring_data = EditableBinaryField(
         blank=True,
-        help_text="The GPG keyring for this BootSource, as a binary blob.")
+        help_text="The GPG keyring for this BootSource, as a binary blob.",
+    )
 
     def clean(self, *args, **kwargs):
         super(BootSource, self).clean(*args, **kwargs)
@@ -42,14 +41,16 @@ class BootSource(CleanSave, TimestampedModel):
         # You have to specify one of {keyring_data, keyring_filename}.
         if len(self.keyring_filename) == 0 and len(self.keyring_data) == 0:
             raise ValidationError(
-                "One of keyring_data or keyring_filename must be specified.")
+                "One of keyring_data or keyring_filename must be specified."
+            )
 
         # You can have only one of {keyring_filename, keyring_data}; not
         # both.
         if len(self.keyring_filename) > 0 and len(self.keyring_data) > 0:
             raise ValidationError(
                 "Only one of keyring_filename or keyring_data can be "
-                "specified.")
+                "specified."
+            )
 
     def to_dict_without_selections(self):
         """Return the current `BootSource` as a dict, without including any
@@ -65,13 +66,13 @@ class BootSource(CleanSave, TimestampedModel):
         if len(self.keyring_data) > 0:
             keyring_data = self.keyring_data
         else:
-            with open(self.keyring_filename, 'rb') as keyring_file:
+            with open(self.keyring_filename, "rb") as keyring_file:
                 keyring_data = keyring_file.read()
         return {
             "url": self.url,
             "keyring_data": bytes(keyring_data),
             "selections": [],
-            }
+        }
 
     def compare_dict_without_selections(self, other):
         """Compare this `BootSource`, as a dict, to another, as a dict.
@@ -94,20 +95,23 @@ class BootSource(CleanSave, TimestampedModel):
         base64 encoded and returned.
         """
         data = self.to_dict_without_selections()
-        data['selections'] = [
+        data["selections"] = [
             selection.to_dict()
             for selection in self.bootsourceselection_set.all()
-            ]
+        ]
         # Always download all bootloaders from the stream. This will allow
         # machines to boot and get a 'Booting under direction of MAAS' message
         # even if boot images for that arch haven't downloaded yet.
         for bootloader in self.bootsourcecache_set.exclude(
-                bootloader_type=None):
-            data['selections'].append({
-                'os': bootloader.os,
-                'release': bootloader.bootloader_type,
-                'arches': [bootloader.arch],
-                'subarches': ['*'],
-                'labels': ['*'],
-            })
+            bootloader_type=None
+        ):
+            data["selections"].append(
+                {
+                    "os": bootloader.os,
+                    "release": bootloader.bootloader_type,
+                    "arches": [bootloader.arch],
+                    "subarches": ["*"],
+                    "labels": ["*"],
+                }
+            )
         return data

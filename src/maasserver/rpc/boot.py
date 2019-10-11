@@ -3,24 +3,16 @@
 
 """RPC helpers for getting the configuration for a booting machine."""
 
-__all__ = [
-    "get_config",
-]
+__all__ = ["get_config"]
 
 import re
 import shlex
 
-from django.core.exceptions import (
-    ObjectDoesNotExist,
-    ValidationError,
-)
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Q
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
-from maasserver.enum import (
-    BOOT_RESOURCE_FILE_TYPE,
-    INTERFACE_TYPE,
-)
+from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, INTERFACE_TYPE
 from maasserver.models import (
     BootResource,
     Config,
@@ -42,17 +34,14 @@ from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
-from provisioningserver.utils.twisted import (
-    synchronous,
-    undefined,
-)
+from provisioningserver.utils.twisted import synchronous, undefined
 from provisioningserver.utils.url import splithost
 
 
 maaslog = get_maas_logger("rpc.boot")
 
 
-DEFAULT_ARCH = 'i386'
+DEFAULT_ARCH = "i386"
 
 
 def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
@@ -66,56 +55,70 @@ def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
             Q(
                 interface__type=INTERFACE_TYPE.PHYSICAL,
                 interface__mac_address=mac,
-            ) | Q(hardware_uuid__iexact=hardware_uuid))
+            )
+            | Q(hardware_uuid__iexact=hardware_uuid)
+        )
     elif mac:
         node = Node.objects.filter(
-            interface__type=INTERFACE_TYPE.PHYSICAL,
-            interface__mac_address=mac)
+            interface__type=INTERFACE_TYPE.PHYSICAL, interface__mac_address=mac
+        )
     elif hardware_uuid:
         node = Node.objects.filter(hardware_uuid__iexact=hardware_uuid)
     else:
         return None
-    node = node.select_related('boot_interface', 'domain')
+    node = node.select_related("boot_interface", "domain")
     return node.first()
 
 
 def event_log_pxe_request(machine, purpose):
     """Log PXE request to machines's event log."""
     options = {
-        'commissioning': "commissioning",
-        'rescue': "rescue mode",
-        'xinstall': "installation",
-        'ephemeral': "ephemeral",
-        'local': "local boot",
-        'poweroff': "power off",
+        "commissioning": "commissioning",
+        "rescue": "rescue mode",
+        "xinstall": "installation",
+        "ephemeral": "ephemeral",
+        "local": "local boot",
+        "poweroff": "power off",
     }
     Event.objects.create_node_event(
-        machine, event_type=EVENT_TYPES.NODE_PXE_REQUEST,
-        event_description=options[purpose])
+        machine,
+        event_type=EVENT_TYPES.NODE_PXE_REQUEST,
+        event_description=options[purpose],
+    )
     # Create a status message for performing a PXE boot.
     Event.objects.create_node_event(
-        machine, event_type=EVENT_TYPES.PERFORMING_PXE_BOOT)
+        machine, event_type=EVENT_TYPES.PERFORMING_PXE_BOOT
+    )
 
 
 def get_boot_filenames(
-        arch, subarch, osystem, series,
-        commissioning_osystem=undefined,
-        commissioning_distro_series=undefined):
+    arch,
+    subarch,
+    osystem,
+    series,
+    commissioning_osystem=undefined,
+    commissioning_distro_series=undefined,
+):
     """Return the filenames of the kernel, initrd, and boot_dtb for the boot
     resource."""
-    if subarch == 'generic':
+    if subarch == "generic":
         # MAAS doesn't store in the BootResource table what subarch is the
         # generic subarch so lookup what the generic subarch maps to.
         try:
             boot_resource_subarch = validate_hwe_kernel(
-                subarch, None, "%s/%s" % (arch, subarch), osystem, series,
+                subarch,
+                None,
+                "%s/%s" % (arch, subarch),
+                osystem,
+                series,
                 commissioning_osystem=commissioning_osystem,
-                commissioning_distro_series=commissioning_distro_series)
+                commissioning_distro_series=commissioning_distro_series,
+            )
         except ValidationError:
             # It's possible that no kernel's exist at all for this arch,
             # subarch, osystem, series combination. In that case just fallback
             # to 'generic'.
-            boot_resource_subarch = 'generic'
+            boot_resource_subarch = "generic"
     else:
         boot_resource_subarch = subarch
 
@@ -124,7 +127,8 @@ def get_boot_filenames(
         # use when booting.
         boot_resource = BootResource.objects.get(
             architecture="%s/%s" % (arch, boot_resource_subarch),
-            name="%s/%s" % (osystem, series))
+            name="%s/%s" % (osystem, series),
+        )
         boot_resource_set = boot_resource.get_latest_complete_set()
         boot_resource_files = {
             bfile.filetype: bfile.filename
@@ -141,7 +145,7 @@ def get_boot_filenames(
 
 
 def merge_kparams_with_extra(kparams, extra_kernel_opts):
-    if kparams is None or kparams == '':
+    if kparams is None or kparams == "":
         return extra_kernel_opts
 
     """
@@ -150,29 +154,30 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
     to add to or override settings in kparams. Anything in extra_opts, which
     can be set through tabs, takes precedence so we use that to start with.
     """
-    final_params = ''
-    if extra_kernel_opts is not None and extra_kernel_opts != '':
+    final_params = ""
+    if extra_kernel_opts is not None and extra_kernel_opts != "":
         # We need to remove spaces from the tempita subsitutions so the split
         #  command works as desired.
-        final_params = re.sub(r'{{\s*([\w\.]*)\s*}}', r'{{\g<1>}}',
-                              extra_kernel_opts)
+        final_params = re.sub(
+            r"{{\s*([\w\.]*)\s*}}", r"{{\g<1>}}", extra_kernel_opts
+        )
 
     # Need to get a list of all kernel params in the extra opts.
     elist = []
     if len(final_params) > 0:
         tmp = shlex.split(final_params)
         for tparam in tmp:
-            idx = tparam.find('=')
+            idx = tparam.find("=")
             key = tparam[0:idx]
             elist.append(key)
 
     # Go through all the kernel params as normally set.
-    new_kparams = re.sub(r'{{\s*([\w\.]*)\s*}}', r'{{\g<1>}}', kparams)
+    new_kparams = re.sub(r"{{\s*([\w\.]*)\s*}}", r"{{\g<1>}}", kparams)
     params = shlex.split(new_kparams)
     for param in params:
-        idx = param.find('=')
+        idx = param.find("=")
         key = param[0:idx]
-        value = param[idx + 1:len(param)]
+        value = param[idx + 1 : len(param)]
 
         # The call to split will remove quotes, so we add them back in if
         #  needed.
@@ -181,7 +186,7 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
 
         # if the param is not in extra_opts, use the one from here.
         if key not in elist:
-            final_params = final_params + ' ' + key + '=' + value
+            final_params = final_params + " " + key + "=" + value
 
     return final_params
 
@@ -199,21 +204,25 @@ def get_boot_config_for_machine(machine, configs, purpose):
         # machine it uses the OS from the deployed system for the
         # ephemeral environment.
         if machine.osystem == "ubuntu" and (
-                machine.status == NODE_STATUS.DISK_ERASING or (
-                machine.status in [
-                    NODE_STATUS.ENTERING_RESCUE_MODE,
-                    NODE_STATUS.RESCUE_MODE,
-                ] and machine.previous_status == NODE_STATUS.DEPLOYED)):
-            osystem = machine.get_osystem(default=configs['default_osystem'])
+            machine.status == NODE_STATUS.DISK_ERASING
+            or (
+                machine.status
+                in [NODE_STATUS.ENTERING_RESCUE_MODE, NODE_STATUS.RESCUE_MODE]
+                and machine.previous_status == NODE_STATUS.DEPLOYED
+            )
+        ):
+            osystem = machine.get_osystem(default=configs["default_osystem"])
             series = machine.get_distro_series(
-                default=configs['default_distro_series'])
+                default=configs["default_distro_series"]
+            )
         else:
-            osystem = configs['commissioning_osystem']
-            series = configs['commissioning_distro_series']
+            osystem = configs["commissioning_osystem"]
+            series = configs["commissioning_distro_series"]
     else:
-        osystem = machine.get_osystem(default=configs['default_osystem'])
+        osystem = machine.get_osystem(default=configs["default_osystem"])
         series = machine.get_distro_series(
-            default=configs['default_distro_series'])
+            default=configs["default_distro_series"]
+        )
         # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and
         # drop of iscsi), precise is no longer deployable. To address a
         # squashfs image is made available allowing it to be deployed in
@@ -223,8 +232,8 @@ def get_boot_config_for_machine(machine, configs, purpose):
             # Use only the commissioning osystem and series, for operating
             # systems other than Ubuntu. As Ubuntu supports HWE kernels,
             # and needs to use that kernel to perform the installation.
-            osystem = configs['commissioning_osystem']
-            series = configs['commissioning_distro_series']
+            osystem = configs["commissioning_osystem"]
+            series = configs["commissioning_distro_series"]
 
     # Pre MAAS-1.9 the subarchitecture defined any kernel the machine
     # needed to be able to boot. This could be a hardware enablement
@@ -239,24 +248,35 @@ def get_boot_config_for_machine(machine, configs, purpose):
     # This is to ensure that machines can always do testing regardless of
     # what they were deployed with, using the defaults from the settings
     testing_from_deployed = (
-        machine.previous_status == NODE_STATUS.DEPLOYED and
-        machine.status == NODE_STATUS.TESTING and purpose == "commissioning")
+        machine.previous_status == NODE_STATUS.DEPLOYED
+        and machine.status == NODE_STATUS.TESTING
+        and purpose == "commissioning"
+    )
     if testing_from_deployed:
-        subarch = (subarch if not configs['default_min_hwe_kernel']
-                   else configs['default_min_hwe_kernel'])
+        subarch = (
+            subarch
+            if not configs["default_min_hwe_kernel"]
+            else configs["default_min_hwe_kernel"]
+        )
     # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
     # the deployment ephemeral env) when deploying precise, provided that
     # it uses the commissioning distro_series and hwe kernels are not
     # needed.
     elif subarch == "generic" and machine.hwe_kernel and not precise:
         subarch = machine.hwe_kernel
-    elif(subarch == "generic" and
-         purpose == "commissioning" and
-         machine.min_hwe_kernel):
+    elif (
+        subarch == "generic"
+        and purpose == "commissioning"
+        and machine.min_hwe_kernel
+    ):
         try:
             subarch = validate_hwe_kernel(
-                None, machine.min_hwe_kernel, machine.architecture,
-                osystem, series)
+                None,
+                machine.min_hwe_kernel,
+                machine.architecture,
+                osystem,
+                series,
+            )
         except ValidationError:
             subarch = "no-such-kernel"
     return osystem, series, subarch
@@ -268,13 +288,15 @@ def get_base_url_for_local_ip(local_ip, internal_domain):
     if subnet is not None and not subnet.dns_servers and subnet.vlan.dhcp_on:
         # Use the MAAS internal domain to resolve the IP address of
         # the rack controllers on the subnet.
-        return 'http://%s.%s:5248/' % (
-            get_resource_name_for_subnet(subnet), internal_domain)
+        return "http://%s.%s:5248/" % (
+            get_resource_name_for_subnet(subnet),
+            internal_domain,
+        )
     else:
         # Either no subnet, the subnet has DNS servers defined, or the VLAN
         # that the subnet belongs to doesn't have DHCP enabled. In
         # that case fallback to using IP address only.
-        return 'http://%s:5248/' % local_ip
+        return "http://%s:5248/" % local_ip
 
 
 def get_final_boot_purpose(machine, arch, purpose):
@@ -284,10 +306,10 @@ def get_final_boot_purpose(machine, arch, purpose):
         # use the dedicated enlistment template which performs architecture
         # detection.
         return "enlist"
-    elif purpose == 'poweroff':
+    elif purpose == "poweroff":
         # In order to power the machine off, we need to get it booted in the
         # commissioning environment and issue a `poweroff` command.
-        return 'commissioning'
+        return "commissioning"
     else:
         return purpose
 
@@ -295,8 +317,15 @@ def get_final_boot_purpose(machine, arch, purpose):
 @synchronous
 @transactional
 def get_config(
-        system_id, local_ip, remote_ip, arch=None, subarch=None, mac=None,
-        hardware_uuid=None, bios_boot_method=None):
+    system_id,
+    local_ip,
+    remote_ip,
+    arch=None,
+    subarch=None,
+    mac=None,
+    hardware_uuid=None,
+    bios_boot_method=None,
+):
     """Get the booting configration for a machine.
 
     Returns a structure suitable for returning in the response
@@ -321,27 +350,33 @@ def get_config(
         raise BootConfigNoResponse()
 
     # Get all required configuration objects in a single query.
-    configs = Config.objects.get_configs([
-        'commissioning_osystem',
-        'commissioning_distro_series',
-        'enable_third_party_drivers',
-        'default_min_hwe_kernel',
-        'default_osystem',
-        'default_distro_series',
-        'kernel_opts',
-        'use_rack_proxy',
-        'maas_internal_domain',
-        'remote_syslog',
-        'maas_syslog_port',
-    ])
+    configs = Config.objects.get_configs(
+        [
+            "commissioning_osystem",
+            "commissioning_distro_series",
+            "enable_third_party_drivers",
+            "default_min_hwe_kernel",
+            "default_osystem",
+            "default_distro_series",
+            "kernel_opts",
+            "use_rack_proxy",
+            "maas_internal_domain",
+            "remote_syslog",
+            "maas_syslog_port",
+        ]
+    )
 
     # Compute the syslog server.
-    log_host, log_port = local_ip, (
-        configs['maas_syslog_port']
-        if configs['maas_syslog_port']
-        else RSYSLOG_PORT)
-    if configs['remote_syslog']:
-        log_host, log_port = splithost(configs['remote_syslog'])
+    log_host, log_port = (
+        local_ip,
+        (
+            configs["maas_syslog_port"]
+            if configs["maas_syslog_port"]
+            else RSYSLOG_PORT
+        ),
+    )
+    if configs["remote_syslog"]:
+        log_host, log_port = splithost(configs["remote_syslog"])
         if log_port is None:
             log_port = 514  # Fallback to default UDP syslog port.
 
@@ -356,32 +391,40 @@ def get_config(
 
         try:
             machine.boot_interface = machine.interface_set.get(
-                type=INTERFACE_TYPE.PHYSICAL, mac_address=mac)
+                type=INTERFACE_TYPE.PHYSICAL, mac_address=mac
+            )
         except ObjectDoesNotExist:
             # MAC is unknown or wasn't sent. Determine the boot_interface using
             # the boot_cluster_ip.
             subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
-            boot_vlan = getattr(machine.boot_interface, 'vlan', None)
+            boot_vlan = getattr(machine.boot_interface, "vlan", None)
             if subnet and subnet.vlan != boot_vlan:
                 # This might choose the wrong interface, but we don't
                 # have enough information to decide which interface is
                 # the boot one.
                 machine.boot_interface = machine.interface_set.filter(
-                    vlan=subnet.vlan).first()
+                    vlan=subnet.vlan
+                ).first()
         else:
             # Update the VLAN of the boot interface to be the same VLAN for the
             # interface on the rack controller that the machine communicated
             # with, unless the VLAN is being relayed.
-            rack_interface = rack_controller.interface_set.filter(
-                ip_addresses__ip=local_ip).select_related('vlan').first()
-            if (rack_interface is not None and
-                    machine.boot_interface.vlan_id != rack_interface.vlan_id):
+            rack_interface = (
+                rack_controller.interface_set.filter(ip_addresses__ip=local_ip)
+                .select_related("vlan")
+                .first()
+            )
+            if (
+                rack_interface is not None
+                and machine.boot_interface.vlan_id != rack_interface.vlan_id
+            ):
                 # Rack controller and machine is not on the same VLAN, with
                 # DHCP relay this is possible. Lets ensure that the VLAN on the
                 # interface is setup to relay through the identified VLAN.
                 if not VLAN.objects.filter(
-                        id=machine.boot_interface.vlan_id,
-                        relay_vlan=rack_interface.vlan_id).exists():
+                    id=machine.boot_interface.vlan_id,
+                    relay_vlan=rack_interface.vlan_id,
+                ).exists():
                     # DHCP relay is not being performed for that VLAN. Set the
                     # VLAN to the VLAN of the rack controller.
                     machine.boot_interface.vlan = rack_interface.vlan
@@ -396,14 +439,19 @@ def get_config(
         machine.save()
 
         arch, subarch = machine.split_arch()
-        if configs['use_rack_proxy']:
+        if configs["use_rack_proxy"]:
             preseed_url = compose_preseed_url(
-                machine, base_url=get_base_url_for_local_ip(
-                    local_ip, configs['maas_internal_domain']))
+                machine,
+                base_url=get_base_url_for_local_ip(
+                    local_ip, configs["maas_internal_domain"]
+                ),
+            )
         else:
             preseed_url = compose_preseed_url(
-                machine, base_url=rack_controller.url,
-                default_region_ip=region_ip)
+                machine,
+                base_url=rack_controller.url,
+                default_region_ip=region_ip,
+            )
         hostname = machine.hostname
         domain = machine.domain.name
         purpose = machine.get_boot_purpose()
@@ -411,20 +459,21 @@ def get_config(
         # Ephemeral deployments will have 'local' boot
         # purpose on power cycles.  Set purpose back to
         # 'xinstall' so that the system can be re-deployed.
-        if purpose == 'local' and machine.ephemeral_deployment:
+        if purpose == "local" and machine.ephemeral_deployment:
             purpose = "xinstall"
 
         # Early out if the machine is booting local.
-        if purpose == 'local':
+        if purpose == "local":
             if machine.is_device:
                 # Log that we are setting to local boot for a device.
                 maaslog.warning(
                     "Device %s with MAC address %s is PXE booting; "
-                    "instructing the device to boot locally." % (
-                        machine.hostname, mac))
+                    "instructing the device to boot locally."
+                    % (machine.hostname, mac)
+                )
                 # Set the purpose to 'local-device' so we can log a message
                 # on the rack.
-                purpose = 'local-device'
+                purpose = "local-device"
 
             return {
                 "system_id": machine.system_id,
@@ -432,9 +481,9 @@ def get_config(
                 "subarch": subarch,
                 "osystem": machine.osystem,
                 "release": machine.distro_series,
-                "kernel": '',
-                "initrd": '',
-                "boot_dtb": '',
+                "kernel": "",
+                "initrd": "",
+                "boot_dtb": "",
                 "purpose": purpose,
                 "hostname": hostname,
                 "domain": domain,
@@ -442,35 +491,45 @@ def get_config(
                 "fs_host": local_ip,
                 "log_host": log_host,
                 "log_port": log_port,
-                "extra_opts": '',
+                "extra_opts": "",
                 "http_boot": True,
             }
 
         # Log the request into the event log for that machine.
-        if (machine.status in [
-                NODE_STATUS.ENTERING_RESCUE_MODE,
-                NODE_STATUS.RESCUE_MODE] and purpose == 'commissioning'):
-            event_log_pxe_request(machine, 'rescue')
+        if (
+            machine.status
+            in [NODE_STATUS.ENTERING_RESCUE_MODE, NODE_STATUS.RESCUE_MODE]
+            and purpose == "commissioning"
+        ):
+            event_log_pxe_request(machine, "rescue")
         else:
             event_log_pxe_request(machine, purpose)
 
         osystem, series, subarch = get_boot_config_for_machine(
-            machine, configs, purpose)
+            machine, configs, purpose
+        )
 
         # We don't care if the kernel opts is from the global setting or a tag,
         # just get the options
         _, effective_kernel_opts = machine.get_effective_kernel_options(
-            default_kernel_opts=configs['kernel_opts'])
+            default_kernel_opts=configs["kernel_opts"]
+        )
 
         # Add any extra options from a third party driver.
-        use_driver = configs['enable_third_party_drivers']
+        use_driver = configs["enable_third_party_drivers"]
         if use_driver:
             driver = get_third_party_driver(machine)
-            driver_kernel_opts = driver.get('kernel_opts', '')
+            driver_kernel_opts = driver.get("kernel_opts", "")
 
-            combined_opts = ('%s %s' % (
-                '' if effective_kernel_opts is None else effective_kernel_opts,
-                driver_kernel_opts)).strip()
+            combined_opts = (
+                "%s %s"
+                % (
+                    ""
+                    if effective_kernel_opts is None
+                    else effective_kernel_opts,
+                    driver_kernel_opts,
+                )
+            ).strip()
             if len(combined_opts):
                 extra_kernel_opts = combined_opts
             else:
@@ -479,32 +538,38 @@ def get_config(
             extra_kernel_opts = effective_kernel_opts
 
         kparams = BootResource.objects.get_kparams_for_node(
-            machine, default_osystem=configs['default_osystem'],
-            default_distro_series=configs['default_distro_series'])
-        extra_kernel_opts = merge_kparams_with_extra(kparams,
-                                                     extra_kernel_opts)
+            machine,
+            default_osystem=configs["default_osystem"],
+            default_distro_series=configs["default_distro_series"],
+        )
+        extra_kernel_opts = merge_kparams_with_extra(
+            kparams, extra_kernel_opts
+        )
     else:
         purpose = "commissioning"  # enlistment
-        if configs['use_rack_proxy']:
+        if configs["use_rack_proxy"]:
             preseed_url = compose_enlistment_preseed_url(
                 base_url=get_base_url_for_local_ip(
-                    local_ip, configs['maas_internal_domain']))
+                    local_ip, configs["maas_internal_domain"]
+                )
+            )
         else:
             preseed_url = compose_enlistment_preseed_url(
-                rack_controller=rack_controller, default_region_ip=region_ip)
-        hostname = 'maas-enlist'
-        domain = 'local'
-        osystem = configs['commissioning_osystem']
-        series = configs['commissioning_distro_series']
-        min_hwe_kernel = configs['default_min_hwe_kernel']
+                rack_controller=rack_controller, default_region_ip=region_ip
+            )
+        hostname = "maas-enlist"
+        domain = "local"
+        osystem = configs["commissioning_osystem"]
+        series = configs["commissioning_distro_series"]
+        min_hwe_kernel = configs["default_min_hwe_kernel"]
 
         # When no architecture is defined for the enlisting machine select
         # the best boot resource for the operating system and series. If
         # none exists fallback to the default architecture. LP #1181334
         if arch is None:
-            resource = (
-                BootResource.objects.get_default_commissioning_resource(
-                    osystem, series))
+            resource = BootResource.objects.get_default_commissioning_resource(
+                osystem, series
+            )
             if resource is None:
                 arch = DEFAULT_ARCH
             else:
@@ -515,14 +580,19 @@ def get_config(
         # selected.
         if subarch is None:
             min_hwe_kernel = validate_hwe_kernel(
-                None, min_hwe_kernel, '%s/generic' % arch, osystem, series)
+                None, min_hwe_kernel, "%s/generic" % arch, osystem, series
+            )
         else:
             min_hwe_kernel = validate_hwe_kernel(
-                None, min_hwe_kernel, '%s/%s' % (arch, subarch), osystem,
-                series)
+                None,
+                min_hwe_kernel,
+                "%s/%s" % (arch, subarch),
+                osystem,
+                series,
+            )
         # If no hwe_kernel was found set the subarch to the default, 'generic.'
         if min_hwe_kernel is None:
-            subarch = 'generic'
+            subarch = "generic"
         else:
             subarch = min_hwe_kernel
 
@@ -531,9 +601,13 @@ def get_config(
 
     boot_purpose = get_final_boot_purpose(machine, arch, purpose)
     kernel, initrd, boot_dtb = get_boot_filenames(
-        arch, subarch, osystem, series,
-        commissioning_osystem=configs['commissioning_osystem'],
-        commissioning_distro_series=configs['commissioning_distro_series'])
+        arch,
+        subarch,
+        osystem,
+        series,
+        commissioning_osystem=configs["commissioning_osystem"],
+        commissioning_distro_series=configs["commissioning_distro_series"],
+    )
 
     # Return the params to the rack controller. Include the system_id only
     # if the machine was known.
@@ -552,7 +626,7 @@ def get_config(
         "fs_host": local_ip,
         "log_host": log_host,
         "log_port": log_port,
-        "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
+        "extra_opts": "" if extra_kernel_opts is None else extra_kernel_opts,
         # As of MAAS 2.4 only HTTP boot is supported. This ensures MAAS 2.3
         # rack controllers use HTTP boot as well.
         "http_boot": True,

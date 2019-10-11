@@ -13,21 +13,11 @@ import crochet
 from fixtures import EnvironmentVariable
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 import provisioningserver
-from provisioningserver import (
-    logger,
-    plugin as plugin_module,
-    settings,
-)
+from provisioningserver import logger, plugin as plugin_module, settings
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.plugin import (
-    Options,
-    ProvisioningServiceMaker,
-)
+from provisioningserver.plugin import Options, ProvisioningServiceMaker
 from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
@@ -47,10 +37,7 @@ from provisioningserver.rackdservices.node_power_monitor_service import (
 from provisioningserver.rackdservices.service_monitor_service import (
     ServiceMonitorService,
 )
-from provisioningserver.rackdservices.tftp import (
-    TFTPBackend,
-    TFTPService,
-)
+from provisioningserver.rackdservices.tftp import TFTPBackend, TFTPService
 from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
 from provisioningserver.rpc.clusterservice import ClusterClientCheckerService
 from provisioningserver.testing.config import ClusterConfigurationFixture
@@ -96,7 +83,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def get_unused_pid(self):
         """Return a PID for a process that has just finished running."""
-        proc = Popen(['/bin/true'])
+        proc = Popen(["/bin/true"])
         proc.wait()
         return proc.pid
 
@@ -112,24 +99,37 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(settings, "DEBUG", False)
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        self.patch(service_maker, '_loadSettings')
+        self.patch(service_maker, "_loadSettings")
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "dhcp_probe", "networks_monitor", "image_download",
-            "lease_socket_service", "node_monitor", "external",
-            "rpc", "rpc-ping", "http", "http_service", "tftp",
+            "dhcp_probe",
+            "networks_monitor",
+            "image_download",
+            "lease_socket_service",
+            "node_monitor",
+            "external",
+            "rpc",
+            "rpc-ping",
+            "http",
+            "http_service",
+            "tftp",
             "service_monitor",
         ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
+            len(service.namedServices),
+            len(service.services),
+            "Not all services are named.",
+        )
         self.assertEqual(service, provisioningserver.services)
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
         self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
+            logger.configure,
+            MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD
+            ),
+        )
 
     def test_makeService_in_debug(self):
         """
@@ -138,24 +138,34 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(settings, "DEBUG", True)
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        self.patch(service_maker, '_loadSettings')
+        self.patch(service_maker, "_loadSettings")
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "dhcp_probe", "networks_monitor", "image_download",
-            "lease_socket_service", "node_monitor", "external",
-            "rpc", "rpc-ping", "http", "http_service", "tftp",
+            "dhcp_probe",
+            "networks_monitor",
+            "image_download",
+            "lease_socket_service",
+            "node_monitor",
+            "external",
+            "rpc",
+            "rpc-ping",
+            "http",
+            "http_service",
+            "tftp",
             "service_monitor",
         ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
+            len(service.namedServices),
+            len(service.services),
+            "Not all services are named.",
+        )
         self.assertEqual(service, provisioningserver.services)
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
         self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                3, logger.LoggingMode.TWISTD))
+            logger.configure, MockCalledOnceWith(3, logger.LoggingMode.TWISTD)
+        )
 
     def test_makeService_with_EXPERIMENTAL_tftp_offload_service(self):
         """
@@ -174,8 +184,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertThat(tftp_offload_service, IsInstance(TFTPOffloadService))
 
     def test_makeService_patches_tftp_service(self):
-        mock_tftp_patch = (
-            self.patch(plugin_module, 'add_patches_to_txtftp'))
+        mock_tftp_patch = self.patch(plugin_module, "add_patches_to_txtftp")
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service_maker.makeService(options, clock=None)
@@ -184,11 +193,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
     def test_makeService_cleanup_prometheus_dir(self):
         tmpdir = Path(self.useFixture(TempDirectory()).path)
         self.useFixture(
-            EnvironmentVariable('prometheus_multiproc_dir', str(tmpdir)))
+            EnvironmentVariable("prometheus_multiproc_dir", str(tmpdir))
+        )
         pid = os.getpid()
-        file1 = tmpdir / 'histogram_{}.db'.format(pid)
+        file1 = tmpdir / "histogram_{}.db".format(pid)
         file1.touch()
-        file2 = tmpdir / 'histogram_{}.db'.format(self.get_unused_pid())
+        file2 = tmpdir / "histogram_{}.db".format(self.get_unused_pid())
         file2.touch()
 
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
@@ -267,14 +277,14 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_backend = MatchesAll(
             IsInstance(TFTPBackend),
             AfterPreprocessing(
-                lambda backend: backend.base.path,
-                Equals(tftp_root)))
+                lambda backend: backend.base.path, Equals(tftp_root)
+            ),
+        )
 
         self.assertThat(
-            tftp_service, MatchesStructure(
-                backend=expected_backend,
-                port=Equals(tftp_port),
-            ))
+            tftp_service,
+            MatchesStructure(backend=expected_backend, port=Equals(tftp_port)),
+        )
 
     def test_lease_socket_service(self):
         options = Options()

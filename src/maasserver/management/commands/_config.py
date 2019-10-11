@@ -3,19 +3,12 @@
 
 """Django command: change region controller configuration settings."""
 
-__all__ = [
-    "GetCommand",
-    "ResetCommand",
-    "SetCommand",
-]
+__all__ = ["GetCommand", "ResetCommand", "SetCommand"]
 
 import json
 import sys
 
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import BaseCommand, CommandError
 import formencode
 from maascli.utils import parse_docstring
 from maasserver.config import RegionConfiguration
@@ -36,11 +29,8 @@ def p_configuration_option(name, value):
     `name` is typically the attribute name from a `Configuration` subclass,
     and `value` is its corresponding class attribute.
     """
-    return (
-        not name.startswith("_") and (
-            isinstance(value, ConfigurationOption) or
-            isinstance(value, property)
-        )
+    return not name.startswith("_") and (
+        isinstance(value, ConfigurationOption) or isinstance(value, property)
     )
 
 
@@ -75,8 +65,12 @@ def gen_configuration_options_for_getting():
     """
     for name, option in sorted(gen_configuration_options()):
         yield make_option_tuple(
-            "--" + name.replace("_", "-"), action="store_true", dest=name,
-            default=False, help=option_doc(option))
+            "--" + name.replace("_", "-"),
+            action="store_true",
+            dest=name,
+            default=False,
+            help=option_doc(option),
+        )
 
 
 def gen_configuration_options_for_resetting():
@@ -87,8 +81,12 @@ def gen_configuration_options_for_resetting():
     """
     for name, option in sorted(gen_mutable_configuration_options()):
         yield make_option_tuple(
-            "--" + name.replace("_", "-"), action="store_true", dest=name,
-            default=False, help=option_doc(option))
+            "--" + name.replace("_", "-"),
+            action="store_true",
+            dest=name,
+            default=False,
+            help=option_doc(option),
+        )
 
 
 def gen_configuration_options_for_setting():
@@ -99,8 +97,12 @@ def gen_configuration_options_for_setting():
     """
     for name, option in sorted(gen_mutable_configuration_options()):
         yield make_option_tuple(
-            "--" + name.replace("_", "-"), action="store", dest=name,
-            default=None, help=option_doc(option))
+            "--" + name.replace("_", "-"),
+            action="store",
+            dest=name,
+            default=None,
+            help=option_doc(option),
+        )
 
 
 def dump_plain(output):
@@ -156,18 +158,34 @@ class GetCommand(LocalConfigCommand):
             parser.add_argument(option_name, **kwargs)
 
         parser.add_argument(
-            "--json", action="store_const", const=dump_json, dest="dump",
-            default=dump_yaml, help="Output as JSON.")
+            "--json",
+            action="store_const",
+            const=dump_json,
+            dest="dump",
+            default=dump_yaml,
+            help="Output as JSON.",
+        )
         parser.add_argument(
-            "--yaml", action="store_const", const=dump_yaml, dest="dump",
-            default=dump_yaml, help="Output as YAML (default).")
+            "--yaml",
+            action="store_const",
+            const=dump_yaml,
+            dest="dump",
+            default=dump_yaml,
+            help="Output as YAML (default).",
+        )
         parser.add_argument(
-            "--plain", action="store_const", const=dump_plain, dest="dump",
-            default=dump_yaml, help=(
+            "--plain",
+            action="store_const",
+            const=dump_plain,
+            dest="dump",
+            default=dump_yaml,
+            help=(
                 "Output as plain strings. The names of the configuration "
                 "settings will not be printed and the order is not defined "
                 "so this is really only useful when obtaining a single "
-                "configuration setting."))
+                "configuration setting."
+            ),
+        )
 
     help = "Get local configuration for the MAAS region controller."
 
@@ -183,7 +201,6 @@ class GetCommand(LocalConfigCommand):
 
 
 class ResetCommand(LocalConfigCommand):
-
     def add_arguments(self, parser):
         super(ResetCommand, self).add_arguments(parser)
 
@@ -218,5 +235,6 @@ class SetCommand(LocalConfigCommand):
                         setattr(config, name, value)
                     except formencode.Invalid as error:
                         message = str(error).rstrip(".")
-                        raise CommandError("%s: %s." % (
-                            name.replace("_", "-"), message))
+                        raise CommandError(
+                            "%s: %s." % (name.replace("_", "-"), message)
+                        )

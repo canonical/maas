@@ -8,10 +8,7 @@ __all__ = []
 from django.contrib.auth.models import User
 from maasserver.models import UserProfile
 from maasserver.testing.testcase import MAASServerTestCase
-from metadataserver.nodeinituser import (
-    get_node_init_user,
-    user_name,
-)
+from metadataserver.nodeinituser import get_node_init_user, user_name
 
 
 class TestNodeInitUser(MAASServerTestCase):

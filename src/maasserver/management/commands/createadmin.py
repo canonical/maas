@@ -9,10 +9,7 @@ from getpass import getpass
 import re
 
 from django.contrib.auth.models import User
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
 from maascli.init import read_input
 from maasserver.enum import KEYS_PROTOCOL_TYPE
@@ -59,8 +56,9 @@ def read_password(prompt):
 def prompt_for_username():
     username = read_input("Username: ")
     if not username:
-        raise EmptyUsername("You must input a username or "
-                            "provide it with --username.")
+        raise EmptyUsername(
+            "You must input a username or " "provide it with --username."
+        )
     return username
 
 
@@ -85,33 +83,36 @@ def prompt_for_email():
 
 def prompt_for_ssh_import():
     """Prompt user for protocal and user-id to import SSH keys."""
-    return read_input(
-        "Import SSH keys [] (lp:user-id or gh:user-id): ")
+    return read_input("Import SSH keys [] (lp:user-id or gh:user-id): ")
 
 
 def validate_ssh_import(ssh_import):
     """Validate user's SSH import input."""
-    if ssh_import.startswith(('lp', 'gh')):
-        import_regex = re.compile(r'^(?:lp|gh):[\w-]*$')
+    if ssh_import.startswith(("lp", "gh")):
+        import_regex = re.compile(r"^(?:lp|gh):[\w-]*$")
         match = import_regex.match(ssh_import)
         if match is not None:
-            return tuple(match.group().split(':'))
+            return tuple(match.group().split(":"))
         else:
             raise SSHKeysError(
                 "The protocol or user-id entered is not in a correct format. "
-                "Your SSH keys will not be imported.")
+                "Your SSH keys will not be imported."
+            )
     else:
         protocol = KEYS_PROTOCOL_TYPE.LP
-        import_regex = re.compile(r'^[\w-]*$')
+        import_regex = re.compile(r"^[\w-]*$")
         match = import_regex.match(ssh_import)
         if match is not None:
-            print("SSH import protocol was not entered.  "
-                  "Using Launchpad protocol (default).")
+            print(
+                "SSH import protocol was not entered.  "
+                "Using Launchpad protocol (default)."
+            )
             return protocol, match.group()
         else:
             raise SSHKeysError(
                 "The input entered is not in a correct format. "
-                "Your SSH keys will not be imported.")
+                "Your SSH keys will not be imported."
+            )
 
 
 class Command(BaseCommand):
@@ -119,28 +120,33 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--username', default=None,
-            help="Username for the new account.")
+            "--username", default=None, help="Username for the new account."
+        )
         parser.add_argument(
-            '--password', default=None,
-            help="Force a given password instead of prompting.")
+            "--password",
+            default=None,
+            help="Force a given password instead of prompting.",
+        )
         parser.add_argument(
-            '--email', default=None,
-            help="Specifies the email for the admin.")
+            "--email", default=None, help="Specifies the email for the admin."
+        )
         parser.add_argument(
-            '--ssh-import', default=None,
+            "--ssh-import",
+            default=None,
             help="Import SSH keys from Launchpad (lp:user-id) or "
-            "Github (gh:user-id).")
+            "Github (gh:user-id).",
+        )
 
     def handle(self, *args, **options):
-        username = options.get('username', None)
-        password = options.get('password', None)
-        email = options.get('email', None)
-        ssh_import = options.get('ssh_import', None)
+        username = options.get("username", None)
+        password = options.get("password", None)
+        email = options.get("email", None)
+        ssh_import = options.get("ssh_import", None)
         external_auth_enabled = Config.objects.is_external_auth_enabled()
         prompt_ssh_import = False
-        if ssh_import is None and (username is None or
-           password is None or email is None):
+        if ssh_import is None and (
+            username is None or password is None or email is None
+        ):
             prompt_ssh_import = True
         if username is None:
             username = prompt_for_username()
@@ -152,16 +158,19 @@ class Command(BaseCommand):
             ssh_import = prompt_for_ssh_import()
 
         User.objects.db_manager(DEFAULT_DB_ALIAS).create_superuser(
-            username, email=email, password=password)
+            username, email=email, password=password
+        )
 
         if ssh_import:  # User entered input
             protocol, auth_id = validate_ssh_import(ssh_import)
             user = User.objects.get(username=username)
             try:
                 KeySource.objects.save_keys_for_user(
-                    user=user, protocol=protocol, auth_id=auth_id)
+                    user=user, protocol=protocol, auth_id=auth_id
+                )
             except ImportSSHKeysError as e:
                 return e.args[0]
             except requests.exceptions.RequestException as e:
                 raise SSHKeysError(
-                    "Importing SSH keys failed.\n%s" % e.args[0])
+                    "Importing SSH keys failed.\n%s" % e.args[0]
+                )

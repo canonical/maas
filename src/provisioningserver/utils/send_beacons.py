@@ -3,20 +3,14 @@
 
 """Utilities for sending and receiving beacons on attached networks."""
 
-__all__ = [
-    "add_arguments",
-    "run"
-]
+__all__ = ["add_arguments", "run"]
 
 from pprint import pformat
 import sys
 from textwrap import dedent
 
 from provisioningserver import logger
-from provisioningserver.logger import (
-    DEFAULT_LOG_VERBOSITY,
-    LegacyLogger,
-)
+from provisioningserver.logger import DEFAULT_LOG_VERBOSITY, LegacyLogger
 from provisioningserver.utils.beaconing import (
     BEACON_IPV4_MULTICAST,
     BEACON_PORT,
@@ -40,27 +34,50 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Send solicitation beacons to a particular address.
-        """)
+        """
+    )
     parser.add_argument(
-        '-v', '--verbose', action='store_true', required=False,
-        help='Verbose packet output.')
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Verbose packet output.",
+    )
     parser.add_argument(
-        '-s', '--source', type=str, required=False,
-        help='Source address to send beacons from.')
+        "-s",
+        "--source",
+        type=str,
+        required=False,
+        help="Source address to send beacons from.",
+    )
     parser.add_argument(
-        '-t', '--timeout', type=int, required=False, default=5,
-        help='Number of seconds to wait for beacons.')
+        "-t",
+        "--timeout",
+        type=int,
+        required=False,
+        default=5,
+        help="Number of seconds to wait for beacons.",
+    )
     parser.add_argument(
-        '-p', '--port', type=int, required=False, default=0,
-        help='Port to listen for beacons on. By default, listens on a random '
-             'port.')
+        "-p",
+        "--port",
+        type=int,
+        required=False,
+        default=0,
+        help="Port to listen for beacons on. By default, listens on a random "
+        "port.",
+    )
     parser.add_argument(
-        'destination', type=str, nargs='?',
+        "destination",
+        type=str,
+        nargs="?",
         help="Destination to send beacon to. If not specified, will use the "
-             "MAAS multicast group (224.0.0.118 or ff02::15a) on all "
-             "interfaces.")
+        "MAAS multicast group (224.0.0.118 or ff02::15a) on all "
+        "interfaces.",
+    )
 
 
 def do_beaconing(args, interfaces=None, reactor=None):
@@ -73,15 +90,20 @@ def do_beaconing(args, interfaces=None, reactor=None):
     if reactor is None:
         from twisted.internet import reactor
     if args.source is None:
-        source_ip = '::'
+        source_ip = "::"
     else:
         source_ip = args.source
     protocol = BeaconingSocketProtocol(
-        reactor, process_incoming=True, debug=True, interface=source_ip,
-        port=args.port, interfaces=interfaces)
+        reactor,
+        process_incoming=True,
+        debug=True,
+        interface=source_ip,
+        port=args.port,
+        interfaces=interfaces,
+    )
     if args.destination is None:
         destination_ip = "::ffff:" + BEACON_IPV4_MULTICAST
-    elif ':' not in args.destination:
+    elif ":" not in args.destination:
         destination_ip = "::ffff:" + args.destination
     else:
         destination_ip = args.destination
@@ -90,7 +112,8 @@ def do_beaconing(args, interfaces=None, reactor=None):
     else:
         log.msg("Sending unicast beacon to '%s'..." % destination_ip)
         ifname, ifdata = get_ifname_ifdata_for_destination(
-            destination_ip, interfaces)
+            destination_ip, interfaces
+        )
         remote = interface_info_to_beacon_remote_payload(ifname, ifdata)
         payload = {"remote": remote}
         beacon = create_beacon_payload("solicitation", payload=payload)
@@ -116,5 +139,7 @@ def run(args, stdout=sys.stdout):
     if args.verbose:
         print("Transmit queue:\n%s" % pformat(protocol.tx_queue), file=stdout)
         print("Receive queue:\n%s" % pformat(protocol.rx_queue), file=stdout)
-        print("Topology hints:\n%s" % pformat(
-            protocol.topology_hints), file=stdout)
+        print(
+            "Topology hints:\n%s" % pformat(protocol.topology_hints),
+            file=stdout,
+        )

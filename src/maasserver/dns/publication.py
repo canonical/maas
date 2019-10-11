@@ -3,14 +3,9 @@
 
 """Services related to DNS publication."""
 
-__all__ = [
-    "DNSPublicationGarbageService",
-]
+__all__ = ["DNSPublicationGarbageService"]
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime, timedelta
 import random
 
 from maasserver.models.dnspublication import DNSPublication
@@ -42,8 +37,7 @@ class DNSPublicationGarbageService(Service):
     def stopService(self):
         if self._loop.running:
             self._loop.stop()
-        return self._loopDone.addBoth(
-            callOut, super().stopService)
+        return self._loopDone.addBoth(callOut, super().stopService)
 
     def _getInterval(self):
         """Return a random interval between 3 and 6 hours.
@@ -52,7 +46,8 @@ class DNSPublicationGarbageService(Service):
         """
         return random.randrange(
             timedelta(hours=3).total_seconds(),
-            timedelta(hours=6).total_seconds())
+            timedelta(hours=6).total_seconds(),
+        )
 
     def _updateInterval(self):
         """Update the loop's interval.

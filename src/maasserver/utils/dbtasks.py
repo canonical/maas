@@ -8,22 +8,13 @@ A service that runs deferred database operations, and then ensures they're
 finished before stopping.
 """
 
-__all__ = [
-    "DatabaseTaskAlreadyRunning",
-    "DatabaseTasksService",
-]
+__all__ = ["DatabaseTaskAlreadyRunning", "DatabaseTasksService"]
 
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, FOREVER
 from twisted.application.service import Service
-from twisted.internet.defer import (
-    Deferred,
-    DeferredQueue,
-)
+from twisted.internet.defer import Deferred, DeferredQueue
 from twisted.internet.task import cooperate
 
 
@@ -70,6 +61,7 @@ class DatabaseTasksService(Service, object):
             database task is still enqueued, but will refuse to cancel once
             the task is running, instead raising `DatabaseTaskAlreadyRunning`.
         """
+
         def cancel(done):
             if task in self.queue.pending:
                 self.queue.pending.remove(task)
@@ -111,6 +103,7 @@ class DatabaseTasksService(Service, object):
         :return: :class:`Deferred` that will fire when this task is pulled out
             of the queue. Processing of the queue will continue without pause.
         """
+
         def cancel(done):
             if task in self.queue.pending:
                 self.queue.pending.remove(task)

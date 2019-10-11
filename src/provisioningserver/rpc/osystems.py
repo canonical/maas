@@ -3,10 +3,7 @@
 
 """RPC helpers relating to operating systems."""
 
-__all__ = [
-    "gen_operating_systems",
-    "validate_license_key",
-]
+__all__ = ["gen_operating_systems", "validate_license_key"]
 
 from provisioningserver.drivers.osystem import (
     Node,
@@ -26,7 +23,8 @@ def gen_operating_system_releases(osystem):
     across multile calls.
     """
     releases_for_commissioning = set(
-        osystem.get_supported_commissioning_releases())
+        osystem.get_supported_commissioning_releases()
+    )
     for release in sorted(osystem.get_supported_releases()):
         requires_license_key = osystem.requires_license_key(release)
         can_commission = release in releases_for_commissioning
@@ -87,8 +85,15 @@ def validate_license_key(osystem, release, key):
 
 
 def get_preseed_data(
-        osystem, preseed_type, node_system_id, node_hostname,
-        consumer_key, token_key, token_secret, metadata_url):
+    osystem,
+    preseed_type,
+    node_system_id,
+    node_hostname,
+    consumer_key,
+    token_key,
+    token_secret,
+    metadata_url,
+):
     """Composes preseed data for the given node.
 
     :param preseed_type: The preseed type being composed.
@@ -106,6 +111,8 @@ def get_preseed_data(
         raise exceptions.NoSuchOperatingSystem(osystem)
     else:
         return osystem.compose_preseed(
-            preseed_type, Node(node_system_id, node_hostname),
+            preseed_type,
+            Node(node_system_id, node_hostname),
             Token(consumer_key, token_key, token_secret),
-            metadata_url.geturl())
+            metadata_url.geturl(),
+        )

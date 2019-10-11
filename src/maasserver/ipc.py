@@ -14,15 +14,9 @@ from functools import partial
 import os
 from socket import gethostname
 
-from maasserver import (
-    eventloop,
-    workers,
-)
+from maasserver import eventloop, workers
 from maasserver.enum import SERVICE_STATUS
-from maasserver.models.node import (
-    RackController,
-    RegionController,
-)
+from maasserver.models.node import RackController, RegionController
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
@@ -45,10 +39,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from twisted.application import service
-from twisted.internet.defer import (
-    CancelledError,
-    inlineCallbacks,
-)
+from twisted.internet.defer import CancelledError, inlineCallbacks
 from twisted.internet.endpoints import (
     connectProtocol,
     UNIXClientEndpoint,
@@ -65,29 +56,25 @@ log = LegacyLogger()
 def get_ipc_socket_path():
     """Return the path to the IPC socket."""
     return os.environ.get(
-        'MAAS_IPC_SOCKET_PATH', os.path.join(
-            os.environ.get('MAAS_ROOT', '/var/lib/maas'), 'maas-regiond.sock'))
+        "MAAS_IPC_SOCKET_PATH",
+        os.path.join(
+            os.environ.get("MAAS_ROOT", "/var/lib/maas"), "maas-regiond.sock"
+        ),
+    )
 
 
 class WorkerIdentify(amp.Command):
     """Register worker with master using PID."""
 
-    arguments = [
-        (b"pid", amp.Integer()),
-    ]
-    response = [
-        (b"process_id", amp.Integer()),
-    ]
+    arguments = [(b"pid", amp.Integer())]
+    response = [(b"process_id", amp.Integer())]
     errors = []
 
 
 class RPCEndpointPublish(amp.Command):
     """Publish the RPC endpoint for the process as open."""
 
-    arguments = [
-        (b"pid", amp.Integer()),
-        (b"port", amp.Integer()),
-    ]
+    arguments = [(b"pid", amp.Integer()), (b"port", amp.Integer())]
     response = []
     errors = []
 
@@ -109,10 +96,7 @@ class RPCRegisterConnection(amp.Command):
 class RPCUnregisterConnection(amp.Command):
     """Unregister worker lost connection from RPC client."""
 
-    arguments = [
-        (b"pid", amp.Integer()),
-        (b"connid", amp.Unicode()),
-    ]
+    arguments = [(b"pid", amp.Integer()), (b"connid", amp.Unicode())]
     response = []
     errors = []
 
@@ -139,7 +123,8 @@ class IPCMaster(RPCProtocol):
     def rpc_register_connection(self, pid, connid, ident, host, port):
         """Register worker has connection from RPC client."""
         self.factory.service.registerWorkerRPCConnection(
-            pid, connid, ident, host, port)
+            pid, connid, ident, host, port
+        )
         return {}
 
     @RPCUnregisterConnection.responder
@@ -162,8 +147,7 @@ class IPCMasterService(service.Service, object):
 
     connections = None
 
-    def __init__(
-            self, reactor, workers=None, socket_path=None):
+    def __init__(self, reactor, workers=None, socket_path=None):
         super(IPCMasterService, self).__init__()
         self.reactor = reactor
         self.workers = workers
@@ -222,7 +206,7 @@ class IPCMasterService(service.Service, object):
             yield port.stopListening()
         for data in self.connections.values():
             try:
-                yield data['connection'].transport.loseConnection()
+                yield data["connection"].transport.loseConnection()
             except Exception:
                 log.err(None, "Failure when closing IPC connection.")
 
@@ -249,7 +233,8 @@ class IPCMasterService(service.Service, object):
         def create_process(pid):
             region = RegionController.objects.get_running_controller()
             process, _ = RegionControllerProcess.objects.get_or_create(
-                region=region, pid=pid)
+                region=region, pid=pid
+            )
             return (pid, process.id)
 
         def log_connected(result):
@@ -260,12 +245,9 @@ class IPCMasterService(service.Service, object):
         def add_to_connections(result):
             pid, process_id = result
             self.connections[pid] = {
-                'process_id': process_id,
-                'connection': conn,
-                'rpc': {
-                    'port': None,
-                    'connections': set(),
-                }
+                "process_id": process_id,
+                "connection": conn,
+                "rpc": {"port": None, "connections": set()},
             }
             return process_id
 
@@ -276,9 +258,7 @@ class IPCMasterService(service.Service, object):
             return process_id
 
         def return_result(process_id):
-            return {
-                'process_id': process_id,
-            }
+            return {"process_id": process_id}
 
         d = deferToDatabase(create_process, pid)
         d.addCallback(log_connected)
@@ -290,7 +270,7 @@ class IPCMasterService(service.Service, object):
     def getPIDFromConnection(self, conn):
         """Get the PID from the connection."""
         for pid, data in self.connections.items():
-            if data['connection'] == conn:
+            if data["connection"] == conn:
                 return pid
 
     @asynchronous
@@ -301,7 +281,7 @@ class IPCMasterService(service.Service, object):
 
             @transactional
             def delete_process(pid):
-                process_id = self.connections[pid]['process_id']
+                process_id = self.connections[pid]["process_id"]
                 RegionControllerProcess.objects.filter(id=process_id).delete()
                 return pid
 
@@ -324,10 +304,7 @@ class IPCMasterService(service.Service, object):
         is listening on."""
         addresses = get_all_interface_source_addresses()
         if addresses:
-            return set(
-                (addr, port)
-                for addr in addresses
-            )
+            return set((addr, port) for addr in addresses)
         # There are no non-loopback addresses, so return loopback
         # address as a fallback.
         loopback_addresses = set()
@@ -345,27 +322,34 @@ class IPCMasterService(service.Service, object):
         """Update the endpoints for `pid` and `port`."""
         previous_endpoint_ids = set(
             RegionControllerProcessEndpoint.objects.filter(
-                process=process).values_list("id", flat=True))
+                process=process
+            ).values_list("id", flat=True)
+        )
         if addresses:
             for addr, port in addresses:
-                endpoint, created = (
-                    RegionControllerProcessEndpoint.objects.get_or_create(
-                        process=process, address=addr, port=port))
+                (
+                    endpoint,
+                    created,
+                ) = RegionControllerProcessEndpoint.objects.get_or_create(
+                    process=process, address=addr, port=port
+                )
                 if not created:
                     previous_endpoint_ids.remove(endpoint.id)
         RegionControllerProcessEndpoint.objects.filter(
-            id__in=previous_endpoint_ids).delete()
+            id__in=previous_endpoint_ids
+        ).delete()
 
     @synchronous
     def _getProcessObjFor(self, pid):
         """Return `RegionControllerProcess` for `pid`."""
-        process_id = self.connections[pid]['process_id']
+        process_id = self.connections[pid]["process_id"]
         try:
             return RegionControllerProcess.objects.get(id=process_id)
         except RegionControllerProcess.DoesNotExist:
             region_obj = RegionController.objects.get_running_controller()
             return RegionControllerProcess.objects.create(
-                id=process_id, region=region_obj, pid=pid)
+                id=process_id, region=region_obj, pid=pid
+            )
 
     @asynchronous
     def registerWorkerRPC(self, pid, port):
@@ -376,19 +360,19 @@ class IPCMasterService(service.Service, object):
             def create_endpoints(result):
                 pid, port = result
                 process = self._getProcessObjFor(pid)
-                self._updateEndpoints(
-                    process, self._getListenAddresses(port))
+                self._updateEndpoints(process, self._getListenAddresses(port))
                 return result
 
             def set_result(result):
                 pid, port = result
-                self.connections[pid]['rpc']['port'] = port
-                self.connections[pid]['rpc']['connections'] = {}
+                self.connections[pid]["rpc"]["port"] = port
+                self.connections[pid]["rpc"]["connections"] = {}
                 return result
 
             def log_rpc_open(result):
                 log.msg(
-                    "Worker pid:%d opened RPC listener on port:%s." % result)
+                    "Worker pid:%d opened RPC listener on port:%s." % result
+                )
 
             d = deferToDatabase(create_endpoints, (pid, port))
             d.addCallback(set_result)
@@ -400,9 +384,11 @@ class IPCMasterService(service.Service, object):
     def _registerConnection(self, process, ident, host, port, force_save=True):
         rackd = RackController.objects.get(system_id=ident)
         endpoint, _ = RegionControllerProcessEndpoint.objects.get_or_create(
-            process=process, address=host, port=port)
+            process=process, address=host, port=port
+        )
         connection, created = RegionRackRPCConnection.objects.get_or_create(
-            endpoint=endpoint, rack_controller=rackd)
+            endpoint=endpoint, rack_controller=rackd
+        )
         if not created and force_save:
             # Force the save so that signals connected to the
             # RegionRackRPCConnection are performed.
@@ -422,16 +408,18 @@ class IPCMasterService(service.Service, object):
             def log_connection(result):
                 pid, conn = result[0], result[1:]
                 log.msg(
-                    "Worker pid:%d registered RPC connection to %s." % (
-                        pid, conn[1:]))
+                    "Worker pid:%d registered RPC connection to %s."
+                    % (pid, conn[1:])
+                )
                 return conn
 
             def set_result(conn):
                 connid, conn = conn[0], conn[1:]
-                self.connections[pid]['rpc']['connections'][connid] = conn
+                self.connections[pid]["rpc"]["connections"][connid] = conn
 
             d = deferToDatabase(
-                register_connection, pid, connid, ident, host, port)
+                register_connection, pid, connid, ident, host, port
+            )
             d.addCallback(log_connection)
             d.addCallback(set_result)
             return d
@@ -441,7 +429,8 @@ class IPCMasterService(service.Service, object):
         """Unregister the connection into the database."""
         try:
             endpoint = RegionControllerProcessEndpoint.objects.get(
-                process=process, address=host, port=port)
+                process=process, address=host, port=port
+            )
         except RegionControllerProcessEndpoint.DoesNotExist:
             # Endpoint no longer exists, nothing to do.
             pass
@@ -453,12 +442,13 @@ class IPCMasterService(service.Service, object):
                 pass
             else:
                 RegionRackRPCConnection.objects.filter(
-                    endpoint=endpoint, rack_controller=rackd).delete()
+                    endpoint=endpoint, rack_controller=rackd
+                ).delete()
 
     def unregisterWorkerRPCConnection(self, pid, connid):
         """Unregister connection for worker with `pid`."""
         if pid in self.connections:
-            connections = self.connections[pid]['rpc']['connections']
+            connections = self.connections[pid]["rpc"]["connections"]
             conn = connections.get(connid, None)
             if conn is not None:
 
@@ -471,16 +461,16 @@ class IPCMasterService(service.Service, object):
                 def log_disconnect(result):
                     pid, conn = result[0], result[1:]
                     log.msg(
-                        "Worker pid:%d lost RPC connection to %s." % (
-                            pid, conn[1:]))
+                        "Worker pid:%d lost RPC connection to %s."
+                        % (pid, conn[1:])
+                    )
                     return conn
 
                 def set_result(conn):
                     connid = conn[0]
                     connections.pop(connid, None)
 
-                d = deferToDatabase(
-                    unregister_connection, pid, connid, *conn)
+                d = deferToDatabase(unregister_connection, pid, connid, *conn)
                 d.addCallback(log_disconnect)
                 d.addCallback(set_result)
                 return d
@@ -495,19 +485,23 @@ class IPCMasterService(service.Service, object):
         """
         if not connections:
             RegionRackRPCConnection.objects.filter(
-                endpoint__process=process).delete()
+                endpoint__process=process
+            ).delete()
         else:
             previous_connection_ids = set(
                 RegionRackRPCConnection.objects.filter(
-                    endpoint__process=process).values_list(
-                    "id", flat=True))
+                    endpoint__process=process
+                ).values_list("id", flat=True)
+            )
             for _, (ident, host, port) in connections.items():
                 db_conn = self._registerConnection(
-                    process, ident, host, port, force_save=False)
+                    process, ident, host, port, force_save=False
+                )
                 previous_connection_ids.discard(db_conn.id)
             if previous_connection_ids:
                 RegionRackRPCConnection.objects.filter(
-                    id__in=previous_connection_ids).delete()
+                    id__in=previous_connection_ids
+                ).delete()
 
     @synchronous
     def _updateService(self, region_obj):
@@ -521,13 +515,20 @@ class IPCMasterService(service.Service, object):
             else:
                 process_text = "processes"
             Service.objects.update_service_for(
-                region_obj, "regiond", SERVICE_STATUS.DEGRADED,
-                "%d %s running but %d were expected." % (
-                    number_of_processes, process_text,
-                    workers.MAX_WORKERS_COUNT))
+                region_obj,
+                "regiond",
+                SERVICE_STATUS.DEGRADED,
+                "%d %s running but %d were expected."
+                % (
+                    number_of_processes,
+                    process_text,
+                    workers.MAX_WORKERS_COUNT,
+                ),
+            )
         else:
             Service.objects.update_service_for(
-                region_obj, "regiond", SERVICE_STATUS.RUNNING, "")
+                region_obj, "regiond", SERVICE_STATUS.RUNNING, ""
+            )
 
     @synchronous
     @transactional
@@ -546,7 +547,9 @@ class IPCMasterService(service.Service, object):
         # used to remove the old processes that we did not update.
         previous_process_ids = set(
             RegionControllerProcess.objects.filter(
-                region=region_obj).values_list("id", flat=True))
+                region=region_obj
+            ).values_list("id", flat=True)
+        )
 
         # Loop through all the current workers to update the records in the
         # database. Caution is needed because other region controllers can
@@ -555,27 +558,30 @@ class IPCMasterService(service.Service, object):
             process = self._getProcessObjFor(pid)
             process.updated = now()
             process.save()
-            if conn['rpc']['port']:
+            if conn["rpc"]["port"]:
                 # Update the endpoints for the provided port.
                 self._updateEndpoints(
-                    process, self._getListenAddresses(conn['rpc']['port']))
+                    process, self._getListenAddresses(conn["rpc"]["port"])
+                )
             else:
                 # RPC is not running, no endpoints.
                 self._updateEndpoints(process, [])
-            self._updateConnections(process, conn['rpc']['connections'])
+            self._updateConnections(process, conn["rpc"]["connections"])
             previous_process_ids.discard(process.id)
 
         # Delete all the old processes that are dead.
         if previous_process_ids:
             RegionControllerProcess.objects.filter(
-                id__in=previous_process_ids).delete()
+                id__in=previous_process_ids
+            ).delete()
 
         # Remove any old processes not owned by this controller. Every
         # controller should update its processes based on the `UPDATE_INTERVAL`
         # any that are older than `REMOVE_INTERVAL` are dropped.
         remove_before_time = now() - timedelta(seconds=self.REMOVE_INTERVAL)
         RegionControllerProcess.objects.exclude(region=region_obj).filter(
-            updated__lte=remove_before_time).delete()
+            updated__lte=remove_before_time
+        ).delete()
 
         # Update the status of this regiond service for this region based on
         # the number of running processes.
@@ -583,22 +589,24 @@ class IPCMasterService(service.Service, object):
 
         # Update the status of all regions that have no processes running.
         for other_region in RegionController.objects.exclude(
-                system_id=region_obj.id).prefetch_related("processes"):
+            system_id=region_obj.id
+        ).prefetch_related("processes"):
             # Use len with `all` so the prefetch cache is used.
             if len(other_region.processes.all()) == 0:
                 Service.objects.mark_dead(other_region, dead_region=True)
 
     @asynchronous
     def update(self):
-
         def ignore_cancel(failure):
             failure.trap(CancelledError)
 
         d = deferToDatabase(self._update)
         d.addErrback(ignore_cancel)
         d.addErrback(
-            log.err, "Failed to update regiond's processes and endpoints; "
-            "%s record's may be out of date" % (eventloop.loop.name,))
+            log.err,
+            "Failed to update regiond's processes and endpoints; "
+            "%s record's may be out of date" % (eventloop.loop.name,),
+        )
         return d
 
 
@@ -615,7 +623,8 @@ class IPCWorker(RPCProtocol):
         # to the master process.
         def set_defers(result):
             self.service.protocol.set(self)
-            self.service.processId.set(result['process_id'])
+            self.service.processId.set(result["process_id"])
+
         d.addCallback(set_defers)
         return d
 
@@ -682,7 +691,9 @@ class IPCWorkerService(service.Service, object):
         d = self.protocol.get()
         d.addCallback(
             lambda protocol: protocol.callRemote(
-                RPCEndpointPublish, pid=os.getpid(), port=port))
+                RPCEndpointPublish, pid=os.getpid(), port=port
+            )
+        )
         return d
 
     @asynchronous
@@ -691,8 +702,14 @@ class IPCWorkerService(service.Service, object):
         d = self.protocol.get()
         d.addCallback(
             lambda protocol: protocol.callRemote(
-                RPCRegisterConnection, pid=os.getpid(),
-                connid=connid, ident=ident, host=host, port=port))
+                RPCRegisterConnection,
+                pid=os.getpid(),
+                connid=connid,
+                ident=ident,
+                host=host,
+                port=port,
+            )
+        )
         return d
 
     @asynchronous
@@ -701,5 +718,7 @@ class IPCWorkerService(service.Service, object):
         d = self.protocol.get()
         d.addCallback(
             lambda protocol: protocol.callRemote(
-                RPCUnregisterConnection, pid=os.getpid(), connid=connid))
+                RPCUnregisterConnection, pid=os.getpid(), connid=connid
+            )
+        )
         return d

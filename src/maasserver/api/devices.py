@@ -1,25 +1,15 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    "DeviceHandler",
-    "DevicesHandler",
-    ]
+__all__ = ["DeviceHandler", "DevicesHandler"]
 
 from django.core.exceptions import PermissionDenied
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
-from maasserver.api.nodes import (
-    NodeHandler,
-    NodesHandler,
-    OwnerDataMixin,
-)
+from maasserver.api.nodes import NodeHandler, NodesHandler, OwnerDataMixin
 from maasserver.api.support import operation
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import (
-    DeviceForm,
-    DeviceWithMACsForm,
-)
+from maasserver.forms import DeviceForm, DeviceWithMACsForm
 from maasserver.models.node import Device
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
@@ -27,22 +17,22 @@ from piston3.utils import rc
 
 # Device's fields exposed on the API.
 DISPLAYED_DEVICE_FIELDS = (
-    'system_id',
-    'hostname',
-    'description',
-    'domain',
-    'fqdn',
-    'owner',
-    'owner_data',
-    'parent',
-    'tag_names',
-    'address_ttl',
-    'ip_addresses',
-    ('interface_set', DISPLAYED_INTERFACE_FIELDS),
-    'zone',
-    'node_type',
-    'node_type_name',
-    )
+    "system_id",
+    "hostname",
+    "description",
+    "domain",
+    "fqdn",
+    "owner",
+    "owner_data",
+    "parent",
+    "tag_names",
+    "address_ttl",
+    "ip_addresses",
+    ("interface_set", DISPLAYED_INTERFACE_FIELDS),
+    "zone",
+    "node_type",
+    "node_type_name",
+)
 
 
 class DeviceHandler(NodeHandler, OwnerDataMixin):
@@ -51,6 +41,7 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
 
     The device is identified by its system_id.
     """
+
     api_doc_section_name = "Device"
 
     create = None  # Disable create.
@@ -101,7 +92,8 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             Not Found
         """
         device = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         form = DeviceForm(data=request.data, instance=device)
 
         if form.is_valid():
@@ -127,8 +119,8 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             Not Found
         """
         device = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         device.delete()
         return rc.DELETED
 
@@ -156,8 +148,8 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             Not Found
         """
         device = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         device.set_initial_networking_configuration()
         return reload_object(device)
 
@@ -185,8 +177,8 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             Not Found
         """
         device = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         device.set_initial_networking_configuration()
         return reload_object(device)
 
@@ -200,11 +192,12 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
         device_system_id = "system_id"
         if device is not None:
             device_system_id = device.system_id
-        return ('device_handler', (device_system_id,))
+        return ("device_handler", (device_system_id,))
 
 
 class DevicesHandler(NodesHandler):
     """Manage the collection of all the devices in the MAAS."""
+
     api_doc_section_name = "Devices"
     update = delete = None
     base_model = Device
@@ -241,12 +234,14 @@ class DevicesHandler(NodesHandler):
             device = form.save()
             parent = device.parent
             maaslog.info(
-                "%s: Added new device%s", device.hostname,
-                "" if not parent else " (parent: %s)" % parent.hostname)
+                "%s: Added new device%s",
+                device.hostname,
+                "" if not parent else " (parent: %s)" % parent.hostname,
+            )
             return device
         else:
             raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('devices_handler', [])
+        return ("devices_handler", [])

@@ -1,12 +1,7 @@
 # Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    'import_images',
-    'main',
-    'main_with_services',
-    'make_arg_parser',
-    ]
+__all__ = ["import_images", "main", "main_with_services", "make_arg_parser"]
 
 from argparse import ArgumentParser
 import errno
@@ -14,14 +9,8 @@ from io import StringIO
 import os
 
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.config import (
-    BootSources,
-    ClusterConfiguration,
-)
-from provisioningserver.events import (
-    EVENT_TYPES,
-    try_send_rack_event,
-)
+from provisioningserver.config import BootSources, ClusterConfiguration
+from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.import_images.cleanup import (
     cleanup_snapshots_and_cache,
 )
@@ -67,12 +56,14 @@ def make_arg_parser(doc):
 
     parser = ArgumentParser(description=doc)
     parser.add_argument(
-        '--sources-file', action="store", required=True,
+        "--sources-file",
+        action="store",
+        required=True,
         help=(
             "Path to YAML file defining import sources. "
             "See this script's man page for a description of "
             "that YAML file's format."
-        )
+        ),
     )
     return parser
 
@@ -85,7 +76,7 @@ def meta_contains(storage, content):
     The file's timestamp is also updated to now to reflect the last time
     that this import was run.
     """
-    current_meta = os.path.join(storage, 'current', 'maas.meta')
+    current_meta = os.path.join(storage, "current", "maas.meta")
     exists = os.path.isfile(current_meta)
     if exists:
         # Touch file to the current timestamp so that the last time this
@@ -96,7 +87,7 @@ def meta_contains(storage, content):
 
 def update_current_symlink(storage, latest_snapshot):
     """Symlink `latest_snapshot` as the "current" snapshot."""
-    atomic_symlink(latest_snapshot, os.path.join(storage, 'current'))
+    atomic_symlink(latest_snapshot, os.path.join(storage, "current"))
 
 
 def write_snapshot_metadata(snapshot, meta_file_content):
@@ -105,7 +96,7 @@ def write_snapshot_metadata(snapshot, meta_file_content):
     :param meta_file_content: A Unicode string (`str`) containing JSON using
         only ASCII characters.
     """
-    meta_file = os.path.join(snapshot, 'maas.meta')
+    meta_file = os.path.join(snapshot, "maas.meta")
     atomic_write(meta_file_content.encode("ascii"), meta_file, mode=0o644)
 
 
@@ -154,13 +145,14 @@ def import_images(sources):
     with ClusterConfiguration.open() as config:
         storage = FilePath(config.tftp_root).parent().path
 
-    with tempdir('keyrings') as keyrings_path:
+    with tempdir("keyrings") as keyrings_path:
         # XXX: Band-aid to ensure that the keyring_data is bytes. Future task:
         # try to figure out why this sometimes happens.
         for source in sources:
-            if ('keyring_data' in source and
-                    not isinstance(source['keyring_data'], bytes)):
-                source['keyring_data'] = source['keyring_data'].encode('utf-8')
+            if "keyring_data" in source and not isinstance(
+                source["keyring_data"], bytes
+            ):
+                source["keyring_data"] = source["keyring_data"].encode("utf-8")
 
         # We download the keyrings now  because we need them for both
         # download_all_image_descriptions() and
@@ -172,11 +164,13 @@ def import_images(sources):
         # validation to fail. So grab everything from the region and trust it
         # did proper filtering before the rack.
         image_descriptions = download_all_image_descriptions(
-            sources, validate_products=False)
+            sources, validate_products=False
+        )
         if image_descriptions.is_empty():
             msg = (
                 "Finished importing boot images, the region does not have "
-                "any boot images available.")
+                "any boot images available."
+            )
             try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
             maaslog.warning(msg)
             return False
@@ -185,7 +179,8 @@ def import_images(sources):
         if meta_contains(storage, meta_file_content):
             maaslog.info(
                 "Finished importing boot images, the region does not "
-                "have any new images.")
+                "have any new images."
+            )
             try_send_rack_event(EVENT_TYPES.RACK_IMPORT_INFO, msg)
             maaslog.info(msg)
             return False
@@ -194,14 +189,17 @@ def import_images(sources):
 
         try:
             snapshot_path = download_all_boot_resources(
-                sources, storage, product_mapping)
+                sources, storage, product_mapping
+            )
         except Exception as e:
             try_send_rack_event(
                 EVENT_TYPES.RACK_IMPORT_ERROR,
-                "Unable to import boot images: %s" % e)
+                "Unable to import boot images: %s" % e,
+            )
             maaslog.error(
                 "Unable to import boot images; cleaning up failed snapshot "
-                "and cache.")
+                "and cache."
+            )
             # Cleanup snapshots and cache since download failed.
             cleanup_snapshots_and_cache(storage)
             raise
@@ -216,7 +214,7 @@ def import_images(sources):
     update_current_symlink(storage, snapshot_path)
 
     # Now cleanup the old snapshots and cache.
-    maaslog.info('Cleaning up old snapshots and cache.')
+    maaslog.info("Cleaning up old snapshots and cache.")
     cleanup_snapshots_and_cache(storage)
 
     # Import is now finished.

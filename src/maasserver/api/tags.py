@@ -3,10 +3,7 @@
 
 """API handlers: `Tag`."""
 
-__all__ = [
-    'TagHandler',
-    'TagsHandler',
-    ]
+__all__ = ["TagHandler", "TagsHandler"]
 
 
 import http.client
@@ -15,22 +12,13 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
-from maasserver.api.nodes import (
-    NODES_PREFETCH,
-    NODES_SELECT_RELATED,
-)
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
+from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
 )
-from maasserver.exceptions import (
-    MAASAPIValidationError,
-    Unauthorized,
-)
+from maasserver.exceptions import MAASAPIValidationError, Unauthorized
 from maasserver.forms import TagForm
 from maasserver.models import (
     Device,
@@ -42,10 +30,7 @@ from maasserver.models import (
 )
 from maasserver.models.user import get_auth_tokens
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import (
-    get_one,
-    prefetch_queryset,
-)
+from maasserver.utils.orm import get_one, prefetch_queryset
 from piston3.utils import rc
 
 
@@ -66,8 +51,9 @@ def check_rack_controller_access(request, rack_controller):
     token = tokens[-1] if tokens else None
     if token is None or key != token.key:
         raise PermissionDenied(
-            "Only allowed for the %r rack controller." % (
-                rack_controller.hostname))
+            "Only allowed for the %r rack controller."
+            % (rack_controller.hostname)
+        )
 
 
 class TagHandler(OperationsHandler):
@@ -77,15 +63,11 @@ class TagHandler(OperationsHandler):
 
     A Tag is identified by its name.
     """
+
     api_doc_section_name = "Tag"
     create = None
     model = Tag
-    fields = (
-        'name',
-        'definition',
-        'comment',
-        'kernel_opts',
-        )
+    fields = ("name", "definition", "comment", "kernel_opts")
 
     def read(self, request, name):
         """@description-title Read a specific tag
@@ -136,7 +118,8 @@ class TagHandler(OperationsHandler):
             Not Found
         """
         tag = Tag.objects.get_tag_or_404(
-            name=name, user=request.user, to_edit=True)
+            name=name, user=request.user, to_edit=True
+        )
         form = TagForm(request.data, instance=tag)
         if form.is_valid():
             try:
@@ -164,7 +147,8 @@ class TagHandler(OperationsHandler):
             Not Found
         """
         tag = Tag.objects.get_tag_or_404(
-            name=name, user=request.user, to_edit=True)
+            name=name, user=request.user, to_edit=True
+        )
         tag.delete()
         return rc.DELETED
 
@@ -176,20 +160,17 @@ class TagHandler(OperationsHandler):
         self.fields = None
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         nodes = model.objects.get_nodes(
-            request.user, NodePermission.view,
-            from_nodes=tag.node_set.all())
+            request.user, NodePermission.view, from_nodes=tag.node_set.all()
+        )
         nodes = nodes.select_related(*NODES_SELECT_RELATED)
-        nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by('id')
+        nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
         # Set related node parents so no extra queries are needed.
         for node in nodes:
             for interface in node.interface_set.all():
                 interface.node = node
             for block_device in node.blockdevice_set.all():
                 block_device.node = node
-        return [
-            node.as_self()
-            for node in nodes
-        ]
+        return [node.as_self() for node in nodes]
 
     @operation(idempotent=True)
     def nodes(self, request, name):
@@ -319,10 +300,11 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
-                                         to_edit=True)
+        tag = Tag.objects.get_tag_or_404(
+            name=name, user=request.user, to_edit=True
+        )
         tag.populate_nodes()
-        return {'rebuilding': tag.name}
+        return {"rebuilding": tag.name}
 
     @operation(idempotent=False)
     def update_nodes(self, request, name):
@@ -376,42 +358,47 @@ class TagHandler(OperationsHandler):
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         rack_controller = None
         if not request.user.is_superuser:
-            system_id = request.data.get('rack_controller', None)
+            system_id = request.data.get("rack_controller", None)
             if system_id is None:
                 raise PermissionDenied(
-                    'Must be a superuser or supply a rack_controller')
+                    "Must be a superuser or supply a rack_controller"
+                )
             rack_controller = get_one(
-                RackController.objects.filter(system_id=system_id))
+                RackController.objects.filter(system_id=system_id)
+            )
             check_rack_controller_access(request, rack_controller)
-        definition = request.data.get('definition', None)
+        definition = request.data.get("definition", None)
         if definition is not None and tag.definition != definition:
             return HttpResponse(
                 "Definition supplied '%s' "
                 "doesn't match current definition '%s'"
                 % (definition, tag.definition),
                 content_type=(
-                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET),
-                status=int(http.client.CONFLICT))
-        nodes_to_add = self._get_nodes_for(request, 'add')
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                ),
+                status=int(http.client.CONFLICT),
+            )
+        nodes_to_add = self._get_nodes_for(request, "add")
         tag.node_set.add(*nodes_to_add)
-        nodes_to_remove = self._get_nodes_for(request, 'remove')
+        nodes_to_remove = self._get_nodes_for(request, "remove")
         tag.node_set.remove(*nodes_to_remove)
         return {
-            'added': nodes_to_add.count(),
-            'removed': nodes_to_remove.count()
-            }
+            "added": nodes_to_add.count(),
+            "removed": nodes_to_remove.count(),
+        }
 
     @classmethod
     def resource_uri(cls, tag=None):
         # See the comment in NodeHandler.resource_uri
-        tag_name = 'name'
+        tag_name = "name"
         if tag is not None:
             tag_name = tag.name
-        return ('tag_handler', (tag_name, ))
+        return ("tag_handler", (tag_name,))
 
 
 class TagsHandler(OperationsHandler):
     """Manage all tags known to MAAS."""
+
     api_doc_section_name = "Tags"
     update = delete = None
 
@@ -471,4 +458,4 @@ class TagsHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('tags_handler', [])
+        return ("tags_handler", [])

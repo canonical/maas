@@ -3,10 +3,7 @@
 
 """Helpers for architectures in testing."""
 
-__all__ = [
-    'make_usable_architecture',
-    'patch_usable_architectures',
-    ]
+__all__ = ["make_usable_architecture", "patch_usable_architectures"]
 
 from random import randint
 
@@ -14,20 +11,21 @@ from maasserver import forms
 from maasserver.testing.factory import factory
 
 
-def make_arch(with_subarch=True, arch_name=None, subarch_name=None,
-              extra=None):
+def make_arch(
+    with_subarch=True, arch_name=None, subarch_name=None, extra=None
+):
     """Generate an arbitrary architecture name.
 
     :param with_subarch: Should the architecture include a slash and a
         sub-architecture name?  Defaults to `True`.
     """
     if arch_name is None:
-        arch_name = factory.make_name('arch')
+        arch_name = factory.make_name("arch")
     factory.make_default_ubuntu_release_bootable(arch_name, extra=extra)
     if with_subarch:
         if subarch_name is None:
-            subarch_name = factory.make_name('sub')
-        return '%s/%s' % (arch_name, subarch_name)
+            subarch_name = factory.make_name("sub")
+        return "%s/%s" % (arch_name, subarch_name)
     else:
         return arch_name
 
@@ -43,16 +41,16 @@ def patch_usable_architectures(testcase, architectures=None):
     """
     if architectures is None:
         architectures = [
-            "%s/%s" % (factory.make_name('arch'), factory.make_name('sub'))
+            "%s/%s" % (factory.make_name("arch"), factory.make_name("sub"))
             for _ in range(randint(0, 2))
-            ]
-    patch = testcase.patch(forms, 'list_all_usable_architectures')
+        ]
+    patch = testcase.patch(forms, "list_all_usable_architectures")
     patch.return_value = architectures
 
 
 def make_usable_architecture(
-        testcase, with_subarch=True, arch_name=None, subarch_name=None,
-        extra=None):
+    testcase, with_subarch=True, arch_name=None, subarch_name=None, extra=None
+):
     """Return arbitrary architecture name, and make it "usable."
 
     A usable architecture is one for which boot images are available.
@@ -67,7 +65,10 @@ def make_usable_architecture(
         we need to test that not supplying a subarch works correctly.
     """
     arch = make_arch(
-        with_subarch=with_subarch, arch_name=arch_name,
-        subarch_name=subarch_name, extra=extra)
+        with_subarch=with_subarch,
+        arch_name=arch_name,
+        subarch_name=subarch_name,
+        extra=extra,
+    )
     patch_usable_architectures(testcase, [arch])
     return arch

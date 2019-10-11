@@ -3,9 +3,7 @@
 
 """Not found API handler."""
 
-__all__ = [
-    'not_found_handler',
-    ]
+__all__ = ["not_found_handler"]
 
 
 from maasserver.exceptions import MAASAPINotFound

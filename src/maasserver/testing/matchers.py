@@ -3,21 +3,12 @@
 
 """Custom matchers for testing in the region."""
 
-__all__ = [
-    'HasStatusCode',
-]
+__all__ = ["HasStatusCode"]
 
 from http import HTTPStatus
 
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
-from testtools.matchers import (
-    Matcher,
-    MatchesSetwise,
-    Mismatch,
-)
+from testtools.content import Content, UTF8_TEXT
+from testtools.matchers import Matcher, MatchesSetwise, Mismatch
 
 
 def describe_http_status(code):
@@ -58,7 +49,8 @@ class HasStatusCode(Matcher):
             )
             details = {
                 "Unexpected HTTP response": Content(
-                    UTF8_TEXT, lambda: [response_dump]),
+                    UTF8_TEXT, lambda: [response_dump]
+                )
             }
 
             return Mismatch(description, details)

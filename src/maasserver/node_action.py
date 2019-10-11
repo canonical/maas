@@ -12,15 +12,9 @@ provide the missing pieces documented in the class, and add it to
 order as they do in `ACTION_CLASSES`.
 """
 
-__all__ = [
-    'compile_node_actions',
-]
+__all__ = ["compile_node_actions"]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import OrderedDict
 
 from crochet import TimeoutError
@@ -39,20 +33,9 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES_DICT,
     POWER_STATE,
 )
-from maasserver.exceptions import (
-    NodeActionError,
-    StaticIPAddressExhaustion,
-)
-from maasserver.models import (
-    Config,
-    ResourcePool,
-    Tag,
-    Zone,
-)
-from maasserver.node_status import (
-    is_failed_status,
-    NON_MONITORED_STATUSES,
-)
+from maasserver.exceptions import NodeActionError, StaticIPAddressExhaustion
+from maasserver.models import Config, ResourcePool, Tag, Zone
+from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_curtin_config
 from maasserver.utils.orm import post_commit_do
@@ -85,41 +68,51 @@ RPC_EXCEPTIONS = (
 class NodeAction(metaclass=ABCMeta):
     """Base class for node actions."""
 
-    name = abstractproperty("""
+    name = abstractproperty(
+        """
         Action name.
 
         Will be used as the name for the action in all the forms.
-        """)
+        """
+    )
 
-    display = abstractproperty("""
+    display = abstractproperty(
+        """
         Action name.
 
         Will be used as the label for the action's button.
-        """)
+        """
+    )
 
-    for_type = abstractproperty("""
+    for_type = abstractproperty(
+        """
         Can only be performed when the node type is in the for_type set.
 
         A list of NODE_TYPEs which are applicable for this action.
-        """)
+        """
+    )
 
-    action_type = abstractproperty("""
+    action_type = abstractproperty(
+        """
         The type of action being performed.
 
         Used to divide action menu into relevant groups.
-        """)
+        """
+    )
 
     # Optional node states for which this action makes sense.
     # A collection of NODE_STATUS values.  The action will be available
     # only if `node.status in action.actionable_statuses`.
     actionable_statuses = None
 
-    permission = abstractproperty("""
+    permission = abstractproperty(
+        """
         Required permission.
 
         A `NodePermission` value.  The action will be available only if the
         user has this given permission on the subject node.
-        """)
+        """
+    )
 
     # Optional machine permission that will be used when the action
     # is being applied to a node_type which is a machine.
@@ -153,8 +146,10 @@ class NodeAction(metaclass=ABCMeta):
             return False
         elif self.node.locked and not self.allowed_when_locked:
             return False
-        elif (self.node.node_type == NODE_TYPE.MACHINE and
-                self.node.status not in self.actionable_statuses):
+        elif (
+            self.node.node_type == NODE_TYPE.MACHINE
+            and self.node.status not in self.actionable_statuses
+        ):
             return False
         return self.is_permitted()
 
@@ -173,8 +168,12 @@ class NodeAction(metaclass=ABCMeta):
         description = self.get_node_action_audit_description(self)
         # Log audit event for the action.
         create_audit_event(
-            EVENT_TYPES.NODE, self.endpoint, self.request,
-            self.node.system_id, description=description)
+            EVENT_TYPES.NODE,
+            self.endpoint,
+            self.request,
+            self.node.system_id,
+            description=description,
+        )
 
     @abstractmethod
     def _execute(self):
@@ -195,6 +194,7 @@ class NodeAction(metaclass=ABCMeta):
 
 class Delete(NodeAction):
     """Delete a node."""
+
     name = "delete"
     display = "Delete..."
     display_sentence = "deleted"
@@ -210,7 +210,8 @@ class Delete(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % (
             NODE_TYPE_CHOICES_DICT[action.node.node_type].lower(),
-            action.node.hostname)
+            action.node.hostname,
+        )
 
     def execute(self, *args, **kwargs):
         """Perform this action.
@@ -225,8 +226,12 @@ class Delete(NodeAction):
         description = self.get_node_action_audit_description(self)
         # Log audit event for the action.
         create_audit_event(
-            EVENT_TYPES.NODE, self.endpoint, self.request,
-            self.node.system_id, description=description)
+            EVENT_TYPES.NODE,
+            self.endpoint,
+            self.request,
+            self.node.system_id,
+            description=description,
+        )
         self._execute(*args, **kwargs)
 
     def _execute(self):
@@ -244,6 +249,7 @@ class Delete(NodeAction):
 
 class SetZone(NodeAction):
     """Set the zone of a node."""
+
     name = "set-zone"
     display = "Set zone..."
     display_sentence = "Zone set"
@@ -258,7 +264,9 @@ class SetZone(NodeAction):
     def get_node_action_audit_description(self, action):
         """Retrieve the node action audit description."""
         return self.audit_description % (
-            action.node.zone.name, action.node.hostname)
+            action.node.zone.name,
+            action.node.hostname,
+        )
 
     def _execute(self, zone_id=None):
         """See `NodeAction.execute`."""
@@ -268,6 +276,7 @@ class SetZone(NodeAction):
 
 class SetPool(NodeAction):
     """Set the resource pool of a node."""
+
     name = "set-pool"
     display = "Set resource pool..."
     display_sentence = "Pool set"
@@ -281,7 +290,9 @@ class SetPool(NodeAction):
     def get_node_action_audit_description(self, action):
         """Retrieve the node action audit description."""
         return self.audit_description % (
-            action.node.pool.name, action.node.hostname)
+            action.node.pool.name,
+            action.node.hostname,
+        )
 
     def _execute(self, pool_id=None):
         """See `NodeAction.execute`."""
@@ -292,6 +303,7 @@ class SetPool(NodeAction):
 
 class Commission(NodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
+
     name = "commission"
     display = "Commission..."
     display_sentence = "commissioned"
@@ -311,9 +323,15 @@ class Commission(NodeAction):
         return self.audit_description % action.node.hostname
 
     def _execute(
-            self, enable_ssh=False, skip_bmc_config=False,
-            skip_networking=False, skip_storage=False,
-            commissioning_scripts=[], testing_scripts=[], script_input=None):
+        self,
+        enable_ssh=False,
+        skip_bmc_config=False,
+        skip_networking=False,
+        skip_storage=False,
+        commissioning_scripts=[],
+        testing_scripts=[],
+        script_input=None,
+    ):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(
@@ -323,13 +341,16 @@ class Commission(NodeAction):
                 skip_networking=skip_networking,
                 skip_storage=skip_storage,
                 commissioning_scripts=commissioning_scripts,
-                testing_scripts=testing_scripts, script_input=script_input)
+                testing_scripts=testing_scripts,
+                script_input=script_input,
+            )
         except RPC_EXCEPTIONS + (ExternalProcessError, ValidationError) as e:
             raise NodeActionError(e)
 
 
 class Test(NodeAction):
     """Start testing a node."""
+
     name = "test"
     display = "Test..."
     display_sentence = "tested"
@@ -361,17 +382,22 @@ class Test(NodeAction):
         return self.audit_description % action.node.hostname
 
     def _execute(
-            self, enable_ssh=False, testing_scripts=[], script_input=None):
+        self, enable_ssh=False, testing_scripts=[], script_input=None
+    ):
         try:
             self.node.start_testing(
-                self.user, enable_ssh=enable_ssh,
-                testing_scripts=testing_scripts, script_input=script_input)
+                self.user,
+                enable_ssh=enable_ssh,
+                testing_scripts=testing_scripts,
+                script_input=script_input,
+            )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
 
 class Abort(NodeAction):
     """Abort the current operation."""
+
     name = "abort"
     display = "Abort..."
     display_sentence = "aborted"
@@ -390,7 +416,8 @@ class Abort(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % (
             NODE_STATUS_CHOICES_DICT[action.node.status].lower(),
-            action.node.hostname)
+            action.node.hostname,
+        )
 
     def _execute(self):
         """See `NodeAction.execute`."""
@@ -402,10 +429,11 @@ class Abort(NodeAction):
 
 class Acquire(NodeAction):
     """Acquire a node."""
+
     name = "acquire"
     display = "Acquire..."
     display_sentence = "acquired"
-    actionable_statuses = (NODE_STATUS.READY, )
+    actionable_statuses = (NODE_STATUS.READY,)
     permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
@@ -426,6 +454,7 @@ class Acquire(NodeAction):
 
 class Deploy(NodeAction):
     """Deploy a node."""
+
     name = "deploy"
     display = "Deploy..."
     display_sentence = "deployed"
@@ -440,14 +469,19 @@ class Deploy(NodeAction):
         return self.audit_description % action.node.hostname
 
     def _execute(
-            self, osystem=None, distro_series=None, hwe_kernel=None,
-            install_kvm=False):
+        self,
+        osystem=None,
+        distro_series=None,
+        hwe_kernel=None,
+        install_kvm=False,
+    ):
         """See `NodeAction.execute`."""
         if install_kvm:
             if not self.user.is_superuser:
                 raise NodeActionError(
                     "You must be a MAAS administrator to deploy a machine "
-                    "as a MAAS-managed KVM Pod.")
+                    "as a MAAS-managed KVM Pod."
+                )
         if self.node.owner is None:
             with locks.node_acquire:
                 try:
@@ -459,34 +493,41 @@ class Deploy(NodeAction):
                 # KVM Pod installation should default to ubuntu/bionic, since
                 # that was the release it was tested on.
                 if osystem is None:
-                    osystem = 'ubuntu'
+                    osystem = "ubuntu"
                 if distro_series is None:
-                    distro_series = 'bionic'
-                self.node.osystem, self.node.distro_series = (
-                    validate_osystem_and_distro_series(osystem, distro_series)
-                )
+                    distro_series = "bionic"
+                (
+                    self.node.osystem,
+                    self.node.distro_series,
+                ) = validate_osystem_and_distro_series(osystem, distro_series)
                 self.node.install_kvm = True
                 self.node.save()
             except ValidationError as e:
                 raise NodeActionError(e)
         elif osystem and distro_series:
             try:
-                self.node.osystem, self.node.distro_series = (
-                    validate_osystem_and_distro_series(osystem, distro_series))
+                (
+                    self.node.osystem,
+                    self.node.distro_series,
+                ) = validate_osystem_and_distro_series(osystem, distro_series)
                 self.node.save()
             except ValidationError as e:
                 raise NodeActionError(e)
         else:
             configs = Config.objects.get_configs(
-                ['default_osystem', 'default_distro_series'])
-            self.node.osystem = configs['default_osystem']
-            self.node.distro_series = configs['default_distro_series']
+                ["default_osystem", "default_distro_series"]
+            )
+            self.node.osystem = configs["default_osystem"]
+            self.node.distro_series = configs["default_distro_series"]
             self.node.save()
         try:
             self.node.hwe_kernel = validate_hwe_kernel(
-                hwe_kernel, self.node.min_hwe_kernel,
-                self.node.architecture, self.node.osystem,
-                self.node.distro_series)
+                hwe_kernel,
+                self.node.min_hwe_kernel,
+                self.node.architecture,
+                self.node.osystem,
+                self.node.distro_series,
+            )
             self.node.save()
         except ValidationError as e:
             raise NodeActionError(e)
@@ -502,26 +543,27 @@ class Deploy(NodeAction):
             # `build_absolure_uri` can create an actual absolute URI so that
             # the curtin configuration is valid.
             request = HttpRequest()
-            request.META['SERVER_NAME'] = 'localhost'
-            request.META['SERVER_PORT'] = 5248
+            request.META["SERVER_NAME"] = "localhost"
+            request.META["SERVER_PORT"] = 5248
         try:
             get_curtin_config(request, self.node)
         except Exception as e:
-            raise NodeActionError(
-                "Failed to retrieve curtin config: %s" % e)
+            raise NodeActionError("Failed to retrieve curtin config: %s" % e)
 
         try:
             self.node.start(self.user)
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
-                % self.node.hostname)
+                % self.node.hostname
+            )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
 
 class PowerOn(NodeAction):
     """Power on a node."""
+
     name = "on"
     display = "Power on..."
     display_sentence = "powered on"
@@ -546,19 +588,22 @@ class PowerOn(NodeAction):
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
-                % self.node.hostname)
+                % self.node.hostname
+            )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
 
 FAILED_STATUSES = [
-    status for status in map_enum(NODE_STATUS).values()
+    status
+    for status in map_enum(NODE_STATUS).values()
     if is_failed_status(status)
 ]
 
 
 class PowerOff(NodeAction):
     """Power off a node."""
+
     name = "off"
     display = "Power off..."
     display_sentence = "powered off"
@@ -582,12 +627,12 @@ class PowerOff(NodeAction):
 
     def is_actionable(self):
         is_actionable = super(PowerOff, self).is_actionable()
-        return is_actionable and (
-            self.node.power_state != POWER_STATE.OFF)
+        return is_actionable and (self.node.power_state != POWER_STATE.OFF)
 
 
 class Release(NodeAction):
     """Release a node."""
+
     name = "release"
     display = "Release..."
     display_sentence = "released"
@@ -612,14 +657,18 @@ class Release(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.release_or_erase(
-                self.user, erase=erase,
-                secure_erase=secure_erase, quick_erase=quick_erase)
+                self.user,
+                erase=erase,
+                secure_erase=secure_erase,
+                quick_erase=quick_erase,
+            )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
 
 class MarkBroken(NodeAction):
     """Mark a node as 'broken'."""
+
     name = "mark-broken"
     display = "Mark broken"
     display_sentence = "marked broken"
@@ -655,10 +704,11 @@ class MarkBroken(NodeAction):
 
 class MarkFixed(NodeAction):
     """Mark a broken node as fixed and set its state to 'READY'."""
+
     name = "mark-fixed"
     display = "Mark fixed"
     display_sentence = "marked fixed"
-    actionable_statuses = (NODE_STATUS.BROKEN, )
+    actionable_statuses = (NODE_STATUS.BROKEN,)
     permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.TESTING
@@ -673,7 +723,8 @@ class MarkFixed(NodeAction):
         if not self.has_commissioning_data():
             raise NodeActionError(
                 "Unable to be mark fixed because it has not been commissioned "
-                "successfully.")
+                "successfully."
+            )
         self.node.mark_fixed(self.user)
 
     def has_commissioning_data(self):
@@ -684,7 +735,8 @@ class MarkFixed(NodeAction):
             return False
         else:
             script_failures = script_set.scriptresult_set.exclude(
-                status=SCRIPT_STATUS.PASSED)
+                status=SCRIPT_STATUS.PASSED
+            )
             return not script_failures.exists()
 
 
@@ -737,10 +789,11 @@ class Unlock(NodeAction):
 
 class OverrideFailedTesting(NodeAction):
     """Override failed tests and reset node into a usable state."""
+
     name = "override-failed-testing"
     display = "Override failed testing..."
     display_sentence = "Override failed testing"
-    actionable_statuses = (NODE_STATUS.FAILED_TESTING, )
+    actionable_statuses = (NODE_STATUS.FAILED_TESTING,)
     permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.TESTING
@@ -757,13 +810,14 @@ class OverrideFailedTesting(NodeAction):
 
 class ImportImages(NodeAction):
     """Import images on a rack or region and rack controller."""
+
     name = "import-images"
     display = "Import Images"
     display_sentence = "importing images"
     permission = NodePermission.admin
     for_type = {
         NODE_TYPE.RACK_CONTROLLER,
-        NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
     }
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Started importing images on '%s'."
@@ -776,13 +830,15 @@ class ImportImages(NodeAction):
         """See `NodeAction.execute`."""
         try:
             post_commit_do(
-                RackControllersImporter.schedule, self.node.system_id)
+                RackControllersImporter.schedule, self.node.system_id
+            )
         except RPC_EXCEPTIONS as exception:
             raise NodeActionError(exception)
 
 
 class RescueMode(NodeAction):
     """Start the rescue mode process."""
+
     name = "rescue-mode"
     display = "Rescue mode..."
     display_sentence = "rescue mode"
@@ -822,6 +878,7 @@ class RescueMode(NodeAction):
 
 class ExitRescueMode(NodeAction):
     """Exit the rescue mode process."""
+
     name = "exit-rescue-mode"
     display = "Exit rescue mode..."
     display_sentence = "exit rescue mode"
@@ -850,6 +907,7 @@ class ExitRescueMode(NodeAction):
 
 class AddTag(NodeAction):
     """Tag multiple machines."""
+
     name = "tag"
     display = "Tag"
     display_sentence = "tagged"
@@ -910,13 +968,12 @@ def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):
         to corresponding :class:`NodeAction` instances.  The dict is ordered
         for consistent display.
     """
-    actions = (
-        action_class(node, user, request)
-        for action_class in classes)
+    actions = (action_class(node, user, request) for action_class in classes)
     applicable_actions = (
-        action for action in actions
-        if action.is_actionable())
+        action for action in actions if action.is_actionable()
+    )
     return OrderedDict(
         (action.name, action)
         for action in applicable_actions
-        if action.is_permitted())
+        if action.is_permitted()
+    )

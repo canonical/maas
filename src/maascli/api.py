@@ -3,9 +3,7 @@
 
 """Interact with a remote MAAS server."""
 
-__all__ = [
-    "register_api_commands",
-    ]
+__all__ = ["register_api_commands"]
 
 import argparse
 from collections import defaultdict
@@ -15,31 +13,18 @@ import json
 from operator import itemgetter
 import re
 import sys
-from textwrap import (
-    dedent,
-    fill,
-    wrap,
-)
-from urllib.parse import (
-    urljoin,
-    urlparse,
-)
+from textwrap import dedent, fill, wrap
+from urllib.parse import urljoin, urlparse
 
 from apiclient.maas_client import MAASOAuth
 from apiclient.multipart import (
     build_multipart_message,
     encode_multipart_message,
 )
-from apiclient.utils import (
-    ascii_url,
-    urlencode,
-)
+from apiclient.utils import ascii_url, urlencode
 import httplib2
 from maascli import utils
-from maascli.command import (
-    Command,
-    CommandError,
-)
+from maascli.command import Command, CommandError
 from maascli.config import ProfileConfig
 from maascli.utils import (
     handler_command_name,
@@ -51,36 +36,39 @@ from maascli.utils import (
 
 def http_request(url, method, body=None, headers=None, insecure=False):
     """Issue an http request."""
-    http = httplib2.Http(
-        disable_ssl_certificate_validation=insecure)
+    http = httplib2.Http(disable_ssl_certificate_validation=insecure)
     try:
         # XXX mpontillo 2015-12-15: Should force input to be in bytes here.
         # This calls into httplib2, which is going to call a parser which
         # expects this to be a `str`.
         if isinstance(url, bytes):
-            url = url.decode('ascii')
+            url = url.decode("ascii")
         return http.request(url, method, body=body, headers=headers)
     except httplib2.ssl.SSLError:
         raise CommandError(
             "Certificate verification failed, use --insecure/-k to "
-            "disable the certificate check.")
+            "disable the certificate check."
+        )
 
 
 def fetch_api_description(url, insecure=False):
     """Obtain the description of remote API given its base URL."""
     url_describe = urljoin(url, "describe/")
     response, content = http_request(
-        ascii_url(url_describe), "GET", insecure=insecure)
+        ascii_url(url_describe), "GET", insecure=insecure
+    )
     if response.status != http.client.OK:
         raise CommandError(
-            "{0.status} {0.reason}:\n{1}".format(response, content))
+            "{0.status} {0.reason}:\n{1}".format(response, content)
+        )
     if response["content-type"] != "application/json":
         raise CommandError(
-            "Expected application/json, got: %(content-type)s" % response)
+            "Expected application/json, got: %(content-type)s" % response
+        )
     # XXX mpontillo 2015-12-15: We don't actually know that this is UTF-8, but
     # I'm keeping it here, because if it happens to be non-ASCII, chances are
     # good that it'll be UTF-8.
-    return json.loads(content.decode('utf-8'))
+    return json.loads(content.decode("utf-8"))
 
 
 class Action(Command):
@@ -106,14 +94,21 @@ class Action(Command):
         super(Action, self).__init__(parser)
         for param in self.handler["params"]:
             parser.add_argument(param)
+        parser.add_argument("data", type=self.name_value_pair, nargs="*")
         parser.add_argument(
-            "data", type=self.name_value_pair, nargs="*")
+            "-d",
+            "--debug",
+            action="store_true",
+            default=False,
+            help="Display more information about API responses.",
+        )
         parser.add_argument(
-            "-d", "--debug", action="store_true", default=False,
-            help="Display more information about API responses.")
-        parser.add_argument(
-            '-k', '--insecure', action='store_true', help=(
-                "Disable SSL certificate check"), default=False)
+            "-k",
+            "--insecure",
+            action="store_true",
+            help="Disable SSL certificate check",
+            default=False,
+        )
 
     def __call__(self, options):
         # TODO: this is el-cheapo URI Template
@@ -123,7 +118,8 @@ class Action(Command):
 
         # Bundle things up ready to throw over the wire.
         uri, body, headers = self.prepare_payload(
-            self.op, self.method, uri, options.data)
+            self.op, self.method, uri, options.data
+        )
 
         # Headers are returned as a list, but they must be a dict for
         # the signing machinery.
@@ -139,8 +135,8 @@ class Action(Command):
         # be used.
         insecure = options.insecure
         response, content = http_request(
-            uri, self.method, body=body, headers=headers,
-            insecure=insecure)
+            uri, self.method, body=body, headers=headers, insecure=insecure
+        )
 
         # Compare API hashes to see if our version of the API is old.
         self.compare_api_hashes(self.profile, response)
@@ -165,14 +161,19 @@ class Action(Command):
         if hash_from_response is not None:
             hash_from_profile = profile["description"].get("hash")
             if hash_from_profile != hash_from_response:
-                warning = dedent("""\
+                warning = dedent(
+                    """\
                 WARNING! The API on the server differs from the description
                 that is cached locally. This may result in failed API calls.
                 Refresh the local API description with `maas refresh`.
-                """)
+                """
+                )
                 warning_lines = wrap(
-                    warning, width=70, initial_indent="*** ",
-                    subsequent_indent="*** ")
+                    warning,
+                    width=70,
+                    initial_indent="*** ",
+                    subsequent_indent="*** ",
+                )
                 print("**********" * 7, file=sys.stderr)
                 for warning_line in warning_lines:
                     print(warning_line, file=sys.stderr)
@@ -190,7 +191,7 @@ class Action(Command):
         that will return an open file handle when called. The file will
         be opened in binary mode for reading only.
         """
-        parts = re.split(r'(=|@=)', string, 1)
+        parts = re.split(r"(=|@=)", string, 1)
         if len(parts) == 3:
             name, what, value = parts
             if what == "=":
@@ -198,11 +199,11 @@ class Action(Command):
             elif what == "@=":
                 return name, partial(open, value, "rb")
             else:
-                raise AssertionError(
-                    "Unrecognised separator %r" % what)
+                raise AssertionError("Unrecognised separator %r" % what)
         else:
             raise CommandError(
-                "%r is not a name=value or name@=filename pair" % string)
+                "%r is not a name=value or name@=filename pair" % string
+            )
 
     @classmethod
     def prepare_payload(cls, op, method, uri, data):
@@ -229,7 +230,8 @@ class Action(Command):
         if method in ["GET", "DELETE"]:
             query.extend(
                 (name, slurp(value) if callable(value) else value)
-                for name, value in data)
+                for name, value in data
+            )
             body, headers = None, []
         else:
             if data is None or len(data) == 0:
@@ -257,12 +259,14 @@ class ActionHelp(argparse.Action):
     This class is stateless.
     """
 
-    keyword_args_help = dedent("""\
+    keyword_args_help = dedent(
+        """\
         This method accepts keyword arguments.  Pass each argument as a
         key-value pair with an equals sign between the key and the value:
         key1=value1 key2=value key3=value3.  Keyword arguments must come after
         any positional arguments.
-        """)
+        """
+    )
 
     @classmethod
     def get_positional_args(cls, parser):
@@ -280,7 +284,7 @@ class ActionHelp(argparse.Action):
         # seem to be publicly exposed.
         positional_actions = parser._get_positional_actions()
         names = [action.dest for action in positional_actions]
-        if len(names) > 0 and names[-1] == 'data':
+        if len(names) > 0 and names[-1] == "data":
             names = names[:-1]
         return names
 
@@ -299,11 +303,9 @@ class ActionHelp(argparse.Action):
         if len(positional_args) == 0:
             return []
         else:
-            return [
-                '',
-                '',
-                "Positional arguments:",
-                ] + ["\t%s" % arg for arg in positional_args]
+            return ["", "", "Positional arguments:"] + [
+                "\t%s" % arg for arg in positional_args
+            ]
 
     @classmethod
     def compose_epilog(cls, parser):
@@ -312,14 +314,11 @@ class ActionHelp(argparse.Action):
         if parser.epilog is None:
             return []
         epilog = epilog.rstrip()
-        if epilog == '':
+        if epilog == "":
             return []
 
-        lines = [
-            '',
-            '',
-            ]
-        if ':param ' in epilog:
+        lines = ["", ""]
+        if ":param " in epilog:
             # This API action documents keyword arguments.  Explain to the
             # user how those work first.
             lines.append(cls.keyword_args_help)
@@ -334,31 +333,23 @@ class ActionHelp(argparse.Action):
         if len(optional_args) == 0:
             return []
 
-        lines = [
-            '',
-            '',
-            "Common command-line options:",
-            ]
+        lines = ["", "", "Common command-line options:"]
         for arg in optional_args:
             # Minimal representation of options.  Doesn't show
             # arguments to the options, defaults, and so on.  But it's
             # all we need for now.
-            lines.append('    %s' % ', '.join(arg.option_strings))
-            lines.append('\t%s' % arg.help)
+            lines.append("    %s" % ", ".join(arg.option_strings))
+            lines.append("\t%s" % arg.help)
         return lines
 
     @classmethod
     def compose(cls, parser):
         """Put together, and return, help output for `parser`."""
-        lines = [
-            parser.format_usage().rstrip(),
-            '',
-            parser.description,
-            ]
+        lines = [parser.format_usage().rstrip(), "", parser.description]
         lines += cls.compose_positional_args(parser)
         lines += cls.compose_epilog(parser)
         lines += cls.compose_optional_args(parser)
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def __call__(self, parser, namespace, values, option_string):
         """Overridable as defined by the `argparse` API."""
@@ -368,11 +359,12 @@ class ActionHelp(argparse.Action):
 
 def get_action_class(handler, action):
     """Return custom action handler class."""
-    handler_name = handler_command_name(handler["name"]).replace('-', '_')
-    action_name = '%s_%s' % (
+    handler_name = handler_command_name(handler["name"]).replace("-", "_")
+    action_name = "%s_%s" % (
         handler_name,
-        safe_name(action["name"]).replace('-', '_'))
-    action_module = try_import_module('maascli.actions.%s' % action_name)
+        safe_name(action["name"]).replace("-", "_"),
+    )
+    action_module = try_import_module("maascli.actions.%s" % action_name)
     if action_module is not None:
         return action_module.action_class
     return None
@@ -392,18 +384,22 @@ def register_actions(profile, handler, parser):
         help_title, help_body = parse_docstring(action["doc"])
         action_name = safe_name(action["name"])
         action_bases = get_action_class_bases(handler, action)
-        action_ns = {
-            "action": action,
-            "handler": handler,
-            "profile": profile,
-            }
+        action_ns = {"action": action, "handler": handler, "profile": profile}
         action_class = type(action_name, action_bases, action_ns)
         action_parser = parser.subparsers.add_parser(
-            action_name, help=help_title, description=help_title,
-            epilog=help_body, add_help=False)
+            action_name,
+            help=help_title,
+            description=help_title,
+            epilog=help_body,
+            add_help=False,
+        )
         action_parser.add_argument(
-            '--help', '-h', action=ActionHelp, nargs=0,
-            help="Show this help message and exit.")
+            "--help",
+            "-h",
+            action=ActionHelp,
+            nargs=0,
+            help="Show this help message and exit.",
+        )
         action_parser.set_defaults(execute=action_class(action_parser))
 
 
@@ -412,8 +408,8 @@ def register_handler(profile, handler, parser):
     help_title, help_body = parse_docstring(handler["doc"])
     handler_name = handler_command_name(handler["name"])
     handler_parser = parser.subparsers.add_parser(
-        handler_name, help=help_title, description=help_title,
-        epilog=help_body)
+        handler_name, help=help_title, description=help_title, epilog=help_body
+    )
     register_actions(profile, handler, handler_parser)
 
 
@@ -444,14 +440,18 @@ def register_resources(profile, parser):
         # profile does not have credentials.
         represent_as = dict(
             resource["auth"] or resource["anon"],
-            name=resource["name"], actions=[])
+            name=resource["name"],
+            actions=[],
+        )
         # Each value in the actions dict is a list of one or more action
         # descriptions. Here we register the handler with only the first of
         # each of those.
         if len(actions) != 0:
             represent_as["actions"].extend(
-                value[0] for value in actions.values())
+                value[0] for value in actions.values()
+            )
             register_handler(profile, represent_as, parser)
+
 
 profile_help_paragraphs = [
     """\
@@ -467,8 +467,9 @@ profile_help_paragraphs = [
     server.
     """,
 ]
-profile_help = '\n\n'.join(
-    fill(dedent(paragraph)) for paragraph in profile_help_paragraphs)
+profile_help = "\n\n".join(
+    fill(dedent(paragraph)) for paragraph in profile_help_paragraphs
+)
 
 
 def register_api_commands(parser):
@@ -478,11 +479,14 @@ def register_api_commands(parser):
             for profile_name in config:
                 profile = config[profile_name]
                 profile_parser = parser.subparsers.add_parser(
-                    profile["name"], help="Interact with %(url)s" % profile,
+                    profile["name"],
+                    help="Interact with %(url)s" % profile,
                     description=(
                         "Issue commands to the MAAS region controller at "
-                        "%(url)s." % profile),
-                    epilog=profile_help)
+                        "%(url)s." % profile
+                    ),
+                    epilog=profile_help,
+                )
                 register_resources(profile, profile_parser)
     except FileNotFoundError:
         return

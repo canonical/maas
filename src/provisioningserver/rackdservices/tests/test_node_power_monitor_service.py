@@ -6,37 +6,18 @@
 
 __all__ = []
 
-from unittest.mock import (
-    ANY,
-    Mock,
-    sentinel,
-)
+from unittest.mock import ANY, Mock, sentinel
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
-from maastesting.twisted import (
-    extract_result,
-    TwistedLoggerFixture,
-)
-from provisioningserver.rackdservices import (
-    node_power_monitor_service as npms,
-)
-from provisioningserver.rpc import (
-    exceptions,
-    getRegionClient,
-    region,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from maastesting.twisted import extract_result, TwistedLoggerFixture
+from provisioningserver.rackdservices import node_power_monitor_service as npms
+from provisioningserver.rpc import exceptions, getRegionClient, region
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 from testtools.matchers import MatchesStructure
-from twisted.internet.defer import (
-    fail,
-    succeed,
-)
+from twisted.internet.defer import fail, succeed
 from twisted.internet.error import ConnectionDone
 from twisted.internet.task import Clock
 
@@ -47,9 +28,14 @@ class TestNodePowerMonitorService(MAASTestCase):
 
     def test_init_sets_up_timer_correctly(self):
         service = npms.NodePowerMonitorService()
-        self.assertThat(service, MatchesStructure.byEquality(
-            call=(service.try_query_nodes, tuple(), {}),
-            step=15, clock=None))
+        self.assertThat(
+            service,
+            MatchesStructure.byEquality(
+                call=(service.try_query_nodes, tuple(), {}),
+                step=15,
+                clock=None,
+            ),
+        )
 
     def make_monitor_service(self):
         service = npms.NodePowerMonitorService(Clock())
@@ -60,9 +46,11 @@ class TestNodePowerMonitorService(MAASTestCase):
 
         rpc_fixture = self.useFixture(MockClusterToRegionRPCFixture())
         proto_region, io = rpc_fixture.makeEventLoop(
-            region.ListNodePowerParameters)
+            region.ListNodePowerParameters
+        )
         proto_region.ListNodePowerParameters.return_value = succeed(
-            {"nodes": []})
+            {"nodes": []}
+        )
 
         client = getRegionClient()
         d = service.query_nodes(client)
@@ -71,7 +59,8 @@ class TestNodePowerMonitorService(MAASTestCase):
         self.assertEqual(None, extract_result(d))
         self.assertThat(
             proto_region.ListNodePowerParameters,
-            MockCalledOnceWith(ANY, uuid=client.localIdent))
+            MockCalledOnceWith(ANY, uuid=client.localIdent),
+        )
 
     def test_query_nodes_calls_query_all_nodes(self):
         service = self.make_monitor_service()
@@ -87,7 +76,8 @@ class TestNodePowerMonitorService(MAASTestCase):
 
         rpc_fixture = self.useFixture(MockClusterToRegionRPCFixture())
         proto_region, io = rpc_fixture.makeEventLoop(
-            region.ListNodePowerParameters)
+            region.ListNodePowerParameters
+        )
         proto_region.ListNodePowerParameters.side_effect = [
             succeed({"nodes": [example_power_parameters]}),
             succeed({"nodes": []}),
@@ -104,17 +94,21 @@ class TestNodePowerMonitorService(MAASTestCase):
             MockCalledOnceWith(
                 [example_power_parameters],
                 max_concurrency=sentinel.max_nodes_at_once,
-                clock=service.clock))
+                clock=service.clock,
+            ),
+        )
 
     def test_query_nodes_copes_with_NoSuchCluster(self):
         service = self.make_monitor_service()
 
         rpc_fixture = self.useFixture(MockClusterToRegionRPCFixture())
         proto_region, io = rpc_fixture.makeEventLoop(
-            region.ListNodePowerParameters)
+            region.ListNodePowerParameters
+        )
         client = getRegionClient()
         proto_region.ListNodePowerParameters.return_value = fail(
-            exceptions.NoSuchCluster.from_uuid(client.localIdent))
+            exceptions.NoSuchCluster.from_uuid(client.localIdent)
+        )
 
         d = service.query_nodes(client)
         d.addErrback(service.query_nodes_failed, client.localIdent)
@@ -123,13 +117,15 @@ class TestNodePowerMonitorService(MAASTestCase):
 
         self.assertEqual(None, extract_result(d))
         self.assertDocTestMatches(
-            "Rack controller '...' is not recognised.", maaslog.output)
+            "Rack controller '...' is not recognised.", maaslog.output
+        )
 
     def test_query_nodes_copes_with_losing_connection_to_region(self):
         service = self.make_monitor_service()
 
-        client = Mock(return_value=fail(
-            ConnectionDone("Connection was closed cleanly.")))
+        client = Mock(
+            return_value=fail(ConnectionDone("Connection was closed cleanly."))
+        )
 
         with FakeLogger("maas") as maaslog:
             d = service.query_nodes(client)
@@ -137,7 +133,8 @@ class TestNodePowerMonitorService(MAASTestCase):
 
         self.assertEqual(None, extract_result(d))
         self.assertDocTestMatches(
-            "Lost connection to region controller.", maaslog.output)
+            "Lost connection to region controller.", maaslog.output
+        )
 
     def test_try_query_nodes_logs_other_errors(self):
         service = self.make_monitor_service()
@@ -146,7 +143,8 @@ class TestNodePowerMonitorService(MAASTestCase):
 
         query_nodes = self.patch(service, "query_nodes")
         query_nodes.return_value = fail(
-            ZeroDivisionError("Such a shame I can't divide by zero"))
+            ZeroDivisionError("Such a shame I can't divide by zero")
+        )
 
         with FakeLogger("maas") as maaslog, TwistedLoggerFixture():
             d = service.try_query_nodes()
@@ -155,4 +153,5 @@ class TestNodePowerMonitorService(MAASTestCase):
         self.assertDocTestMatches(
             "Failed to query nodes' power status: "
             "Such a shame I can't divide by zero",
-            maaslog.output)
+            maaslog.output,
+        )

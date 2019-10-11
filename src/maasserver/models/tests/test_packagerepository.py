@@ -13,34 +13,39 @@ from testtools import ExpectedException
 
 
 class TestPackageRepositoryManager(MAASServerTestCase):
-
     def test_get_default_archive(self):
         PackageRepository.objects.all().delete()
-        arch = 'amd64'
-        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        arch = "amd64"
+        main_url = "http://us.archive.ubuntu.com/ubuntu"
         archive = factory.make_PackageRepository(
-            url=main_url, default=True, arches=['i386', 'amd64'])
+            url=main_url, default=True, arches=["i386", "amd64"]
+        )
         self.assertEquals(
-            archive,
-            PackageRepository.objects.get_default_archive(arch))
+            archive, PackageRepository.objects.get_default_archive(arch)
+        )
 
     def test_get_additional_repositories(self):
-        arch = 'amd64'
-        main_url = 'http://additional.repository/ubuntu'
+        arch = "amd64"
+        main_url = "http://additional.repository/ubuntu"
         archive = factory.make_PackageRepository(
-            url=main_url, default=False, arches=['i386', 'amd64'])
+            url=main_url, default=False, arches=["i386", "amd64"]
+        )
         self.assertEquals(
             archive,
             PackageRepository.objects.get_additional_repositories(
-                arch).first())
+                arch
+            ).first(),
+        )
 
     def test_additional_repositories_can_be_deleted(self):
-        main_url = 'http://additional.repository/ubuntu'
+        main_url = "http://additional.repository/ubuntu"
         archive = factory.make_PackageRepository(
-            url=main_url, default=False, arches=['i386', 'amd64'])
+            url=main_url, default=False, arches=["i386", "amd64"]
+        )
         archive.delete()
         gone = PackageRepository.objects.get_additional_repositories(
-            'amd64').first()
+            "amd64"
+        ).first()
         self.assertIsNone(gone)
 
     def test_default_repositories_cannot_be_deleted(self):
@@ -50,36 +55,46 @@ class TestPackageRepositoryManager(MAASServerTestCase):
             PackageRepository.get_ports_archive().delete()
 
     def test_get_multiple_with_a_ppa(self):
-        ppa_arch = 'armhf'
-        ppa_url = 'ppa:%s/%s' % (
-            factory.make_hostname(), factory.make_hostname())
+        ppa_arch = "armhf"
+        ppa_url = "ppa:%s/%s" % (
+            factory.make_hostname(),
+            factory.make_hostname(),
+        )
         ppa_archive = factory.make_PackageRepository(
-            url=ppa_url, default=False, arches=[
-                ppa_arch, factory.make_name()])
-        arch = 'i386'
-        url = factory.make_url(scheme='http')
+            url=ppa_url, default=False, arches=[ppa_arch, factory.make_name()]
+        )
+        arch = "i386"
+        url = factory.make_url(scheme="http")
         archive = factory.make_PackageRepository(
-            url=url, default=False, arches=[arch, factory.make_name()])
+            url=url, default=False, arches=[arch, factory.make_name()]
+        )
         self.assertEquals(
             ppa_archive,
             PackageRepository.objects.get_additional_repositories(
-                ppa_arch).first())
+                ppa_arch
+            ).first(),
+        )
         self.assertEquals(
             archive,
             PackageRepository.objects.get_additional_repositories(
-                arch).first())
+                arch
+            ).first(),
+        )
 
     def test_get_known_architectures(self):
         self.assertEqual(
             PackageRepository.objects.get_known_architectures(),
-            PackageRepository.MAIN_ARCHES + PackageRepository.PORTS_ARCHES)
+            PackageRepository.MAIN_ARCHES + PackageRepository.PORTS_ARCHES,
+        )
 
     def test_get_pockets_to_disable(self):
         self.assertEqual(
             PackageRepository.objects.get_pockets_to_disable(),
-            PackageRepository.POCKETS_TO_DISABLE)
+            PackageRepository.POCKETS_TO_DISABLE,
+        )
 
     def test_get_components_to_disable(self):
         self.assertEqual(
             PackageRepository.objects.get_components_to_disable(),
-            PackageRepository.COMPONENTS_TO_DISABLE)
+            PackageRepository.COMPONENTS_TO_DISABLE,
+        )

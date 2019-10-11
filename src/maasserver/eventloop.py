@@ -33,13 +33,7 @@ that are not tied to an HTTP reqoest.
 
 """
 
-__all__ = [
-    "loop",
-    "reset",
-    "services",
-    "start",
-    "stop",
-]
+__all__ = ["loop", "reset", "services", "start", "stop"]
 
 from logging import getLogger
 import os
@@ -49,16 +43,9 @@ from maasserver.utils.orm import disable_all_database_connections
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.prometheus.metrics import set_global_labels
 from provisioningserver.utils.twisted import asynchronous
-from twisted.application.service import (
-    MultiService,
-    Service,
-)
+from twisted.application.service import MultiService, Service
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    DeferredList,
-    inlineCallbacks,
-    maybeDeferred,
-)
+from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 
 # Default port for regiond.
 DEFAULT_PORT = 5240
@@ -69,77 +56,92 @@ logger = getLogger(__name__)
 
 
 reactor.addSystemEventTrigger(
-    "before", "startup", disable_all_database_connections)
+    "before", "startup", disable_all_database_connections
+)
 
 
 def make_DatabaseTaskService():
     from maasserver.utils import dbtasks
+
     return dbtasks.DatabaseTasksService()
 
 
 def make_RegionControllerService(postgresListener):
     from maasserver.region_controller import RegionControllerService
+
     return RegionControllerService(postgresListener)
 
 
 def make_RegionService(ipcWorker):
     # Import here to avoid a circular import.
     from maasserver.rpc import regionservice
+
     return regionservice.RegionService(ipcWorker)
 
 
 def make_NonceCleanupService():
     from maasserver import nonces_cleanup
+
     return nonces_cleanup.NonceCleanupService()
 
 
 def make_DNSPublicationGarbageService():
     from maasserver.dns import publication
+
     return publication.DNSPublicationGarbageService()
 
 
 def make_StatusMonitorService():
     from maasserver import status_monitor
+
     return status_monitor.StatusMonitorService()
 
 
 def make_StatsService():
     from maasserver import stats
+
     return stats.StatsService()
 
 
 def make_PrometheusService():
     from maasserver.prometheus import stats
+
     return stats.PrometheusService()
 
 
 def make_ImportResourcesService():
     from maasserver import bootresources
+
     return bootresources.ImportResourcesService()
 
 
 def make_ImportResourcesProgressService():
     from maasserver import bootresources
+
     return bootresources.ImportResourcesProgressService()
 
 
 def make_PostgresListenerService():
     from maasserver.listener import PostgresListenerService
+
     return PostgresListenerService()
 
 
 def make_RackControllerService(ipcWorker, postgresListener):
     from maasserver.rack_controller import RackControllerService
+
     return RackControllerService(ipcWorker, postgresListener)
 
 
 def make_StatusWorkerService(dbtasks):
     from metadataserver.api_twisted import StatusWorkerService
+
     return StatusWorkerService(dbtasks)
 
 
 def make_ServiceMonitorService():
     from maasserver.regiondservices import service_monitor_service
+
     return service_monitor_service.ServiceMonitorService()
 
 
@@ -147,53 +149,61 @@ def make_NetworksMonitoringService():
     from maasserver.regiondservices.networks_monitoring import (
         RegionNetworksMonitoringService,
     )
+
     return RegionNetworksMonitoringService(reactor)
 
 
 def make_ActiveDiscoveryService(postgresListener):
     from maasserver.regiondservices.active_discovery import (
-        ActiveDiscoveryService
+        ActiveDiscoveryService,
     )
+
     return ActiveDiscoveryService(reactor, postgresListener)
 
 
 def make_ReverseDNSService(postgresListener):
-    from maasserver.regiondservices.reverse_dns import (
-        ReverseDNSService
-    )
+    from maasserver.regiondservices.reverse_dns import ReverseDNSService
+
     return ReverseDNSService(postgresListener)
 
 
 def make_NetworkTimeProtocolService():
     from maasserver.regiondservices import ntp
+
     return ntp.RegionNetworkTimeProtocolService(reactor)
 
 
 def make_SyslogService():
     from maasserver.regiondservices import syslog
+
     return syslog.RegionSyslogService(reactor)
 
 
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
+
     site_port = DEFAULT_PORT  # config["port"]
     site_service = WebApplicationService(
-        site_port, postgresListener, statusWorker)
+        site_port, postgresListener, statusWorker
+    )
     return site_service
 
 
 def make_WorkersService():
     from maasserver.workers import WorkersService
+
     return WorkersService(reactor)
 
 
 def make_IPCMasterService(workers=None):
     from maasserver.ipc import IPCMasterService
+
     return IPCMasterService(reactor, workers)
 
 
 def make_IPCWorkerService():
     from maasserver.ipc import IPCWorkerService
+
     return IPCWorkerService(reactor)
 
 
@@ -201,12 +211,13 @@ def make_PrometheusExporterService():
     from maasserver.prometheus.service import (
         create_prometheus_exporter_service,
     )
+
     return create_prometheus_exporter_service(
-        reactor, DEFAULT_PROMETHEUS_EXPORTER_PORT)
+        reactor, DEFAULT_PROMETHEUS_EXPORTER_PORT
+    )
 
 
 class MAASServices(MultiService):
-
     def __init__(self, eventloop):
         self.eventloop = eventloop
         super().__init__()
@@ -217,17 +228,18 @@ class MAASServices(MultiService):
         yield maybeDeferred(self.eventloop.prepare)
         Service.startService(self)
         yield self._set_globals()
-        yield DeferredList([
-            maybeDeferred(service.startService)
-            for service in self
-        ])
+        yield DeferredList(
+            [maybeDeferred(service.startService) for service in self]
+        )
 
     @inlineCallbacks
     def _set_globals(self):
         from maasserver.models.node import RegionControllerManager
+
         maas_uuid = yield deferToDatabase(
-            RegionControllerManager().get_or_create_uuid)
-        set_global_labels(maas_uuid=maas_uuid, service_type='region')
+            RegionControllerManager().get_or_create_uuid
+        )
+        set_global_labels(maas_uuid=maas_uuid, service_type="region")
 
 
 class RegionEventLoop:
@@ -388,28 +400,33 @@ class RegionEventLoop:
 
     @asynchronous
     def populateService(
-            self, name, master=False, all_in_one=False, import_services=False):
+        self, name, master=False, all_in_one=False, import_services=False
+    ):
         """Prepare a service."""
         factoryInfo = self.factories[name]
         if not all_in_one:
             if factoryInfo["only_on_master"] and not master:
                 raise ValueError(
                     "Service '%s' cannot be created because it can only run "
-                    "on the master process." % name)
+                    "on the master process." % name
+                )
             elif not factoryInfo["only_on_master"] and master:
                 raise ValueError(
                     "Service '%s' cannot be created because it can only run "
-                    "on a worker process." % name)
+                    "on a worker process." % name
+                )
         else:
-            dont_run = factoryInfo.get('not_all_in_one', False)
+            dont_run = factoryInfo.get("not_all_in_one", False)
             if dont_run:
                 raise ValueError(
                     "Service '%s' cannot be created because it can not run "
-                    "in the all-in-one process." % name)
-        if factoryInfo.get('import_service', False) and not import_services:
+                    "in the all-in-one process." % name
+                )
+        if factoryInfo.get("import_service", False) and not import_services:
             raise ValueError(
                 "Service '%s' cannot be created because import services "
-                "should not run on this process." % name)
+                "should not run on this process." % name
+            )
         try:
             service = self.services.getServiceNamed(name)
         except KeyError:
@@ -419,13 +436,20 @@ class RegionEventLoop:
             for require in factoryInfo["requires"]:
                 dependencies.append(
                     self.populateService(
-                        require, master=master, all_in_one=all_in_one,
-                        import_services=import_services))
+                        require,
+                        master=master,
+                        all_in_one=all_in_one,
+                        import_services=import_services,
+                    )
+                )
             for optional in factoryInfo.get("optional", []):
                 try:
                     service = self.populateService(
-                        optional, master=master, all_in_one=all_in_one,
-                        import_services=import_services)
+                        optional,
+                        master=master,
+                        all_in_one=all_in_one,
+                        import_services=import_services,
+                    )
                 except ValueError:
                     pass
                 else:
@@ -443,27 +467,38 @@ class RegionEventLoop:
         self.master = master
         for name, item in self.factories.items():
             if all_in_one:
-                if not item.get('not_all_in_one', False):
+                if not item.get("not_all_in_one", False):
                     self.populateService(
-                        name, master=master, all_in_one=all_in_one,
-                        import_services=import_services)
+                        name,
+                        master=master,
+                        all_in_one=all_in_one,
+                        import_services=import_services,
+                    )
             else:
-                if item['only_on_master'] and master:
+                if item["only_on_master"] and master:
                     self.populateService(
-                        name, master=master, all_in_one=all_in_one,
-                        import_services=import_services)
-                elif not item['only_on_master'] and not master:
-                    importService = item.get('import_service', False)
-                    if ((importService and import_services) or
-                            not importService):
+                        name,
+                        master=master,
+                        all_in_one=all_in_one,
+                        import_services=import_services,
+                    )
+                elif not item["only_on_master"] and not master:
+                    importService = item.get("import_service", False)
+                    if (
+                        importService and import_services
+                    ) or not importService:
                         self.populateService(
-                            name, master=master, all_in_one=all_in_one,
-                            import_services=import_services)
+                            name,
+                            master=master,
+                            all_in_one=all_in_one,
+                            import_services=import_services,
+                        )
 
     @asynchronous
     def prepare(self):
         """Perform start_up of the region process."""
         from maasserver.start_up import start_up
+
         return start_up(self.master)
 
     @asynchronous
@@ -479,9 +514,9 @@ class RegionEventLoop:
         """
         self.populate(master=master, all_in_one=all_in_one)
         self.handle = reactor.addSystemEventTrigger(
-            'before', 'shutdown', self.services.stopService)
-        return self.prepare().addCallback(
-            self.startMultiService)
+            "before", "shutdown", self.services.stopService
+        )
+        return self.prepare().addCallback(self.startMultiService)
 
     @asynchronous
     def stop(self):
@@ -500,6 +535,7 @@ class RegionEventLoop:
 
         Stop all services, then disown them all.
         """
+
         def disown_all_services(_):
             for service in list(self.services):
                 service.disownServiceParent()

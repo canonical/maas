@@ -14,34 +14,30 @@ from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from twisted.internet import reactor
 
 
 class TagTest(MAASServerTestCase):
-
     def test_factory_make_Tag(self):
         """
         The generated system_id looks good.
 
         """
-        tag = factory.make_Tag('tag-name', '//node[@id=display]')
-        self.assertEqual('tag-name', tag.name)
-        self.assertEqual('//node[@id=display]', tag.definition)
-        self.assertEqual('', tag.comment)
+        tag = factory.make_Tag("tag-name", "//node[@id=display]")
+        self.assertEqual("tag-name", tag.name)
+        self.assertEqual("//node[@id=display]", tag.definition)
+        self.assertEqual("", tag.comment)
         self.assertIs(None, tag.kernel_opts)
         self.assertIsNot(None, tag.updated)
         self.assertIsNot(None, tag.created)
 
     def test_factory_make_Tag_with_hardware_details(self):
-        tag = factory.make_Tag('a-tag', 'true', kernel_opts="console=ttyS0")
-        self.assertEqual('a-tag', tag.name)
-        self.assertEqual('true', tag.definition)
-        self.assertEqual('', tag.comment)
-        self.assertEqual('console=ttyS0', tag.kernel_opts)
+        tag = factory.make_Tag("a-tag", "true", kernel_opts="console=ttyS0")
+        self.assertEqual("a-tag", tag.name)
+        self.assertEqual("true", tag.definition)
+        self.assertEqual("", tag.comment)
+        self.assertEqual("console=ttyS0", tag.kernel_opts)
         self.assertIsNot(None, tag.updated)
         self.assertIsNot(None, tag.created)
 
@@ -54,31 +50,38 @@ class TagTest(MAASServerTestCase):
         self.assertEqual([node.id], [n.id for n in tag.node_set.all()])
 
     def test_valid_tag_names(self):
-        for valid in ['valid-dash', 'under_score', 'long' * 50]:
+        for valid in ["valid-dash", "under_score", "long" * 50]:
             tag = factory.make_Tag(name=valid)
             self.assertEqual(valid, tag.name)
 
     def test_validate_traps_invalid_tag_name(self):
-        for invalid in ['invalid:name', 'no spaces', 'no\ttabs',
-                        'no&ampersand', 'no!shouting', '',
-                        'too-long' * 33, '\xb5']:
+        for invalid in [
+            "invalid:name",
+            "no spaces",
+            "no\ttabs",
+            "no&ampersand",
+            "no!shouting",
+            "",
+            "too-long" * 33,
+            "\xb5",
+        ]:
             self.assertRaises(ValidationError, factory.make_Tag, name=invalid)
 
     def test_validate_traps_invalid_tag_definitions(self):
         self.assertRaises(
-            ValidationError, factory.make_Tag,
-            definition="invalid::definition")
+            ValidationError, factory.make_Tag, definition="invalid::definition"
+        )
 
     def test_applies_tags_to_nodes_on_save(self):
         populate_nodes = self.patch_autospec(Tag, "populate_nodes")
-        tag = Tag(name=factory.make_name("tag"), definition='//node/child')
+        tag = Tag(name=factory.make_name("tag"), definition="//node/child")
         self.assertThat(populate_nodes, MockNotCalled())
         tag.save()
         self.assertThat(populate_nodes, MockCalledOnceWith(tag))
 
     def test_will_not_save_invalid_xpath(self):
-        tag = factory.make_Tag(definition='//node/foo')
-        tag.definition = 'invalid::tag'
+        tag = factory.make_Tag(definition="//node/foo")
+        tag.definition = "invalid::tag"
         self.assertRaises(ValidationError, tag.save)
 
 
@@ -98,7 +101,6 @@ class TestTagIsDefined(MAASServerTestCase):
 
 
 class TestTagPopulateNodesLater(MAASServerTestCase):
-
     def test__populates_if_tag_is_defined(self):
         post_commit_do = self.patch(tag_module, "post_commit_do")
 
@@ -109,9 +111,15 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
         self.assertThat(post_commit_do, MockNotCalled())
         tag._populate_nodes_later()
         self.assertThat(
-            post_commit_do, MockCalledOnceWith(
-                reactor.callLater, 0, deferToDatabase,
-                populate_tags.populate_tags, tag))
+            post_commit_do,
+            MockCalledOnceWith(
+                reactor.callLater,
+                0,
+                deferToDatabase,
+                populate_tags.populate_tags,
+                tag,
+            ),
+        )
 
     def test__does_nothing_if_tag_is_not_defined(self):
         post_commit_do = self.patch(tag_module, "post_commit_do")
@@ -134,9 +142,16 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
         tag.node_set.add(*nodes)
         tag._populate_nodes_later()
         self.assertItemsEqual(nodes, tag.node_set.all())
-        self.assertThat(post_commit_do, MockCalledOnceWith(
-            reactor.callLater, 0, deferToDatabase,
-            populate_tags.populate_tags, tag))
+        self.assertThat(
+            post_commit_do,
+            MockCalledOnceWith(
+                reactor.callLater,
+                0,
+                deferToDatabase,
+                populate_tags.populate_tags,
+                tag,
+            ),
+        )
 
     def test__later_is_the_default(self):
         tag = Tag(name=factory.make_name("tag"))
@@ -147,10 +162,10 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
 
 
 class TestTagPopulateNodesNow(MAASServerTestCase):
-
     def test__populates_if_tag_is_defined(self):
         populate_multiple = self.patch_autospec(
-            populate_tags, "populate_tag_for_multiple_nodes")
+            populate_tags, "populate_tag_for_multiple_nodes"
+        )
 
         tag = Tag(name=factory.make_name("tag"), definition="//foo")
         tag.save(populate=False)
@@ -162,7 +177,8 @@ class TestTagPopulateNodesNow(MAASServerTestCase):
 
     def test__does_nothing_if_tag_is_not_defined(self):
         populate_multiple = self.patch_autospec(
-            populate_tags, "populate_tag_for_multiple_nodes")
+            populate_tags, "populate_tag_for_multiple_nodes"
+        )
 
         tag = Tag(name=factory.make_name("tag"), definition="")
         tag.save(populate=False)

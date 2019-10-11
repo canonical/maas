@@ -3,9 +3,7 @@
 
 """vendor-data for cloud-init's use."""
 
-__all__ = [
-    'get_vendor_data',
-    ]
+__all__ = ["get_vendor_data"]
 
 from base64 import b64encode
 from crypt import crypt
@@ -13,10 +11,7 @@ from itertools import chain
 from os import urandom
 
 from maasserver import ntp
-from maasserver.models import (
-    Config,
-    NodeMetadata,
-)
+from maasserver.models import Config, NodeMetadata
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
@@ -30,15 +25,17 @@ import yaml
 
 
 def get_vendor_data(node, proxy):
-    return dict(chain(
-        generate_system_info(node),
-        generate_ntp_configuration(node),
-        generate_rack_controller_configuration(node, proxy),
-        generate_kvm_pod_configuration(node),
-        generate_ephemeral_netplan_lock_removal(node),
-        generate_ephemeral_deployment_network_configuration(node),
-        generate_vcenter_configuration(node),
-    ))
+    return dict(
+        chain(
+            generate_system_info(node),
+            generate_ntp_configuration(node),
+            generate_rack_controller_configuration(node, proxy),
+            generate_kvm_pod_configuration(node),
+            generate_ephemeral_netplan_lock_removal(node),
+            generate_ephemeral_deployment_network_configuration(node),
+            generate_vcenter_configuration(node),
+        )
+    )
 
 
 def generate_system_info(node):
@@ -48,10 +45,7 @@ def generate_system_info(node):
         fullname = node.owner.get_full_name()
         gecos = make_gecos_field(fullname)
         yield "system_info", {
-            'default_user': {
-                'name': username,
-                'gecos': gecos,
-            },
+            "default_user": {"name": username, "gecos": gecos}
         }
 
 
@@ -93,22 +87,42 @@ def generate_rack_controller_configuration(node, proxy):
     # initial deployment, we use 'node.netboot'. This flag is set to off after
     # curtin has installed the operating system and before the machine reboots
     # for the first time.
-    if (node.netboot is False and
-            node.osystem in ['ubuntu', 'ubuntu-core'] and
-            ('switch' in node_tags or 'wedge40' in node_tags or
-             'wedge100' in node_tags or node.install_rackd is True)):
+    if (
+        node.netboot is False
+        and node.osystem in ["ubuntu", "ubuntu-core"]
+        and (
+            "switch" in node_tags
+            or "wedge40" in node_tags
+            or "wedge100" in node_tags
+            or node.install_rackd is True
+        )
+    ):
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
-            node.get_boot_rack_controller())
+            node.get_boot_rack_controller()
+        )
         secret = Config.objects.get_config("rpc_shared_secret")
         source = get_maas_version_track_channel()
         yield "runcmd", [
-            ['snap', 'set', 'system', 'proxy.http=%s' % proxy,
-             'proxy.https=%s' % proxy],
-            ['snap', 'install', 'maas', '--devmode', '--channel=%s' % source],
-            ['systemctl', 'restart', 'snapd'],
-            ['export', 'PATH=$PATH'],
-            ['/snap/bin/maas', 'init', '--mode', 'rack', '--maas-url',
-             '%s' % maas_url, '--secret', '%s' % secret]
+            [
+                "snap",
+                "set",
+                "system",
+                "proxy.http=%s" % proxy,
+                "proxy.https=%s" % proxy,
+            ],
+            ["snap", "install", "maas", "--devmode", "--channel=%s" % source],
+            ["systemctl", "restart", "snapd"],
+            ["export", "PATH=$PATH"],
+            [
+                "/snap/bin/maas",
+                "init",
+                "--mode",
+                "rack",
+                "--maas-url",
+                "%s" % maas_url,
+                "--secret",
+                "%s" % secret,
+            ],
         ]
 
 
@@ -123,7 +137,7 @@ def generate_ephemeral_netplan_lock_removal(node):
     anything put in /etc/netplan breaking custom network configuration."""
 
     if node.status in COMMISSIONING_LIKE_STATUSES:
-        yield 'runcmd', ['rm -rf /run/netplan']
+        yield "runcmd", ["rm -rf /run/netplan"]
 
 
 def generate_ephemeral_deployment_network_configuration(node):
@@ -133,21 +147,21 @@ def generate_ephemeral_deployment_network_configuration(node):
         release = node.get_distro_series()
         network_yaml_settings = get_network_yaml_settings(osystem, release)
         network_config = NodeNetworkConfiguration(
-            node, version=network_yaml_settings.version,
-            source_routing=network_yaml_settings.source_routing)
+            node,
+            version=network_yaml_settings.version,
+            source_routing=network_yaml_settings.source_routing,
+        )
         # Render the resulting YAML.
         network_config_yaml = yaml.safe_dump(
-            network_config.config, default_flow_style=False)
+            network_config.config, default_flow_style=False
+        )
         yield "write_files", [
             {
-                'content': network_config_yaml,
-                'path': "/etc/netplan/50-maas.yaml",
+                "content": network_config_yaml,
+                "path": "/etc/netplan/50-maas.yaml",
             }
         ]
-        yield "runcmd", [
-            "rm -rf /run/netplan",
-            "netplan apply --debug",
-        ]
+        yield "runcmd", ["rm -rf /run/netplan", "netplan apply --debug"]
 
 
 def generate_kvm_pod_configuration(node):
@@ -156,78 +170,91 @@ def generate_kvm_pod_configuration(node):
         architecture = None
         if node.architecture is not None:
             architecture = node.architecture
-            if '/' in architecture:
-                architecture = architecture.split('/')[0]
+            if "/" in architecture:
+                architecture = architecture.split("/")[0]
         runcmd = [
             # Restrict the $PATH so that rbash can be used to limit what the
             # virsh user can do if they manage to get a shell.
-            ['mkdir', '-p', '/home/virsh/bin'],
-            ['ln', '-s', '/usr/bin/virsh', '/home/virsh/bin/virsh'],
-            ['sh', '-c', 'echo "PATH=/home/virsh/bin" >> /home/virsh/.bashrc'],
+            ["mkdir", "-p", "/home/virsh/bin"],
+            ["ln", "-s", "/usr/bin/virsh", "/home/virsh/bin/virsh"],
+            ["sh", "-c", 'echo "PATH=/home/virsh/bin" >> /home/virsh/.bashrc'],
             # Use a ForceCommand to make sure the only thing the virsh user
             # can do with SSH is communicate with libvirt.
-            ['sh', '-c',
+            [
+                "sh",
+                "-c",
                 'printf "Match user virsh\\n'
-                '    X11Forwarding no\\n'
-                '    AllowTcpForwarding no\\n'
-                '    PermitTTY no\\n'
+                "    X11Forwarding no\\n"
+                "    AllowTcpForwarding no\\n"
+                "    PermitTTY no\\n"
                 '    ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock\\n"'
-                '  >> /etc/ssh/sshd_config'],
+                "  >> /etc/ssh/sshd_config",
+            ],
             # Make sure the 'virsh' user is allowed to access libvirt.
-            ['/usr/sbin/usermod', '--append', '--groups',
-                'libvirt,libvirt-qemu', 'virsh'],
+            [
+                "/usr/sbin/usermod",
+                "--append",
+                "--groups",
+                "libvirt,libvirt-qemu",
+                "virsh",
+            ],
             # SSH needs to be restarted in order for the above changes to
             # take effect.
-            ['systemctl', 'restart', 'sshd'],
+            ["systemctl", "restart", "sshd"],
             # Ensure services are ready before cloud-init finishes.
-            ['/bin/sleep', '10'],
+            ["/bin/sleep", "10"],
         ]
-        if architecture == 'ppc64el':
+        if architecture == "ppc64el":
             # XXX mpontillo 2018-10-12 - we should investigate if it might be
             # better to add a tag to the node that includes a kernel parameter
             # such as nosmt=force. (The only problem being that we should
             # probably also remove it after the machine is released.)
-            runcmd.append([
-                'sh', '-c', 'printf "'
-                '#!/bin/sh\\n'
-                'ppc64_cpu --smt=off\\n'
-                'exit 0\\n'
-                '"  >> /etc/rc.local'
-            ])
-            runcmd.append(['chmod', '+x', '/etc/rc.local'])
-            runcmd.append(['/etc/rc.local'])
+            runcmd.append(
+                [
+                    "sh",
+                    "-c",
+                    'printf "'
+                    "#!/bin/sh\\n"
+                    "ppc64_cpu --smt=off\\n"
+                    "exit 0\\n"
+                    '"  >> /etc/rc.local',
+                ]
+            )
+            runcmd.append(["chmod", "+x", "/etc/rc.local"])
+            runcmd.append(["/etc/rc.local"])
         yield "runcmd", runcmd
         # Generate a 32-character password by encoding 24 bytes as base64.
-        virsh_password = b64encode(
-            urandom(24), altchars=b'.!').decode('ascii')
+        virsh_password = b64encode(urandom(24), altchars=b".!").decode("ascii")
         # Pass crypted (salted/hashed) version of the password to cloud-init.
         encrypted_password = crypt(virsh_password)
         # Store a cleartext version of the password so we can add a pod later.
         NodeMetadata.objects.update_or_create(
-            node=node, key="virsh_password",
-            defaults=dict(value=virsh_password))
+            node=node,
+            key="virsh_password",
+            defaults=dict(value=virsh_password),
+        )
         # Make sure SSH password authentication is enabled.
         yield "ssh_pwauth", True
         # Create a custom 'virsh' user (in addition to the default user)
         # with the encrypted password, and a locked-down shell.
         yield "users", [
-            'default',
+            "default",
             {
-                'name': 'virsh',
-                'lock_passwd': False,
-                'passwd': encrypted_password,
-                'shell': '/bin/rbash',
-            }
+                "name": "virsh",
+                "lock_passwd": False,
+                "passwd": encrypted_password,
+                "shell": "/bin/rbash",
+            },
         ]
         packages = ["qemu-kvm", "libvirt-bin"]
-        if architecture in ['amd64', 'arm64']:
-            packages.append('qemu-efi')
+        if architecture in ["amd64", "arm64"]:
+            packages.append("qemu-efi")
         yield "packages", packages
 
 
 def generate_vcenter_configuration(node):
     """Generate vendor config when deploying ESXi."""
-    if node.osystem != 'esxi':
+    if node.osystem != "esxi":
         # Only return vcenter credentials if vcenter is being deployed.
         return
     if not node.owner or not node.owner.has_perm(NodePermission.admin, node):
@@ -235,22 +262,28 @@ def generate_vcenter_configuration(node):
         # administrators.
         return
     vcenter_registration = NodeMetadata.objects.get(
-        node=node, key='vcenter_registration')
+        node=node, key="vcenter_registration"
+    )
     if not vcenter_registration:
         # Only send credentials if told to at deployment time.
         return
     # Only send values that aren't blank.
     configs = {
         key: value
-        for key, value in Config.objects.get_configs([
-            'vcenter_server', 'vcenter_username', 'vcenter_password',
-            'vcenter_datacenter']).items()
+        for key, value in Config.objects.get_configs(
+            [
+                "vcenter_server",
+                "vcenter_username",
+                "vcenter_password",
+                "vcenter_datacenter",
+            ]
+        ).items()
         if value
     }
     if len(configs) != 0:
-        yield 'write_files', [
+        yield "write_files", [
             {
-                'content': yaml.safe_dump(configs),
-                'path': '/altbootbank/maas/vcenter.yaml',
+                "content": yaml.safe_dump(configs),
+                "path": "/altbootbank/maas/vcenter.yaml",
             }
         ]

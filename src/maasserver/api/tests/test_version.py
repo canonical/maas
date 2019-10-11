@@ -20,8 +20,7 @@ class TestVersionAPIBasics(APITestCase.ForAnonymousAndUserAndAdmin):
     """Basic tests for /version/ API."""
 
     def test_handler_path(self):
-        self.assertEqual(
-            '/MAAS/api/2.0/version/', reverse('version_handler'))
+        self.assertEqual("/MAAS/api/2.0/version/", reverse("version_handler"))
 
 
 class TestVersionAPI(APITestCase.ForAnonymousAndUser):
@@ -33,15 +32,17 @@ class TestVersionAPI(APITestCase.ForAnonymousAndUser):
         version_module.get_maas_version.cache_clear()
         version_module.get_maas_version_subversion.cache_clear()
 
-        response = self.client.get(reverse('version_handler'))
+        response = self.client.get(reverse("version_handler"))
         self.assertEqual(http.client.OK, response.status_code)
 
         parsed_result = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
         self.assertEqual(
             {
-                'capabilities': API_CAPABILITIES_LIST,
-                'version': '1.8.0~alpha4',
-                'subversion': 'bzr356-0ubuntu1',
+                "capabilities": API_CAPABILITIES_LIST,
+                "version": "1.8.0~alpha4",
+                "subversion": "bzr356-0ubuntu1",
             },
-            parsed_result)
+            parsed_result,
+        )

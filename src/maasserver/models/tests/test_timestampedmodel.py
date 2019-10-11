@@ -5,10 +5,7 @@
 
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime, timedelta
 from random import randint
 
 from django.db import transaction
@@ -32,7 +29,7 @@ def make_time_in_the_recent_past():
 class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
     """Testing for the class `TimestampedModel`."""
 
-    apps = ['maasserver.tests']
+    apps = ["maasserver.tests"]
 
     def test_created_populated_when_object_saved(self):
         obj = TimestampedModelTestModel()
@@ -126,6 +123,5 @@ class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
 
 
 class UtilitiesTest(MAASServerTestCase):
-
     def test_now_returns_datetime(self):
         self.assertIsInstance(now(), datetime)

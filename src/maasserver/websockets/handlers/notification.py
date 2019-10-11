@@ -3,9 +3,7 @@
 
 """The notification handler for the WebSocket connection."""
 
-__all__ = [
-    "NotificationHandler",
-]
+__all__ = ["NotificationHandler"]
 
 from maasserver.models.notification import Notification
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -14,12 +12,11 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class NotificationHandler(TimestampedModelHandler):
-
     class Meta:
         object_class = Notification
-        allowed_methods = {'list', 'get', 'dismiss', 'create'}
+        allowed_methods = {"list", "get", "dismiss", "create"}
         exclude = list_exclude = {"context"}
-        listen_channels = {'notification', 'notificationdismissal'}
+        listen_channels = {"notification", "notificationdismissal"}
 
     def get_queryset(self, for_list=False):
         """Return `Notifications` for the current user."""

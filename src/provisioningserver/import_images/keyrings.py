@@ -2,9 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Keyring management functions for the import boot images job and script."""
 
-__all__ = [
-    'write_all_keyrings',
-    ]
+__all__ = ["write_all_keyrings"]
 
 import hashlib
 import os
@@ -26,7 +24,7 @@ def write_keyring(keyring_path, keyring_data: bytes):
         base64-encoded string.
     """
     log.debug("Writing keyring {path} to disk.", path=keyring_path)
-    with open(keyring_path, 'wb') as keyring_file:
+    with open(keyring_path, "wb") as keyring_file:
         keyring_file.write(keyring_data)
 
 
@@ -47,18 +45,20 @@ def write_all_keyrings(directory, sources):
         on disk.
     """
     for source in sources:
-        source_url = source.get('url')
-        keyring_file = source.get('keyring')
-        keyring_data = source.get('keyring_data')
+        source_url = source.get("url")
+        keyring_file = source.get("keyring")
+        keyring_data = source.get("keyring_data")
 
         if keyring_file is not None and keyring_data is not None:
             maaslog.warning(
                 "Both a keyring file and keyring data were specified; "
-                "ignoring the keyring file.")
+                "ignoring the keyring file."
+            )
 
         if keyring_data is not None:
             keyring_file = os.path.join(
-                directory, calculate_keyring_name(source_url))
+                directory, calculate_keyring_name(source_url)
+            )
             write_keyring(keyring_file, keyring_data)
-            source['keyring'] = keyring_file
+            source["keyring"] = keyring_file
     return sources

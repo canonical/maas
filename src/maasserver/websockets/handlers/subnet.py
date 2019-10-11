@@ -3,17 +3,10 @@
 
 """The subnet handler for the WebSocket connection."""
 
-__all__ = [
-    "SubnetHandler",
-    ]
+__all__ = ["SubnetHandler"]
 
 from maasserver.forms.subnet import SubnetForm
-from maasserver.models import (
-    Discovery,
-    RackController,
-    StaticRoute,
-    Subnet,
-)
+from maasserver.models import Discovery, RackController, StaticRoute, Subnet
 from maasserver.models.subnet import get_allocated_ips
 from maasserver.permissions import NodePermission
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -28,27 +21,25 @@ maaslog = get_maas_logger("subnet")
 
 
 class SubnetHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = (
             Subnet.objects.all()
-                  .select_related('vlan')
-                  .prefetch_related('iprange_set'))
-        pk = 'id'
+            .select_related("vlan")
+            .prefetch_related("iprange_set")
+        )
+        pk = "id"
         form = SubnetForm
         form_requires_request = False
         allowed_methods = [
-            'create',
-            'update',
-            'delete',
-            'get',
-            'list',
-            'set_active',
-            'scan',
+            "create",
+            "update",
+            "delete",
+            "get",
+            "list",
+            "set_active",
+            "scan",
         ]
-        listen_channels = [
-            "subnet",
-        ]
+        listen_channels = ["subnet"]
 
     def dehydrate_dns_servers(self, dns_servers):
         if dns_servers is None:
@@ -57,31 +48,36 @@ class SubnetHandler(TimestampedModelHandler):
 
     def dehydrate(self, subnet, data, for_list=False):
         full_range = subnet.get_iprange_usage(
-            cached_staticroutes=self.cache.get("staticroutes"))
+            cached_staticroutes=self.cache.get("staticroutes")
+        )
         metadata = IPRangeStatistics(full_range)
-        data['statistics'] = metadata.render_json(
-            include_ranges=True, include_suggestions=True)
-        data['version'] = IPNetwork(subnet.cidr).version
-        data['space'] = subnet.vlan.space_id
+        data["statistics"] = metadata.render_json(
+            include_ranges=True, include_suggestions=True
+        )
+        data["version"] = IPNetwork(subnet.cidr).version
+        data["space"] = subnet.vlan.space_id
         if not for_list:
             data["ip_addresses"] = subnet.render_json_for_related_ips(
-                with_username=True, with_summary=True)
+                with_username=True, with_summary=True
+            )
         return data
 
     def update(self, parameters):
         subnet = self.get_object(parameters)
         assert self.user.has_perm(
-            NodePermission.admin, subnet), "Permission denied."
+            NodePermission.admin, subnet
+        ), "Permission denied."
         # The JavaScript object will still contain the space for backward
         # compatibility, so we need to strip it out.
-        if 'space' in parameters:
-            del parameters['space']
+        if "space" in parameters:
+            del parameters["space"]
         return super().update(parameters)
 
     def _cache_pks(self, objs):
         super()._cache_pks(objs)
         self.cache["staticroutes"] = StaticRoute.objects.filter(
-            source__in=objs)
+            source__in=objs
+        )
         # Prefetching on the staticipaddress query set doesn't work,
         # since it only works with model objects. Working with model
         # objects for the IPs doesn't scale.
@@ -90,18 +86,20 @@ class SubnetHandler(TimestampedModelHandler):
 
     def create(self, parameters):
         assert self.user.has_perm(
-            NodePermission.admin, Subnet), "Permission denied."
+            NodePermission.admin, Subnet
+        ), "Permission denied."
         # The JavaScript object will still contain the space for backward
         # compatibility, so we need to strip it out.
-        if 'space' in parameters:
-            del parameters['space']
+        if "space" in parameters:
+            del parameters["space"]
         return super().create(parameters)
 
     def delete(self, parameters):
         """Delete this Subnet."""
         subnet = self.get_object(parameters)
         assert self.user.has_perm(
-            NodePermission.admin, subnet), "Permission denied."
+            NodePermission.admin, subnet
+        ), "Permission denied."
         subnet.delete()
 
     def scan(self, parameters):
@@ -115,18 +113,22 @@ class SubnetHandler(TimestampedModelHandler):
             scan_all_rack_networks,
             user_friendly_scan_results,
         )
+
         subnet = self.get_object(parameters)
         assert self.user.has_perm(
-            NodePermission.admin, Discovery), "Permission denied."
+            NodePermission.admin, Discovery
+        ), "Permission denied."
         cidr = subnet.get_ipnetwork()
         if cidr.version != 4:
             raise ValueError(
-                "Cannot scan subnet: only IPv4 subnets can be scanned.")
+                "Cannot scan subnet: only IPv4 subnets can be scanned."
+            )
         cidrs = [cidr]
         if RackController.objects.filter_by_subnet_cidrs(cidrs).count() == 0:
             raise ValueError("Subnet must be configured on a rack controller.")
         rpc_results = scan_all_rack_networks(cidrs=[cidr])
         maaslog.info(
             "User '%s' initiated a neighbour discovery scan against subnet: "
-            "%s" % (self.user.username, cidr))
+            "%s" % (self.user.username, cidr)
+        )
         return user_friendly_scan_results(rpc_results)

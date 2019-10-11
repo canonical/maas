@@ -3,9 +3,7 @@
 
 """Standard-library `logging`-specific stuff."""
 
-__all__ = [
-    "configure_standard_logging",
-]
+__all__ = ["configure_standard_logging"]
 
 import logging
 import logging.config
@@ -34,8 +32,8 @@ DEFAULT_LOGGING_VERBOSITY_LEVELS = {
 
 # Belt-n-braces.
 assert (
-    DEFAULT_LOGGING_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS), (
-        "Logging verbosity map does not match expectations.")
+    DEFAULT_LOGGING_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS
+), "Logging verbosity map does not match expectations."
 
 
 @typed
@@ -65,11 +63,12 @@ def configure_standard_logging(verbosity: int, mode: LoggingMode):
     # order that the log is not lost. This goes to standard error by default.
     # Here we arrange for these situations to be logged more distinctively so
     # that they're easier to diagnose.
-    logging.lastResort = (
-        logging.StreamHandler(
-            twistedModern.LoggingFile(
-                logger=twistedModern.Logger("lost+found"),
-                level=twistedModern.LogLevel.error)))
+    logging.lastResort = logging.StreamHandler(
+        twistedModern.LoggingFile(
+            logger=twistedModern.Logger("lost+found"),
+            level=twistedModern.LogLevel.error,
+        )
+    )
 
 
 @typed
@@ -79,7 +78,7 @@ def get_syslog_address_path() -> str:
     if isinstance(path, bytes):
         fsenc = sys.getfilesystemencoding()
         path = path.decode(fsenc)
-    return os.sep.join([path, 'rsyslog', 'log.sock'])
+    return os.sep.join([path, "rsyslog", "log.sock"])
 
 
 @typed
@@ -92,55 +91,47 @@ def get_logging_config(verbosity: int):
     is_dev = is_dev_environment()
     # Build the configuration suitable for `dictConfig`.
     return {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'stdout': {
-                'format': DEFAULT_LOG_FORMAT,
-                'datefmt': DEFAULT_LOG_FORMAT_DATE,
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "stdout": {
+                "format": DEFAULT_LOG_FORMAT,
+                "datefmt": DEFAULT_LOG_FORMAT_DATE,
             },
-            'syslog': {
-                'format': '%(name)s: [%(levelname)s] %(message)s',
+            "syslog": {"format": "%(name)s: [%(levelname)s] %(message)s"},
+        },
+        "handlers": {
+            "stdout": {
+                "class": "logging.StreamHandler",
+                "stream": sys.__stdout__,
+                "formatter": "stdout",
+            },
+            "syslog": {
+                "class": "provisioningserver.logger.MAASSysLogHandler",
+                "facility": logging.handlers.SysLogHandler.LOG_DAEMON,
+                "address": get_syslog_address_path(),
+                "formatter": "syslog",
             },
         },
-        'handlers': {
-            'stdout': {
-                'class': 'logging.StreamHandler',
-                'stream': sys.__stdout__,
-                'formatter': 'stdout',
-            },
-            'syslog': {
-                'class': 'provisioningserver.logger.MAASSysLogHandler',
-                'facility': logging.handlers.SysLogHandler.LOG_DAEMON,
-                'address': get_syslog_address_path(),
-                'formatter': 'syslog',
-            },
+        "root": {
+            "level": get_logging_level(verbosity),
+            "handlers": ["stdout"],
         },
-        'root': {
-            'level': get_logging_level(verbosity),
-            'handlers': ['stdout'],
-        },
-        'loggers': {
+        "loggers": {
             # The `maas` logger is used to provide a "nice to read" log of
             # MAAS's toing and froings. It logs to syslog and syslog only in
             # production. In development environments it propagates only to
             # the root logger and does not go to syslog.
-            'maas': {
-                'level': get_logging_level(verbosity),
-                'handlers': [] if is_dev else ['syslog'],
-                'propagate': is_dev,
+            "maas": {
+                "level": get_logging_level(verbosity),
+                "handlers": [] if is_dev else ["syslog"],
+                "propagate": is_dev,
             },
             # The `requests` and `urllib3` modules talk too much.
-            'requests': {
-                'level': get_logging_level(verbosity - 1),
-            },
-            'urllib3': {
-                'level': get_logging_level(verbosity - 1),
-            },
+            "requests": {"level": get_logging_level(verbosity - 1)},
+            "urllib3": {"level": get_logging_level(verbosity - 1)},
             # Keep `nose` relatively quiet in tests.
-            'nose': {
-                'level': get_logging_level(verbosity - 1),
-            },
+            "nose": {"level": get_logging_level(verbosity - 1)},
         },
     }
 

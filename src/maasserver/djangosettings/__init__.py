@@ -3,10 +3,7 @@
 
 """MAAS web."""
 
-__all__ = [
-    "fix_up_databases",
-    "import_settings",
-]
+__all__ = ["fix_up_databases", "import_settings"]
 
 import sys
 import warnings
@@ -18,7 +15,7 @@ def find_settings(whence):
         name: value
         for name, value in vars(whence).items()
         if not name.startswith("_")
-        }
+    }
 
 
 def import_settings(whence):
@@ -34,18 +31,22 @@ def fix_up_databases(databases):
     Does not modify connections to non-PostgreSQL databases.
     """
     # Remove keys with null values from databases.
-    databases.update({
-        alias: {
-            key: value for key, value in database.items()
-            if value is not None
+    databases.update(
+        {
+            alias: {
+                key: value
+                for key, value in database.items()
+                if value is not None
+            }
+            for alias, database in databases.items()
         }
-        for alias, database in databases.items()
-    })
+    )
     # Ensure that transactions are configured correctly.
     from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
+
     for _, database in databases.items():
         engine = database.get("ENGINE")
-        if engine == 'django.db.backends.postgresql_psycopg2':
+        if engine == "django.db.backends.postgresql_psycopg2":
             options = database.setdefault("OPTIONS", {})
             # Explicitly set the transaction isolation level. MAAS needs a
             # particular transaction isolation level, and it enforces it.
@@ -55,7 +56,9 @@ def fix_up_databases(databases):
                     warnings.warn(
                         "isolation_level is set to %r; overriding to %r."
                         % (isolation_level, ISOLATION_LEVEL_REPEATABLE_READ),
-                        RuntimeWarning, 2)
+                        RuntimeWarning,
+                        2,
+                    )
             options["isolation_level"] = ISOLATION_LEVEL_REPEATABLE_READ
             # Enable ATOMIC_REQUESTS: MAAS manages transactions across the
             # whole request/response lifecycle including middleware (Django,
@@ -68,5 +71,8 @@ def fix_up_databases(databases):
                 if not atomic_requests:
                     warnings.warn(
                         "ATOMIC_REQUESTS is set to %r; overriding to True."
-                        % (atomic_requests,), RuntimeWarning, 2)
+                        % (atomic_requests,),
+                        RuntimeWarning,
+                        2,
+                    )
             database["ATOMIC_REQUESTS"] = True

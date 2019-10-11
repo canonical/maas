@@ -3,9 +3,7 @@
 
 """Model definition for mDNS. (Multicast DNS, or RFC 6762.)"""
 
-__all__ = [
-    'MDNS',
-]
+__all__ = ["MDNS"]
 
 
 from django.db.models import (
@@ -19,10 +17,7 @@ from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import (
-    get_one,
-    UniqueViolation,
-)
+from maasserver.utils.orm import get_one, UniqueViolation
 from netaddr import IPAddress
 from provisioningserver.logger import get_maas_logger
 
@@ -34,7 +29,8 @@ class MDNSManager(Manager):
     """Manager for mDNS data."""
 
     def delete_and_log_obsolete_mdns_entries(
-            self, hostname: str, ip: str, interface: str) -> None:
+        self, hostname: str, ip: str, interface: str
+    ) -> None:
         """Removes any existing mDNS data matching the specified values.
 
         Excludes the given IP address from removal, since it will be updated
@@ -46,22 +42,28 @@ class MDNSManager(Manager):
         deleted = False
         incoming_ip_version = IPAddress(ip).version
         previous_bindings = self.filter(
-            hostname=hostname, interface=interface).exclude(ip=ip)
+            hostname=hostname, interface=interface
+        ).exclude(ip=ip)
         # Check if this hostname was previously assigned to a different IP.
         for binding in previous_bindings:
             if incoming_ip_version != IPAddress(binding.ip).version:
                 # Don't move hostnames between address families.
                 continue
-            maaslog.info("%s: Hostname '%s' moved from %s to %s." % (
-                interface.get_log_string(), hostname, binding.ip, ip))
+            maaslog.info(
+                "%s: Hostname '%s' moved from %s to %s."
+                % (interface.get_log_string(), hostname, binding.ip, ip)
+            )
             binding.delete()
             deleted = True
         # Check if this IP address had a different hostname assigned.
-        previous_bindings = self.filter(
-            ip=ip, interface=interface).exclude(hostname=hostname)
+        previous_bindings = self.filter(ip=ip, interface=interface).exclude(
+            hostname=hostname
+        )
         for binding in previous_bindings:
-            maaslog.info("%s: Hostname for %s updated from '%s' to '%s'." % (
-                interface.get_log_string(), ip, binding.hostname, hostname))
+            maaslog.info(
+                "%s: Hostname for %s updated from '%s' to '%s'."
+                % (interface.get_log_string(), ip, binding.hostname, hostname)
+            )
             binding.delete()
             deleted = True
         return deleted
@@ -76,8 +78,7 @@ class MDNSManager(Manager):
         The caller must ensure that any obsolete bindings are deleted before
         calling this method.
         """
-        query = self.filter(
-            interface=interface, ip=ip, hostname=hostname)
+        query = self.filter(interface=interface, ip=ip, hostname=hostname)
         # If we get an exception here, it is most likely due to an unlikely
         # race condition. (either that, or the caller neglected to remove
         # obsolete bindings before calling this method.) Therefore, raise
@@ -102,17 +103,28 @@ class MDNS(CleanSave, TimestampedModel):
 
     # Observed IP address.
     ip = MAASIPAddressField(
-        unique=False, null=True, editable=False, blank=True, default=None,
-        verbose_name='IP')
+        unique=False,
+        null=True,
+        editable=False,
+        blank=True,
+        default=None,
+        verbose_name="IP",
+    )
 
     # Hostname observed from mDNS-browse.
     hostname = CharField(
-        max_length=256, editable=True, null=True, blank=False, unique=False)
+        max_length=256, editable=True, null=True, blank=False, unique=False
+    )
 
     # Rack interface the mDNS data was observed on.
     interface = ForeignKey(
-        "Interface", unique=False, blank=False, null=False, editable=False,
-        on_delete=CASCADE)
+        "Interface",
+        unique=False,
+        blank=False,
+        null=False,
+        editable=False,
+        on_delete=CASCADE,
+    )
 
     # The number of times this (hostname, IP) binding has been seen on the
     # interface.

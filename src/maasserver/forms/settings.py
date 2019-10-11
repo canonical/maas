@@ -4,12 +4,12 @@
 """Configuration items definition and utilities."""
 
 __all__ = [
-    'CONFIG_ITEMS',
-    'CONFIG_ITEMS_KEYS',
-    'get_config_field',
-    'get_config_form',
-    'validate_config_name',
-    ]
+    "CONFIG_ITEMS",
+    "CONFIG_ITEMS_KEYS",
+    "get_config_field",
+    "get_config_form",
+    "validate_config_name",
+]
 
 from datetime import timedelta
 import re
@@ -52,10 +52,11 @@ def validate_missing_boot_images(value):
     """Raise `ValidationError` when the value is equal to '---'. This is
     used when no boot images exist on all clusters, so the config value cannot
     be changed."""
-    if value == '---':
+    if value == "---":
         raise ValidationError(
             "Unable to determine supported operating systems, "
-            "due to missing boot images.")
+            "due to missing boot images."
+        )
 
 
 def make_default_osystem_field(*args, **kwargs):
@@ -63,16 +64,18 @@ def make_default_osystem_field(*args, **kwargs):
     usable_oses = list_all_usable_osystems()
     os_choices = list_osystem_choices(usable_oses, include_default=False)
     if len(os_choices) == 0:
-        os_choices = [('---', '--- No Usable Operating System ---')]
+        os_choices = [("---", "--- No Usable Operating System ---")]
     field = forms.ChoiceField(
-        initial=Config.objects.get_config('default_osystem'),
+        initial=Config.objects.get_config("default_osystem"),
         choices=os_choices,
         validators=[validate_missing_boot_images],
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'osystem', os_choices)
+            "invalid_choice": compose_invalid_choice_text(
+                "osystem", os_choices
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
@@ -86,17 +89,20 @@ def validate_port(value, allow_ports=None):
     msg = "Unable to change port number"
     if value > 65535 or value <= 0:
         raise ValidationError(
-            "%s. Port number is not between 0 - 65535." % msg)
+            "%s. Port number is not between 0 - 65535." % msg
+        )
     if value >= 0 and value <= 1023:
         raise ValidationError(
-            "%s. Port number is reserved for system services." % msg)
+            "%s. Port number is reserved for system services." % msg
+        )
     # 5240 -> reserved for region HTTP.
     # 5241 - 4247 -> reserved for other MAAS services.
     # 5248 -> reserved for rack HTTP.
     # 5250+ -> reserved for region workers (RPC).
-    if (value >= 5240 and value <= 5270):
+    if value >= 5240 and value <= 5270:
         raise ValidationError(
-            "%s. Port number is reserved for MAAS services." % msg)
+            "%s. Port number is reserved for MAAS services." % msg
+        )
 
 
 def validate_syslog_port(value):
@@ -116,70 +122,72 @@ def get_default_usable_osystem(default_osystem):
 
 def list_choices_for_releases(releases):
     """List all the release choices."""
-    return [
-        (release['name'], release['title'])
-        for release in releases
-    ]
+    return [(release["name"], release["title"]) for release in releases]
 
 
 def make_maas_proxy_port_field(*args, **kwargs):
     """Build and return the maas_proxy_port field."""
-    return forms.IntegerField(
-        validators=[validate_port],
-        **kwargs)
+    return forms.IntegerField(validators=[validate_port], **kwargs)
 
 
 def make_maas_syslog_port_field(*args, **kwargs):
     """Build and return the maas_syslog_port field."""
-    return forms.IntegerField(
-        validators=[validate_syslog_port],
-        **kwargs)
+    return forms.IntegerField(validators=[validate_syslog_port], **kwargs)
 
 
 def make_default_distro_series_field(*args, **kwargs):
     """Build and return the default_distro_series field."""
-    default_osystem = Config.objects.get_config('default_osystem')
+    default_osystem = Config.objects.get_config("default_osystem")
     default_usable_os = get_default_usable_osystem(default_osystem)
-    release_choices = [('---', '--- No Usable Release ---')]
+    release_choices = [("---", "--- No Usable Release ---")]
     if default_usable_os is not None:
-        releases = default_usable_os['releases']
+        releases = default_usable_os["releases"]
         valid_release_choices = list_choices_for_releases(releases)
         if len(valid_release_choices) > 0:
             release_choices = valid_release_choices
     field = forms.ChoiceField(
-        initial=Config.objects.get_config('default_distro_series'),
+        initial=Config.objects.get_config("default_distro_series"),
         choices=release_choices,
         validators=[validate_missing_boot_images],
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'release', release_choices)
+            "invalid_choice": compose_invalid_choice_text(
+                "release", release_choices
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
 def make_default_min_hwe_kernel_field(*args, **kwargs):
     """Build and return the default_min_hwe_kernel field."""
-    kernel_choices = [('', '--- No minimum kernel ---')]
+    kernel_choices = [("", "--- No minimum kernel ---")]
     # Global choices are limited to the commissioning release as min_hwe_kernel
     # is used during commissioning.
     commissioning_series = Config.objects.get_config(
-        'commissioning_distro_series')
+        "commissioning_distro_series"
+    )
     if commissioning_series:
         commissioning_os_release = "ubuntu/" + commissioning_series
         kernel_choices += list_hwe_kernel_choices(
-            [kernel
-             for kernel in BootResource.objects.get_usable_hwe_kernels(
-                 commissioning_os_release)
-             if release_a_newer_than_b(kernel, commissioning_series)])
+            [
+                kernel
+                for kernel in BootResource.objects.get_usable_hwe_kernels(
+                    commissioning_os_release
+                )
+                if release_a_newer_than_b(kernel, commissioning_series)
+            ]
+        )
     field = forms.ChoiceField(
-        initial=Config.objects.get_config('default_min_hwe_kernel'),
+        initial=Config.objects.get_config("default_min_hwe_kernel"),
         choices=kernel_choices,
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'default_min_hwe_kernel', kernel_choices)
+            "invalid_choice": compose_invalid_choice_text(
+                "default_min_hwe_kernel", kernel_choices
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
@@ -188,63 +196,69 @@ def make_commissioning_distro_series_field(*args, **kwargs):
     usable_oses = list_all_usable_osystems()
     commissioning_choices = list_commissioning_choices(usable_oses)
     if len(commissioning_choices) == 0:
-        commissioning_choices = [('---', '--- No Usable Release ---')]
+        commissioning_choices = [("---", "--- No Usable Release ---")]
     field = forms.ChoiceField(
-        initial=Config.objects.get_config('commissioning_distro_series'),
+        initial=Config.objects.get_config("commissioning_distro_series"),
         choices=commissioning_choices,
         validators=[validate_missing_boot_images],
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'commissioning_distro_series', commissioning_choices)
+            "invalid_choice": compose_invalid_choice_text(
+                "commissioning_distro_series", commissioning_choices
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
 def make_dnssec_validation_field(*args, **kwargs):
     """Build and return the dnssec_validation field."""
     field = forms.ChoiceField(
-        initial=CONFIG_ITEMS['dnssec_validation']['default'],
+        initial=CONFIG_ITEMS["dnssec_validation"]["default"],
         choices=DNSSEC_VALIDATION_CHOICES,
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'dnssec_validation', DNSSEC_VALIDATION_CHOICES)
+            "invalid_choice": compose_invalid_choice_text(
+                "dnssec_validation", DNSSEC_VALIDATION_CHOICES
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
 def make_network_discovery_field(*args, **kwargs):
     """Build and return the network_discovery field."""
     field = forms.ChoiceField(
-        initial=CONFIG_ITEMS['network_discovery']['default'],
+        initial=CONFIG_ITEMS["network_discovery"]["default"],
         choices=NETWORK_DISCOVERY_CHOICES,
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'network_discovery', NETWORK_DISCOVERY_CHOICES)
+            "invalid_choice": compose_invalid_choice_text(
+                "network_discovery", NETWORK_DISCOVERY_CHOICES
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
 def make_active_discovery_interval_field(*args, **kwargs):
     """Build and return the network_discovery field."""
     field = forms.ChoiceField(
-        initial=CONFIG_ITEMS['active_discovery_interval']['default'],
+        initial=CONFIG_ITEMS["active_discovery_interval"]["default"],
         choices=ACTIVE_DISCOVERY_INTERVAL_CHOICES,
         error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'active_discovery_interval', ACTIVE_DISCOVERY_INTERVAL_CHOICES)
+            "invalid_choice": compose_invalid_choice_text(
+                "active_discovery_interval", ACTIVE_DISCOVERY_INTERVAL_CHOICES
+            )
         },
-        **kwargs)
+        **kwargs
+    )
     return field
 
 
 def make_maas_internal_domain_field(*args, **kwargs):
     """Build and return the maas_internal_domain field."""
-    return forms.CharField(
-        validators=[validate_domain_name],
-        **kwargs)
+    return forms.CharField(validators=[validate_domain_name], **kwargs)
 
 
 class RemoteSyslogField(forms.CharField):
@@ -259,173 +273,186 @@ class RemoteSyslogField(forms.CharField):
         host, port = splithost(value)
         if not port:
             port = 514
-        return '%s:%d' % (host, port)
+        return "%s:%d" % (host, port)
 
 
 CONFIG_ITEMS = {
-    'maas_name': {
-        'default': gethostname(),
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': "MAAS name",
-        }
+    "maas_name": {
+        "default": gethostname(),
+        "form": forms.CharField,
+        "form_kwargs": {"label": "MAAS name"},
     },
-    'kernel_opts': {
-        'default': None,
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': "Boot parameters to pass to the kernel by default",
-            'required': False,
-        }
+    "kernel_opts": {
+        "default": None,
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "Boot parameters to pass to the kernel by default",
+            "required": False,
+        },
     },
-    'enable_http_proxy': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Enable the use of an APT or YUM and HTTP/HTTPS proxy",
-            'required': False,
-            'help_text': (
+    "enable_http_proxy": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Enable the use of an APT or YUM and HTTP/HTTPS proxy",
+            "required": False,
+            "help_text": (
                 "Provision nodes to use the built-in HTTP proxy (or "
                 "user specified proxy) for APT or YUM. MAAS also uses the "
-                "proxy for downloading boot images.")
-        }
+                "proxy for downloading boot images."
+            ),
+        },
     },
-    'maas_proxy_port': {
-        'default': 8000,
-        'form': make_maas_proxy_port_field,
-        'form_kwargs': {
-            'label': "Port to bind the MAAS built-in proxy (default: 8000)",
-            'required': False,
-            'help_text': (
+    "maas_proxy_port": {
+        "default": 8000,
+        "form": make_maas_proxy_port_field,
+        "form_kwargs": {
+            "label": "Port to bind the MAAS built-in proxy (default: 8000)",
+            "required": False,
+            "help_text": (
                 "Defines the port used to bind the built-in proxy. The "
-                "default port is 8000.")
-        }
+                "default port is 8000."
+            ),
+        },
     },
-    'use_peer_proxy': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Use the built-in proxy with an external proxy as a peer",
-            'required': False,
-            'help_text': (
+    "use_peer_proxy": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Use the built-in proxy with an external proxy as a peer",
+            "required": False,
+            "help_text": (
                 "If enable_http_proxy is set, the built-in proxy will be "
                 "configured to use http_proxy as a peer proxy. The deployed "
-                "machines will be configured to use the built-in proxy.")
-        }
+                "machines will be configured to use the built-in proxy."
+            ),
+        },
     },
-    'prefer_v4_proxy': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Sets IPv4 DNS resolution before IPv6",
-            'required': False,
-            'help_text': (
+    "prefer_v4_proxy": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Sets IPv4 DNS resolution before IPv6",
+            "required": False,
+            "help_text": (
                 "If prefer_v4_proxy is set, the proxy will be set to prefer "
                 "IPv4 DNS resolution before it attempts to perform IPv6 DNS "
-                "resolution.")
-        }
+                "resolution."
+            ),
+        },
     },
-    'http_proxy': {
-        'default': None,
-        'form': forms.URLField,
-        'form_kwargs': {
-            'label': "Proxy for APT or YUM and HTTP/HTTPS",
-            'required': False,
-            'help_text': (
+    "http_proxy": {
+        "default": None,
+        "form": forms.URLField,
+        "form_kwargs": {
+            "label": "Proxy for APT or YUM and HTTP/HTTPS",
+            "required": False,
+            "help_text": (
                 "This will be passed onto provisioned nodes to use as a "
                 "proxy for APT or YUM traffic. MAAS also uses the proxy for "
                 "downloading boot images. If no URL is provided, the built-in "
-                "MAAS proxy will be used.")
-        }
+                "MAAS proxy will be used."
+            ),
+        },
     },
-    'default_dns_ttl': {
-        'default': 30,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'label': "Default Time-To-Live for the DNS",
-            'required': False,
-            'help_text': (
+    "default_dns_ttl": {
+        "default": 30,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "label": "Default Time-To-Live for the DNS",
+            "required": False,
+            "help_text": (
                 "If no TTL value is specified at a more specific point "
-                "this is how long DNS responses are valid, in seconds.")
-        }
+                "this is how long DNS responses are valid, in seconds."
+            ),
+        },
     },
-    'upstream_dns': {
-        'default': None,
-        'form': IPListFormField,
-        'form_kwargs': {
-            'label': (
+    "upstream_dns": {
+        "default": None,
+        "form": IPListFormField,
+        "form_kwargs": {
+            "label": (
                 "Upstream DNS used to resolve domains not managed by this "
-                "MAAS (space-separated IP addresses)"),
-            'required': False,
-            'help_text': (
+                "MAAS (space-separated IP addresses)"
+            ),
+            "required": False,
+            "help_text": (
                 "Only used when MAAS is running its own DNS server. This "
                 "value is used as the value of 'forwarders' in the DNS "
-                "server config.")
-        }
+                "server config."
+            ),
+        },
     },
-    'dnssec_validation': {
-        'default': 'auto',
-        'form': make_dnssec_validation_field,
-        'form_kwargs': {
-            'label': (
-                "Enable DNSSEC validation of upstream zones"),
-            'required': False,
-            'help_text': (
+    "dnssec_validation": {
+        "default": "auto",
+        "form": make_dnssec_validation_field,
+        "form_kwargs": {
+            "label": "Enable DNSSEC validation of upstream zones",
+            "required": False,
+            "help_text": (
                 "Only used when MAAS is running its own DNS server. This "
                 "value is used as the value of 'dnssec_validation' in the DNS "
-                "server config.")
-        }
+                "server config."
+            ),
+        },
     },
-    'maas_internal_domain': {
-        'default': '_maas_internal',
-        'form': make_maas_internal_domain_field,
-        'form_kwargs': {
-            'label': (
+    "maas_internal_domain": {
+        "default": "_maas_internal",
+        "form": make_maas_internal_domain_field,
+        "form_kwargs": {
+            "label": (
                 "Domain name used by MAAS for internal mapping of MAAS "
-                "provided services."),
-            'required': False,
-            'help_text': (
+                "provided services."
+            ),
+            "required": False,
+            "help_text": (
                 "This domain should not collide with an upstream domain "
-                "provided by the set upstream DNS.")
-        }
+                "provided by the set upstream DNS."
+            ),
+        },
     },
-    'dns_trusted_acl': {
-        'default': None,
-        'form': SubnetListFormField,
-        'form_kwargs': {
-            'label': (
+    "dns_trusted_acl": {
+        "default": None,
+        "form": SubnetListFormField,
+        "form_kwargs": {
+            "label": (
                 "List of external networks (not previously known), that will "
-                "be allowed to use MAAS for DNS resolution."),
-            'required': False,
-            'help_text': (
+                "be allowed to use MAAS for DNS resolution."
+            ),
+            "required": False,
+            "help_text": (
                 "MAAS keeps a list of networks that are allowed to use MAAS "
                 "for DNS resolution. This option allows to add extra "
                 "networks (not previously known) to the trusted ACL where "
                 "this list of networks is kept. It also supports specifying "
-                "IPs or ACL names.")
-        }
+                "IPs or ACL names."
+            ),
+        },
     },
-    'ntp_servers': {
-        'default': None,
-        'form': HostListFormField,
-        'form_kwargs': {
-            'label': "Addresses of NTP servers",
-            'required': False,
-            'help_text': normalise_whitespace("""\
+    "ntp_servers": {
+        "default": None,
+        "form": HostListFormField,
+        "form_kwargs": {
+            "label": "Addresses of NTP servers",
+            "required": False,
+            "help_text": normalise_whitespace(
+                """\
                 NTP servers, specified as IP addresses or hostnames delimited
                 by commas and/or spaces, to be used as time references for
                 MAAS itself, the machines MAAS deploys, and devices that make
                 use of MAAS's DHCP services.
-            """),
-        }
+            """
+            ),
+        },
     },
-    'ntp_external_only': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Use external NTP servers only",
-            'required': False,
-            'help_text': normalise_whitespace("""\
+    "ntp_external_only": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Use external NTP servers only",
+            "required": False,
+            "help_text": normalise_whitespace(
+                """\
                 Configure all region controller hosts, rack controller hosts,
                 and subsequently deployed machines to refer directly to the
                 configured external NTP servers. Otherwise only region
@@ -433,189 +460,197 @@ CONFIG_ITEMS = {
                 servers, rack contoller hosts will in turn refer to the
                 regions' NTP servers, and deployed machines will refer to the
                 racks' NTP servers.
-            """),
-        }
+            """
+            ),
+        },
     },
-    'remote_syslog': {
-        'default': None,
-        'form': RemoteSyslogField,
-        'form_kwargs': {
-            'label': "Remote syslog server to forward machine logs",
-            'required': False,
-            'help_text': normalise_whitespace("""\
+    "remote_syslog": {
+        "default": None,
+        "form": RemoteSyslogField,
+        "form_kwargs": {
+            "label": "Remote syslog server to forward machine logs",
+            "required": False,
+            "help_text": normalise_whitespace(
+                """\
                 A remote syslog server that MAAS will set on enlisting,
                 commissioning, testing, and deploying machines to send all
                 log messages. Clearing this value will restore the default
                 behaviour of forwarding syslog to MAAS.
-            """),
-        }
+            """
+            ),
+        },
     },
-    'maas_syslog_port': {
-        'default': 5247,
-        'form': make_maas_syslog_port_field,
-        'form_kwargs': {
-            'label': "Port to bind the MAAS built-in syslog (default: 5247)",
-            'required': False,
-            'help_text': (
+    "maas_syslog_port": {
+        "default": 5247,
+        "form": make_maas_syslog_port_field,
+        "form_kwargs": {
+            "label": "Port to bind the MAAS built-in syslog (default: 5247)",
+            "required": False,
+            "help_text": (
                 "Defines the port used to bind the built-in syslog. The "
-                "default port is 5247.")
-        }
+                "default port is 5247."
+            ),
+        },
     },
-    'network_discovery': {
-        'default': 'enabled',
-        'form': make_network_discovery_field,
-        'form_kwargs': {
-            'label': "",
-            'required': False,
-            'help_text': (
+    "network_discovery": {
+        "default": "enabled",
+        "form": make_network_discovery_field,
+        "form_kwargs": {
+            "label": "",
+            "required": False,
+            "help_text": (
                 "When enabled, MAAS will use passive techniques (such as "
                 "listening to ARP requests and mDNS advertisements) to "
                 "observe networks attached to rack controllers. Active "
                 "subnet mapping will also be available to be enabled on the "
                 "configured subnets."
-            )
-        }
+            ),
+        },
     },
-    'active_discovery_interval': {
-        'default': int(timedelta(hours=3).total_seconds()),
-        'form': make_active_discovery_interval_field,
-        'form_kwargs': {
-            'label': (
-                "Active subnet mapping interval"),
-            'required': False,
-            'help_text': (
+    "active_discovery_interval": {
+        "default": int(timedelta(hours=3).total_seconds()),
+        "form": make_active_discovery_interval_field,
+        "form_kwargs": {
+            "label": "Active subnet mapping interval",
+            "required": False,
+            "help_text": (
                 "When enabled, each rack will scan subnets enabled for active "
                 "mapping. This helps ensure discovery information is accurate "
                 "and complete."
-            )
-        }
+            ),
+        },
     },
-    'default_osystem': {
-        'form': make_default_osystem_field,
-        'form_kwargs': {
-            'label': "Default operating system used for deployment",
-            'required': False,
+    "default_osystem": {
+        "form": make_default_osystem_field,
+        "form_kwargs": {
+            "label": "Default operating system used for deployment",
+            "required": False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
-        }
+        },
     },
-    'default_distro_series': {
-        'form': make_default_distro_series_field,
-        'form_kwargs': {
-            'label': "Default OS release used for deployment",
-            'required': False,
+    "default_distro_series": {
+        "form": make_default_distro_series_field,
+        "form_kwargs": {
+            "label": "Default OS release used for deployment",
+            "required": False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
-        }
+        },
     },
-    'default_min_hwe_kernel': {
-        'default': None,
-        'form': make_default_min_hwe_kernel_field,
-        'form_kwargs': {
-            'label': "Default Minimum Kernel Version",
-            'required': False,
-            'help_text': (
+    "default_min_hwe_kernel": {
+        "default": None,
+        "form": make_default_min_hwe_kernel_field,
+        "form_kwargs": {
+            "label": "Default Minimum Kernel Version",
+            "required": False,
+            "help_text": (
                 "The default minimum kernel version used on all new and"
                 " commissioned nodes."
-            )
-        }
+            ),
+        },
     },
-    'default_storage_layout': {
-        'default': 'lvm',
-        'form': forms.ChoiceField,
-        'form_kwargs': {
-            'label': "Default storage layout",
-            'choices': get_storage_layout_choices(),
-            'help_text': (
+    "default_storage_layout": {
+        "default": "lvm",
+        "form": forms.ChoiceField,
+        "form_kwargs": {
+            "label": "Default storage layout",
+            "choices": get_storage_layout_choices(),
+            "help_text": (
                 "Storage layout that is applied to a node when it is "
                 "commissioned."
-            )
-        }
+            ),
+        },
     },
-    'commissioning_distro_series': {
-        'default': DEFAULT_OS.get_default_commissioning_release(),
-        'form': make_commissioning_distro_series_field,
-        'form_kwargs': {
-            'label': "Default Ubuntu release used for commissioning",
-            'required': False,
+    "commissioning_distro_series": {
+        "default": DEFAULT_OS.get_default_commissioning_release(),
+        "form": make_commissioning_distro_series_field,
+        "form_kwargs": {
+            "label": "Default Ubuntu release used for commissioning",
+            "required": False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
-        }
+        },
     },
-    'enable_third_party_drivers': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
-                "Enable the installation of proprietary drivers (i.e. HPVSA)")
-        }
+    "enable_third_party_drivers": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
+                "Enable the installation of proprietary drivers (i.e. HPVSA)"
+            ),
+        },
     },
-    'windows_kms_host': {
-        'default': None,
-        'form': forms.CharField,
-        'form_kwargs': {
-            'required': False,
-            'label': "Windows KMS activation host",
-            'help_text': (
+    "windows_kms_host": {
+        "default": None,
+        "form": forms.CharField,
+        "form_kwargs": {
+            "required": False,
+            "label": "Windows KMS activation host",
+            "help_text": (
                 "FQDN or IP address of the host that provides the KMS Windows "
                 "activation service. (Only needed for Windows deployments "
-                "using KMS activation.)")
-        }
+                "using KMS activation.)"
+            ),
+        },
     },
-    'enable_disk_erasing_on_release': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': "Erase nodes' disks prior to releasing",
-            'help_text': (
-                "Forces users to always erase disks when releasing.")
-        }
+    "enable_disk_erasing_on_release": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": "Erase nodes' disks prior to releasing",
+            "help_text": "Forces users to always erase disks when releasing.",
+        },
     },
-    'disk_erase_with_secure_erase': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': "Use secure erase by default when erasing disks",
-            'help_text': (
+    "disk_erase_with_secure_erase": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": "Use secure erase by default when erasing disks",
+            "help_text": (
                 "Will only be used on devices that support secure erase.  "
                 "Other devices will fall back to full wipe or quick erase "
-                "depending on the selected options.")
-        }
+                "depending on the selected options."
+            ),
+        },
     },
-    'disk_erase_with_quick_erase': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': "Use quick erase by default when erasing disks.",
-            'help_text': (
+    "disk_erase_with_quick_erase": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": "Use quick erase by default when erasing disks.",
+            "help_text": (
                 "This is not a secure erase; it wipes only the beginning and "
-                "end of each disk.")
-        }
+                "end of each disk."
+            ),
+        },
     },
-    'boot_images_auto_import': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "boot_images_auto_import": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "Automatically import/refresh the boot images "
-                "every %d minutes" %
-                (IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0))
-        }
+                "every %d minutes"
+                % (IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0)
+            ),
+        },
     },
-    'boot_images_no_proxy': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "boot_images_no_proxy": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "Set no_proxy with the image repository address when MAAS "
-                "is behind (or set with) a proxy."),
-            'help_text': (
+                "is behind (or set with) a proxy."
+            ),
+            "help_text": (
                 "By default, when MAAS is behind (and set with) a proxy, it "
                 "is used to download images from the image repository. In "
                 "some situations (e.g. when using a local image repository) "
@@ -623,215 +658,233 @@ CONFIG_ITEMS = {
                 "images because it can access them directly. Setting this "
                 "option allows MAAS to access the (local) image repository "
                 "directly by setting the no_proxy variable for the MAAS env "
-                "with the address of the image repository.")
-        }
+                "with the address of the image repository."
+            ),
+        },
     },
-    'curtin_verbose': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "curtin_verbose": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "Run the fast-path installer with higher verbosity. This "
-                "provides more detail in the installation logs")
-        }
+                "provides more detail in the installation logs"
+            ),
+        },
     },
-    'force_v1_network_yaml': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "force_v1_network_yaml": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "Always use the legacy v1 YAML (rather than Netplan format, "
                 "also known as v2 YAML) when composing the network "
                 "configuration for a machine."
-                )
-        }
+            ),
+        },
     },
-    'enable_analytics': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "enable_analytics": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "Enable Google Analytics in MAAS UI to shape improvements "
-                "in user experience")
-        }
+                "in user experience"
+            ),
+        },
     },
-    'completed_intro': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Marks if the initial intro has been completed",
-            'required': False
-        }
+    "completed_intro": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Marks if the initial intro has been completed",
+            "required": False,
+        },
     },
-    'max_node_commissioning_results': {
-        'default': 10,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "max_node_commissioning_results": {
+        "default": 10,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "The maximum number of commissioning results runs which are "
-                "stored"),
-            'min_value': 1,
+                "stored"
+            ),
+            "min_value": 1,
         },
     },
-    'max_node_testing_results': {
-        'default': 10,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "max_node_testing_results": {
+        "default": 10,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "The maximum number of testing results runs which are "
-                "stored"),
-            'min_value': 1,
+                "stored"
+            ),
+            "min_value": 1,
         },
     },
-    'max_node_installation_results': {
-        'default': 3,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "max_node_installation_results": {
+        "default": 3,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "The maximum number of installation result runs which are "
-                "stored"),
-            'min_value': 1,
+                "stored"
+            ),
+            "min_value": 1,
         },
     },
-    'subnet_ip_exhaustion_threshold_count': {
-        'default': 16,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "subnet_ip_exhaustion_threshold_count": {
+        "default": 16,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "If the number of free IP addresses on a subnet becomes less "
                 "than or equal to this threshold, an IP exhaustion warning "
-                "will appear for that subnet"),
-            'min_value': 1,
+                "will appear for that subnet"
+            ),
+            "min_value": 1,
         },
     },
-    'use_rack_proxy': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': (
+    "use_rack_proxy": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": (
                 "Use DNS and HTTP metadata proxy on the rack controllers "
-                "when a machine is booted."),
-            'required': False,
-            'help_text': (
+                "when a machine is booted."
+            ),
+            "required": False,
+            "help_text": (
                 "All DNS and HTTP metadata traffic will flow through the "
                 "rack controller that a machine is booting from. This "
-                "isolated region controllers from machines.")
-        }
+                "isolated region controllers from machines."
+            ),
+        },
     },
-    'node_timeout': {
-        'default': 30,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'required': False,
-            'label': (
+    "node_timeout": {
+        "default": 30,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
                 "Time, in minutes, until the node times out during "
-                "commissioning, testing, deploying, or entering rescue mode."),
-            'help_text': (
+                "commissioning, testing, deploying, or entering rescue mode."
+            ),
+            "help_text": (
                 "Commissioning, testing, deploying, and entering rescue mode "
                 "all set a timeout when beginning. If MAAS does not hear from "
                 "the node within the specified number of minutes the node is "
-                "powered off and set into a failed status."),
-            'min_value': 1,
+                "powered off and set into a failed status."
+            ),
+            "min_value": 1,
         },
     },
-    'prometheus_enabled': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': (
-                "Enable sending stats to a prometheus gateway."),
-            'required': False,
-            'help_text': (
+    "prometheus_enabled": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Enable sending stats to a prometheus gateway.",
+            "required": False,
+            "help_text": (
                 "Allows MAAS to send statistics to Prometheus. This requires "
-                "the 'prometheus_push_gateway' to be set.")
-        }
+                "the 'prometheus_push_gateway' to be set."
+            ),
+        },
     },
-    'prometheus_push_gateway': {
-        'default': None,
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': (
-                "Address or hostname of the Prometheus push gateway."),
-            'required': False,
-            'help_text': (
+    "prometheus_push_gateway": {
+        "default": None,
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "Address or hostname of the Prometheus push gateway.",
+            "required": False,
+            "help_text": (
                 "Defines the address or hostname of the Prometheus push "
-                "gateway where MAAS will send data to.")
-        }
+                "gateway where MAAS will send data to."
+            ),
+        },
     },
-    'prometheus_push_interval': {
-        'default': 60,
-        'form': forms.IntegerField,
-        'form_kwargs': {
-            'label': (
+    "prometheus_push_interval": {
+        "default": 60,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "label": (
                 "Interval of how often to send data to Prometheus "
-                "(default: to 60 minutes)."),
-            'required': False,
-            'help_text': (
+                "(default: to 60 minutes)."
+            ),
+            "required": False,
+            "help_text": (
                 "The internal of how often MAAS will send stats to Prometheus "
-                "in minutes.")
-        }
+                "in minutes."
+            ),
+        },
     },
-    'enlist_commissioning': {
-        'default': True,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': 'Whether to run commissioning during enlistment.',
-            'required': False,
-            'help_text': (
-                'Enables running all built-in commissioning scripts during '
-                'enlistment.'),
-        }
+    "enlist_commissioning": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Whether to run commissioning during enlistment.",
+            "required": False,
+            "help_text": (
+                "Enables running all built-in commissioning scripts during "
+                "enlistment."
+            ),
+        },
     },
-    'vcenter_server': {
-        'default': '',
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': 'VMware vCenter server FQDN or IP address',
-            'required': False,
-            'help_text': (
-                'VMware vCenter server FQDN or IP address which is passed '
-                'to a deployed VMware ESXi host.'),
-        }
+    "vcenter_server": {
+        "default": "",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "VMware vCenter server FQDN or IP address",
+            "required": False,
+            "help_text": (
+                "VMware vCenter server FQDN or IP address which is passed "
+                "to a deployed VMware ESXi host."
+            ),
+        },
     },
-    'vcenter_username': {
-        'default': '',
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': 'VMware vCenter username',
-            'required': False,
-            'help_text': (
-                'VMware vCenter server username which is passed to a deployed '
-                'VMware ESXi host.'),
-        }
+    "vcenter_username": {
+        "default": "",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "VMware vCenter username",
+            "required": False,
+            "help_text": (
+                "VMware vCenter server username which is passed to a deployed "
+                "VMware ESXi host."
+            ),
+        },
     },
-    'vcenter_password': {
-        'default': '',
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': 'VMware vCenter password',
-            'required': False,
-            'help_text': (
-                'VMware vCenter server password which is passed to a deployed '
-                'VMware ESXi host.'),
-        }
+    "vcenter_password": {
+        "default": "",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "VMware vCenter password",
+            "required": False,
+            "help_text": (
+                "VMware vCenter server password which is passed to a deployed "
+                "VMware ESXi host."
+            ),
+        },
     },
-    'vcenter_datacenter': {
-        'default': '',
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': 'VMware vCenter datacenter',
-            'required': False,
-            'help_text': (
-                'VMware vCenter datacenter which is passed to a deployed '
-                'VMware ESXi host.'),
-        }
+    "vcenter_datacenter": {
+        "default": "",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "VMware vCenter datacenter",
+            "required": False,
+            "help_text": (
+                "VMware vCenter datacenter which is passed to a deployed "
+                "VMware ESXi host."
+            ),
+        },
     },
 }
 
@@ -840,14 +893,16 @@ CONFIG_ITEMS_KEYS = frozenset(CONFIG_ITEMS)
 
 
 INVALID_SETTING_MSG_TEMPLATE = (
-    "%s is not a valid config setting (valid settings are: " +
-    "%s)." % ', '.join(CONFIG_ITEMS))
+    "%s is not a valid config setting (valid settings are: "
+    + "%s)." % ", ".join(CONFIG_ITEMS)
+)
 
 
 def validate_config_name(config_name):
     if config_name not in CONFIG_ITEMS_KEYS:
         raise forms.ValidationError(
-            {config_name: [INVALID_SETTING_MSG_TEMPLATE % config_name]})
+            {config_name: [INVALID_SETTING_MSG_TEMPLATE % config_name]}
+        )
 
 
 def get_config_field(config_name, **kwargs):
@@ -860,8 +915,8 @@ def get_config_field(config_name, **kwargs):
     """
     validate_config_name(config_name)
     conf = CONFIG_ITEMS[config_name]
-    kwargs.update(conf['form_kwargs'])
-    return conf['form'](**kwargs)
+    kwargs.update(conf["form_kwargs"])
+    return conf["form"](**kwargs)
 
 
 def get_config_form(config_name, data=None):
@@ -879,6 +934,7 @@ def get_config_form(config_name, data=None):
 
     class LocalForm(ConfigForm):
         pass
+
     if data is None:
         data = {}
     form = LocalForm(data=data)
@@ -889,25 +945,26 @@ def get_config_form(config_name, data=None):
 
 def describe_choices(choices):
     """Describe the items in an enumeration of Django form choices."""
-    return ', '.join(
-        "'%s' (%s)" % (value, meaning) for value, meaning in choices)
+    return ", ".join(
+        "'%s' (%s)" % (value, meaning) for value, meaning in choices
+    )
 
 
 def get_config_doc(indentation=0):
     """Return the documentation about the available configuration settings."""
     doc = ["Available configuration items:\n\n"]
     for config_name, config_details in sorted(CONFIG_ITEMS.items()):
-        form_details = config_details['form_kwargs']
-        doc.append(":" + config_name + ": " + form_details['label'] + ". ")
+        form_details = config_details["form_kwargs"]
+        doc.append(":" + config_name + ": " + form_details["label"] + ". ")
         # Append help text if present.
-        help_text = form_details.get('help_text')
+        help_text = form_details.get("help_text")
         if help_text is not None:
             doc.append(help_text.strip())
         # Append list of possible choices if present.
-        choices = form_details.get('choices')
+        choices = form_details.get("choices")
         if choices is not None:
             choice_descr = describe_choices(choices)
             doc.append("Available choices are: %s." % choice_descr)
         doc.append("\n")
-    full_text = (' ' * indentation).join(doc)
-    return re.sub(r'\ +$', '', full_text, flags=re.MULTILINE)
+    full_text = (" " * indentation).join(doc)
+    return re.sub(r"\ +$", "", full_text, flags=re.MULTILINE)

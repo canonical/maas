@@ -5,10 +5,7 @@
 
 __all__ = []
 
-from argparse import (
-    ArgumentParser,
-    Namespace,
-)
+from argparse import ArgumentParser, Namespace
 from random import randint
 from subprocess import CalledProcessError
 import types
@@ -17,10 +14,7 @@ from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import script as script_module
-from provisioningserver.utils.script import (
-    ActionScript,
-    ActionScriptError,
-)
+from provisioningserver.utils.script import ActionScript, ActionScriptError
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 
@@ -46,9 +40,9 @@ class TestActionScript(MAASTestCase):
     def test_register(self):
         handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: (
-            self.assertIsInstance(parser, ArgumentParser))
-        handler.run = lambda args: (
-            self.assertIsInstance(args, int))
+            self.assertIsInstance(parser, ArgumentParser)
+        )
+        handler.run = lambda args: (self.assertIsInstance(args, int))
         script = self.factory("Description")
         script.register("slay", handler)
         self.assertIn("slay", script.subparsers.choices)
@@ -62,7 +56,8 @@ class TestActionScript(MAASTestCase):
         handler.run = lambda args: None
         script = self.factory("Description")
         error = self.assertRaises(
-            AttributeError, script.register, "decapitate", handler)
+            AttributeError, script.register, "decapitate", handler
+        )
         self.assertIn("'add_arguments'", "%s" % error)
 
     def test_register_without_run(self):
@@ -72,7 +67,8 @@ class TestActionScript(MAASTestCase):
         handler.add_arguments = lambda parser: None
         script = self.factory("Description")
         error = self.assertRaises(
-            AttributeError, script.register, "decapitate", handler)
+            AttributeError, script.register, "decapitate", handler
+        )
         self.assertIn("'run'", "%s" % error)
 
     def test_call(self):
@@ -104,8 +100,10 @@ class TestActionScript(MAASTestCase):
     def test_call_with_process_exception(self):
         # CalledProcessError is converted into SystemExit.
         exception = CalledProcessError(
-            randint(0, 256), [factory.make_string()],
-            factory.make_string().encode("ascii"))
+            randint(0, 256),
+            [factory.make_string()],
+            factory.make_string().encode("ascii"),
+        )
 
         def raise_exception():
             raise exception
@@ -145,8 +143,8 @@ class TestActionScript(MAASTestCase):
         handler.run = lambda args: raise_exception()
         script = self.factory("Description")
         script.register("smash", handler)
-        with ExpectedException(SystemExit, '.*42.*'):
+        with ExpectedException(SystemExit, ".*42.*"):
             # This needs to be a no-op.
-            self.patch(script_module.ActionScript, 'setup')
-            script(['smash'])
+            self.patch(script_module.ActionScript, "setup")
+            script(["smash"])
         self.assertThat(self.stdio.getError(), Equals("Towel.\n"))

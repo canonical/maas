@@ -3,9 +3,7 @@
 
 """Model for a filesystem on a partition or a block device."""
 
-__all__ = [
-    'Filesystem',
-    ]
+__all__ = ["Filesystem"]
 
 
 from uuid import uuid4
@@ -39,8 +37,10 @@ class FilesystemManager(Manager):
     def filter_by_node(self, node):
         """Return all filesystems on this node."""
         return self.filter(
-            Q(node=node) | Q(block_device__node=node) |
-            Q(partition__partition_table__block_device__node=node))
+            Q(node=node)
+            | Q(block_device__node=node)
+            | Q(partition__partition_table__block_device__node=node)
+        )
 
 
 class Filesystem(CleanSave, TimestampedModel):
@@ -63,74 +63,92 @@ class Filesystem(CleanSave, TimestampedModel):
     """
 
     # All filesystem types.
-    TYPES = frozenset(
-        fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES)
+    TYPES = frozenset(fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES)
 
     # Filesystem types that expect to be mounted into the host's filesystem.
     # Essentially this means all filesystems except swap.
     TYPES_REQUIRING_MOUNT_POINT = frozenset(
-        fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES
-        if fstype != FILESYSTEM_TYPE.SWAP)
+        fstype
+        for fstype, _ in FILESYSTEM_TYPE_CHOICES
+        if fstype != FILESYSTEM_TYPE.SWAP
+    )
 
     # Filesystem types that require storage on a block special device, i.e. a
     # block device or partition.
     TYPES_REQUIRING_STORAGE = frozenset(
-        fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES
-        if fstype != FILESYSTEM_TYPE.RAMFS and fstype != FILESYSTEM_TYPE.TMPFS)
+        fstype
+        for fstype, _ in FILESYSTEM_TYPE_CHOICES
+        if fstype != FILESYSTEM_TYPE.RAMFS and fstype != FILESYSTEM_TYPE.TMPFS
+    )
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         unique_together = (
             ("partition", "acquired"),
             ("block_device", "acquired"),
-            )
+        )
 
     objects = FilesystemManager()
 
     uuid = CharField(
-        max_length=36, unique=False, null=False, blank=False, editable=False)
+        max_length=36, unique=False, null=False, blank=False, editable=False
+    )
 
     fstype = CharField(
-        max_length=20, choices=FILESYSTEM_TYPE_CHOICES,
-        default=FILESYSTEM_TYPE.EXT4)
+        max_length=20,
+        choices=FILESYSTEM_TYPE_CHOICES,
+        default=FILESYSTEM_TYPE.EXT4,
+    )
 
     partition = ForeignKey(
-        Partition, unique=False, null=True, blank=True, on_delete=CASCADE)
+        Partition, unique=False, null=True, blank=True, on_delete=CASCADE
+    )
 
     block_device = ForeignKey(
-        BlockDevice, unique=False, null=True, blank=True, on_delete=CASCADE)
+        BlockDevice, unique=False, null=True, blank=True, on_delete=CASCADE
+    )
 
     node = ForeignKey(
-        "Node", unique=False, null=True, blank=True,
-        related_name="special_filesystems", on_delete=CASCADE)
+        "Node",
+        unique=False,
+        null=True,
+        blank=True,
+        related_name="special_filesystems",
+        on_delete=CASCADE,
+    )
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
-    label = CharField(
-        max_length=255, null=True, blank=True)
+    label = CharField(max_length=255, null=True, blank=True)
 
     filesystem_group = ForeignKey(
-        FilesystemGroup, null=True, blank=True, related_name='filesystems',
-        on_delete=CASCADE)
+        FilesystemGroup,
+        null=True,
+        blank=True,
+        related_name="filesystems",
+        on_delete=CASCADE,
+    )
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
-    create_params = CharField(
-        max_length=255, null=True, blank=True)
+    create_params = CharField(max_length=255, null=True, blank=True)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
-    mount_point = CharField(
-        max_length=255, null=True, blank=True)
+    mount_point = CharField(max_length=255, null=True, blank=True)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
-    mount_options = CharField(
-        max_length=255, null=True, blank=True)
+    mount_options = CharField(max_length=255, null=True, blank=True)
 
     cache_set = ForeignKey(
-        CacheSet, null=True, blank=True, related_name='filesystems',
-        on_delete=CASCADE)
+        CacheSet,
+        null=True,
+        blank=True,
+        related_name="filesystems",
+        on_delete=CASCADE,
+    )
 
     # When a node is allocated all Filesystem objects assigned to that node
     # with mountable filesystems will be duplicated with this field set to
@@ -218,25 +236,29 @@ class Filesystem(CleanSave, TimestampedModel):
         if parents.count(None) == len(parents):
             if self.uses_storage:
                 raise ValidationError(
-                    "One of partition or block device must be specified.")
+                    "One of partition or block device must be specified."
+                )
             else:
-                raise ValidationError(
-                    "A node must be specified.")
+                raise ValidationError("A node must be specified.")
 
         # You can have only one of partition, block device, or node.
         if len(parents) - parents.count(None) > 1:
             raise ValidationError(
                 "Only one of partition, block device, or node can "
-                "be specified.")
+                "be specified."
+            )
 
         # If fstype is for a bcache as a cache device it needs to be in a
         # cache_set.
-        if (self.fstype == FILESYSTEM_TYPE.BCACHE_CACHE and
-                self.cache_set is None):
+        if (
+            self.fstype == FILESYSTEM_TYPE.BCACHE_CACHE
+            and self.cache_set is None
+        ):
             raise ValidationError(
                 # XXX: Message leaks implementation details ("BCACHE_CACHE",
                 # "cache_set").
-                "BCACHE_CACHE must be inside of a cache_set.")
+                "BCACHE_CACHE must be inside of a cache_set."
+            )
 
         # Normalise the mount point to None or "none" if this filesystem does
         # not use it. The mount point (fs_file) field in fstab(5) is ignored
@@ -258,24 +280,26 @@ class Filesystem(CleanSave, TimestampedModel):
                 raise ValidationError(
                     "Cannot place filesystem directly on the boot disk. "
                     "Create a partition on the boot disk first and then "
-                    "format the partition.")
+                    "format the partition."
+                )
 
         # Only ramfs and tmpfs can have a node as a parent.
         if self.uses_storage:
             if self.node is not None:
                 raise ValidationError(
                     "A %s filesystem must be placed on a "
-                    "block device or partition." % self.fstype)
+                    "block device or partition." % self.fstype
+                )
         else:
             if self.node is None:
                 raise ValidationError(
                     "RAM-backed filesystems cannot be placed on "
-                    "block devices or partitions.")
+                    "block devices or partitions."
+                )
 
         # Non-storage filesystems MUST be mounted.
         if (not self.uses_storage) and (not self.is_mounted):
-            raise ValidationError(
-                "RAM-backed filesystems must be mounted.")
+            raise ValidationError("RAM-backed filesystems must be mounted.")
 
         # There should be no duplicate mount points.
         if self.is_mounted and self.uses_mount_point:
@@ -283,11 +307,13 @@ class Filesystem(CleanSave, TimestampedModel):
             owning_node_other_matching_mount_point = (
                 Filesystem.objects.filter_by_node(self.get_node())
                 .filter(mount_point=self.mount_point, acquired=self.acquired)
-                .exclude(id=self.id))
+                .exclude(id=self.id)
+            )
             if owning_node_other_matching_mount_point.exists():
                 raise ValidationError(
                     "Another filesystem is already mounted at %s."
-                    % (self.mount_point,))
+                    % (self.mount_point,)
+                )
 
     def save(self, *args, **kwargs):
         if not self.uuid:

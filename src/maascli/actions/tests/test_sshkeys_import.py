@@ -24,10 +24,10 @@ class TestSSHKeysImportAction(MAASTestCase):
         self.stdio = self.useFixture(CaptureStandardIO())
         action_bases = (SSHKeysImportAction,)
         action_ns = {
-            "action": {'method': 'POST'},
-            "handler": {'uri': b'/MAAS/api/2.0/sshkeys/', 'params': []},
-            "profile": {'credentials': make_api_credentials()}
-            }
+            "action": {"method": "POST"},
+            "handler": {"uri": b"/MAAS/api/2.0/sshkeys/", "params": []},
+            "profile": {"credentials": make_api_credentials()},
+        }
         action_class = type("import", action_bases, action_ns)
         action = action_class(Mock())
         return action
@@ -36,19 +36,19 @@ class TestSSHKeysImportAction(MAASTestCase):
         action = self.make_sshkeys_import_action()
         ks = "%s:%s" % (
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
-            factory.make_name('user-id'))
-        expected_data = ('keysource', ks)
+            factory.make_name("user-id"),
+        )
+        expected_data = ("keysource", ks)
         data = action.name_value_pair(ks)
         self.assertEquals(data, expected_data)
 
     def test_name_value_pair_returns_sshkey_creds_tuple_for_no_protocol(self):
         action = self.make_sshkeys_import_action()
-        ks = factory.make_name('user-id')
-        expected_data = ('keysource', ks)
+        ks = factory.make_name("user-id")
+        expected_data = ("keysource", ks)
         data = action.name_value_pair(ks)
         self.assertEquals(data, expected_data)
 
     def test_name_value_pair_returns_sshkey_creds_tuple_for_no_input(self):
         action = self.make_sshkeys_import_action()
-        self.assertRaises(
-            CommandError, action.name_value_pair, '')
+        self.assertRaises(CommandError, action.name_value_pair, "")

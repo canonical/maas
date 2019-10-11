@@ -3,15 +3,10 @@
 
 """Domain form."""
 
-__all__ = [
-    "DomainForm",
-]
+__all__ = ["DomainForm"]
 
 from django import forms
-from maasserver.forms import (
-    APIEditMixin,
-    MAASModelForm,
-)
+from maasserver.forms import APIEditMixin, MAASModelForm
 from maasserver.models.domain import Domain
 
 
@@ -20,11 +15,7 @@ class DomainForm(MAASModelForm):
 
     class Meta:
         model = Domain
-        fields = (
-            'name',
-            'authoritative',
-            'ttl',
-            )
+        fields = ("name", "authoritative", "ttl")
 
     ttl = forms.IntegerField(min_value=1, max_value=604800, required=False)
 
@@ -35,6 +26,6 @@ class DomainForm(MAASModelForm):
         self.cleaned_data = {
             key: value
             for key, value in self.cleaned_data.items()
-            if value is not None or key == 'ttl'
+            if value is not None or key == "ttl"
         }
         super(APIEditMixin, self)._post_clean()

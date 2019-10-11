@@ -12,9 +12,9 @@ from maastesting.matchers import MockCalledOnceWith
 
 
 class TestConfigSignals(MAASServerTestCase):
-
     def test_changing_kms_host_triggers_update(self):
         dns_kms_setting_changed = self.patch_autospec(
-            domain_module, "dns_kms_setting_changed")
-        Config.objects.set_config('windows_kms_host', '8.8.8.8')
+            domain_module, "dns_kms_setting_changed"
+        )
+        Config.objects.set_config("windows_kms_host", "8.8.8.8")
         self.assertThat(dns_kms_setting_changed, MockCalledOnceWith())

@@ -3,23 +3,14 @@
 
 """Model for a nodes virtual block device."""
 
-__all__ = [
-    'VirtualBlockDevice',
-    ]
+__all__ = ["VirtualBlockDevice"]
 
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-)
+from django.db.models import CASCADE, CharField, ForeignKey
 from maasserver import DefaultMeta
-from maasserver.models.blockdevice import (
-    BlockDevice,
-    BlockDeviceManager,
-)
+from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.node import Node
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
@@ -45,18 +36,21 @@ class VirtualBlockDeviceManager(BlockDeviceManager):
             return None
         else:
             block_device = get_one(
-                self.filter(filesystem_group=filesystem_group))
+                self.filter(filesystem_group=filesystem_group)
+            )
             if block_device is None:
                 block_device = VirtualBlockDevice(
                     node=filesystem_group.get_node(),
                     name=filesystem_group.name,
-                    filesystem_group=filesystem_group)
+                    filesystem_group=filesystem_group,
+                )
             # Keep the name, size, and block_size in sync with the
             # FilesystemGroup.
             block_device.name = filesystem_group.name
             block_device.size = filesystem_group.get_size()
             block_device.block_size = (
-                filesystem_group.get_virtual_block_device_block_size())
+                filesystem_group.get_virtual_block_device_block_size()
+            )
             block_device.save()
             return block_device
 
@@ -69,12 +63,15 @@ class VirtualBlockDevice(BlockDevice):
 
     objects = VirtualBlockDeviceManager()
 
-    uuid = CharField(
-        max_length=36, unique=True, null=False, blank=False)
+    uuid = CharField(max_length=36, unique=True, null=False, blank=False)
 
     filesystem_group = ForeignKey(
-        FilesystemGroup, null=False, blank=False,
-        related_name="virtual_devices", on_delete=CASCADE)
+        FilesystemGroup,
+        null=False,
+        blank=False,
+        related_name="virtual_devices",
+        on_delete=CASCADE,
+    )
 
     def get_name(self):
         """Return the name."""
@@ -101,7 +98,8 @@ class VirtualBlockDevice(BlockDevice):
             # the attached filesystem group.
             if node != self.filesystem_group.get_node():
                 raise ValidationError(
-                    "Node must be the same node as the filesystem_group.")
+                    "Node must be the same node as the filesystem_group."
+                )
 
         # Check if the size of this is not larger than the free size of
         # its filesystem group if its lvm.
@@ -110,16 +108,20 @@ class VirtualBlockDevice(BlockDevice):
             # align virtual partition to partition alignment size
             # otherwise on creation it may be rounded up, overfilling group
             self.size = round_size_to_nearest_block(
-                self.size, PARTITION_ALIGNMENT_SIZE, False)
+                self.size, PARTITION_ALIGNMENT_SIZE, False
+            )
 
             if self.size > self.filesystem_group.get_lvm_free_space(
-                    skip_volumes=[self]):
+                skip_volumes=[self]
+            ):
                 raise ValidationError(
                     "There is not enough free space (%s) "
-                    "on volume group %s." % (
+                    "on volume group %s."
+                    % (
                         human_readable_bytes(self.size),
                         self.filesystem_group.name,
-                        ))
+                    )
+                )
         else:
             # If not a volume group the size of the virtual block device
             # must equal the size of the filesystem group.
@@ -132,6 +134,7 @@ class VirtualBlockDevice(BlockDevice):
 
     def get_parents(self):
         """Return the blockdevices and partition which make up this device."""
+
         def check_fs_group(obj):
             fs = obj.get_effective_filesystem()
             if fs is None:

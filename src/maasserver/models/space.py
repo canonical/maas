@@ -3,23 +3,13 @@
 
 """Space objects."""
 
-__all__ = [
-    "DEFAULT_SPACE_NAME",
-    "Space",
-    ]
+__all__ = ["DEFAULT_SPACE_NAME", "Space"]
 
 import datetime
 import re
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
-from django.db.models import (
-    CharField,
-    Manager,
-    TextField,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import CharField, Manager, TextField
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
@@ -31,17 +21,17 @@ def validate_space_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile(r'^[\w-]+$')
+    namespec = re.compile(r"^[\w-]+$")
     if not namespec.search(value):
         raise ValidationError("Invalid space name: %s." % value)
 
+
 # Name of the special, default space.  This space cannot be deleted.
-DEFAULT_SPACE_NAME = 'space-0'
+DEFAULT_SPACE_NAME = "space-0"
 
 
 class SpaceQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # Circular imports.
         from maasserver.models import Subnet
 
@@ -50,12 +40,15 @@ class SpaceQueriesMixin(MAASQueriesMixin):
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'name': "__name",
-            'subnet': (Subnet.objects, 'vlan__space'),
+            "name": "__name",
+            "subnet": (Subnet.objects, "vlan__space"),
         }
         return super(SpaceQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class SpaceQuerySet(QuerySet, SpaceQueriesMixin):
@@ -78,12 +71,7 @@ class SpaceManager(Manager, SpaceQueriesMixin):
         now = datetime.datetime.now()
         space, _ = self.get_or_create(
             id=0,
-            defaults={
-                'id': 0,
-                'name': None,
-                'created': now,
-                'updated': now,
-            },
+            defaults={"id": 0, "name": None, "created": now, "updated": now},
         )
         return space
 
@@ -124,6 +112,7 @@ class Space(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         verbose_name = "Space"
         verbose_name_plural = "Spaces"
 
@@ -132,8 +121,13 @@ class Space(CleanSave, TimestampedModel):
     # We don't actually allow blank or null name, but that is enforced in
     # clean() and save().
     name = CharField(
-        max_length=256, editable=True, null=True, blank=True, unique=True,
-        validators=[validate_space_name])
+        max_length=256,
+        editable=True,
+        null=True,
+        blank=True,
+        unique=True,
+        validators=[validate_space_name],
+    )
 
     description = TextField(null=False, blank=True)
 
@@ -152,15 +146,13 @@ class Space(CleanSave, TimestampedModel):
             return "space-%s" % self.id
 
     def clean_name(self):
-        reserved = re.compile(r'^space-\d+$')
-        if self.name is not None and self.name != '':
+        reserved = re.compile(r"^space-\d+$")
+        if self.name is not None and self.name != "":
             if self.name == Space.UNDEFINED:
-                raise ValidationError(
-                    {'name': ["Reserved space name."]})
+                raise ValidationError({"name": ["Reserved space name."]})
             if reserved.search(self.name):
-                if self.id is None or self.name != 'space-%d' % self.id:
-                    raise ValidationError(
-                        {'name': ["Reserved space name."]})
+                if self.id is None or self.name != "space-%d" % self.id:
+                    raise ValidationError({"name": ["Reserved space name."]})
         elif self.id is not None:
             # Since we are not creating the space, force the (null or empty)
             # name to be the default name.
@@ -170,7 +162,7 @@ class Space(CleanSave, TimestampedModel):
         # Name will get set by clean_name() if None or empty, and there is an
         # id. We just need to handle names here for creation.
         super().save(*args, **kwargs)
-        if self.name is None or self.name == '':
+        if self.name is None or self.name == "":
             # If we got here, then we have a newly created space that needs a
             # default name.
             self.name = "space-%d" % self.id
@@ -185,4 +177,5 @@ class Space(CleanSave, TimestampedModel):
         """Backward compatibility shim to get the subnets on this space."""
         # Circular imports.
         from maasserver.models import Subnet
+
         return Subnet.objects.filter(vlan__space=self)

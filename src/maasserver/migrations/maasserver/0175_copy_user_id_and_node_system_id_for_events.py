@@ -13,17 +13,23 @@ DESCRIPTION_MAPPINGS = [
     ("Deleted token for", "Deleted token."),
     ("SSH keys imported by", "Imported SSH keys."),
     ("Script (.+) deleted for", "Deleted script %s."),
-    ("DHCP snippet (.+) reverted to revision (.+)", (
-        "Reverted DHCP snippet %s to revision %s.")),
+    (
+        "DHCP snippet (.+) reverted to revision (.+)",
+        "Reverted DHCP snippet %s to revision %s.",
+    ),
     ("Password changed for", "Updated password."),
     ("Admin (.+) created by", "Created admin %s."),
     ("User (.+) created by", "Created user %s."),
     ("Admin (.+) deleted by", "Deleted admin %s."),
     ("User (.+) deleted by", "Deleted user %s."),
-    ("User profile (username, (.+), full name, (.+), " +
-         "email, (.+), administrator, (.+)) updated by", (
-             "Updated user profile (username, %s," +
-             "full name, %s, email, %s, administrator, %s)")),
+    (
+        "User profile (username, (.+), full name, (.+), "
+        + "email, (.+), administrator, (.+)) updated by",
+        (
+            "Updated user profile (username, %s,"
+            + "full name, %s, email, %s, administrator, %s)"
+        ),
+    ),
     ("SSL key id=(.+) deleted by", "Deleted SSL key id=%s."),
     ("Retrieved API \(OAuth\) token for", "Retrieved API (OAuth) token."),
     ("Created API \(OAuth\) token for", "Created API (OAuth) token."),
@@ -31,8 +37,10 @@ DESCRIPTION_MAPPINGS = [
     ("User (.+) logged in", "Logged in user."),
     ("Admin (.+) logged out", "Logged out admin %s."),
     ("User (.+) logged out", "Logged out user %s."),
-    ("Config setting (.+) set to (.+) for", (
-        "Updated configuration setting %s to %s.")),
+    (
+        "Config setting (.+) set to (.+) for",
+        "Updated configuration setting %s to %s.",
+    ),
     ("Script (.+) saved for", "Saved script %s."),
     ("Package repository (.+) 'updated' by", "Updated package repository %s."),
     ("Package repository (.+) 'created' by", "Created package repository %s."),
@@ -42,15 +50,18 @@ DESCRIPTION_MAPPINGS = [
     ("SSH key created by", "Created SSH key."),
     ("SSL key id=(.+) deleted by", "Deleted SSL key id=%s."),
     ("SSH key id=(.+) deleted by", "Deleted SSH key id=%s."),
-    ("Script (.+) reverted to revision (.+) for", (
-        "Reverted script %s to revision %s.")),
+    (
+        "Script (.+) reverted to revision (.+) for",
+        "Reverted script %s to revision %s.",
+    ),
     ("SSH keys imported by", "Imported SSH keys."),
     ("Script (.+) deleted for", "Deleted script %s."),
-    ("Script (.+) reverted to revision (.+) for", (
-        "Reverted script %s to revision %s.")),
+    (
+        "Script (.+) reverted to revision (.+) for",
+        "Reverted script %s to revision %s.",
+    ),
     ("Script (.+) had tag (.+) added for", "Added tag %s to script %s."),
-    ("Script (.+) had tag (.+) removed for",
-     "Removed tag %s from script %s."),
+    ("Script (.+) had tag (.+) removed for", "Removed tag %s from script %s."),
     ("Package repository (.+) deleted by", "Deleted package repository %s."),
     ("DHCP snippet (.+) deleted by", "Deleted DHCP snippet %s."),
     ("Created bcache cache set on (.+)", "Created bcache cache set."),
@@ -59,7 +70,10 @@ DESCRIPTION_MAPPINGS = [
     ("Created bcache on", "Created bcache."),
     ("Deleted bcache on", "Deleted bcache."),
     ("Updated bcache on", "Updated bcache."),
-    ("Modified consumer name of token for", "Modified consumer name of token."),
+    (
+        "Modified consumer name of token for",
+        "Modified consumer name of token.",
+    ),
 ]
 
 
@@ -75,7 +89,7 @@ def copy_over_user_id_and_node_system_id(apps, schema_editor):
         for pattern, new_description in DESCRIPTION_MAPPINGS:
             match = re.search(pattern, event.description)
             if match:
-                if '%s' in new_description:
+                if "%s" in new_description:
                     event.description = new_description % match.groups()
                 else:
                     event.description = new_description
@@ -87,9 +101,7 @@ def copy_over_user_id_and_node_system_id(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0174_add_user_id_and_node_system_id_for_events'),
+        ("maasserver", "0174_add_user_id_and_node_system_id_for_events")
     ]
 
-    operations = [
-        migrations.RunPython(copy_over_user_id_and_node_system_id),
-    ]
+    operations = [migrations.RunPython(copy_over_user_id_and_node_system_id)]

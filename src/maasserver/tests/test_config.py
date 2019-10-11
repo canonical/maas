@@ -43,7 +43,8 @@ class TestRegionConfiguration(MAASTestCase):
     def test_set_maas_url_accepts_very_short_hostnames(self):
         config = RegionConfiguration({})
         example_url = factory.make_simple_http_url(
-            netloc=factory.make_string(size=1))
+            netloc=factory.make_string(size=1)
+        )
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         self.assertEqual({"maas_url": example_url}, config.store)
@@ -51,14 +52,16 @@ class TestRegionConfiguration(MAASTestCase):
     def test_set_maas_url_rejects_bare_ipv6_addresses(self):
         config = RegionConfiguration({})
         example_url = factory.make_simple_http_url(
-            netloc=factory.make_ipv6_address())
+            netloc=factory.make_ipv6_address()
+        )
         with ExpectedException(formencode.api.Invalid):
             config.maas_url = example_url
 
     def test_set_maas_url_accepts_ipv6_addresses_with_brackets(self):
         config = RegionConfiguration({})
         example_url = factory.make_simple_http_url(
-            netloc="[%s]" % factory.make_ipv6_address())
+            netloc="[%s]" % factory.make_ipv6_address()
+        )
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         self.assertEqual({"maas_url": example_url}, config.store)
@@ -77,7 +80,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         "database_keepalive": True,
         "database_keepalive_idle": 15,
         "database_keepalive_interval": 15,
-        "database_keepalive_count": 2
+        "database_keepalive_count": 2,
     }
 
     scenarios = tuple(
@@ -93,7 +96,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         config = RegionConfiguration({})
         if isinstance(getattr(config, self.option), str):
             example_value = factory.make_name(self.option)
-        elif self.option == 'database_keepalive':
+        elif self.option == "database_keepalive":
             example_value = random.choice([True, False])
         else:
             example_value = factory.pick_port()
@@ -103,9 +106,9 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
         expected_value = example_value
-        if example_value == 'true':
+        if example_value == "true":
             expected_value = True
-        elif expected_value == 'false':
+        elif expected_value == "false":
             expected_value = False
         self.assertEqual({self.option: expected_value}, config.store)
 
@@ -123,16 +126,13 @@ class TestRegionConfigurationWorkerOptions(MAASTestCase):
         config.num_workers = workers
         self.assertEqual(workers, config.num_workers)
         # It's also stored in the configuration database.
-        self.assertEqual({'num_workers': workers}, config.store)
+        self.assertEqual({"num_workers": workers}, config.store)
 
 
 class TestRegionConfigurationDebugOptions(MAASTestCase):
     """Tests for the debug options in `RegionConfiguration`."""
 
-    options_and_defaults = {
-        "debug": False,
-        "debug_queries": False,
-    }
+    options_and_defaults = {"debug": False, "debug_queries": False}
 
     scenarios = tuple(
         (name, {"option": name, "default": default})
@@ -145,7 +145,7 @@ class TestRegionConfigurationDebugOptions(MAASTestCase):
 
     def test__set_and_get(self):
         config = RegionConfiguration({})
-        example_value = random.choice(['true', 'yes', 'True'])
+        example_value = random.choice(["true", "yes", "True"])
         # Argument values will most often be passed in from the command-line,
         # so convert to a string before use to reflect that usage.
         setattr(config, self.option, example_value)

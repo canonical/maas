@@ -5,22 +5,10 @@
 
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
-from maasserver.enum import (
-    ENDPOINT,
-    NODE_STATUS,
-)
-from maasserver.exceptions import (
-    MAASAPIValidationError,
-    NodeStateViolation,
-)
-from maasserver.forms import (
-    CreateBcacheForm,
-    UpdateBcacheForm,
-)
-from maasserver.models import (
-    Bcache,
-    Machine,
-)
+from maasserver.enum import ENDPOINT, NODE_STATUS
+from maasserver.exceptions import MAASAPIValidationError, NodeStateViolation
+from maasserver.forms import CreateBcacheForm, UpdateBcacheForm
+from maasserver.models import Bcache, Machine
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
@@ -28,21 +16,22 @@ from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_BCACHE_FIELDS = (
-    'system_id',
-    'id',
-    'uuid',
-    'name',
-    'cache_set',
-    'backing_device',
-    'size',
-    'human_size',
-    'virtual_device',
-    'cache_mode',
+    "system_id",
+    "id",
+    "uuid",
+    "name",
+    "cache_set",
+    "backing_device",
+    "size",
+    "human_size",
+    "virtual_device",
+    "cache_mode",
 )
 
 
 class BcachesHandler(OperationsHandler):
     """Manage bcache devices on a machine."""
+
     api_doc_section_name = "Bcache Devices"
     update = delete = None
     fields = DISPLAYED_BCACHE_FIELDS
@@ -50,7 +39,7 @@ class BcachesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('bcache_devices_handler', ["system_id"])
+        return ("bcache_devices_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title List all bcache devices
@@ -71,7 +60,8 @@ class BcachesHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         return Bcache.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
@@ -111,15 +101,21 @@ class BcachesHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create Bcache because the machine is not Ready.")
+                "Cannot create Bcache because the machine is not Ready."
+            )
         form = CreateBcacheForm(machine, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request,
-                system_id, "Created bcache.")
+                EVENT_TYPES.NODE,
+                ENDPOINT.API,
+                request,
+                system_id,
+                "Created bcache.",
+            )
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -127,6 +123,7 @@ class BcachesHandler(OperationsHandler):
 
 class BcacheHandler(OperationsHandler):
     """Manage bcache device on a machine."""
+
     api_doc_section_name = "Bcache Device"
     create = None
     model = Bcache
@@ -142,7 +139,7 @@ class BcacheHandler(OperationsHandler):
             node = bcache.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('bcache_device_handler', (system_id, bcache_id))
+        return ("bcache_device_handler", (system_id, bcache_id))
 
     @classmethod
     def system_id(cls, bcache):
@@ -187,7 +184,8 @@ class BcacheHandler(OperationsHandler):
             Not Found
         """
         return Bcache.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def delete(self, request, system_id, id):
         """@description-title Delete a bcache
@@ -208,15 +206,21 @@ class BcacheHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete Bcache because the machine is not Ready.")
+                "Cannot delete Bcache because the machine is not Ready."
+            )
         bcache.delete()
         create_audit_event(
-            EVENT_TYPES.NODE, ENDPOINT.API, request,
-            system_id, "Deleted bcache.")
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            request,
+            system_id,
+            "Deleted bcache.",
+        )
         return rc.DELETED
 
     def update(self, request, system_id, id):
@@ -261,16 +265,22 @@ class BcacheHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update Bcache because the machine is not Ready.")
+                "Cannot update Bcache because the machine is not Ready."
+            )
         form = UpdateBcacheForm(bcache, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request,
-                system_id, "Updated bcache.")
+                EVENT_TYPES.NODE,
+                ENDPOINT.API,
+                request,
+                system_id,
+                "Updated bcache.",
+            )
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)

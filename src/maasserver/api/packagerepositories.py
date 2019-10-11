@@ -1,15 +1,9 @@
 # Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    "PackageRepositoryHandler",
-    "PackageRepositoriesHandler",
-    ]
+__all__ = ["PackageRepositoryHandler", "PackageRepositoriesHandler"]
 
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -20,17 +14,17 @@ from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
-    'id',
-    'name',
-    'url',
-    'distributions',
-    'disabled_pockets',
-    'disabled_components',
-    'disable_sources',
-    'components',
-    'arches',
-    'key',
-    'enabled',
+    "id",
+    "name",
+    "url",
+    "distributions",
+    "disabled_pockets",
+    "disabled_components",
+    "disable_sources",
+    "components",
+    "arches",
+    "key",
+    "enabled",
 )
 
 
@@ -40,6 +34,7 @@ class PackageRepositoryHandler(OperationsHandler):
 
     A package repository is identified by its id.
     """
+
     api_doc_section_name = "Package Repository"
     create = None
     model = PackageRepository
@@ -52,7 +47,7 @@ class PackageRepositoryHandler(OperationsHandler):
             package_repository_id = package_repository.id
         else:
             package_repository_id = "id"
-        return ('package_repository_handler', (package_repository_id,))
+        return ("package_repository_handler", (package_repository_id,))
 
     def read(self, request, id):
         """@description-title Read a package repository
@@ -126,7 +121,8 @@ class PackageRepositoryHandler(OperationsHandler):
         """
         package_repository = PackageRepository.objects.get_object_or_404(id)
         form = PackageRepositoryForm(
-            instance=package_repository, data=request.data)
+            instance=package_repository, data=request.data
+        )
         if form.is_valid():
             return form.save(ENDPOINT.API, request)
         else:
@@ -150,19 +146,26 @@ class PackageRepositoryHandler(OperationsHandler):
         package_repository = PackageRepository.objects.get_object_or_404(id)
         package_repository.delete()
         create_audit_event(
-            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
-                "Deleted package repository '%s'." % package_repository.name))
+            EVENT_TYPES.SETTINGS,
+            ENDPOINT.API,
+            request,
+            None,
+            description=(
+                "Deleted package repository '%s'." % package_repository.name
+            ),
+        )
         return rc.DELETED
 
 
 class PackageRepositoriesHandler(OperationsHandler):
     """Manage the collection of all Package Repositories in MAAS."""
+
     api_doc_section_name = "Package Repositories"
     update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('package_repositories_handler', [])
+        return ("package_repositories_handler", [])
 
     def read(self, request):
         """@description-title List package repositories

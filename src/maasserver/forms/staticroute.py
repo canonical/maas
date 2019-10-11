@@ -3,9 +3,7 @@
 
 """Static route form."""
 
-__all__ = [
-    "StaticRouteForm",
-]
+__all__ = ["StaticRouteForm"]
 
 from maasserver.fields import SpecifierOrModelChoiceField
 from maasserver.forms import MAASModelForm
@@ -19,37 +17,40 @@ class StaticRouteForm(MAASModelForm):
     """Static route creation/edition form."""
 
     source = SpecifierOrModelChoiceField(
-        label="Source", queryset=Subnet.objects.all(), required=True,
-        help_text="The source subnet for the route.")
+        label="Source",
+        queryset=Subnet.objects.all(),
+        required=True,
+        help_text="The source subnet for the route.",
+    )
 
     destination = SpecifierOrModelChoiceField(
-        label="Destination", queryset=Subnet.objects.all(), required=True,
-        help_text="The destination subnet for the route.")
+        label="Destination",
+        queryset=Subnet.objects.all(),
+        required=True,
+        help_text="The destination subnet for the route.",
+    )
 
     class Meta:
         model = StaticRoute
-        fields = (
-            'source',
-            'destination',
-            'gateway_ip',
-            'metric',
-            )
+        fields = ("source", "destination", "gateway_ip", "metric")
 
     def __init__(self, *args, **kwargs):
         super(StaticRouteForm, self).__init__(*args, **kwargs)
         # Metric field is not a required field, but is required in the model.
-        self.fields['metric'].required = False
+        self.fields["metric"].required = False
 
     def clean(self):
-        gateway_ip = self.cleaned_data.get('gateway_ip')
-        source = self.cleaned_data.get('source')
+        gateway_ip = self.cleaned_data.get("gateway_ip")
+        source = self.cleaned_data.get("source")
         if gateway_ip:
             # This will not raise an AddrFormatErorr because it is validated at
             # the field first and if that fails the gateway_ip will be blank.
             if IPAddress(gateway_ip) not in source.get_ipnetwork():
                 set_form_error(
-                    self, 'gateway_ip',
-                    'Enter an IP address in %s.' % source.cidr)
+                    self,
+                    "gateway_ip",
+                    "Enter an IP address in %s." % source.cidr,
+                )
 
     def save(self):
         static_route = super().save(commit=False)

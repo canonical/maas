@@ -77,10 +77,15 @@ class TestNormaliseOpenSSHPublicKeyBasics(MAASTestCase):
     def test_rejects_keys_with_fewer_than_2_parts(self):
         example_key = factory.make_name("key")
         error = self.assertRaises(
-            OpenSSHKeyError, normalise_openssh_public_key, example_key)
-        self.assertThat(str(error), Equals(
-            "Key should contain 2 or more space separated parts (key type, "
-            "base64-encoded key, optional comments), not 1: " + example_key))
+            OpenSSHKeyError, normalise_openssh_public_key, example_key
+        )
+        self.assertThat(
+            str(error),
+            Equals(
+                "Key should contain 2 or more space separated parts (key type, "
+                "base64-encoded key, optional comments), not 1: " + example_key
+            ),
+        )
 
 
 class _TestNormaliseOpenSSHPublicKeyCommon:
@@ -91,66 +96,75 @@ class _TestNormaliseOpenSSHPublicKeyCommon:
 
     def test_roundtrip(self):
         self.assertThat(
-            normalise_openssh_public_key(self.key),
-            Equals(self.key))
+            normalise_openssh_public_key(self.key), Equals(self.key)
+        )
 
     def test_rejects_keys_of_unrecognised_type(self):
         _, rest = self.key.split(None, 1)
         example_type = factory.make_name("type")
         example_key = example_type + " " + rest
         error = self.assertRaises(
-            OpenSSHKeyError, normalise_openssh_public_key, example_key)
-        self.assertThat(str(error), DocTestMatches(
-            "Key type " + example_type + " not recognised; it should be "
-            "one of: ... ssh-dss ..."))
+            OpenSSHKeyError, normalise_openssh_public_key, example_key
+        )
+        self.assertThat(
+            str(error),
+            DocTestMatches(
+                "Key type " + example_type + " not recognised; it should be "
+                "one of: ... ssh-dss ..."
+            ),
+        )
 
     def test_rejects_corrupt_keys(self):
         parts = self.key.split()
         parts[1] = parts[1][:-1]  # Remove one character from the key.
         example_key = " ".join(parts)
         error = self.assertRaises(
-            OpenSSHKeyError, normalise_openssh_public_key, example_key)
-        self.assertThat(str(error), Equals(
-            "Key could not be converted to RFC4716 form."))
+            OpenSSHKeyError, normalise_openssh_public_key, example_key
+        )
+        self.assertThat(
+            str(error), Equals("Key could not be converted to RFC4716 form.")
+        )
 
 
 class TestNormaliseOpenSSHPublicKeyWithComments(
-        _TestNormaliseOpenSSHPublicKeyCommon, MAASTestCase):
+    _TestNormaliseOpenSSHPublicKeyCommon, MAASTestCase
+):
     """Tests for `normalise_openssh_public_key` for keys with comments."""
 
     scenarios = sorted(
-        (name, dict(key=key)) for name, key in
-        example_openssh_public_keys.items()
+        (name, dict(key=key))
+        for name, key in example_openssh_public_keys.items()
     )
 
     def test_normalises_mixed_whitespace(self):
         parts = self.key.split()
         example_key = "  %s \t %s\n  %s\r\n" % tuple(parts)
         self.assertThat(
-            normalise_openssh_public_key(example_key),
-            Equals(self.key))
+            normalise_openssh_public_key(example_key), Equals(self.key)
+        )
 
     def test_normalises_mixed_whitespace_in_comments(self):
         extra_comments = factory.make_name("foo"), factory.make_name("bar")
         example_key = self.key + " \t " + " \n\r ".join(extra_comments) + "\n"
         expected_key = self.key + " " + " ".join(extra_comments)
         self.assertThat(
-            normalise_openssh_public_key(example_key),
-            Equals(expected_key))
+            normalise_openssh_public_key(example_key), Equals(expected_key)
+        )
 
 
 class TestNormaliseOpenSSHPublicKeyWithoutComments(
-        _TestNormaliseOpenSSHPublicKeyCommon, MAASTestCase):
+    _TestNormaliseOpenSSHPublicKeyCommon, MAASTestCase
+):
     """Tests for `normalise_openssh_public_key` for keys without comments."""
 
     scenarios = sorted(
-        (name, dict(key=remove_comment(key))) for name, key in
-        example_openssh_public_keys.items()
+        (name, dict(key=remove_comment(key)))
+        for name, key in example_openssh_public_keys.items()
     )
 
     def test_normalises_mixed_whitespace(self):
         parts = self.key.split()
         example_key = "  %s \t %s\r\n" % tuple(parts)
         self.assertThat(
-            normalise_openssh_public_key(example_key),
-            Equals(self.key))
+            normalise_openssh_public_key(example_key), Equals(self.key)
+        )

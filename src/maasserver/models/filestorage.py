@@ -3,29 +3,18 @@
 
 """Storage for uploaded files."""
 
-__all__ = [
-    'FileStorage',
-    ]
+__all__ = ["FileStorage"]
 
 
 from uuid import uuid4
 
 from django.contrib.auth.models import User
-from django.db.models import (
-    CharField,
-    ForeignKey,
-    Manager,
-    Model,
-    PROTECT,
-)
+from django.db.models import CharField, ForeignKey, Manager, Model, PROTECT
 from django.utils.http import urlencode
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.utils.django_urls import reverse
-from metadataserver.fields import (
-    Bin,
-    BinaryField,
-)
+from metadataserver.fields import Bin, BinaryField
 
 
 class FileStorageManager(Manager):
@@ -53,7 +42,8 @@ class FileStorageManager(Manager):
         # not expected.
         content = Bin(file_object.read())
         storage, created = self.get_or_create(
-            filename=filename, owner=owner, defaults={'content': content})
+            filename=filename, owner=owner, defaults={"content": content}
+        )
         if not created:
             storage.content = content
             storage.save()
@@ -62,7 +52,7 @@ class FileStorageManager(Manager):
 
 def generate_filestorage_key():
     # Use true random UUID as this is used as an unguessable key.
-    return '%s' % uuid4()
+    return "%s" % uuid4()
 
 
 class FileStorage(CleanSave, Model):
@@ -75,18 +65,27 @@ class FileStorage(CleanSave, Model):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
-        unique_together = ('filename', 'owner')
+
+        unique_together = ("filename", "owner")
 
     filename = CharField(max_length=255, unique=False, editable=False)
     content = BinaryField(null=False, blank=True)
     # owner can be None: this is to support upgrading existing
     # installations where the files were not linked to users yet.
     owner = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False,
-        on_delete=PROTECT)
+        User,
+        default=None,
+        blank=True,
+        null=True,
+        editable=False,
+        on_delete=PROTECT,
+    )
     key = CharField(
-        max_length=36, unique=True, default=generate_filestorage_key,
-        editable=False)
+        max_length=36,
+        unique=True,
+        default=generate_filestorage_key,
+        editable=False,
+    )
 
     objects = FileStorageManager()
 
@@ -96,6 +95,6 @@ class FileStorage(CleanSave, Model):
     @property
     def anon_resource_uri(self):
         """URI where the content of the file can be retrieved anonymously."""
-        params = {'op': 'get_by_key', 'key': self.key}
-        url = '%s?%s' % (reverse('files_handler'), urlencode(params))
+        params = {"op": "get_by_key", "key": self.key}
+        url = "%s?%s" % (reverse("files_handler"), urlencode(params))
         return url

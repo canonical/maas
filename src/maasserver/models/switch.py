@@ -3,16 +3,9 @@
 
 """Switch objects."""
 
-__all__ = [
-    "Switch",
-    ]
+__all__ = ["Switch"]
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    Manager,
-    OneToOneField,
-)
+from django.db.models import CASCADE, CharField, Manager, OneToOneField
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
@@ -42,17 +35,19 @@ class Switch(CleanSave, TimestampedModel):
     objects = Manager()
 
     node = OneToOneField(
-        Node, null=False, blank=False, on_delete=CASCADE, primary_key=True)
+        Node, null=False, blank=False, on_delete=CASCADE, primary_key=True
+    )
 
     # The possible choices for this field depend on the NOS drivers advertised
     # by the rack controllers.  This needs to be populated on the fly, in
     # forms.py, each time the form to edit a node is instantiated.
-    nos_driver = CharField(max_length=64, null=False, blank=True, default='')
+    nos_driver = CharField(max_length=64, null=False, blank=True, default="")
 
     # JSON-encoded set of parameters for the NOS driver, limited to 32kiB when
     # encoded as JSON.
     nos_parameters = JSONObjectField(
-        max_length=(2 ** 15), blank=True, default='')
+        max_length=(2 ** 15), blank=True, default=""
+    )
 
     def __str__(self):
         return "%s (%s)" % (self.__class__.__name__, self.node.hostname)

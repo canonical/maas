@@ -111,10 +111,7 @@ __all__ = [
     "UUID_NOT_SET",
 ]
 
-from contextlib import (
-    closing,
-    contextmanager,
-)
+from contextlib import closing, contextmanager
 from copy import deepcopy
 from itertools import islice
 import json
@@ -128,19 +125,10 @@ from threading import RLock
 from time import time
 import traceback
 
-from formencode import (
-    ForEach,
-    Schema,
-)
-from formencode.api import (
-    is_validator,
-    NoDefault,
-)
+from formencode import ForEach, Schema
+from formencode.api import is_validator, NoDefault
 from formencode.declarative import DeclarativeMeta
-from formencode.validators import (
-    Number,
-    Set,
-)
+from formencode.validators import Number, Set
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
@@ -150,10 +138,7 @@ from provisioningserver.utils.config import (
     UnicodeString,
     UUIDString,
 )
-from provisioningserver.utils.fs import (
-    atomic_write,
-    RunLock,
-)
+from provisioningserver.utils.fs import atomic_write, RunLock
 import yaml
 
 
@@ -164,13 +149,14 @@ UUID_NOT_SET = None
 
 # Default images URL can be overridden by the environment.
 DEFAULT_IMAGES_URL = os.getenv(
-    "MAAS_DEFAULT_IMAGES_URL",
-    "http://images.maas.io/ephemeral-v3/daily/")
+    "MAAS_DEFAULT_IMAGES_URL", "http://images.maas.io/ephemeral-v3/daily/"
+)
 
 # Default images keyring filepath can be overridden by the environment.
 DEFAULT_KEYRINGS_PATH = os.getenv(
     "MAAS_IMAGES_KEYRING_FILEPATH",
-    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
+    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
+)
 
 
 class BootSourceSelection(Schema):
@@ -181,8 +167,8 @@ class BootSourceSelection(Schema):
     os = UnicodeString(if_missing="*")
     release = UnicodeString(if_missing="*")
     arches = Set(if_missing=["*"])
-    subarches = Set(if_missing=['*'])
-    labels = Set(if_missing=['*'])
+    subarches = Set(if_missing=["*"])
+    labels = Set(if_missing=["*"])
 
 
 class BootSource(Schema):
@@ -190,14 +176,12 @@ class BootSource(Schema):
 
     if_key_missing = None
 
-    url = UnicodeString(
-        if_missing=DEFAULT_IMAGES_URL)
-    keyring = UnicodeString(
-        if_missing=DEFAULT_KEYRINGS_PATH)
+    url = UnicodeString(if_missing=DEFAULT_IMAGES_URL)
+    keyring = UnicodeString(if_missing=DEFAULT_KEYRINGS_PATH)
     keyring_data = UnicodeString(if_missing="")
     selections = ForEach(
-        BootSourceSelection,
-        if_missing=[BootSourceSelection.to_python({})])
+        BootSourceSelection, if_missing=[BootSourceSelection.to_python({})]
+    )
 
 
 class ConfigBase:
@@ -313,10 +297,14 @@ class ConfigMeta(DeclarativeMeta):
         environ.pop(cls.envvar, None)
 
     DEFAULT_FILENAME = property(
-        _get_default_filename, _set_default_filename,
-        _delete_default_filename, doc=(
+        _get_default_filename,
+        _set_default_filename,
+        _delete_default_filename,
+        doc=(
             "The default config file to load. Refers to "
-            "`cls.envvar` in the environment."))
+            "`cls.envvar` in the environment."
+        ),
+    )
 
 
 class BootSourcesMeta(ConfigMeta):
@@ -361,7 +349,8 @@ class ConfigurationDatabase:
                 "CREATE TABLE IF NOT EXISTS configuration "
                 "(id INTEGER PRIMARY KEY,"
                 " name TEXT NOT NULL UNIQUE,"
-                " data BLOB)")
+                " data BLOB)"
+            )
 
     def cursor(self):
         return closing(self.database.cursor())
@@ -369,14 +358,15 @@ class ConfigurationDatabase:
     def __iter__(self):
         with self.cursor() as cursor:
             results = cursor.execute(
-                "SELECT name FROM configuration").fetchall()
+                "SELECT name FROM configuration"
+            ).fetchall()
         return (name for (name,) in results)
 
     def __getitem__(self, name):
         with self.cursor() as cursor:
             data = cursor.execute(
-                "SELECT data FROM configuration"
-                " WHERE name = ?", (name,)).fetchone()
+                "SELECT data FROM configuration" " WHERE name = ?", (name,)
+            ).fetchone()
         if data is None:
             raise KeyError(name)
         else:
@@ -387,27 +377,28 @@ class ConfigurationDatabase:
             with self.cursor() as cursor:
                 cursor.execute(
                     "INSERT OR REPLACE INTO configuration (name, data) "
-                    "VALUES (?, ?)", (name, json.dumps(data)))
+                    "VALUES (?, ?)",
+                    (name, json.dumps(data)),
+                )
         else:
-            raise ConfigurationImmutable(
-                "%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
 
     def __delitem__(self, name):
         if self.mutable:
             with self.cursor() as cursor:
                 cursor.execute(
-                    "DELETE FROM configuration"
-                    " WHERE name = ?", (name,))
+                    "DELETE FROM configuration" " WHERE name = ?", (name,)
+                )
         else:
-            raise ConfigurationImmutable(
-                "%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
 
     def __str__(self):
         with self.cursor() as cursor:
             # https://www.sqlite.org/pragma.html#pragma_database_list
             databases = "; ".join(
                 "%s=%s" % (name, ":memory:" if path == "" else path)
-                for (_, name, path) in cursor.execute("PRAGMA database_list"))
+                for (_, name, path) in cursor.execute("PRAGMA database_list")
+            )
         return "%s(%s)" % (self.__class__.__qualname__, databases)
 
     @classmethod
@@ -488,8 +479,7 @@ class ConfigurationFile:
             self.config[name] = data
             self.dirty = True
         else:
-            raise ConfigurationImmutable(
-                "%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
 
     def __delitem__(self, name):
         if self.mutable:
@@ -497,8 +487,7 @@ class ConfigurationFile:
                 del self.config[name]
                 self.dirty = True
         else:
-            raise ConfigurationImmutable(
-                "%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
 
     def load(self):
         """Load the configuration."""
@@ -513,7 +502,8 @@ class ConfigurationFile:
         else:
             raise ValueError(
                 "Configuration in %s is not a mapping: %r"
-                % (self.path, config))
+                % (self.path, config)
+            )
 
     def save(self):
         """Save the configuration."""
@@ -526,9 +516,11 @@ class ConfigurationFile:
         # Write, retaining the file's mode.
         atomic_write(
             yaml.safe_dump(
-                self.config, default_flow_style=False,
-                encoding="utf-8"),
-            self.path, mode=mode)
+                self.config, default_flow_style=False, encoding="utf-8"
+            ),
+            self.path,
+            mode=mode,
+        )
         self.dirty = False
 
     def __str__(self):
@@ -589,12 +581,18 @@ class ConfigurationFile:
                 time_open = time() - time_opened
                 if time_open >= 2.5:
                     mini_stack = ", from ".join(
-                        "%s:%d" % (fn, lineno) for fn, lineno, _, _ in
-                        islice(reversed(traceback.extract_stack()), 2, 5))
+                        "%s:%d" % (fn, lineno)
+                        for fn, lineno, _, _ in islice(
+                            reversed(traceback.extract_stack()), 2, 5
+                        )
+                    )
                     logger.warn(
                         "Configuration file %s locked for %.1f seconds; this "
-                        "may starve other processes. Called from %s.", path,
-                        time_open, mini_stack)
+                        "may starve other processes. Called from %s.",
+                        path,
+                        time_open,
+                        mini_stack,
+                    )
 
 
 class ConfigurationMeta(type):
@@ -634,10 +632,14 @@ class ConfigurationMeta(type):
         environ.pop(cls.envvar, None)
 
     DEFAULT_FILENAME = property(
-        _get_default_filename, _set_default_filename,
-        _delete_default_filename, doc=(
+        _get_default_filename,
+        _set_default_filename,
+        _delete_default_filename,
+        doc=(
             "The default configuration file to load. Refers to "
-            "`cls.envvar` in the environment."))
+            "`cls.envvar` in the environment."
+        ),
+    )
 
 
 class Configuration:
@@ -686,8 +688,9 @@ class Configuration:
             super(Configuration, self).__setattr__(name, value)
         else:
             raise AttributeError(
-                "%r object has no attribute %r" % (
-                    self.__class__.__name__, name))
+                "%r object has no attribute %r"
+                % (self.__class__.__name__, name)
+            )
 
     @classmethod
     @contextmanager
@@ -763,22 +766,32 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     """Local configuration for the MAAS cluster."""
 
     maas_url = ConfigurationOption(
-        "maas_url", "The HTTP URL(s) for the MAAS region.",
+        "maas_url",
+        "The HTTP URL(s) for the MAAS region.",
         ForEach(
             ExtendedURL(require_tld=False),
             convert_to_list=True,
-            if_missing=["http://localhost:5240/MAAS"]))
+            if_missing=["http://localhost:5240/MAAS"],
+        ),
+    )
 
     # TFTP options.
     tftp_port = ConfigurationOption(
-        "tftp_port", "The UDP port on which to listen for TFTP requests.",
-        Number(min=0, max=(2 ** 16) - 1, if_missing=69))
+        "tftp_port",
+        "The UDP port on which to listen for TFTP requests.",
+        Number(min=0, max=(2 ** 16) - 1, if_missing=69),
+    )
     tftp_root = ConfigurationOption(
-        "tftp_root", "The root directory for TFTP resources.",
+        "tftp_root",
+        "The root directory for TFTP resources.",
         DirectoryString(
             # Don't validate values that are already stored.
-            accept_python=True, if_missing=get_tentative_data_path(
-                "/var/lib/maas/boot-resources/current")))
+            accept_python=True,
+            if_missing=get_tentative_data_path(
+                "/var/lib/maas/boot-resources/current"
+            ),
+        ),
+    )
 
     # GRUB options.
 
@@ -789,13 +802,17 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
 
     # NodeGroup UUID Option, used for migrating to rack controller
     cluster_uuid = ConfigurationOption(
-        "cluster_uuid", "The UUID for this cluster controller",
-        UUIDString(if_missing=UUID_NOT_SET))
+        "cluster_uuid",
+        "The UUID for this cluster controller",
+        UUIDString(if_missing=UUID_NOT_SET),
+    )
 
     # Debug options.
     debug = ConfigurationOption(
-        "debug", "Enable debug mode for detailed error and log reporting.",
-        OneWayStringBool(if_missing=False))
+        "debug",
+        "Enable debug mode for detailed error and log reporting.",
+        OneWayStringBool(if_missing=False),
+    )
 
 
 def is_dev_environment():

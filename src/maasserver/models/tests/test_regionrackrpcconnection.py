@@ -25,14 +25,18 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         region = factory.make_RegionController()
         pid = random.randint(1, 5000)
         process = RegionControllerProcess.objects.create(
-            pid=pid, region=region)
+            pid=pid, region=region
+        )
         address = factory.make_ip_address()
         port = random.randint(1, 5000)
         endpoint = RegionControllerProcessEndpoint.objects.create(
-            process=process, address=address, port=port)
+            process=process, address=address, port=port
+        )
         rack_controller = factory.make_RackController()
         RegionRackRPCConnection.objects.create(
-            endpoint=endpoint, rack_controller=rack_controller)
+            endpoint=endpoint, rack_controller=rack_controller
+        )
         with ExpectedException(ValidationError):
             RegionRackRPCConnection.objects.create(
-                endpoint=endpoint, rack_controller=rack_controller)
+                endpoint=endpoint, rack_controller=rack_controller
+            )

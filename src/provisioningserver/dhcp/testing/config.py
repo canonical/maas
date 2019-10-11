@@ -4,17 +4,17 @@
 """Test helpers related to DHCP configuration."""
 
 __all__ = [
-    'DHCPConfigNameResolutionDisabled',
-    'fix_shared_networks_failover',
-    'make_failover_peer_config',
-    'make_global_dhcp_snippets',
-    'make_host',
-    'make_host_dhcp_snippets',
-    'make_shared_network',
-    'make_shared_network_v1',
-    'make_subnet_config',
-    'make_subnet_dhcp_snippets',
-    'make_subnet_pool',
+    "DHCPConfigNameResolutionDisabled",
+    "fix_shared_networks_failover",
+    "make_failover_peer_config",
+    "make_global_dhcp_snippets",
+    "make_host",
+    "make_host_dhcp_snippets",
+    "make_shared_network",
+    "make_shared_network_v1",
+    "make_subnet_config",
+    "make_subnet_dhcp_snippets",
+    "make_subnet_pool",
 ]
 
 import random
@@ -37,8 +37,7 @@ def fix_shared_networks_failover(shared_networks, failover_peers):
     return shared_networks
 
 
-def make_subnet_pool(
-        network, start_ip=None, end_ip=None, failover_peer=None):
+def make_subnet_pool(network, start_ip=None, end_ip=None, failover_peer=None):
     """Return a pool entry for a subnet from network."""
     if start_ip is None and end_ip is None:
         start_ip, end_ip = factory.make_ip_range(network)
@@ -54,8 +53,12 @@ def make_subnet_pool(
 def _make_snippets(count, template):
     names = (factory.make_name("name") for _ in range(count))
     return [
-        {'name': name, 'description': factory.make_name('description'),
-         'value': template % name} for name in names
+        {
+            "name": name,
+            "description": factory.make_name("description"),
+            "value": template % name,
+        }
+        for name in names
     ]
 
 
@@ -75,8 +78,13 @@ def make_host_dhcp_snippets(allow_empty=True):
 
 
 def make_host(
-        hostname=None, interface_name=None,
-        mac_address=None, ip=None, ipv6=False, dhcp_snippets=None):
+    hostname=None,
+    interface_name=None,
+    mac_address=None,
+    ip=None,
+    ipv6=False,
+    dhcp_snippets=None,
+):
     """Return a host entry for a subnet from network."""
     if hostname is None:
         hostname = factory.make_name("host")
@@ -96,58 +104,54 @@ def make_host(
     }
 
 
-def make_subnet_config(network=None, pools=None, ipv6=False,
-                       dhcp_snippets=None):
+def make_subnet_config(
+    network=None, pools=None, ipv6=False, dhcp_snippets=None
+):
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
         if ipv6 is True:
             network = factory.make_ipv6_network(
                 # The dynamic range must be at least 256 hosts in size.
-                slash=random.randint(112, 120))
+                slash=random.randint(112, 120)
+            )
         else:
             network = factory.make_ipv4_network()
     if pools is None:
         pools = [make_subnet_pool(network)]
     if dhcp_snippets is None:
         dhcp_snippets = make_subnet_dhcp_snippets()
-    domain_name = '%s.example.com' % factory.make_name('domain')
+    domain_name = "%s.example.com" % factory.make_name("domain")
     return {
-        'subnet': str(IPAddress(network.first)),
-        'subnet_mask': str(network.netmask),
-        'subnet_cidr': str(network.cidr),
-        'broadcast_ip': str(network.broadcast),
-        'dns_servers': [
+        "subnet": str(IPAddress(network.first)),
+        "subnet_mask": str(network.netmask),
+        "subnet_cidr": str(network.cidr),
+        "broadcast_ip": str(network.broadcast),
+        "dns_servers": [
             IPAddress(factory.pick_ip_in_network(network)),
             IPAddress(factory.pick_ip_in_network(network)),
         ],
-        'ntp_servers': [
+        "ntp_servers": [
             factory.make_ipv4_address(),
             factory.make_ipv6_address(),
             factory.make_name("ntp-server"),
         ],
-        'domain_name': domain_name,
-        'search_list': [domain_name],
-        'router_ip': factory.pick_ip_in_network(network),
-        'pools': pools,
-        'dhcp_snippets': dhcp_snippets,
+        "domain_name": domain_name,
+        "search_list": [domain_name],
+        "router_ip": factory.pick_ip_in_network(network),
+        "pools": pools,
+        "dhcp_snippets": dhcp_snippets,
     }
 
 
 def make_shared_network(
-        name=None, subnets=None, ipv6=False, with_interface=False):
+    name=None, subnets=None, ipv6=False, with_interface=False
+):
     """Return complete DHCP configuration dict for a shared network."""
     if name is None:
         name = factory.make_name("vlan")
     if subnets is None:
-        subnets = [
-            make_subnet_config(ipv6=ipv6)
-            for _ in range(3)
-        ]
-    data = {
-        "name": name,
-        "mtu": 1500,
-        "subnets": subnets,
-    }
+        subnets = [make_subnet_config(ipv6=ipv6) for _ in range(3)]
+    data = {"name": name, "mtu": 1500, "subnets": subnets}
     if with_interface:
         data["interface"] = factory.make_name("eth")
     return data
@@ -162,14 +166,17 @@ def make_shared_network_v1(name=None, subnets=None, ipv6=False):
     shared_network = make_shared_network(name, subnets, ipv6)
     for subnet in shared_network["subnets"]:
         subnet["dns_servers"] = " ".join(
-            str(server) for server in subnet["dns_servers"])
+            str(server) for server in subnet["dns_servers"]
+        )
         subnet["ntp_server"] = " ".join(
-            str(server) for server in subnet.pop("ntp_servers"))
+            str(server) for server in subnet.pop("ntp_servers")
+        )
     return shared_network
 
 
 def make_failover_peer_config(
-        name=None, mode=None, address=None, peer_address=None):
+    name=None, mode=None, address=None, peer_address=None
+):
     """Return complete DHCP configuration dict for a failover peer."""
     if name is None:
         name = factory.make_name("failover")
@@ -184,19 +191,17 @@ def make_failover_peer_config(
         # supported. Failover may not actually be necessary for IPv6.
         peer_address = factory.make_ipv4_address()
     return {
-        'name': name,
-        'mode': mode,
-        'address': address,
-        'peer_address': peer_address,
+        "name": name,
+        "mode": mode,
+        "address": address,
+        "peer_address": peer_address,
     }
 
 
 def make_interface(name=None):
     if name is None:
         name = factory.make_name("eth")
-    return {
-        'name': name,
-    }
+    return {"name": name}
 
 
 class DHCPConfigNameResolutionDisabled(Fixture):

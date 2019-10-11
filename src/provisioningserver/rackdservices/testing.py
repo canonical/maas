@@ -3,9 +3,7 @@
 
 """Testing resources for `provisioningserver.rackdservices`."""
 
-__all__ = [
-    "prepareRegionForGetControllerType",
-]
+__all__ = ["prepareRegionForGetControllerType"]
 
 from maastesting.factory import factory
 from maastesting.twisted import always_succeed_with
@@ -25,9 +23,11 @@ def prepareRegionForGetControllerType(test, is_region=False, is_rack=True):
     fixture = test.useFixture(MockLiveClusterToRegionRPCFixture())
     protocol, connecting = fixture.makeEventLoop(region.GetControllerType)
     protocol.RegisterRackController.side_effect = always_succeed_with(
-        {"system_id": factory.make_name("maas-id")})
-    protocol.GetControllerType.side_effect = always_succeed_with({
-        "is_region": is_region, "is_rack": is_rack})
+        {"system_id": factory.make_name("maas-id")}
+    )
+    protocol.GetControllerType.side_effect = always_succeed_with(
+        {"is_region": is_region, "is_rack": is_rack}
+    )
 
     def connected(teardown):
         test.addCleanup(teardown)

@@ -16,9 +16,9 @@ class TestZoneForm(MAASServerTestCase):
     """Tests for `ZoneForm`."""
 
     def test_creates_zone(self):
-        name = factory.make_name('zone')
+        name = factory.make_name("zone")
         description = factory.make_string()
-        form = ZoneForm(data={'name': name, 'description': description})
+        form = ZoneForm(data={"name": name, "description": description})
         form.save()
         zone = Zone.objects.get(name=name)
         self.assertIsNotNone(zone)
@@ -27,15 +27,15 @@ class TestZoneForm(MAASServerTestCase):
     def test_updates_zone(self):
         zone = factory.make_Zone()
         new_description = factory.make_string()
-        form = ZoneForm(data={'description': new_description}, instance=zone)
+        form = ZoneForm(data={"description": new_description}, instance=zone)
         form.save()
         zone = reload_object(zone)
         self.assertEqual(new_description, zone.description)
 
     def test_renames_zone(self):
         zone = factory.make_Zone()
-        new_name = factory.make_name('zone')
-        form = ZoneForm(data={'name': new_name}, instance=zone)
+        new_name = factory.make_name("zone")
+        form = ZoneForm(data={"name": new_name}, instance=zone)
         form.save()
         zone = reload_object(zone)
         self.assertEqual(new_name, zone.name)
@@ -44,7 +44,7 @@ class TestZoneForm(MAASServerTestCase):
     def test_update_default_zone_description_works(self):
         zone = Zone.objects.get_default_zone()
         new_description = factory.make_string()
-        form = ZoneForm(data={'description': new_description}, instance=zone)
+        form = ZoneForm(data={"description": new_description}, instance=zone)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         zone = reload_object(zone)
@@ -53,6 +53,6 @@ class TestZoneForm(MAASServerTestCase):
     def test_allows_renaming_default_zone(self):
         zone = Zone.objects.get_default_zone()
         form = ZoneForm(
-            data={'name': factory.make_name('zone')},
-            instance=zone)
+            data={"name": factory.make_name("zone")}, instance=zone
+        )
         self.assertTrue(form.is_valid())

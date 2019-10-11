@@ -3,20 +3,11 @@
 
 """Node objects."""
 
-__all__ = [
-    "Tag",
-    ]
+__all__ = ["Tag"]
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
-from django.db.models import (
-    CharField,
-    Manager,
-    TextField,
-)
+from django.db.models import CharField, Manager, TextField
 from django.shortcuts import get_object_or_404
 from lxml import etree
 from maasserver import DefaultMeta
@@ -29,6 +20,7 @@ from twisted.internet import reactor
 
 class TagManager(Manager):
     """A utility to manage the collection of Tags."""
+
     # Everyone can see all tags, but only superusers can edit tags.
 
     def get_tag_or_404(self, name, user, to_edit=False):
@@ -66,13 +58,17 @@ class Tag(CleanSave, TimestampedModel):
     :ivar objects: The :class:`TagManager`.
     """
 
-    _tag_name_regex = '^[a-zA-Z0-9_-]+$'
+    _tag_name_regex = "^[a-zA-Z0-9_-]+$"
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    name = CharField(max_length=256, unique=True, editable=True,
-                     validators=[RegexValidator(_tag_name_regex)])
+    name = CharField(
+        max_length=256,
+        unique=True,
+        editable=True,
+        validators=[RegexValidator(_tag_name_regex)],
+    )
     definition = TextField(blank=True)
     comment = TextField(blank=True)
     kernel_opts = TextField(blank=True, null=True)
@@ -106,8 +102,8 @@ class Tag(CleanSave, TimestampedModel):
             # Schedule repopulate to happen after commit. This thread does not
             # wait for it to complete.
             post_commit_do(
-                reactor.callLater, 0, deferToDatabase,
-                populate_tags, self)
+                reactor.callLater, 0, deferToDatabase, populate_tags, self
+            )
 
     def _populate_nodes_now(self):
         """Find all nodes that match this tag, and update them, now.
@@ -136,8 +132,8 @@ class Tag(CleanSave, TimestampedModel):
             try:
                 etree.XPath(self.definition)
             except etree.XPathSyntaxError as e:
-                msg = 'Invalid XPath expression: %s' % (e,)
-                raise ValidationError({'definition': [msg]})
+                msg = "Invalid XPath expression: %s" % (e,)
+                raise ValidationError({"definition": [msg]})
 
     def clean(self):
         self.clean_definition()
@@ -156,7 +152,7 @@ class Tag(CleanSave, TimestampedModel):
     @property
     def is_defined(self):
         return (
-            self.definition is not None and
-            self.definition != "" and
-            not self.definition.isspace()
+            self.definition is not None
+            and self.definition != ""
+            and not self.definition.isspace()
         )

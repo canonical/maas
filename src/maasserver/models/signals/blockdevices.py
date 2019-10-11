@@ -3,14 +3,9 @@
 
 """Respond to block device changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
-from django.db.models.signals import (
-    post_delete,
-    post_save,
-)
+from django.db.models.signals import post_delete, post_save
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.filesystemgroup import FilesystemGroup
@@ -41,8 +36,10 @@ def update_filesystem_group(sender, instance, **kwargs):
         # When not LVM the name of the block devices should stay in sync
         # with the name of the filesystem group.
         filesystem_group = block_device.filesystem_group
-        if (filesystem_group.group_type != FILESYSTEM_GROUP_TYPE.LVM_VG and
-                filesystem_group.name != block_device.name):
+        if (
+            filesystem_group.group_type != FILESYSTEM_GROUP_TYPE.LVM_VG
+            and filesystem_group.name != block_device.name
+        ):
             filesystem_group.name = block_device.name
             filesystem_group.save()
 
@@ -62,7 +59,8 @@ def delete_filesystem_group(sender, instance, **kwargs):
             # virtual block device was deleted.
             return
         not_volume_group = (
-            filesystem_group.group_type != FILESYSTEM_GROUP_TYPE.LVM_VG)
+            filesystem_group.group_type != FILESYSTEM_GROUP_TYPE.LVM_VG
+        )
         if filesystem_group.id is not None and not_volume_group:
             filesystem_group.delete()
 

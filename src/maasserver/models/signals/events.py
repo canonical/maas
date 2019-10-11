@@ -3,14 +3,9 @@
 
 """Emit node state transition event."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
-from maasserver.enum import (
-    NODE_STATUS_CHOICES_DICT,
-    NODE_TYPE,
-)
+from maasserver.enum import NODE_STATUS_CHOICES_DICT, NODE_TYPE
 from maasserver.models import Event
 from maasserver.models.node import (
     Controller,
@@ -22,10 +17,7 @@ from maasserver.models.node import (
     RegionController,
 )
 from maasserver.utils.signals import SignalsManager
-from provisioningserver.events import (
-    EVENT_DETAILS,
-    EVENT_TYPES,
-)
+from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 
 
 NODE_CLASSES = [
@@ -46,8 +38,10 @@ STATE_TRANSITION_EVENT_CONNECT = True
 
 def emit_state_transition_event(instance, old_values, **kwargs):
     """Send a status transition event."""
-    if (instance.node_type != NODE_TYPE.MACHINE or
-            not STATE_TRANSITION_EVENT_CONNECT):
+    if (
+        instance.node_type != NODE_TYPE.MACHINE
+        or not STATE_TRANSITION_EVENT_CONNECT
+    ):
         return
     node = instance
     [old_status] = old_values
@@ -65,17 +59,20 @@ def emit_state_transition_event(instance, old_values, **kwargs):
         description += " (to %s)" % node.owner.username
 
     Event.objects.register_event_and_event_type(
-        type_name, type_level=event_details.level,
+        type_name,
+        type_level=event_details.level,
         type_description=event_details.description,
-        event_description=description, system_id=node.system_id)
+        event_description=description,
+        system_id=node.system_id,
+    )
 
 
 for klass in NODE_CLASSES:
     # Watch the status of all classes, as the node might switch types.
     # Only if its a machine will the handler care.
     signals.watch_fields(
-        emit_state_transition_event,
-        klass, ['status'], delete=False)
+        emit_state_transition_event, klass, ["status"], delete=False
+    )
 
 # Enable all signals by default.
 signals.enable()

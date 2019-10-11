@@ -39,11 +39,7 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from testtools import ExpectedException
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import deferLater
 
 
@@ -63,28 +59,38 @@ class TestPowerNode(MAASServerTestCase):
         client = Mock()
 
         wait_for_reactor(self.power_func)(
-            client, node.system_id, node.hostname,
-            node.get_effective_power_info())
+            client,
+            node.system_id,
+            node.hostname,
+            node.get_effective_power_info(),
+        )
 
         power_info = node.get_effective_power_info()
         self.assertThat(
             client,
             MockCalledOnceWith(
-                self.command, system_id=node.system_id, hostname=node.hostname,
+                self.command,
+                system_id=node.system_id,
+                hostname=node.hostname,
                 power_type=power_info.power_type,
                 context=power_info.power_parameters,
-            ))
+            ),
+        )
 
     def test__raises_power_problem(self):
         node = factory.make_Node()
         client = Mock()
         client.return_value = fail(
-            PowerActionAlreadyInProgress('Houston, we have a problem.'))
+            PowerActionAlreadyInProgress("Houston, we have a problem.")
+        )
 
         with ExpectedException(PowerProblem, "Houston, we have a problem."):
             wait_for_reactor(self.power_func)(
-                client, node.system_id, node.hostname,
-                node.get_effective_power_info())
+                client,
+                node.system_id,
+                node.hostname,
+                node.get_effective_power_info(),
+            )
 
 
 class TestPowerCycle(MAASServerTestCase):
@@ -95,28 +101,38 @@ class TestPowerCycle(MAASServerTestCase):
         client = Mock()
 
         wait_for_reactor(power_cycle)(
-            client, node.system_id, node.hostname,
-            node.get_effective_power_info())
+            client,
+            node.system_id,
+            node.hostname,
+            node.get_effective_power_info(),
+        )
 
         power_info = node.get_effective_power_info()
         self.assertThat(
             client,
             MockCalledOnceWith(
-                PowerCycle, system_id=node.system_id, hostname=node.hostname,
+                PowerCycle,
+                system_id=node.system_id,
+                hostname=node.hostname,
                 power_type=power_info.power_type,
                 context=power_info.power_parameters,
-            ))
+            ),
+        )
 
     def test__raises_power_problem(self):
         node = factory.make_Node()
         client = Mock()
         client.return_value = fail(
-            PowerActionAlreadyInProgress('Houston, we have a problem.'))
+            PowerActionAlreadyInProgress("Houston, we have a problem.")
+        )
 
         with ExpectedException(PowerProblem, "Houston, we have a problem."):
             wait_for_reactor(power_cycle)(
-                client, node.system_id, node.hostname,
-                node.get_effective_power_info())
+                client,
+                node.system_id,
+                node.hostname,
+                node.get_effective_power_info(),
+            )
 
 
 class TestPowerQuery(MAASServerTestCase):
@@ -127,17 +143,23 @@ class TestPowerQuery(MAASServerTestCase):
         client = Mock()
 
         wait_for_reactor(power_query)(
-            client, node.system_id, node.hostname,
-            node.get_effective_power_info())
+            client,
+            node.system_id,
+            node.hostname,
+            node.get_effective_power_info(),
+        )
 
         power_info = node.get_effective_power_info()
         self.assertThat(
             client,
             MockCalledOnceWith(
-                PowerQuery, system_id=node.system_id, hostname=node.hostname,
+                PowerQuery,
+                system_id=node.system_id,
+                hostname=node.hostname,
                 power_type=power_info.power_type,
                 context=power_info.power_parameters,
-            ))
+            ),
+        )
 
 
 class TestPowerDriverCheck(MAASServerTestCase):
@@ -148,14 +170,14 @@ class TestPowerDriverCheck(MAASServerTestCase):
         power_info = node.get_effective_power_info()
         client = Mock()
 
-        wait_for_reactor(power_driver_check)(
-            client, power_info.power_type)
+        wait_for_reactor(power_driver_check)(client, power_info.power_type)
 
         self.assertThat(
             client,
             MockCalledOnceWith(
                 PowerDriverCheck, power_type=power_info.power_type
-            ))
+            ),
+        )
 
 
 class TestPowerQueryAll(MAASTransactionServerTestCase):
@@ -171,20 +193,14 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__calls_PowerQuery_on_all_clients(self):
         node, power_info = yield deferToDatabase(
-            self.make_node_with_power_info)
+            self.make_node_with_power_info
+        )
 
         successful_rack_ids = [
-            factory.make_name("system_id")
-            for _ in range(3)
+            factory.make_name("system_id") for _ in range(3)
         ]
-        error_rack_ids = [
-            factory.make_name("system_id")
-            for _ in range(3)
-        ]
-        failed_rack_ids = [
-            factory.make_name("system_id")
-            for _ in range(3)
-        ]
+        error_rack_ids = [factory.make_name("system_id") for _ in range(3)]
+        failed_rack_ids = [factory.make_name("system_id") for _ in range(3)]
         clients = []
         power_states = []
         for rack_id in successful_rack_ids:
@@ -192,16 +208,12 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
             power_states.append(power_state)
             client = Mock()
             client.ident = rack_id
-            client.return_value = succeed({
-                "state": power_state,
-            })
+            client.return_value = succeed({"state": power_state})
             clients.append(client)
         for rack_id in error_rack_ids:
             client = Mock()
             client.ident = rack_id
-            client.return_value = succeed({
-                "state": POWER_STATE.ERROR,
-            })
+            client.return_value = succeed({"state": POWER_STATE.ERROR})
             clients.append(client)
         for rack_id in failed_rack_ids:
             client = Mock()
@@ -211,7 +223,8 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
 
         self.patch(power_module, "getAllClients").return_value = clients
         power_state, success_racks, failed_racks = yield power_query_all(
-            node.system_id, node.hostname, power_info)
+            node.system_id, node.hostname, power_info
+        )
 
         self.assertEqual(pick_best_power_state(power_states), power_state)
         self.assertItemsEqual(successful_rack_ids, success_racks)
@@ -221,7 +234,8 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__handles_timeout(self):
         node, power_info = yield deferToDatabase(
-            self.make_node_with_power_info)
+            self.make_node_with_power_info
+        )
 
         def defer_way_later(*args, **kwargs):
             # Create a defer that will finish in 1 minute.
@@ -234,7 +248,8 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
 
         self.patch(power_module, "getAllClients").return_value = [client]
         power_state, success_racks, failed_racks = yield power_query_all(
-            node.system_id, node.hostname, power_info, timeout=0.5)
+            node.system_id, node.hostname, power_info, timeout=0.5
+        )
 
         self.assertEqual(POWER_STATE.UNKNOWN, power_state)
         self.assertItemsEqual([], success_racks)

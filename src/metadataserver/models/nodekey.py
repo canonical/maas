@@ -3,26 +3,15 @@
 
 """:class:`NodeKey` model."""
 
-__all__ = [
-    'NodeKey',
-    ]
+__all__ = ["NodeKey"]
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    Manager,
-    Model,
-    OneToOneField,
-)
+from django.db.models import CASCADE, CharField, Manager, Model, OneToOneField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
 from maasserver.utils.orm import get_one
 from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
-from piston3.models import (
-    KEY_SIZE,
-    Token,
-)
+from piston3.models import KEY_SIZE, Token
 
 
 class NodeKeyManager(Manager):
@@ -125,8 +114,9 @@ class NodeKey(CleanSave, Model):
     objects = NodeKeyManager()
 
     node = OneToOneField(
-        'maasserver.Node', null=False, editable=False, on_delete=CASCADE)
-    token = OneToOneField(
-        Token, null=False, editable=False, on_delete=CASCADE)
+        "maasserver.Node", null=False, editable=False, on_delete=CASCADE
+    )
+    token = OneToOneField(Token, null=False, editable=False, on_delete=CASCADE)
     key = CharField(
-        max_length=KEY_SIZE, null=False, editable=False, unique=True)
+        max_length=KEY_SIZE, null=False, editable=False, unique=True
+    )

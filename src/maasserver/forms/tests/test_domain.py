@@ -14,16 +14,17 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDomainForm(MAASServerTestCase):
-
     def test__creates_domain(self):
         domain_name = factory.make_name("domain")
         domain_authoritative = factory.pick_bool()
         ttl = random.randint(1, 604800)
-        form = DomainForm({
-            "name": domain_name,
-            "authoritative": domain_authoritative,
-            "ttl": ttl,
-        })
+        form = DomainForm(
+            {
+                "name": domain_name,
+                "authoritative": domain_authoritative,
+                "ttl": ttl,
+            }
+        )
         self.assertTrue(form.is_valid(), form.errors)
         domain = form.save()
         self.assertEqual(domain_name, domain.name)
@@ -41,11 +42,14 @@ class TestDomainForm(MAASServerTestCase):
         domain = factory.make_Domain(authoritative=old_authoritative)
         new_authoritative = not old_authoritative
         new_ttl = random.randint(1, 604800)
-        form = DomainForm(instance=domain, data={
-            "name": new_name,
-            "authoritative": new_authoritative,
-            "ttl": new_ttl,
-        })
+        form = DomainForm(
+            instance=domain,
+            data={
+                "name": new_name,
+                "authoritative": new_authoritative,
+                "ttl": new_ttl,
+            },
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         domain = reload_object(domain)
@@ -57,11 +61,9 @@ class TestDomainForm(MAASServerTestCase):
         name = factory.make_name("domain")
         ttl = random.randint(1, 604800)
         authoritative = factory.pick_bool()
-        form = DomainForm({
-            "name": name,
-            "authoritative": authoritative,
-            "ttl": ttl,
-        })
+        form = DomainForm(
+            {"name": name, "authoritative": authoritative, "ttl": ttl}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         domain = form.save()
         self.assertEqual(name, domain.name)
@@ -72,11 +74,9 @@ class TestDomainForm(MAASServerTestCase):
         name = factory.make_name("domain")
         ttl = random.randint(1, 604800)
         authoritative = factory.pick_bool()
-        form = DomainForm({
-            "name": name,
-            "authoritative": authoritative,
-            "ttl": ttl,
-        })
+        form = DomainForm(
+            {"name": name, "authoritative": authoritative, "ttl": ttl}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         domain = form.save()
         form = DomainForm(instance=domain, data={"ttl": None})

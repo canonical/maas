@@ -1,9 +1,7 @@
 # Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    'FilterNodeForm',
-    ]
+__all__ = ["FilterNodeForm"]
 
 
 from collections import defaultdict
@@ -14,19 +12,10 @@ import re
 import attr
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import (
-    Model,
-    Q,
-)
+from django.db.models import Model, Q
 from django.forms.fields import Field
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_STATUS_SHORT_LABEL_CHOICES,
-)
-from maasserver.fields import (
-    mac_validator,
-    MODEL_NAME_VALIDATOR,
-)
+from maasserver.enum import NODE_STATUS, NODE_STATUS_SHORT_LABEL_CHOICES
+from maasserver.fields import mac_validator, MODEL_NAME_VALIDATOR
 from maasserver.forms import (
     MultipleChoiceField,
     UnconstrainedMultipleChoiceField,
@@ -65,9 +54,10 @@ from provisioningserver.utils.constraints import LabeledConstraintMap
 #      - 400+GB disk, name the consrtaint "data"
 STORAGE_REGEX = re.compile(
     r"(?:(?P<label>[a-zA-Z0-9]+)\:)?"  # Optional label
-    r"(?P<size>[0-9.]+)"               # Mandatory size
-    r"(?:\((?P<tags>[^)]+)\))?",       # Optional tag list between parentheses
-    re.VERBOSE)
+    r"(?P<size>[0-9.]+)"  # Mandatory size
+    r"(?:\((?P<tags>[^)]+)\))?",  # Optional tag list between parentheses
+    re.VERBOSE,
+)
 
 
 def storage_validator(value):
@@ -89,55 +79,55 @@ def storage_validator(value):
     for name, size, tags in groups:  # For each parsed constraint
         group = ""
         if name != "":
-            group = name + ":"       # start with the constraint name
-        group += size                # add the size part
+            group = name + ":"  # start with the constraint name
+        group += size  # add the size part
         if tags != "":
-            group += "(%s)" % tags   # add the tags, if present
+            group += "(%s)" % tags  # add the tags, if present
         rendered_groups.append(group)
-    if ','.join(rendered_groups) != value:
+    if ",".join(rendered_groups) != value:
         raise ValidationError('Malformed storage constraint, "%s".' % value)
 
 
 NETWORKING_CONSTRAINT_NAMES = {
-    'id',
-    'not_id',
-    'fabric',
-    'not_fabric',
-    'fabric_class',
-    'not_fabric_class',
-    'ip',
-    'not_ip',
-    'mode',
-    'name',
-    'not_name',
-    'hostname',
-    'not_hostname',
-    'subnet',
-    'not_subnet',
-    'space',
-    'not_space',
-    'subnet_cidr',
-    'not_subnet_cidr',
-    'type',
-    'vlan',
-    'not_vlan',
-    'vid',
-    'not_vid',
-    'tag',
-    'not_tag',
-    'link_speed',
+    "id",
+    "not_id",
+    "fabric",
+    "not_fabric",
+    "fabric_class",
+    "not_fabric_class",
+    "ip",
+    "not_ip",
+    "mode",
+    "name",
+    "not_name",
+    "hostname",
+    "not_hostname",
+    "subnet",
+    "not_subnet",
+    "space",
+    "not_space",
+    "subnet_cidr",
+    "not_subnet_cidr",
+    "type",
+    "vlan",
+    "not_vlan",
+    "vid",
+    "not_vid",
+    "tag",
+    "not_tag",
+    "link_speed",
 }
 
 IGNORED_FIELDS = {
-    'comment',
-    'bridge_all',
-    'bridge_type',
-    'bridge_stp',
-    'bridge_fd',
-    'dry_run',
-    'verbose',
-    'op',
-    'agent_name',
+    "comment",
+    "bridge_all",
+    "bridge_type",
+    "bridge_stp",
+    "bridge_fd",
+    "dry_run",
+    "verbose",
+    "op",
+    "agent_name",
 }
 
 
@@ -169,7 +159,8 @@ def interfaces_validator(constraint_map):
         for constraint_name in constraints:
             if constraint_name not in NETWORKING_CONSTRAINT_NAMES:
                 raise ValidationError(
-                    "Unknown interfaces constraint: '%s" % constraint_name)
+                    "Unknown interfaces constraint: '%s" % constraint_name
+                )
 
 
 def generate_architecture_wildcards(arches):
@@ -182,7 +173,7 @@ def generate_architecture_wildcards(arches):
     sorted_arch_list = sorted(arches)
 
     def extract_primary_arch(arch):
-        return arch.split('/')[0]
+        return arch.split("/")[0]
 
     return {
         primary_arch: frozenset(subarch_generator)
@@ -198,8 +189,8 @@ def get_architecture_wildcards(arches):
     # providers. Since armhf is the cross-distro agreed Linux userspace
     # architecture and ABI and ARM servers are expected to only use armhf,
     # interpret "arm" to mean "armhf" in MAAS.
-    if 'armhf' in wildcards and 'arm' not in wildcards:
-        wildcards['arm'] = wildcards['armhf']
+    if "armhf" in wildcards and "arm" not in wildcards:
+        wildcards["arm"] = wildcards["armhf"]
     return wildcards
 
 
@@ -208,7 +199,8 @@ def parse_legacy_tags(values):
     # comma-separated or space-separated list.
     # 'values' is assumed to be a list of strings.
     result = chain.from_iterable(
-        re.findall(r'[^\s,]+', value) for value in values)
+        re.findall(r"[^\s,]+", value) for value in values
+    )
     return list(result)
 
 
@@ -217,17 +209,16 @@ def parse_legacy_tags(values):
 # that the search form present on the node listing page can be used to
 # filter nodes using Juju's semantics.
 JUJU_ACQUIRE_FORM_FIELDS_MAPPING = {
-    'name': 'maas-name',
-    'tags': 'maas-tags',
-    'arch': 'architecture',
-    'cpu_count': 'cpu',
-    'storage': 'storage',
+    "name": "maas-name",
+    "tags": "maas-tags",
+    "arch": "architecture",
+    "cpu_count": "cpu",
+    "storage": "storage",
 }
 
 
 # XXX JeroenVermeulen 2014-02-06: Can we document this please?
 class RenamableFieldsForm(forms.Form):
-
     def __init__(self, *args, **kwargs):
         super(RenamableFieldsForm, self).__init__(*args, **kwargs)
         self.field_mapping = {name: name for name in self.fields}
@@ -270,7 +261,8 @@ def detect_nonexistent_names(model_class, names):
     if len(names) == 0:
         return []
     existing_names = set(
-        model_class.objects.all().values_list('name', flat=True))
+        model_class.objects.all().values_list("name", flat=True)
+    )
     return sorted(set(names) - existing_names)
 
 
@@ -281,10 +273,10 @@ def describe_single_constraint_value(value):
     :return: String representation of `value`, or `None` if the value
         means that the constraint was not set.
     """
-    if value is None or value == '':
+    if value is None or value == "":
         return None
     else:
-        return '%s' % value
+        return "%s" % value
 
 
 def describe_multi_constraint_value(values):
@@ -306,7 +298,7 @@ def describe_multi_constraint_value(values):
         else:
             # Keep ordered containers in their original order.
             sequence = values
-        return ','.join(map(describe_single_constraint_value, sequence))
+        return ",".join(map(describe_single_constraint_value, sequence))
 
 
 def get_storage_constraints_from_string(storage):
@@ -321,10 +313,10 @@ def get_storage_constraints_from_string(storage):
         (
             label,
             int(float(size) * (1000 ** 3)),
-            tags.split(',') if tags != '' else None,
+            tags.split(",") if tags != "" else None,
         )
         for (label, size, tags) in groups
-        ]
+    ]
 
     def count_tags(elem):
         label, size, tags = elem
@@ -339,10 +331,10 @@ def format_device_key(device_info):
     """Format the `device_info` into a key for the storage constraint output.
     """
     device_type, device_id = device_info
-    if device_type == 'blockdev':
+    if device_type == "blockdev":
         return device_id
-    elif device_type == 'partition':
-        return 'partition:%d' % device_id
+    elif device_type == "partition":
+        return "partition:%d" % device_id
     else:
         raise ValueError("Unknown device_type: %s" % device_type)
 
@@ -381,44 +373,59 @@ def nodes_by_storage(storage, node_ids=None):
             # block device has root sitting on it or its on a partition on
             # that block device.
             filesystems = Filesystem.objects.filter(
-                mount_point='/', acquired=False)
-            if tags is not None and 'partition' in tags:
+                mount_point="/", acquired=False
+            )
+            if tags is not None and "partition" in tags:
                 part_match = True
                 part_tags = list(tags)
-                part_tags.remove('partition')
+                part_tags.remove("partition")
                 filesystems = filesystems.filter(partition__size__gte=size)
                 if part_tags:
                     filesystems = filesystems.filter(
-                        partition__tags__contains=part_tags)
+                        partition__tags__contains=part_tags
+                    )
                 if node_ids is not None:
                     filesystems = filesystems.filter(
-                        Q(**{
-                            'partition__partition_table__block_device'
-                            '__node_id__in': node_ids
-                        }))
+                        Q(
+                            **{
+                                "partition__partition_table__block_device"
+                                "__node_id__in": node_ids
+                            }
+                        )
+                    )
             else:
                 filesystems = filesystems.filter(
-                    Q(block_device__size__gte=size) |
-                    Q(**{
-                        'partition__partition_table__block_device'
-                        '__size__gte': size
-                    }))
+                    Q(block_device__size__gte=size)
+                    | Q(
+                        **{
+                            "partition__partition_table__block_device"
+                            "__size__gte": size
+                        }
+                    )
+                )
                 if tags:
                     filesystems = filesystems.filter(
-                        Q(block_device__tags__contains=tags) |
-                        Q(**{
-                            'partition__partition_table__block_device'
-                            '__tags__contains': tags
-                        }))
+                        Q(block_device__tags__contains=tags)
+                        | Q(
+                            **{
+                                "partition__partition_table__block_device"
+                                "__tags__contains": tags
+                            }
+                        )
+                    )
                 if node_ids is not None:
                     filesystems = filesystems.filter(
-                        Q(block_device__node_id__in=node_ids) |
-                        Q(**{
-                            'partition__partition_table__block_device'
-                            '__node_id__in': node_ids
-                        }))
+                        Q(block_device__node_id__in=node_ids)
+                        | Q(
+                            **{
+                                "partition__partition_table__block_device"
+                                "__node_id__in": node_ids
+                            }
+                        )
+                    )
             filesystems = filesystems.prefetch_related(
-                'block_device', 'partition__partition_table__block_device')
+                "block_device", "partition__partition_table__block_device"
+            )
 
             # Only keep the first device for every node. This is done to make
             # sure filtering out the size and tags is not done to all the
@@ -434,40 +441,41 @@ def nodes_by_storage(storage, node_ids=None):
                     device = filesystem.block_device
                     node_id = device.node_id
                 else:
-                    device = (
-                        filesystem.partition.partition_table.block_device)
+                    device = filesystem.partition.partition_table.block_device
                     node_id = device.node_id
                 if node_id in found_nodes:
                     continue
                 matched_devices.append(device)
                 found_nodes.add(node_id)
-        elif tags is not None and 'partition' in tags:
+        elif tags is not None and "partition" in tags:
             # Query for any partition the closest size and the given tags.
             # The partition must also be unused in the storage model.
             part_tags = list(tags)
-            part_tags.remove('partition')
+            part_tags.remove("partition")
             matched_devices = Partition.objects.filter(size__gte=size)
             matched_devices = matched_devices.filter(filesystem__isnull=True)
             if part_tags:
                 matched_devices = matched_devices.filter(
-                    tags__contains=part_tags)
+                    tags__contains=part_tags
+                )
             if node_ids is not None:
                 matched_devices = matched_devices.filter(
-                    partition_table__block_device__node_id__in=node_ids)
-            matched_devices = list(matched_devices.order_by('size'))
+                    partition_table__block_device__node_id__in=node_ids
+                )
+            matched_devices = list(matched_devices.order_by("size"))
         else:
             # Query for any block device the closest size and, if specified,
             # the given tags. # The block device must also be unused in the
             # storage model.
             matched_devices = BlockDevice.objects.filter(size__gte=size)
             matched_devices = matched_devices.filter(
-                filesystem__isnull=True, partitiontable__isnull=True)
+                filesystem__isnull=True, partitiontable__isnull=True
+            )
             if tags is not None:
                 matched_devices = matched_devices.filter(tags__contains=tags)
             if node_ids is not None:
-                matched_devices = matched_devices.filter(
-                    node_id__in=node_ids)
-            matched_devices = list(matched_devices.order_by('size'))
+                matched_devices = matched_devices.filter(node_id__in=node_ids)
+            matched_devices = list(matched_devices.order_by("size"))
 
         # Loop through all the returned devices. Insert only the first
         # device from each node into `matches`.
@@ -475,14 +483,15 @@ def nodes_by_storage(storage, node_ids=None):
         for device in matched_devices:
             device_id = device.id
             if isinstance(device, Partition):
-                device_type = 'partition'
+                device_type = "partition"
                 device_node_id = device.partition_table.block_device.node_id
             elif isinstance(device, BlockDevice):
-                device_type = 'blockdev'
+                device_type = "blockdev"
                 device_node_id = device.node_id
             else:
                 raise TypeError(
-                    "Unknown device type: %s" % type(device).__name__)
+                    "Unknown device type: %s" % type(device).__name__
+                )
 
             if device_node_id in matched_in_loop:
                 continue
@@ -496,7 +505,7 @@ def nodes_by_storage(storage, node_ids=None):
         node_id: {
             format_device_key(device_info): name
             for device_info, name in disks.items()
-            if name != ''  # Map only those w/ named constraints
+            if name != ""  # Map only those w/ named constraints
         }
         for node_id, disks in matches.items()
         if len(disks) == len(constraints)
@@ -505,7 +514,8 @@ def nodes_by_storage(storage, node_ids=None):
 
 
 def nodes_by_interface(
-        interfaces_label_map, include_filter=None, preconfigured=True):
+    interfaces_label_map, include_filter=None, preconfigured=True
+):
     """Determines the set of nodes that match the specified
     LabeledConstraintMap (which must be a map of interface constraints.)
 
@@ -538,9 +548,9 @@ def nodes_by_interface(
         if not preconfigured:
             # This code path is used for pods, where the machine doesn't yet
             # exist, but will be created based on the constraints.
-            if 'ip' in constraints:
-                vlan_constraints = constraints.pop('vlan', [])
-                ip_constraints = constraints.pop('ip')
+            if "ip" in constraints:
+                vlan_constraints = constraints.pop("vlan", [])
+                ip_constraints = constraints.pop("ip")
                 for ip in ip_constraints:
                     allocations_by_label = allocated_ips.pop(label, [])
                     allocations_by_label.append(str(IPAddress(ip)))
@@ -551,10 +561,10 @@ def nodes_by_interface(
                     # address matches. We only care that we have allocated
                     # an IP address on a VLAN that will exist on the composed
                     # machine.
-                    vlan_constraints.append('id:%d' % subnet.vlan.id)
-                constraints['vlan'] = vlan_constraints
-            if 'mode' in constraints:
-                mode_constraints = constraints.pop('mode')
+                    vlan_constraints.append("id:%d" % subnet.vlan.id)
+                constraints["vlan"] = vlan_constraints
+            if "mode" in constraints:
+                mode_constraints = constraints.pop("mode")
                 for mode in mode_constraints:
                     # This will be used later when a subnet is selected.
                     ip_modes[label] = mode
@@ -562,7 +572,8 @@ def nodes_by_interface(
             # The first time through the filter, build the list
             # of candidate nodes.
             node_ids, node_map = Interface.objects.get_matching_node_map(
-                constraints, include_filter=include_filter)
+                constraints, include_filter=include_filter
+            )
             label_map[label] = node_map
         else:
             # For subsequent labels, only match nodes that already matched a
@@ -573,21 +584,27 @@ def nodes_by_interface(
             # to filter the nodes starting from an 'id__in' filter using the
             # current 'node_ids' set.
             new_node_ids, node_map = Interface.objects.get_matching_node_map(
-                constraints, include_filter=include_filter)
+                constraints, include_filter=include_filter
+            )
             label_map[label] = node_map
             node_ids &= new_node_ids
     return NodesByInterfaceResult(
-        node_ids=node_ids, label_map=label_map, allocated_ips=allocated_ips,
-        ip_modes=ip_modes)
+        node_ids=node_ids,
+        label_map=label_map,
+        allocated_ips=allocated_ips,
+        ip_modes=ip_modes,
+    )
 
 
 class LabeledConstraintMapField(Field):
-
     def __init__(self, *args, **kwargs):
         super(LabeledConstraintMapField, self).__init__(*args, **kwargs)
         self.validators.insert(
-            0, lambda constraint_map: constraint_map.validate(
-                exception_type=ValidationError))
+            0,
+            lambda constraint_map: constraint_map.validate(
+                exception_type=ValidationError
+            ),
+        )
 
     def to_python(self, value):
         """Returns a LabeledConstraintMap object."""
@@ -607,127 +624,161 @@ class FilterNodeForm(RenamableFieldsForm):
     tags = UnconstrainedMultipleChoiceField(label="Tags", required=False)
 
     not_tags = UnconstrainedMultipleChoiceField(
-        label="Not having tags", required=False)
+        label="Not having tags", required=False
+    )
 
     # XXX mpontillo 2015-10-30 need validators for fabric constraints
     fabrics = ValidatorMultipleChoiceField(
-        validator=lambda x: True, label="Attached to fabrics",
-        required=False, error_messages={
-            'invalid_list': "Invalid parameter: list of fabrics required.",
-            })
+        validator=lambda x: True,
+        label="Attached to fabrics",
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of fabrics required."
+        },
+    )
 
     not_fabrics = ValidatorMultipleChoiceField(
-        validator=lambda x: True, label="Not attached to fabrics",
-        required=False, error_messages={
-            'invalid_list': "Invalid parameter: list of fabrics required.",
-            })
+        validator=lambda x: True,
+        label="Not attached to fabrics",
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of fabrics required."
+        },
+    )
 
     fabric_classes = ValidatorMultipleChoiceField(
         validator=lambda x: True,
         label="Attached to fabric with specified classes",
-        required=False, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of fabric classes required.",
-        })
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of fabric classes required."
+        },
+    )
 
     not_fabric_classes = ValidatorMultipleChoiceField(
         validator=lambda x: True,
         label="Not attached to fabric with specified classes",
-        required=False, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of fabric classes required."
-        })
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of fabric classes required."
+        },
+    )
 
     subnets = ValidatorMultipleChoiceField(
         validator=Subnet.objects.validate_filter_specifiers,
         label="Attached to subnets",
-        required=False, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of subnet specifiers required.",
-            })
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of subnet specifiers required."
+        },
+    )
 
     not_subnets = ValidatorMultipleChoiceField(
         validator=Subnet.objects.validate_filter_specifiers,
         label="Not attached to subnets",
-        required=False, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of subnet specifiers required.",
-            })
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of subnet specifiers required."
+        },
+    )
 
     link_speed = forms.FloatField(
-        label="Link speed", required=False,
-        error_messages={'invalid': "Invalid link speed: number required."})
+        label="Link speed",
+        required=False,
+        error_messages={"invalid": "Invalid link speed: number required."},
+    )
 
     vlans = ValidatorMultipleChoiceField(
         validator=VLAN.objects.validate_filter_specifiers,
         label="Attached to VLANs",
-        required=False, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of VLAN specifiers required.",
-            })
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of VLAN specifiers required."
+        },
+    )
 
     not_vlans = ValidatorMultipleChoiceField(
         validator=VLAN.objects.validate_filter_specifiers,
         label="Not attached to VLANs",
-        required=False, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of VLAN specifiers required.",
-            })
+        required=False,
+        error_messages={
+            "invalid_list": "Invalid parameter: list of VLAN specifiers required."
+        },
+    )
 
     connected_to = ValidatorMultipleChoiceField(
-        validator=mac_validator, label="Connected to", required=False,
+        validator=mac_validator,
+        label="Connected to",
+        required=False,
         error_messages={
-            'invalid_list':
-            "Invalid parameter: list of MAC addresses required."})
+            "invalid_list": "Invalid parameter: list of MAC addresses required."
+        },
+    )
 
     not_connected_to = ValidatorMultipleChoiceField(
-        validator=mac_validator, label="Not connected to", required=False,
+        validator=mac_validator,
+        label="Not connected to",
+        required=False,
         error_messages={
-            'invalid_list':
-            "Invalid parameter: list of MAC addresses required."})
+            "invalid_list": "Invalid parameter: list of MAC addresses required."
+        },
+    )
 
     zone = forms.CharField(label="Physical zone", required=False)
 
     not_in_zone = ValidatorMultipleChoiceField(
-        validator=MODEL_NAME_VALIDATOR, label="Not in zone", required=False,
+        validator=MODEL_NAME_VALIDATOR,
+        label="Not in zone",
+        required=False,
         error_messages={
-            'invalid_list': "Invalid parameter: must list physical zones.",
-            })
+            "invalid_list": "Invalid parameter: must list physical zones."
+        },
+    )
 
     pool = forms.CharField(label="Resource pool", required=False)
 
     not_in_pool = ValidatorMultipleChoiceField(
         validator=MODEL_NAME_VALIDATOR,
-        label="Not in resource pool", required=False,
+        label="Not in resource pool",
+        required=False,
         error_messages={
-            'invalid_list': "Invalid parameter: must list resource pools.",
-            })
+            "invalid_list": "Invalid parameter: must list resource pools."
+        },
+    )
 
     storage = forms.CharField(
-        validators=[storage_validator], label="Storage", required=False)
+        validators=[storage_validator], label="Storage", required=False
+    )
 
     interfaces = LabeledConstraintMapField(
-        validators=[interfaces_validator], label="Interfaces", required=False)
+        validators=[interfaces_validator], label="Interfaces", required=False
+    )
 
     cpu_count = forms.FloatField(
-        label="CPU count", required=False,
-        error_messages={'invalid': "Invalid CPU count: number required."})
+        label="CPU count",
+        required=False,
+        error_messages={"invalid": "Invalid CPU count: number required."},
+    )
 
     mem = forms.FloatField(
-        label="Memory", required=False,
-        error_messages={'invalid': "Invalid memory: number of MiB required."})
+        label="Memory",
+        required=False,
+        error_messages={"invalid": "Invalid memory: number of MiB required."},
+    )
 
-    pod = forms.CharField(
-        label="The name of the desired pod", required=False)
+    pod = forms.CharField(label="The name of the desired pod", required=False)
 
     not_pod = forms.CharField(
-        label="The name of the undesired pod", required=False)
+        label="The name of the undesired pod", required=False
+    )
 
     pod_type = forms.CharField(
-        label="The power_type of the desired pod", required=False)
+        label="The power_type of the desired pod", required=False
+    )
 
     not_pod_type = forms.CharField(
-        label="The power_type of the undesired pod", required=False)
+        label="The power_type of the undesired pod", required=False
+    )
 
     ignore_unknown_constraints = False
 
@@ -749,8 +800,9 @@ class FilterNodeForm(RenamableFieldsForm):
         # for testing purposes.
         usable_architectures = maasserver_forms.list_all_usable_architectures()
         architecture_wildcards = get_architecture_wildcards(
-            usable_architectures)
-        value = self.cleaned_data[self.get_field_name('arch')]
+            usable_architectures
+        )
+        value = self.cleaned_data[self.get_field_name("arch")]
         if value:
             if value in usable_architectures:
                 # Full 'arch/subarch' specified directly.
@@ -760,68 +812,74 @@ class FilterNodeForm(RenamableFieldsForm):
                 # matches.
                 return architecture_wildcards[value]
             set_form_error(
-                self, self.get_field_name('arch'),
-                'Architecture not recognised.')
+                self,
+                self.get_field_name("arch"),
+                "Architecture not recognised.",
+            )
         return None
 
     def clean_tags(self):
-        value = self.cleaned_data[self.get_field_name('tags')]
+        value = self.cleaned_data[self.get_field_name("tags")]
         if value:
             tag_names = parse_legacy_tags(value)
             # Validate tags.
             tag_names = set(tag_names)
-            db_tag_names = set(Tag.objects.filter(
-                name__in=tag_names).values_list('name', flat=True))
+            db_tag_names = set(
+                Tag.objects.filter(name__in=tag_names).values_list(
+                    "name", flat=True
+                )
+            )
             if len(tag_names) != len(db_tag_names):
                 unknown_tags = tag_names.difference(db_tag_names)
-                error_msg = 'No such tag(s): %s.' % ', '.join(
-                    "'%s'" % tag for tag in unknown_tags)
-                set_form_error(self, self.get_field_name('tags'), error_msg)
+                error_msg = "No such tag(s): %s." % ", ".join(
+                    "'%s'" % tag for tag in unknown_tags
+                )
+                set_form_error(self, self.get_field_name("tags"), error_msg)
                 return None
             return tag_names
         return None
 
     def clean_zone(self):
-        value = self.cleaned_data[self.get_field_name('zone')]
+        value = self.cleaned_data[self.get_field_name("zone")]
         if value:
             nonexistent_names = detect_nonexistent_names(Zone, [value])
             if nonexistent_names:
                 error_msg = "No such zone: '%s'." % value
-                set_form_error(self, self.get_field_name('zone'), error_msg)
+                set_form_error(self, self.get_field_name("zone"), error_msg)
                 return None
             return value
         return None
 
     def clean_not_in_zone(self):
-        value = self.cleaned_data[self.get_field_name('not_in_zone')]
+        value = self.cleaned_data[self.get_field_name("not_in_zone")]
         if not value:
             return None
         nonexistent_names = detect_nonexistent_names(Zone, value)
         if nonexistent_names:
-            error_msg = "No such zone(s): %s." % ', '.join(nonexistent_names)
-            set_form_error(self, self.get_field_name('not_in_zone'), error_msg)
+            error_msg = "No such zone(s): %s." % ", ".join(nonexistent_names)
+            set_form_error(self, self.get_field_name("not_in_zone"), error_msg)
             return None
         return value
 
     def clean_pool(self):
-        value = self.cleaned_data[self.get_field_name('pool')]
+        value = self.cleaned_data[self.get_field_name("pool")]
         if value:
             nonexistent_names = detect_nonexistent_names(ResourcePool, [value])
             if nonexistent_names:
                 error_msg = "No such pool: '%s'." % value
-                set_form_error(self, self.get_field_name('pool'), error_msg)
+                set_form_error(self, self.get_field_name("pool"), error_msg)
                 return None
             return value
         return None
 
     def clean_not_in_pool(self):
-        value = self.cleaned_data[self.get_field_name('not_in_pool')]
+        value = self.cleaned_data[self.get_field_name("not_in_pool")]
         if not value:
             return None
         nonexistent_names = detect_nonexistent_names(ResourcePool, value)
         if nonexistent_names:
-            error_msg = "No such pool(s): %s." % ', '.join(nonexistent_names)
-            set_form_error(self, self.get_field_name('not_in_pool'), error_msg)
+            error_msg = "No such pool(s): %s." % ", ".join(nonexistent_names)
+            set_form_error(self, self.get_field_name("not_in_pool"), error_msg)
             return None
         return value
 
@@ -831,29 +889,31 @@ class FilterNodeForm(RenamableFieldsForm):
         objects = set(model.objects.filter_by_specifiers(specifiers))
         if len(objects) == 0:
             raise ValidationError(
-                "No matching %s found." % model._meta.verbose_name_plural)
+                "No matching %s found." % model._meta.verbose_name_plural
+            )
         return objects
 
     def clean_subnets(self):
-        value = self.cleaned_data[self.get_field_name('subnets')]
+        value = self.cleaned_data[self.get_field_name("subnets")]
         return self._clean_specifiers(Subnet, value)
 
     def clean_not_subnets(self):
-        value = self.cleaned_data[self.get_field_name('not_subnets')]
+        value = self.cleaned_data[self.get_field_name("not_subnets")]
         return self._clean_specifiers(Subnet, value)
 
     def clean_vlans(self):
-        value = self.cleaned_data[self.get_field_name('vlans')]
+        value = self.cleaned_data[self.get_field_name("vlans")]
         return self._clean_specifiers(VLAN, value)
 
     def clean_not_vlans(self):
-        value = self.cleaned_data[self.get_field_name('not_vlans')]
+        value = self.cleaned_data[self.get_field_name("not_vlans")]
         return self._clean_specifiers(VLAN, value)
 
     def clean(self):
         if not self.ignore_unknown_constraints:
-            unknown_constraints = set(
-                self.data).difference(set(self.field_mapping.values()))
+            unknown_constraints = set(self.data).difference(
+                set(self.field_mapping.values())
+            )
             for constraint in unknown_constraints:
                 if constraint not in IGNORED_FIELDS:
                     msg = "No such constraint."
@@ -875,7 +935,7 @@ class FilterNodeForm(RenamableFieldsForm):
             return None
         if isinstance(self.fields[field_name], MultipleChoiceField):
             output = describe_multi_constraint_value(value)
-        elif field_name == 'arch' and not isinstance(value, str):
+        elif field_name == "arch" and not isinstance(value, str):
             # The arch field is a special case.  It's defined as a string
             # field, but may become a list/tuple/... of strings in cleaning.
             output = describe_multi_constraint_value(value)
@@ -884,7 +944,7 @@ class FilterNodeForm(RenamableFieldsForm):
         if output is None:
             return None
         else:
-            return '%s=%s' % (field_name, output)
+            return "%s=%s" % (field_name, output)
 
     def describe_constraints(self):
         """Return a human-readable representation of the given constraints.
@@ -895,11 +955,10 @@ class FilterNodeForm(RenamableFieldsForm):
         constraints = (
             self.describe_constraint(name)
             for name in sorted(self.fields.keys())
-            )
-        return ' '.join(
-            constraint
-            for constraint in constraints
-            if constraint is not None)
+        )
+        return " ".join(
+            constraint for constraint in constraints if constraint is not None
+        )
 
     def filter_nodes(self, nodes):
         """Return the subset of nodes that match the form's constraints.
@@ -912,9 +971,11 @@ class FilterNodeForm(RenamableFieldsForm):
         """
         filtered_nodes = self._apply_filters(nodes)
         compatible_nodes, filtered_nodes = self.filter_by_storage(
-            filtered_nodes)
+            filtered_nodes
+        )
         compatible_interfaces, filtered_nodes = self.filter_by_interfaces(
-            filtered_nodes)
+            filtered_nodes
+        )
         return filtered_nodes, compatible_nodes, compatible_interfaces
 
     def _apply_filters(self, nodes):
@@ -935,7 +996,8 @@ class FilterNodeForm(RenamableFieldsForm):
     def filter_by_interfaces(self, filtered_nodes):
         compatible_interfaces = {}
         interfaces_label_map = self.cleaned_data.get(
-            self.get_field_name('interfaces'))
+            self.get_field_name("interfaces")
+        )
         if interfaces_label_map is not None:
             result = nodes_by_interface(interfaces_label_map)
             if result.node_ids is not None:
@@ -945,8 +1007,7 @@ class FilterNodeForm(RenamableFieldsForm):
 
     def filter_by_storage(self, filtered_nodes):
         compatible_nodes = {}  # Maps node/storage to named storage constraints
-        storage = self.cleaned_data.get(
-            self.get_field_name('storage'))
+        storage = self.cleaned_data.get(self.get_field_name("storage"))
         if storage:
             compatible_nodes = nodes_by_storage(storage)
             node_ids = list(compatible_nodes)
@@ -955,122 +1016,131 @@ class FilterNodeForm(RenamableFieldsForm):
         return compatible_nodes, filtered_nodes
 
     def filter_by_fabric_classes(self, filtered_nodes):
-        fabric_classes = self.cleaned_data.get(self.get_field_name(
-            'fabric_classes'))
+        fabric_classes = self.cleaned_data.get(
+            self.get_field_name("fabric_classes")
+        )
         if fabric_classes is not None and len(fabric_classes) > 0:
             filtered_nodes = filtered_nodes.filter(
-                interface__vlan__fabric__class_type__in=fabric_classes)
-        not_fabric_classes = self.cleaned_data.get(self.get_field_name(
-            'not_fabric_classes'))
+                interface__vlan__fabric__class_type__in=fabric_classes
+            )
+        not_fabric_classes = self.cleaned_data.get(
+            self.get_field_name("not_fabric_classes")
+        )
         if not_fabric_classes is not None and len(not_fabric_classes) > 0:
             filtered_nodes = filtered_nodes.exclude(
-                interface__vlan__fabric__class_type__in=not_fabric_classes)
+                interface__vlan__fabric__class_type__in=not_fabric_classes
+            )
         return filtered_nodes
 
     def filter_by_fabrics(self, filtered_nodes):
-        fabrics = self.cleaned_data.get(self.get_field_name('fabrics'))
+        fabrics = self.cleaned_data.get(self.get_field_name("fabrics"))
         if fabrics is not None and len(fabrics) > 0:
             # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
             # is null (fabric-<id>).
             filtered_nodes = filtered_nodes.filter(
-                interface__vlan__fabric__name__in=fabrics)
-        not_fabrics = self.cleaned_data.get(self.get_field_name('not_fabrics'))
+                interface__vlan__fabric__name__in=fabrics
+            )
+        not_fabrics = self.cleaned_data.get(self.get_field_name("not_fabrics"))
         if not_fabrics is not None and len(not_fabrics) > 0:
             # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
             # is null (fabric-<id>).
             filtered_nodes = filtered_nodes.exclude(
-                interface__vlan__fabric__name__in=not_fabrics)
+                interface__vlan__fabric__name__in=not_fabrics
+            )
         return filtered_nodes
 
     def filter_by_vlans(self, filtered_nodes):
-        vlans = self.cleaned_data.get(self.get_field_name('vlans'))
+        vlans = self.cleaned_data.get(self.get_field_name("vlans"))
         if vlans is not None and len(vlans) > 0:
             for vlan in set(vlans):
-                filtered_nodes = filtered_nodes.filter(
-                    interface__vlan=vlan)
-        not_vlans = self.cleaned_data.get(self.get_field_name('not_vlans'))
+                filtered_nodes = filtered_nodes.filter(interface__vlan=vlan)
+        not_vlans = self.cleaned_data.get(self.get_field_name("not_vlans"))
         if not_vlans is not None and len(not_vlans) > 0:
             for not_vlan in set(not_vlans):
                 filtered_nodes = filtered_nodes.exclude(
-                    interface__vlan=not_vlan)
+                    interface__vlan=not_vlan
+                )
         return filtered_nodes
 
     def filter_by_subnets(self, filtered_nodes):
-        subnets = self.cleaned_data.get(self.get_field_name('subnets'))
+        subnets = self.cleaned_data.get(self.get_field_name("subnets"))
         if subnets is not None and len(subnets) > 0:
             for subnet in set(subnets):
                 filtered_nodes = filtered_nodes.filter(
-                    interface__ip_addresses__subnet=subnet)
-        not_subnets = self.cleaned_data.get(
-            self.get_field_name('not_subnets'))
+                    interface__ip_addresses__subnet=subnet
+                )
+        not_subnets = self.cleaned_data.get(self.get_field_name("not_subnets"))
         if not_subnets is not None and len(not_subnets) > 0:
             for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(
-                    interface__ip_addresses__subnet=not_subnet)
+                    interface__ip_addresses__subnet=not_subnet
+                )
         return filtered_nodes
 
     def filter_by_link_speed(self, filtered_nodes):
-        link_speed = self.cleaned_data.get(self.get_field_name('link_speed'))
+        link_speed = self.cleaned_data.get(self.get_field_name("link_speed"))
         if link_speed:
             filtered_nodes = filtered_nodes.filter(
-                interface__link_speed__gte=link_speed)
+                interface__link_speed__gte=link_speed
+            )
         return filtered_nodes
 
     def filter_by_zone(self, filtered_nodes):
-        zone = self.cleaned_data.get(self.get_field_name('zone'))
+        zone = self.cleaned_data.get(self.get_field_name("zone"))
         if zone:
             zone_obj = Zone.objects.get(name=zone)
             filtered_nodes = filtered_nodes.filter(zone=zone_obj)
-        not_in_zone = self.cleaned_data.get(self.get_field_name('not_in_zone'))
+        not_in_zone = self.cleaned_data.get(self.get_field_name("not_in_zone"))
         if not_in_zone:
             not_in_zones = Zone.objects.filter(name__in=not_in_zone)
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
         return filtered_nodes
 
     def filter_by_pool(self, filtered_nodes):
-        pool_name = self.cleaned_data.get(self.get_field_name('pool'))
+        pool_name = self.cleaned_data.get(self.get_field_name("pool"))
         if pool_name:
             pool = ResourcePool.objects.get(name=pool_name)
             filtered_nodes = filtered_nodes.filter(pool=pool)
-        not_in_pool = self.cleaned_data.get(self.get_field_name('not_in_pool'))
+        not_in_pool = self.cleaned_data.get(self.get_field_name("not_in_pool"))
         if not_in_pool:
             pools_to_exclude = ResourcePool.objects.filter(
-                name__in=not_in_pool)
+                name__in=not_in_pool
+            )
             filtered_nodes = filtered_nodes.exclude(pool__in=pools_to_exclude)
         return filtered_nodes
 
     def filter_by_tags(self, filtered_nodes):
-        tags = self.cleaned_data.get(self.get_field_name('tags'))
+        tags = self.cleaned_data.get(self.get_field_name("tags"))
         if tags:
             for tag in tags:
                 filtered_nodes = filtered_nodes.filter(tags__name=tag)
-        not_tags = self.cleaned_data.get(self.get_field_name('not_tags'))
+        not_tags = self.cleaned_data.get(self.get_field_name("not_tags"))
         if len(not_tags) > 0:
             for not_tag in not_tags:
                 filtered_nodes = filtered_nodes.exclude(tags__name=not_tag)
         return filtered_nodes
 
     def filter_by_mem(self, filtered_nodes):
-        mem = self.cleaned_data.get(self.get_field_name('mem'))
+        mem = self.cleaned_data.get(self.get_field_name("mem"))
         if mem:
             filtered_nodes = filtered_nodes.filter(memory__gte=mem)
         return filtered_nodes
 
     def filter_by_cpu_count(self, filtered_nodes):
-        cpu_count = self.cleaned_data.get(self.get_field_name('cpu_count'))
+        cpu_count = self.cleaned_data.get(self.get_field_name("cpu_count"))
         if cpu_count:
             filtered_nodes = filtered_nodes.filter(cpu_count__gte=cpu_count)
         return filtered_nodes
 
     def filter_by_arch(self, filtered_nodes):
-        arch = self.cleaned_data.get(self.get_field_name('arch'))
+        arch = self.cleaned_data.get(self.get_field_name("arch"))
         if arch:
             filtered_nodes = filtered_nodes.filter(architecture__in=arch)
         return filtered_nodes
 
     def filter_by_system_id(self, filtered_nodes):
         # Filter by system_id.
-        system_id = self.cleaned_data.get(self.get_field_name('system_id'))
+        system_id = self.cleaned_data.get(self.get_field_name("system_id"))
         if system_id:
             filtered_nodes = filtered_nodes.filter(system_id=system_id)
         return filtered_nodes
@@ -1078,11 +1148,12 @@ class FilterNodeForm(RenamableFieldsForm):
     def filter_by_pod_or_pod_type(self, filtered_nodes):
         # Filter by pod, pod type, not_pod or not_pod_type.
         # We are filtering for all of these to keep the query count down.
-        pod = self.cleaned_data.get(self.get_field_name('pod'))
-        not_pod = self.cleaned_data.get(self.get_field_name('not_pod'))
-        pod_type = self.cleaned_data.get(self.get_field_name('pod_type'))
+        pod = self.cleaned_data.get(self.get_field_name("pod"))
+        not_pod = self.cleaned_data.get(self.get_field_name("not_pod"))
+        pod_type = self.cleaned_data.get(self.get_field_name("pod_type"))
         not_pod_type = self.cleaned_data.get(
-            self.get_field_name('not_pod_type'))
+            self.get_field_name("not_pod_type")
+        )
         if pod or pod_type or not_pod or not_pod_type:
             pods = Pod.objects.all()
             if pod:
@@ -1094,7 +1165,8 @@ class FilterNodeForm(RenamableFieldsForm):
             if not_pod_type:
                 pods = pods.exclude(power_type=not_pod_type)
             filtered_nodes = filtered_nodes.filter(
-                bmc_id__in=pods.values_list('id', flat=True))
+                bmc_id__in=pods.values_list("id", flat=True)
+            )
         return filtered_nodes.distinct()
 
 
@@ -1102,10 +1174,12 @@ class AcquireNodeForm(FilterNodeForm):
     """A form handling the constraints used to acquire a node."""
 
     name = forms.CharField(
-        label="The hostname of the desired node", required=False)
+        label="The hostname of the desired node", required=False
+    )
 
     system_id = forms.CharField(
-        label="The system_id of the desired node", required=False)
+        label="The system_id of the desired node", required=False
+    )
 
     def _apply_filters(self, nodes):
         nodes = super()._apply_filters(nodes)
@@ -1115,15 +1189,15 @@ class AcquireNodeForm(FilterNodeForm):
 
     def filter_by_hostname(self, filtered_nodes):
         # Filter by hostname.
-        hostname = self.cleaned_data.get(self.get_field_name('name'))
+        hostname = self.cleaned_data.get(self.get_field_name("name"))
         if hostname:
             # If the given hostname has a domain part, try matching
             # against the nodes' FQDN.
             if "." in hostname:
-                host, domain = hostname.split('.', 1)
+                host, domain = hostname.split(".", 1)
                 hostname_clause = Q(hostname=host)
                 domain_clause = Q(domain__name=domain)
-                clause = (hostname_clause & domain_clause)
+                clause = hostname_clause & domain_clause
             else:
                 clause = Q(hostname=hostname)
             filtered_nodes = filtered_nodes.filter(clause)
@@ -1143,35 +1217,44 @@ class AcquireNodeForm(FilterNodeForm):
         # on the machine's cost when multiple machines match the
         # constraints.
         filtered_nodes = filtered_nodes.extra(
-            select={'cost': "cpu_count + memory / 1024."})
+            select={"cost": "cpu_count + memory / 1024."}
+        )
         return filtered_nodes.order_by("cost")
 
 
 class ReadNodesForm(FilterNodeForm):
 
     id = UnconstrainedMultipleChoiceField(
-        label="System IDs to filter on", required=False)
+        label="System IDs to filter on", required=False
+    )
 
     hostname = UnconstrainedMultipleChoiceField(
-        label="Hostnames to filter on", required=False)
+        label="Hostnames to filter on", required=False
+    )
 
     mac_address = ValidatorMultipleChoiceField(
-        validator=mac_validator, label="MAC addresses to filter on",
+        validator=mac_validator,
+        label="MAC addresses to filter on",
         required=False,
         error_messages={
-            'invalid_list': "Invalid parameter: invalid MAC address format",
-            })
+            "invalid_list": "Invalid parameter: invalid MAC address format"
+        },
+    )
 
     domain = UnconstrainedMultipleChoiceField(
-        label="Domain names to filter on", required=False)
+        label="Domain names to filter on", required=False
+    )
 
     agent_name = forms.CharField(
         label="Only include nodes with events matching the agent name",
-        required=False)
+        required=False,
+    )
 
     status = forms.ChoiceField(
         label="Only includes nodes with the specified status",
-        choices=NODE_STATUS_SHORT_LABEL_CHOICES, required=False)
+        choices=NODE_STATUS_SHORT_LABEL_CHOICES,
+        required=False,
+    )
 
     def _apply_filters(self, nodes):
         nodes = super()._apply_filters(nodes)
@@ -1184,40 +1267,42 @@ class ReadNodesForm(FilterNodeForm):
         return nodes
 
     def filter_by_ids(self, filtered_nodes):
-        ids = self.cleaned_data.get(self.get_field_name('id'))
+        ids = self.cleaned_data.get(self.get_field_name("id"))
         if ids:
             filtered_nodes = filtered_nodes.filter(system_id__in=ids)
         return filtered_nodes
 
     def filter_by_hostnames(self, filtered_nodes):
-        hostnames = self.cleaned_data.get(self.get_field_name('hostname'))
+        hostnames = self.cleaned_data.get(self.get_field_name("hostname"))
         if hostnames:
             filtered_nodes = filtered_nodes.filter(hostname__in=hostnames)
         return filtered_nodes
 
     def filter_by_mac_addresses(self, filtered_nodes):
         mac_addresses = self.cleaned_data.get(
-            self.get_field_name('mac_address'))
+            self.get_field_name("mac_address")
+        )
         if mac_addresses:
             filtered_nodes = filtered_nodes.filter(
-                interface__mac_address__in=mac_addresses)
+                interface__mac_address__in=mac_addresses
+            )
         return filtered_nodes
 
     def filter_by_domain(self, filtered_nodes):
-        domains = self.cleaned_data.get(self.get_field_name('domain'))
+        domains = self.cleaned_data.get(self.get_field_name("domain"))
         if domains:
             filtered_nodes = filtered_nodes.filter(domain__name__in=domains)
         return filtered_nodes
 
     def filter_by_agent_name(self, filtered_nodes):
-        field_name = self.get_field_name('agent_name')
+        field_name = self.get_field_name("agent_name")
         if field_name in self.data:
             agent_name = self.cleaned_data.get(field_name)
             filtered_nodes = filtered_nodes.filter(agent_name=agent_name)
         return filtered_nodes
 
     def filter_by_status(self, filtered_nodes):
-        status = self.cleaned_data.get(self.get_field_name('status'))
+        status = self.cleaned_data.get(self.get_field_name("status"))
         if status:
             status_id = getattr(NODE_STATUS, status.upper())
             filtered_nodes = filtered_nodes.filter(status=status_id)

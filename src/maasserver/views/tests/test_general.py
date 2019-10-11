@@ -6,10 +6,7 @@
 __all__ = []
 
 import http.client
-from urllib.parse import (
-    parse_qs,
-    urlparse,
-)
+from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
 from django.conf.urls import url
@@ -21,10 +18,7 @@ from lxml.html import fromstring
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views import (
-    HelpfulDeleteView,
-    PaginatedListView,
-)
+from maasserver.views import HelpfulDeleteView, PaginatedListView
 
 
 class Test404500(MAASServerTestCase):
@@ -36,38 +30,37 @@ class Test404500(MAASServerTestCase):
 
     def test_404(self):
         self.client.login(user=factory.make_User())
-        response = self.client.get('/MAAS/no-found-page/')
+        response = self.client.get("/MAAS/no-found-page/")
         doc = fromstring(response.content)
-        self.assertIn(
-            "Error: Page not found",
-            doc.cssselect('title')[0].text)
+        self.assertIn("Error: Page not found", doc.cssselect("title")[0].text)
         self.assertSequenceEqual(
-            ['The requested URL /MAAS/no-found-page/ was not found on this '
-             'server.'],
-            [elem.text.strip() for elem in
-                doc.cssselect('h2')])
+            [
+                "The requested URL /MAAS/no-found-page/ was not found on this "
+                "server."
+            ],
+            [elem.text.strip() for elem in doc.cssselect("h2")],
+        )
 
     def test_500(self):
         self.client.login(user=factory.make_User())
         from maasserver.urls import urlpatterns
-        urlpatterns += [url(r'^500/$', server_error)]
-        response = self.client.get('/500/')
+
+        urlpatterns += [url(r"^500/$", server_error)]
+        response = self.client.get("/500/")
         doc = fromstring(response.content)
-        self.assertIn(
-            "Internal server error",
-            doc.cssselect('title')[0].text)
+        self.assertIn("Internal server error", doc.cssselect("title")[0].text)
         self.assertSequenceEqual(
-            ['Internal server error.'],
-            [elem.text.strip() for elem in
-                doc.cssselect('h2')])
+            ["Internal server error."],
+            [elem.text.strip() for elem in doc.cssselect("h2")],
+        )
 
 
 class FakeDeletableModel:
     """A fake model class, with a delete method."""
 
     class Meta:
-        app_label = 'maasserver'
-        object_name = 'fake'
+        app_label = "maasserver"
+        object_name = "fake"
         verbose_name = "fake object"
 
     _meta = Meta
@@ -87,7 +80,7 @@ class FakeDeleteView(HelpfulDeleteView):
 
     model = FakeDeletableModel
 
-    template_name = 'not-a-real-template'
+    template_name = "not-a-real-template"
 
     def __init__(self, obj=None, next_url=None, request=None):
         self.obj = obj
@@ -113,7 +106,6 @@ class FakeDeleteView(HelpfulDeleteView):
 
 
 class HelpfulDeleteViewTest(MAASServerTestCase):
-
     def test_delete_deletes_object(self):
         obj = FakeDeletableModel()
         # HttpResponseRedirect does not allow next_url to be None.
@@ -138,17 +130,17 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
     def test_get_asks_for_confirmation_and_does_nothing_yet(self):
         obj = FakeDeletableModel()
         next_url = factory.make_string()
-        request = RequestFactory().get('/foo')
+        request = RequestFactory().get("/foo")
         view = FakeDeleteView(obj, request=request, next_url=next_url)
         response = view.get(request)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertNotIn(next_url, response.get('Location', ''))
+        self.assertNotIn(next_url, response.get("Location", ""))
         self.assertFalse(obj.deleted)
         self.assertEqual([], view.notices)
 
     def test_get_skips_confirmation_for_missing_objects(self):
         next_url = factory.make_string()
-        request = RequestFactory().get('/foo')
+        request = RequestFactory().get("/foo")
         view = FakeDeleteView(next_url=next_url, request=request)
         response = view.get(request)
         self.assertEqual(next_url, extract_redirect(response))
@@ -156,11 +148,12 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
 
     def test_compose_feedback_nonexistent_names_class(self):
         class_name = factory.make_string()
-        self.patch(FakeDeletableModel.Meta, 'verbose_name', class_name)
+        self.patch(FakeDeletableModel.Meta, "verbose_name", class_name)
         view = FakeDeleteView()
         self.assertEqual(
             "Not deleting: %s not found." % class_name,
-            view.compose_feedback_nonexistent())
+            view.compose_feedback_nonexistent(),
+        )
 
     def test_compose_feedback_deleted_uses_name_object(self):
         object_name = factory.make_string()
@@ -168,7 +161,8 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
         view.name_object = lambda _obj: object_name
         self.assertEqual(
             "%s deleted." % object_name.capitalize(),
-            view.compose_feedback_deleted(view.obj))
+            view.compose_feedback_deleted(view.obj),
+        )
 
 
 class SimpleFakeModel:
@@ -201,7 +195,7 @@ class PaginatedListViewTests(MAASServerTestCase):
 
     def test_single_page(self):
         view = SimpleListView.as_view(query_results=[SimpleFakeModel(1)])
-        request = RequestFactory().get('/index')
+        request = RequestFactory().get("/index")
         response = view(request)
         context = response.context_data
         self.assertEqual("", context["first_page_link"])
@@ -211,8 +205,9 @@ class PaginatedListViewTests(MAASServerTestCase):
 
     def test_on_first_page(self):
         view = SimpleListView.as_view(
-            query_results=[SimpleFakeModel(i) for i in range(5)])
-        request = RequestFactory().get('/index')
+            query_results=[SimpleFakeModel(i) for i in range(5)]
+        )
+        request = RequestFactory().get("/index")
         response = view(request)
         context = response.context_data
         self.assertEqual("", context["first_page_link"])
@@ -222,8 +217,9 @@ class PaginatedListViewTests(MAASServerTestCase):
 
     def test_on_second_page(self):
         view = SimpleListView.as_view(
-            query_results=[SimpleFakeModel(i) for i in range(7)])
-        request = RequestFactory().get('/index?page=2')
+            query_results=[SimpleFakeModel(i) for i in range(7)]
+        )
+        request = RequestFactory().get("/index?page=2")
         response = view(request)
         context = response.context_data
         self.assertEqual("index", context["first_page_link"])
@@ -233,8 +229,9 @@ class PaginatedListViewTests(MAASServerTestCase):
 
     def test_on_final_page(self):
         view = SimpleListView.as_view(
-            query_results=[SimpleFakeModel(i) for i in range(5)])
-        request = RequestFactory().get('/index?page=3')
+            query_results=[SimpleFakeModel(i) for i in range(5)]
+        )
+        request = RequestFactory().get("/index?page=3")
         response = view(request)
         context = response.context_data
         self.assertEqual("index", context["first_page_link"])
@@ -244,8 +241,9 @@ class PaginatedListViewTests(MAASServerTestCase):
 
     def test_relative_to_directory(self):
         view = SimpleListView.as_view(
-            query_results=[SimpleFakeModel(i) for i in range(6)])
-        request = RequestFactory().get('/index/?page=2')
+            query_results=[SimpleFakeModel(i) for i in range(6)]
+        )
+        request = RequestFactory().get("/index/?page=2")
         response = view(request)
         context = response.context_data
         self.assertEqual(".", context["first_page_link"])
@@ -255,53 +253,44 @@ class PaginatedListViewTests(MAASServerTestCase):
 
     def test_preserves_query_string(self):
         view = SimpleListView.as_view(
-            query_results=[SimpleFakeModel(i) for i in range(6)])
-        request = RequestFactory().get('/index?lookup=value')
+            query_results=[SimpleFakeModel(i) for i in range(6)]
+        )
+        request = RequestFactory().get("/index?lookup=value")
         response = view(request)
         context = response.context_data
         self.assertEqual("", context["first_page_link"])
         self.assertEqual("", context["previous_page_link"])
         # Does this depend on dict hash values for order or does django sort?
         self.assertEqual(
-            {
-                "lookup": ["value"],
-                "page": ["2"],
-            },
-            parse_qs(urlparse(context["next_page_link"]).query))
+            {"lookup": ["value"], "page": ["2"]},
+            parse_qs(urlparse(context["next_page_link"]).query),
+        )
         self.assertEqual(
-            {
-                "lookup": ["value"],
-                "page": ["3"],
-            },
-            parse_qs(urlparse(context["last_page_link"]).query))
+            {"lookup": ["value"], "page": ["3"]},
+            parse_qs(urlparse(context["last_page_link"]).query),
+        )
 
     def test_preserves_query_string_with_page(self):
         view = SimpleListView.as_view(
-            query_results=[SimpleFakeModel(i) for i in range(8)])
-        request = RequestFactory().get('/index?page=3&lookup=value')
+            query_results=[SimpleFakeModel(i) for i in range(8)]
+        )
+        request = RequestFactory().get("/index?page=3&lookup=value")
         response = view(request)
         context = response.context_data
         self.assertEqual(
-            {
-                "lookup": ["value"],
-            },
-            parse_qs(urlparse(context["first_page_link"]).query))
+            {"lookup": ["value"]},
+            parse_qs(urlparse(context["first_page_link"]).query),
+        )
         # Does this depend on dict hash values for order or does django sort?
         self.assertEqual(
-            {
-                "lookup": ["value"],
-                "page": ["2"],
-            },
-            parse_qs(urlparse(context["previous_page_link"]).query))
+            {"lookup": ["value"], "page": ["2"]},
+            parse_qs(urlparse(context["previous_page_link"]).query),
+        )
         self.assertEqual(
-            {
-                "lookup": ["value"],
-                "page": ["4"],
-            },
-            parse_qs(urlparse(context["next_page_link"]).query))
+            {"lookup": ["value"], "page": ["4"]},
+            parse_qs(urlparse(context["next_page_link"]).query),
+        )
         self.assertEqual(
-            {
-                "lookup": ["value"],
-                "page": ["4"],
-            },
-            parse_qs(urlparse(context["last_page_link"]).query))
+            {"lookup": ["value"], "page": ["4"]},
+            parse_qs(urlparse(context["last_page_link"]).query),
+        )

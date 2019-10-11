@@ -26,20 +26,11 @@ allocated after this migration will permit access from any of the users with
 SSH keys prior to the migration.
 """
 
-__all__ = [
-    "migrate",
-    ]
+__all__ = ["migrate"]
 
 from django.contrib.auth.models import User
-from maasserver.models import (
-    FileStorage,
-    Node,
-    SSHKey,
-)
-from maasserver.models.user import (
-    get_auth_tokens,
-    SYSTEM_USERS,
-)
+from maasserver.models import FileStorage, Node, SSHKey
+from maasserver.models.user import get_auth_tokens, SYSTEM_USERS
 from maasserver.support.pertenant.utils import get_bootstrap_node_owner
 from maasserver.utils.orm import get_one
 
@@ -55,8 +46,8 @@ def get_legacy_user():
         # Create the legacy user with a local, probably non-working, email
         # address, and an unusable password.
         legacy_user = User.objects.create_user(
-            email="%s@localhost" % legacy_user_name,
-            username=legacy_user_name)
+            email="%s@localhost" % legacy_user_name, username=legacy_user_name
+        )
         legacy_user.first_name = "Shared"
         legacy_user.last_name = "Environment"
         legacy_user.is_active = True

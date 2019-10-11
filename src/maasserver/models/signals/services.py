@@ -3,14 +3,9 @@
 
 """Respond to RPC connection changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
-from django.db.models.signals import (
-    post_delete,
-    post_save,
-)
+from django.db.models.signals import post_delete, post_save
 from maasserver.models.node import RackController
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
@@ -29,13 +24,9 @@ def update_rackd_status(sender, instance, **kwargs):
     instance.rack_controller.update_rackd_status()
 
 
-signals.watch(
-    post_save, update_rackd_status,
-    sender=RegionRackRPCConnection)
+signals.watch(post_save, update_rackd_status, sender=RegionRackRPCConnection)
 
-signals.watch(
-    post_delete, update_rackd_status,
-    sender=RegionRackRPCConnection)
+signals.watch(post_delete, update_rackd_status, sender=RegionRackRPCConnection)
 
 
 def update_all_rackd_status(sender, instance, **kwargs):
@@ -48,12 +39,12 @@ def update_all_rackd_status(sender, instance, **kwargs):
 
 
 signals.watch(
-    post_save, update_all_rackd_status,
-    sender=RegionControllerProcess)
+    post_save, update_all_rackd_status, sender=RegionControllerProcess
+)
 
 signals.watch(
-    post_delete, update_all_rackd_status,
-    sender=RegionControllerProcess)
+    post_delete, update_all_rackd_status, sender=RegionControllerProcess
+)
 
 # Enable all signals by default.
 signals.enable()

@@ -6,10 +6,7 @@ Monkey patch for the MAAS provisioning server, with code for rack and region
 server patching.
 """
 
-__all__ = [
-    "add_patches_to_txtftp",
-    "add_patches_to_twisted",
-]
+__all__ = ["add_patches_to_txtftp", "add_patches_to_twisted"]
 
 
 def add_term_error_code_to_tftp():
@@ -19,9 +16,11 @@ def add_term_error_code_to_tftp():
     https://github.com/shylent/python-tx-tftp/pull/20
     """
     import tftp.datagram
+
     if tftp.datagram.errors.get(8) is None:
-        tftp.datagram.errors[8] = (
-            "Terminate transfer due to option negotiation")
+        tftp.datagram.errors[
+            8
+        ] = "Terminate transfer due to option negotiation"
 
 
 def fix_tftp_requests():
@@ -41,7 +40,7 @@ def fix_tftp_requests():
         ERR_FILE_EXISTS,
         ERR_ILLEGAL_OP,
         OP_RRQ,
-        ERR_FILE_NOT_FOUND
+        ERR_FILE_NOT_FOUND,
     )
     from tftp.bootstrap import (
         RemoteOriginWriteSession,
@@ -74,46 +73,60 @@ def fix_tftp_requests():
         try:
             if datagram.opcode == OP_WRQ:
                 fs_interface = yield call(
-                    context, self.backend.get_writer, datagram.filename)
+                    context, self.backend.get_writer, datagram.filename
+                )
             elif datagram.opcode == OP_RRQ:
                 fs_interface = yield call(
-                    context, self.backend.get_reader, datagram.filename)
+                    context, self.backend.get_reader, datagram.filename
+                )
         except Unsupported as e:
-            self.transport.write(ERRORDatagram.from_code(
-                ERR_ILLEGAL_OP,
-                u"{}".format(e).encode("ascii", "replace")).to_wire(), addr)
+            self.transport.write(
+                ERRORDatagram.from_code(
+                    ERR_ILLEGAL_OP, u"{}".format(e).encode("ascii", "replace")
+                ).to_wire(),
+                addr,
+            )
         except AccessViolation:
             self.transport.write(
-                ERRORDatagram.from_code(ERR_ACCESS_VIOLATION).to_wire(), addr)
+                ERRORDatagram.from_code(ERR_ACCESS_VIOLATION).to_wire(), addr
+            )
         except FileExists:
             self.transport.write(
-                ERRORDatagram.from_code(ERR_FILE_EXISTS).to_wire(), addr)
+                ERRORDatagram.from_code(ERR_FILE_EXISTS).to_wire(), addr
+            )
         except FileNotFound:
             self.transport.write(
-                ERRORDatagram.from_code(ERR_FILE_NOT_FOUND).to_wire(), addr)
+                ERRORDatagram.from_code(ERR_FILE_NOT_FOUND).to_wire(), addr
+            )
         except BackendError as e:
-            self.transport.write(ERRORDatagram.from_code(
-                ERR_NOT_DEFINED,
-                u"{}".format(e).encode("ascii", "replace")).to_wire(), addr)
+            self.transport.write(
+                ERRORDatagram.from_code(
+                    ERR_NOT_DEFINED, u"{}".format(e).encode("ascii", "replace")
+                ).to_wire(),
+                addr,
+            )
         else:
             if IPAddress(addr[0]).version == 6:
-                iface = '::'
+                iface = "::"
             else:
-                iface = ''
+                iface = ""
             if datagram.opcode == OP_WRQ:
-                if mode == b'netascii':
+                if mode == b"netascii":
                     fs_interface = NetasciiReceiverProxy(fs_interface)
                 session = RemoteOriginWriteSession(
-                    addr, fs_interface, datagram.options, _clock=self._clock)
+                    addr, fs_interface, datagram.options, _clock=self._clock
+                )
                 reactor.listenUDP(0, session, iface)
                 returnValue(session)
             elif datagram.opcode == OP_RRQ:
-                if mode == b'netascii':
+                if mode == b"netascii":
                     fs_interface = NetasciiSenderProxy(fs_interface)
                 session = RemoteOriginReadSession(
-                    addr, fs_interface, datagram.options, _clock=self._clock)
+                    addr, fs_interface, datagram.options, _clock=self._clock
+                )
                 reactor.listenUDP(0, session, iface)
                 returnValue(session)
+
     tftp.protocol.TFTP._startSession = new_startSession
 
 
@@ -124,7 +137,6 @@ def get_patched_URI():
     from twisted.web.client import URI
 
     class PatchedURI(URI):
-
         @classmethod
         def fromBytes(cls, uri, defaultPort=None):
             """Patched replacement for `twisted.web.client._URI.fromBytes`.
@@ -136,18 +148,19 @@ def get_patched_URI():
             scheme, netloc, path, params, query, fragment = http.urlparse(uri)
 
             if defaultPort is None:
-                scheme_ports = {b'https': 443, b'http': 80}
+                scheme_ports = {b"https": 443, b"http": 80}
                 defaultPort = scheme_ports.get(scheme, 80)
 
-            if b'[' in netloc:
+            if b"[" in netloc:
                 # IPv6 address.  This is complicated.
                 parsed_netloc = re.match(
-                    b'\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$',
-                    netloc)
-                host, port = parsed_netloc.group('host', 'port')
-            elif b':' in netloc:
+                    b"\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$",
+                    netloc,
+                )
+                host, port = parsed_netloc.group("host", "port")
+            elif b":" in netloc:
                 # IPv4 address or hostname, with port spec.  This is easy.
-                host, port = netloc.split(b':')
+                host, port = netloc.split(b":")
             else:
                 # IPv4 address or hostname, without port spec.
                 # This is trivial.
@@ -162,7 +175,8 @@ def get_patched_URI():
                 port = defaultPort
 
             return cls(
-                scheme, netloc, host, port, path, params, query, fragment)
+                scheme, netloc, host, port, path, params, query, fragment
+            )
 
     return PatchedURI
 
@@ -190,16 +204,14 @@ def fix_twisted_web_http_Request():
     from netaddr import IPAddress
     from netaddr.core import AddrFormatError
     from twisted.internet import address
-    from twisted.python.compat import (
-        intToBytes,
-        networkString,
-    )
+    from twisted.python.compat import intToBytes, networkString
     import twisted.web.http
     from twisted.web.server import Request
     from twisted.web.test.requesthelper import DummyChannel
 
     def new_getClientIP(self):
         from twisted.internet import address
+
         # upstream doesn't check for address.IPv6Address
         if isinstance(self.client, address.IPv4Address):
             return self.client.host
@@ -212,17 +224,17 @@ def fix_twisted_web_http_Request():
         # Unlike upstream, support/require IPv6 addresses to be
         # [ip:v6:add:ress]:port, with :port being optional.
         # IPv6 IP addresses are wrapped in [], to disambigate port numbers.
-        host = self.getHeader(b'host')
+        host = self.getHeader(b"host")
         if host:
-            if host.startswith(b'[') and b']' in host:
-                if host.find(b']') < host.rfind(b':'):
+            if host.startswith(b"[") and b"]" in host:
+                if host.find(b"]") < host.rfind(b":"):
                     # The format is: [ip:add:ress]:port.
-                    return host[:host.rfind(b':')]
+                    return host[: host.rfind(b":")]
                 else:
                     # no :port after [...]
                     return host
             # No brackets, so it must be host:port or IPv4:port.
-            return host.split(b':', 1)[0]
+            return host.split(b":", 1)[0]
         host = self.getHost().host
         try:
             if isinstance(host, str):
@@ -236,7 +248,7 @@ def fix_twisted_web_http_Request():
         if ip.version == 4:
             return networkString(host)
         else:
-            return networkString('[' + host + ']')
+            return networkString("[" + host + "]")
 
     def new_setHost(self, host, port, ssl=0):
         try:
@@ -266,7 +278,7 @@ def fix_twisted_web_http_Request():
             self.host = address.IPv6Address("TCP", host, port)
 
     request = Request(DummyChannel(), False)
-    request.client = address.IPv6Address('TCP', 'fe80::1', '80')
+    request.client = address.IPv6Address("TCP", "fe80::1", "80")
     request.setHost(b"fe80::1", 1234)
     if request.getClientIP() is None:
         # Buggy code returns None for IPv6 addresses.
@@ -274,7 +286,7 @@ def fix_twisted_web_http_Request():
     if isinstance(request.host, address.IPv4Address):
         # Buggy code calls fe80::1 an IPv4Address.
         twisted.web.http.Request.setHost = new_setHost
-    if request.getRequestHostname() == b'fe80':
+    if request.getRequestHostname() == b"fe80":
         # The fe80::1 test address above was incorrectly interpreted as
         # address='fe80', port = ':1', because it does host.split(':', 1)[0].
         twisted.web.http.Request.getRequestHostname = new_getRequestHostname
@@ -292,15 +304,15 @@ def fix_twisted_web_server_addressToTuple():
 
     def new_addressToTuple(addr):
         if isinstance(addr, address.IPv4Address):
-            return ('INET', addr.host, addr.port)
+            return ("INET", addr.host, addr.port)
         elif isinstance(addr, address.IPv6Address):
-            return ('INET6', addr.host, addr.port)
+            return ("INET6", addr.host, addr.port)
         elif isinstance(addr, address.UNIXAddress):
-            return ('UNIX', addr.name)
+            return ("UNIX", addr.name)
         else:
             return tuple(addr)
 
-    test = address.IPv6Address("TCP", "fe80::1", '80')
+    test = address.IPv6Address("TCP", "fe80::1", "80")
     try:
         twisted.web.server._addressToTuple(test)
     except TypeError:
@@ -320,7 +332,7 @@ def fix_twisted_internet_tcp():
 
     def new_resolveIPv6(ip, port):
         # Remove brackets surrounding the address, if any.
-        ip = ip.strip('[]')
+        ip = ip.strip("[]")
         return socket.getaddrinfo(ip, port, 0, 0, 0, _NUMERIC_ONLY)[0][4]
 
     twisted.internet.tcp._resolveIPv6 = new_resolveIPv6

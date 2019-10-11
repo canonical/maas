@@ -3,9 +3,7 @@
 
 """Operating System class used for custom images."""
 
-__all__ = [
-    "CaringoOS",
-    ]
+__all__ = ["CaringoOS"]
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,

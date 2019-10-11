@@ -3,25 +3,14 @@
 
 """Model definition for observed reverse-DNS entries."""
 
-__all__ = [
-    'RDNS',
-    'RDNSManager',
-]
+__all__ = ["RDNS", "RDNSManager"]
 
 
 from typing import List
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Manager,
-)
+from django.db.models import CASCADE, CharField, ForeignKey, Manager
 from maasserver import DefaultMeta
-from maasserver.fields import (
-    JSONObjectField,
-    MAASIPAddressField,
-)
+from maasserver.fields import JSONObjectField, MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import LegacyLogger
@@ -53,8 +42,11 @@ class RDNSManager(Manager):
         if entry is not None:
             log.debug(
                 "Deleted reverse DNS entry: '{ip}' (resolved to {res}).",
-                ip=entry.ip, res=", ".join(
-                    ('%r' % hostname for hostname in entry.hostnames)))
+                ip=entry.ip,
+                res=", ".join(
+                    ("%r" % hostname for hostname in entry.hostnames)
+                ),
+            )
             entry.delete()
 
     def set_current_entry(self, ip: str, results: List[str], observer):
@@ -72,16 +64,21 @@ class RDNSManager(Manager):
             # No mapping exists for this reverse-DNS entry yet, so create one
             # and then log it.
             rdns = RDNS(
-                ip=ip, hostname=preferred_hostname, hostnames=results,
-                observer=observer)
+                ip=ip,
+                hostname=preferred_hostname,
+                hostnames=results,
+                observer=observer,
+            )
             rdns.save()
             log.debug(
                 "New reverse DNS entry: '{ip}' resolves to {res}.",
-                ip=ip, res=", ".join(('%r' % result for result in results)))
+                ip=ip,
+                res=", ".join(("%r" % result for result in results)),
+            )
         else:
             # Always update the 'updated' date, so we know when the last time
             # we saw this hostname was.
-            updated = ['updated']
+            updated = ["updated"]
             # Update existing entry, being careful to note the fields that
             # have changed.
             if entry.hostname != preferred_hostname:
@@ -94,8 +91,9 @@ class RDNSManager(Manager):
             if len(updated) > 1:
                 log.debug(
                     "Reverse DNS entry updated: '{ip}' resolves to {res}.",
-                    ip=ip, res=", ".join(
-                        ('%r' % result for result in results)))
+                    ip=ip,
+                    res=", ".join(("%r" % result for result in results)),
+                )
             entry.save(update_fields=updated)
 
 
@@ -109,23 +107,26 @@ class RDNS(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         verbose_name = "Reverse-DNS entry"
         verbose_name_plural = "Reverse-DNS entries"
-        unique_together = (
-            ("ip", "observer")
-        )
+        unique_together = ("ip", "observer")
 
     objects = RDNSManager()
 
     # IP address for the reverse-DNS entry.
     ip = MAASIPAddressField(
-        unique=False, null=False, editable=False, blank=False,
-        verbose_name='IP')
+        unique=False,
+        null=False,
+        editable=False,
+        blank=False,
+        verbose_name="IP",
+    )
 
     # "Primary" reverse-DNS hostname. (Since reverse DNS lookups can return
     # more than one entry, we'll need to make an educated guess as to which
     # is the "primary".) This will be coalesced with the other data in the
     # discovery view to present the default hostname for the IP.
     hostname = CharField(
-        max_length=256, editable=True, null=True, blank=False, unique=False)
+        max_length=256, editable=True, null=True, blank=False, unique=False
+    )
 
     # List of all hostnames returned by the lookup. (Useful for
     # support/debugging, in case we guess incorrectly about the "primary"
@@ -134,5 +135,10 @@ class RDNS(CleanSave, TimestampedModel):
 
     # Region controller that observed the hostname.
     observer = ForeignKey(
-        'Node', unique=False, blank=False, null=False, editable=False,
-        on_delete=CASCADE)
+        "Node",
+        unique=False,
+        blank=False,
+        null=False,
+        editable=False,
+        on_delete=CASCADE,
+    )

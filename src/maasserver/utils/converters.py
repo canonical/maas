@@ -3,9 +3,7 @@
 
 """Conversion utilities."""
 
-__all__ = [
-    'XMLToYAML',
-    ]
+__all__ = ["XMLToYAML"]
 
 import json
 
@@ -19,23 +17,26 @@ class XMLToYAML:
 
     def __init__(self, text):
         self.text = text
-        self.new_text = ''
+        self.new_text = ""
         self.level = 0
         self.indent_spaces = 2
 
     def spaces(self):
-        return self.level * self.indent_spaces * ' '
+        return self.level * self.indent_spaces * " "
 
     def addText(self, element):
-        if '{' in element.tag:
-            new_tag = element.tag.strip('{').replace('}', ':')
+        if "{" in element.tag:
+            new_tag = element.tag.strip("{").replace("}", ":")
             self.new_text += "%s- %s:\n" % (self.spaces(), new_tag)
         else:
             self.new_text += "%s- %s:\n" % (self.spaces(), element.tag)
         self.level += 1
         for key in element.keys():
             self.new_text += "%s%s: %s\n" % (
-                self.spaces(), key, element.attrib[key])
+                self.spaces(),
+                key,
+                element.attrib[key],
+            )
 
     def recurseElement(self, element):
         for child in element.iterchildren():
@@ -61,15 +62,15 @@ def human_readable_bytes(num_bytes, include_suffix=True):
     """
     # Case is important: 1kB is 1000 bytes, whereas 1KB is 1024 bytes. See
     # https://en.wikipedia.org/wiki/Byte#Unit_symbol
-    for unit in ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']:
-        if abs(num_bytes) < 1000.0 or unit == 'YB':
+    for unit in ["bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]:
+        if abs(num_bytes) < 1000.0 or unit == "YB":
             if include_suffix:
-                if unit == 'bytes':
+                if unit == "bytes":
                     return "%.0f %s" % (num_bytes, unit)
                 else:
                     return "%.1f %s" % (num_bytes, unit)
             else:
-                if unit == 'bytes':
+                if unit == "bytes":
                     return "%.0f" % num_bytes
                 else:
                     return "%.1f" % num_bytes
@@ -85,19 +86,19 @@ def machine_readable_bytes(humanized):
 
     :param humanized: string be converted.
     """
-    if humanized == '' or humanized is None:
+    if humanized == "" or humanized is None:
         return None
-    elif humanized.endswith('K') or humanized.endswith('k'):
+    elif humanized.endswith("K") or humanized.endswith("k"):
         return int(humanized[:-1]) * 1000
-    elif humanized.endswith('M') or humanized.endswith('m'):
+    elif humanized.endswith("M") or humanized.endswith("m"):
         return int(humanized[:-1]) * 1000000
-    elif humanized.endswith('G') or humanized.endswith('g'):
+    elif humanized.endswith("G") or humanized.endswith("g"):
         return int(humanized[:-1]) * 1000000000
-    elif humanized.endswith('T') or humanized.endswith('t'):
+    elif humanized.endswith("T") or humanized.endswith("t"):
         return int(humanized[:-1]) * 1000000000000
-    elif humanized.endswith('P') or humanized.endswith('p'):
+    elif humanized.endswith("P") or humanized.endswith("p"):
         return int(humanized[:-1]) * 1000000000000000
-    elif humanized.endswith('E') or humanized.endswith('e'):
+    elif humanized.endswith("E") or humanized.endswith("e"):
         return int(humanized[:-1]) * 1000000000000000000
     else:
         return int(humanized)
@@ -126,5 +127,8 @@ def json_load_bytes(input: bytes, encoding=None):
         ``DEFAULT_CHARSET``.
     :type encoding: str
     """
-    return json.loads(input.decode(
-        settings.DEFAULT_CHARSET if encoding is None else encoding))
+    return json.loads(
+        input.decode(
+            settings.DEFAULT_CHARSET if encoding is None else encoding
+        )
+    )

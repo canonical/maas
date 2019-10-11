@@ -11,15 +11,9 @@ import json
 
 from django.db.utils import DatabaseError
 from maasserver.api.utils import extract_oauth_key_from_auth_header
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_TYPE,
-)
+from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.forms.pods import PodForm
-from maasserver.models import (
-    Node,
-    NodeMetadata,
-)
+from maasserver.models import Node, NodeMetadata
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.orm import (
     in_transaction,
@@ -28,10 +22,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from metadataserver import logger
-from metadataserver.api import (
-    add_event_to_node_event_log,
-    process_file,
-)
+from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
@@ -52,10 +43,10 @@ class StatusHandlerResource(Resource):
     isLeaf = True
 
     # Only POST operations are allowed.
-    allowedMethods = [b'POST']
+    allowedMethods = [b"POST"]
 
     # Required keys in the message.
-    requiredMessageKeys = ['event_type', 'origin', 'name', 'description']
+    requiredMessageKeys = ["event_type", "origin", "name", "description"]
 
     def __init__(self, status_worker):
         self.worker = status_worker
@@ -126,12 +117,13 @@ class StatusHandlerResource(Resource):
         # the negative to this is that the calling client will no know. To
         # them the message was accepted. This overall is okay since they are
         # just status messages.
-        authorization = request.getHeader(b'authorization')
+        authorization = request.getHeader(b"authorization")
         if not authorization:
             request.setResponseCode(401)
             return b""
         authorization = extract_oauth_key_from_auth_header(
-            authorization.decode('utf-8'))
+            authorization.decode("utf-8")
+        )
         if authorization is None:
             request.setResponseCode(401)
             return b""
@@ -145,7 +137,7 @@ class StatusHandlerResource(Resource):
             request.setResponseCode(400)
             error_msg = "Status payload must be ASCII-only: %s" % error
             logger.error(error_msg)
-            return error_msg.encode('ascii')
+            return error_msg.encode("ascii")
 
         try:
             message = json.loads(payload)
@@ -153,21 +145,20 @@ class StatusHandlerResource(Resource):
             request.setResponseCode(400)
             error_msg = "Status payload is not valid JSON:\n%s\n\n" % payload
             logger.error(error_msg)
-            return error_msg.encode('ascii')
+            return error_msg.encode("ascii")
 
         # Ensure the other required keys exist.
         missing_keys = [
-            key
-            for key in self.requiredMessageKeys
-            if key not in message
+            key for key in self.requiredMessageKeys if key not in message
         ]
         if len(missing_keys) > 0:
             request.setResponseCode(400)
             error_msg = (
-                'Missing parameter(s) %s in '
-                'status message.' % ', '.join(missing_keys))
+                "Missing parameter(s) %s in "
+                "status message." % ", ".join(missing_keys)
+            )
             logger.error(error_msg)
-            return error_msg.encode('ascii')
+            return error_msg.encode("ascii")
 
         # Queue the message with its authorization in the status worker.
         d = self.worker.queueMessage(authorization, message)
@@ -188,27 +179,32 @@ POD_CREATION_ERROR = (
 
 def _create_pod_for_deployment(node):
     virsh_password_meta = NodeMetadata.objects.filter(
-        node=node, key="virsh_password").first()
+        node=node, key="virsh_password"
+    ).first()
     if virsh_password_meta is None:
         node.mark_failed(
-            comment="Failed to deploy KVM: Password not found.", commit=False)
+            comment="Failed to deploy KVM: Password not found.", commit=False
+        )
     else:
         virsh_password = virsh_password_meta.value
         virsh_password_meta.delete()
         # XXX: Should find the best IP to communicate with, given what the rack
         # controller can access, or use the boot interface IP address.
         ip = node.ip_addresses()[0]
-        if ':' in ip:
+        if ":" in ip:
             ip = "[%s]" % ip
         power_address = "qemu+ssh://virsh@%s/system" % ip
-        pod_form = PodForm(data=dict(
-            type="virsh",
-            name=node.hostname,
-            power_address=power_address,
-            power_pass=virsh_password,
-            zone=node.zone.name,
-            pool=node.pool.name,
-        ), user=node.owner)
+        pod_form = PodForm(
+            data=dict(
+                type="virsh",
+                name=node.hostname,
+                power_address=power_address,
+                power_pass=virsh_password,
+                zone=node.zone.name,
+                pool=node.pool.name,
+            ),
+            user=node.owner,
+        )
         if pod_form.is_valid():
             try:
                 pod_form.save()
@@ -239,7 +235,8 @@ class StatusWorkerService(TimerService, object):
     def __init__(self, dbtasks, clock=reactor):
         # Call self._tryUpdateNodes() every self.check_interval.
         super(StatusWorkerService, self).__init__(
-            self.check_interval, self._tryUpdateNodes)
+            self.check_interval, self._tryUpdateNodes
+        )
         self.dbtasks = dbtasks
         self.clock = clock
         self.queue = defaultdict(list)
@@ -260,11 +257,9 @@ class StatusWorkerService(TimerService, object):
         from its authorisation.
         """
         keys = NodeKey.objects.filter(
-            key__in=list(queue.keys())).select_related('node')
-        return [
-            (key.node, queue[key.key])
-            for key in keys
-        ]
+            key__in=list(queue.keys())
+        ).select_related("node")
+        return [(key.node, queue[key.key]) for key in keys]
 
     def _processMessagesLater(self, tasks):
         # Move all messages on the queue off onto the database tasks queue.
@@ -281,7 +276,8 @@ class StatusWorkerService(TimerService, object):
         if in_transaction():
             raise TransactionManagementError(
                 "_processMessages must be called from "
-                "outside of a transaction.")
+                "outside of a transaction."
+            )
         else:
             # Here we're in a database thread, with a database connection.
             for idx, message in enumerate(messages):
@@ -295,7 +291,8 @@ class StatusWorkerService(TimerService, object):
                     log.err(
                         None,
                         "Failed to process message "
-                        "for node: %s" % node.hostname)
+                        "for node: %s" % node.hostname,
+                    )
 
     @transactional
     def _processMessage(self, node, message):
@@ -305,57 +302,78 @@ class StatusWorkerService(TimerService, object):
         except Node.DoesNotExist:
             return False
 
-        event_type = message['event_type']
-        origin = message['origin']
-        activity_name = message['name']
-        description = message['description']
-        result = message.get('result', None)
+        event_type = message["event_type"]
+        origin = message["origin"]
+        activity_name = message["name"]
+        description = message["description"]
+        result = message.get("result", None)
         # LP:1701352 - If no exit code is given by the client default to
         # 0(pass) unless the signal is fail then set to 1(failure). This allows
         # a Curtin failure to cause the ScriptResult to fail.
-        failed = result in ['FAIL', 'FAILURE']
+        failed = result in ["FAIL", "FAILURE"]
         default_exit_status = 1 if failed else 0
 
         # Add this event to the node event log if 'start' or a 'failure'.
-        if event_type == 'start' or failed:
+        if event_type == "start" or failed:
             add_event_to_node_event_log(
-                node, origin, activity_name, description, event_type, result,
-                message['timestamp'])
+                node,
+                origin,
+                activity_name,
+                description,
+                event_type,
+                result,
+                message["timestamp"],
+            )
 
         # Group files together with the ScriptResult they belong.
         results = {}
-        for sent_file in message.get('files', []):
+        for sent_file in message.get("files", []):
             # Set the result type according to the node's status.
             if node.status in (
-                    NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING):
+                NODE_STATUS.TESTING,
+                NODE_STATUS.FAILED_TESTING,
+            ):
                 script_set = node.current_testing_script_set
-            elif (node.status in (
+            elif (
+                node.status
+                in (
                     NODE_STATUS.COMMISSIONING,
-                    NODE_STATUS.FAILED_COMMISSIONING) or
-                    node.node_type != NODE_TYPE.MACHINE):
+                    NODE_STATUS.FAILED_COMMISSIONING,
+                )
+                or node.node_type != NODE_TYPE.MACHINE
+            ):
                 script_set = node.current_commissioning_script_set
             elif node.status in (
-                    NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED,
-                    NODE_STATUS.FAILED_DEPLOYMENT):
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+            ):
                 script_set = node.current_installation_script_set
             else:
                 raise ValueError(
-                    "Invalid status for saving files: %d" % node.status)
+                    "Invalid status for saving files: %d" % node.status
+                )
 
-            script_name = sent_file['path']
-            encoding = sent_file.get('encoding')
-            content = sent_file.get('content')
-            compression = sent_file.get('compression')
+            script_name = sent_file["path"]
+            encoding = sent_file.get("encoding")
+            content = sent_file.get("content")
+            compression = sent_file.get("compression")
             # Only capture files which has sent content. This occurs when
             # Curtin is instructed to post the error_tarfile and no error
             # has occured(LP:1772118). Empty files are still captured as
             # they are sent as the empty string
             if content is not None:
                 content = self._retrieve_content(
-                    compression, encoding, content)
+                    compression, encoding, content
+                )
                 process_file(
-                    results, script_set, script_name, content, sent_file,
-                    default_exit_status)
+                    results,
+                    script_set,
+                    script_name,
+                    content,
+                    sent_file,
+                    default_exit_status,
+                )
 
         # Commit results to the database.
         for script_result, args in results.items():
@@ -363,22 +381,27 @@ class StatusWorkerService(TimerService, object):
 
         # At the end of a top-level event, we change the node status.
         save_node = False
-        if self._is_top_level(activity_name) and event_type == 'finish':
+        if self._is_top_level(activity_name) and event_type == "finish":
             if node.status == NODE_STATUS.COMMISSIONING:
                 # cloud-init may send a failure message if a script reboots
                 # the system. If a script is running which may_reboot ignore
                 # the signal.
                 if failed:
                     script_set = node.current_commissioning_script_set
-                    if (script_set is None or not
-                            script_set.scriptresult_set.filter(
-                                status=SCRIPT_STATUS.RUNNING,
-                                script__may_reboot=True).exists()):
+                    if (
+                        script_set is None
+                        or not script_set.scriptresult_set.filter(
+                            status=SCRIPT_STATUS.RUNNING,
+                            script__may_reboot=True,
+                        ).exists()
+                    ):
                         node.mark_failed(
                             comment="Commissioning failed, cloud-init "
                             "reported a failure (refer to the event log for "
-                            "more information)", commit=False,
-                            script_result_status=SCRIPT_STATUS.ABORTED)
+                            "more information)",
+                            commit=False,
+                            script_result_status=SCRIPT_STATUS.ABORTED,
+                        )
                         save_node = True
             elif node.status == NODE_STATUS.DEPLOYING:
                 # XXX: when activity_name == moudles-config, this currently
@@ -391,43 +414,59 @@ class StatusWorkerService(TimerService, object):
                 if failed and not node.install_kvm:
                     node.mark_failed(
                         comment="Installation failed (refer to the "
-                                "installation log for more information).",
-                        commit=False)
+                        "installation log for more information).",
+                        commit=False,
+                    )
                     save_node = True
-                elif (not failed and activity_name == "modules-final" and
-                      node.install_kvm and node.agent_name == "maas-kvm-pod"):
+                elif (
+                    not failed
+                    and activity_name == "modules-final"
+                    and node.install_kvm
+                    and node.agent_name == "maas-kvm-pod"
+                ):
                     save_node = True
                     _create_pod_for_deployment(node)
             elif node.status == NODE_STATUS.DISK_ERASING:
                 if failed:
                     node.mark_failed(
-                        comment="Failed to erase disks.", commit=False)
+                        comment="Failed to erase disks.", commit=False
+                    )
                     save_node = True
             # Deallocate the node if we enter any terminal state.
             if node.node_type == NODE_TYPE.MACHINE and node.status in [
-                    NODE_STATUS.READY,
-                    NODE_STATUS.FAILED_COMMISSIONING]:
+                NODE_STATUS.READY,
+                NODE_STATUS.FAILED_COMMISSIONING,
+            ]:
                 node.status_expires = None
                 node.owner = None
-                node.error = 'failed: %s' % description
+                node.error = "failed: %s" % description
                 save_node = True
-        elif self._is_top_level(activity_name) and event_type == 'start':
-            if (node.status == NODE_STATUS.DEPLOYING and
-                    activity_name == 'cmd-install' and origin == 'curtin'):
+        elif self._is_top_level(activity_name) and event_type == "start":
+            if (
+                node.status == NODE_STATUS.DEPLOYING
+                and activity_name == "cmd-install"
+                and origin == "curtin"
+            ):
                 script_set = node.current_installation_script_set
                 script_result = script_set.find_script_result(
-                    script_name=CURTIN_INSTALL_LOG)
+                    script_name=CURTIN_INSTALL_LOG
+                )
                 script_result.status = SCRIPT_STATUS.RUNNING
-                script_result.save(update_fields=['status'])
+                script_result.save(update_fields=["status"])
 
         # Reset status_expires when Curtin signals its starting or finishing
         # early commands. This allows users to define early or late commands
         # which take up to 40 minutes to run.
-        if (origin == 'curtin' and event_type in ['start', 'finish'] and
-                activity_name in [
-                    'cmd-install/stage-early',
-                    'cmd-install',
-                    'cmd-install/stage-late']):
+        if (
+            origin == "curtin"
+            and event_type in ["start", "finish"]
+            and activity_name
+            in [
+                "cmd-install/stage-early",
+                "cmd-install",
+                "cmd-install/stage-late",
+            ]
+        ):
             node.reset_status_expires()
             save_node = True
 
@@ -440,22 +479,22 @@ class StatusWorkerService(TimerService, object):
         # Select the appropriate decompressor.
         if compression is None:
             decompress = lambda s: s
-        elif compression == 'bzip2':
+        elif compression == "bzip2":
             decompress = bz2.decompress
         else:
-            raise ValueError('Invalid compression: %s' % compression)
+            raise ValueError("Invalid compression: %s" % compression)
 
         # Select the appropriate decoder.
-        if encoding == 'base64':
+        if encoding == "base64":
             decode = base64.decodebytes
         else:
-            raise ValueError('Invalid encoding: %s' % encoding)
+            raise ValueError("Invalid encoding: %s" % encoding)
 
         return decompress(decode(content.encode("ascii")))
 
     def _is_top_level(self, activity_name):
         """Top-level events do not have slashes in their names."""
-        return '/' not in activity_name
+        return "/" not in activity_name
 
     def _processMessageNow(self, authorization, message):
         # This should be called in a non-reactor thread with a pre-existing
@@ -463,11 +502,13 @@ class StatusWorkerService(TimerService, object):
         if in_transaction():
             raise TransactionManagementError(
                 "_processMessageNow must be called from "
-                "outside of a transaction.")
+                "outside of a transaction."
+            )
         else:
             try:
                 node = transactional(NodeKey.objects.get_node_for_key)(
-                    authorization)
+                    authorization
+                )
             except NodeKey.DoesNotExist:
                 # The node that should get this message has already had its
                 # owner cleared or changed and this message cannot be saved.
@@ -480,41 +521,51 @@ class StatusWorkerService(TimerService, object):
         """Queue message for processing."""
         # Ensure a timestamp exists in the message and convert it to a
         # datetime object. This is used for the time for the event message.
-        timestamp = message.get('timestamp', None)
+        timestamp = message.get("timestamp", None)
         if timestamp is not None:
-            message['timestamp'] = datetime.utcfromtimestamp(
-                message['timestamp'])
+            message["timestamp"] = datetime.utcfromtimestamp(
+                message["timestamp"]
+            )
         else:
-            message['timestamp'] = datetime.utcnow()
+            message["timestamp"] = datetime.utcnow()
 
         # Determine if this messsage needs to be processed immediately.
         is_starting_event = (
-            self._is_top_level(message['name']) and
-            message['name'] == 'cmd-install' and
-            message['event_type'] == 'start' and
-            message['origin'] == 'curtin')
+            self._is_top_level(message["name"])
+            and message["name"] == "cmd-install"
+            and message["event_type"] == "start"
+            and message["origin"] == "curtin"
+        )
         is_final_event = (
-            self._is_top_level(message['name']) and
-            message['event_type'] == 'finish')
-        has_files = len(message.get('files', [])) > 0
+            self._is_top_level(message["name"])
+            and message["event_type"] == "finish"
+        )
+        has_files = len(message.get("files", [])) > 0
         # Process Curtin early/late start/finish messages so that
         # status_expires is reset allowing them to take up to 40 min.
         is_curtin_early_late = (
-            message['name'] in [
-                'cmd-install/stage-early',
-                'cmd-install/stage-late'
-                ] and
-            message['event_type'] in ['start', 'finish'] and
-            message['origin'] == 'curtin')
+            message["name"]
+            in ["cmd-install/stage-early", "cmd-install/stage-late"]
+            and message["event_type"] in ["start", "finish"]
+            and message["origin"] == "curtin"
+        )
         is_status_message_event = (
-            message['name'] in EVENT_STATUS_MESSAGES and
-            message['event_type'] == 'start')
-        if (is_starting_event or is_final_event or has_files or
-                is_curtin_early_late or is_status_message_event):
+            message["name"] in EVENT_STATUS_MESSAGES
+            and message["event_type"] == "start"
+        )
+        if (
+            is_starting_event
+            or is_final_event
+            or has_files
+            or is_curtin_early_late
+            or is_status_message_event
+        ):
             d = deferToDatabase(
-                self._processMessageNow, authorization, message)
+                self._processMessageNow, authorization, message
+            )
             d.addErrback(
-                log.err, "Failed to process status message instantly.")
+                log.err, "Failed to process status message instantly."
+            )
             return d
         else:
             self.queue[authorization].append(message)

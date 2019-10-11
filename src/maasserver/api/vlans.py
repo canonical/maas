@@ -8,33 +8,30 @@ from django.http import Http404
 from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.vlan import VLANForm
-from maasserver.models import (
-    Fabric,
-    Space,
-    VLAN,
-)
+from maasserver.models import Fabric, Space, VLAN
 from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
 DISPLAYED_VLAN_FIELDS = (
-    'id',
-    'name',
-    'vid',
-    'fabric',
-    'fabric_id',
-    'mtu',
-    'primary_rack',
-    'secondary_rack',
-    'dhcp_on',
-    'external_dhcp',
-    'relay_vlan',
-    'space',
+    "id",
+    "name",
+    "vid",
+    "fabric",
+    "fabric_id",
+    "mtu",
+    "primary_rack",
+    "secondary_rack",
+    "dhcp_on",
+    "external_dhcp",
+    "relay_vlan",
+    "space",
 )
 
 
 class VlansHandler(OperationsHandler):
     """Manage VLANs on a fabric."""
+
     api_doc_section_name = "VLANs"
     update = delete = None
     fields = DISPLAYED_VLAN_FIELDS
@@ -42,7 +39,7 @@ class VlansHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('vlans_handler', ["fabric_id"])
+        return ("vlans_handler", ["fabric_id"])
 
     def read(self, request, fabric_id):
         """@description-title List VLANs
@@ -62,7 +59,8 @@ class VlansHandler(OperationsHandler):
             Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NodePermission.view)
+            fabric_id, request.user, NodePermission.view
+        )
         return fabric.vlan_set.all()
 
     def create(self, request, fabric_id):
@@ -96,7 +94,8 @@ class VlansHandler(OperationsHandler):
             Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NodePermission.admin)
+            fabric_id, request.user, NodePermission.admin
+        )
         form = VLANForm(fabric=fabric, data=request.data)
         if form.is_valid():
             return form.save()
@@ -106,6 +105,7 @@ class VlansHandler(OperationsHandler):
 
 class VlanHandler(OperationsHandler):
     """Manage a VLAN on a fabric."""
+
     api_doc_section_name = "VLAN"
     create = update = None
     model = VLAN
@@ -116,11 +116,11 @@ class VlanHandler(OperationsHandler):
         # See the comment in NodeHandler.resource_uri.
         if len(args) == 1 and isinstance(args[0], VLAN):
             # If a VLAN is passed in, resolve the URL directly to /vlans/<id>.
-            return ('vlanid_handler', [args[0].id])
+            return ("vlanid_handler", [args[0].id])
         else:
             # For context help, we want to document the user-friendly (two
             # parameter) way to access the VLAN API.
-            return ('vlan_handler', ["fabric_id", "vid"])
+            return ("vlan_handler", ["fabric_id", "vid"])
 
     @classmethod
     def primary_rack(handler, vlan):
@@ -154,9 +154,9 @@ class VlanHandler(OperationsHandler):
         return vlan.get_name()
 
     def _get_vlan(self, user, permission, **kwargs):
-        vlan_id = kwargs.get('vlan_id')
-        vid = kwargs.get('vid')
-        fabric_id = kwargs.get('fabric_id')
+        vlan_id = kwargs.get("vlan_id")
+        vid = kwargs.get("vid")
+        fabric_id = kwargs.get("fabric_id")
         if vlan_id is not None:
             # Accessing a specific VLAN by ID. First try getting the VLAN,
             # then check if the user has permission for its associated Fabric.
@@ -170,12 +170,13 @@ class VlanHandler(OperationsHandler):
         elif fabric_id is not None and vid is not None:
             # User passed in a URL like /fabrics/<fabric_id>/vlans/<vid>.
             fabric = Fabric.objects.get_fabric_or_404(
-                fabric_id, user, permission)
+                fabric_id, user, permission
+            )
             vlan = VLAN.objects.get_object_by_specifiers_or_raise(
-                vid, fabric=fabric)
+                vid, fabric=fabric
+            )
         else:
-            raise Http404(
-                "A vlan_id or (fabric_id, vid) pair is required.")
+            raise Http404("A vlan_id or (fabric_id, vid) pair is required.")
         return vlan
 
     def read(self, request, **kwargs):
@@ -254,8 +255,8 @@ class VlanHandler(OperationsHandler):
         # immutable, so we must first copy its contents into our own dict.
         for k, v in request.data.items():
             data[k] = v
-        if 'space' in data and data['space'] == Space.UNDEFINED:
-            data['space'] = ''
+        if "space" in data and data["space"] == Space.UNDEFINED:
+            data["space"] = ""
         form = VLANForm(instance=vlan, data=data)
         if form.is_valid():
             return form.save()

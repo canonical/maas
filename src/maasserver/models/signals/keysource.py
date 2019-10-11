@@ -3,15 +3,10 @@
 
 """Delete KeySource when no more keys are present."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from django.db.models.signals import post_delete
-from maasserver.models import (
-    KeySource,
-    SSHKey,
-)
+from maasserver.models import KeySource, SSHKey
 from maasserver.utils.signals import SignalsManager
 
 
@@ -32,7 +27,8 @@ def post_delete_keysource_when_no_more_keys(sender, instance, **kwargs):
 
 
 signals.watch(
-    post_delete, post_delete_keysource_when_no_more_keys, sender=SSHKey)
+    post_delete, post_delete_keysource_when_no_more_keys, sender=SSHKey
+)
 
 
 # Enable all signals by default.

@@ -2,16 +2,8 @@ from collections import defaultdict
 from functools import partial
 import http.client
 import threading
-from typing import (
-    Mapping,
-    Sequence,
-    Union,
-)
-from urllib.parse import (
-    parse_qs,
-    quote,
-    urlparse,
-)
+from typing import Mapping, Sequence, Union
+from urllib.parse import parse_qs, quote, urlparse
 
 import attr
 from maasserver.macaroon_auth import (
@@ -21,10 +13,7 @@ from maasserver.macaroon_auth import (
     MacaroonClient,
     UserDetails,
 )
-from maasserver.models import (
-    Config,
-    ResourcePool,
-)
+from maasserver.models import Config, ResourcePool
 
 
 class SyncConflictError(Exception):
@@ -45,6 +34,7 @@ class Resource:
 class AllResourcesType:
     """Class that represents all resources."""
 
+
 # Represents access to all resources of the requested resource type.
 ALL_RESOURCES = AllResourcesType()
 
@@ -54,11 +44,11 @@ ResourcesResultType = Union[AllResourcesType, Sequence[int]]
 class RBACClient(MacaroonClient):
     """A client for RBAC API."""
 
-    API_BASE_URL = '/api/service/v1'
+    API_BASE_URL = "/api/service/v1"
 
     def __init__(self, url: str = None, auth_info: AuthInfo = None):
         if url is None:
-            url = Config.objects.get_config('rbac_url')
+            url = Config.objects.get_config("rbac_url")
         if auth_info is None:
             auth_info = get_auth_info()
         super().__init__(auth_info=auth_info, url=url)
@@ -66,32 +56,38 @@ class RBACClient(MacaroonClient):
     def _get_resource_type_url(self, resource_type: str):
         """Return the URL for `resource_type`."""
         return self._url + quote(
-            '{}/resources/{}'.format(self.API_BASE_URL, resource_type))
+            "{}/resources/{}".format(self.API_BASE_URL, resource_type)
+        )
 
     def get_user_details(self, username: str) -> UserDetails:
         """Return details about a user."""
         url = self._url + quote(
-            '{}/user/{}'.format(self.API_BASE_URL, username))
-        details = self._request('GET', url)
+            "{}/user/{}".format(self.API_BASE_URL, username)
+        )
+        details = self._request("GET", url)
         return UserDetails(
-            username=details['username'],
-            fullname=details.get('name', ''),
-            email=details.get('email', ''))
+            username=details["username"],
+            fullname=details.get("name", ""),
+            email=details.get("email", ""),
+        )
 
     def get_resources(self, resource_type: str) -> Sequence[Resource]:
         """Return list of resources with `resource_type`."""
         result = self._request(
-            'GET', self._get_resource_type_url(resource_type))
+            "GET", self._get_resource_type_url(resource_type)
+        )
         return [
-            Resource(identifier=res['identifier'], name=res['name'])
+            Resource(identifier=res["identifier"], name=res["name"])
             for res in result
         ]
 
     def update_resources(
-            self, resource_type: str,
-            updates: Sequence[Resource] = None,
-            removals: Sequence[int] = None,
-            last_sync_id: str = None):
+        self,
+        resource_type: str,
+        updates: Sequence[Resource] = None,
+        removals: Sequence[int] = None,
+        last_sync_id: str = None,
+    ):
         """Put all the resources for `resource_type`.
 
         This replaces all the resources for `resource_type`.
@@ -100,34 +96,30 @@ class RBACClient(MacaroonClient):
         resources_removals = []
         if updates:
             resources_updates = [
-                {
-                    'identifier': str(res.identifier),
-                    'name': res.name,
-                }
+                {"identifier": str(res.identifier), "name": res.name}
                 for res in updates
             ]
         if removals and last_sync_id:
             resources_removals = [str(id) for id in removals]
         data = {
-            'last-sync-id': last_sync_id,
-            'updates': resources_updates,
-            'removals': resources_removals}
+            "last-sync-id": last_sync_id,
+            "updates": resources_updates,
+            "removals": resources_removals,
+        }
         try:
             result = self._request(
-                'POST', self._get_resource_type_url(resource_type),
-                json=data)
+                "POST", self._get_resource_type_url(resource_type), json=data
+            )
         except APIError as exc:
             if exc.status_code == int(http.client.CONFLICT) and last_sync_id:
                 # Notify the caller of the conflict explicitly.
                 raise SyncConflictError()
             raise
-        return result['sync-id']
+        return result["sync-id"]
 
     def allowed_for_user(
-            self,
-            resource_type: str,
-            user: str,
-            *permissions: Sequence[str]) -> ResourcesResultType:
+        self, resource_type: str, user: str, *permissions: Sequence[str]
+    ) -> ResourcesResultType:
         """Return the resource identifiers that `user` can access with
         `permissions`.
 
@@ -135,16 +127,17 @@ class RBACClient(MacaroonClient):
         `resource_type` that the user can access. An object of `ALL_RESOURCES`
         means the user can access all resources of that type.
         """
-        url = (
-            self._get_resource_type_url(resource_type) +
-            '/allowed-for-user?u={}&{}'.format(
-                quote(user), '&'.join([
-                    'p=%s' % quote(permission)
-                    for permission in permissions
-                ])))
-        result = self._request('GET', url)
+        url = self._get_resource_type_url(
+            resource_type
+        ) + "/allowed-for-user?u={}&{}".format(
+            quote(user),
+            "&".join(
+                ["p=%s" % quote(permission) for permission in permissions]
+            ),
+        )
+        result = self._request("GET", url)
         for permission, res in result.items():
-            if res == ['']:
+            if res == [""]:
                 result[permission] = ALL_RESOURCES
             else:
                 result[permission] = [int(idnt) for idnt in res]
@@ -166,14 +159,15 @@ class FakeResourceStore:
 
     def add_pool(self, pool):
         """Register a pool with RBAC."""
-        self.resources['resource-pool'].append(
-            Resource(identifier=str(pool.id), name=pool.name))
+        self.resources["resource-pool"].append(
+            Resource(identifier=str(pool.id), name=pool.name)
+        )
 
     def allow(self, username, pool, permission):
         """Add a policy for a user having a permission on a pool."""
-        identifier = '' if pool is ALL_RESOURCES else str(pool.id)
+        identifier = "" if pool is ALL_RESOURCES else str(pool.id)
         user_permissions = self.allowed[username]
-        user_resources = user_permissions['resource-pool']
+        user_resources = user_permissions["resource-pool"]
         user_resources[permission].append(identifier)
 
 
@@ -187,20 +181,20 @@ class FakeRBACClient(RBACClient):
 
     def __init__(self, url: str = None, auth_info: AuthInfo = None):
         if url is None:
-            url = Config.objects.get_config('rbac_url')
+            url = Config.objects.get_config("rbac_url")
         self._url = url
         self._auth_info = auth_info
         self.store = FakeResourceStore()
 
     def _request(self, method, url):
         parsed = urlparse(url)
-        path_parts = parsed.path.split('/')
-        assert path_parts[:5] == ['', 'api', 'service', 'v1', 'resources']
-        if method.upper() == 'GET':
+        path_parts = parsed.path.split("/")
+        assert path_parts[:5] == ["", "api", "service", "v1", "resources"]
+        if method.upper() == "GET":
             resource_type, action = path_parts[5:7]
             query = parse_qs(parsed.query)
-            [user] = query['u']
-            permissions = query['p']
+            [user] = query["u"]
+            permissions = query["p"]
             user_resources = self.store.allowed.get(user, None)
             if user_resources is None:
                 return {}
@@ -209,14 +203,16 @@ class FakeRBACClient(RBACClient):
             for permission in permissions:
                 pool_identifiers = user_permissions.get(permission, [])
                 result[permission] = (
-                    [''] if '' in pool_identifiers else pool_identifiers)
+                    [""] if "" in pool_identifiers else pool_identifiers
+                )
             return result
 
     def get_user_details(self, username):
         return UserDetails(
             username=username,
-            fullname='User username',
-            email=username + '@example.com')
+            fullname="User username",
+            email=username + "@example.com",
+        )
 
 
 # Set when there is no client for the current request.
@@ -235,17 +231,17 @@ class RBACWrapper:
 
     def _get_rbac_url(self):
         """Return the configured RBAC url."""
-        return Config.objects.get_config('rbac_url')
+        return Config.objects.get_config("rbac_url")
 
     @property
     def client(self):
         """Get thread-local client."""
         # Get the current cleared status and reset it to False for the
         # next request on this thread.
-        cleared = getattr(self._store, 'cleared', False)
+        cleared = getattr(self._store, "cleared", False)
         self._store.cleared = False
 
-        client = getattr(self._store, 'client', None)
+        client = getattr(self._store, "client", None)
         if client is None:
             url = self._get_rbac_url()
             if url:
@@ -295,10 +291,10 @@ class RBACWrapper:
 
     def get_cache(self, resource, user, default=dict):
         """Return the cache for the `resource` and `user`."""
-        cache = getattr(self._store, 'cache', None)
+        cache = getattr(self._store, "cache", None)
         if cache is None:
             cache = {}
-            setattr(self._store, 'cache', cache)
+            setattr(self._store, "cache", cache)
         key = (resource, user)
         if key in cache:
             return cache[key]
@@ -308,12 +304,12 @@ class RBACWrapper:
 
     def clear_cache(self):
         """Clears the entire cache."""
-        if hasattr(self._store, 'cache'):
-            delattr(self._store, 'cache')
+        if hasattr(self._store, "cache"):
+            delattr(self._store, "cache")
 
     def get_resource_pool_ids(
-            self, user: str,
-            *permissions: Sequence[str]) -> Mapping[str, ResourcesResultType]:
+        self, user: str, *permissions: Sequence[str]
+    ) -> Mapping[str, ResourcesResultType]:
         """Get the resource pools ids that given user has the given
         permission on.
 
@@ -321,12 +317,12 @@ class RBACWrapper:
         @param permission: A permission that the user should
             have on the resource pool.
         """
-        results = self._get_resource_pool_identifiers(
-            user, *permissions)
+        results = self._get_resource_pool_identifiers(user, *permissions)
         for permission, result in results.items():
             if result is ALL_RESOURCES:
                 results[permission] = list(
-                    ResourcePool.objects.all().values_list('id', flat=True))
+                    ResourcePool.objects.all().values_list("id", flat=True)
+                )
             else:
                 results[permission] = [int(idnt) for idnt in result]
         return results
@@ -339,8 +335,8 @@ class RBACWrapper:
 
         @param user: The user name of the user.
         """
-        pool_identifiers = self._get_resource_pool_identifiers(user, 'edit')
-        return pool_identifiers['edit'] is ALL_RESOURCES
+        pool_identifiers = self._get_resource_pool_identifiers(user, "edit")
+        return pool_identifiers["edit"] is ALL_RESOURCES
 
     def can_delete_resource_pool(self, user: str) -> bool:
         """Return True if the `user` can delete a resource pool.
@@ -350,12 +346,12 @@ class RBACWrapper:
 
         @param user: The user name of the user.
         """
-        pool_identifiers = self._get_resource_pool_identifiers(user, 'edit')
-        return pool_identifiers['edit'] is ALL_RESOURCES
+        pool_identifiers = self._get_resource_pool_identifiers(user, "edit")
+        return pool_identifiers["edit"] is ALL_RESOURCES
 
     def _get_resource_pool_identifiers(
-            self, user: str,
-            *permissions: Sequence[str]) -> Mapping[str, ResourcesResultType]:
+        self, user: str, *permissions: Sequence[str]
+    ) -> Mapping[str, ResourcesResultType]:
         """Get the resource pool identifiers from RBAC.
 
         Uses the thread-local cache so only one request is made to RBAC per
@@ -365,7 +361,7 @@ class RBACWrapper:
         @param permission: A permission that the user should
             have on the resource pool.
         """
-        cache = self.get_cache('resource-pool', user)
+        cache = self.get_cache("resource-pool", user)
         results, missing = {}, []
         for permission in permissions:
             identifiers = cache.get(permission, None)
@@ -376,7 +372,8 @@ class RBACWrapper:
 
         if missing:
             fetched = self.client.allowed_for_user(
-                'resource-pool', user, *missing)
+                "resource-pool", user, *missing
+            )
             for permission in missing:
                 identifiers = fetched.get(permission, {})
                 cache[permission] = results[permission] = identifiers
@@ -390,7 +387,7 @@ rbac = RBACWrapper()
 class RBACUserClient(MacaroonClient):
     """A client for the RBAC user API."""
 
-    API_BASE_URL = '/api/rbac/v1'
+    API_BASE_URL = "/api/rbac/v1"
 
     def __init__(self, url):
         # no auth info is passed as this is meant for interactive use
@@ -400,40 +397,47 @@ class RBACUserClient(MacaroonClient):
     def create_service(self, name):
         """Create a MAAS service with the specified name."""
         maas = self._get_maas_product()
-        data = {'name': name, 'product': {'$ref': maas['$uri']}}
-        return self._api_request('POST', '/service', json=data)
+        data = {"name": name, "product": {"$ref": maas["$uri"]}}
+        return self._api_request("POST", "/service", json=data)
 
     def get_registerable_services(self):
         """Return MAAS services that can be registered by the user."""
         maas = self._get_maas_product()
-        services = self._api_request('GET', '/service/registerable')
+        services = self._api_request("GET", "/service/registerable")
         return [
-            service for service in services
-            if service['product']['$ref'] == maas['$uri']]
+            service
+            for service in services
+            if service["product"]["$ref"] == maas["$uri"]
+        ]
 
     def register_service(self, service_uri, public_key):
         """Register the specified service with the public key."""
         return self._request(
-            'POST', self._url + service_uri + '/credentials',
-            json={'public-key': public_key})
+            "POST",
+            self._url + service_uri + "/credentials",
+            json={"public-key": public_key},
+        )
 
     def _get_maas_product(self):
         """Return details for the maas product."""
         if self._maas_product is None:
-            products = self._api_request('GET', '/product')
+            products = self._api_request("GET", "/product")
             [maas] = [
-                product for product in products if product['label'] == 'maas']
+                product for product in products if product["label"] == "maas"
+            ]
             self._maas_product = maas
         return self._maas_product
 
     def _api_request(self, method, path, json=None, status_code=200):
         return self._request(
-            method, self._url + self.API_BASE_URL + path,
-            json=json, status_code=status_code)
+            method,
+            self._url + self.API_BASE_URL + path,
+            json=json,
+            status_code=status_code,
+        )
 
 
 class FakeRBACUserClient(RBACUserClient):
-
     def __init__(self):
         self.services = []
         self.products = []
@@ -441,10 +445,11 @@ class FakeRBACUserClient(RBACUserClient):
 
     def create_service(self, name):
         maas = {
-            'name': 'maas',
-            '$uri': '/api/rbac/v1/service/4',
-            'pending': True,
-            'product': {'$ref' '/api/rbac/v1/product/2'}}
+            "name": "maas",
+            "$uri": "/api/rbac/v1/service/4",
+            "pending": True,
+            "product": {"$ref" "/api/rbac/v1/product/2"},
+        }
         self.services.append(maas)
         return maas
 
@@ -457,5 +462,6 @@ class FakeRBACUserClient(RBACUserClient):
     def register_service(self, service_uri, public_key):
         self.registered_services.append(service_uri)
         return {
-            'url': 'http://auth.example.com',
-            'username': 'u-{}'.format(len(self.registered_services))}
+            "url": "http://auth.example.com",
+            "username": "u-{}".format(len(self.registered_services)),
+        }

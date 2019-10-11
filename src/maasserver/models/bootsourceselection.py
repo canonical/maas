@@ -3,20 +3,12 @@
 
 """Model for filtering a selection of boot resources."""
 
-__all__ = [
-    'BootSourceSelection',
-    ]
+__all__ = ["BootSourceSelection"]
 
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Manager,
-    TextField,
-)
+from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -32,20 +24,28 @@ class BootSourceSelection(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         unique_together = ("boot_source", "os", "release")
 
     objects = BootSourceSelectionManager()
 
     boot_source = ForeignKey(
-        'maasserver.BootSource', blank=False, on_delete=CASCADE)
+        "maasserver.BootSource", blank=False, on_delete=CASCADE
+    )
 
     os = CharField(
-        max_length=20, blank=True, default='',
-        help_text="The operating system for which to import resources.")
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="The operating system for which to import resources.",
+    )
 
     release = CharField(
-        max_length=20, blank=True, default='',
-        help_text="The OS release for which to import resources.")
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="The OS release for which to import resources.",
+    )
 
     arches = ArrayField(TextField(), blank=True, null=True, default=list)
 
@@ -61,17 +61,22 @@ class BootSourceSelection(CleanSave, TimestampedModel):
             "arches": self.arches,
             "subarches": self.subarches,
             "labels": self.labels,
-            }
+        }
 
     def delete(self, *args, **kwargs):
         commissioning_osystem = Config.objects.get_config(
-            name='commissioning_osystem')
+            name="commissioning_osystem"
+        )
         commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
-        if (commissioning_osystem == self.os and
-                commissioning_series == self.release):
+            name="commissioning_distro_series"
+        )
+        if (
+            commissioning_osystem == self.os
+            and commissioning_series == self.release
+        ):
             raise ValidationError(
-                'Unable to delete %s %s. '
-                'It is the operating system used in ephemeral environments.')
+                "Unable to delete %s %s. "
+                "It is the operating system used in ephemeral environments."
+            )
         else:
             return super().delete(*args, **kwargs)

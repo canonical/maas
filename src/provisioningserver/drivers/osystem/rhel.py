@@ -3,9 +3,7 @@
 
 """RHELOS Operating System."""
 
-__all__ = [
-    "RHELOS",
-    ]
+__all__ = ["RHELOS"]
 
 import re
 
@@ -18,16 +16,16 @@ from provisioningserver.drivers.osystem import (
 # name just has to start with 'rhel' to be supported but the major, minor,
 # and title are found if available to help format the title.
 DISTRO_MATCHER = re.compile(
-    r'^rhel((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
-    re.I)
-DISTRO_SERIES_DEFAULT = 'rhel7'
+    r"^rhel((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$", re.I
+)
+DISTRO_SERIES_DEFAULT = "rhel7"
 
 
 class RHELOS(OperatingSystem):
     """RHELOS operating system."""
 
-    name = 'rhel'
-    title = 'Redhat Enterprise Linux'
+    name = "rhel"
+    title = "Redhat Enterprise Linux"
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
@@ -47,9 +45,9 @@ class RHELOS(OperatingSystem):
             return "%s %s" % (self.title, release)
 
         ret = self.title
-        major = matched.group('major')
-        minor = matched.group('minor')
-        title = matched.group('title')
+        major = matched.group("major")
+        minor = matched.group("minor")
+        title = matched.group("title")
         if None not in (major, minor):
             ret = "%s %s.%s" % (ret, major, minor)
         elif major is not None:

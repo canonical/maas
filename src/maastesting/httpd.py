@@ -3,16 +3,11 @@
 
 """HTTP server fixture."""
 
-__all__ = [
-    "HTTPServerFixture",
-    ]
+__all__ = ["HTTPServerFixture"]
 
 import gzip
 from http import HTTPStatus
-from http.server import (
-    HTTPServer,
-    SimpleHTTPRequestHandler,
-)
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from io import BytesIO
 import os
 from shutil import copyfileobj
@@ -29,7 +24,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 def gzip_compress(f):
     gz_out = BytesIO()
-    gz = gzip.GzipFile(mode='wb', fileobj=gz_out)
+    gz = gzip.GzipFile(mode="wb", fileobj=gz_out)
     copyfileobj(f, gz)
     gz.flush()
     return gz_out
@@ -42,16 +37,17 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def is_gzip_accepted(self):
         accepted = set()
-        for header in self.headers.get_all('Accept-Encoding'):
+        for header in self.headers.get_all("Accept-Encoding"):
             # Then, you are allowed to specify a comma separated list of
             # acceptable encodings. You are also allowed to specify
             # 'encoding;q=XXX' to specify what encodings you would prefer.
             # We'll allow it to be set, but just ignore it.
             #   http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
             accepted.update(
-                encoding.strip().split(';', 1)[0]
-                for encoding in header.split(','))
-        return 'gzip' in accepted
+                encoding.strip().split(";", 1)[0]
+                for encoding in header.split(",")
+            )
+        return "gzip" in accepted
 
     # This is a copy & paste and minor modification of
     # SimpleHTTPRequestHandler's send_head code. Because to support
@@ -72,12 +68,16 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
         f = None
         if os.path.isdir(path):
             parts = urllib.parse.urlsplit(self.path)
-            if not parts.path.endswith('/'):
+            if not parts.path.endswith("/"):
                 # redirect browser - doing basically what apache does
                 self.send_response(HTTPStatus.MOVED_PERMANENTLY)
                 new_parts = (
-                    parts[0], parts[1], parts[2] + '/',
-                    parts[3], parts[4])
+                    parts[0],
+                    parts[1],
+                    parts[2] + "/",
+                    parts[3],
+                    parts[4],
+                )
                 new_url = urllib.parse.urlunsplit(new_parts)
                 self.send_header("Location", new_url)
                 self.end_headers()
@@ -91,7 +91,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
                 return self.list_directory(path)
         ctype = self.guess_type(path)
         try:
-            f = open(path, 'rb')
+            f = open(path, "rb")
         except OSError:
             self.send_error(HTTPStatus.NOT_FOUND, "File not found")
             return None
@@ -111,7 +111,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
         else:
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", ctype)
-            self.send_header("Content-Encoding", 'gzip')
+            self.send_header("Content-Encoding", "gzip")
             self.send_header("Content-Length", str(gz_out.tell()))
             mtime = self.date_time_string(fs.st_mtime)
             self.send_header("Last-Modified", mtime)
@@ -143,7 +143,8 @@ class HTTPServerFixture(Fixture):
     def __init__(self, host="localhost", port=0):
         super(HTTPServerFixture, self).__init__()
         self.server = ThreadingHTTPServer(
-            (host, port), SilentHTTPRequestHandler)
+            (host, port), SilentHTTPRequestHandler
+        )
 
     @property
     def url(self):

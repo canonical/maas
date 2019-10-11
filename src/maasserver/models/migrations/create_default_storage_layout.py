@@ -16,17 +16,12 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-__all__ = [
-    "clear_full_storage_configuration",
-]
+__all__ = ["clear_full_storage_configuration"]
 
 from datetime import datetime
 from uuid import uuid4
 
-from maasserver.enum import (
-    FILESYSTEM_TYPE,
-    PARTITION_TABLE_TYPE,
-)
+from maasserver.enum import FILESYSTEM_TYPE, PARTITION_TABLE_TYPE
 from maasserver.models.partition import (
     MAX_PARTITION_SIZE_FOR_MBR,
     PARTITION_ALIGNMENT_SIZE,
@@ -36,15 +31,19 @@ from maasserver.utils.converters import round_size_to_nearest_block
 
 
 def clear_full_storage_configuration(
-        node,
-        PhysicalBlockDevice, VirtualBlockDevice,
-        PartitionTable, Filesystem, FilesystemGroup):
+    node,
+    PhysicalBlockDevice,
+    VirtualBlockDevice,
+    PartitionTable,
+    Filesystem,
+    FilesystemGroup,
+):
     """Clear's the full storage configuration for this node."""
     physical_block_devices = PhysicalBlockDevice.objects.filter(node=node)
     PartitionTable.objects.filter(
-        block_device__in=physical_block_devices).delete()
-    Filesystem.objects.filter(
-        block_device__in=physical_block_devices).delete()
+        block_device__in=physical_block_devices
+    ).delete()
+    Filesystem.objects.filter(block_device__in=physical_block_devices).delete()
     for block_device in VirtualBlockDevice.objects.filter(node=node):
         try:
             block_device.filesystem_group.virtual_devices.all().delete()
@@ -56,28 +55,36 @@ def clear_full_storage_configuration(
             pass
 
 
-def create_flat_layout(
-        node, boot_disk,
-        PartitionTable, Partition, Filesystem):
+def create_flat_layout(node, boot_disk, PartitionTable, Partition, Filesystem):
     """Create the flat layout for the boot disk."""
     # Create the partition table and root partition.
     now = datetime.now()
     partition_table = PartitionTable.objects.create(
-        block_device=boot_disk, table_type=PARTITION_TABLE_TYPE.MBR,
-        created=now, updated=now)
+        block_device=boot_disk,
+        table_type=PARTITION_TABLE_TYPE.MBR,
+        created=now,
+        updated=now,
+    )
     total_size = 0
     available_size = boot_disk.size - PARTITION_TABLE_EXTRA_SPACE
     partition_size = round_size_to_nearest_block(
-        available_size, PARTITION_ALIGNMENT_SIZE, False)
+        available_size, PARTITION_ALIGNMENT_SIZE, False
+    )
     max_mbr_size = round_size_to_nearest_block(
-        MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False)
+        MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False
+    )
     if partition_size > max_mbr_size:
         partition_size = max_mbr_size
     available_size -= partition_size
     total_size += partition_size
     root_partition = Partition.objects.create(
-        partition_table=partition_table, size=partition_size, bootable=True,
-        created=now, updated=now, uuid=uuid4())
+        partition_table=partition_table,
+        size=partition_size,
+        bootable=True,
+        created=now,
+        updated=now,
+        uuid=uuid4(),
+    )
     Filesystem.objects.create(
         partition=root_partition,
         fstype=FILESYSTEM_TYPE.EXT4,
@@ -85,4 +92,5 @@ def create_flat_layout(
         mount_point="/",
         created=now,
         updated=now,
-        uuid=uuid4())
+        uuid=uuid4(),
+    )

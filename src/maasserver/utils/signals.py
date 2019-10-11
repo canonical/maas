@@ -3,10 +3,7 @@
 
 """Signal utilities."""
 
-__all__ = [
-    'Signal',
-    'SignalsManager',
-]
+__all__ = ["Signal", "SignalsManager"]
 
 from collections import namedtuple
 from functools import partial
@@ -57,16 +54,13 @@ def connect_to_field_change(callback, model, fields, delete=False):
     # Capture the fields in case an iterator was passed.
     fields = tuple(fields)
 
-    combined_fields_name = '__'.join(fields)
-    last_seen_flag = '_fields_last_seen_values__%s' % combined_fields_name
-    delta_flag = '_fields_delta__%s' % combined_fields_name
+    combined_fields_name = "__".join(fields)
+    last_seen_flag = "_fields_last_seen_values__%s" % combined_fields_name
+    delta_flag = "_fields_delta__%s" % combined_fields_name
 
     def snapshot_values(instance):
         """Obtain the tuple of `fields` values for `instance`."""
-        return tuple(
-            getattr(instance, field_name)
-            for field_name in fields
-            )
+        return tuple(getattr(instance, field_name) for field_name in fields)
 
     # Set 'last_seen_flag' to hold the field' current values.
     def record_last_seen_flag(sender, instance, **kwargs):
@@ -114,9 +108,13 @@ def connect_to_field_change(callback, model, fields, delete=False):
             signal.disconnect(handler, sender=model)
 
     connect.__doc__ = "Connect to %s for changes in %s." % (
-        model.__name__, " or ".join(fields))
+        model.__name__,
+        " or ".join(fields),
+    )
     disconnect.__doc__ = "Disconnect from %s for changes in (%s)." % (
-        model.__name__, " or ".join(fields))
+        model.__name__,
+        " or ".join(fields),
+    )
 
     return connect, disconnect
 
@@ -155,10 +153,7 @@ class SignalsManager:
         :type delete: bool
         """
         return self.add(
-            Signal(
-                *connect_to_field_change(
-                    cb, model, fields, delete)
-            )
+            Signal(*connect_to_field_change(cb, model, fields, delete))
         )
 
     def watch_config(self, cb, name):
@@ -185,11 +180,18 @@ class SignalsManager:
         return self.add(
             Signal(
                 partial(
-                    sig.connect, cb, sender=sender, weak=weak,
-                    dispatch_uid=dispatch_uid),
+                    sig.connect,
+                    cb,
+                    sender=sender,
+                    weak=weak,
+                    dispatch_uid=dispatch_uid,
+                ),
                 partial(
-                    sig.disconnect, cb, sender=sender,
-                    dispatch_uid=dispatch_uid),
+                    sig.disconnect,
+                    cb,
+                    sender=sender,
+                    dispatch_uid=dispatch_uid,
+                ),
             )
         )
 

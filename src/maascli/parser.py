@@ -3,9 +3,7 @@
 
 """Arguments parser for `maascli`."""
 
-__all__ = [
-    'prepare_parser',
-    ]
+__all__ = ["prepare_parser"]
 
 import argparse
 import os
@@ -33,12 +31,12 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault(
-            "formatter_class", argparse.RawDescriptionHelpFormatter)
+            "formatter_class", argparse.RawDescriptionHelpFormatter
+        )
         super(ArgumentParser, self).__init__(*args, **kwargs)
 
     def add_subparsers(self):
-        raise NotImplementedError(
-            "add_subparsers has been disabled")
+        raise NotImplementedError("add_subparsers has been disabled")
 
     @property
     def subparsers(self):
@@ -58,7 +56,7 @@ class ArgumentParser(argparse.ArgumentParser):
         valid arguments.
         """
         self.print_help(sys.stderr)
-        self._print_error('\n' + message + '\n')
+        self._print_error("\n" + message + "\n")
         sys.exit(2)
 
 
@@ -66,11 +64,13 @@ def prepare_parser(argv):
     """Create and populate an arguments parser for the maascli command."""
     help_title, help_body = parse_docstring(api)
     parser = ArgumentParser(
-        description=help_body, prog=os.path.basename(argv[0]),
-        epilog="http://maas.io/")
+        description=help_body,
+        prog=os.path.basename(argv[0]),
+        epilog="http://maas.io/",
+    )
     register_cli_commands(parser)
     api.register_api_commands(parser)
     parser.add_argument(
-        '--debug', action='store_true', default=False,
-        help=argparse.SUPPRESS)
+        "--debug", action="store_true", default=False, help=argparse.SUPPRESS
+    )
     return parser

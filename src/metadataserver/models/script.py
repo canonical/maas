@@ -38,11 +38,7 @@ from metadataserver.enum import (
 )
 
 
-ForHardware = namedtuple('ForHardware', (
-    'modaliases',
-    'pci',
-    'usb',
-))
+ForHardware = namedtuple("ForHardware", ("modaliases", "pci", "usb"))
 
 
 def translate_script_type(script_type):
@@ -51,13 +47,13 @@ def translate_script_type(script_type):
         for script_type_id, _ in SCRIPT_TYPE_CHOICES:
             if ret == script_type_id:
                 return ret
-        raise ValidationError('Invalid script type numeric value.')
-    elif script_type in ['test', 'testing']:
+        raise ValidationError("Invalid script type numeric value.")
+    elif script_type in ["test", "testing"]:
         return SCRIPT_TYPE.TESTING
-    elif script_type in ['commission', 'commissioning']:
+    elif script_type in ["commission", "commissioning"]:
         return SCRIPT_TYPE.COMMISSIONING
     else:
-        raise ValidationError('Script type must be testing or commissioning')
+        raise ValidationError("Script type must be testing or commissioning")
 
 
 def translate_hardware_type(hardware_type):
@@ -66,20 +62,21 @@ def translate_hardware_type(hardware_type):
         for hardware_type_id, _ in HARDWARE_TYPE_CHOICES:
             if ret == hardware_type_id:
                 return ret
-        raise ValidationError('Invalid hardware type numeric value.')
-    elif hardware_type in ['node', 'machine', 'controller', 'other']:
+        raise ValidationError("Invalid hardware type numeric value.")
+    elif hardware_type in ["node", "machine", "controller", "other"]:
         return HARDWARE_TYPE.NODE
-    elif hardware_type in ['cpu', 'processor']:
+    elif hardware_type in ["cpu", "processor"]:
         return HARDWARE_TYPE.CPU
-    elif hardware_type in ['memory', 'ram']:
+    elif hardware_type in ["memory", "ram"]:
         return HARDWARE_TYPE.MEMORY
-    elif hardware_type in ['storage', 'disk', 'ssd']:
+    elif hardware_type in ["storage", "disk", "ssd"]:
         return HARDWARE_TYPE.STORAGE
-    elif hardware_type in ['network', 'net', 'interface']:
+    elif hardware_type in ["network", "net", "interface"]:
         return HARDWARE_TYPE.NETWORK
     else:
         raise ValidationError(
-            'Hardware type must be node, cpu, memory, or storage')
+            "Hardware type must be node, cpu, memory, or storage"
+        )
 
 
 def translate_script_parallel(parallel):
@@ -88,20 +85,20 @@ def translate_script_parallel(parallel):
         for script_parallel_id, _ in SCRIPT_PARALLEL_CHOICES:
             if ret == script_parallel_id:
                 return ret
-        raise ValidationError('Invalid script parallel numeric value.')
-    elif parallel in ['disabled', 'none']:
+        raise ValidationError("Invalid script parallel numeric value.")
+    elif parallel in ["disabled", "none"]:
         return SCRIPT_PARALLEL.DISABLED
-    elif parallel in ['instance', 'name']:
+    elif parallel in ["instance", "name"]:
         return SCRIPT_PARALLEL.INSTANCE
-    elif parallel in ['any', 'enabled']:
+    elif parallel in ["any", "enabled"]:
         return SCRIPT_PARALLEL.ANY
     else:
         raise ValidationError(
-            'Script parallel must be disabled, instance, or any.')
+            "Script parallel must be disabled, instance, or any."
+        )
 
 
 class ScriptManager(Manager):
-
     def create(self, *, script=None, timeout=None, comment=None, **kwargs):
         """Create a Script.
 
@@ -112,13 +109,14 @@ class ScriptManager(Manager):
         """
         if script is not None and not isinstance(script, VersionedTextFile):
             script = VersionedTextFile.objects.create(
-                data=script, comment=comment)
+                data=script, comment=comment
+            )
 
         if timeout is not None:
             if isinstance(timeout, datetime.timedelta):
-                kwargs['timeout'] = timeout
+                kwargs["timeout"] = timeout
             else:
-                kwargs['timeout'] = datetime.timedelta(seconds=timeout)
+                kwargs["timeout"] = datetime.timedelta(seconds=timeout)
 
         return super().create(script=script, **kwargs)
 
@@ -140,15 +138,18 @@ class Script(CleanSave, TimestampedModel):
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
     script_type = IntegerField(
-        choices=SCRIPT_TYPE_CHOICES, default=SCRIPT_TYPE.TESTING)
+        choices=SCRIPT_TYPE_CHOICES, default=SCRIPT_TYPE.TESTING
+    )
 
     # The hardware the script configures or tests.
     hardware_type = IntegerField(
-        choices=HARDWARE_TYPE_CHOICES, default=HARDWARE_TYPE.NODE)
+        choices=HARDWARE_TYPE_CHOICES, default=HARDWARE_TYPE.NODE
+    )
 
     # Whether the script can run in parallel with other scripts.
     parallel = IntegerField(
-        choices=SCRIPT_PARALLEL_CHOICES, default=SCRIPT_PARALLEL.DISABLED)
+        choices=SCRIPT_PARALLEL_CHOICES, default=SCRIPT_PARALLEL.DISABLED
+    )
 
     # Any results which will be made availble after the script is run.
     results = JSONObjectField(blank=True, default={})
@@ -173,7 +174,8 @@ class Script(CleanSave, TimestampedModel):
     # script is applicable to. This script will always run on machines with
     # matching hardware.
     for_hardware = ArrayField(
-        CharField(max_length=255), blank=True, default=list)
+        CharField(max_length=255), blank=True, default=list
+    )
 
     # Whether or not the script may reboot while running. Tells the status
     # monitor to wait until NODE_FAILURE_MONITORED_STATUS_TIMEOUTS before
@@ -196,7 +198,7 @@ class Script(CleanSave, TimestampedModel):
         usb = []
         for descriptor in self.for_hardware:
             try:
-                hwtype, value = descriptor.split(':', 1)
+                hwtype, value = descriptor.split(":", 1)
             except ValueError:
                 continue
             if hwtype == "modalias":
@@ -212,7 +214,7 @@ class Script(CleanSave, TimestampedModel):
         for script_type, script_type_name in SCRIPT_TYPE_CHOICES:
             if self.script_type == script_type:
                 return script_type_name
-        return 'unknown'
+        return "unknown"
 
     @property
     def hardware_type_name(self):
@@ -239,9 +241,9 @@ class Script(CleanSave, TimestampedModel):
 
     def save(self, *args, **kwargs):
         if self.destructive:
-            self.add_tag('destructive')
+            self.add_tag("destructive")
         else:
-            self.remove_tag('destructive')
+            self.remove_tag("destructive")
 
         for hw_type, hw_type_label in HARDWARE_TYPE_CHOICES:
             if hw_type == self.hardware_type:

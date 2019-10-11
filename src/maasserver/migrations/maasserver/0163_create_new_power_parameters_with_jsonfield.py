@@ -8,19 +8,21 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0162_storage_pools_notification'),
-    ]
+    dependencies = [("maasserver", "0162_storage_pools_notification")]
 
     operations = [
         migrations.AddField(
-            model_name='bmc',
-            name='new_power_parameters',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default='', max_length=32768),
+            model_name="bmc",
+            name="new_power_parameters",
+            field=django.contrib.postgres.fields.jsonb.JSONField(
+                blank=True, default="", max_length=32768
+            ),
         ),
         migrations.AddField(
-            model_name='node',
-            name='new_instance_power_parameters',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default='', max_length=32768),
+            model_name="node",
+            name="new_instance_power_parameters",
+            field=django.contrib.postgres.fields.jsonb.JSONField(
+                blank=True, default="", max_length=32768
+            ),
         ),
     ]

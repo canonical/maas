@@ -3,9 +3,7 @@
 
 """IPRange form."""
 
-__all__ = [
-    "IPRangeForm",
-]
+__all__ = ["IPRangeForm"]
 
 from django import forms
 from django.contrib.auth.models import User
@@ -18,21 +16,16 @@ class IPRangeForm(MAASModelForm):
     """IPRange creation/edition form."""
 
     user = forms.ModelChoiceField(
-        required=False, queryset=User.objects, to_field_name='username')
+        required=False, queryset=User.objects, to_field_name="username"
+    )
 
     class Meta:
         model = IPRange
-        fields = (
-            'subnet',
-            'type',
-            'start_ip',
-            'end_ip',
-            'user',
-            'comment',
-            )
+        fields = ("subnet", "type", "start_ip", "end_ip", "user", "comment")
 
     def __init__(
-            self, data=None, instance=None, request=None, *args, **kwargs):
+        self, data=None, instance=None, request=None, *args, **kwargs
+    ):
         if data is None:
             data = {}
         else:
@@ -40,15 +33,14 @@ class IPRangeForm(MAASModelForm):
         # If this is a new IPRange, fill in the 'user' and 'subnet' fields
         # automatically, if necessary.
         if instance is None:
-            start_ip = data.get('start_ip')
-            subnet = data.get('subnet')
+            start_ip = data.get("start_ip")
+            subnet = data.get("subnet")
             if subnet is None and start_ip is not None:
                 subnet = Subnet.objects.get_best_subnet_for_ip(start_ip)
                 if subnet is not None:
-                    data['subnet'] = subnet.id
+                    data["subnet"] = subnet.id
             if request is not None:
-                data['user'] = request.user.username
-        elif instance.user and 'user' not in data:
-            data['user'] = instance.user.username
-        super().__init__(
-            data=data, instance=instance, *args, **kwargs)
+                data["user"] = request.user.username
+        elif instance.user and "user" not in data:
+            data["user"] = instance.user.username
+        super().__init__(data=data, instance=instance, *args, **kwargs)

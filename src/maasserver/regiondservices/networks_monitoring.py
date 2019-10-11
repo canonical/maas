@@ -3,9 +3,7 @@
 
 """Networks monitoring service for region controllers."""
 
-__all__ = [
-    "RegionNetworksMonitoringService",
-]
+__all__ = ["RegionNetworksMonitoringService"]
 
 from maasserver.models.node import RegionController
 from maasserver.utils.orm import transactional
@@ -26,7 +24,8 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
     def recordInterfaces(self, interfaces, hints=None):
         """Record the interfaces information."""
         return deferToDatabase(
-            self.recordInterfacesIntoDatabase, interfaces, hints)
+            self.recordInterfacesIntoDatabase, interfaces, hints
+        )
 
     def reportNeighbours(self, neighbours):
         """Record the specified list of neighbours."""

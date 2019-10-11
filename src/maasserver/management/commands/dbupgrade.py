@@ -12,10 +12,7 @@ from textwrap import dedent
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
-from django.db import (
-    connections,
-    DEFAULT_DB_ALIAS,
-)
+from django.db import connections, DEFAULT_DB_ALIAS
 
 
 class Command(BaseCommand):
@@ -24,14 +21,21 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
         parser.add_argument(
-            '--database', action='store', dest='database',
+            "--database",
+            action="store",
+            dest="database",
             default=DEFAULT_DB_ALIAS,
             help=(
-                'Nominates a database to synchronize. Defaults to the '
-                '"default" database.'))
+                "Nominates a database to synchronize. Defaults to the "
+                '"default" database.'
+            ),
+        )
         parser.add_argument(
-            '--internal-no-triggers', action='store_true', dest='no_triggers',
-            help=argparse.SUPPRESS)
+            "--internal-no-triggers",
+            action="store_true",
+            dest="no_triggers",
+            help=argparse.SUPPRESS,
+        )
 
     @classmethod
     def _perform_trigger_installation(cls, database):
@@ -40,13 +44,16 @@ class Command(BaseCommand):
         :attention: `database` argument is not used!
         """
         from maasserver import triggers
+
         triggers.register_all_triggers()
 
     @classmethod
     def _get_all_triggers(cls, database):
         """Return list of all triggers in the database."""
         with connections[database].cursor() as cursor:
-            cursor.execute(dedent("""\
+            cursor.execute(
+                dedent(
+                    """\
                 SELECT tgname::text, pg_class.relname
                 FROM pg_trigger, pg_class
                 WHERE pg_trigger.tgrelid = pg_class.oid AND (
@@ -55,11 +62,10 @@ class Command(BaseCommand):
                     pg_class.relname LIKE 'auth_%') AND
                     NOT pg_trigger.tgisinternal
                 ORDER BY tgname::text;
-                """))
-            return [
-                (row[0], row[1])
-                for row in cursor.fetchall()
-            ]
+                """
+                )
+            )
+            return [(row[0], row[1]) for row in cursor.fetchall()]
 
     @classmethod
     def _drop_all_triggers(cls, database):
@@ -68,7 +74,8 @@ class Command(BaseCommand):
         with connections[database].cursor() as cursor:
             for trigger_name, table in triggers:
                 cursor.execute(
-                    "DROP TRIGGER IF EXISTS %s ON %s;" % (trigger_name, table))
+                    "DROP TRIGGER IF EXISTS %s ON %s;" % (trigger_name, table)
+                )
 
     @classmethod
     def _drop_all_views(cls, database):
@@ -77,6 +84,7 @@ class Command(BaseCommand):
         :attention: `database` argument is not used!
         """
         from maasserver import dbviews
+
         dbviews.drop_all_views()
 
     @classmethod
@@ -86,11 +94,12 @@ class Command(BaseCommand):
         :attention: `database` argument is not used!
         """
         from maasserver import dbviews
+
         dbviews.register_all_views()
 
     def handle(self, *args, **options):
-        database = options.get('database')
-        no_triggers = options.get('no_triggers')
+        database = options.get("database")
+        no_triggers = options.get("no_triggers")
 
         # First, drop any views that may already exist. We don't want views
         # that that depend on a particular schema to prevent schema
@@ -112,7 +121,8 @@ class Command(BaseCommand):
         if connections[database].in_atomic_block:
             raise AssertionError(
                 "An ongoing transaction may hide changes made "
-                "by external processes.")
+                "by external processes."
+            )
 
         # Install all database functions, triggers, and views. This is
         # idempotent, so we run it at the end of every database upgrade.

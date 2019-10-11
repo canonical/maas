@@ -29,10 +29,10 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 __all__ = [
-    'ISCParseException',
-    'make_isc_string',
-    'parse_isc_string',
-    'read_isc_file',
+    "ISCParseException",
+    "make_isc_string",
+    "parse_isc_string",
+    "read_isc_file",
 ]
 
 from collections import OrderedDict
@@ -52,15 +52,15 @@ def _clip(char_list):
     Outputs:
       tuple: (int: skip to char list index, list: shortened char_list)
     """
-    assert char_list[0] == '{'
+    assert char_list[0] == "{"
     char_list.pop(0)
     skip = 0
     for index, item in enumerate(char_list):
-        if item == '{':
+        if item == "{":
             skip += 1
-        elif item == '}' and skip == 0:
+        elif item == "}" and skip == 0:
             return index, char_list[:index]
-        elif item == '}':
+        elif item == "}":
             skip -= 1
     raise ISCParseException("Invalid brackets.")
 
@@ -98,36 +98,42 @@ def _parse_tokens(char_list):
     key = None
 
     while index < len(new_char_list):
-        if new_char_list[index] == '{':
+        if new_char_list[index] == "{":
             last_open = index
-        if new_char_list[index] == ';' and continuous_line:
+        if new_char_list[index] == ";" and continuous_line:
             dictionary_fragment = temp_list
             temp_list = []
             continuous_line = False
-        if new_char_list[index] == ';':
+        if new_char_list[index] == ";":
             continuous_line = False
-        if (len(new_char_list) > index + 1 and
-           new_char_list[index] == '}' and
-           new_char_list[index + 1] != ';'):
+        if (
+            len(new_char_list) > index + 1
+            and new_char_list[index] == "}"
+            and new_char_list[index + 1] != ";"
+        ):
             skip, value = _clip(new_char_list[last_open:])
             temp_list.append({key: copy.deepcopy(_parse_tokens(value))})
             continuous_line = True
-        if len(new_char_list) > index + 1 and new_char_list[index + 1] == '{':
+        if len(new_char_list) > index + 1 and new_char_list[index + 1] == "{":
             # assert key is not None
             key = new_char_list.pop(index)
             skip, dict_value = _clip(new_char_list[index:])
             if continuous_line:
                 temp_list.append(
-                    {key: copy.deepcopy(_parse_tokens(dict_value))})
+                    {key: copy.deepcopy(_parse_tokens(dict_value))}
+                )
             else:
                 dictionary_fragment[key] = copy.deepcopy(
-                    _parse_tokens(dict_value))
+                    _parse_tokens(dict_value)
+                )
             index += skip
         else:
-            if len(new_char_list[
-                   index].split()) == 1 and '{' not in new_char_list:
+            if (
+                len(new_char_list[index].split()) == 1
+                and "{" not in new_char_list
+            ):
                 for item in new_char_list:
-                    if item in [';']:
+                    if item in [";"]:
                         continue
                     dictionary_fragment[item] = True
 
@@ -137,18 +143,18 @@ def _parse_tokens(char_list):
                 if type(dictionary_fragment) == list:
                     raise ISCParseException("Syntax error")
                 dictionary_fragment[
-                    new_char_list[index].split()[0]] = (
-                    ' '.join(new_char_list[index].split()[1:]))
+                    new_char_list[index].split()[0]
+                ] = " ".join(new_char_list[index].split()[1:])
                 index += 1
 
             # If there is just 1 'keyword' at new_char_list[index]
             # ex "recursion;" (not a valid option, but for example's sake it's
             # fine)
-            elif new_char_list[index] not in ['{', ';', '}']:
+            elif new_char_list[index] not in ["{", ";", "}"]:
                 key = new_char_list[index]
                 if type(dictionary_fragment) == list:
                     raise ISCParseException("Syntax error")
-                dictionary_fragment[key] = ''
+                dictionary_fragment[key] = ""
                 index += 1
             index += 1
 
@@ -165,23 +171,23 @@ def _scrub_comments(isc_string):
     """
     isc_list = []
     if isc_string is None:
-        return ''
+        return ""
     expanded_comment = False
-    for line in isc_string.split('\n'):
+    for line in isc_string.split("\n"):
         no_comment_line = ""
         # Vet out any inline comments
-        if '/*' in line.strip():
+        if "/*" in line.strip():
             try:
                 striped_line = line.strip()
                 chars = enumerate(striped_line)
                 while True:
                     i, c = next(chars)
                     try:
-                        if c == '/' and striped_line[i + 1] == '*':
+                        if c == "/" and striped_line[i + 1] == "*":
                             expanded_comment = True
                             next(chars)  # Skip '*'
                             continue
-                        elif c == '*' and striped_line[i + 1] == '/':
+                        elif c == "*" and striped_line[i + 1] == "/":
                             expanded_comment = False
                             next(chars)  # Skip '/'
                             continue
@@ -197,17 +203,17 @@ def _scrub_comments(isc_string):
                 continue
 
         if expanded_comment:
-            if '*/' in line.strip():
+            if "*/" in line.strip():
                 expanded_comment = False
-                isc_list.append(line.split('*/')[-1])
+                isc_list.append(line.split("*/")[-1])
                 continue
             else:
                 continue
-        if line.strip().startswith(('#', '//')):
+        if line.strip().startswith(("#", "//")):
             continue
         else:
-            isc_list.append(line.split('#')[0].split('//')[0].strip())
-    return '\n'.join(isc_list)
+            isc_list.append(line.split("#")[0].split("//")[0].strip())
+    return "\n".join(isc_list)
 
 
 def _explode(isc_string):
@@ -223,13 +229,13 @@ def _explode(isc_string):
     str_array = []
     temp_string = []
     for char in isc_string:
-        if char in ['\n']:
+        if char in ["\n"]:
             continue
-        if char in ['{', '}', ';']:
-            if ''.join(temp_string).strip() == '':
+        if char in ["{", "}", ";"]:
+            if "".join(temp_string).strip() == "":
                 str_array.append(char)
             else:
-                str_array.append(''.join(temp_string).strip())
+                str_array.append("".join(temp_string).strip())
                 str_array.append(char)
                 temp_string = []
         else:
@@ -260,30 +266,34 @@ def make_isc_string(isc_dict, terminate=True):
     str: string of isc file without indentation
   """
     if terminate:
-        terminator = ';'
+        terminator = ";"
     else:
-        terminator = ''
+        terminator = ""
     if type(isc_dict) == str:
         return isc_dict
     isc_list = []
     for option in isc_dict:
         if type(isc_dict[option]) == bool:
-            isc_list.append('%s%s' % (option, terminator))
-        elif (type(isc_dict[option]) == str or
-              type(isc_dict[option]) == str):
-            isc_list.append('%s %s%s' % (option, isc_dict[option], terminator))
+            isc_list.append("%s%s" % (option, terminator))
+        elif type(isc_dict[option]) == str or type(isc_dict[option]) == str:
+            isc_list.append("%s %s%s" % (option, isc_dict[option], terminator))
         elif type(isc_dict[option]) == list:
             new_list = []
             for item in isc_dict[option]:
                 new_list.append(make_isc_string(item, terminate=False))
-            new_list[-1] = '%s%s' % (new_list[-1], terminator)
+            new_list[-1] = "%s%s" % (new_list[-1], terminator)
             isc_list.append(
-                '%s { %s }%s' % (option, ' '.join(new_list), terminator))
-        elif (type(isc_dict[option]) == OrderedDict or
-              type(isc_dict[option]) == dict):
-            isc_list.append('%s { %s }%s' % (
-                option, make_isc_string(isc_dict[option]), terminator))
-    return '\n'.join(isc_list)
+                "%s { %s }%s" % (option, " ".join(new_list), terminator)
+            )
+        elif (
+            type(isc_dict[option]) == OrderedDict
+            or type(isc_dict[option]) == dict
+        ):
+            isc_list.append(
+                "%s { %s }%s"
+                % (option, make_isc_string(isc_dict[option]), terminator)
+            )
+    return "\n".join(isc_list)
 
 
 def read_isc_file(isc_file):

@@ -7,11 +7,7 @@ __all__ = []
 
 import os.path
 import random
-from subprocess import (
-    CalledProcessError,
-    check_output,
-    STDOUT,
-)
+from subprocess import CalledProcessError, check_output, STDOUT
 from textwrap import dedent
 
 from maascli import main
@@ -26,11 +22,10 @@ from testtools.matchers import Equals
 
 
 def locate_maascli():
-    return os.path.join(root, 'bin', 'maas')
+    return os.path.join(root, "bin", "maas")
 
 
 class TestMAASCli(MAASTestCase):
-
     def run_command(self, *args):
         check_output([locate_maascli()] + list(args), stderr=STDOUT)
 
@@ -38,17 +33,18 @@ class TestMAASCli(MAASTestCase):
         self.assertRaises(CalledProcessError, self.run_command)
 
     def test_run_without_args_shows_help_reminder(self):
-        self.output_file = self.make_file('output')
+        self.output_file = self.make_file("output")
         try:
             self.run_command()
         except CalledProcessError as error:
             self.assertIn(
                 "Run %s --help for usage details." % locate_maascli(),
-                error.output.decode("ascii"))
+                error.output.decode("ascii"),
+            )
 
     def test_help_option_succeeds(self):
         try:
-            self.run_command('-h')
+            self.run_command("-h")
         except CalledProcessError as error:
             self.fail(error.output.decode("ascii"))
         else:
@@ -57,7 +53,7 @@ class TestMAASCli(MAASTestCase):
 
     def test_list_command_succeeds(self):
         try:
-            self.run_command('list')
+            self.run_command("list")
         except CalledProcessError as error:
             self.fail(error.output.decode("ascii"))
         else:
@@ -71,7 +67,7 @@ class TestMain(MAASTestCase):
     def fake_profile(self):
         """Fake a profile."""
         configs = make_configs()  # Instance of FakeConfig.
-        self.patch(ProfileConfig, 'open').return_value = configs
+        self.patch(ProfileConfig, "open").return_value = configs
         return configs
 
     def test_complains_about_too_few_arguments(self):
@@ -87,11 +83,15 @@ class TestMain(MAASTestCase):
         self.assertThat(error.code, Equals(2))
         self.assertThat(
             stdio.getError(),
-            DocTestMatches(dedent(
-                """\
+            DocTestMatches(
+                dedent(
+                    """\
                 usage: maas [-h] COMMAND ...
                 <BLANKLINE>
                 ...
                 <BLANKLINE>
                 too few arguments
-                """)))
+                """
+                )
+            ),
+        )

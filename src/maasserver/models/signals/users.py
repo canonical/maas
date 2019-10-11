@@ -3,9 +3,7 @@
 
 """Respond to user changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from django.contrib.auth.models import User
 from django.db.models.signals import pre_delete
@@ -15,9 +13,7 @@ from maasserver.utils.signals import SignalsManager
 signals = SignalsManager()
 
 
-USER_CLASSES = [
-    User,
-]
+USER_CLASSES = [User]
 
 
 def pre_delete_set_event_username(sender, instance, **kwargs):
@@ -28,8 +24,7 @@ def pre_delete_set_event_username(sender, instance, **kwargs):
 
 
 for klass in USER_CLASSES:
-    signals.watch(
-        pre_delete, pre_delete_set_event_username, sender=klass)
+    signals.watch(pre_delete, pre_delete_set_event_username, sender=klass)
 
 
 # Enable all signals by default.

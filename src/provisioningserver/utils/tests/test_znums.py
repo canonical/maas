@@ -8,15 +8,11 @@ __all__ = []
 from hypothesis import given
 from hypothesis.strategies import integers
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.znums import (
-    from_int,
-    to_int,
-)
+from provisioningserver.utils.znums import from_int, to_int
 from testtools.matchers import Equals
 
 
 class TestZNumbers(MAASTestCase):
-
     def test_from_int_basics(self):
         self.assertThat(from_int(-1), Equals("3"))
         self.assertThat(from_int(0), Equals("3"))

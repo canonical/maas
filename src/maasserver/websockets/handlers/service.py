@@ -3,9 +3,7 @@
 
 """The Service handler for the WebSocket connection."""
 
-__all__ = [
-    "ServiceHandler",
-    ]
+__all__ = ["ServiceHandler"]
 
 from maasserver.models.service import Service
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -14,17 +12,9 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class ServiceHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = Service.objects.all()
-        pk = 'id'
-        allowed_methods = ['list', 'get', 'set_active']
-        list_fields = [
-            "id",
-            "name",
-            "status",
-            "status_info",
-        ]
-        listen_channels = [
-            "service",
-        ]
+        pk = "id"
+        allowed_methods = ["list", "get", "set_active"]
+        list_fields = ["id", "name", "status", "status_info"]
+        listen_channels = ["service"]

@@ -12,7 +12,6 @@ from maasserver.utils.orm import reload_object
 
 
 class TestSpaceForm(MAASServerTestCase):
-
     def test__requires_name(self):
         form = SpaceForm({})
         self.assertTrue(form.is_valid(), form.errors)
@@ -20,10 +19,9 @@ class TestSpaceForm(MAASServerTestCase):
     def test__creates_space(self):
         space_name = factory.make_name("space")
         space_description = factory.make_name("description")
-        form = SpaceForm({
-            "name": space_name,
-            "description": space_description,
-        })
+        form = SpaceForm(
+            {"name": space_name, "description": space_description}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         space = form.save()
         self.assertEqual(space_name, space.get_name())
@@ -38,10 +36,10 @@ class TestSpaceForm(MAASServerTestCase):
         new_name = factory.make_name("space")
         new_description = factory.make_name("description")
         space = factory.make_Space()
-        form = SpaceForm(instance=space, data={
-            "name": new_name,
-            "description": new_description,
-        })
+        form = SpaceForm(
+            instance=space,
+            data={"name": new_name, "description": new_description},
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(space).name)

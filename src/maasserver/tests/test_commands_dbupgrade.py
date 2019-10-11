@@ -10,7 +10,6 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 
 
 class TestDBUpgrade(MAASTransactionServerTestCase):
-
     def test_dbupgrade(self):
         # Test is this doesn't fail.
-        call_command('dbupgrade')
+        call_command("dbupgrade")

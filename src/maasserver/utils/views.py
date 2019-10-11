@@ -3,9 +3,7 @@
 
 """View utilities configuration."""
 
-__all__ = [
-    'WebApplicationHandler',
-]
+__all__ = ["WebApplicationHandler"]
 
 import http.client
 from itertools import count
@@ -16,10 +14,7 @@ from weakref import WeakSet
 
 from django.conf import settings
 from django.core import signals
-from django.core.exceptions import (
-    ImproperlyConfigured,
-    MiddlewareNotUsed,
-)
+from django.core.exceptions import ImproperlyConfigured, MiddlewareNotUsed
 from django.core.handlers.wsgi import WSGIHandler
 from django.db import transaction
 from django.http import HttpResponse
@@ -60,15 +55,23 @@ def log_failed_attempt(request, attempt, elapsed, remaining, pause):
     """Log about a failed attempt to answer the given request."""
     logger.debug(
         "Attempt #%d for %s failed; will retry in %.0fms (%.1fs now elapsed, "
-        "%.1fs remaining)", attempt, request.path, pause * 1000.0, elapsed,
-        remaining)
+        "%.1fs remaining)",
+        attempt,
+        request.path,
+        pause * 1000.0,
+        elapsed,
+        remaining,
+    )
 
 
 def log_final_failed_attempt(request, attempt, elapsed):
     """Log about the final failed attempt to answer the given request."""
     logger.error(
         "Attempt #%d for %s failed; giving up (%.1fs elapsed in total)",
-        attempt, request.path, elapsed)
+        attempt,
+        request.path,
+        elapsed,
+    )
 
 
 def delete_oauth_nonce(request):
@@ -79,16 +82,16 @@ def delete_oauth_nonce(request):
     _, oauth_request = initialize_server_request(request)
     if oauth_request is not None:
         try:
-            consumer_key = oauth_request.get_parameter('oauth_consumer_key')
-            token_key = oauth_request.get_parameter('oauth_token')
-            nonce = oauth_request.get_parameter('oauth_nonce')
+            consumer_key = oauth_request.get_parameter("oauth_consumer_key")
+            token_key = oauth_request.get_parameter("oauth_token")
+            nonce = oauth_request.get_parameter("oauth_nonce")
         except OAuthError:
             # Missing OAuth parameter: skip Nonce deletion.
             pass
         else:
             Nonce.objects.filter(
-                consumer_key=consumer_key, token_key=token_key,
-                key=nonce).delete()
+                consumer_key=consumer_key, token_key=token_key, key=nonce
+            ).delete()
 
 
 def reset_request(request):
@@ -122,14 +125,17 @@ def request_headers(request):
     Header keys are case insensitive.
     """
     return CaseInsensitiveDict(
-        (key[5:].lower().replace('_', '-'), value) for key, value
-        in request.META.items() if key.startswith('HTTP_'))
+        (key[5:].lower().replace("_", "-"), value)
+        for key, value in request.META.items()
+        if key.startswith("HTTP_")
+    )
 
 
 class MAASDjangoTemplateResponse(SimpleTemplateResponse):
     def __init__(self, response=None):
         super(MAASDjangoTemplateResponse, self).__init__(
-            '%d.html' % self.status_code)
+            "%d.html" % self.status_code
+        )
 
         # If we are passed an original response object 'response',
         # transfer over the content from the original response
@@ -138,9 +144,10 @@ class MAASDjangoTemplateResponse(SimpleTemplateResponse):
         # not replace the transfered content, while calling render()
         # on the new object when the original was content-less
         # will render as a template with the new status code.
-        if response is not None and hasattr(response, 'status_code'):
+        if response is not None and hasattr(response, "status_code"):
             if response.status_code == http.client.OK and hasattr(
-                    response, 'content'):
+                response, "content"
+            ):
                 self.content = response.content
 
 
@@ -183,7 +190,8 @@ class WebApplicationHandler(WSGIHandler):
             raise ImproperlyConfigured(
                 "Old-style middleware is not supported with "
                 "`WebApplicationHandler`. Use the new settings.MIDDLEWARE "
-                "instead.")
+                "instead."
+            )
         else:
             handler = self._get_response
             for middleware_path in reversed(settings.MIDDLEWARE):
@@ -195,24 +203,28 @@ class WebApplicationHandler(WSGIHandler):
 
                 if mw_instance is None:
                     raise ImproperlyConfigured(
-                        'Middleware factory %s returned None.' % (
-                            middleware_path))
+                        "Middleware factory %s returned None."
+                        % middleware_path
+                    )
 
-                if hasattr(mw_instance, 'process_view'):
+                if hasattr(mw_instance, "process_view"):
                     self._view_middleware.insert(0, mw_instance.process_view)
-                if hasattr(mw_instance, 'process_template_response'):
+                if hasattr(mw_instance, "process_template_response"):
                     self._template_response_middleware.append(
-                        mw_instance.process_template_response)
-                if hasattr(mw_instance, 'process_exception'):
+                        mw_instance.process_template_response
+                    )
+                if hasattr(mw_instance, "process_exception"):
                     self._exception_middleware.append(
-                        mw_instance.process_exception)
+                        mw_instance.process_exception
+                    )
 
                 handler = mw_instance
 
         self._middleware_chain = handler
 
     def handle_uncaught_exception(
-            self, request, resolver, exc_info, reraise=True):
+        self, request, resolver, exc_info, reraise=True
+    ):
         """Override `BaseHandler.handle_uncaught_exception`.
 
         If a retryable failure is detected, a retry is requested. It's up
@@ -249,11 +261,13 @@ class WebApplicationHandler(WSGIHandler):
             else:
                 logger.error(
                     "500 Internal Server Error @ %s" % request.path,
-                    exc_info=sys.exc_info())
+                    exc_info=sys.exc_info(),
+                )
                 return HttpResponse(
-                    content=str(exc).encode('utf-8'),
+                    content=str(exc).encode("utf-8"),
                     status=int(http.client.INTERNAL_SERVER_ERROR),
-                    content_type="text/plain; charset=utf-8")
+                    content_type="text/plain; charset=utf-8",
+                )
 
     def make_view_atomic(self, view):
         """Make `view` atomic and with a post-commit hook savepoint.
@@ -315,9 +329,11 @@ class WebApplicationHandler(WSGIHandler):
                 # setting DEBUG_PROPAGATE_EXCEPTIONS upsets this, so be on
                 # your guard when tempted to use it.
                 signals.got_request_exception.send(
-                    sender=self.__class__, request=request)
+                    sender=self.__class__, request=request
+                )
                 return self.handle_uncaught_exception(
-                    request, get_resolver(None), sys.exc_info(), reraise=False)
+                    request, get_resolver(None), sys.exc_info(), reraise=False
+                )
 
         # Attempt to start new transactions for up to `__retry_timeout`
         # seconds, at intervals defined by `gen_retry_intervals`, but don't
@@ -342,7 +358,8 @@ class WebApplicationHandler(WSGIHandler):
                     else:
                         # We'll retry after a brief interlude.
                         log_failed_attempt(
-                            request, attempt, elapsed, remaining, wait)
+                            request, attempt, elapsed, remaining, wait
+                        )
                         delete_oauth_nonce(request)
                         request = reset_request(request)
                         sleep(wait)

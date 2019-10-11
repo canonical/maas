@@ -3,10 +3,7 @@
 
 """Install a GRUB2 pre-boot loader config for TFTP download."""
 
-__all__ = [
-    "add_arguments",
-    "run",
-    ]
+__all__ = ["add_arguments", "run"]
 
 import os
 
@@ -37,5 +34,5 @@ def run(args):
     with ClusterConfiguration.open() as config:
         if not os.path.exists(config.grub_root):
             os.makedirs(config.grub_root)
-        destination_file = os.path.join(config.grub_root, 'grub.cfg')
+        destination_file = os.path.join(config.grub_root, "grub.cfg")
     write_text_file(destination_file, CONFIG_FILE)

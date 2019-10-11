@@ -4,27 +4,23 @@
 """Utilities for executing external commands."""
 
 __all__ = [
-    'call_and_check',
-    'ExternalProcessError',
-    'get_env_with_bytes_locale',
-    'get_env_with_locale',
+    "call_and_check",
+    "ExternalProcessError",
+    "get_env_with_bytes_locale",
+    "get_env_with_locale",
 ]
 
 import os
 from pipes import quote
 from string import printable
-from subprocess import (
-    CalledProcessError,
-    PIPE,
-    Popen,
-)
+from subprocess import CalledProcessError, PIPE, Popen
 
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question
 # mark, mimicking the "replace" strategy when encoding and decoding.
 non_printable_replace_table = "".join(
-    chr(i) if chr(i) in printable else "?"
-    for i in range(0xff + 0x01)).encode("ascii")
+    chr(i) if chr(i) in printable else "?" for i in range(0xFF + 0x01)
+).encode("ascii")
 
 
 class ExternalProcessError(CalledProcessError):
@@ -79,7 +75,10 @@ class ExternalProcessError(CalledProcessError):
         cmd = " ".join(quote(self._to_unicode(part)) for part in self.cmd)
         output = self._to_unicode(self.output)
         return "Command `%s` returned non-zero exit status %d:\n%s" % (
-            cmd, self.returncode, output)
+            cmd,
+            self.returncode,
+            output,
+        )
 
     @property
     def output_as_ascii(self):
@@ -105,7 +104,7 @@ def call_and_check(command, *args, **kwargs):
     :return: The command's output from standard output.
     :raise ExternalProcessError: If the command returns nonzero.
     """
-    timeout = kwargs.pop('timeout', None)
+    timeout = kwargs.pop("timeout", None)
     process = Popen(command, *args, stdout=PIPE, stderr=PIPE, **kwargs)
     stdout, stderr = process.communicate(timeout=timeout)
     stderr = stderr.strip()
@@ -123,7 +122,7 @@ def has_command_available(command):
     return True
 
 
-def get_env_with_locale(environ=os.environ, locale='C.UTF-8'):
+def get_env_with_locale(environ=os.environ, locale="C.UTF-8"):
     """Return an environment dict with locale vars set (to C.UTF-8 by default).
 
     C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
@@ -138,18 +137,15 @@ def get_env_with_locale(environ=os.environ, locale='C.UTF-8'):
     :param locale: The locale to set in the environment, 'C.UTF-8' by default.
     """
     environ = {
-        name: value for name, value in environ.items()
-        if not name.startswith('LC_')
+        name: value
+        for name, value in environ.items()
+        if not name.startswith("LC_")
     }
-    environ.update({
-        'LC_ALL': locale,
-        'LANG': locale,
-        'LANGUAGE': locale,
-    })
+    environ.update({"LC_ALL": locale, "LANG": locale, "LANGUAGE": locale})
     return environ
 
 
-def get_env_with_bytes_locale(environ=os.environb, locale=b'C.UTF-8'):
+def get_env_with_bytes_locale(environ=os.environb, locale=b"C.UTF-8"):
     """Return an environment dict with locale vars set (to C.UTF-8 by default).
 
     C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
@@ -164,12 +160,9 @@ def get_env_with_bytes_locale(environ=os.environb, locale=b'C.UTF-8'):
     :param locale: The locale to set in the environment, 'C.UTF-8' by default.
     """
     environ = {
-        name: value for name, value in environ.items()
-        if not name.startswith(b'LC_')
+        name: value
+        for name, value in environ.items()
+        if not name.startswith(b"LC_")
     }
-    environ.update({
-        b'LC_ALL': locale,
-        b'LANG': locale,
-        b'LANGUAGE': locale,
-    })
+    environ.update({b"LC_ALL": locale, b"LANG": locale, b"LANGUAGE": locale})
     return environ

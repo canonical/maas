@@ -19,5 +19,5 @@ from django.contrib import admin
 
 # Register models in the admin site.  When the DEBUG setting is enabled, the
 # webapp will serve an administrator UI at /admin.
-for model in apps.get_app_config('metadataserver').models.values():
+for model in apps.get_app_config("metadataserver").models.values():
     admin.site.register(model)

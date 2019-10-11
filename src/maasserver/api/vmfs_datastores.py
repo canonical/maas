@@ -3,43 +3,32 @@
 
 """API handlers: `VMFS Datastore`."""
 
-__all__ = [
-    'VmfsDatastoreHandler',
-    'VmfsDatastoresHandler',
-]
+__all__ = ["VmfsDatastoreHandler", "VmfsDatastoresHandler"]
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_STATUS
-from maasserver.exceptions import (
-    MAASAPIValidationError,
-    NodeStateViolation,
-)
-from maasserver.forms import (
-    CreateVMFSForm,
-    UpdateVMFSForm,
-)
-from maasserver.models import (
-    Machine,
-    VMFS,
-)
+from maasserver.exceptions import MAASAPIValidationError, NodeStateViolation
+from maasserver.forms import CreateVMFSForm, UpdateVMFSForm
+from maasserver.models import Machine, VMFS
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
 
 
 DISPLAYED_VMFS_DATASTORE_FIELDS = (
-    'id',
-    'system_id',
-    'uuid',
-    'name',
-    'devices',
-    'size',
-    'human_size',
-    'filesystem',
+    "id",
+    "system_id",
+    "uuid",
+    "name",
+    "devices",
+    "size",
+    "human_size",
+    "filesystem",
 )
 
 
 class VmfsDatastoresHandler(OperationsHandler):
     """Manage VMFS datastores on a machine."""
+
     api_doc_section_name = "VMFS datastores"
     update = delete = None
     fields = DISPLAYED_VMFS_DATASTORE_FIELDS
@@ -47,7 +36,7 @@ class VmfsDatastoresHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('vmfs_datastores_handler', ['system_id'])
+        return ("vmfs_datastores_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title List all VMFS datastores.
@@ -69,7 +58,8 @@ class VmfsDatastoresHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         return VMFS.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
@@ -108,10 +98,12 @@ class VmfsDatastoresHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create VMFS group because the machine is not Ready.")
+                "Cannot create VMFS group because the machine is not Ready."
+            )
         form = CreateVMFSForm(machine, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -121,6 +113,7 @@ class VmfsDatastoresHandler(OperationsHandler):
 
 class VmfsDatastoreHandler(OperationsHandler):
     """Manage VMFS datastore on a machine."""
+
     api_doc_section_name = "VMFS datastore"
     create = None
     model = VMFS
@@ -129,14 +122,14 @@ class VmfsDatastoreHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, vmfs=None):
         # See the comment in NodeHandler.resource_uri.
-        system_id = 'system_id'
-        vmfs_id = 'id'
+        system_id = "system_id"
+        vmfs_id = "id"
         if vmfs is not None:
             vmfs_id = vmfs.id
             node = vmfs.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('vmfs_datastore_handler', (system_id, vmfs_id))
+        return ("vmfs_datastore_handler", (system_id, vmfs_id))
 
     @classmethod
     def system_id(cls, vmfs):
@@ -157,8 +150,7 @@ class VmfsDatastoreHandler(OperationsHandler):
     @classmethod
     def devices(cls, vmfs):
         return [
-            filesystem.get_parent()
-            for filesystem in vmfs.filesystems.all()
+            filesystem.get_parent() for filesystem in vmfs.filesystems.all()
         ]
 
     @classmethod
@@ -168,8 +160,8 @@ class VmfsDatastoreHandler(OperationsHandler):
         filesystem = vmfs.virtual_device.get_effective_filesystem()
         if filesystem is not None:
             return {
-                'fstype': filesystem.fstype,
-                'mount_point': filesystem.mount_point,
+                "fstype": filesystem.fstype,
+                "mount_point": filesystem.mount_point,
             }
         else:
             return None
@@ -195,7 +187,8 @@ class VmfsDatastoreHandler(OperationsHandler):
             Not Found
         """
         return VMFS.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def update(self, request, system_id, id):
         """@description-title Update a VMFS datastore.
@@ -234,12 +227,14 @@ class VmfsDatastoreHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         vmfs = VMFS.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = vmfs.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot update the VMFS datastore because the machine is not "
-                "Ready.")
+                "Ready."
+            )
         form = UpdateVMFSForm(vmfs, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -266,11 +261,13 @@ class VmfsDatastoreHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         vmfs = VMFS.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = vmfs.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot delete VMFS datastore because the machine is not "
-                "Ready.")
+                "Ready."
+            )
         vmfs.delete()
         return rc.DELETED

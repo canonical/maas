@@ -3,28 +3,15 @@
 
 """Respond to BMC changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
-from django.db.models.signals import (
-    post_delete,
-    post_save,
-    pre_delete,
-)
+from django.db.models.signals import post_delete, post_save, pre_delete
 from maasserver.enum import BMC_TYPE
-from maasserver.models import (
-    BMC,
-    Pod,
-    PodHints,
-)
+from maasserver.models import BMC, Pod, PodHints
 from maasserver.utils.signals import SignalsManager
 
 
-BMC_CLASSES = [
-    BMC,
-    Pod,
-]
+BMC_CLASSES = [BMC, Pod]
 
 signals = SignalsManager()
 
@@ -35,8 +22,7 @@ def pre_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
 
 
 for klass in BMC_CLASSES:
-    signals.watch(
-        pre_delete, pre_delete_bmc_clean_orphaned_ip, sender=klass)
+    signals.watch(pre_delete, pre_delete_bmc_clean_orphaned_ip, sender=klass)
 
 
 def post_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
@@ -56,8 +42,7 @@ def post_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
 
 
 for klass in BMC_CLASSES:
-    signals.watch(
-        post_delete, post_delete_bmc_clean_orphaned_ip, sender=klass)
+    signals.watch(post_delete, post_delete_bmc_clean_orphaned_ip, sender=klass)
 
 
 def create_pod_hints(sender, instance, created, **kwargs):
@@ -69,9 +54,7 @@ def create_pod_hints(sender, instance, created, **kwargs):
 
 
 for klass in BMC_CLASSES:
-    signals.watch(
-        post_save, create_pod_hints,
-        sender=klass)
+    signals.watch(post_save, create_pod_hints, sender=klass)
 
 # Enable all signals by default.
 signals.enable()

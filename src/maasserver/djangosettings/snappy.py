@@ -5,26 +5,26 @@
 
 import os
 
-from maasserver.djangosettings import (
-    import_settings,
-    settings,
-)
+from maasserver.djangosettings import import_settings, settings
 
 # Extend base and development settings.
 import_settings(settings)
 
 # Override the location of JS libraries.
 JQUERY_LOCATION = os.path.join(
-    os.environ['SNAP'], 'usr', 'share', 'javascript', 'jquery')
+    os.environ["SNAP"], "usr", "share", "javascript", "jquery"
+)
 ANGULARJS_LOCATION = os.path.join(
-    os.environ['SNAP'], 'usr', 'share', 'javascript', 'angular.js')
+    os.environ["SNAP"], "usr", "share", "javascript", "angular.js"
+)
 
 # Override path to static root.
 STATIC_ROOT = os.path.join(
-    os.environ['SNAP'], 'usr', 'share', 'maas', 'web', 'static')
+    os.environ["SNAP"], "usr", "share", "maas", "web", "static"
+)
 
 # Override the preseed locations.
 PRESEED_TEMPLATE_LOCATIONS = (
-    os.path.join(os.environ['SNAP_DATA'], 'preseeds'),
-    os.path.join(os.environ['SNAP'], 'etc', 'maas', 'preseeds'),
-    )
+    os.path.join(os.environ["SNAP_DATA"], "preseeds"),
+    os.path.join(os.environ["SNAP"], "etc", "maas", "preseeds"),
+)

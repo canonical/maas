@@ -45,7 +45,8 @@ from twisted.python.failure import Failure
 
 def ContainsDictByEquality(expected):
     return ContainsDict(
-        {key: Equals(value) for key, value in expected.items()})
+        {key: Equals(value) for key, value in expected.items()}
+    )
 
 
 def formatTimeStatic(when):
@@ -54,7 +55,6 @@ def formatTimeStatic(when):
 
 
 class TestLegacyLogger(MAASTestCase):
-
     def test__logs_messages(self):
         events = []
         namespace = factory.make_name("namespace")
@@ -68,23 +68,23 @@ class TestLegacyLogger(MAASTestCase):
         legacy_logger.msg(message, **keywords)
 
         expected = {
-            'log_format': Equals('{_message_0}'),
-            'log_level': Equals(logger.LogLevel.info),
-            'log_logger': Is(legacy_logger),
-            'log_namespace': Equals(namespace),
-            'log_source': Is(self),
-            'log_time': IsInstance(float),
-            '_message_0': Equals(message),
+            "log_format": Equals("{_message_0}"),
+            "log_level": Equals(logger.LogLevel.info),
+            "log_logger": Is(legacy_logger),
+            "log_namespace": Equals(namespace),
+            "log_source": Is(self),
+            "log_time": IsInstance(float),
+            "_message_0": Equals(message),
         }
-        expected.update({
-            key: Equals(value)
-            for key, value in keywords.items()
-        })
+        expected.update(
+            {key: Equals(value) for key, value in keywords.items()}
+        )
         self.assertThat(events, HasLength(1))
         self.assertThat(events[0], MatchesDict(expected))
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            Equals("<when> [%s#info] %s\n" % (namespace, message)))
+            Equals("<when> [%s#info] %s\n" % (namespace, message)),
+        )
 
     def test__logs_multiple_messages(self):
         events = []
@@ -107,7 +107,8 @@ class TestLegacyLogger(MAASTestCase):
         self.assertThat(events[0], ContainsDictByEquality(expected))
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            Equals("<when> [%s#info] %s\n" % (__name__, " ".join(messages))))
+            Equals("<when> [%s#info] %s\n" % (__name__, " ".join(messages))),
+        )
 
     def test__logs_errors(self):
         events = []
@@ -126,47 +127,50 @@ class TestLegacyLogger(MAASTestCase):
             legacy_logger.err(None, message, **keywords)
 
         expected = {
-            'log_failure': MatchesAll(
+            "log_failure": MatchesAll(
                 IsInstance(Failure),
                 AfterPreprocessing(
-                    (lambda failure: failure.value),
-                    IsInstance(exception_type),
+                    (lambda failure: failure.value), IsInstance(exception_type)
                 ),
             ),
-            'log_format': Equals('{_why}'),
-            'log_level': Equals(logger.LogLevel.critical),
-            'log_logger': Is(legacy_logger),
-            'log_namespace': Equals(namespace),
-            'log_source': Is(self),
-            'log_time': IsInstance(float),
-            '_why': Equals(message),
+            "log_format": Equals("{_why}"),
+            "log_level": Equals(logger.LogLevel.critical),
+            "log_logger": Is(legacy_logger),
+            "log_namespace": Equals(namespace),
+            "log_source": Is(self),
+            "log_time": IsInstance(float),
+            "_why": Equals(message),
         }
-        expected.update({
-            key: Equals(value)
-            for key, value in keywords.items()
-        })
+        expected.update(
+            {key: Equals(value) for key, value in keywords.items()}
+        )
         self.assertThat(events, HasLength(1))
         self.assertThat(events[0], MatchesDict(expected))
         # Twisted 16.6.0 (see issue #8858) now includes a traceback,
         # so we only match on the beginning of the string.
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            StartsWith("<when> [%s#critical] %s\n" % (namespace, message)))
+            StartsWith("<when> [%s#critical] %s\n" % (namespace, message)),
+        )
 
 
 class TestObserveTwistedInternetTCP(MAASTestCase):
     """Tests for `observe_twisted_internet_tcp`."""
 
     def test__ignores_port_closed_events(self):
-        event = make_event("(%s Port %d Closed)" % (
-            factory.make_name("port-name"), factory.pick_port()))
+        event = make_event(
+            "(%s Port %d Closed)"
+            % (factory.make_name("port-name"), factory.pick_port())
+        )
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_tcp(event)
         self.assertThat(logger.events, HasLength(0))
 
     def test__ignores_protocol_starting_on_events(self):
-        event = make_event("%s starting on %d" % (
-            factory.make_name("protocol"), factory.pick_port()))
+        event = make_event(
+            "%s starting on %d"
+            % (factory.make_name("protocol"), factory.pick_port())
+        )
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_tcp(event)
         self.assertThat(logger.events, HasLength(0))
@@ -182,15 +186,19 @@ class TestObserveTwistedInternetUDP(MAASTestCase):
     """Tests for `observe_twisted_internet_udp`."""
 
     def test__ignores_port_closed_events(self):
-        event = make_event("(%s Port %d Closed)" % (
-            factory.make_name("port-name"), factory.pick_port()))
+        event = make_event(
+            "(%s Port %d Closed)"
+            % (factory.make_name("port-name"), factory.pick_port())
+        )
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_udp(event)
         self.assertThat(logger.events, HasLength(0))
 
     def test__ignores_protocol_starting_on_events(self):
-        event = make_event("%s starting on %d" % (
-            factory.make_name("protocol"), factory.pick_port()))
+        event = make_event(
+            "%s starting on %d"
+            % (factory.make_name("protocol"), factory.pick_port())
+        )
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_udp(event)
         self.assertThat(logger.events, HasLength(0))
@@ -206,15 +214,19 @@ class TestObserveTwistedInternetUNIX(MAASTestCase):
     """Tests for `observe_twisted_internet_unix`."""
 
     def test__ignores_port_closed_events(self):
-        event = make_event("(%s Port %r Closed)" % (
-            factory.make_name("port-name"), factory.make_name("port")))
+        event = make_event(
+            "(%s Port %r Closed)"
+            % (factory.make_name("port-name"), factory.make_name("port"))
+        )
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_unix(event)
         self.assertThat(logger.events, HasLength(0))
 
     def test__ignores_protocol_starting_on_events(self):
-        event = make_event("%s starting on %d" % (
-            factory.make_name("protocol"), factory.pick_port()))
+        event = make_event(
+            "%s starting on %d"
+            % (factory.make_name("protocol"), factory.pick_port())
+        )
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_unix(event)
         self.assertThat(logger.events, HasLength(0))
@@ -244,17 +256,18 @@ class TestGetSystemName(MAASTestCase):
     }
 
     scenarios = tuple(
-        ("%s => %s" % (
-            string_in or repr(string_in),
-            string_out or repr(string_out)),
-         {"string_in": string_in, "string_out": string_out})
+        (
+            "%s => %s"
+            % (string_in or repr(string_in), string_out or repr(string_out)),
+            {"string_in": string_in, "string_out": string_out},
+        )
         for string_in, string_out in expectations.items()
     )
 
     def test(self):
         self.assertThat(
-            _getSystemName(self.string_in),
-            Equals(self.string_out))
+            _getSystemName(self.string_in), Equals(self.string_out)
+        )
 
 
 class TestGetCommandName(MAASTestCase):
@@ -262,24 +275,31 @@ class TestGetCommandName(MAASTestCase):
 
     expectations = {
         # maas-rackd
-        ("/usr/bin/twistd3", "--nodaemon", "--pidfile=",
-         "--logger=provisioningserver.logger.EventLogger",
-         "maas-rackd"): "rackd",
+        (
+            "/usr/bin/twistd3",
+            "--nodaemon",
+            "--pidfile=",
+            "--logger=provisioningserver.logger.EventLogger",
+            "maas-rackd",
+        ): "rackd",
         # maas-regiond
-        ("twistd3", "--nodaemon", "--pidfile=",
-         "--logger=provisioningserver.logger.EventLogger",
-         "maas-regiond"): "regiond",
+        (
+            "twistd3",
+            "--nodaemon",
+            "--pidfile=",
+            "--logger=provisioningserver.logger.EventLogger",
+            "maas-regiond",
+        ): "regiond",
         # twistd running ...
-        ("twistd3", "--an-option",
-         "something-else"): "daemon",
+        ("twistd3", "--an-option", "something-else"): "daemon",
         # command
-        ("some-command", ): "some-command",
+        ("some-command",): "some-command",
         # command with .py suffix
-        ("some-command-with-suffix.py", ): "some-command-with-suffix",
+        ("some-command-with-suffix.py",): "some-command-with-suffix",
         # command running under python
-        ("python", "py-command", ): "py-command",
+        ("python", "py-command"): "py-command",
         # command running under python with .py suffix
-        ("python", "py-command-with-suffix.py", ): "py-command-with-suffix",
+        ("python", "py-command-with-suffix.py"): "py-command-with-suffix",
         # something else
         ("python", "-c", "print('woo')"): "command",
     }
@@ -290,9 +310,7 @@ class TestGetCommandName(MAASTestCase):
     )
 
     def test(self):
-        self.assertThat(
-            _getCommandName(self.argv),
-            Equals(self.expected))
+        self.assertThat(_getCommandName(self.argv), Equals(self.expected))
 
 
 class TestFormatModernEvent(MAASTestCase):
@@ -310,18 +328,25 @@ class TestFormatModernEvent(MAASTestCase):
         log_format = ">{thing1}< >{thing2}<"
         log_time = pick_log_time()
         self.assertThat(
-            _formatModernEvent({
-                "log_time": log_time,
-                "log_format": log_format,
-                "log_system": log_system,
-                "log_level": self.log_level,
-                "thing1": thing1,
-                "thing2": thing2,
-            }),
+            _formatModernEvent(
+                {
+                    "log_time": log_time,
+                    "log_format": log_format,
+                    "log_system": log_system,
+                    "log_level": self.log_level,
+                    "thing1": thing1,
+                    "thing2": thing2,
+                }
+            ),
             Equals(
-                "%s %s: [%s] >%s< >%s<\n" % (
+                "%s %s: [%s] >%s< >%s<\n"
+                % (
                     logger.formatTime(log_time, DEFAULT_LOG_FORMAT_DATE),
-                    log_system, self.log_level.name, thing1, thing2),
+                    log_system,
+                    self.log_level.name,
+                    thing1,
+                    thing2,
+                )
             ),
         )
 
@@ -335,79 +360,73 @@ class TestFormatModernEvent(MAASTestCase):
         log_system = factory.make_name("system")
         log_time = pick_log_time()
         self.assertThat(
-            _formatModernEvent({
-                "log_time": log_time,
-                "log_system": log_system,
-                "log_level": self.log_level,
-                "log_failure": failure,
-            }),
+            _formatModernEvent(
+                {
+                    "log_time": log_time,
+                    "log_system": log_system,
+                    "log_level": self.log_level,
+                    "log_failure": failure,
+                }
+            ),
             Equals(
-                "%s %s: [%s] \n\t%s\n" % (
+                "%s %s: [%s] \n\t%s\n"
+                % (
                     logger.formatTime(log_time, DEFAULT_LOG_FORMAT_DATE),
-                    log_system, self.log_level.name,
-                    failure.getTraceback().replace("\n", "\n\t")),
+                    log_system,
+                    self.log_level.name,
+                    failure.getTraceback().replace("\n", "\n\t"),
+                )
             ),
         )
 
     def test_formats_without_format(self):
         self.assertThat(
-            _formatModernEvent({
-                "log_level": self.log_level,
-            }),
+            _formatModernEvent({"log_level": self.log_level}),
             Equals("- -: [%s] \n" % self.log_level.name),
         )
 
     def test_formats_with_null_format(self):
         self.assertThat(
-            _formatModernEvent({
-                "log_format": None,
-                "log_level": self.log_level,
-            }),
+            _formatModernEvent(
+                {"log_format": None, "log_level": self.log_level}
+            ),
             Equals("- -: [%s] \n" % self.log_level.name),
         )
 
     def test_formats_without_time(self):
         self.assertThat(
-            _formatModernEvent({
-                "log_level": self.log_level,
-            }),
+            _formatModernEvent({"log_level": self.log_level}),
             Equals("- -: [%s] \n" % self.log_level.name),
         )
 
     def test_formats_with_null_time(self):
         self.assertThat(
-            _formatModernEvent({
-                "log_time": None,
-                "log_level": self.log_level,
-            }),
+            _formatModernEvent(
+                {"log_time": None, "log_level": self.log_level}
+            ),
             Equals("- -: [%s] \n" % self.log_level.name),
         )
 
     def test_uses_namespace_if_system_missing(self):
         log_namespace = factory.make_name("namespace")
         self.assertThat(
-            _formatModernEvent({
-                "log_level": self.log_level,
-                "log_namespace": log_namespace,
-            }),
-            Equals(
-                "- %s: [%s] \n" % (
-                    log_namespace, self.log_level.name),
+            _formatModernEvent(
+                {"log_level": self.log_level, "log_namespace": log_namespace}
             ),
+            Equals("- %s: [%s] \n" % (log_namespace, self.log_level.name)),
         )
 
     def test_uses_namespace_if_system_null(self):
         log_namespace = factory.make_name("namespace")
         self.assertThat(
-            _formatModernEvent({
-                "log_level": self.log_level,
-                "log_namespace": log_namespace,
-                "log_system": None,
-            }),
-            Equals(
-                "- %s: [%s] \n" % (
-                    log_namespace, self.log_level.name),
+            _formatModernEvent(
+                {
+                    "log_level": self.log_level,
+                    "log_namespace": log_namespace,
+                    "log_system": None,
+                }
             ),
+            Equals("- %s: [%s] \n" % (log_namespace, self.log_level.name)),
         )
 
 
@@ -465,14 +484,11 @@ class TestEventLogger(MAASTestCase):
         ]
         for event in noisy:
             self.log(event)
-        okay = [
-            make_event(log_level=self.log_level, **common),
-        ]
+        okay = [make_event(log_level=self.log_level, **common)]
         for event in okay:
             self.log(event)
         # Only the `okay` logs will get through.
         expected = [
-            ("-", self.log_level.name, event["log_text"])
-            for event in okay
+            ("-", self.log_level.name, event["log_text"]) for event in okay
         ]
         self.assertSequenceEqual(expected, self.get_logs())

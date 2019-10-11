@@ -4,28 +4,25 @@
 """Syslog config management module."""
 
 __all__ = [
-    'get_syslog_config_path',
-    'get_syslog_workdir_path',
-    'is_config_present',
-    'write_config',
-    ]
+    "get_syslog_config_path",
+    "get_syslog_workdir_path",
+    "is_config_present",
+    "write_config",
+]
 
 from operator import itemgetter
 import os
 import sys
 
-from provisioningserver.utils import (
-    locate_template,
-    snappy,
-)
+from provisioningserver.utils import locate_template, snappy
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
 import tempita
 
 
-MAAS_SYSLOG_CONF_NAME = 'rsyslog.conf'
-MAAS_SYSLOG_CONF_TEMPLATE = 'rsyslog.conf.template'
-MAAS_SYSLOG_WORK_DIR = 'rsyslog'
+MAAS_SYSLOG_CONF_NAME = "rsyslog.conf"
+MAAS_SYSLOG_CONF_TEMPLATE = "rsyslog.conf.template"
+MAAS_SYSLOG_WORK_DIR = "rsyslog"
 
 
 class SyslogConfigFail(Exception):
@@ -70,27 +67,28 @@ def is_config_present():
 def write_config(write_local, forwarders=None, port=None):
     """Write the syslog configuration."""
     context = {
-        'user': 'maas',
-        'group': 'maas',
-        'drop_priv': True,
-        'work_dir': get_syslog_workdir_path(),
-        'log_dir': get_syslog_log_path(),
-        'write_local': write_local,
-        'port': port if port else 5247,
-        'forwarders': (
-            sorted(forwarders, key=itemgetter('name'))
-            if forwarders is not None else []),
+        "user": "maas",
+        "group": "maas",
+        "drop_priv": True,
+        "work_dir": get_syslog_workdir_path(),
+        "log_dir": get_syslog_log_path(),
+        "write_local": write_local,
+        "port": port if port else 5247,
+        "forwarders": (
+            sorted(forwarders, key=itemgetter("name"))
+            if forwarders is not None
+            else []
+        ),
     }
 
     # Running inside the snap rsyslog is root.
     if snappy.running_in_snap():
-        context['user'] = 'root'
-        context['group'] = 'root'
-        context['drop_priv'] = False
+        context["user"] = "root"
+        context["group"] = "root"
+        context["drop_priv"] = False
 
-    template_path = locate_template('syslog', MAAS_SYSLOG_CONF_TEMPLATE)
-    template = tempita.Template.from_filename(
-        template_path, encoding="UTF-8")
+    template_path = locate_template("syslog", MAAS_SYSLOG_CONF_TEMPLATE)
+    template = tempita.Template.from_filename(template_path, encoding="UTF-8")
     try:
         content = template.substitute(context)
     except NameError as error:

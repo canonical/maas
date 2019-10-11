@@ -3,9 +3,7 @@
 
 """Testing facilities for API credentials."""
 
-__all__ = [
-    'make_api_credentials',
-    ]
+__all__ = ["make_api_credentials"]
 
 from maastesting.factory import factory
 
@@ -13,7 +11,7 @@ from maastesting.factory import factory
 def make_api_credentials():
     """Create a tuple of fake API credentials."""
     return (
-        factory.make_name('consumer-key'),
-        factory.make_name('resource-token'),
-        factory.make_name('resource-secret'),
-        )
+        factory.make_name("consumer-key"),
+        factory.make_name("resource-token"),
+        factory.make_name("resource-secret"),
+    )

@@ -3,8 +3,6 @@
 
 """Django command: get region controller configuration settings."""
 
-__all__ = [
-    "Command",
-]
+__all__ = ["Command"]
 
 from maasserver.management.commands._config import GetCommand as Command

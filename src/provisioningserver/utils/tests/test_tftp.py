@@ -14,14 +14,14 @@ from twisted.python.context import call
 class TestAddressFunctions(MAASTestCase):
 
     scenarios = (
-        ("get_local_address", {
-            "get_address": tftp.get_local_address,
-            "context_key": "local",
-        }),
-        ("get_remote_address", {
-            "get_address": tftp.get_remote_address,
-            "context_key": "remote",
-        }),
+        (
+            "get_local_address",
+            {"get_address": tftp.get_local_address, "context_key": "local"},
+        ),
+        (
+            "get_remote_address",
+            {"get_address": tftp.get_remote_address, "context_key": "remote"},
+        ),
     )
 
     def test__returns_None_None_tuple_when_not_set(self):

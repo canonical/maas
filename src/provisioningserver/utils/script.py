@@ -3,15 +3,9 @@
 
 """Utilities for adding sub-commands to the MAAS management commands."""
 
-__all__ = [
-    'ActionScript',
-    'MainScript',
-    ]
+__all__ = ["ActionScript", "MainScript"]
 
-from argparse import (
-    ArgumentParser,
-    RawDescriptionHelpFormatter,
-)
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import io
 import signal
 from subprocess import CalledProcessError
@@ -43,13 +37,13 @@ class ActionScript:
         if not sys.stdout.line_buffering:
             sys.stdout.flush()
             sys.stdout = io.TextIOWrapper(
-                sys.stdout.buffer, sys.stdout.encoding,
-                line_buffering=True)
+                sys.stdout.buffer, sys.stdout.encoding, line_buffering=True
+            )
         if not sys.stderr.line_buffering:
             sys.stderr.flush()
             sys.stderr = io.TextIOWrapper(
-                sys.stderr.buffer, sys.stderr.encoding,
-                line_buffering=True)
+                sys.stderr.buffer, sys.stderr.encoding, line_buffering=True
+            )
 
     def register(self, name, handler, *args, **kwargs):
         """Register an action for the given name.
@@ -66,8 +60,12 @@ class ActionScript:
             release/2.7/library/argparse.html#sub-commands
         """
         parser = self.subparsers.add_parser(
-            name, *args, help=handler.run.__doc__,
-            formatter_class=RawDescriptionHelpFormatter, **kwargs)
+            name,
+            *args,
+            help=handler.run.__doc__,
+            formatter_class=RawDescriptionHelpFormatter,
+            **kwargs
+        )
         parser.set_defaults(handler=handler)
         handler.add_arguments(parser)
         return parser

@@ -13,19 +13,16 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestSubnetSignals(MAASServerTestCase):
 
     scenarios = (
-        ('ipv4', {
-            'network_maker': factory.make_ipv4_network,
-        }),
-        ('ipv6', {
-            'network_maker': factory.make_ipv6_network,
-        }),
+        ("ipv4", {"network_maker": factory.make_ipv4_network}),
+        ("ipv6", {"network_maker": factory.make_ipv6_network}),
     )
 
     def test_creating_subnet_links_to_existing_ip_address(self):
         network = self.network_maker()
         ip = factory.pick_ip_in_network(network)
         ip_address = factory.make_StaticIPAddress(
-            ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED
+        )
 
         # Ensure that for this test to really be testing the logic the
         # `StaticIPAddress` needs to not have a subnet assigned.
@@ -45,13 +42,15 @@ class TestSubnetSignals(MAASServerTestCase):
 
         # Create the second IP address not linked to network2.
         ip_address2 = factory.make_StaticIPAddress(
-            ip=ip2, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            ip=ip2, alloc_type=IPADDRESS_TYPE.USER_RESERVED
+        )
         self.assertIsNone(ip_address2.subnet)
 
         # Create the first IP address assigned to the network.
         subnet = factory.make_Subnet(cidr=network1.cidr)
         ip_address1 = factory.make_StaticIPAddress(
-            ip=ip1, alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+            ip=ip1, alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet
+        )
         self.assertEqual(subnet, ip_address1.subnet)
 
         # Update the subnet to have the CIDR of network2.

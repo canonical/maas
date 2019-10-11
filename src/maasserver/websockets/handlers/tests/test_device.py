@@ -18,24 +18,15 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.fields import MAC
-from maasserver.forms import (
-    DeviceForm,
-    DeviceWithMACsForm,
-)
+from maasserver.forms import DeviceForm, DeviceWithMACsForm
 from maasserver.models.interface import Interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import (
-    RBACEnabled,
-    RBACForceOffFixture,
-)
+from maasserver.testing.fixtures import RBACEnabled, RBACForceOffFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.orm import (
-    reload_object,
-    transactional,
-)
+from maasserver.utils.orm import reload_object, transactional
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
@@ -45,28 +36,19 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.device import DeviceHandler
 from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
+from netaddr import IPAddress, IPNetwork
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-)
+from testtools.matchers import Equals, Is
 
 
 class TestDeviceHandler(MAASTransactionServerTestCase):
-
     def dehydrate_ip_assignment(self, device, interface):
         if interface is None:
             return ""
         ip_address = interface.ip_addresses.exclude(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).first()
+            alloc_type=IPADDRESS_TYPE.DISCOVERED
+        ).first()
         if ip_address is not None:
             if ip_address.alloc_type == IPADDRESS_TYPE.DHCP:
                 return DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC
@@ -81,7 +63,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         if interface is None:
             return None
         static_ip = interface.ip_addresses.exclude(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).first()
+            alloc_type=IPADDRESS_TYPE.DISCOVERED
+        ).first()
         if static_ip is not None:
             ip = static_ip.get_ip()
             if ip:
@@ -110,13 +93,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
             "params": interface.params,
-            "parents": [
-                nic.id
-                for nic in interface.parents.all()
-            ],
+            "parents": [nic.id for nic in interface.parents.all()],
             "children": [
-                nic.child.id
-                for nic in interface.children_relationships.all()
+                nic.child.id for nic in interface.children_relationships.all()
             ],
             "links": links,
             "ip_assignment": self.dehydrate_ip_assignment(obj, interface),
@@ -138,31 +117,29 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             ip_address.subnet
             for interface in node.interface_set.all()
             for ip_address in interface.ip_addresses.all()
-            if ip_address.subnet is not None)
+            if ip_address.subnet is not None
+        )
         space_names = set(
-            subnet.space.name
-            for subnet in subnets
-            if subnet.space is not None)
+            subnet.space.name for subnet in subnets if subnet.space is not None
+        )
         fabric_names = set(
             iface.vlan.fabric.name
             for iface in node.interface_set.all()
-            if iface.vlan is not None)
+            if iface.vlan is not None
+        )
         fabric_names.update({subnet.vlan.fabric.name for subnet in subnets})
         boot_interface = node.get_boot_interface()
         permissions = []
         if user.has_perm(NodePermission.edit, node):
-            permissions = ['edit', 'delete']
+            permissions = ["edit", "delete"]
         data = {
             "actions": list(compile_node_actions(node, user).keys()),
             "created": dehydrate_datetime(node.created),
-            "domain": {
-                "id": node.domain.id,
-                "name": node.domain.name,
-                },
+            "domain": {"id": node.domain.id, "name": node.domain.name},
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
-                ],
+            ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
             "description": node.description,
@@ -170,18 +147,22 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "id": node.id,
             "primary_mac": (
-                "" if boot_interface is None else
-                "%s" % boot_interface.mac_address),
+                ""
+                if boot_interface is None
+                else "%s" % boot_interface.mac_address
+            ),
             "parent": (
-                node.parent.system_id if node.parent is not None else None),
+                node.parent.system_id if node.parent is not None else None
+            ),
             "permissions": permissions,
             "ip_address": self.dehydrate_ip_address(node, boot_interface),
             "ip_assignment": self.dehydrate_ip_assignment(
-                node, boot_interface),
+                node, boot_interface
+            ),
             "interfaces": [
                 self.dehydrate_interface(interface, node)
-                for interface in node.interface_set.all().order_by('name')
-                ],
+                for interface in node.interface_set.all().order_by("name")
+            ],
             "subnets": [subnet.cidr for subnet in subnets],
             "fabrics": list(fabric_names),
             "spaces": list(space_names),
@@ -190,18 +171,12 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "locked": node.locked,
             "swap_size": node.swap_size,
             "system_id": node.system_id,
-            "tags": [
-                tag.name
-                for tag in node.tags.all()
-                ],
+            "tags": [tag.name for tag in node.tags.all()],
             "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
-            "zone": {
-                "id": node.zone.id,
-                "name": node.zone.name,
-                },
+            "zone": {"id": node.zone.id, "name": node.zone.name},
             "pool": None,
-            }
+        }
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [
                 "actions",
@@ -221,14 +196,13 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "interface_speed",
                 "link_connected",
                 "link_speed",
-                ]
+            ]
             for key in list(data):
                 if key not in allowed_fields:
                     del data[key]
         return data
 
-    def make_device_with_ip_address(
-            self, ip_assignment=None, owner=None):
+    def make_device_with_ip_address(self, ip_assignment=None, owner=None):
         """The `DEVICE_IP_ASSIGNMENT` is based on what data exists in the model
         for a device. This will setup the model to make sure the device will
         match `ip_assignment`."""
@@ -237,31 +211,37 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         if owner is None:
             owner = factory.make_User()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE,
-            interface=True, owner=owner)
+            node_type=NODE_TYPE.DEVICE, interface=True, owner=owner
+        )
         interface = device.get_boot_interface()
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
             subnet = factory.make_Subnet()
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 ip=factory.pick_ip_in_network(subnet.get_ipnetwork()),
-                subnet=subnet, user=owner)
+                subnet=subnet,
+                user=owner,
+            )
         elif ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
             factory.make_StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.DHCP, ip="", interface=interface)
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="", interface=interface
+            )
         else:
             subnet = factory.make_Subnet(vlan=interface.vlan)
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.STICKY,
                 ip=factory.pick_ip_in_Subnet(subnet),
-                interface=interface, subnet=subnet)
+                interface=interface,
+                subnet=subnet,
+            )
         return device
 
     def make_devices(self, number, owner=None, ip_assignment=None):
         """Create `number` of new devices."""
         for counter in range(number):
             self.make_device_with_ip_address(
-                owner=owner, ip_assignment=ip_assignment)
+                owner=owner, ip_assignment=ip_assignment
+            )
 
     @transactional
     def test_get(self):
@@ -270,16 +250,19 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = self.make_device_with_ip_address(owner=owner)
         self.assertEqual(
             self.dehydrate_device(device, owner),
-            handler.get({"system_id": device.system_id}))
+            handler.get({"system_id": device.system_id}),
+        )
 
     @transactional
     def test_get_num_queries_is_the_expected_number(self):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {}, None)
         device = self.make_device_with_ip_address(
-            owner=owner, ip_assignment=DEVICE_IP_ASSIGNMENT_TYPE.STATIC)
+            owner=owner, ip_assignment=DEVICE_IP_ASSIGNMENT_TYPE.STATIC
+        )
         queries, _ = count_queries(
-            handler.get, {"system_id": device.system_id})
+            handler.get, {"system_id": device.system_id}
+        )
 
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node get.
@@ -287,15 +270,17 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 19,
-            "Number of queries has changed; make sure this is expected.")
+            queries,
+            19,
+            "Number of queries has changed; make sure this is expected.",
+        )
 
     def test_get_no_numa_nodes_for_device(self):
         user = factory.make_User()
         device = factory.make_Device()
         handler = DeviceHandler(user, {}, None)
         result = handler.get({"system_id": device.system_id})
-        self.assertNotIn('numa_nodes', result)
+        self.assertNotIn("numa_nodes", result)
 
     @transactional
     def test_list(self):
@@ -304,7 +289,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = self.make_device_with_ip_address(owner=owner)
         self.assertItemsEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            handler.list({}))
+            handler.list({}),
+        )
 
     @transactional
     def test_list_ignores_nodes(self):
@@ -318,7 +304,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device_with_parent.save()
         self.assertItemsEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            handler.list({}))
+            handler.list({}),
+        )
 
     @transactional
     def test_list_ignores_devices_with_parents(self):
@@ -329,7 +316,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         factory.make_Node(owner=owner)
         self.assertItemsEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            handler.list({}))
+            handler.list({}),
+        )
 
     @transactional
     def test_list_num_queries_is_the_expected_number(self):
@@ -339,7 +327,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {}, None)
         self.make_devices(
-            10, owner=owner, ip_assignment=DEVICE_IP_ASSIGNMENT_TYPE.STATIC)
+            10, owner=owner, ip_assignment=DEVICE_IP_ASSIGNMENT_TYPE.STATIC
+        )
         query_10_count, _ = count_queries(handler.list, {})
         self.make_devices(10, owner=owner)
 
@@ -349,8 +338,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 10,
-            "Number of queries has changed; make sure this is expected.")
+            query_10_count,
+            10,
+            "Number of queries has changed; make sure this is expected.",
+        )
 
     @transactional
     def test_list_num_queries_is_independent_of_num_devices(self):
@@ -371,8 +362,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, query_20_count,
-            "Number of queries is not independent to the number of nodes.")
+            query_10_count,
+            query_20_count,
+            "Number of queries is not independent to the number of nodes.",
+        )
 
     @transactional
     def test_list_returns_devices_only_viewable_by_user(self):
@@ -383,9 +376,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # Create another device not ownered by user.
         self.make_device_with_ip_address()
         handler = DeviceHandler(user, {}, None)
-        self.assertItemsEqual([
-            self.dehydrate_device(device, user, for_list=True),
-            ], handler.list({}))
+        self.assertItemsEqual(
+            [self.dehydrate_device(device, user, for_list=True)],
+            handler.list({}),
+        )
 
     @transactional
     def test_get_object_returns_device_if_super_user(self):
@@ -395,7 +389,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(admin, {}, None)
         self.assertEqual(
             device.system_id,
-            handler.get_object({"system_id": device.system_id}).system_id)
+            handler.get_object({"system_id": device.system_id}).system_id,
+        )
 
     @transactional
     def test_get_object_returns_node_if_owner(self):
@@ -404,7 +399,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(owner, {}, None)
         self.assertEqual(
             device.system_id,
-            handler.get_object({"system_id": device.system_id}).system_id)
+            handler.get_object({"system_id": device.system_id}).system_id,
+        )
 
     def test_get_object_raises_exception_if_owner_by_another_user(self):
         user = factory.make_User()
@@ -430,20 +426,21 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         handler = DeviceHandler(user, {}, None)
         self.assertRaises(
-            HandlerError,
-            handler.get_form_class, factory.make_name())
+            HandlerError, handler.get_form_class, factory.make_name()
+        )
 
     @transactional
     def test_create_raises_validation_error_for_missing_macs(self):
         user = factory.make_User()
         handler = DeviceHandler(user, {}, None)
-        params = {
-            "hostname": factory.make_name("hostname"),
-            }
+        params = {"hostname": factory.make_name("hostname")}
         error = self.assertRaises(
-            HandlerValidationError, handler.create, params)
-        self.assertThat(error.message_dict, Equals(
-            {'mac_addresses': ['This field is required.']}))
+            HandlerValidationError, handler.create, params
+        )
+        self.assertThat(
+            error.message_dict,
+            Equals({"mac_addresses": ["This field is required."]}),
+        )
 
     @transactional
     def test_create_creates_device_with_dynamic_ip_assignment(self):
@@ -454,22 +451,27 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         description = factory.make_name("description")
-        created_device = handler.create({
-            "hostname": hostname,
-            "description": description,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-            }],
-        })
+        created_device = handler.create(
+            {
+                "hostname": hostname,
+                "description": description,
+                "primary_mac": mac,
+                "interfaces": [
+                    {
+                        "mac": mac,
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+                    }
+                ],
+            }
+        )
         self.expectThat(created_device["hostname"], Equals(hostname))
         self.expectThat(created_device["description"], Equals(description))
         self.expectThat(created_device["primary_mac"], Equals(mac))
         self.expectThat(created_device["extra_macs"], Equals([]))
         self.expectThat(
             created_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC),
+        )
         self.expectThat(created_device["ip_address"], Is(None))
         self.expectThat(created_device["owner"], Equals(user.username))
 
@@ -482,22 +484,29 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         ip_address = factory.make_ipv4_address()
-        created_device = handler.create({
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
-                "ip_address": ip_address,
-            }],
-        })
+        created_device = handler.create(
+            {
+                "hostname": hostname,
+                "primary_mac": mac,
+                "interfaces": [
+                    {
+                        "mac": mac,
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
+                        "ip_address": ip_address,
+                    }
+                ],
+            }
+        )
         self.expectThat(
             created_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL),
+        )
         self.expectThat(created_device["ip_address"], Equals(ip_address))
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(1), "StaticIPAddress was not created.")
+            Equals(1),
+            "StaticIPAddress was not created.",
+        )
 
     @transactional
     def test_create_creates_device_with_static_ip_assignment_implicit(self):
@@ -508,27 +517,36 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         subnet = factory.make_Subnet()
-        created_device = handler.create({
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-                "subnet": subnet.id,
-            }],
-        })
+        created_device = handler.create(
+            {
+                "hostname": hostname,
+                "primary_mac": mac,
+                "interfaces": [
+                    {
+                        "mac": mac,
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                        "subnet": subnet.id,
+                    }
+                ],
+            }
+        )
         self.expectThat(
             created_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
+        )
         static_interface = Interface.objects.get(mac_address=MAC(mac))
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
-            observed_subnet, Equals(subnet),
-            "Static assignment to the subnet was not created.")
+            observed_subnet,
+            Equals(subnet),
+            "Static assignment to the subnet was not created.",
+        )
         ip_address = created_device["ip_address"]
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(1), "StaticIPAddress was not created.")
+            Equals(1),
+            "StaticIPAddress was not created.",
+        )
 
     @transactional
     def test_create_creates_device_with_static_ip_assignment_explicit(self):
@@ -540,28 +558,37 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         hostname = factory.make_name("hostname")
         subnet = factory.make_Subnet()
         ip_address = factory.pick_ip_in_Subnet(subnet)
-        created_device = handler.create({
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-                "subnet": subnet.id,
-                "ip_address": ip_address,
-            }],
-        })
+        created_device = handler.create(
+            {
+                "hostname": hostname,
+                "primary_mac": mac,
+                "interfaces": [
+                    {
+                        "mac": mac,
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                        "subnet": subnet.id,
+                        "ip_address": ip_address,
+                    }
+                ],
+            }
+        )
         self.expectThat(
             created_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
+        )
         self.expectThat(created_device["ip_address"], Equals(ip_address))
         static_interface = Interface.objects.get(mac_address=MAC(mac))
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
-            observed_subnet, Equals(subnet),
-            "Static assignment to the subnet was not created.")
+            observed_subnet,
+            Equals(subnet),
+            "Static assignment to the subnet was not created.",
+        )
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(1), "StaticIPAddress was not created.")
+            Equals(1),
+            "StaticIPAddress was not created.",
+        )
 
     @transactional
     def test_create_creates_device_with_static_and_external_ip(self):
@@ -575,48 +602,52 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         static_ip_address = factory.pick_ip_in_Subnet(subnet)
         mac_external = factory.make_mac_address()
         external_ip_address = factory.make_ipv4_address()
-        created_device = handler.create({
-            "hostname": hostname,
-            "primary_mac": mac_static,
-            "extra_macs": [
-                mac_external
-            ],
-            "interfaces": [
-                {
-                    "mac": mac_static,
-                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-                    "subnet": subnet.id,
-                    "ip_address": static_ip_address,
-                },
-                {
-                    "mac": mac_external,
-                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
-                    "ip_address": external_ip_address,
-                },
-            ],
-        })
-        self.expectThat(
-            created_device["primary_mac"],
-            Equals(mac_static))
-        self.expectThat(
-            created_device["extra_macs"],
-            Equals([mac_external]))
+        created_device = handler.create(
+            {
+                "hostname": hostname,
+                "primary_mac": mac_static,
+                "extra_macs": [mac_external],
+                "interfaces": [
+                    {
+                        "mac": mac_static,
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                        "subnet": subnet.id,
+                        "ip_address": static_ip_address,
+                    },
+                    {
+                        "mac": mac_external,
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
+                        "ip_address": external_ip_address,
+                    },
+                ],
+            }
+        )
+        self.expectThat(created_device["primary_mac"], Equals(mac_static))
+        self.expectThat(created_device["extra_macs"], Equals([mac_external]))
         self.expectThat(
             created_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
+        )
         self.expectThat(
-            created_device["ip_address"], Equals(static_ip_address))
+            created_device["ip_address"], Equals(static_ip_address)
+        )
         static_interface = Interface.objects.get(mac_address=MAC(mac_static))
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
-            observed_subnet, Equals(subnet),
-            "Static assignment to the subnet was not created.")
+            observed_subnet,
+            Equals(subnet),
+            "Static assignment to the subnet was not created.",
+        )
         self.expectThat(
             StaticIPAddress.objects.filter(ip=static_ip_address).count(),
-            Equals(1), "Static StaticIPAddress was not created.")
+            Equals(1),
+            "Static StaticIPAddress was not created.",
+        )
         self.expectThat(
             StaticIPAddress.objects.filter(ip=external_ip_address).count(),
-            Equals(1), "External StaticIPAddress was not created.")
+            Equals(1),
+            "External StaticIPAddress was not created.",
+        )
 
     @transactional
     def test_create_copes_with_mac_addresses_of_different_case(self):
@@ -625,14 +656,18 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         request.user = user
         handler = DeviceHandler(user, {}, request)
         mac = factory.make_mac_address()
-        created_device = handler.create({
-            "hostname": factory.make_name("hostname"),
-            "primary_mac": mac.lower(),  # Lowercase.
-            "interfaces": [{
-                "mac": mac.upper(),  # Uppercase.
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-            }],
-        })
+        created_device = handler.create(
+            {
+                "hostname": factory.make_name("hostname"),
+                "primary_mac": mac.lower(),  # Lowercase.
+                "interfaces": [
+                    {
+                        "mac": mac.upper(),  # Uppercase.
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+                    }
+                ],
+            }
+        )
         self.assertThat(created_device["primary_mac"], Equals(mac))
 
     @transactional
@@ -642,14 +677,18 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         request.user = user
         handler = DeviceHandler(user, {}, request)
         mac = factory.make_mac_address(delimiter=":")
-        created_device = handler.create({
-            "hostname": factory.make_name("hostname"),
-            "primary_mac": mac,  # Colons.
-            "interfaces": [{
-                "mac": mac.replace(":", "-"),  # Hyphens.
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-            }],
-        })
+        created_device = handler.create(
+            {
+                "hostname": factory.make_name("hostname"),
+                "primary_mac": mac,  # Colons.
+                "interfaces": [
+                    {
+                        "mac": mac.replace(":", "-"),  # Hyphens.
+                        "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+                    }
+                ],
+            }
+        )
         self.assertThat(created_device["primary_mac"], Equals(mac))
 
     @transactional
@@ -657,15 +696,21 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         handler = DeviceHandler(user, {}, None)
         device = factory.make_Device(owner=user)
-        params = {
-            "system_id": device.system_id,
-            }
+        params = {"system_id": device.system_id}
         error = self.assertRaises(
-            HandlerValidationError, handler.create_interface, params)
-        self.assertThat(error.message_dict, Equals(
-            {'mac_address': [
-                'This field is required.',
-                'This field cannot be blank.']}))
+            HandlerValidationError, handler.create_interface, params
+        )
+        self.assertThat(
+            error.message_dict,
+            Equals(
+                {
+                    "mac_address": [
+                        "This field is required.",
+                        "This field cannot be blank.",
+                    ]
+                }
+            ),
+        )
 
     @transactional
     def test_create_interface_creates_with_dynamic_ip_assignment(self):
@@ -675,15 +720,18 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {}, request)
         device = factory.make_Device(owner=user)
         mac = factory.make_mac_address()
-        updated_device = handler.create_interface({
-            "system_id": device.system_id,
-            "mac_address": mac,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-        })
+        updated_device = handler.create_interface(
+            {
+                "system_id": device.system_id,
+                "mac_address": mac,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+            }
+        )
         self.expectThat(updated_device["primary_mac"], Equals(mac))
         self.expectThat(
             updated_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC),
+        )
 
     @transactional
     def test_create_interface_creates_with_external_ip_assignment(self):
@@ -694,19 +742,24 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = factory.make_Device(owner=user)
         mac = factory.make_mac_address()
         ip_address = factory.make_ipv4_address()
-        updated_device = handler.create_interface({
-            "system_id": device.system_id,
-            "mac_address": mac,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
-            "ip_address": ip_address,
-        })
+        updated_device = handler.create_interface(
+            {
+                "system_id": device.system_id,
+                "mac_address": mac,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
+                "ip_address": ip_address,
+            }
+        )
         self.expectThat(updated_device["primary_mac"], Equals(mac))
         self.expectThat(
             updated_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL),
+        )
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(1), "StaticIPAddress was not created.")
+            Equals(1),
+            "StaticIPAddress was not created.",
+        )
 
     @transactional
     def test_create_interface_creates_with_static_ip_assignment_implicit(self):
@@ -715,21 +768,26 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = factory.make_Device(owner=user)
         mac = factory.make_mac_address()
         subnet = factory.make_Subnet()
-        updated_device = handler.create_interface({
-            "system_id": device.system_id,
-            "mac_address": mac,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-            "subnet": subnet.id,
-        })
+        updated_device = handler.create_interface(
+            {
+                "system_id": device.system_id,
+                "mac_address": mac,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                "subnet": subnet.id,
+            }
+        )
         self.expectThat(updated_device["primary_mac"], Equals(mac))
         self.expectThat(
             updated_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
+        )
         static_interface = Interface.objects.get(mac_address=MAC(mac))
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
-            observed_subnet, Equals(subnet),
-            "Static assignment to the subnet was not created.")
+            observed_subnet,
+            Equals(subnet),
+            "Static assignment to the subnet was not created.",
+        )
 
     @transactional
     def test_create_interface_creates_static_ip_assignment_explicit(self):
@@ -741,26 +799,33 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         mac = factory.make_mac_address()
         subnet = factory.make_Subnet()
         ip_address = factory.pick_ip_in_Subnet(subnet)
-        updated_device = handler.create_interface({
-            "system_id": device.system_id,
-            "mac_address": mac,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-            "subnet": subnet.id,
-            "ip_address": ip_address,
-        })
+        updated_device = handler.create_interface(
+            {
+                "system_id": device.system_id,
+                "mac_address": mac,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                "subnet": subnet.id,
+                "ip_address": ip_address,
+            }
+        )
         self.expectThat(updated_device["primary_mac"], Equals(mac))
         self.expectThat(
             updated_device["ip_assignment"],
-            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC))
+            Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
+        )
         self.expectThat(updated_device["ip_address"], Equals(ip_address))
         static_interface = Interface.objects.get(mac_address=MAC(mac))
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
-            observed_subnet, Equals(subnet),
-            "Static assignment to the subnet was not created.")
+            observed_subnet,
+            Equals(subnet),
+            "Static assignment to the subnet was not created.",
+        )
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(1), "StaticIPAddress was not created.")
+            Equals(1),
+            "StaticIPAddress was not created.",
+        )
 
     @transactional
     def test_missing_action_raises_error(self):
@@ -778,7 +843,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertRaises(
             NodeActionError,
             handler.action,
-            {"system_id": device.system_id, "action": "unknown"})
+            {"system_id": device.system_id, "action": "unknown"},
+        )
 
     @transactional
     def test_not_available_action_raises_error(self):
@@ -788,7 +854,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertRaises(
             NodeActionError,
             handler.action,
-            {"system_id": device.system_id, "action": "unknown"})
+            {"system_id": device.system_id, "action": "unknown"},
+        )
 
     @transactional
     def test_action_performs_action(self):
@@ -797,11 +864,13 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         request.user = user
         device = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {}, request)
-        handler.action({
-            "request": request,
-            "system_id": device.system_id,
-            "action": "delete"
-        })
+        handler.action(
+            {
+                "request": request,
+                "system_id": device.system_id,
+                "action": "delete",
+            }
+        )
         self.assertIsNone(reload_object(device))
 
     @transactional
@@ -812,13 +881,14 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = self.make_device_with_ip_address(owner=user)
         zone = factory.make_Zone()
         handler = DeviceHandler(user, {}, request)
-        handler.action({
-            "request": request,
-            "system_id": device.system_id,
-            "action": "set-zone",
-            "extra": {
-                "zone_id": zone.id,
-            }})
+        handler.action(
+            {
+                "request": request,
+                "system_id": device.system_id,
+                "action": "set-zone",
+                "extra": {"zone_id": zone.id},
+            }
+        )
         device = reload_object(device)
         self.expectThat(device.zone, Equals(zone))
 
@@ -829,15 +899,19 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {}, None)
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
-        handler.create_interface({
-            "system_id": node.system_id,
-            "name": name,
-            "mac_address": mac_address,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-            })
+        handler.create_interface(
+            {
+                "system_id": node.system_id,
+                "name": name,
+                "mac_address": mac_address,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+            }
+        )
         self.assertEqual(
-            1, node.interface_set.count(),
-            "Should have one interface on the node.")
+            1,
+            node.interface_set.count(),
+            "Should have one interface on the node.",
+        )
 
     @transactional
     def test_create_interface_creates_static(self):
@@ -849,17 +923,20 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         subnet = factory.make_Subnet(vlan=vlan)
-        handler.create_interface({
-            "system_id": node.system_id,
-            "name": name,
-            "mac_address": mac_address,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-            "subnet": subnet.id,
-            })
+        handler.create_interface(
+            {
+                "system_id": node.system_id,
+                "name": name,
+                "mac_address": mac_address,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                "subnet": subnet.id,
+            }
+        )
         new_interface = node.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
+        )
         self.assertIsNotNone(auto_ip)
         self.assertEqual(1, len(auto_ip))
 
@@ -871,17 +948,20 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
         ip_address = factory.make_ip_address()
-        handler.create_interface({
-            "system_id": node.system_id,
-            "name": name,
-            "mac_address": mac_address,
-            "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
-            "ip_address": ip_address,
-            })
+        handler.create_interface(
+            {
+                "system_id": node.system_id,
+                "name": name,
+                "mac_address": mac_address,
+                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
+                "ip_address": ip_address,
+            }
+        )
         new_interface = node.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED
+        )
         self.assertIsNotNone(auto_ip)
         self.assertEqual(1, len(auto_ip))
 
@@ -898,15 +978,15 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "name": name,
             "mac_address": mac_address,
             "ip_assignment": ip_assignment,
-            }
+        }
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             subnet = factory.make_Subnet()
-            params['subnet'] = subnet.id
+            params["subnet"] = subnet.id
             ip_address = str(IPAddress(IPNetwork(subnet.cidr).first))
-            params['ip_address'] = ip_address
+            params["ip_address"] = ip_address
         elif ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
             ip_address = factory.make_ip_address()
-            params['ip_address'] = ip_address
+            params["ip_address"] = ip_address
         handler.create_interface(params)
         interface = node.interface_set.first()
         self.assertIsNotNone(interface)
@@ -921,24 +1001,25 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         }
         if new_ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             new_subnet = factory.make_Subnet()
-            new_params['subnet'] = new_subnet.id
+            new_params["subnet"] = new_subnet.id
             new_ip_address = str(IPAddress(IPNetwork(new_subnet.cidr).first))
-            new_params['ip_address'] = new_ip_address
+            new_params["ip_address"] = new_ip_address
         elif new_ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
             new_ip_address = factory.make_ip_address()
-            new_params['ip_address'] = new_ip_address
+            new_params["ip_address"] = new_ip_address
         handler.update_interface(new_params)
-        data = self.dehydrate_device(node, user)['interfaces']
+        data = self.dehydrate_device(node, user)["interfaces"]
         self.assertEqual(1, len(data))
-        self.assertEqual(data[0]['ip_assignment'], new_ip_assignment)
+        self.assertEqual(data[0]["ip_assignment"], new_ip_assignment)
         if new_ip_assignment != DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
-            self.assertEqual(data[0]['ip_address'], new_ip_address)
+            self.assertEqual(data[0]["ip_address"], new_ip_address)
 
     @transactional
     def test_update_interface_updates_non_admin(self):
         user = factory.make_User()
         node = factory.make_Node(
-            owner=user, interface=False, node_type=NODE_TYPE.DEVICE)
+            owner=user, interface=False, node_type=NODE_TYPE.DEVICE
+        )
         handler = DeviceHandler(user, {}, None)
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
@@ -948,7 +1029,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "name": name,
             "mac_address": mac_address,
             "ip_assignment": ip_assignment,
-            }
+        }
         handler.create_interface(params)
         interface = node.interface_set.first()
         self.assertIsNotNone(interface)
@@ -961,9 +1042,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "ip_assignment": ip_assignment,
         }
         handler.update_interface(new_params)
-        data = self.dehydrate_device(node, user)['interfaces']
+        data = self.dehydrate_device(node, user)["interfaces"]
         self.assertEqual(1, len(data))
-        self.assertEqual(data[0]['mac_address'], new_mac_address)
+        self.assertEqual(data[0]["mac_address"], new_mac_address)
 
     @transactional
     def test_update_does_not_raise_validation_error_for_invalid_arch(self):
@@ -985,15 +1066,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
         new_description = factory.make_name("description")
-        new_tags = [
-            factory.make_name("tag")
-            for _ in range(3)
-        ]
+        new_tags = [factory.make_name("tag") for _ in range(3)]
         node_data["hostname"] = new_hostname
         node_data["description"] = new_description
-        node_data["zone"] = {
-            "name": new_zone.name,
-        }
+        node_data["zone"] = {"name": new_zone.name}
         node_data["tags"] = new_tags
         updated_node = handler.update(node_data)
         self.assertEqual(updated_node["hostname"], new_hostname)
@@ -1006,18 +1082,14 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         handler = DeviceHandler(user, {}, None)
         node = factory.make_Node(
-            owner=user, interface=True, node_type=NODE_TYPE.DEVICE)
+            owner=user, interface=True, node_type=NODE_TYPE.DEVICE
+        )
         node_data = self.dehydrate_device(node, user)
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
-        new_tags = [
-            factory.make_name("tag")
-            for _ in range(3)
-        ]
+        new_tags = [factory.make_name("tag") for _ in range(3)]
         node_data["hostname"] = new_hostname
-        node_data["zone"] = {
-            "name": new_zone.name,
-        }
+        node_data["zone"] = {"name": new_zone.name}
         node_data["tags"] = new_tags
         updated_node = handler.update(node_data)
         self.assertEqual(updated_node["hostname"], new_hostname)
@@ -1030,30 +1102,29 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         user2 = factory.make_User()
         handler = DeviceHandler(user1, {}, None)
         node = factory.make_Node(
-            owner=user2, interface=True, node_type=NODE_TYPE.DEVICE)
+            owner=user2, interface=True, node_type=NODE_TYPE.DEVICE
+        )
         node_data = self.dehydrate_device(node, user1)
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
         node_data["hostname"] = new_hostname
-        node_data["zone"] = {
-            "name": new_zone.name,
-        }
-        self.assertRaises(
-            HandlerDoesNotExistError, handler.update, node_data)
+        node_data["zone"] = {"name": new_zone.name}
+        self.assertRaises(HandlerDoesNotExistError, handler.update, node_data)
 
     @transactional
     def test_update_owned_with_rbac(self):
         rbac = self.useFixture(RBACEnabled())
         user = factory.make_User(is_local=False)
         rbac.store.allow(
-            user.username, factory.make_ResourcePool(), 'admin-machines')
+            user.username, factory.make_ResourcePool(), "admin-machines"
+        )
         node = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {}, None)
         new_hostname = factory.make_name("hostname")
         updated_node = handler.update(
-            {"system_id": node.system_id,
-             'hostname': new_hostname})
-        self.assertEqual(updated_node['hostname'], new_hostname)
+            {"system_id": node.system_id, "hostname": new_hostname}
+        )
+        self.assertEqual(updated_node["hostname"], new_hostname)
 
     @transactional
     def test_delete_interface_admin(self):
@@ -1061,10 +1132,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {}, None)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        handler.delete_interface({
-            "system_id": node.system_id,
-            "interface_id": interface.id,
-            })
+        handler.delete_interface(
+            {"system_id": node.system_id, "interface_id": interface.id}
+        )
         self.assertIsNone(reload_object(interface))
 
     @transactional
@@ -1073,10 +1143,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         node = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {}, None)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        handler.delete_interface({
-            "system_id": node.system_id,
-            "interface_id": interface.id,
-            })
+        handler.delete_interface(
+            {"system_id": node.system_id, "interface_id": interface.id}
+        )
         self.assertIsNone(reload_object(interface))
 
     @transactional
@@ -1097,18 +1166,22 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             mode = INTERFACE_LINK_TYPE.LINK_UP
         ip_address = factory.make_ip_address()
         self.patch_autospec(Interface, "update_link_by_id")
-        handler.link_subnet({
-            "system_id": node.system_id,
-            "interface_id": interface.id,
-            "link_id": link_id,
-            "subnet": subnet.id,
-            "ip_assignment": ip_assignment,
-            "ip_address": ip_address,
-            })
+        handler.link_subnet(
+            {
+                "system_id": node.system_id,
+                "interface_id": interface.id,
+                "link_id": link_id,
+                "subnet": subnet.id,
+                "ip_assignment": ip_assignment,
+                "ip_address": ip_address,
+            }
+        )
         self.assertThat(
             Interface.update_link_by_id,
             MockCalledOnceWith(
-                ANY, link_id, mode, subnet, ip_address=ip_address))
+                ANY, link_id, mode, subnet, ip_address=ip_address
+            ),
+        )
 
     @transactional
     def test_link_subnet_calls_link_subnet_if_link_id_deleted(self):
@@ -1129,19 +1202,21 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         ip_address = factory.make_ip_address()
         sip.delete()
         self.patch_autospec(Interface, "link_subnet")
-        handler.link_subnet({
-            "system_id": node.system_id,
-            "interface_id": interface.id,
-            "subnet": subnet.id,
-            "link_id": link_id,
-            "ip_assignment": ip_assignment,
-            "ip_address": ip_address,
-            })
+        handler.link_subnet(
+            {
+                "system_id": node.system_id,
+                "interface_id": interface.id,
+                "subnet": subnet.id,
+                "link_id": link_id,
+                "ip_assignment": ip_assignment,
+                "ip_address": ip_address,
+            }
+        )
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             self.assertThat(
                 Interface.link_subnet,
-                MockCalledOnceWith(
-                    ANY, mode, subnet, ip_address=ip_address))
+                MockCalledOnceWith(ANY, mode, subnet, ip_address=ip_address),
+            )
         else:
             self.assertThat(Interface.link_subnet, MockNotCalled())
 
@@ -1161,18 +1236,20 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             mode = INTERFACE_LINK_TYPE.LINK_UP
         ip_address = factory.make_ip_address()
         self.patch_autospec(Interface, "link_subnet")
-        handler.link_subnet({
-            "system_id": node.system_id,
-            "interface_id": interface.id,
-            "subnet": subnet.id,
-            "ip_assignment": ip_assignment,
-            "ip_address": ip_address,
-            })
+        handler.link_subnet(
+            {
+                "system_id": node.system_id,
+                "interface_id": interface.id,
+                "subnet": subnet.id,
+                "ip_assignment": ip_assignment,
+                "ip_address": ip_address,
+            }
+        )
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             self.assertThat(
                 Interface.link_subnet,
-                MockCalledOnceWith(
-                    ANY, mode, subnet, ip_address=ip_address))
+                MockCalledOnceWith(ANY, mode, subnet, ip_address=ip_address),
+            )
         else:
             self.assertThat(Interface.link_subnet, MockNotCalled())
 
@@ -1183,10 +1260,13 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {}, None)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         link_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=interface)
-        handler.delete_interface({
-            "system_id": node.system_id,
-            "interface_id": interface.id,
-            "link_id": link_ip.id,
-            })
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=interface
+        )
+        handler.delete_interface(
+            {
+                "system_id": node.system_id,
+                "interface_id": interface.id,
+                "link_id": link_ip.id,
+            }
+        )
         self.assertIsNone(reload_object(link_ip))

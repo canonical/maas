@@ -11,17 +11,11 @@ __all__ = [
 
 from typing import Optional
 
-from django.forms import (
-    ChoiceField,
-    Form,
-)
+from django.forms import ChoiceField, Form
 from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
 from maasserver.fields import StrippedCharField
 from maasserver.forms import AbsolutePathField
-from maasserver.models import (
-    Filesystem,
-    Node,
-)
+from maasserver.models import Filesystem, Node
 from provisioningserver.utils import typed
 
 
@@ -44,21 +38,24 @@ class MountFilesystemForm(Form):
         cleaned_data = super(MountFilesystemForm, self).clean()
         if self.filesystem is None:
             self.add_error(
-                None, "Cannot mount an unformatted partition "
-                "or block device.")
+                None,
+                "Cannot mount an unformatted partition " "or block device.",
+            )
         elif self.filesystem.filesystem_group is not None:
             self.add_error(
-                None, "Filesystem is part of a filesystem group, "
-                "and cannot be mounted.")
+                None,
+                "Filesystem is part of a filesystem group, "
+                "and cannot be mounted.",
+            )
         return cleaned_data
 
     def save(self):
         if "mount_point" in self.cleaned_data:
-            self.filesystem.mount_point = self.cleaned_data['mount_point']
+            self.filesystem.mount_point = self.cleaned_data["mount_point"]
         else:
             self.filesystem.mount_point = "none"  # e.g. for swap.
         if "mount_options" in self.cleaned_data:
-            self.filesystem.mount_options = self.cleaned_data['mount_options']
+            self.filesystem.mount_options = self.cleaned_data["mount_options"]
         self.filesystem.save()
 
 
@@ -68,11 +65,13 @@ class MountNonStorageFilesystemForm(Form):
     mount_point = AbsolutePathField(required=True)
     mount_options = StrippedCharField(required=False)
     fstype = ChoiceField(
-        required=True, choices=[
-            (name, displayname) for name, displayname in
-            FILESYSTEM_FORMAT_TYPE_CHOICES
+        required=True,
+        choices=[
+            (name, displayname)
+            for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
             if name not in Filesystem.TYPES_REQUIRING_STORAGE
-        ])
+        ],
+    )
 
     @typed
     def __init__(self, node: Node, *args, **kwargs):
@@ -82,10 +81,12 @@ class MountNonStorageFilesystemForm(Form):
     @typed
     def save(self) -> Filesystem:
         filesystem = Filesystem(
-            node=self.node, fstype=self.cleaned_data["fstype"],
+            node=self.node,
+            fstype=self.cleaned_data["fstype"],
             mount_options=self.cleaned_data["mount_options"],
             mount_point=self.cleaned_data["mount_point"],
-            acquired=self.node.owner is not None)
+            acquired=self.node.owner is not None,
+        )
         filesystem.save()
         return filesystem
 
@@ -105,11 +106,13 @@ class UnmountNonStorageFilesystemForm(Form):
         if "mount_point" in cleaned_data:
             try:
                 self.filesystem = Filesystem.objects.get(
-                    node=self.node, mount_point=cleaned_data["mount_point"])
+                    node=self.node, mount_point=cleaned_data["mount_point"]
+                )
             except Filesystem.DoesNotExist:
                 self.add_error(
-                    "mount_point", "No special filesystem is "
-                    "mounted at this path.")
+                    "mount_point",
+                    "No special filesystem is " "mounted at this path.",
+                )
         return cleaned_data
 
     @typed

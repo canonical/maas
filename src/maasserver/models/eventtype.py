@@ -3,18 +3,12 @@
 
 """:class:`EventType` and friends."""
 
-__all__ = [
-    'EventType',
-]
+__all__ = ["EventType"]
 
 
 import logging
 
-from django.db.models import (
-    CharField,
-    IntegerField,
-    Manager,
-)
+from django.db.models import CharField, IntegerField, Manager
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -22,21 +16,21 @@ from provisioningserver.events import AUDIT
 
 # Describes how the log levels are displayed in the UI.
 LOGGING_LEVELS = {
-    AUDIT: 'AUDIT',
-    logging.DEBUG: 'DEBUG',
-    logging.INFO: 'INFO',
-    logging.WARNING: 'WARNING',
-    logging.ERROR: 'ERROR',
-    logging.CRITICAL: 'CRITICAL',
+    AUDIT: "AUDIT",
+    logging.DEBUG: "DEBUG",
+    logging.INFO: "INFO",
+    logging.WARNING: "WARNING",
+    logging.ERROR: "ERROR",
+    logging.CRITICAL: "CRITICAL",
 }
 
 LOGGING_LEVELS_BY_NAME = {
-    'AUDIT': AUDIT,
-    'DEBUG': logging.DEBUG,
-    'INFO': logging.INFO,
-    'WARNING': logging.WARNING,
-    'ERROR': logging.ERROR,
-    'CRITICAL': logging.CRITICAL,
+    "AUDIT": AUDIT,
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
 }
 
 
@@ -51,10 +45,7 @@ class EventTypeManager(Manager):
         of creating event types from a predefined and static catalog.
         """
         event_type, _ = self.get_or_create(
-            name=name, defaults={
-                "description": description,
-                "level": level,
-            },
+            name=name, defaults={"description": description, "level": level}
         )
         return event_type
 
@@ -68,8 +59,7 @@ class EventType(CleanSave, TimestampedModel):
         Python log levels; higher values are more significant.
     """
 
-    name = CharField(
-        max_length=255, unique=True, blank=False, editable=False)
+    name = CharField(max_length=255, unique=True, blank=False, editable=False)
 
     description = CharField(max_length=255, blank=False, editable=False)
 
@@ -87,7 +77,10 @@ class EventType(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "%s (level=%s, description=%s)" % (
-            self.name, self.level, self.description)
+            self.name,
+            self.level,
+            self.description,
+        )
 
     def validate_unique(self, exclude=None):
         """Override validate unique so nothing is validated.

@@ -3,9 +3,7 @@
 
 """Respond to staticipaddress changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import (
@@ -38,8 +36,10 @@ def pre_delete_record_relations_on_delete(sender, instance, **kwargs):
     instance.__previous_bmcs = set(instance.bmc_set.all())
     instance.__previous_dnsresources = set(instance.dnsresource_set.all())
 
+
 signals.watch(
-    pre_delete, pre_delete_record_relations_on_delete, sender=StaticIPAddress)
+    pre_delete, pre_delete_record_relations_on_delete, sender=StaticIPAddress
+)
 
 
 def post_delete_remake_sip_for_bmc(sender, instance, **kwargs):
@@ -59,8 +59,10 @@ def post_delete_remake_sip_for_bmc(sender, instance, **kwargs):
         # BMC.save() will extract and create a new IP from power_parameters.
         bmc.save()
 
+
 signals.watch(
-    post_delete, post_delete_remake_sip_for_bmc, sender=StaticIPAddress)
+    post_delete, post_delete_remake_sip_for_bmc, sender=StaticIPAddress
+)
 
 
 def post_delete_clean_up_dns(sender, instance, **kwargs):
@@ -72,10 +74,11 @@ def post_delete_clean_up_dns(sender, instance, **kwargs):
             dnsrr.delete()
             log.msg(
                 "Removed orphan DNS record '%s' for deleted IP address '%s'."
-                % (dnsrr.fqdn, instance.ip))
+                % (dnsrr.fqdn, instance.ip)
+            )
 
-signals.watch(
-    post_delete, post_delete_clean_up_dns, sender=StaticIPAddress)
+
+signals.watch(post_delete, post_delete_clean_up_dns, sender=StaticIPAddress)
 
 
 def post_init_store_previous_ip(sender, instance, **kwargs):
@@ -86,8 +89,8 @@ def post_init_store_previous_ip(sender, instance, **kwargs):
     """
     instance.__previous_ip = instance.ip
 
-signals.watch(
-    post_init, post_init_store_previous_ip, sender=StaticIPAddress)
+
+signals.watch(post_init, post_init_store_previous_ip, sender=StaticIPAddress)
 
 
 def pre_save_prevent_conflicts(sender, instance, **kwargs):
@@ -119,8 +122,8 @@ def pre_save_prevent_conflicts(sender, instance, **kwargs):
         ip.bmc_set.clear()
         ip.delete()
 
-signals.watch(
-    pre_save, pre_save_prevent_conflicts, sender=StaticIPAddress)
+
+signals.watch(pre_save, pre_save_prevent_conflicts, sender=StaticIPAddress)
 
 
 def post_save_prevent_conflicts(sender, instance, created, **kwargs):
@@ -137,8 +140,7 @@ def post_save_prevent_conflicts(sender, instance, created, **kwargs):
     instance.__bmcs_to_update = set()
 
 
-signals.watch(
-    post_save, post_save_prevent_conflicts, sender=StaticIPAddress)
+signals.watch(post_save, post_save_prevent_conflicts, sender=StaticIPAddress)
 
 
 def post_save_check_range_utilization(sender, instance, created, **kwargs):
@@ -170,9 +172,11 @@ def post_delete_check_range_utilization(sender, instance, **kwargs):
 
 
 signals.watch(
-    post_save, post_save_check_range_utilization, sender=StaticIPAddress)
+    post_save, post_save_check_range_utilization, sender=StaticIPAddress
+)
 signals.watch(
-    post_delete, post_delete_check_range_utilization, sender=StaticIPAddress)
+    post_delete, post_delete_check_range_utilization, sender=StaticIPAddress
+)
 
 
 # Enable all signals by default.

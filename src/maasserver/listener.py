@@ -3,10 +3,7 @@
 
 """Listens for NOTIFY events from the postgres database."""
 
-__all__ = [
-    "PostgresListenerNotifyError",
-    "PostgresListenerService",
-    ]
+__all__ = ["PostgresListenerNotifyError", "PostgresListenerService"]
 
 from collections import defaultdict
 from contextlib import closing
@@ -16,24 +13,10 @@ from django.db import connections
 from django.db.utils import load_backend
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.events import EventGroup
-from provisioningserver.utils.twisted import (
-    callOut,
-    suppress,
-    synchronous,
-)
+from provisioningserver.utils.twisted import callOut, suppress, synchronous
 from twisted.application.service import Service
-from twisted.internet import (
-    defer,
-    error,
-    interfaces,
-    reactor,
-    task,
-)
-from twisted.internet.defer import (
-    CancelledError,
-    Deferred,
-    succeed,
-)
+from twisted.internet import defer, error, interfaces, reactor, task
+from twisted.internet.defer import CancelledError, Deferred, succeed
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.logger import Logger
@@ -181,7 +164,8 @@ class PostgresListenerService(Service, object):
                         # Place non-system messages into the queue to be
                         # processed.
                         self.notifications.add(
-                            (notify.channel, notify.payload))
+                            (notify.channel, notify.payload)
+                        )
                 # Delete the contents of the connection's notifies list so
                 # that we don't process them a second time.
                 del notifies[:]
@@ -222,7 +206,8 @@ class PostgresListenerService(Service, object):
             # different from normal handlers where we will call each and wait
             # for all to resolve before continuing to the next event.
             raise PostgresListenerRegistrationError(
-                "System channel '%s' has already been registered." % channel)
+                "System channel '%s' has already been registered." % channel
+            )
         else:
             handlers.append(handler)
         if self.registeredChannels and self.connection:
@@ -237,13 +222,15 @@ class PostgresListenerService(Service, object):
         """
         if channel not in self.listeners:
             raise PostgresListenerUnregistrationError(
-                "Channel '%s' is not registered with the listener." % channel)
+                "Channel '%s' is not registered with the listener." % channel
+            )
         handlers = self.listeners[channel]
         if handler in handlers:
             handlers.remove(handler)
         else:
             raise PostgresListenerUnregistrationError(
-                "Handler is not registered on that channel '%s'." % channel)
+                "Handler is not registered on that channel '%s'." % channel
+            )
         if self.registeredChannels and self.connection and len(handlers) == 0:
             # Channels have already been registered. Unregister the channel.
             self.unregisterChannel(channel)
@@ -252,9 +239,10 @@ class PostgresListenerService(Service, object):
     def createConnection(self):
         """Create new database connection."""
         db = connections.databases[self.alias]
-        backend = load_backend(db['ENGINE'])
+        backend = load_backend(db["ENGINE"])
         return backend.DatabaseWrapper(
-            db, self.alias, allow_thread_sharing=True)
+            db, self.alias, allow_thread_sharing=True
+        )
 
     @synchronous
     def startConnection(self):
@@ -283,7 +271,8 @@ class PostgresListenerService(Service, object):
             if self.disconnecting is not None:
                 raise RuntimeError(
                     "Cannot attempt to make new connection before "
-                    "pending disconnection has finished.")
+                    "pending disconnection has finished."
+                )
 
             def cb_connect(_):
                 self.log.info("Listening for database notifications.")
@@ -291,7 +280,8 @@ class PostgresListenerService(Service, object):
             def eb_connect(failure):
                 self.log.error(
                     "Unable to connect to database: {error}",
-                    error=failure.getErrorMessage())
+                    error=failure.getErrorMessage(),
+                )
                 if failure.check(CancelledError):
                     return failure
                 elif self.autoReconnect:
@@ -389,13 +379,15 @@ class PostgresListenerService(Service, object):
         :raise PostgresListenerNotifyError: When {channel} is not registered or
             {action} is not in `ACTIONS`.
         """
-        channel, action = channel.split('_', 1)
+        channel, action = channel.split("_", 1)
         if channel not in self.listeners:
             raise PostgresListenerNotifyError(
-                "%s is not a registered channel." % channel)
+                "%s is not a registered channel." % channel
+            )
         if action not in map_enum(ACTIONS).values():
             raise PostgresListenerNotifyError(
-                "%s action is not supported." % action)
+                "%s action is not supported." % action
+            )
         return channel, action
 
     def runHandleNotify(self, delay=0, clock=reactor):
@@ -413,12 +405,15 @@ class PostgresListenerService(Service, object):
 
     def handleNotifies(self, clock=reactor):
         """Process all notify message in the notifications set."""
+
         def gen_notifications(notifications):
             while len(notifications) != 0:
                 yield notifications.pop()
+
         return task.coiterate(
             self.handleNotify(notification, clock=clock)
-            for notification in gen_notifications(self.notifications))
+            for notification in gen_notifications(self.notifications)
+        )
 
     def handleNotify(self, notification, clock=reactor):
         """Process a notify message in the notifications set."""
@@ -429,7 +424,8 @@ class PostgresListenerService(Service, object):
             # Log the error and continue processing the remaining
             # notifications.
             self.log.failure(
-                "Failed to convert channel {channel!r}.", channel=channel)
+                "Failed to convert channel {channel!r}.", channel=channel
+            )
         else:
             defers = []
             handlers = self.listeners[channel]
@@ -437,8 +433,14 @@ class PostgresListenerService(Service, object):
             # limit concurrency here? Perhaps even do one at a time.
             for handler in handlers:
                 d = defer.maybeDeferred(handler, action, payload)
-                d.addErrback(lambda failure: self.log.failure(
-                    "Failure while handling notification to {channel!r}: "
-                    "{payload!r}", failure, channel=channel, payload=payload))
+                d.addErrback(
+                    lambda failure: self.log.failure(
+                        "Failure while handling notification to {channel!r}: "
+                        "{payload!r}",
+                        failure,
+                        channel=channel,
+                        payload=payload,
+                    )
+                )
                 defers.append(d)
             return defer.DeferredList(defers)

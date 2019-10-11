@@ -11,7 +11,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestOwnerData(MAASServerTestCase):
-
     def get_owner_data(self, node):
         return {
             data.key: data.value

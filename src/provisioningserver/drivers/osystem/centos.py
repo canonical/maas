@@ -3,9 +3,7 @@
 
 """CentOS Operating System."""
 
-__all__ = [
-    "CentOS",
-    ]
+__all__ = ["CentOS"]
 
 import re
 
@@ -18,16 +16,17 @@ from provisioningserver.drivers.osystem import (
 # name just has to start with 'centos' to be supported but the major, minor,
 # and title are found if available to help format the title.
 DISTRO_MATCHER = re.compile(
-    r'^centos((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
-    re.I)
-DISTRO_SERIES_DEFAULT = 'centos70'
+    r"^centos((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$",
+    re.I,
+)
+DISTRO_SERIES_DEFAULT = "centos70"
 
 
 class CentOS(OperatingSystem):
     """CentOS operating system."""
 
-    name = 'centos'
-    title = 'CentOS'
+    name = "centos"
+    title = "CentOS"
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
@@ -47,9 +46,9 @@ class CentOS(OperatingSystem):
             return "%s %s" % (self.title, release)
 
         ret = self.title
-        major = matched.group('major')
-        minor = matched.group('minor')
-        title = matched.group('title')
+        major = matched.group("major")
+        minor = matched.group("minor")
+        title = matched.group("title")
         # MAAS provided images via streams are not bound to a minor
         # release version, which means we always provide the latest
         # available release from CentOS 6 and CentOS 7.  To address
@@ -62,9 +61,9 @@ class CentOS(OperatingSystem):
         # from the stream and the minor version doesn't match to what
         # we publish. As such, we ensure that we only return minor
         # if we have any other version other that X.0, 7.0 and 6.6.
-        if major is not None and minor is None or minor == '0':
+        if major is not None and minor is None or minor == "0":
             ret = "%s %s" % (ret, major)
-        elif major == '6' and minor == '6':
+        elif major == "6" and minor == "6":
             ret = "%s %s" % (ret, major)
         elif None not in (major, minor):
             ret = "%s %s.%s" % (ret, major, minor)

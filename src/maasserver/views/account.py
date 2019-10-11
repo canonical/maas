@@ -3,11 +3,7 @@
 
 """Account views."""
 
-__all__ = [
-    "authenticate",
-    "login",
-    "logout",
-    ]
+__all__ = ["authenticate", "login", "logout"]
 
 from django import forms
 from django.conf import settings as django_settings
@@ -15,10 +11,7 @@ from django.contrib.auth import (
     authenticate as dj_authenticate,
     REDIRECT_FIELD_NAME,
 )
-from django.contrib.auth.views import (
-    login as dj_login,
-    logout as dj_logout,
-)
+from django.contrib.auth.views import login as dj_login, logout as dj_logout
 from django.http import (
     HttpResponseForbidden,
     HttpResponseNotAllowed,
@@ -32,10 +25,7 @@ from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models import UserProfile
 from maasserver.models.config import Config
-from maasserver.models.user import (
-    create_auth_token,
-    get_auth_tokens,
-)
+from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.utils.django_urls import reverse
 from provisioningserver.events import EVENT_TYPES
 
@@ -43,28 +33,36 @@ from provisioningserver.events import EVENT_TYPES
 @csrf_exempt
 def login(request):
     extra_context = {
-        'no_users': UserProfile.objects.all_users().count() == 0,
-        'create_command': django_settings.MAAS_CLI,
-        'external_auth_url': Config.objects.get_config('external_auth_url'),
-        }
+        "no_users": UserProfile.objects.all_users().count() == 0,
+        "create_command": django_settings.MAAS_CLI,
+        "external_auth_url": Config.objects.get_config("external_auth_url"),
+    }
     if request.user.is_authenticated:
-        return HttpResponseRedirect(reverse('index'))
+        return HttpResponseRedirect(reverse("index"))
     else:
         redirect_url = request.GET.get(
-            REDIRECT_FIELD_NAME, request.POST.get(REDIRECT_FIELD_NAME))
-        if redirect_url == reverse('logout'):
+            REDIRECT_FIELD_NAME, request.POST.get(REDIRECT_FIELD_NAME)
+        )
+        if redirect_url == reverse("logout"):
             redirect_field_name = None  # Ignore next page.
         else:
             redirect_field_name = REDIRECT_FIELD_NAME
         result = dj_login(
-            request, redirect_field_name=redirect_field_name,
-            extra_context=extra_context)
+            request,
+            redirect_field_name=redirect_field_name,
+            extra_context=extra_context,
+        )
         if request.user.is_authenticated:
             create_audit_event(
-                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                EVENT_TYPES.AUTHORISATION,
+                ENDPOINT.UI,
+                request,
+                None,
                 description=(
-                    "Logged in %s." % (
-                        'admin' if request.user.is_superuser else 'user')))
+                    "Logged in %s."
+                    % ("admin" if request.user.is_superuser else "user")
+                ),
+            )
         return result
 
 
@@ -77,20 +75,24 @@ class LogoutForm(forms.Form):
 
 
 def logout(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = LogoutForm(request.POST)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                EVENT_TYPES.AUTHORISATION,
+                ENDPOINT.UI,
+                request,
+                None,
                 description=(
-                    "Logged out %s." % (
-                        'admin' if request.user.is_superuser else 'user')))
-            return dj_logout(request, next_page=reverse('login'))
+                    "Logged out %s."
+                    % ("admin" if request.user.is_superuser else "user")
+                ),
+            )
+            return dj_logout(request, next_page=reverse("login"))
     else:
         form = LogoutForm()
 
-    return render(
-        request, 'maasserver/logout_confirm.html', {'form': form})
+    return render(request, "maasserver/logout_confirm.html", {"form": form})
 
 
 def authenticate(request):
@@ -137,22 +139,32 @@ def authenticate(request):
     # When no existing token is found, create a new one.
     if token is None:
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-            description="Created API (OAuth) token.")
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.UI,
+            request,
+            None,
+            description="Created API (OAuth) token.",
+        )
         token = create_auth_token(user, consumer)
     else:
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-            description="Retrieved API (OAuth) token.")
+            EVENT_TYPES.AUTHORISATION,
+            ENDPOINT.UI,
+            request,
+            None,
+            description="Retrieved API (OAuth) token.",
+        )
 
     # Return something with the same shape as that rendered by
     # AccountHandler.create_authorisation_token.
-    return JsonResponse({
-        "consumer_key": token.consumer.key,
-        "name": token.consumer.name,
-        "token_key": token.key,
-        "token_secret": token.secret,
-    })
+    return JsonResponse(
+        {
+            "consumer_key": token.consumer.key,
+            "name": token.consumer.name,
+            "token_key": token.key,
+            "token_secret": token.secret,
+        }
+    )
 
 
 @csrf_exempt
@@ -160,14 +172,14 @@ def csrf(request):
     """Get the CSRF token for the authenticated user."""
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
-    if (request.user is None or
-            not request.user.is_authenticated or
-            not request.user.is_active):
+    if (
+        request.user is None
+        or not request.user.is_authenticated
+        or not request.user.is_active
+    ):
         return HttpResponseForbidden()
     token = get_token(request)
     # Don't mark the CSRF as used. If not done, Django will cycle the
     # CSRF and the returned CSRF will be un-usable.
     request.META.pop("CSRF_COOKIE_USED", None)
-    return JsonResponse({
-        "csrf": token,
-    })
+    return JsonResponse({"csrf": token})

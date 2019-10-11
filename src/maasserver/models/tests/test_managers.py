@@ -14,7 +14,7 @@ from maasserver.tests.models import (
 
 class BulkManagerTest(MAASLegacyTransactionServerTestCase):
 
-    apps = ['maasserver.tests']
+    apps = ["maasserver.tests"]
 
     def test_manager_iterator_uses_cache(self):
         parents = set()
@@ -24,7 +24,8 @@ class BulkManagerTest(MAASLegacyTransactionServerTestCase):
             for parent in parents:
                 BulkManagerTestModel.objects.create(parent=parent)
         parents = BulkManagerParentTestModel.objects.all().prefetch_related(
-            'bulkmanagertestmodel_set')
+            "bulkmanagertestmodel_set"
+        )
         # Only two queries are used to fetch all the objects:
         # One to fetch the parents, one to fetch the childrens (the query from
         # the prefetch_related statement).
@@ -33,5 +34,8 @@ class BulkManagerTest(MAASLegacyTransactionServerTestCase):
         # BulkManager.
         self.assertNumQueries(
             2,
-            lambda: [list(parent.bulkmanagertestmodel_set.iterator())
-                     for parent in parents])
+            lambda: [
+                list(parent.bulkmanagertestmodel_set.iterator())
+                for parent in parents
+            ],
+        )

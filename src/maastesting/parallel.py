@@ -69,23 +69,30 @@ class TestScriptBase(metaclass=abc.ABCMeta):
             try:
                 okay = self._run(result, log)
             except Exception:
-                result.addError(self, None, {
-                    "log": content_from_file(log.name),
-                    "traceback": testtools.content.TracebackContent(
-                        sys.exc_info(), self, capture_locals=False),
-                })
+                result.addError(
+                    self,
+                    None,
+                    {
+                        "log": content_from_file(log.name),
+                        "traceback": testtools.content.TracebackContent(
+                            sys.exc_info(), self, capture_locals=False
+                        ),
+                    },
+                )
             else:
                 if not okay:
-                    result.addError(self, None, {
-                        "log": content_from_file(log.name),
-                    })
+                    result.addError(
+                        self, None, {"log": content_from_file(log.name)}
+                    )
 
     def _run(self, result, log):
         # Build things first, which may do nothing (but is quick).
         with self.lock:
             subprocess.check_call(
                 ("make", "--quiet", "bin/coverage", self.script),
-                stdout=log, stderr=log)
+                stdout=log,
+                stderr=log,
+            )
 
         if not self.has_script:
             # If there is no script to run, then everything is OK.
@@ -100,7 +107,8 @@ class TestScriptBase(metaclass=abc.ABCMeta):
                     args.extend(("--with-subunit", "--subunit-fd=%d" % pwrite))
                 command = self.extendCommand(args)
                 process = subprocess.Popen(
-                    command, pass_fds={pwrite}, stdout=log, stderr=log)
+                    command, pass_fds={pwrite}, stdout=log, stderr=log
+                )
             finally:
                 os.close(pwrite)
 
@@ -136,8 +144,13 @@ class TestScriptDivisible(TestScriptBase):
 
     def extendCommand(self, command):
         return super().extendCommand(
-            (*command, "--with-select-bucket", "--select-bucket",
-             "%d/%d" % self._bucket))
+            (
+                *command,
+                "--with-select-bucket",
+                "--select-bucket",
+                "%d/%d" % self._bucket,
+            )
+        )
 
     def __repr__(self, details=()):
         details = (*details, "bucket=%d/%d" % self._bucket)
@@ -174,8 +187,10 @@ class TestScriptSelectable(TestScriptBase):
         else:
             pattern = re.compile("(?:%s)" % "|".join(self.patterns))
             matched = tuple(
-                selector for selector in selectors
-                if pattern.match(selector) is not None)
+                selector
+                for selector in selectors
+                if pattern.match(selector) is not None
+            )
             if len(matched) == 0:
                 return None
             else:
@@ -184,8 +199,7 @@ class TestScriptSelectable(TestScriptBase):
                 return self
 
     def extendCommand(self, command):
-        return super().extendCommand(
-            (*command, "--", *self.selectors))
+        return super().extendCommand((*command, "--", *self.selectors))
 
     def __repr__(self, details=()):
         if len(self.selectors) != 0:
@@ -206,10 +220,14 @@ class TestScriptUnselectable(TestScriptBase):
 
     def _warnAboutSelectors(self):
         """Print out a warning about using selectors with this script."""
-        warning = textwrap.dedent("""\
+        warning = textwrap.dedent(
+            """\
             WARNING: {script.script} will _never_ be selected when using
             selectors at the command-line. Run {script.script} directly.
-        """.format(script=self))
+        """.format(
+                script=self
+            )
+        )
         for line in textwrap.wrap(warning, 72):
             print(line, file=sys.stderr)
 
@@ -271,7 +289,8 @@ def make_human_readable_result(stream):
 
     return testtools.MultiTestResult(
         testtools.TextTestResult(stream, failfast=False, tb_locals=False),
-        testtools.TestByTestResult(print_result))
+        testtools.TestByTestResult(print_result),
+    )
 
 
 def make_subunit_result(stream):
@@ -306,16 +325,22 @@ def test(suite, result, processes):
 
 def make_argument_parser(scripts):
     """Create an argument parser for the command-line."""
-    description = __doc__ + " " + (
-        "This delegates the actual work to several test programs: %s."
-        % ", ".join(script.script for script in scripts))
-    parser = argparse.ArgumentParser(
-        description=description, add_help=False)
+    description = (
+        __doc__
+        + " "
+        + (
+            "This delegates the actual work to several test programs: %s."
+            % ", ".join(script.script for script in scripts)
+        )
+    )
+    parser = argparse.ArgumentParser(description=description, add_help=False)
+    parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
     parser.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS)
-    parser.add_argument(
-        "--with-coverage", dest="with_coverage", action="store_true",
-        default=False)
+        "--with-coverage",
+        dest="with_coverage",
+        action="store_true",
+        default=False,
+    )
 
     core_count = os.cpu_count()
 
@@ -323,50 +348,78 @@ def make_argument_parser(scripts):
         try:
             processes = int(string)
         except ValueError:
-            raise argparse.ArgumentTypeError(
-                "%r is not an integer" % string)
+            raise argparse.ArgumentTypeError("%r is not an integer" % string)
         else:
             if processes < 1:
                 raise argparse.ArgumentTypeError(
-                    "%d is not 1 or greater" % processes)
+                    "%d is not 1 or greater" % processes
+                )
             else:
                 return processes
 
     args_subprocesses = parser.add_mutually_exclusive_group()
     args_subprocesses.add_argument(
-        "--subprocesses", metavar="N", action="store", type=parse_subprocesses,
-        dest="subprocesses", default=max(2, core_count - 2), help=(
+        "--subprocesses",
+        metavar="N",
+        action="store",
+        type=parse_subprocesses,
+        dest="subprocesses",
+        default=max(2, core_count - 2),
+        help=(
             "The number of testing subprocesses to run concurrently. This "
             "defaults to the number of CPU cores available minus 2, but not "
-            "less than 2. On this machine the default is %(default)s."))
+            "less than 2. On this machine the default is %(default)s."
+        ),
+    )
     args_subprocesses.add_argument(
-        "--subprocess-per-core", action="store_const", dest="subprocesses",
-        const=core_count, help=(
+        "--subprocess-per-core",
+        action="store_const",
+        dest="subprocesses",
+        const=core_count,
+        help=(
             "Run one test process per core. On this machine that would mean "
             "that up to %d testing subprocesses would run concurrently."
-            % core_count))
+            % core_count
+        ),
+    )
 
     args_output = parser.add_argument_group("output")
     args_output.add_argument(
-        "--emit-human", dest="result_factory", action="store_const",
-        const=make_human_readable_result, help="Emit human-readable results.")
+        "--emit-human",
+        dest="result_factory",
+        action="store_const",
+        const=make_human_readable_result,
+        help="Emit human-readable results.",
+    )
     args_output.add_argument(
-        "--emit-subunit", dest="result_factory", action="store_const",
-        const=make_subunit_result, help="Emit a subunit stream.")
+        "--emit-subunit",
+        dest="result_factory",
+        action="store_const",
+        const=make_subunit_result,
+        help="Emit a subunit stream.",
+    )
     args_output.add_argument(
-        "--emit-junit", dest="result_factory", action="store_const",
-        const=make_junit_result, help="Emit JUnit-compatible XML.")
-    args_output.set_defaults(
-        result_factory=make_human_readable_result)
+        "--emit-junit",
+        dest="result_factory",
+        action="store_const",
+        const=make_junit_result,
+        help="Emit JUnit-compatible XML.",
+    )
+    args_output.set_defaults(result_factory=make_human_readable_result)
 
     unselectable = (
-        script.script for script in scripts
+        script.script
+        for script in scripts
         if isinstance(script, TestScriptUnselectable)
     )
     parser.add_argument(
-        "selectors", nargs="*", metavar="SELECTOR", help="Selectors to narrow "
+        "selectors",
+        nargs="*",
+        metavar="SELECTOR",
+        help="Selectors to narrow "
         "the tests to run. Note that when selectors are used, unselectable "
-        "scripts (%s) will *never* be selected." % ", ".join(unselectable))
+        "scripts (%s) will *never* be selected." % ", ".join(unselectable),
+    )
 
     return parser
 
@@ -380,25 +433,21 @@ def main(args=None):
         TestScriptMonolithic(lock, "bin/test.region.legacy"),
         # The divisible test scripts will each be executed multiple times,
         # each time to work on a distinct "bucket" of tests.
+        TestScript(lock, "bin/test.cli", r"^src/maascli\b", r"^maascli\b"),
         TestScript(
-            lock, "bin/test.cli",
-            r"^src/maascli\b",
-            r"^maascli\b",
-        ),
-        TestScript(
-            lock, "bin/test.rack",
+            lock,
+            "bin/test.rack",
             r"^src/provisioningserver\b",
             r"^provisioningserver\b",
         ),
         TestScript(
-            lock, "bin/test.region",
+            lock,
+            "bin/test.region",
             r"^src/(maas|metadata)server\b",
-            r"^(maas|metadata)server\b"
+            r"^(maas|metadata)server\b",
         ),
         TestScript(
-            lock, "bin/test.testing",
-            r"^src/maastesting\b",
-            r"^maastesting\b",
+            lock, "bin/test.testing", r"^src/maastesting\b", r"^maastesting\b"
         ),
     )
     # Parse arguments.
@@ -416,5 +465,5 @@ def main(args=None):
         raise SystemExit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

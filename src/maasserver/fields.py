@@ -20,24 +20,15 @@ __all__ = [
     "VerboseRegexValidator",
     "VersionedTextFileField",
     "validate_mac",
-    ]
+]
 
 from copy import deepcopy
-from json import (
-    dumps,
-    loads,
-)
+from json import dumps, loads
 import re
 
 from django import forms
-from django.core.exceptions import (
-    ObjectDoesNotExist,
-    ValidationError,
-)
-from django.core.validators import (
-    RegexValidator,
-    URLValidator,
-)
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import RegexValidator, URLValidator
 from django.db import connections
 from django.db.models import (
     BinaryField,
@@ -52,24 +43,14 @@ from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from maasserver.models.versionedtextfile import VersionedTextFile
-from maasserver.utils.dns import (
-    validate_domain_name,
-    validate_hostname,
-)
-from maasserver.utils.orm import (
-    get_one,
-    validate_in_transaction,
-)
-from netaddr import (
-    AddrFormatError,
-    IPAddress,
-    IPNetwork,
-)
+from maasserver.utils.dns import validate_domain_name, validate_hostname
+from maasserver.utils.orm import get_one, validate_in_transaction
+from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.utils import typed
 import psycopg2.extensions
 
 # Validator for the name attribute of model entities.
-MODEL_NAME_VALIDATOR = RegexValidator(r'^\w[ \w-]*$')
+MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
 
 
 class Field(_BrokenField):
@@ -84,11 +65,12 @@ class Field(_BrokenField):
 
 
 MAC_RE = re.compile(
-    r'^\s*('
-    r'([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|'
-    r'([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|'
-    r'([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}'
-    r')\s*$')
+    r"^\s*("
+    r"([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|"
+    r"([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|"
+    r"([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}"
+    r")\s*$"
+)
 
 MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
 
@@ -99,16 +81,18 @@ class VerboseRegexValidator(RegexValidator):
     This `RegexValidator` includes the checked value in the rendered error
     message when the validation fails.
     """
+
     # Set a bugus code to circumvent Django's attempt to re-interpret a
     # validator's error message using the field's message it is attached
     # to.
-    code = 'bogus-code'
+    code = "bogus-code"
 
     def __call__(self, value):
         """Validates that the input matches the regular expression."""
         if not self.regex.search(force_text(value)):
             raise ValidationError(
-                self.message % {'value': value}, code=self.code)
+                self.message % {"value": value}, code=self.code
+            )
 
 
 mac_validator = VerboseRegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
@@ -136,11 +120,12 @@ class UnstrippedCharField(forms.CharField):
     whitespace *and* which defaults to True, thus breaking compatibility with
     1.8 and earlier.
     """
+
     def __init__(self, *args, **kwargs):
         # Instead of relying on a version check, we check for CharField
         # constructor having a strip kwarg instead.
         parent_init = super(UnstrippedCharField, self).__init__
-        if 'strip' in parent_init.__code__.co_varnames:
+        if "strip" in parent_init.__code__.co_varnames:
             parent_init(*args, strip=False, **kwargs)
         else:
             # In Django versions that do not support strip, False was the
@@ -149,7 +134,6 @@ class UnstrippedCharField(forms.CharField):
 
 
 class VerboseRegexField(forms.CharField):
-
     def __init__(self, regex, message, *args, **kwargs):
         """A field that validates its value with a regular expression.
 
@@ -158,7 +142,8 @@ class VerboseRegexField(forms.CharField):
         """
         super(VerboseRegexField, self).__init__(*args, **kwargs)
         self.validators.append(
-            VerboseRegexValidator(regex=regex, message=message))
+            VerboseRegexValidator(regex=regex, message=message)
+        )
 
 
 class MACAddressFormField(VerboseRegexField):
@@ -166,7 +151,8 @@ class MACAddressFormField(VerboseRegexField):
 
     def __init__(self, *args, **kwargs):
         super(MACAddressFormField, self).__init__(
-            regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs)
+            regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs
+        )
 
 
 class MACAddressField(Field):
@@ -233,7 +219,8 @@ class MAC:
         # The psychopg2 docs say to check that the protocol is ISQLQuote,
         # but not what to do if it isn't.
         assert protocol == psycopg2.extensions.ISQLQuote, (
-            "Unsupported psycopg2 adapter protocol: %s" % protocol)
+            "Unsupported psycopg2 adapter protocol: %s" % protocol
+        )
         return self
 
     def getquoted(self):
@@ -297,7 +284,7 @@ def register_mac_type(cursor):
     # register that type in psycopg.
     cursor.execute("SELECT NULL::macaddr")
     oid = cursor.description[0][1]
-    mac_caster = psycopg2.extensions.new_type((oid, ), "macaddr", MAC.parse)
+    mac_caster = psycopg2.extensions.new_type((oid,), "macaddr", MAC.parse)
     psycopg2.extensions.register_type(mac_caster)
 
     # Now do the same for the type array-of-MACs.  The "typecaster" created
@@ -305,8 +292,9 @@ def register_mac_type(cursor):
     # of an array's text representation as received from the database.
     cursor.execute("SELECT '{}'::macaddr[]")
     oid = cursor.description[0][1]
-    psycopg2.extensions.register_type(psycopg2.extensions.new_array_type(
-        (oid, ), "macaddr", mac_caster))
+    psycopg2.extensions.register_type(
+        psycopg2.extensions.new_array_type((oid,), "macaddr", mac_caster)
+    )
 
 
 class JSONObjectField(Field):
@@ -341,7 +329,7 @@ class JSONObjectField(Field):
             return None
 
     def get_internal_type(self):
-        return 'TextField'
+        return "TextField"
 
     def formfield(self, form_class=None, **kwargs):
         """Return a plain `forms.Field` here to avoid "helpful" conversions.
@@ -353,8 +341,7 @@ class JSONObjectField(Field):
         """
         if form_class is None:
             form_class = forms.Field
-        return super().formfield(
-            form_class=form_class, **kwargs)
+        return super().formfield(form_class=form_class, **kwargs)
 
 
 class XMLField(Field):
@@ -411,7 +398,7 @@ class MAASIPAddressField(GenericIPAddressField):
         Override the default implementation which uses get_internal_type()
         and force a 'inet' type field.
         """
-        return 'inet'
+        return "inet"
 
 
 class LargeObjectFile:
@@ -419,6 +406,7 @@ class LargeObjectFile:
 
     Proxy the access from this object to psycopg2.
     """
+
     def __init__(self, oid=0, field=None, instance=None, block_size=(1 << 16)):
         self.oid = oid
         self.field = field
@@ -448,8 +436,9 @@ class LargeObjectFile:
         """
         self._lobject.write(data)
 
-    def open(self, mode="rwb", new_file=None, using="default",
-             connection=None):
+    def open(
+        self, mode="rwb", new_file=None, using="default", connection=None
+    ):
         """Opens the internal large object instance."""
         if "b" not in mode:
             raise ValueError("Large objects must be opened in binary mode.")
@@ -457,7 +446,8 @@ class LargeObjectFile:
             connection = connections[using]
         validate_in_transaction(connection)
         self._lobject = connection.connection.lobject(
-            self.oid, mode, 0, new_file)
+            self.oid, mode, 0, new_file
+        )
         self.oid = self._lobject.oid
         return self
 
@@ -507,7 +497,7 @@ class LargeObjectField(IntegerField):
     """
 
     def __init__(self, *args, **kwargs):
-        self.block_size = kwargs.pop('block_size', 1 << 16)
+        self.block_size = kwargs.pop("block_size", 1 << 16)
         super(LargeObjectField, self).__init__(*args, **kwargs)
 
     @property
@@ -519,7 +509,7 @@ class LargeObjectField(IntegerField):
     def db_type(self, connection):
         """Returns the database column data type for LargeObjectField."""
         # oid is the column type postgres uses to reference a large object
-        return 'oid'
+        return "oid"
 
     def contribute_to_class(self, cls, name):
         """Set the descriptor for the large object."""
@@ -534,10 +524,12 @@ class LargeObjectField(IntegerField):
             if value.oid > 0:
                 return value.oid
             raise AssertionError(
-                "LargeObjectFile's oid must be greater than 0.")
+                "LargeObjectFile's oid must be greater than 0."
+            )
         raise AssertionError(
             "Invalid LargeObjectField value (expected LargeObjectFile): '%s'"
-            % repr(value))
+            % repr(value)
+        )
 
     def to_python(self, value):
         """db -> python: `LargeObjectFile`"""
@@ -549,7 +541,8 @@ class LargeObjectField(IntegerField):
             return LargeObjectFile(value, self, self.model, self.block_size)
         raise AssertionError(
             "Invalid LargeObjectField value (expected integer): '%s'"
-            % repr(value))
+            % repr(value)
+        )
 
 
 class CIDRField(Field):
@@ -562,10 +555,10 @@ class CIDRField(Field):
             raise ValidationError(str(e)) from e
 
     def db_type(self, connection):
-        return 'cidr'
+        return "cidr"
 
     def get_prep_value(self, value):
-        if value is None or value == '':
+        if value is None or value == "":
             return None
         return self.parse_cidr(value)
 
@@ -575,7 +568,7 @@ class CIDRField(Field):
         return self.parse_cidr(value)
 
     def to_python(self, value):
-        if value is None or value == '':
+        if value is None or value == "":
             return None
         if isinstance(value, IPNetwork):
             return str(value)
@@ -584,9 +577,7 @@ class CIDRField(Field):
         return self.parse_cidr(value)
 
     def formfield(self, **kwargs):
-        defaults = {
-            'form_class': forms.CharField,
-        }
+        defaults = {"form_class": forms.CharField}
         defaults.update(kwargs)
         return super(CIDRField, self).formfield(**defaults)
 
@@ -595,23 +586,25 @@ class IPv4CIDRField(CIDRField):
     """IPv4-only CIDR"""
 
     def get_prep_value(self, value):
-        if value is None or value == '':
+        if value is None or value == "":
             return None
         return self.to_python(value)
 
     def to_python(self, value):
-        if value is None or value == '':
+        if value is None or value == "":
             return None
         else:
             try:
                 cidr = IPNetwork(value)
             except AddrFormatError:
                 raise ValidationError(
-                    "Invalid network: %(cidr)s", params={"cidr": value})
+                    "Invalid network: %(cidr)s", params={"cidr": value}
+                )
             if cidr.cidr.version != 4:
                 raise ValidationError(
                     "%(cidr)s: Only IPv4 networks supported.",
-                    params={"cidr": value})
+                    params={"cidr": value},
+                )
         return str(cidr.cidr)
 
 
@@ -620,22 +613,24 @@ class IPListFormField(forms.CharField):
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile(r'[,\s]+')
+
+    separators = re.compile(r"[,\s]+")
 
     def clean(self, value):
         if value is None:
             return None
         else:
             ips = re.split(self.separators, value)
-            ips = [ip.strip() for ip in ips if ip != '']
+            ips = [ip.strip() for ip in ips if ip != ""]
             for ip in ips:
                 try:
                     GenericIPAddressField().clean(ip, model_instance=None)
                 except ValidationError:
                     raise ValidationError(
                         "Invalid IP address: %s; provide a list of "
-                        "space-separated IP addresses" % ip)
-            return ' '.join(ips)
+                        "space-separated IP addresses" % ip
+                    )
+            return " ".join(ips)
 
 
 class HostListFormField(forms.CharField):
@@ -643,7 +638,8 @@ class HostListFormField(forms.CharField):
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile(r'[,\s]+')
+
+    separators = re.compile(r"[,\s]+")
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
@@ -658,7 +654,7 @@ class HostListFormField(forms.CharField):
             values = map(str.strip, self.separators.split(value))
             values = (value for value in values if len(value) != 0)
             values = map(self._clean_addr_or_host, values)
-            return ' '.join(values)
+            return " ".join(values)
 
     def _clean_addr_or_host(self, value):
         looks_like_ip = self.pt_ip.match(value) is not None
@@ -695,16 +691,17 @@ class SubnetListFormField(forms.CharField):
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile(r'[,\s]+')
+
+    separators = re.compile(r"[,\s]+")
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
     pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
     pt_ipv6 = r"(?: (|[0-9A-Fa-f]{1,4}) [:] (|[0-9A-Fa-f]{1,4}) [:] (.*))"
-    pt_ip = re.compile(
-        r"^ (?: %s | %s ) $" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+    pt_ip = re.compile(r"^ (?: %s | %s ) $" % (pt_ipv4, pt_ipv6), re.VERBOSE)
     pt_subnet = re.compile(
-        r"^ (?: %s | %s ) \/\d+$" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+        r"^ (?: %s | %s ) \/\d+$" % (pt_ipv4, pt_ipv6), re.VERBOSE
+    )
 
     def clean(self, value):
         if value is None:
@@ -713,7 +710,7 @@ class SubnetListFormField(forms.CharField):
             values = map(str.strip, self.separators.split(value))
             values = (value for value in values if len(value) != 0)
             values = map(self._clean_addr_or_host, values)
-            return ' '.join(values)
+            return " ".join(values)
 
     def _clean_addr_or_host(self, value):
         looks_like_ip = self.pt_ip.match(value) is not None
@@ -731,8 +728,7 @@ class SubnetListFormField(forms.CharField):
         except ValueError:
             return
         except AddrFormatError:
-            raise ValidationError(
-                "Invalid IP address: %s." % value)
+            raise ValidationError("Invalid IP address: %s." % value)
         else:
             return str(addr)
 
@@ -740,8 +736,7 @@ class SubnetListFormField(forms.CharField):
         try:
             cidr = IPNetwork(value)
         except AddrFormatError:
-            raise ValidationError(
-                "Invalid network: %s." % value)
+            raise ValidationError("Invalid network: %s." % value)
         else:
             return str(cidr)
 
@@ -775,8 +770,10 @@ class SpecifierOrModelChoiceField(forms.ModelChoiceField):
             if isinstance(value, str):
                 object_id = self.queryset.get_object_id(value)
                 if object_id is None:
-                    obj = get_one(self.queryset.filter_by_specifiers(
-                        value), exception_class=ValidationError)
+                    obj = get_one(
+                        self.queryset.filter_by_specifiers(value),
+                        exception_class=ValidationError,
+                    )
                     if obj is not None:
                         return obj
                 else:
@@ -797,15 +794,16 @@ class DomainNameField(CharField):
     (Note that this field type should NOT be used for hostnames, since the set
     of valid hostnames is smaller than the set of valid domain names.)
     """
+
     def __init__(self, *args, **kwargs):
-        validators = kwargs.pop('validators', [])
+        validators = kwargs.pop("validators", [])
         validators.append(validate_domain_name)
-        kwargs['validators'] = validators
+        kwargs["validators"] = validators
         super(DomainNameField, self).__init__(*args, **kwargs)
 
     def deconstruct(self):
         name, path, args, kwargs = super(DomainNameField, self).deconstruct()
-        del kwargs['validators']
+        del kwargs["validators"]
         return name, path, args, kwargs
 
     # Here we are using (abusing?) the to_pytion() function to coerce and
@@ -818,12 +816,11 @@ class DomainNameField(CharField):
         value = super(DomainNameField, self).to_python(value)
         if value is None:
             return None
-        value = value.strip().rstrip('.')
+        value = value.strip().rstrip(".")
         return value
 
 
 class NodeChoiceField(forms.ModelChoiceField):
-
     def __init__(self, queryset, *args, **kwargs):
         super().__init__(queryset=queryset.distinct(), *args, **kwargs)
 
@@ -832,26 +829,29 @@ class NodeChoiceField(forms.ModelChoiceField):
             return None
         # Avoid circular imports
         from maasserver.models.node import Node
+
         try:
             return self.queryset.get(Q(system_id=value) | Q(hostname=value))
         except Node.DoesNotExist:
             raise ValidationError(
                 "Select a valid choice. "
-                "%s is not one of the available choices." % value)
+                "%s is not one of the available choices." % value
+            )
 
     def to_python(self, value):
         # Avoid circular imports
         from maasserver.models.node import Node
+
         try:
             return self.queryset.get(Q(system_id=value) | Q(hostname=value))
         except Node.DoesNotExist:
             raise ValidationError(
                 "Select a valid choice. "
-                "%s is not one of the available choices." % value)
+                "%s is not one of the available choices." % value
+            )
 
 
 class VersionedTextFileField(forms.ModelChoiceField):
-
     def __init__(self, *args, **kwargs):
         super().__init__(queryset=None, *args, **kwargs)
 
@@ -877,10 +877,11 @@ class VersionedTextFileField(forms.ModelChoiceField):
 
 @deconstructible
 class URLOrPPAValidator(URLValidator):
-    message = _('Enter a valid repository URL or PPA location.')
+    message = _("Enter a valid repository URL or PPA location.")
 
-    ppa_re = r'ppa:' + URLValidator.hostname_re + r'/' + \
-        URLValidator.hostname_re
+    ppa_re = (
+        r"ppa:" + URLValidator.hostname_re + r"/" + URLValidator.hostname_re
+    )
 
     def __call__(self, value):
         match = re.search(URLOrPPAValidator.ppa_re, force_text(value))
@@ -892,7 +893,7 @@ class URLOrPPAValidator(URLValidator):
 class URLOrPPAFormField(forms.URLField):
     widget = forms.URLInput
     default_error_messages = {
-        'invalid': _('Enter a valid repository URL or PPA location.'),
+        "invalid": _("Enter a valid repository URL or PPA location.")
     }
     default_validators = [URLOrPPAValidator()]
 
@@ -910,8 +911,6 @@ class URLOrPPAField(URLField):
 
     # Copied from URLField, with modified form_class.
     def formfield(self, **kwargs):
-        defaults = {
-            'form_class': URLOrPPAFormField,
-        }
+        defaults = {"form_class": URLOrPPAFormField}
         defaults.update(kwargs)
         return super(URLField, self).formfield(**defaults)

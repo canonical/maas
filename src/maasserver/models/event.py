@@ -3,9 +3,7 @@
 
 """:class:`Event` and friends."""
 
-__all__ = [
-    'Event',
-    ]
+__all__ = ["Event"]
 
 import logging
 
@@ -20,10 +18,7 @@ from django.db.models import (
     TextField,
 )
 from maasserver import DefaultMeta
-from maasserver.enum import (
-    ENDPOINT,
-    ENDPOINT_CHOICES,
-)
+from maasserver.enum import ENDPOINT, ENDPOINT_CHOICES
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import EventType
@@ -35,61 +30,92 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import get_maas_id
 
 
-maaslog = get_maas_logger('models.event')
+maaslog = get_maas_logger("models.event")
 
 
 class EventManager(Manager):
     """A utility to manage the collection of Events."""
 
     def register_event_and_event_type(
-            self, type_name, type_description='',
-            type_level=logging.INFO, event_action='',
-            event_description='', system_id=None, user=None,
-            ip_address=None, endpoint=ENDPOINT.API,
-            user_agent='', created=None):
+        self,
+        type_name,
+        type_description="",
+        type_level=logging.INFO,
+        event_action="",
+        event_description="",
+        system_id=None,
+        user=None,
+        ip_address=None,
+        endpoint=ENDPOINT.API,
+        user_agent="",
+        created=None,
+    ):
         """Register EventType if it does not exist, then register the Event."""
         if isinstance(system_id, Node):
             node = system_id
         else:
-            node = (Node.objects.get(system_id=system_id)
-                    if system_id is not None else None)
+            node = (
+                Node.objects.get(system_id=system_id)
+                if system_id is not None
+                else None
+            )
         if node is not None:
             node_hostname = node.hostname
             node_system_id = node.system_id
         else:
-            node_hostname = ''
+            node_hostname = ""
             node_system_id = None
         if user is not None:
             username = user.username
             user_id = user.id
         else:
             user_id = None
-            username = ''
+            username = ""
         event_type = EventType.objects.register(
-            type_name, type_description, type_level)
+            type_name, type_description, type_level
+        )
         return Event.objects.create(
-            type=event_type, node=node, node_system_id=node_system_id,
-            node_hostname=node_hostname, user_id=user_id, username=username,
-            ip_address=ip_address, endpoint=endpoint, user_agent=user_agent,
-            action=event_action, description=event_description,
-            created=created)
+            type=event_type,
+            node=node,
+            node_system_id=node_system_id,
+            node_hostname=node_hostname,
+            user_id=user_id,
+            username=username,
+            ip_address=ip_address,
+            endpoint=endpoint,
+            user_agent=user_agent,
+            action=event_action,
+            description=event_description,
+            created=created,
+        )
 
     def create_node_event(
-            self, system_id, event_type, event_action='',
-            event_description='', user=None):
+        self,
+        system_id,
+        event_type,
+        event_action="",
+        event_description="",
+        user=None,
+    ):
         """Helper to register event and event type for the given node."""
         self.register_event_and_event_type(
-            system_id=system_id, type_name=event_type,
+            system_id=system_id,
+            type_name=event_type,
             type_description=EVENT_DETAILS[event_type].description,
             type_level=EVENT_DETAILS[event_type].level,
             event_action=event_action,
-            event_description=event_description, user=user)
+            event_description=event_description,
+            user=user,
+        )
 
-    def create_region_event(self, event_type, event_description='', user=None):
+    def create_region_event(self, event_type, event_description="", user=None):
         """Helper to register event and event type for the running region."""
         self.create_node_event(
-            system_id=get_maas_id(), event_type=event_type,
-            event_description=event_description, user=user)
+            system_id=get_maas_id(),
+            event_type=event_type,
+            event_description=event_description,
+            user=user,
+        )
 
 
 class Event(CleanSave, TimestampedModel):
@@ -109,48 +135,51 @@ class Event(CleanSave, TimestampedModel):
     """
 
     type = ForeignKey(
-        'EventType', null=False, editable=False, on_delete=PROTECT)
+        "EventType", null=False, editable=False, on_delete=PROTECT
+    )
 
     # This gets set to None if the node gets deleted from the pre_delete signal
-    node = ForeignKey('Node', null=True, editable=False, on_delete=DO_NOTHING)
+    node = ForeignKey("Node", null=True, editable=False, on_delete=DO_NOTHING)
 
     node_system_id = CharField(
-        max_length=41, blank=True, null=True, editable=False)
+        max_length=41, blank=True, null=True, editable=False
+    )
 
     # Set on node deletion.
     node_hostname = CharField(
-        max_length=255, default='', blank=True, validators=[validate_hostname])
+        max_length=255, default="", blank=True, validators=[validate_hostname]
+    )
 
     user_id = IntegerField(blank=True, null=True, editable=False)
 
-    username = CharField(max_length=150, blank=True, default='')
+    username = CharField(max_length=150, blank=True, default="")
 
     # IP address of the request that caused this event.
     ip_address = MAASIPAddressField(
-        unique=False, null=True, editable=False, blank=True, default=None)
+        unique=False, null=True, editable=False, blank=True, default=None
+    )
 
     # Endpoint of request used to register the event.
     endpoint = IntegerField(
-        choices=ENDPOINT_CHOICES, editable=False, default=ENDPOINT.API)
+        choices=ENDPOINT_CHOICES, editable=False, default=ENDPOINT.API
+    )
 
     # User agent of request used to register the event.
-    user_agent = TextField(default='', blank=True, editable=False)
+    user_agent = TextField(default="", blank=True, editable=False)
 
-    action = TextField(default='', blank=True, editable=False)
+    action = TextField(default="", blank=True, editable=False)
 
-    description = TextField(default='', blank=True, editable=False)
+    description = TextField(default="", blank=True, editable=False)
 
     objects = EventManager()
 
     class Meta(DefaultMeta):
         verbose_name = "Event record"
-        index_together = (
-            ("node", "id"),
-        )
+        index_together = (("node", "id"),)
         indexes = [
             # Needed to get the latest event for each node on the
             # machine listing page.
-            Index(fields=['node', '-created', '-id']),
+            Index(fields=["node", "-created", "-id"])
         ]
 
     @property
@@ -162,7 +191,7 @@ class Event(CleanSave, TimestampedModel):
         if self.username:
             return self.username
         else:
-            return 'unknown'
+            return "unknown"
 
     @property
     def hostname(self):
@@ -171,15 +200,19 @@ class Event(CleanSave, TimestampedModel):
         elif self.node is not None:
             return self.node.hostname
         else:
-            return 'unknown'
+            return "unknown"
 
     @property
     def render_audit_description(self):
-        return self.description % {'username': self.owner}
+        return self.description % {"username": self.owner}
 
     def __str__(self):
         return "%s (node=%s, type=%s, created=%s)" % (
-            self.id, self.node, self.type.name, self.created)
+            self.id,
+            self.node,
+            self.type.name,
+            self.created,
+        )
 
     def validate_unique(self, exclude=None):
         """Override validate unique so nothing is validated.

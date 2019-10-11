@@ -76,7 +76,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
     def make_example_configuration(self):
         # Set the syslog port.
         port = factory.pick_port()
-        Config.objects.set_config('maas_syslog_port', port)
+        Config.objects.set_config("maas_syslog_port", port)
         # Populate the database with example peers.
         space = factory.make_Space()
         region, addr4, addr6 = make_region_rack_with_address(space)
@@ -84,10 +84,19 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         peer1, addr1_4, addr1_6 = make_region_rack_with_address(space)
         peer2, addr2_4, addr2_6 = make_region_rack_with_address(space)
         # Return the servers and all possible peer IP addresses.
-        return port, [
-            (peer1, sorted([IPAddress(addr1_4.ip), IPAddress(addr1_6.ip)])[0]),
-            (peer2, sorted([IPAddress(addr2_4.ip), IPAddress(addr2_6.ip)])[0]),
-        ]
+        return (
+            port,
+            [
+                (
+                    peer1,
+                    sorted([IPAddress(addr1_4.ip), IPAddress(addr1_6.ip)])[0],
+                ),
+                (
+                    peer2,
+                    sorted([IPAddress(addr2_4.ip), IPAddress(addr2_6.ip)])[0],
+                ),
+            ],
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -98,14 +107,23 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         restartService = self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
         self.assertThat(
-            write_config, MockCalledOnceWith(
-                True, Matches(ContainsAll([
-                    {
-                        'ip': service._formatIP(ip),
-                        'name': node.hostname,
-                    }
-                    for node, ip in peers
-                ])), port=port))
+            write_config,
+            MockCalledOnceWith(
+                True,
+                Matches(
+                    ContainsAll(
+                        [
+                            {
+                                "ip": service._formatIP(ip),
+                                "name": node.hostname,
+                            }
+                            for node, ip in peers
+                        ]
+                    )
+                ),
+                port=port,
+            ),
+        )
         self.assertThat(restartService, MockCalledOnceWith("syslog_region"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `write_config`.
@@ -114,8 +132,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         self.assertThat(restartService, MockCalledOnceWith("syslog_region"))
 
 
-class TestRegionSyslogService_Errors(
-        MAASTransactionServerTestCase):
+class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):
     """Tests for error handing in `RegionSyslogService`."""
 
     scenarios = (
@@ -142,13 +159,16 @@ class TestRegionSyslogService_Errors(
             yield service._tryUpdate()
 
         self.assertThat(
-            logger.output, DocTestMatches(
+            logger.output,
+            DocTestMatches(
                 """
                 Failed to update syslog configuration.
                 Traceback (most recent call last):
                 ...
                 maastesting.factory.TestException#...
-                """))
+                """
+            ),
+        )
 
 
 class TestRegionSyslogService_Database(MAASServerTestCase):
@@ -169,5 +189,4 @@ class TestRegionSyslogService_Database(MAASServerTestCase):
 
         expected_peers = AllMatch(Equals((peer.hostname, IPAddress(addr4.ip))))
 
-        self.assertThat(observed, MatchesStructure(
-            peers=expected_peers))
+        self.assertThat(observed, MatchesStructure(peers=expected_peers))

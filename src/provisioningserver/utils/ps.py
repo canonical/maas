@@ -3,19 +3,13 @@
 
 """Helpers for inspecting processes."""
 
-__all__ = [
-    'is_pid_running',
-    'running_in_container',
-    ]
+__all__ = ["is_pid_running", "running_in_container"]
 
 from functools import lru_cache
 import os
 
 from provisioningserver.utils.fs import read_text_file
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-)
+from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
 
 def is_pid_running(pid):
@@ -62,7 +56,8 @@ def running_in_container():
 
 
 def get_running_pids_with_command(
-        command, exclude_container_processes=True, proc_path="/proc"):
+    command, exclude_container_processes=True, proc_path="/proc"
+):
     """Return list of pids that are running the following command.
 
     :param command: The command to search for. This is only the command as
@@ -75,7 +70,8 @@ def get_running_pids_with_command(
     for pid in running_pids:
         try:
             pid_command = read_text_file(
-                os.path.join(proc_path, pid, "comm")).strip()
+                os.path.join(proc_path, pid, "comm")
+            ).strip()
         except (FileNotFoundError, ProcessLookupError):
             # Process was closed while running.
             pass
@@ -83,8 +79,7 @@ def get_running_pids_with_command(
             if pid_command == command:
                 pids.append(int(pid))
 
-    if (exclude_container_processes and
-            not running_in_container()):
+    if exclude_container_processes and not running_in_container():
         return [
             pid
             for pid in pids

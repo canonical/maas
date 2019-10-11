@@ -3,23 +3,13 @@
 
 """Node user-data for cloud-init's use."""
 
-__all__ = [
-    'NodeUserData',
-    ]
+__all__ = ["NodeUserData"]
 
 
-from django.db.models import (
-    CASCADE,
-    Manager,
-    Model,
-    OneToOneField,
-)
+from django.db.models import CASCADE, Manager, Model, OneToOneField
 from maasserver.models.cleansave import CleanSave
 from metadataserver import DefaultMeta
-from metadataserver.fields import (
-    Bin,
-    BinaryField,
-)
+from metadataserver.fields import Bin, BinaryField
 
 
 class NodeUserDataManager(Manager):
@@ -47,7 +37,8 @@ class NodeUserDataManager(Manager):
         """Set actual user data for a node.  Not usable if data is None."""
         wrapped_data = Bin(data)
         (existing_entry, created) = self.get_or_create(
-            node=node, defaults={'data': wrapped_data})
+            node=node, defaults={"data": wrapped_data}
+        )
         if not created:
             existing_entry.data = wrapped_data
             existing_entry.save()
@@ -63,10 +54,9 @@ class NodeUserDataManager(Manager):
         """
         self.filter(node__in=nodes).delete()
         if data is not None:
-            self.bulk_create((
-                self.model(node=node, data=Bin(data))
-                for node in nodes
-            ))
+            self.bulk_create(
+                (self.model(node=node, data=Bin(data)) for node in nodes)
+            )
 
 
 class NodeUserData(CleanSave, Model):
@@ -86,5 +76,6 @@ class NodeUserData(CleanSave, Model):
     objects = NodeUserDataManager()
 
     node = OneToOneField(
-        'maasserver.Node', null=False, editable=False, on_delete=CASCADE)
+        "maasserver.Node", null=False, editable=False, on_delete=CASCADE
+    )
     data = BinaryField(null=False)

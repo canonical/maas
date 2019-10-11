@@ -3,9 +3,7 @@
 
 """Cluster Controller RPC."""
 
-__all__ = [
-    "getRegionClient",
-]
+__all__ = ["getRegionClient"]
 
 import provisioningserver
 from provisioningserver.rpc import exceptions
@@ -22,9 +20,10 @@ def getRegionClient():
     # TODO: retry a couple of times before giving up if the service is
     # not running or if exceptions.NoConnectionsAvailable gets raised.
     try:
-        rpc_service = provisioningserver.services.getServiceNamed('rpc')
+        rpc_service = provisioningserver.services.getServiceNamed("rpc")
     except KeyError:
         raise exceptions.NoConnectionsAvailable(
-            "Cluster services are unavailable.")
+            "Cluster services are unavailable."
+        )
     else:
         return rpc_service.getClient()

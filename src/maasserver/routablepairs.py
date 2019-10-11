@@ -3,25 +3,18 @@
 
 """Routable addresses."""
 
-__all__ = [
-    "find_addresses_between_nodes",
-]
+__all__ = ["find_addresses_between_nodes"]
 
 from collections import defaultdict
 from textwrap import dedent
-from typing import (
-    Iterable,
-    Mapping,
-    Sequence,
-    TypeVar,
-)
+from typing import Iterable, Mapping, Sequence, TypeVar
 
 from django.db import connection
 from netaddr import IPAddress
 from provisioningserver.utils import typed
 
 
-Node = TypeVar('Node')
+Node = TypeVar("Node")
 
 
 # Convert an `int` to a `str`. Using `str(thing)` is probably faster, but this
@@ -30,7 +23,8 @@ Node = TypeVar('Node')
 _int2str = "{:d}".format
 
 
-_find_addresses_sql = dedent("""\
+_find_addresses_sql = dedent(
+    """\
     SELECT left_node_id, left_ip,
            right_node_id, right_ip
       FROM maasserver_routable_pairs
@@ -38,12 +32,12 @@ _find_addresses_sql = dedent("""\
        AND right_node_id IN (%s)
        AND metric < 4
      ORDER BY metric ASC
-""")
+"""
+)
 
 
 @typed
-def find_addresses_between_nodes(
-        nodes_left: Iterable, nodes_right: Iterable):
+def find_addresses_between_nodes(nodes_left: Iterable, nodes_right: Iterable):
     """Find routable addresses between `nodes_left` and `nodes_right`.
 
     Yields ``(node-left, addr-left, node-right, addr-right)`` tuples, where
@@ -68,14 +62,19 @@ def find_addresses_between_nodes(
         raise AssertionError("One or more nodes are not in the database.")
     if len(nodes_left) > 0 and len(nodes_right) > 0:
         with connection.cursor() as cursor:
-            cursor.execute(_find_addresses_sql % (
-                ",".join(map(_int2str, nodes_left)),
-                ",".join(map(_int2str, nodes_right)),
-            ))
+            cursor.execute(
+                _find_addresses_sql
+                % (
+                    ",".join(map(_int2str, nodes_left)),
+                    ",".join(map(_int2str, nodes_right)),
+                )
+            )
             for id_left, ip_left, id_right, ip_right in cursor:
                 yield (
-                    nodes_left[id_left], IPAddress(ip_left),
-                    nodes_right[id_right], IPAddress(ip_right),
+                    nodes_left[id_left],
+                    IPAddress(ip_left),
+                    nodes_right[id_right],
+                    IPAddress(ip_right),
                 )
 
 
@@ -84,7 +83,8 @@ AddressMap = Mapping[Node, Sequence[IPAddress]]
 
 @typed
 def get_routable_address_map(
-        destinations: Iterable[Node], whence: Node) -> AddressMap:
+    destinations: Iterable[Node], whence: Node
+) -> AddressMap:
     """Return addresses of `destinations` routable from `whence`.
 
     Returns a dict keyed by the nodes in `destinations`, with values that are
@@ -112,7 +112,8 @@ def group_addresses_by_right_node(addresses) -> AddressMap:
 
 @typed
 def reduce_routable_address_map(
-        routable_addrs_map: AddressMap) -> Iterable[IPAddress]:
+    routable_addrs_map: AddressMap,
+) -> Iterable[IPAddress]:
     """Choose one routable address per destination node.
 
     The addresses are in preference order (see `find_addresses_between_nodes`

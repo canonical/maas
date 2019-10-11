@@ -3,17 +3,9 @@
 
 """The resource pool handler for the WebSocket connection."""
 
-__all__ = [
-    "ResourcePoolHandler",
-    ]
+__all__ = ["ResourcePoolHandler"]
 
-from django.db.models import (
-    Case,
-    Count,
-    IntegerField,
-    Sum,
-    When,
-)
+from django.db.models import Case, Count, IntegerField, Sum, When
 from maasserver.enum import NODE_STATUS
 from maasserver.forms import ResourcePoolForm
 from maasserver.models.resourcepool import ResourcePool
@@ -24,22 +16,13 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class ResourcePoolHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = ResourcePool.objects.all()
-        pk = 'id'
+        pk = "id"
         form = ResourcePoolForm
         form_requires_request = False
-        allowed_methods = [
-            'create',
-            'update',
-            'delete',
-            'get',
-            'list',
-        ]
-        listen_channels = [
-            "resourcepool",
-        ]
+        allowed_methods = ["create", "update", "delete", "get", "list"]
+        listen_channels = ["resourcepool"]
         create_permission = ResourcePoolPermission.create
         view_permission = ResourcePoolPermission.view
         edit_permission = ResourcePoolPermission.edit
@@ -48,13 +31,17 @@ class ResourcePoolHandler(TimestampedModelHandler):
     def get_queryset(self, for_list=False):
         """Return `QuerySet` used by this handler."""
         queryset = ResourcePool.objects.get_resource_pools(self.user)
-        queryset = queryset.prefetch_related('node_set')
+        queryset = queryset.prefetch_related("node_set")
         queryset = queryset.annotate(
-            machine_total_count=Count('node'),
+            machine_total_count=Count("node"),
             machine_ready_count=Sum(
                 Case(
                     When(node__status=NODE_STATUS.READY, then=1),
-                    default=0, output_field=IntegerField())))
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            ),
+        )
         return queryset
 
     def dehydrate(self, obj, data, for_list=False):
@@ -65,7 +52,7 @@ class ResourcePoolHandler(TimestampedModelHandler):
         :param for_list: True when the object is being converted to belong
             in a list.
         """
-        for attr in ['machine_total_count', 'machine_ready_count']:
+        for attr in ["machine_total_count", "machine_ready_count"]:
             data[attr] = getattr(obj, attr)
-        data['is_default'] = obj.is_default()
+        data["is_default"] = obj.is_default()
         return data

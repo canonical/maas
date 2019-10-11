@@ -6,31 +6,16 @@
 __all__ = []
 
 from contextlib import contextmanager
-from itertools import (
-    islice,
-    repeat,
-)
+from itertools import islice, repeat
 from random import randint
 import unittest
-from unittest.mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
-)
+from unittest.mock import ANY, call, Mock, sentinel
 
 from django.core.exceptions import MultipleObjectsReturned
-from django.db import (
-    connection,
-    connections,
-    transaction,
-)
+from django.db import connection, connections, transaction
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
-from django.db.utils import (
-    IntegrityError,
-    OperationalError,
-)
+from django.db.utils import IntegrityError, OperationalError
 from maasserver.models import Node
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -83,10 +68,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
-from provisioningserver.utils.twisted import (
-    callOut,
-    DeferredValue,
-)
+from provisioningserver.utils.twisted import callOut, DeferredValue
 import psycopg2
 from psycopg2.errorcodes import (
     DEADLOCK_DETECTED,
@@ -103,11 +85,7 @@ from testtools.matchers import (
     MatchesPredicate,
     Not,
 )
-from twisted.internet.defer import (
-    CancelledError,
-    Deferred,
-    passthru,
-)
+from twisted.internet.defer import CancelledError, Deferred, passthru
 from twisted.python.failure import Failure
 
 
@@ -120,7 +98,6 @@ class NoSleepMixin(unittest.TestCase):
 
 
 class FakeModel:
-
     class MultipleObjectsReturned(MultipleObjectsReturned):
         pass
 
@@ -146,7 +123,6 @@ class FakeQueryResult:
 
 
 class TestGetOne(MAASTestCase):
-
     def test_get_one_returns_None_for_empty_list(self):
         self.assertIsNone(get_one([]))
 
@@ -185,13 +161,15 @@ class TestGetOne(MAASTestCase):
         # Raises MultipleObjectsReturned as spec'ed.  It does not
         # iterate to infinity first!
         self.assertRaises(
-            MultipleObjectsReturned, get_one, infinite_sequence())
+            MultipleObjectsReturned, get_one, infinite_sequence()
+        )
 
     def test_get_one_raises_model_error_if_query_result_is_too_big(self):
         self.assertRaises(
             FakeModel.MultipleObjectsReturned,
             get_one,
-            FakeQueryResult(FakeModel, list(range(2))))
+            FakeQueryResult(FakeModel, list(range(2))),
+        )
 
     def test_get_one_raises_generic_error_if_other_sequence_is_too_big(self):
         self.assertRaises(MultipleObjectsReturned, get_one, list(range(2)))
@@ -210,7 +188,6 @@ class TestGetFirst(MAASTestCase):
         self.assertEqual(item, get_first(repeat(item)))
 
     def test_get_first_does_not_retrieve_beyond_first_item(self):
-
         class SecondItemRetrieved(Exception):
             """Second item as retrieved.  It shouldn't be."""
 
@@ -226,19 +203,17 @@ class TestSerializationFailure(SerializationFailureTestCase):
 
     def test_serialization_failure_detectable_via_error_cause(self):
         error = self.assertRaises(
-            OperationalError, self.cause_serialization_failure)
-        self.assertEqual(
-            SERIALIZATION_FAILURE, error.__cause__.pgcode)
+            OperationalError, self.cause_serialization_failure
+        )
+        self.assertEqual(SERIALIZATION_FAILURE, error.__cause__.pgcode)
 
 
 class TestUniqueViolation(UniqueViolationTestCase):
     """Detecting UNIQUE_VIOLATION failures."""
 
     def test_unique_violation_detectable_via_error_cause(self):
-        error = self.assertRaises(
-            IntegrityError, self.cause_unique_violation)
-        self.assertEqual(
-            UNIQUE_VIOLATION, error.__cause__.pgcode)
+        error = self.assertRaises(IntegrityError, self.cause_unique_violation)
+        self.assertEqual(UNIQUE_VIOLATION, error.__cause__.pgcode)
 
 
 class TestGetPsycopg2Exception(MAASTestCase):
@@ -284,7 +259,8 @@ class TestGetPsycopg2SerializationException(MAASTestCase):
         exception.__cause__ = orm.SerializationFailure()
         self.assertIs(
             exception.__cause__,
-            get_psycopg2_serialization_exception(exception))
+            get_psycopg2_serialization_exception(exception),
+        )
 
 
 class TestGetPsycopg2DeadlockException(MAASTestCase):
@@ -302,8 +278,8 @@ class TestGetPsycopg2DeadlockException(MAASTestCase):
         exception = Exception()
         exception.__cause__ = orm.DeadlockFailure()
         self.assertIs(
-            exception.__cause__,
-            get_psycopg2_deadlock_exception(exception))
+            exception.__cause__, get_psycopg2_deadlock_exception(exception)
+        )
 
 
 class TestGetPsycopg2UniqueViolationException(MAASTestCase):
@@ -322,7 +298,8 @@ class TestGetPsycopg2UniqueViolationException(MAASTestCase):
         exception.__cause__ = orm.UniqueViolation()
         self.assertIs(
             exception.__cause__,
-            get_psycopg2_unique_violation_exception(exception))
+            get_psycopg2_unique_violation_exception(exception),
+        )
 
 
 class TestGetPsycopg2ForeignKeyException(MAASTestCase):
@@ -331,19 +308,22 @@ class TestGetPsycopg2ForeignKeyException(MAASTestCase):
     def test__returns_None_for_plain_psycopg2_error(self):
         exception = psycopg2.Error()
         self.assertIsNone(
-            get_psycopg2_foreign_key_violation_exception(exception))
+            get_psycopg2_foreign_key_violation_exception(exception)
+        )
 
     def test__returns_None_for_other_error(self):
         exception = factory.make_exception()
         self.assertIsNone(
-            get_psycopg2_foreign_key_violation_exception(exception))
+            get_psycopg2_foreign_key_violation_exception(exception)
+        )
 
     def test__returns_psycopg2_error_root_cause(self):
         exception = Exception()
         exception.__cause__ = orm.ForeignKeyViolation()
         self.assertIs(
             exception.__cause__,
-            get_psycopg2_foreign_key_violation_exception(exception))
+            get_psycopg2_foreign_key_violation_exception(exception),
+        )
 
 
 class TestIsSerializationFailure(SerializationFailureTestCase):
@@ -351,7 +331,8 @@ class TestIsSerializationFailure(SerializationFailureTestCase):
 
     def test_detects_operational_error_with_matching_cause(self):
         error = self.assertRaises(
-            OperationalError, self.cause_serialization_failure)
+            OperationalError, self.cause_serialization_failure
+        )
         self.assertTrue(is_serialization_failure(error))
 
     def test_rejects_operational_error_without_matching_cause(self):
@@ -409,8 +390,7 @@ class TestIsUniqueViolation(UniqueViolationTestCase):
     """Tests relating to MAAS's identification of unique violations."""
 
     def test_detects_integrity_error_with_matching_cause(self):
-        error = self.assertRaises(
-            IntegrityError, self.cause_unique_violation)
+        error = self.assertRaises(IntegrityError, self.cause_unique_violation)
         self.assertTrue(is_unique_violation(error))
 
     def test_rejects_integrity_error_without_matching_cause(self):
@@ -539,7 +519,6 @@ class TestIsRetryableFailure(MAASTestCase):
 
 
 class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
-
     def make_mock_function(self):
         function_name = factory.make_name("function")
         function = Mock(__name__=function_name)
@@ -555,7 +534,8 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
 
     def test_retries_on_serialization_failure_until_successful(self):
         serialization_error = self.assertRaises(
-            OperationalError, self.cause_serialization_failure)
+            OperationalError, self.cause_serialization_failure
+        )
         function = self.make_mock_function()
         function.side_effect = [serialization_error, sentinel.result]
         function_wrapped = retry_on_retryable_failure(function)
@@ -603,7 +583,9 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
     def test_retries_on_foreign_key_violation_until_successful(self):
         function = self.make_mock_function()
         function.side_effect = [
-            orm.make_foreign_key_violation(), sentinel.result]
+            orm.make_foreign_key_violation(),
+            sentinel.result,
+        ]
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
         self.assertThat(function, MockCallsMatch(call(), call()))
@@ -628,7 +610,8 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(
             (sentinel.a, sentinel.b),
-            function_wrapped(sentinel.a, b=sentinel.b))
+            function_wrapped(sentinel.a, b=sentinel.b),
+        )
 
     def test_calls_reset_between_retries(self):
         reset = Mock()
@@ -651,7 +634,6 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         self.assertThat(reset, MockNotCalled())
 
     def test_uses_retry_context(self):
-
         @retry_on_retryable_failure
         def function_that_will_be_retried():
             self.assertThat(orm.retry_context.active, Is(True))
@@ -696,8 +678,12 @@ class TestMakeSerializationFailure(MAASTestCase):
 
     def test__makes_a_serialization_failure(self):
         exception = orm.make_serialization_failure()
-        self.assertThat(exception, MatchesPredicate(
-            is_serialization_failure, "%r is not a serialization failure."))
+        self.assertThat(
+            exception,
+            MatchesPredicate(
+                is_serialization_failure, "%r is not a serialization failure."
+            ),
+        )
 
 
 class TestMakeDeadlockFailure(MAASTestCase):
@@ -705,8 +691,12 @@ class TestMakeDeadlockFailure(MAASTestCase):
 
     def test__makes_a_deadlock_failure(self):
         exception = orm.make_deadlock_failure()
-        self.assertThat(exception, MatchesPredicate(
-            is_deadlock_failure, "%r is not a deadlock failure."))
+        self.assertThat(
+            exception,
+            MatchesPredicate(
+                is_deadlock_failure, "%r is not a deadlock failure."
+            ),
+        )
 
 
 class TestMakeUniqueViolation(MAASTestCase):
@@ -714,8 +704,12 @@ class TestMakeUniqueViolation(MAASTestCase):
 
     def test__makes_a_unique_violation(self):
         exception = orm.make_unique_violation()
-        self.assertThat(exception, MatchesPredicate(
-            is_unique_violation, "%r is not a unique violation."))
+        self.assertThat(
+            exception,
+            MatchesPredicate(
+                is_unique_violation, "%r is not a unique violation."
+            ),
+        )
 
 
 class TestMakeForeignKeyViolation(MAASTestCase):
@@ -723,8 +717,12 @@ class TestMakeForeignKeyViolation(MAASTestCase):
 
     def test__makes_a_foreign_key_violation(self):
         exception = orm.make_foreign_key_violation()
-        self.assertThat(exception, MatchesPredicate(
-            is_foreign_key_violation, "%r is not a foreign key violation."))
+        self.assertThat(
+            exception,
+            MatchesPredicate(
+                is_foreign_key_violation, "%r is not a foreign key violation."
+            ),
+        )
 
 
 class PopulateContext:
@@ -767,11 +765,13 @@ class TestRetryStack(MAASTestCase):
     def test_add_and_enter_pending_contexts(self):
         names = []
         with orm.RetryStack() as stack:
-            stack.add_pending_contexts([
-                PopulateContext(names, "alice"),
-                PopulateContext(names, "bob"),
-                PopulateContext(names, "carol"),
-            ])
+            stack.add_pending_contexts(
+                [
+                    PopulateContext(names, "alice"),
+                    PopulateContext(names, "bob"),
+                    PopulateContext(names, "carol"),
+                ]
+            )
             # These contexts haven't been entered yet.
             self.assertThat(names, Equals([]))
             # They're entered when `enter_pending_contexts` is called.
@@ -842,10 +842,12 @@ class TestRetryContext(MAASTestCase):
         context = orm.RetryContext()
         with context:
             self.assertThat(context.active, Is(True))
-            context.stack.add_pending_contexts([
-                PopulateContext(names, "alice"),
-                PopulateContext(names, "bob"),
-            ])
+            context.stack.add_pending_contexts(
+                [
+                    PopulateContext(names, "alice"),
+                    PopulateContext(names, "bob"),
+                ]
+            )
             context.prepare()
             self.assertThat(names, Equals(["alice", "bob"]))
         self.assertThat(context.active, Is(False))
@@ -857,11 +859,13 @@ class TestRetryContext(MAASTestCase):
         context = orm.RetryContext()
         with ExpectedException(ZeroDivisionError):
             with context:
-                context.stack.add_pending_contexts([
-                    PopulateContext(names, "alice"),
-                    CrashEntryContext(),
-                    PopulateContext(names, "bob"),
-                ])
+                context.stack.add_pending_contexts(
+                    [
+                        PopulateContext(names, "alice"),
+                        CrashEntryContext(),
+                        PopulateContext(names, "bob"),
+                    ]
+                )
                 context.prepare()
                 self.assertThat(names, Equals(["alice", "bob"]))
         self.assertThat(context.active, Is(False))
@@ -880,7 +884,8 @@ class TestRequestTransactionRetry(MAASTestCase):
         contexts = []
         with orm.retry_context:
             self.assertRaises(
-                orm.RetryTransaction, request_transaction_retry,
+                orm.RetryTransaction,
+                request_transaction_retry,
                 PopulateContext(contexts, "alice"),
                 PopulateContext(contexts, "bob"),
                 PopulateContext(contexts, "carol"),
@@ -911,8 +916,10 @@ class TestGenRetryIntervals(MAASTestCase):
         # Convert from seconds to milliseconds, and round.
         intervals = [int(interval * 1000) for interval in intervals]
         # They start off small, but grow rapidly to the maximum.
-        self.assertThat(intervals, Equals(
-            [25, 62, 156, 390, 976, 2441, 6103, 10000, 10000, 10000]))
+        self.assertThat(
+            intervals,
+            Equals([25, 62, 156, 390, 976, 2441, 6103, 10000, 10000, 10000]),
+        )
 
     def test__pulls_from_exponential_series_until_maximum_is_reached(self):
         self.remove_jitter()
@@ -1055,15 +1062,18 @@ class TestPostCommitDo(MAASTestCase):
         # Errors are passed through; they're not passed to our hook.
         self.expectThat(errback, Equals((passthru, None, None)))
         # Our hook is set to be called via callOut.
-        self.expectThat(callback, Equals(
-            (callOut, (hook, sentinel.foo), {"bar": sentinel.bar})))
+        self.expectThat(
+            callback,
+            Equals((callOut, (hook, sentinel.foo), {"bar": sentinel.bar})),
+        )
 
     def test__fire_passes_only_args_to_hook(self):
         hook = Mock()
         post_commit_do(hook, sentinel.arg, foo=sentinel.bar)
         post_commit_hooks.fire()
         self.assertThat(
-            hook, MockCalledOnceWith(sentinel.arg, foo=sentinel.bar))
+            hook, MockCalledOnceWith(sentinel.arg, foo=sentinel.bar)
+        )
 
     def test__reset_does_not_call_hook(self):
         hook = Mock()
@@ -1109,7 +1119,8 @@ class TestConnected(MAASTransactionServerTestCase):
         self.assertThat(connection.connection, Not(Is(None)))
         with orm.connected():
             self.assertThat(
-                connection.connection, Not(Is(preexisting_connection)))
+                connection.connection, Not(Is(preexisting_connection))
+            )
             self.assertThat(connection.connection, Not(Is(None)))
 
         self.assertThat(connection.connection, Not(Is(preexisting_connection)))
@@ -1135,13 +1146,12 @@ class TestWithConnection(MAASTransactionServerTestCase):
 
         self.assertTrue(context.unused)
         self.assertThat(
-            function(sentinel.arg, kwarg=sentinel.kwarg),
-            Is(sentinel.result))
+            function(sentinel.arg, kwarg=sentinel.kwarg), Is(sentinel.result)
+        )
         self.assertTrue(context.used)
 
 
 class TestTransactional(MAASTransactionServerTestCase):
-
     def test__exposes_original_function(self):
         function = Mock(__name__=self.getUniqueString())
         self.assertThat(orm.transactional(function).func, Is(function))
@@ -1171,8 +1181,9 @@ class TestTransactional(MAASTransactionServerTestCase):
 
         # `function` was called -- and therefore `check_inner` too --
         # and the arguments passed correctly.
-        self.assertThat(function, MockCalledOnceWith(
-            sentinel.arg, kwarg=sentinel.kwarg))
+        self.assertThat(
+            function, MockCalledOnceWith(sentinel.arg, kwarg=sentinel.kwarg)
+        )
 
         # After the decorated function has returned the transaction has
         # been exited, and the connection has been closed.
@@ -1252,7 +1263,6 @@ class TestTransactional(MAASTransactionServerTestCase):
 
 
 class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
-
     def test__retries_upon_serialization_failures(self):
         function = Mock()
         function.__name__ = self.getUniqueString()
@@ -1318,42 +1328,39 @@ class TestValidateInTransaction(MAASTransactionServerTestCase):
 
     def test__explodes_when_no_transaction_is_active(self):
         self.assertRaises(
-            TransactionManagementError,
-            validate_in_transaction, connection)
+            TransactionManagementError, validate_in_transaction, connection
+        )
 
 
 class TestPsqlArray(MAASTestCase):
-
     def test__returns_empty_array(self):
         self.assertEqual(("ARRAY[]", []), psql_array([]))
 
     def test__returns_params_in_array(self):
-        self.assertEqual(
-            "ARRAY[%s,%s,%s]", psql_array(['a', 'a', 'a'])[0])
+        self.assertEqual("ARRAY[%s,%s,%s]", psql_array(["a", "a", "a"])[0])
 
     def test__returns_params_in_tuple(self):
-        params = [factory.make_name('param') for _ in range(3)]
-        self.assertEqual(
-            params, psql_array(params)[1])
+        params = [factory.make_name("param") for _ in range(3)]
+        self.assertEqual(params, psql_array(params)[1])
 
     def test__returns_cast_to_type(self):
         self.assertEqual(
-            ("ARRAY[]::integer[]", []), psql_array([], sql_type="integer"))
+            ("ARRAY[]::integer[]", []), psql_array([], sql_type="integer")
+        )
 
 
 class TestDisablingDatabaseConnections(MAASTransactionServerTestCase):
-
     def assertConnectionsEnabled(self):
         for alias in connections:
             self.assertThat(
-                connections[alias],
-                IsInstance(BaseDatabaseWrapper))
+                connections[alias], IsInstance(BaseDatabaseWrapper)
+            )
 
     def assertConnectionsDisabled(self):
         for alias in connections:
             self.assertEqual(
-                DisabledDatabaseConnection,
-                type(connections[alias]))
+                DisabledDatabaseConnection, type(connections[alias])
+            )
 
     def test_disable_and_enable_connections(self):
         self.addCleanup(enable_all_database_connections)
@@ -1456,23 +1463,20 @@ class TestFullyConnected(MAASTransactionServerTestCase):
 
 
 class TestGetModelObjectName(MAASServerTestCase):
-
     def test__gets_model_object_name_from_manager(self):
         self.assertThat(get_model_object_name(Node.objects), Equals("Node"))
 
     def test__gets_model_object_name_from_queryset(self):
         self.assertThat(
-            get_model_object_name(Node.objects.all()), Equals("Node"))
+            get_model_object_name(Node.objects.all()), Equals("Node")
+        )
 
     def test__gets_model_object_name_returns_none_if_not_found(self):
-        self.assertThat(
-            get_model_object_name("crazytalk"), Is(None))
+        self.assertThat(get_model_object_name("crazytalk"), Is(None))
 
 
 class TestCountQueries(MAASServerTestCase):
-
     def test__logs_all_queries_made_by_func(self):
-
         def query_func():
             return list(Node.objects.all())
 
@@ -1480,18 +1484,18 @@ class TestCountQueries(MAASServerTestCase):
         wrapped = count_queries(mock_print)(query_func)
         wrapped()
 
-        query_time = sum([
-            float(query.get('time', 0))
-            for query in connection.queries
-        ])
+        query_time = sum(
+            [float(query.get("time", 0)) for query in connection.queries]
+        )
         self.assertThat(
             mock_print,
             MockCalledOnceWith(
-                '[QUERIES] query_func executed 1 queries in %s seconds' % (
-                    query_time)))
+                "[QUERIES] query_func executed 1 queries in %s seconds"
+                % query_time
+            ),
+        )
 
     def test__resets_queries_between_calls(self):
-
         def query_func():
             return list(Node.objects.all())
 
@@ -1500,50 +1504,54 @@ class TestCountQueries(MAASServerTestCase):
 
         # First call.
         wrapped()
-        query_time_one = sum([
-            float(query.get('time', 0))
-            for query in connection.queries
-        ])
+        query_time_one = sum(
+            [float(query.get("time", 0)) for query in connection.queries]
+        )
 
         # Second call.
         wrapped()
-        query_time_two = sum([
-            float(query.get('time', 0))
-            for query in connection.queries
-        ])
+        query_time_two = sum(
+            [float(query.get("time", 0)) for query in connection.queries]
+        )
 
         # Print called twice.
         self.assertThat(
             mock_print,
             MockCallsMatch(
                 call(
-                    '[QUERIES] query_func executed 1 queries in %s seconds' % (
-                        query_time_one)),
+                    "[QUERIES] query_func executed 1 queries in %s seconds"
+                    % query_time_one
+                ),
                 call(
-                    '[QUERIES] query_func executed 1 queries in %s seconds' % (
-                        query_time_two))))
+                    "[QUERIES] query_func executed 1 queries in %s seconds"
+                    % query_time_two
+                ),
+            ),
+        )
 
     def test__logs_all_queries_made(self):
-
         def query_func():
             return list(Node.objects.all())
+
         log_sql_calls(query_func)
 
         mock_print = Mock()
         wrapped = count_queries(mock_print)(query_func)
         wrapped()
-        query_time = sum([
-            float(query.get('time', 0))
-            for query in connection.queries
-        ])
+        query_time = sum(
+            [float(query.get("time", 0)) for query in connection.queries]
+        )
 
         # Print called twice.
         self.assertThat(
             mock_print,
             MockCallsMatch(
                 call(
-                    '[QUERIES] query_func executed 1 queries in %s seconds' % (
-                        query_time)),
-                call('[QUERIES] === Start SQL Log: query_func ==='),
-                call('[QUERIES] %s' % connection.queries[0]['sql']),
-                call('[QUERIES] === End SQL Log: query_func ===')))
+                    "[QUERIES] query_func executed 1 queries in %s seconds"
+                    % query_time
+                ),
+                call("[QUERIES] === Start SQL Log: query_func ==="),
+                call("[QUERIES] %s" % connection.queries[0]["sql"]),
+                call("[QUERIES] === End SQL Log: query_func ==="),
+            ),
+        )

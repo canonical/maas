@@ -11,53 +11,30 @@ __all__ = [
 ]
 
 from collections import defaultdict
-from os import (
-    path,
-    urandom,
-)
+from os import path, urandom
 from urllib.parse import urlparse
 from warnings import warn
 
 from crochet import run_in_reactor
 import fixtures
-from maasserver import (
-    eventloop,
-    security,
-)
+from maasserver import eventloop, security
 from maasserver.models.node import RackController
-from maasserver.rpc import (
-    getClientFor,
-    rackcontrollers,
-)
+from maasserver.rpc import getClientFor, rackcontrollers
 from maasserver.rpc.regionservice import RegionServer
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
 )
-from provisioningserver.rpc import (
-    cluster,
-    clusterservice,
-    region,
-)
+from provisioningserver.rpc import cluster, clusterservice, region
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     call_responder,
     make_amp_protocol_factory,
 )
 from provisioningserver.security import calculate_digest
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
-from testtools.monkey import (
-    MonkeyPatcher,
-    patch,
-)
-from twisted.internet import (
-    defer,
-    endpoints,
-    reactor,
-)
+from provisioningserver.utils.twisted import asynchronous, synchronous
+from testtools.monkey import MonkeyPatcher, patch
+from twisted.internet import defer, endpoints, reactor
 from twisted.internet.protocol import Factory
 from twisted.test import iosim
 from zope.interface import implementer
@@ -71,7 +48,6 @@ def get_service_in_eventloop(name):
 
 @implementer(IConnection)
 class FakeConnection:
-
     def __init__(self, ident):
         super(FakeConnection, self).__init__()
         self.protocol = clusterservice.Cluster()
@@ -97,16 +73,20 @@ class ClusterRPCFixture(fixtures.Fixture):
     def __init__(self):
         super(ClusterRPCFixture, self).__init__()
         warn(
-            ("ClusterRPCFixture is deprecated; use "
-             "MockRegionToClusterRPCFixture instead."),
-            DeprecationWarning)
+            (
+                "ClusterRPCFixture is deprecated; use "
+                "MockRegionToClusterRPCFixture instead."
+            ),
+            DeprecationWarning,
+        )
 
     def setUp(self):
         super(ClusterRPCFixture, self).setUp()
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(
-                "Please start the event-loop before using this fixture.")
+                "Please start the event-loop before using this fixture."
+            )
         rpc_service = get_service_in_eventloop("rpc").wait(10)
         # The RPC service uses a defaultdict(set) to manage connections, but
         # let's check those assumptions.
@@ -173,7 +153,8 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(
-                "Please start the event-loop before using this fixture.")
+                "Please start the event-loop before using this fixture."
+            )
         self.rpc = get_service_in_eventloop("rpc").wait(10)
         # The RPC service uses a defaultdict(set) to manage connections, but
         # let's check those assumptions.
@@ -193,8 +174,10 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         server_factory.service = self.rpc
         server = server_factory.buildProtocol(addr=None)
         return iosim.connect(
-            server, iosim.makeFakeServer(server),
-            protocol, iosim.makeFakeClient(protocol),
+            server,
+            iosim.makeFakeServer(server),
+            protocol,
+            iosim.makeFakeClient(protocol),
             debug=False,  # Debugging is useful, but too noisy by default.
         )
 
@@ -220,10 +203,12 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
         ident_response = {"ident": controller.system_id}
-        protocol.Identify.side_effect = (
-            lambda _: defer.succeed(ident_response.copy()))
-        protocol.Authenticate.side_effect = (
-            lambda _, message: authenticate_with_secret(self.secret, message))
+        protocol.Identify.side_effect = lambda _: defer.succeed(
+            ident_response.copy()
+        )
+        protocol.Authenticate.side_effect = lambda _, message: authenticate_with_secret(
+            self.secret, message
+        )
         return protocol, self.addCluster(protocol)
 
 
@@ -296,7 +281,8 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(
-                "Please start the event-loop before using this fixture.")
+                "Please start the event-loop before using this fixture."
+            )
         self.rpc = get_service_in_eventloop("rpc").wait(10)
         # Where we're going to put the UNIX socket files.
         self.sockdir = self.useFixture(fixtures.TempDir()).path
@@ -324,8 +310,8 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         registered = rack_controller
         patcher = MonkeyPatcher()
         patcher.add_patch(
-            rackcontrollers, "register",
-            (lambda *args, **kwargs: registered))
+            rackcontrollers, "register", (lambda *args, **kwargs: registered)
+        )
 
         # Register the rack controller with the region.
         patcher.patch()
@@ -333,8 +319,10 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
             yield protocol.callRemote(
                 region.RegisterRackController,
                 system_id=rack_controller.system_id,
-                hostname=rack_controller.hostname, interfaces={},
-                url=urlparse(""))
+                hostname=rack_controller.hostname,
+                interfaces={},
+                url=urlparse(""),
+            )
         finally:
             patcher.restore()
 
@@ -358,10 +346,10 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
 
-        protocol.Authenticate.side_effect = (
-            lambda _, message: authenticate_with_secret(self.secret, message))
-        self.addCluster(
-            protocol, rack_controller).wait(5)
+        protocol.Authenticate.side_effect = lambda _, message: authenticate_with_secret(
+            self.secret, message
+        )
+        self.addCluster(protocol, rack_controller).wait(5)
         # The connection is now established, but there is a brief
         # handshake that takes place immediately upon connection.  We
         # wait for that to finish before returning.

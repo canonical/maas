@@ -3,14 +3,9 @@
 
 """Configuration abstractions for the MAAS CLI."""
 
-__all__ = [
-    "ProfileConfig",
-    ]
+__all__ = ["ProfileConfig"]
 
-from contextlib import (
-    closing,
-    contextmanager,
-)
+from contextlib import closing, contextmanager
 import json
 import os
 from os.path import expanduser
@@ -28,7 +23,8 @@ class ProfileConfig:
                 "CREATE TABLE IF NOT EXISTS profiles "
                 "(id INTEGER PRIMARY KEY,"
                 " name TEXT NOT NULL UNIQUE,"
-                " data BLOB)")
+                " data BLOB)"
+            )
         self.__fill_cache()
 
     def cursor(self):
@@ -50,8 +46,7 @@ class ProfileConfig:
         if self.cache:
             return (name for name in self.cache)
         with self.cursor() as cursor:
-            results = cursor.execute(
-                "SELECT name FROM profiles").fetchall()
+            results = cursor.execute("SELECT name FROM profiles").fetchall()
         return (name for (name,) in results)
 
     def __getitem__(self, name):
@@ -59,8 +54,8 @@ class ProfileConfig:
             return self.cache[name]
         with self.cursor() as cursor:
             data = cursor.execute(
-                "SELECT data FROM profiles"
-                " WHERE name = ?", (name,)).fetchone()
+                "SELECT data FROM profiles" " WHERE name = ?", (name,)
+            ).fetchone()
         if data is None:
             raise KeyError(name)
         else:
@@ -72,14 +67,14 @@ class ProfileConfig:
         with self.cursor() as cursor:
             cursor.execute(
                 "INSERT OR REPLACE INTO profiles (name, data) "
-                "VALUES (?, ?)", (name, json.dumps(data)))
+                "VALUES (?, ?)",
+                (name, json.dumps(data)),
+            )
         self.cache[name] = data
 
     def __delitem__(self, name):
         with self.cursor() as cursor:
-            cursor.execute(
-                "DELETE FROM profiles"
-                " WHERE name = ?", (name,))
+            cursor.execute("DELETE FROM profiles" " WHERE name = ?", (name,))
         try:
             del self.cache[name]
         except KeyError:

@@ -3,9 +3,7 @@
 
 """Fixtures for testing `driver_parameters`."""
 
-__all__ = [
-    'StaticDriverTypesFixture',
-    ]
+__all__ = ["StaticDriverTypesFixture"]
 
 from copy import deepcopy
 from functools import wraps
@@ -30,15 +28,15 @@ class StaticDriverTypesFixture(Fixture):
 
     def _interceptPowerTypesQuery(self):
         power_types = PowerDriverRegistry.get_schema(
-            detect_missing_packages=False)
+            detect_missing_packages=False
+        )
 
         @wraps(driver_parameters.get_all_power_types)
-        def get_all_power_types(
-                controllers=None, ignore_errors=True):
+        def get_all_power_types(controllers=None, ignore_errors=True):
             # Callers can mutate this, so deep copy.
             return deepcopy(power_types)
 
         restore = monkey.patch(
-            driver_parameters, 'get_all_power_types',
-            get_all_power_types)
+            driver_parameters, "get_all_power_types", get_all_power_types
+        )
         self.addCleanup(restore)

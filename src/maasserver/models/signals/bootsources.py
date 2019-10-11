@@ -3,14 +3,9 @@
 
 """Respond to boot source changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
-from django.db.models.signals import (
-    post_delete,
-    post_save,
-)
+from django.db.models.signals import post_delete, post_save
 from maasserver.bootsources import cache_boot_sources
 from maasserver.models.bootsource import BootSource
 from maasserver.utils.orm import post_commit_do

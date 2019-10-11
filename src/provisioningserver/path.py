@@ -3,21 +3,10 @@
 
 """Compute paths relative to root."""
 
-__all__ = [
-    'get_path',
-    'get_data_path',
-    'get_tentative_data_path',
-]
+__all__ = ["get_path", "get_data_path", "get_tentative_data_path"]
 
-from os import (
-    getenv,
-    makedirs,
-)
-from os.path import (
-    abspath,
-    dirname,
-    join,
-)
+from os import getenv, makedirs
+from os.path import abspath, dirname, join
 
 
 def get_path_env(env):
@@ -58,8 +47,8 @@ def get_tentative_data_path(*path_elements):
     # in, it would override preceding path elements and MAAS_ROOT would be
     # ignored later on. The dot is there to make the call work even with zero
     # path elements.
-    path = join('.', *path_elements).lstrip('/')
-    path = join(get_path_env('MAAS_ROOT'), path)
+    path = join(".", *path_elements).lstrip("/")
+    path = join(get_path_env("MAAS_ROOT"), path)
     return abspath(path)
 
 
@@ -107,6 +96,6 @@ def get_path(*path_elements):
     # in, it would override preceding path elements and MAAS_ROOT would be
     # ignored later on. The dot is there to make the call work even with zero
     # path elements.
-    path = join('.', *path_elements).lstrip('/')
-    path = join(get_path_env('MAAS_PATH'), path)
+    path = join(".", *path_elements).lstrip("/")
+    path = join(get_path_env("MAAS_PATH"), path)
     return abspath(path)

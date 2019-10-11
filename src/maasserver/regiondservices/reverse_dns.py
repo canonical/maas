@@ -3,17 +3,12 @@
 
 """Reverse DNS service."""
 
-__all__ = [
-    "ReverseDNSService"
-]
+__all__ = ["ReverseDNSService"]
 
 from typing import List
 
 from maasserver.listener import PostgresListenerService
-from maasserver.models import (
-    RDNS,
-    RegionController,
-)
+from maasserver.models import RDNS, RegionController
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import reverseResolve
@@ -39,13 +34,14 @@ class ReverseDNSService(Service):
     def startService(self):
         super().startService()
         self.region = yield deferToDatabase(
-            RegionController.objects.get_running_controller)
+            RegionController.objects.get_running_controller
+        )
         if self.listener is not None:
-            self.listener.register('neighbour', self.consumeNeighbourEvent)
+            self.listener.register("neighbour", self.consumeNeighbourEvent)
 
     def stopService(self):
         if self.listener is not None:
-            self.listener.unregister('neighbour', self.consumeNeighbourEvent)
+            self.listener.unregister("neighbour", self.consumeNeighbourEvent)
         return super().stopService()
 
     def set_rdns_entry(self, ip: str, results: List[str]):
@@ -79,15 +75,16 @@ class ReverseDNSService(Service):
             casts it to a string. It will end up looking like "x.x.x.x/32"
             or "yyyy:yyyy::yyyy/128".
         """
-        ip = cidr.split('/')[0]  # Strip off the "/<prefixlen>".
-        if action in ('create', 'update'):
+        ip = cidr.split("/")[0]  # Strip off the "/<prefixlen>".
+        if action in ("create", "update"):
             # XXX mpontillo 2016-10-19: We might consider throttling this on
             # a per-IP-address basis, both because multiple racks can observe
             # the same IP address, and because an IP address might repeatedly
             # go back-and-forth between two MACs in the case of a duplicate IP
             # address.
             results = yield reverseResolve(ip).addErrback(
-                suppress, defer.TimeoutError, instead=None)
+                suppress, defer.TimeoutError, instead=None
+            )
             if results is not None:
                 if len(results) > 0:
                     yield deferToDatabase(self.set_rdns_entry, ip, results)
@@ -97,8 +94,11 @@ class ReverseDNSService(Service):
                 # A return of 'None' indicates a timeout or other possibly-
                 # temporary failure, so take no action.
                 pass
-        elif action == 'delete':
+        elif action == "delete":
             yield deferToDatabase(self.delete_rdns_entry, ip)
         else:
-            log.msg("Unsupported event from listener: action=%r, cidr=%r" % (
-                action, cidr), system="reverse-dns")
+            log.msg(
+                "Unsupported event from listener: action=%r, cidr=%r"
+                % (action, cidr),
+                system="reverse-dns",
+            )

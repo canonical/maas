@@ -7,27 +7,28 @@ from django.db import migrations
 from django.db.models.aggregates import Count
 
 
-NON_CHASSIS_POWER_TYPES = ('amt', 'ipmi', 'openbmc', 'wedge')
+NON_CHASSIS_POWER_TYPES = ("amt", "ipmi", "openbmc", "wedge")
 
 
 def clean_bmcs(apps, schema_editor):
-    BMC = apps.get_model('maasserver', 'BMC')
-    Node = apps.get_model('maasserver', 'Node')
+    BMC = apps.get_model("maasserver", "BMC")
+    Node = apps.get_model("maasserver", "Node")
 
     # delete BMCs that are not linked to any node
     BMC.objects.exclude(
-        id__in=Node.objects.values('bmc_id')).distinct().delete()
+        id__in=Node.objects.values("bmc_id")
+    ).distinct().delete()
 
     # find duplicated BMCs and remove them, moving nodes to the only one left
     # for each group
     bmc_ids_to_delete = []
 
-    qs = BMC.objects.values('power_type', 'power_parameters')
-    qs = qs.exclude(power_type='manual')
-    qs = qs.annotate(ids=ArrayAgg('id')).annotate(count=Count('id'))
+    qs = BMC.objects.values("power_type", "power_parameters")
+    qs = qs.exclude(power_type="manual")
+    qs = qs.annotate(ids=ArrayAgg("id")).annotate(count=Count("id"))
     qs = qs.filter(count__gt=1)
     for entry in qs:
-        bmc_ids = entry['ids']
+        bmc_ids = entry["ids"]
         bmc_id = bmc_ids.pop()
         Node.objects.filter(bmc_id__in=bmc_ids).update(bmc_id=bmc_id)
         bmc_ids_to_delete.extend(bmc_ids)
@@ -39,13 +40,13 @@ def clean_bmcs(apps, schema_editor):
     # not valid, so we unset the BCM for all nodes except one, so BMC
     # parameters (such as user/password) are not lost. Users will likely have
     # to fix those node manually anyway.
-    qs = BMC.objects.values('id')
+    qs = BMC.objects.values("id")
     qs = qs.filter(power_type__in=NON_CHASSIS_POWER_TYPES)
-    qs = qs.annotate(node_ids=ArrayAgg('node'), node_count=Count('node'))
+    qs = qs.annotate(node_ids=ArrayAgg("node"), node_count=Count("node"))
     qs = qs.filter(node_count__gt=1)
     node_ids_to_unset = []
     for entry in qs:
-        node_ids = entry['node_ids']
+        node_ids = entry["node_ids"]
         node_ids.pop()  # keep one node with the original
         node_ids_to_unset.append(node_ids)
 
@@ -55,10 +56,6 @@ def clean_bmcs(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0189_staticipaddress_temp_expires_on')
-    ]
+    dependencies = [("maasserver", "0189_staticipaddress_temp_expires_on")]
 
-    operations = [
-        migrations.RunPython(clean_bmcs),
-    ]
+    operations = [migrations.RunPython(clean_bmcs)]

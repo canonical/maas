@@ -3,9 +3,7 @@
 
 """DNS zone generator."""
 
-__all__ = [
-    'ZoneGenerator',
-    ]
+__all__ = ["ZoneGenerator"]
 
 
 import collections
@@ -14,25 +12,16 @@ import socket
 
 import attr
 from maasserver import logger
-from maasserver.enum import (
-    IPRANGE_TYPE,
-    RDNS_MODE,
-)
+from maasserver.enum import IPRANGE_TYPE, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import (
-    DNSData,
-    HostnameRRsetMapping,
-)
+from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_addresses
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import IPAddress, IPNetwork
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -46,7 +35,7 @@ class lazydict(dict):
     function is called with the missing key, and the value returned is saved.
     """
 
-    __slots__ = ("factory", )
+    __slots__ = ("factory",)
 
     def __init__(self, factory):
         super(lazydict, self).__init__()
@@ -84,8 +73,7 @@ def get_hostname_dnsdata_mapping(domain):
     `domain`.  Info contains: system_id and rrsets (which contain (ttl, rrtype,
     rrdata) tuples.
     """
-    return DNSData.objects.get_hostname_dnsdata_mapping(
-        domain, with_ids=False)
+    return DNSData.objects.get_hostname_dnsdata_mapping(domain, with_ids=False)
 
 
 WARNING_MESSAGE = (
@@ -93,7 +81,8 @@ WARNING_MESSAGE = (
     "loopback network.  This may not be a problem if you're not using "
     "MAAS's DNS features or if you don't rely on this information. "
     "Consult the 'maas-region local_config_set --maas-url' command "
-    "for details on how to set the MAAS URL.")
+    "for details on how to set the MAAS URL."
+)
 
 
 def warn_loopback(ip):
@@ -122,8 +111,12 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
 
 
 def get_dns_server_addresses(
-        rack_controller=None, ipv4=True, ipv6=True, include_alternates=False,
-        default_region_ip=None):
+    rack_controller=None,
+    ipv4=True,
+    ipv6=True,
+    include_alternates=False,
+    default_region_ip=None,
+):
     """Return the DNS server's IP addresses.
 
     That address is derived from the config maas_url or rack_controller.url.
@@ -145,17 +138,20 @@ def get_dns_server_addresses(
     """
     try:
         iplist = get_maas_facing_server_addresses(
-            rack_controller, ipv4=ipv4, ipv6=ipv6,
+            rack_controller,
+            ipv4=ipv4,
+            ipv6=ipv6,
             include_alternates=include_alternates,
-            default_region_ip=default_region_ip)
+            default_region_ip=default_region_ip,
+        )
     except socket.error as e:
         raise UnresolvableHost(
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
             "requires this IP address for the NS records in its zone files. "
             "Make sure that the configuration setting for the MAAS URL has "
             "the correct hostname. Consult the 'maas-region "
-            "local_config_set --maas-url' command."
-            % e.strerror)
+            "local_config_set --maas-url' command." % e.strerror
+        )
 
     non_loop = [ip for ip in iplist if not ip.is_loopback()]
     if len(non_loop) > 0:
@@ -170,8 +166,9 @@ def get_dns_search_paths():
     """Return all the search paths for the DNS server."""
     return set(
         name
-        for name in Domain.objects.filter(
-            authoritative=True).values_list("name", flat=True)
+        for name in Domain.objects.filter(authoritative=True).values_list(
+            "name", flat=True
+        )
         if name
     )
 
@@ -184,15 +181,20 @@ class ZoneGenerator:
     """
 
     def __init__(
-            self, domains, subnets, default_ttl=None, serial=None,
-            internal_domains=None):
+        self,
+        domains,
+        subnets,
+        default_ttl=None,
+        serial=None,
+        internal_domains=None,
+    ):
         """
         :param serial: A serial number to reuse when creating zones in bulk.
         """
         self.domains = sequence(domains)
         self.subnets = sequence(subnets)
         if default_ttl is None:
-            self.default_ttl = Config.objects.get_config('default_dns_ttl')
+            self.default_ttl = Config.objects.get_config("default_dns_ttl")
         else:
             self.default_ttl = default_ttl
         self.default_domain = Domain.objects.get_default_domain()
@@ -213,8 +215,14 @@ class ZoneGenerator:
 
     @staticmethod
     def _gen_forward_zones(
-            domains, serial, ns_host_name, mappings,
-            rrset_mappings, default_ttl, internal_domains):
+        domains,
+        serial,
+        ns_host_name,
+        mappings,
+        rrset_mappings,
+        default_ttl,
+        internal_domains,
+    ):
         """Generator of forward zones, collated by domain name."""
         dns_ip_list = get_dns_server_addresses()
         domains = set(domains)
@@ -241,7 +249,8 @@ class ZoneGenerator:
 
             # 2b. Capture NS RRsets for anything that is a child of this domain
             domain.add_delegations(
-                other_mapping, ns_host_name, dns_ip_list, default_ttl)
+                other_mapping, ns_host_name, dns_ip_list, default_ttl
+            )
 
             # 3. All of the special handling for the default domain.
             dynamic_ranges = []
@@ -257,25 +266,29 @@ class ZoneGenerator:
                             dynamic_ranges.append(ip_range.get_MAASIPRange())
                 # 3b. Add A/AAAA RRset for @.  If glue is needed for any other
                 # domain, adding the glue is the responsibility of the admin.
-                ttl = domain.get_base_ttl('A', default_ttl)
+                ttl = domain.get_base_ttl("A", default_ttl)
                 for dns_ip in dns_ip_list:
                     if dns_ip.version == 4:
-                        other_mapping['@'].rrset.add(
-                            (ttl, 'A', dns_ip.format()))
+                        other_mapping["@"].rrset.add(
+                            (ttl, "A", dns_ip.format())
+                        )
                     else:
-                        other_mapping['@'].rrset.add(
-                            (ttl, 'AAAA', dns_ip.format()))
+                        other_mapping["@"].rrset.add(
+                            (ttl, "AAAA", dns_ip.format())
+                        )
 
             yield DNSForwardZoneConfig(
-                domain.name, serial=serial, default_ttl=zone_ttl,
-                ns_ttl=domain.get_base_ttl('NS', default_ttl),
-                ipv4_ttl=domain.get_base_ttl('A', default_ttl),
-                ipv6_ttl=domain.get_base_ttl('AAAA', default_ttl),
+                domain.name,
+                serial=serial,
+                default_ttl=zone_ttl,
+                ns_ttl=domain.get_base_ttl("NS", default_ttl),
+                ipv4_ttl=domain.get_base_ttl("A", default_ttl),
+                ipv6_ttl=domain.get_base_ttl("AAAA", default_ttl),
                 mapping=mapping,
                 ns_host_name=ns_host_name,
                 other_mapping=other_mapping,
                 dynamic_ranges=dynamic_ranges,
-                )
+            )
 
         # Create the forward zone config for the internal domains.
         for internal_domain in internal_domains:
@@ -285,9 +298,11 @@ class ZoneGenerator:
                 resource_mapping = other_mapping[resource.name]
                 for record in resource.records:
                     resource_mapping.rrset.add(
-                        (internal_domain.ttl, record.rrtype, record.rrdata))
+                        (internal_domain.ttl, record.rrtype, record.rrdata)
+                    )
             yield DNSForwardZoneConfig(
-                internal_domain.name, serial=serial,
+                internal_domain.name,
+                serial=serial,
                 default_ttl=internal_domain.ttl,
                 ns_ttl=internal_domain.ttl,
                 ipv4_ttl=internal_domain.ttl,
@@ -296,11 +311,12 @@ class ZoneGenerator:
                 ns_host_name=ns_host_name,
                 other_mapping=other_mapping,
                 dynamic_ranges=[],
-                )
+            )
 
     @staticmethod
     def _gen_reverse_zones(
-            subnets, serial, ns_host_name, mappings, default_ttl):
+        subnets, serial, ns_host_name, mappings, default_ttl
+    ):
         """Generator of reverse zones, sorted by network."""
 
         subnets = set(subnets)
@@ -318,19 +334,20 @@ class ZoneGenerator:
                 if network.version == 4 and network.prefixlen > 24:
                     # Turn 192.168.99.32/29 into 192.168.99.0/24
                     basenet = IPNetwork(
-                        "%s/24" %
-                        IPNetwork("%s/24" % network.network).network)
+                        "%s/24" % IPNetwork("%s/24" % network.network).network
+                    )
                     rfc2317_glue.setdefault(basenet, set()).add(network)
                 elif network.version == 6 and network.prefixlen > 124:
                     basenet = IPNetwork(
-                        "%s/124" %
-                        IPNetwork("%s/124" % network.network).network)
+                        "%s/124"
+                        % IPNetwork("%s/124" % network.network).network
+                    )
                     rfc2317_glue.setdefault(basenet, set()).add(network)
 
         # Since get_hostname_ip_mapping(Subnet) ignores Subnet.id, so we can
         # just do it once and be happy.  LP#1600259
         if len(subnets):
-            mappings['reverse'] = mappings[Subnet.objects.first()]
+            mappings["reverse"] = mappings[Subnet.objects.first()]
 
         # For each of the zones that we are generating (one or more per
         # subnet), compile the zone from:
@@ -342,15 +359,17 @@ class ZoneGenerator:
         # means that we wind up grabbing (and deleting) the rfc2317 glue info
         # while processing the wrong network.
         for subnet in sorted(
-                subnets,
-                key=lambda subnet: IPNetwork(subnet.cidr).prefixlen,
-                reverse=True):
+            subnets,
+            key=lambda subnet: IPNetwork(subnet.cidr).prefixlen,
+            reverse=True,
+        ):
             network = IPNetwork(subnet.cidr)
             if subnet.rdns_mode == RDNS_MODE.DISABLED:
                 # If we are not doing reverse dns for this subnet, then just
                 # skip to the next subnet.
                 logger.debug(
-                    "%s disabled subnet in DNS config list" % subnet.cidr)
+                    "%s disabled subnet in DNS config list" % subnet.cidr
+                )
                 continue
 
             # 1. Figure out the dynamic ranges.
@@ -364,39 +383,43 @@ class ZoneGenerator:
             # entries for the subnet when we actually generate the zonefile.
             # If we get here, then we have subnets, so we noticed that above
             # and created mappings['reverse'].  LP#1600259
-            mapping = mappings['reverse']
+            mapping = mappings["reverse"]
 
             # Use the default_domain as the name for the NS host in the reverse
             # zones.  If this network is actually a parent rfc2317 glue
             # network, then we need to generate the glue records.
             # We need to detect the need for glue in our networks that are
             # big.
-            if ((network.version == 6 and network.prefixlen < 124) or
-                    network.prefixlen < 24):
+            if (
+                network.version == 6 and network.prefixlen < 124
+            ) or network.prefixlen < 24:
                 glue = set()
                 # This is the reason for needing the subnets sorted in
                 # increasing order of size.
                 for net in rfc2317_glue.copy().keys():
                     if net in network:
                         glue.update(rfc2317_glue[net])
-                        del(rfc2317_glue[net])
+                        del rfc2317_glue[net]
             elif network in rfc2317_glue:
                 glue = rfc2317_glue[network]
-                del(rfc2317_glue[network])
+                del rfc2317_glue[network]
             else:
                 glue = set()
             yield DNSReverseZoneConfig(
-                ns_host_name, serial=serial,
+                ns_host_name,
+                serial=serial,
                 default_ttl=default_ttl,
                 ns_host_name=ns_host_name,
-                mapping=mapping, network=IPNetwork(subnet.cidr),
+                mapping=mapping,
+                network=IPNetwork(subnet.cidr),
                 dynamic_ranges=dynamic_ranges,
                 rfc2317_ranges=glue,
             )
         # Now provide any remaining rfc2317 glue networks.
         for network, ranges in rfc2317_glue.items():
             yield DNSReverseZoneConfig(
-                ns_host_name, serial=serial,
+                ns_host_name,
+                serial=serial,
                 default_ttl=default_ttl,
                 network=network,
                 ns_host_name=ns_host_name,
@@ -410,7 +433,7 @@ class ZoneGenerator:
         """
         # For testing and such it's fine if we don't have a serial, but once
         # we get to this point, we really need one.
-        assert not (self.serial is None), ("No serial number specified.")
+        assert not (self.serial is None), "No serial number specified."
 
         mappings = self._get_mappings()
         ns_host_name = self.default_domain.name
@@ -419,11 +442,18 @@ class ZoneGenerator:
         default_ttl = self.default_ttl
         return chain(
             self._gen_forward_zones(
-                self.domains, serial, ns_host_name, mappings,
-                rrset_mappings, default_ttl, self.internal_domains),
+                self.domains,
+                serial,
+                ns_host_name,
+                mappings,
+                rrset_mappings,
+                default_ttl,
+                self.internal_domains,
+            ),
             self._gen_reverse_zones(
-                self.subnets, serial, ns_host_name, mappings, default_ttl),
-            )
+                self.subnets, serial, ns_host_name, mappings, default_ttl
+            ),
+        )
 
     def as_list(self):
         """Return the zones as a list."""

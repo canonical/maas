@@ -3,9 +3,7 @@
 
 """Owner key/value data placed on a machine while it is owned."""
 
-__all__ = [
-    'OwnerData',
-    ]
+__all__ = ["OwnerData"]
 
 
 from django.db.models import (
@@ -21,7 +19,6 @@ from maasserver.models.cleansave import CleanSave
 
 
 class OwnerDataManager(Manager):
-
     def set_owner_data(self, node, owner_data):
         """Set the `owner_data` on `node`.
 
@@ -30,9 +27,7 @@ class OwnerDataManager(Manager):
         """
         # Remove the keys set to None value.
         keys_to_remove = {
-            key
-            for key, value in owner_data.items()
-            if value is None
+            key for key, value in owner_data.items() if value is None
         }
         if len(keys_to_remove) > 0:
             self.filter(node=node, key__in=keys_to_remove).delete()
@@ -41,7 +36,8 @@ class OwnerDataManager(Manager):
         for key, value in owner_data.items():
             if value is not None:
                 data, created = self.get_or_create(
-                    node=node, key=key, defaults={'value': value})
+                    node=node, key=key, defaults={"value": value}
+                )
                 if not created and data.value != value:
                     data.value = value
                     data.save()
@@ -52,7 +48,8 @@ class OwnerData(CleanSave, Model):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
-        unique_together = ('node', 'key')
+
+        unique_together = ("node", "key")
 
     objects = OwnerDataManager()
 

@@ -12,39 +12,31 @@ The WebSockets protocol (RFC 6455), provided as a resource which wraps a
 factory.
 """
 
-__all__ = ["WebSocketsResource", "IWebSocketsFrameReceiver",
-           "lookupProtocolForFactory", "WebSocketsProtocol",
-           "WebSocketsProtocolWrapper", "CONTROLS", "STATUSES"]
+__all__ = [
+    "WebSocketsResource",
+    "IWebSocketsFrameReceiver",
+    "lookupProtocolForFactory",
+    "WebSocketsProtocol",
+    "WebSocketsProtocolWrapper",
+    "CONTROLS",
+    "STATUSES",
+]
 
 
 import base64
 from hashlib import sha1
 from itertools import cycle
-from struct import (
-    pack,
-    unpack,
-)
-from typing import (
-    List,
-    Sequence,
-)
+from struct import pack, unpack
+from typing import List, Sequence
 
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
 from twisted.internet.protocol import Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
-from twisted.python.constants import (
-    ValueConstant,
-    Values,
-)
+from twisted.python.constants import ValueConstant, Values
 from twisted.web.resource import IResource
 from twisted.web.server import NOT_DONE_YET
-from zope.interface import (
-    directlyProvides,
-    implementer,
-    Interface,
-    providedBy,
-)
+from zope.interface import directlyProvides, implementer, Interface, providedBy
 
 
 log = LegacyLogger()
@@ -157,12 +149,16 @@ def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes = None) -> bytes:
     else:
         lengthMask = 0
 
-    if bufferLength > 0xffff:
+    if bufferLength > 0xFFFF:
         length = b"%s%s" % (
-            bytes([lengthMask | 0x7f]), pack(">Q", bufferLength))
-    elif bufferLength > 0x7d:
+            bytes([lengthMask | 0x7F]),
+            pack(">Q", bufferLength),
+        )
+    elif bufferLength > 0x7D:
         length = b"%s%s" % (
-            bytes([lengthMask | 0x7e]), pack(">H", bufferLength))
+            bytes([lengthMask | 0x7E]),
+            pack(">H", bufferLength),
+        )
     else:
         length = bytes([lengthMask | bufferLength])
 
@@ -208,7 +204,7 @@ def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
 
         # Get the opcode, and translate it to a local enum which we actually
         # care about.
-        opcode = header & 0xf
+        opcode = header & 0xF
         try:
             opcode = CONTROLS.lookupByValue(opcode)
         except ValueError:
@@ -223,27 +219,27 @@ def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
             # The client must mask the data sent
             raise _WSException("Received data not masked")
 
-        length &= 0x7f
+        length &= 0x7F
 
         # The offset we'll be using to walk through the frame. We use this
         # because the offset is variable depending on the length and mask.
         offset = 2
 
         # Extra length fields.
-        if length == 0x7e:
+        if length == 0x7E:
             if len(payload) - start < 4:
                 break
 
-            length = payload[start + 2:start + 4]
+            length = payload[start + 2 : start + 4]
             length = unpack(">H", length)[0]
             offset += 2
-        elif length == 0x7f:
+        elif length == 0x7F:
             if len(payload) - start < 10:
                 break
 
             # Protocol bug: The top bit of this long long *must* be cleared;
             # that is, it is expected to be interpreted as signed.
-            length = payload[start + 2:start + 10]
+            length = payload[start + 2 : start + 10]
             length = unpack(">Q", length)[0]
             offset += 8
 
@@ -253,13 +249,13 @@ def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
                 # that we don't create an invalid key.
                 break
 
-            key = payload[start + offset:start + offset + 4]
+            key = payload[start + offset : start + offset + 4]
             offset += 4
 
         if len(payload) - (start + offset) < length:
             break
 
-        data = payload[start + offset:start + offset + length]
+        data = payload[start + offset : start + offset + length]
 
         if masked:
             data = _mask(data, key)
@@ -387,6 +383,7 @@ class WebSocketsProtocol(Protocol):
 
     @since: 13.2
     """
+
     _buffer = None
 
     def __init__(self, receiver):
@@ -442,7 +439,7 @@ class WebSocketsProtocol(Protocol):
 
 
 @implementer(IWebSocketsFrameReceiver)
-class _WebSocketsProtocolWrapperReceiver():
+class _WebSocketsProtocolWrapperReceiver:
     """
     A L{IWebSocketsFrameReceiver} which accumulates data frames and forwards
     the payload to its C{wrappedProtocol}.
@@ -511,7 +508,8 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
         self.wrappedProtocol = wrappedProtocol
         self.defaultOpcode = defaultOpcode
         WebSocketsProtocol.__init__(
-            self, _WebSocketsProtocolWrapperReceiver(wrappedProtocol))
+            self, _WebSocketsProtocolWrapperReceiver(wrappedProtocol)
+        )
 
     def makeConnection(self, transport):
         """
@@ -594,6 +592,7 @@ class WebSocketsResource(object):
 
     @since: 13.2
     """
+
     isLeaf = True
 
     def __init__(self, lookupProtocol):
@@ -612,7 +611,8 @@ class WebSocketsResource(object):
         @param request: The request received.
         """
         raise RuntimeError(
-            "Cannot get IResource children from WebSocketsResource")
+            "Cannot get IResource children from WebSocketsResource"
+        )
 
     def putChild(self, path, child):
         """
@@ -627,7 +627,8 @@ class WebSocketsResource(object):
         @param child: A resource to put underneat this one.
         """
         raise RuntimeError(
-            "Cannot put IResource children under WebSocketsResource")
+            "Cannot put IResource children under WebSocketsResource"
+        )
 
     def render(self, request):
         """
@@ -676,7 +677,8 @@ class WebSocketsResource(object):
             return b""
 
         askedProtocols = request.requestHeaders.getRawHeaders(
-            b"Sec-WebSocket-Protocol")
+            b"Sec-WebSocket-Protocol"
+        )
         protocol, protocolName = self._lookupProtocol(askedProtocols, request)
 
         # If a protocol is not created, we deliver an error status.
@@ -716,15 +718,15 @@ class WebSocketsResource(object):
         # Set the user-agent on the transport.  This allows the protocol to
         # view the user-agent.
         transport.user_agent = request.requestHeaders.getRawHeaders(
-            'user-agent')[0]
+            "user-agent"
+        )[0]
 
         # Set the peer IP on the transport.  This allows the protocol to view
         # the IP address of the client.
         transport.ip_address = request.getClientIP()
 
         # Set the host.
-        transport.host = request.requestHeaders.getRawHeaders(
-            'host')[0]
+        transport.host = request.requestHeaders.getRawHeaders("host")[0]
 
         if not isinstance(protocol, WebSocketsProtocol):
             protocol = WebSocketsProtocolWrapper(protocol)
@@ -749,9 +751,11 @@ class WebSocketsResource(object):
         # method cannot be called because it will write invalid content to the
         # socket which will break the websocket connection.
         if request.content is None:
+
             class EmptyContent:
                 def close(*args, **kwargs):
                     pass
+
             request.content = EmptyContent()
         request._cleanup()
 

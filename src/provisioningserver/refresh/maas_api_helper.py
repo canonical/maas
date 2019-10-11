@@ -3,11 +3,7 @@
 
 """Help functioners to send commissioning data to MAAS region."""
 
-__all__ = [
-    'geturl',
-    'read_config',
-    'signal',
-    ]
+__all__ = ["geturl", "read_config", "signal"]
 
 from collections import OrderedDict
 from email.utils import parsedate
@@ -29,7 +25,7 @@ import oauthlib.oauth1 as oauth
 import yaml
 
 # Current MAAS metadata API version.
-MD_VERSION = '2012-03-01'
+MD_VERSION = "2012-03-01"
 
 
 # See fcntl(2), re. F_SETPIPE_SZ. By requesting this many bytes from a pipe on
@@ -38,8 +34,9 @@ with open("/proc/sys/fs/pipe-max-size") as _pms:
     PIPE_MAX_SIZE = int(_pms.read())
 
 
-def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
-                  clockskew=0):
+def oauth_headers(
+    url, consumer_key, token_key, token_secret, consumer_secret, clockskew=0
+):
     """Build OAuth headers using given credentials."""
     timestamp = int(time.time()) + clockskew
     client = oauth.Client(
@@ -48,21 +45,25 @@ def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
         resource_owner_key=token_key,
         resource_owner_secret=token_secret,
         signature_method=oauth.SIGNATURE_PLAINTEXT,
-        timestamp=str(timestamp))
+        timestamp=str(timestamp),
+    )
     uri, signed_headers, body = client.sign(url)
     return signed_headers
 
 
 def authenticate_headers(url, headers, creds, clockskew=0):
     """Update and sign a dict of request headers."""
-    if creds.get('consumer_key', None) is not None:
-        headers.update(oauth_headers(
-            url,
-            consumer_key=creds['consumer_key'],
-            token_key=creds['token_key'],
-            token_secret=creds['token_secret'],
-            consumer_secret=creds['consumer_secret'],
-            clockskew=clockskew))
+    if creds.get("consumer_key", None) is not None:
+        headers.update(
+            oauth_headers(
+                url,
+                consumer_key=creds["consumer_key"],
+                token_key=creds["token_key"],
+                token_secret=creds["token_secret"],
+                consumer_secret=creds["consumer_secret"],
+                clockskew=clockskew,
+            )
+        )
 
 
 def warn(msg):
@@ -87,11 +88,11 @@ def geturl(url, creds, headers=None, data=None):
             return urllib.request.urlopen(req)
         except urllib.error.HTTPError as exc:
             error = exc
-            if 'date' not in exc.headers:
+            if "date" not in exc.headers:
                 warn("date field not in %d headers" % exc.code)
                 pass
             elif exc.code in (401, 403):
-                date = exc.headers['date']
+                date = exc.headers["date"]
                 try:
                     ret_time = time.mktime(parsedate(date))
                     clockskew = int(ret_time - time.time())
@@ -112,10 +113,11 @@ def _encode_field(field_name, data, boundary):
     assert isinstance(data, bytes)
     assert isinstance(boundary, bytes)
     return (
-        b'--' + boundary,
-        b'Content-Disposition: form-data; name=\"' + field_name + b'\"',
-        b'', data,
-        )
+        b"--" + boundary,
+        b'Content-Disposition: form-data; name="' + field_name + b'"',
+        b"",
+        data,
+    )
 
 
 def _encode_file(name, file, boundary):
@@ -123,26 +125,30 @@ def _encode_file(name, file, boundary):
     assert isinstance(boundary, bytes)
     byte_name = name.encode("utf-8")
     return (
-        b'--' + boundary,
+        b"--" + boundary,
         (
-            b'Content-Disposition: form-data; name=\"' + byte_name + b'\"; ' +
-            b'filename=\"' + byte_name + b'\"'
+            b'Content-Disposition: form-data; name="'
+            + byte_name
+            + b'"; '
+            + b'filename="'
+            + byte_name
+            + b'"'
         ),
-        b'Content-Type: ' + _get_content_type(name).encode("utf-8"),
-        b'',
+        b"Content-Type: " + _get_content_type(name).encode("utf-8"),
+        b"",
         file if isinstance(file, bytes) else file.read(),
-        )
+    )
 
 
 def _random_string(length):
-    return b''.join(
+    return b"".join(
         random.choice(string.ascii_letters).encode("ascii")
         for ii in range(length + 1)
     )
 
 
 def _get_content_type(filename):
-    return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    return mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
 
 def encode_multipart_data(data, files):
@@ -162,13 +168,14 @@ def encode_multipart_data(data, files):
         lines.extend(_encode_field(name, data[name], boundary))
     for name in files:
         lines.extend(_encode_file(name, files[name], boundary))
-    lines.extend((b'--' + boundary + b'--', b''))
-    body = b'\r\n'.join(lines)
+    lines.extend((b"--" + boundary + b"--", b""))
+    body = b"\r\n".join(lines)
 
     headers = {
-        'Content-Type': (
-            'multipart/form-data; boundary=' + boundary.decode("ascii")),
-        'Content-Length': str(len(body)),
+        "Content-Type": (
+            "multipart/form-data; boundary=" + boundary.decode("ascii")
+        ),
+        "Content-Length": str(len(body)),
     }
 
     return body, headers
@@ -193,8 +200,8 @@ def read_config(url, creds):
     cfg = yaml.safe_load(cfg_str)
 
     # Support reading cloud-init config for MAAS datasource.
-    if 'datasource' in cfg:
-        cfg = cfg['datasource']['MAAS']
+    if "datasource" in cfg:
+        cfg = cfg["datasource"]["MAAS"]
 
     for key in creds.keys():
         if key in cfg and creds[key] is None:
@@ -202,7 +209,6 @@ def read_config(url, creds):
 
 
 class SignalException(Exception):
-
     def __init__(self, error):
         self.error = error
 
@@ -211,56 +217,70 @@ class SignalException(Exception):
 
 
 def signal(
-        url, creds, status, error=None, script_result_id=None,
-        files: dict = None, exit_status=None, script_version_id=None,
-        power_type=None, power_params=None):
+    url,
+    creds,
+    status,
+    error=None,
+    script_result_id=None,
+    files: dict = None,
+    exit_status=None,
+    script_version_id=None,
+    power_type=None,
+    power_params=None,
+):
     """Send a node signal to a given maas_url."""
-    params = {
-        b'op': b'signal',
-        b'status': status.encode('utf-8'),
-    }
+    params = {b"op": b"signal", b"status": status.encode("utf-8")}
 
     if error is not None:
-        params[b'error'] = error.encode('utf-8')
+        params[b"error"] = error.encode("utf-8")
 
     if script_result_id is not None:
-        params[b'script_result_id'] = str(script_result_id).encode('utf-8')
+        params[b"script_result_id"] = str(script_result_id).encode("utf-8")
 
     if exit_status is not None:
-        params[b'exit_status'] = str(exit_status).encode('utf-8')
+        params[b"exit_status"] = str(exit_status).encode("utf-8")
 
     if script_version_id is not None:
-        params[b'script_version_id'] = str(script_version_id).encode('utf-8')
+        params[b"script_version_id"] = str(script_version_id).encode("utf-8")
 
     if None not in (power_type, power_params):
-        params[b'power_type'] = power_type.encode('utf-8')
-        if power_type == 'moonshot':
+        params[b"power_type"] = power_type.encode("utf-8")
+        if power_type == "moonshot":
             user, power_pass, power_address, driver = power_params.split(",")
         else:
-            (user, power_pass, power_address,
-                driver, boot_type) = power_params.split(",")
+            (
+                user,
+                power_pass,
+                power_address,
+                driver,
+                boot_type,
+            ) = power_params.split(",")
         # OrderedDict is used to make testing easier.
-        power_params = OrderedDict([
-            ('power_user', user),
-            ('power_pass', power_pass),
-            ('power_address', power_address),
-        ])
-        if power_type == 'moonshot':
-            power_params['power_hwaddress'] = driver
+        power_params = OrderedDict(
+            [
+                ("power_user", user),
+                ("power_pass", power_pass),
+                ("power_address", power_address),
+            ]
+        )
+        if power_type == "moonshot":
+            power_params["power_hwaddress"] = driver
         else:
-            power_params['power_driver'] = driver
-            power_params['power_boot_type'] = boot_type
-        params[b'power_parameters'] = json.dumps(power_params).encode()
+            power_params["power_driver"] = driver
+            power_params["power_boot_type"] = boot_type
+        params[b"power_parameters"] = json.dumps(power_params).encode()
 
     data, headers = encode_multipart_data(
-        params, ({} if files is None else files))
+        params, ({} if files is None else files)
+    )
 
     try:
         ret = geturl(url, creds=creds, headers=headers, data=data)
         if ret.status != 200:
             raise SignalException(
                 "Unexpected status(%d) sending region commissioning data: %s"
-                % (ret.status, ret.read().decode()))
+                % (ret.status, ret.read().decode())
+            )
     except urllib.error.HTTPError as exc:
         raise SignalException("HTTP error [%s]" % exc.code)
     except urllib.error.URLError as exc:
@@ -274,7 +294,8 @@ def signal(
 
 
 def capture_script_output(
-        proc, combined_path, stdout_path, stderr_path, timeout_seconds=None):
+    proc, combined_path, stdout_path, stderr_path, timeout_seconds=None
+):
     """Capture stdout and stderr from `proc`.
 
     Standard output is written to a file named by `stdout_path`, and standard
@@ -301,9 +322,9 @@ def capture_script_output(
     # Create the file and then open it in read write mode for terminal
     # emulation.
     for path in (stdout_path, stderr_path, combined_path):
-        open(path, 'w').close()
-    with open(stdout_path, 'r+b') as out, open(stderr_path, 'r+b') as err:
-        with open(combined_path, 'r+b') as combined:
+        open(path, "w").close()
+    with open(stdout_path, "r+b") as out, open(stderr_path, "r+b") as err:
+        with open(combined_path, "r+b") as combined:
             with selectors.DefaultSelector() as selector:
                 selector.register(proc.stdout, selectors.EVENT_READ, out)
                 selector.register(proc.stderr, selectors.EVENT_READ, err)
@@ -348,15 +369,18 @@ def _select_script_output(selector, combined, timeout, proc):
                 selector.unregister(key.fileobj)
             else:
                 # Output to console if running in a shell.
-                if chunk != b'' and sys.stdout.isatty():
-                    fd = (sys.stdout if key.fileobj == proc.stdout
-                          else sys.stderr)
+                if chunk != b"" and sys.stdout.isatty():
+                    fd = (
+                        sys.stdout
+                        if key.fileobj == proc.stdout
+                        else sys.stderr
+                    )
                     fd.write(chunk.decode())
                     fd.flush()
 
                 # The list comprehension is needed to get byte objects instead
                 # of their numeric value.
-                for i in [chunk[i:i + 1] for i in range(len(chunk))]:
+                for i in [chunk[i : i + 1] for i in range(len(chunk))]:
                     for f in [key.data, combined]:
                         # Some applications don't properly detect that they are
                         # not being run in a terminal and refresh output for
@@ -364,23 +388,23 @@ def _select_script_output(selector, combined, timeout, proc):
                         # characters quickly add up making the log difficult to
                         # read. When writing output from an application emulate
                         # a terminal so readable data is captured.
-                        if i == b'\b':
+                        if i == b"\b":
                             # Backspace - Go back one space, if we can.
                             if f.tell() != 0:
                                 f.seek(-1, os.SEEK_CUR)
-                        elif i == b'\r':
+                        elif i == b"\r":
                             # Carriage return - Seek to the beginning of the
                             # line, as indicated by a line feed, or file.
                             while f.tell() != 0:
                                 f.seek(-1, os.SEEK_CUR)
-                                if f.read(1) == b'\n':
+                                if f.read(1) == b"\n":
                                     # Check if line feed was found.
                                     break
                                 else:
                                     # The read advances the file position by
                                     # one so seek back again.
                                     f.seek(-1, os.SEEK_CUR)
-                        elif i == b'\n':
+                        elif i == b"\n":
                             # Line feed - Some applications do a carriage
                             # return and then a line feed. The data on the line
                             # should be saved, not overwritten.

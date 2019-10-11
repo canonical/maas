@@ -3,28 +3,38 @@
 from __future__ import unicode_literals
 
 import django.contrib.auth.validators
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('auth', '0002_auto_20151119_1629'),
-    ]
+    dependencies = [("auth", "0002_auto_20151119_1629")]
 
     operations = [
         migrations.AlterField(
-            model_name='permission',
-            name='content_type',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType', verbose_name='content type'),
+            model_name="permission",
+            name="content_type",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                to="contenttypes.ContentType",
+                verbose_name="content type",
+            ),
         ),
         migrations.AlterField(
-            model_name='user',
-            name='username',
-            field=models.CharField(error_messages={'unique': 'A user with that username already exists.'}, help_text='Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.', max_length=150, unique=True, validators=[django.contrib.auth.validators.UnicodeUsernameValidator()], verbose_name='username'),
+            model_name="user",
+            name="username",
+            field=models.CharField(
+                error_messages={
+                    "unique": "A user with that username already exists."
+                },
+                help_text="Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.",
+                max_length=150,
+                unique=True,
+                validators=[
+                    django.contrib.auth.validators.UnicodeUsernameValidator()
+                ],
+                verbose_name="username",
+            ),
         ),
     ]

@@ -3,10 +3,7 @@
 
 """Profile-related functionality."""
 
-__all__ = [
-    'get_profile',
-    'select_profile',
-    ]
+__all__ = ["get_profile", "select_profile"]
 
 from itertools import islice
 

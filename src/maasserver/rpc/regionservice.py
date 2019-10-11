@@ -3,19 +3,14 @@
 
 """RPC implementation for regions."""
 
-__all__ = [
-    "RegionService",
-]
+__all__ = ["RegionService"]
 
 from collections import defaultdict
 import copy
 from datetime import datetime
 from os import urandom
 import random
-from socket import (
-    AF_INET,
-    AF_INET6,
-)
+from socket import AF_INET, AF_INET6
 import uuid
 
 from maasserver import eventloop
@@ -42,21 +37,13 @@ from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import (
-    AddrConversionError,
-    IPAddress,
-)
+from netaddr import AddrConversionError, IPAddress
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import (
     GLOBAL_LABELS,
     PROMETHEUS_METRICS,
 )
-from provisioningserver.rpc import (
-    cluster,
-    common,
-    exceptions,
-    region,
-)
+from provisioningserver.rpc import cluster, common, exceptions, region
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
@@ -71,14 +58,8 @@ from provisioningserver.utils.twisted import (
 )
 from provisioningserver.utils.version import get_maas_version
 from twisted.application import service
-from twisted.internet import (
-    defer,
-    reactor,
-)
-from twisted.internet.address import (
-    IPv4Address,
-    IPv6Address,
-)
+from twisted.internet import defer, reactor
+from twisted.internet.address import IPv4Address, IPv6Address
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
@@ -135,8 +116,16 @@ class Region(RPCProtocol):
 
     @region.UpdateLease.responder
     def update_lease(
-            self, cluster_uuid, action, mac, ip_family, ip, timestamp,
-            lease_time=None, hostname=None):
+        self,
+        cluster_uuid,
+        action,
+        mac,
+        ip_family,
+        ip,
+        timestamp,
+        lease_time=None,
+        hostname=None,
+    ):
         """update_lease(
             cluster_uuid, action, mac, ip_family, ip, timestamp,
             lease_time, hostname)
@@ -146,8 +135,15 @@ class Region(RPCProtocol):
         """
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         d = dbtasks.deferTask(
-            leases.update_lease, action, mac, ip_family, ip,
-            timestamp, lease_time, hostname)
+            leases.update_lease,
+            action,
+            mac,
+            ip_family,
+            ip,
+            timestamp,
+            lease_time,
+            hostname,
+        )
 
         # Catch all errors except the NoSuchCluster failure. We want that to
         # be sent back to the cluster.
@@ -157,6 +153,7 @@ class Region(RPCProtocol):
             else:
                 log.err(failure, "Unhandled failure in updating lease.")
                 return {}
+
         d.addErrback(err_NoSuchCluster_passThrough)
 
         # Wait for the record to be handled. This will cause the cluster to
@@ -182,17 +179,32 @@ class Region(RPCProtocol):
 
     @region.GetBootConfig.responder
     def get_boot_config(
-            self, system_id, local_ip, remote_ip, arch=None, subarch=None,
-            mac=None, hardware_uuid=None, bios_boot_method=None):
+        self,
+        system_id,
+        local_ip,
+        remote_ip,
+        arch=None,
+        subarch=None,
+        mac=None,
+        hardware_uuid=None,
+        bios_boot_method=None,
+    ):
         """get_boot_config()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootConfig`.
         """
         return deferToDatabase(
-            boot.get_config, system_id, local_ip, remote_ip,
-            arch=arch, subarch=subarch, mac=mac, hardware_uuid=hardware_uuid,
-            bios_boot_method=bios_boot_method)
+            boot.get_config,
+            system_id,
+            local_ip,
+            remote_ip,
+            arch=arch,
+            subarch=subarch,
+            mac=mac,
+            hardware_uuid=hardware_uuid,
+            bios_boot_method=bios_boot_method,
+        )
 
     @region.GetBootSources.responder
     def get_boot_sources(self, uuid):
@@ -246,7 +258,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.MarkNodeFailed`.
         """
         d = deferToDatabase(
-            nodes.mark_node_failed, system_id, error_description)
+            nodes.mark_node_failed, system_id, error_description
+        )
         d.addCallback(lambda args: {})
         return d
 
@@ -257,8 +270,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
         """
-        d = deferToDatabase(
-            nodes.list_cluster_nodes_power_parameters, uuid)
+        d = deferToDatabase(nodes.list_cluster_nodes_power_parameters, uuid)
         d.addCallback(lambda nodes: {"nodes": nodes})
         return d
 
@@ -269,8 +281,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.UpdateLastImageSync`.
         """
-        d = deferToDatabase(
-            rackcontrollers.update_last_image_sync, system_id)
+        d = deferToDatabase(rackcontrollers.update_last_image_sync, system_id)
         d.addCallback(lambda args: {})
         return d
 
@@ -282,7 +293,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.UpdateNodePowerState`.
         """
         d = deferToDatabase(
-            nodes.update_node_power_state, system_id, power_state)
+            nodes.update_node_power_state, system_id, power_state
+        )
         d.addCallback(lambda args: {})
         return d
 
@@ -294,7 +306,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.RegisterEventType`.
         """
         d = deferToDatabase(
-            events.register_event_type, name, description, level)
+            events.register_event_type, name, description, level
+        )
         d.addCallback(lambda args: {})
         return d
 
@@ -308,8 +321,8 @@ class Region(RPCProtocol):
         timestamp = datetime.now()
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.addTask(
-            events.send_event, system_id, type_name,
-            description, timestamp)
+            events.send_event, system_id, type_name, description, timestamp
+        )
         # Don't wait for the record to be written.
         return succeed({})
 
@@ -323,8 +336,12 @@ class Region(RPCProtocol):
         timestamp = datetime.now()
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.addTask(
-            events.send_event_mac_address, mac_address,
-            type_name, description, timestamp)
+            events.send_event_mac_address,
+            mac_address,
+            type_name,
+            description,
+            timestamp,
+        )
         # Don't wait for the record to be written.
         return succeed({})
 
@@ -338,14 +355,19 @@ class Region(RPCProtocol):
         timestamp = datetime.now()
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.addTask(
-            events.send_event_ip_address, ip_address,
-            type_name, description, timestamp)
+            events.send_event_ip_address,
+            ip_address,
+            type_name,
+            description,
+            timestamp,
+        )
         # Don't wait for the record to be written.
         return succeed({})
 
     @region.ReportForeignDHCPServer.responder
     def report_foreign_dhcp_server(
-            self, system_id, interface_name, dhcp_ip=None):
+        self, system_id, interface_name, dhcp_ip=None
+    ):
         """report_foreign_dhcp_server()
 
         Implementation of
@@ -353,22 +375,38 @@ class Region(RPCProtocol):
         """
         d = deferToDatabase(
             rackcontrollers.update_foreign_dhcp,
-            system_id, interface_name, dhcp_ip)
+            system_id,
+            interface_name,
+            dhcp_ip,
+        )
         d.addCallback(lambda _: {})
         return d
 
     @region.CreateNode.responder
-    def create_node(self, architecture, power_type, power_parameters,
-                    mac_addresses, domain=None, hostname=None):
+    def create_node(
+        self,
+        architecture,
+        power_type,
+        power_parameters,
+        mac_addresses,
+        domain=None,
+        hostname=None,
+    ):
         """create_node()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.CreateNode`.
         """
         d = deferToDatabase(
-            create_node, architecture, power_type, power_parameters,
-            mac_addresses, domain=domain, hostname=hostname)
-        d.addCallback(lambda node: {'system_id': node.system_id})
+            create_node,
+            architecture,
+            power_type,
+            power_parameters,
+            mac_addresses,
+            domain=domain,
+            hostname=hostname,
+        )
+        d.addCallback(lambda node: {"system_id": node.system_id})
         return d
 
     @region.CommissionNode.responder
@@ -378,8 +416,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.CommissionNode`.
         """
-        d = deferToDatabase(
-            commission_node, system_id, user)
+        d = deferToDatabase(commission_node, system_id, user)
         d.addCallback(lambda args: {})
         return d
 
@@ -391,8 +428,11 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
         """
         d = deferToDatabase(
-            rackcontrollers.update_interfaces, system_id, interfaces,
-            topology_hints=topology_hints)
+            rackcontrollers.update_interfaces,
+            system_id,
+            interfaces,
+            topology_hints=topology_hints,
+        )
         d.addCallback(lambda args: {})
         return d
 
@@ -403,11 +443,8 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
         """
-        d = deferToDatabase(
-            rackcontrollers.get_discovery_state, system_id)
-        d.addCallback(lambda args: {
-            'interfaces': args
-        })
+        d = deferToDatabase(rackcontrollers.get_discovery_state, system_id)
+        d.addCallback(lambda args: {"interfaces": args})
         return d
 
     @region.ReportMDNSEntries.responder
@@ -418,7 +455,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
         """
         d = deferToDatabase(
-            rackcontrollers.report_mdns_entries, system_id, mdns)
+            rackcontrollers.report_mdns_entries, system_id, mdns
+        )
         d.addCallback(lambda args: {})
         return d
 
@@ -430,7 +468,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
         """
         d = deferToDatabase(
-            rackcontrollers.report_neighbours, system_id, neighbours)
+            rackcontrollers.report_neighbours, system_id, neighbours
+        )
         d.addCallback(lambda args: {})
         return d
 
@@ -441,21 +480,21 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.RequestNodeInfoByMACAddress`.
         """
-        d = deferToDatabase(
-            request_node_info_by_mac_address, mac_address)
+        d = deferToDatabase(request_node_info_by_mac_address, mac_address)
 
         def get_node_info(data):
             node, purpose = data
             return {
-                'system_id': node.system_id,
-                'hostname': node.hostname,
-                'status': node.status,
-                'boot_type': "fastpath",
-                'osystem': node.osystem,
-                'distro_series': node.distro_series,
-                'architecture': node.architecture,
-                'purpose': purpose,
+                "system_id": node.system_id,
+                "hostname": node.hostname,
+                "status": node.status,
+                "boot_type": "fastpath",
+                "osystem": node.osystem,
+                "distro_series": node.distro_series,
+                "architecture": node.architecture,
+                "purpose": purpose,
             }
+
         d.addCallback(get_node_info)
         return d
 
@@ -466,8 +505,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.UpdateServices`.
         """
-        return deferToDatabase(
-            update_services, system_id, services)
+        return deferToDatabase(update_services, system_id, services)
 
     @region.RequestRackRefresh.responder
     def request_rack_refresh(self, system_id):
@@ -509,7 +547,7 @@ class Region(RPCProtocol):
         # For consistency `system_id` is passed, but at the moment it is not
         # used to customise the DNS configuration.
         d = deferToDatabase(get_trusted_networks)
-        d.addCallback(lambda networks: {'trusted_networks': networks})
+        d.addCallback(lambda networks: {"trusted_networks": networks})
         return d
 
     @region.GetProxyConfiguration.responder
@@ -526,13 +564,14 @@ class Region(RPCProtocol):
         def get_from_db():
             allowed_subnets = Subnet.objects.filter(allow_proxy=True)
             cidrs = [subnet.cidr for subnet in allowed_subnets]
-            configs = Config.objects.get_configs([
-                'maas_proxy_port', 'prefer_v4_proxy', 'enable_http_proxy'])
+            configs = Config.objects.get_configs(
+                ["maas_proxy_port", "prefer_v4_proxy", "enable_http_proxy"]
+            )
             return {
-                'enabled': configs['enable_http_proxy'],
-                'port': configs['maas_proxy_port'],
-                'allowed_cidrs': cidrs,
-                'prefer_v4_proxy': configs['prefer_v4_proxy'],
+                "enabled": configs["enable_http_proxy"],
+                "port": configs["maas_proxy_port"],
+                "allowed_cidrs": cidrs,
+                "prefer_v4_proxy": configs["prefer_v4_proxy"],
             }
 
         return deferToDatabase(get_from_db)
@@ -549,10 +588,8 @@ class Region(RPCProtocol):
 
         @transactional
         def get_from_db():
-            port = Config.objects.get_config('maas_syslog_port')
-            return {
-                'port': port,
-            }
+            port = Config.objects.get_config("maas_syslog_port")
+            return {"port": port}
 
         return deferToDatabase(get_from_db)
 
@@ -566,7 +603,8 @@ def isLoopbackURL(url):
     if url is not None:
         if url.hostname is not None:
             is_loopback = yield deferToThread(
-                resolves_to_loopback_address, url.hostname)
+                resolves_to_loopback_address, url.hostname
+            )
         else:
             # Empty URL == localhost.
             is_loopback = True
@@ -612,8 +650,7 @@ class RegionServer(Region):
         self.factory.service._addConnectionFor(self.ident, self)
         # A local rack is treated differently to one that's remote.
         self.host = self.transport.getHost()
-        self.hostIsRemote = isinstance(
-            self.host, (IPv4Address, IPv6Address))
+        self.hostIsRemote = isinstance(self.host, (IPv4Address, IPv6Address))
         # Only register the connection with the master when it's a valid
         # IPv4 or IPv6. Only time it is not an IPv4 or IPv6 address is
         # when mocking a connection.
@@ -635,15 +672,15 @@ class RegionServer(Region):
             # convert.
             pass
         return self.factory.service.ipcWorker.rpcRegisterConnection(
-            self.connid, self.ident, self.host.host, self.host.port)
+            self.connid, self.ident, self.host.host, self.host.port
+        )
 
     @inlineCallbacks
     def authenticateCluster(self):
         """Authenticate the cluster."""
         secret = yield get_shared_secret()
         message = urandom(16)  # 16 bytes of the finest.
-        response = yield self.callRemote(
-            cluster.Authenticate, message=message)
+        response = yield self.callRemote(cluster.Authenticate, message=message)
         salt, digest = response["salt"], response["digest"]
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
@@ -651,42 +688,68 @@ class RegionServer(Region):
     @region.RegisterRackController.responder
     @inlineCallbacks
     def register(
-            self, system_id, hostname, interfaces, url, nodegroup_uuid=None,
-            beacon_support=False, version=None):
+        self,
+        system_id,
+        hostname,
+        interfaces,
+        url,
+        nodegroup_uuid=None,
+        beacon_support=False,
+        version=None,
+    ):
         # Hold off on fabric creation if the remote controller
         # supports beacons; it will happen later when UpdateInterfaces is
         # called.
         create_fabrics = False if beacon_support else True
         result = yield self._register(
-            system_id, hostname, interfaces, url,
-            nodegroup_uuid=nodegroup_uuid, create_fabrics=create_fabrics,
-            version=version)
+            system_id,
+            hostname,
+            interfaces,
+            url,
+            nodegroup_uuid=nodegroup_uuid,
+            create_fabrics=create_fabrics,
+            version=version,
+        )
         if beacon_support:
             # The remote supports beaconing, so acknowledge that.
-            result['beacon_support'] = True
+            result["beacon_support"] = True
         if version:
             # The remote supports version checking, so reply to that.
-            result['version'] = get_maas_version()
+            result["version"] = get_maas_version()
         return result
 
     @inlineCallbacks
     def _register(
-            self, system_id, hostname, interfaces, url, nodegroup_uuid=None,
-            create_fabrics=True, version=None):
+        self,
+        system_id,
+        hostname,
+        interfaces,
+        url,
+        nodegroup_uuid=None,
+        create_fabrics=True,
+        version=None,
+    ):
         try:
             # Register, which includes updating interfaces.
             is_loopback = yield isLoopbackURL(url)
             rack_controller = yield deferToDatabase(
-                rackcontrollers.register, system_id=system_id,
-                hostname=hostname, interfaces=interfaces, url=url,
-                is_loopback=is_loopback, create_fabrics=create_fabrics,
-                version=version)
+                rackcontrollers.register,
+                system_id=system_id,
+                hostname=hostname,
+                interfaces=interfaces,
+                url=url,
+                is_loopback=is_loopback,
+                create_fabrics=create_fabrics,
+                version=version,
+            )
 
             # Check for upgrade.
             if nodegroup_uuid is not None:
                 yield deferToDatabase(
-                    rackcontrollers.handle_upgrade, rack_controller,
-                    nodegroup_uuid)
+                    rackcontrollers.handle_upgrade,
+                    rack_controller,
+                    nodegroup_uuid,
+                )
 
             yield self.initResponder(rack_controller)
         except Exception:
@@ -695,15 +758,16 @@ class RegionServer(Region):
             # Tell the logs about it.
             msg = (
                 "Failed to register rack controller '%s' with the "
-                "master. Connection will be dropped." % self.ident)
+                "master. Connection will be dropped." % self.ident
+            )
             log.err(None, msg)
             # Finally, tell the callers.
             raise exceptions.CannotRegisterRackController(msg)
         else:
             # Done registering the rack controller and connection.
             return {
-                'system_id': self.ident,
-                'uuid': GLOBAL_LABELS['maas_uuid']
+                "system_id": self.ident,
+                "uuid": GLOBAL_LABELS["maas_uuid"],
             }
 
     @inlineCallbacks
@@ -715,12 +779,12 @@ class RegionServer(Region):
         else:
             client = peer.name
         if authenticated:
-            log.msg(
-                "Rack controller authenticated from '%s'." % client)
+            log.msg("Rack controller authenticated from '%s'." % client)
         else:
             log.msg(
                 "Rack controller FAILED authentication from '%s'; "
-                "dropping connection." % client)
+                "dropping connection." % client
+            )
             yield self.transport.loseConnection()
         returnValue(authenticated)
 
@@ -735,7 +799,8 @@ class RegionServer(Region):
             log.msg(
                 "Rack controller '%s' could not be authenticated; dropping "
                 "connection. Check that /var/lib/maas/secret on the "
-                "controller contains the correct shared key." % self.ident)
+                "controller contains the correct shared key." % self.ident
+            )
             if self.transport is not None:
                 return self.transport.loseConnection()
             else:
@@ -752,10 +817,11 @@ class RegionServer(Region):
     def connectionLost(self, reason):
         if self.hostIsRemote:
             d = self.factory.service.ipcWorker.rpcUnregisterConnection(
-                self.connid)
+                self.connid
+            )
             d.addErrback(
-                log.err,
-                "Failed to unregister the connection with the master.")
+                log.err, "Failed to unregister the connection with the master."
+            )
         self.factory.service._removeConnectionFor(self.ident, self)
         log.msg("Rack controller '%s' disconnected." % self.ident)
         super(RegionServer, self).connectionLost(reason)
@@ -763,7 +829,7 @@ class RegionServer(Region):
 
 def _get_call_latency_metric_labels(client, cmd, *args, **kwargs):
     """Return labels for the region/rack call latency metric."""
-    return {'call': cmd.__name__}
+    return {"call": cmd.__name__}
 
 
 class RackClient(common.Client):
@@ -772,10 +838,7 @@ class RackClient(common.Client):
     # Currently the only calls that can be cached are the ones that take
     # no arguments. More work needs to be done to this class to handle
     # argument matching.
-    cache_calls = [
-        cluster.DescribePowerTypes,
-        cluster.DescribeNOSTypes,
-    ]
+    cache_calls = [cluster.DescribePowerTypes, cluster.DescribeNOSTypes]
 
     def __init__(self, connection, cache):
         super(RackClient, self).__init__(connection)
@@ -783,16 +846,17 @@ class RackClient(common.Client):
 
     def _getCallCache(self):
         """Return the call cache."""
-        if 'call_cache' not in self.cache:
+        if "call_cache" not in self.cache:
             call_cache = {}
-            self.cache['call_cache'] = call_cache
+            self.cache["call_cache"] = call_cache
             return call_cache
         else:
-            return self.cache['call_cache']
+            return self.cache["call_cache"]
 
     @PROMETHEUS_METRICS.record_call_latency(
-        'maas_region_rack_rpc_call_latency',
-        get_labels=_get_call_latency_metric_labels)
+        "maas_region_rack_rpc_call_latency",
+        get_labels=_get_call_latency_metric_labels,
+    )
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
         """Call a remote RPC method.
@@ -846,8 +910,7 @@ class RegionService(service.Service, object):
         super(RegionService, self).__init__()
         self.ipcWorker = ipcWorker
         self.endpoints = [
-            [TCP6ServerEndpoint(reactor, port)
-             for port in range(5250, 5260)],
+            [TCP6ServerEndpoint(reactor, port) for port in range(5250, 5260)]
         ]
         self.connections = defaultdict(set)
         self.connectionsCache = defaultdict(dict)
@@ -970,9 +1033,12 @@ class RegionService(service.Service, object):
         """Start listening on an ephemeral port."""
         super(RegionService, self).startService()
         self.starting = defer.DeferredList(
-            (self._bindFirst(endpoint_options, self.factory)
-             for endpoint_options in self.endpoints),
-            consumeErrors=True)
+            (
+                self._bindFirst(endpoint_options, self.factory)
+                for endpoint_options in self.endpoints
+            ),
+            consumeErrors=True,
+        )
 
         def log_failure(failure):
             if failure.check(defer.CancelledError):
@@ -1023,8 +1089,10 @@ class RegionService(service.Service, object):
         try:
             # Look for the first AF_INET{,6} port.
             port = next(
-                port for port in self.ports
-                if port.addressFamily in [AF_INET, AF_INET6])
+                port
+                for port in self.ports
+                if port.addressFamily in [AF_INET, AF_INET6]
+            )
         except StopIteration:
             # There's no AF_INET (IPv4) or AF_INET6 (IPv6) port. As far as this
             # method goes, this means there's no connection.
@@ -1063,7 +1131,9 @@ class RegionService(service.Service, object):
             failure.trap(CancelledError)
             raise exceptions.NoConnectionsAvailable(
                 "Unable to connect to rack controller %s; no connections "
-                "available." % system_id, uuid=system_id)
+                "available." % system_id,
+                uuid=system_id,
+            )
 
         def cb_client(connection):
             return RackClient(connection, self.connectionsCache[connection])
@@ -1091,7 +1161,8 @@ class RegionService(service.Service, object):
             failure.trap(CancelledError)
             raise exceptions.NoConnectionsAvailable(
                 "Unable to connect to any rack controller %s; no connections "
-                "available." % ','.join(identifiers))
+                "available." % ",".join(identifiers)
+            )
 
         def cb_client(conns):
             connection = random.choice(conns)
@@ -1119,7 +1190,8 @@ class RegionService(service.Service, object):
         if len(connections) == 0:
             raise exceptions.NoConnectionsAvailable(
                 "Unable to connect to any rack controller; no connections "
-                "available.")
+                "available."
+            )
         else:
             connection = random.choice(connections)
             # The connection object is a set of RegionServer objects.

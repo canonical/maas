@@ -8,22 +8,24 @@ from django.db.models.aggregates import Count
 
 
 def remove_duplicate_physical_interfaces(apps, schema_editor):
-    Interface = apps.get_model('maasserver', 'Interface')
+    Interface = apps.get_model("maasserver", "Interface")
 
     # Find duplicated physical interfaces and remove them, keeping only the
     # interface that has IP addresses or the latest physical interface.
-    qs = Interface.objects.values('type', 'mac_address')
-    qs = qs.filter(type='physical')
+    qs = Interface.objects.values("type", "mac_address")
+    qs = qs.filter(type="physical")
     qs = qs.order_by()  # clear default ordering
-    qs = qs.annotate(ids=ArrayAgg('id')).annotate(count=Count('id'))
+    qs = qs.annotate(ids=ArrayAgg("id")).annotate(count=Count("id"))
     qs = qs.filter(count__gt=1)
     for entry in qs:
-        nic_ids = list(sorted(entry['ids']))
-        has_ips = list(sorted(
-            nic.id
-            for nic in Interface.objects.filter(id__in=nic_ids)
-            if nic.ip_addresses.all()
-        ))
+        nic_ids = list(sorted(entry["ids"]))
+        has_ips = list(
+            sorted(
+                nic.id
+                for nic in Interface.objects.filter(id__in=nic_ids)
+                if nic.ip_addresses.all()
+            )
+        )
         if len(has_ips) == 0:
             # None of the physical interfaces have an IP address, remove
             # the older interfaces.
@@ -46,10 +48,6 @@ def remove_duplicate_physical_interfaces(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0196_numa_model'),
-    ]
+    dependencies = [("maasserver", "0196_numa_model")]
 
-    operations = [
-        migrations.RunPython(remove_duplicate_physical_interfaces),
-    ]
+    operations = [migrations.RunPython(remove_duplicate_physical_interfaces)]

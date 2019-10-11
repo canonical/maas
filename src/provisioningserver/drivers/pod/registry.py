@@ -3,9 +3,7 @@
 
 """Load all pod drivers."""
 
-__all__ = [
-    "PodDriverRegistry",
-    ]
+__all__ = ["PodDriverRegistry"]
 
 from jsonschema import validate
 from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA
@@ -28,9 +26,6 @@ class PodDriverRegistry(Registry):
         return schemas
 
 
-pod_drivers = [
-    RSDPodDriver(),
-    VirshPodDriver(),
-]
+pod_drivers = [RSDPodDriver(), VirshPodDriver()]
 for driver in pod_drivers:
     PodDriverRegistry.register_item(driver.name, driver)

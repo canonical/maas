@@ -3,9 +3,7 @@
 
 """The general handler for the WebSocket connection."""
 
-__all__ = [
-    "GeneralHandler",
-    ]
+__all__ = ["GeneralHandler"]
 
 from collections import OrderedDict
 
@@ -21,10 +19,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
-from maasserver.permissions import (
-    NodePermission,
-    PodPermission,
-)
+from maasserver.permissions import NodePermission, PodPermission
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
@@ -43,26 +38,26 @@ class GeneralHandler(Handler):
 
     class Meta:
         allowed_methods = [
-            'architectures',
-            'known_architectures',
-            'pockets_to_disable',
-            'components_to_disable',
-            'hwe_kernels',
-            'min_hwe_kernels',
-            'default_min_hwe_kernel',
-            'osinfo',
-            'machine_actions',
-            'device_actions',
-            'rack_controller_actions',
-            'region_controller_actions',
-            'region_and_rack_controller_actions',
-            'random_hostname',
-            'bond_options',
-            'version',
-            'power_types',
-            'release_options',
-            'navigation_options',
-            ]
+            "architectures",
+            "known_architectures",
+            "pockets_to_disable",
+            "components_to_disable",
+            "hwe_kernels",
+            "min_hwe_kernels",
+            "default_min_hwe_kernel",
+            "osinfo",
+            "machine_actions",
+            "device_actions",
+            "rack_controller_actions",
+            "region_controller_actions",
+            "region_and_rack_controller_actions",
+            "random_hostname",
+            "bond_options",
+            "version",
+            "power_types",
+            "release_options",
+            "navigation_options",
+        ]
 
     def architectures(self, params):
         """Return all usable architectures."""
@@ -83,7 +78,8 @@ class GeneralHandler(Handler):
     def hwe_kernels(self, params):
         """Return all supported hwe_kernels."""
         return list_hwe_kernel_choices(
-            BootResource.objects.get_usable_hwe_kernels())
+            BootResource.objects.get_usable_hwe_kernels()
+        )
 
     def min_hwe_kernels(self, params):
         """Return all supported min_hwe_kernels.
@@ -97,7 +93,7 @@ class GeneralHandler(Handler):
 
     def default_min_hwe_kernel(self, params):
         """Return the default_min_hwe_kernel."""
-        return Config.objects.get_config('default_min_hwe_kernel')
+        return Config.objects.get_config("default_min_hwe_kernel")
 
     def osinfo(self, params):
         """Return all available operating systems and releases information."""
@@ -110,7 +106,8 @@ class GeneralHandler(Handler):
             "kernels": kernels,
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(
-                "default_distro_series"),
+                "default_distro_series"
+            ),
         }
 
     def dehydrate_actions(self, actions):
@@ -123,21 +120,24 @@ class GeneralHandler(Handler):
                 "type": action.action_type,
             }
             for name, action in actions.items()
-            ]
+        ]
 
     def _node_actions(self, params, node_type):
         # Only admins can perform controller actions
-        if (not self.user.is_superuser and node_type in [
-                NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
-                NODE_TYPE.REGION_AND_RACK_CONTROLLER]):
+        if not self.user.is_superuser and node_type in [
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        ]:
             return []
 
         actions = OrderedDict()
         for name, action in ACTIONS_DICT.items():
             admin_condition = (
-                node_type == NODE_TYPE.MACHINE and
-                action.machine_permission == NodePermission.admin and
-                not self.user.is_superuser)
+                node_type == NODE_TYPE.MACHINE
+                and action.machine_permission == NodePermission.admin
+                and not self.user.is_superuser
+            )
             if admin_condition:
                 continue
             elif node_type in action.for_type:
@@ -162,8 +162,7 @@ class GeneralHandler(Handler):
 
     def region_and_rack_controller_actions(self, params):
         """Return all possible region and rack controller actions."""
-        return self._node_actions(
-            params, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+        return self._node_actions(params, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
 
     def random_hostname(self, params):
         """Return a random hostname."""
@@ -195,16 +194,18 @@ class GeneralHandler(Handler):
         """Return global release options."""
         return {
             "erase": Config.objects.get_config(
-                "enable_disk_erasing_on_release"),
+                "enable_disk_erasing_on_release"
+            ),
             "secure_erase": Config.objects.get_config(
-                "disk_erase_with_secure_erase"),
+                "disk_erase_with_secure_erase"
+            ),
             "quick_erase": Config.objects.get_config(
-                "disk_erase_with_quick_erase"),
+                "disk_erase_with_quick_erase"
+            ),
         }
 
     def navigation_options(self, params):
         """Return the options for navigation."""
         from maasserver.models.bmc import Pod  # circular import
-        return {
-            "rsd": Pod.objects.have_rsd(self.user, PodPermission.view)
-        }
+
+        return {"rsd": Pod.objects.have_rsd(self.user, PodPermission.view)}

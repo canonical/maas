@@ -16,10 +16,7 @@ class TestUserUsername(MAASServerTestCase):
     def test_deleting_user_updates_event_username(self):
         user = factory.make_admin()
         username = user.username
-        events = [
-            factory.make_Event(user=user)
-            for _ in range(3)
-        ]
+        events = [factory.make_Event(user=user) for _ in range(3)]
         user.delete()
         for event in events:
             self.assertEquals(event.username, username)

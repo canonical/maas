@@ -3,16 +3,11 @@
 
 """RPC helpers relating to DHCP leases."""
 
-__all__ = [
-    "update_lease",
-]
+__all__ = ["update_lease"]
 
 from datetime import datetime
 
-from maasserver.enum import (
-    IPADDRESS_FAMILY,
-    IPADDRESS_TYPE,
-)
+from maasserver.enum import IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.models import (
     DNSResource,
     Interface,
@@ -37,18 +32,18 @@ class LeaseUpdateError(Exception):
 
 def _is_valid_hostname(hostname):
     return (
-        hostname is not None and
-        len(hostname) > 0 and
-        not hostname.isspace() and
-        hostname != "(none)"
+        hostname is not None
+        and len(hostname) > 0
+        and not hostname.isspace()
+        and hostname != "(none)"
     )
 
 
 @synchronous
 @transactional
 def update_lease(
-        action, mac, ip_family, ip, timestamp,
-        lease_time=None, hostname=None):
+    action, mac, ip_family, ip, timestamp, lease_time=None, hostname=None
+):
     """Update one DHCP leases from a cluster.
 
     :param action: DHCP action taken on the cluster as found in
@@ -93,17 +88,29 @@ def update_lease(
     subnet_family = subnet.get_ipnetwork().version
     if ip_family == "ipv4" and subnet_family != IPADDRESS_FAMILY.IPv4:
         raise LeaseUpdateError(
-            "Family for the subnet does not match. Expected: %s" % ip_family)
+            "Family for the subnet does not match. Expected: %s" % ip_family
+        )
     elif ip_family == "ipv6" and subnet_family != IPADDRESS_FAMILY.IPv6:
         raise LeaseUpdateError(
-            "Family for the subnet does not match. Expected: %s" % ip_family)
+            "Family for the subnet does not match. Expected: %s" % ip_family
+        )
 
     created = datetime.fromtimestamp(timestamp)
-    log.msg("Lease update: %s for %s on %s at %s%s%s" % (
-        action, ip, mac, created,
-        ' (lease time: %ss)' % lease_time if lease_time is not None else '',
-        ' (hostname: %s)' % hostname if _is_valid_hostname(hostname) else ''
-    ))
+    log.msg(
+        "Lease update: %s for %s on %s at %s%s%s"
+        % (
+            action,
+            ip,
+            mac,
+            created,
+            " (lease time: %ss)" % lease_time
+            if lease_time is not None
+            else "",
+            " (hostname: %s)" % hostname
+            if _is_valid_hostname(hostname)
+            else "",
+        )
+    )
 
     # We will recieve actions on all addresses in the subnet. We only want
     # to update the addresses in the dynamic range.
@@ -117,7 +124,8 @@ def update_lease(
         # A MAC address that is unknown to MAAS was given an IP address. Create
         # an unknown interface for this lease.
         unknown_interface = UnknownInterface(
-            name="eth0", mac_address=mac, vlan_id=subnet.vlan_id)
+            name="eth0", mac_address=mac, vlan_id=subnet.vlan_id
+        )
         unknown_interface.save()
         interfaces = [unknown_interface]
     elif len(interfaces) == 0:
@@ -128,10 +136,11 @@ def update_lease(
     # Delete all discovered IP addresses attached to all interfaces of the same
     # IP address family.
     old_family_addresses = StaticIPAddress.objects.filter_by_ip_family(
-        subnet_family)
+        subnet_family
+    )
     old_family_addresses = old_family_addresses.filter(
-        alloc_type=IPADDRESS_TYPE.DISCOVERED,
-        interface__in=interfaces)
+        alloc_type=IPADDRESS_TYPE.DISCOVERED, interface__in=interfaces
+    )
     for address in old_family_addresses:
         # Release old DHCP hostnames, but only for obsolete dynamic addresses.
         if address.ip != ip:
@@ -158,18 +167,22 @@ def update_lease(
         # the created time.
         sip, _ = StaticIPAddress.objects.update_or_create(
             defaults=dict(
-                subnet=subnet, lease_time=lease_time,
-                created=created, updated=created),
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip)
+                subnet=subnet,
+                lease_time=lease_time,
+                created=created,
+                updated=created,
+            ),
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=ip,
+        )
         for interface in interfaces:
             interface.ip_addresses.add(sip)
         if sip_hostname is not None:
             # MAAS automatically manages DNS for node hostnames, so we cannot
             # allow a DHCP client to override that.
-            hostname_belongs_to_a_node = (
-                Node.objects.filter(
-                    hostname=coerce_to_valid_hostname(sip_hostname)).exists()
-            )
+            hostname_belongs_to_a_node = Node.objects.filter(
+                hostname=coerce_to_valid_hostname(sip_hostname)
+            ).exists()
             if hostname_belongs_to_a_node:
                 # Ensure we don't allow a DHCP hostname to override a node
                 # hostname.
@@ -183,12 +196,17 @@ def update_lease(
             # XXX: There shouldn't be more than one StaticIPAddress
             #      record here, but it can happen be due to bug 1817305.
             sip = StaticIPAddress.objects.filter(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
-                subnet=subnet, interface__in=interfaces).first()
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                ip=None,
+                subnet=subnet,
+                interface__in=interfaces,
+            ).first()
             if sip is None:
                 sip = StaticIPAddress.objects.create(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
-                    subnet=subnet)
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                    ip=None,
+                    subnet=subnet,
+                )
         else:
             sip.ip = None
             sip.save()

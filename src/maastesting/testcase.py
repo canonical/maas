@@ -3,17 +3,10 @@
 
 """Test related classes and functions for MAAS and its applications."""
 
-__all__ = [
-    'MAASRunTest',
-    'MAASTestCase',
-    'MAASTwistedRunTest',
-    ]
+__all__ = ["MAASRunTest", "MAASTestCase", "MAASTwistedRunTest"]
 
 import abc
-from collections import (
-    Mapping,
-    Sequence,
-)
+from collections import Mapping, Sequence
 from contextlib import contextmanager
 from functools import wraps
 from importlib import import_module
@@ -24,10 +17,7 @@ from unittest.mock import MagicMock
 import crochet
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
-from maastesting.fixtures import (
-    MAASRootFixture,
-    TempDirectory,
-)
+from maastesting.fixtures import MAASRootFixture, TempDirectory
 from maastesting.matchers import DocTestMatches
 from maastesting.runtest import (
     MAASCrochetRunTest,
@@ -41,11 +31,7 @@ from nose.tools import nottest
 import testresources
 import testtools
 import testtools.matchers
-from testtools.matchers import (
-    AllMatch,
-    IsInstance,
-    Not,
-)
+from testtools.matchers import AllMatch, IsInstance, Not
 
 
 @nottest
@@ -97,13 +83,15 @@ class MAASTestType(abc.ABCMeta):
                 scenarios = attrs["scenarios"] = tuple(scenarios)
             if len(scenarios) == 0:
                 scenarios = attrs["scenarios"] = None
-        return super(MAASTestType, meta).__new__(
-            meta, name, bases, attrs)
+        return super(MAASTestType, meta).__new__(meta, name, bases, attrs)
 
 
 class MAASTestCase(
-        WithScenarios, EventualResultCatchingMixin, testtools.TestCase,
-        metaclass=MAASTestType):
+    WithScenarios,
+    EventualResultCatchingMixin,
+    testtools.TestCase,
+    metaclass=MAASTestType,
+):
     """Base `TestCase` for MAAS.
 
     Supports `test resources`_, `test scenarios`_, and `fixtures`_.
@@ -127,11 +115,11 @@ class MAASTestCase(
 
     resources = (
         # (resource-name, resource),
-        )
+    )
 
     scenarios = (
         # (scenario-name, {instance-attribute-name: value, ...}),
-        )
+    )
 
     # The database may NOT be used in tests. See `checkDatabaseUse`. Use a
     # subclass like `MAASServerTestCase` or `MAASTransactionalServerTestCase`
@@ -172,7 +160,8 @@ class MAASTestCase(
 
     def setUpResources(self):
         testresources.setUpResources(
-            self, self.resources, testresources._get_result())
+            self, self.resources, testresources._get_result()
+        )
 
     def tearDown(self):
         super(MAASTestCase, self).tearDown()
@@ -182,20 +171,25 @@ class MAASTestCase(
         """Close database connections if their use is not permitted."""
         if self.database_use_possible and not self.database_use_permitted:
             from django.db import connection
+
             connection.close()
 
     def checkDatabaseUse(self):
         """Enforce `database_use_permitted`."""
         if self.database_use_possible and not self.database_use_permitted:
             from django.db import connection
+
             self.expectThat(
-                connection.connection, testtools.matchers.Is(None),
-                "Test policy forbids use of the database.")
+                connection.connection,
+                testtools.matchers.Is(None),
+                "Test policy forbids use of the database.",
+            )
             connection.close()
 
     def tearDownResources(self):
         testresources.tearDownResources(
-            self, self.resources, testresources._get_result())
+            self, self.resources, testresources._get_result()
+        )
 
     def make_dir(self):
         """Create a temporary directory.
@@ -218,8 +212,10 @@ class MAASTestCase(
     def assertItemsEqual(self, expected_seq, actual_seq, msg=None):
         """Override testtools' version to prevent use of mappings."""
         self.assertThat(
-            (expected_seq, actual_seq), AllMatch(Not(IsInstance(Mapping))),
-            "Mappings cannot be compared with assertItemsEqual")
+            (expected_seq, actual_seq),
+            AllMatch(Not(IsInstance(Mapping))),
+            "Mappings cannot be compared with assertItemsEqual",
+        )
         return super().assertItemsEqual(expected_seq, actual_seq, msg)
 
     @wraps(testtools.TestCase.assertSequenceEqual)
@@ -227,8 +223,10 @@ class MAASTestCase(
         """Override testtools' version to prevent use of mappings."""
         if seq_type is None:
             self.assertThat(
-                (seq1, seq2), AllMatch(Not(IsInstance(Mapping))),
-                "Mappings cannot be compared with assertSequenceEqual")
+                (seq1, seq2),
+                AllMatch(Not(IsInstance(Mapping))),
+                "Mappings cannot be compared with assertSequenceEqual",
+            )
         return super().assertSequenceEqual(seq1, seq2, msg, seq_type)
 
     def assertAttributes(self, tested_object, attributes):
@@ -242,7 +240,8 @@ class MAASTestCase(
         self.assertThat(tested_object, matcher)
 
     def assertDocTestMatches(
-            self, expected, observed, flags=DocTestMatches.DEFAULT_FLAGS):
+        self, expected, observed, flags=DocTestMatches.DEFAULT_FLAGS
+    ):
         """See if `observed` matches `expected`, a doctest sample.
 
         By default uses the doctest flags `NORMALIZE_WHITESPACE` and
@@ -258,7 +257,8 @@ class MAASTestCase(
         """
         if expected is not observed:
             raise self.failureException(
-                msg or '%r is not %r' % (expected, observed))
+                msg or "%r is not %r" % (expected, observed)
+            )
 
     def assertNotIdentical(self, expected, observed, msg=None):
         """Check if `expected` is not `observed`.
@@ -268,7 +268,8 @@ class MAASTestCase(
         """
         if expected is observed:
             raise self.failureException(
-                msg or '%r is %r' % (expected, observed))
+                msg or "%r is %r" % (expected, observed)
+            )
 
     def run(self, result=None):
         with active_test(result, self):
@@ -279,7 +280,8 @@ class MAASTestCase(
             super(MAASTestCase, self).__call__(result)
 
     def patch(
-            self, obj, attribute=None, value=mock.sentinel.unset) -> MagicMock:
+        self, obj, attribute=None, value=mock.sentinel.unset
+    ) -> MagicMock:
         """Patch `obj.attribute` with `value`.
 
         If `value` is unspecified, a new `MagicMock` will be created and
@@ -305,7 +307,8 @@ class MAASTestCase(
         return value
 
     def patch_autospec(
-            self, obj, attribute, spec_set=False, instance=False) -> MagicMock:
+        self, obj, attribute, spec_set=False, instance=False
+    ) -> MagicMock:
         """Patch `obj.attribute` with an auto-spec of itself.
 
         See `mock.create_autospec` and `patch`.
@@ -316,7 +319,8 @@ class MAASTestCase(
         if isinstance(spec, mock.Base):
             raise TypeError(
                 "Cannot use a mock object as a specification: %s.%s = %r"
-                % (_get_name(obj), attribute, spec))
+                % (_get_name(obj), attribute, spec)
+            )
         value = mock.create_autospec(spec, spec_set, instance)
         super(MAASTestCase, self).patch(obj, attribute, value)
         return value

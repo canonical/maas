@@ -15,28 +15,27 @@ from provisioningserver.import_images import cleanup
 
 
 class TestCleanup(MAASTestCase):
-
     def make_snapshot_dir(self, storage):
-        name = factory.make_name('snapshot')
+        name = factory.make_name("snapshot")
         path = os.path.join(storage, name)
         os.mkdir(path)
         return path
 
     def make_cache_file(self, storage, link_count=0):
-        cache_dir = os.path.join(storage, 'cache')
+        cache_dir = os.path.join(storage, "cache")
         if not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
 
-        cache_file = factory.make_name('cache')
+        cache_file = factory.make_name("cache")
         cache_path = os.path.join(cache_dir, cache_file)
-        open(cache_path, 'wb').close()
+        open(cache_path, "wb").close()
 
-        link_dir = os.path.join(storage, 'links')
+        link_dir = os.path.join(storage, "links")
         if not os.path.exists(link_dir):
             os.mkdir(link_dir)
 
         for i in range(link_count):
-            link_path = os.path.join(link_dir, '%s-%d' % (cache_file, i))
+            link_path = os.path.join(link_dir, "%s-%d" % (cache_file, i))
             os.link(cache_path, link_path)
         return cache_path
 
@@ -49,28 +48,23 @@ class TestCleanup(MAASTestCase):
         storage = self.make_dir()
         snapshots = [self.make_snapshot_dir(storage) for _ in range(3)]
         current_snapshot = self.make_snapshot_dir(storage)
-        os.symlink(
-            current_snapshot, os.path.join(storage, 'current'))
+        os.symlink(current_snapshot, os.path.join(storage, "current"))
         self.assertItemsEqual(snapshots, cleanup.list_old_snapshots(storage))
 
     def test_cleanup_snapshots_removes_all_old_snapshots(self):
         storage = self.make_dir()
         snapshots = [self.make_snapshot_dir(storage) for _ in range(3)]
         current_snapshot = self.make_snapshot_dir(storage)
-        os.symlink(
-            current_snapshot, os.path.join(storage, 'current'))
+        os.symlink(current_snapshot, os.path.join(storage, "current"))
         cleanup.cleanup_snapshots(storage)
         remaining_snapshots = [
-            snapshot
-            for snapshot in snapshots
-            if os.path.exists(snapshot)
-            ]
+            snapshot for snapshot in snapshots if os.path.exists(snapshot)
+        ]
         self.assertEqual([], remaining_snapshots)
 
     def test_list_unused_cache_files_returns_empty(self):
         storage = self.make_dir()
-        self.assertItemsEqual(
-            [], cleanup.list_unused_cache_files(storage))
+        self.assertItemsEqual([], cleanup.list_unused_cache_files(storage))
 
     def test_list_unused_cache_files_returns_all_files_nlink_equal_one(self):
         storage = self.make_dir()
@@ -78,7 +72,8 @@ class TestCleanup(MAASTestCase):
         for _ in range(3):
             self.make_cache_file(storage, link_count=randint(1, 3))
         self.assertItemsEqual(
-            cache_nlink_1, cleanup.list_unused_cache_files(storage))
+            cache_nlink_1, cleanup.list_unused_cache_files(storage)
+        )
 
     def test_cleanup_cache_removes_all_files_nlink_equal_one(self):
         storage = self.make_dir()
@@ -87,21 +82,20 @@ class TestCleanup(MAASTestCase):
         cache_nlink_greater_than_1 = [
             self.make_cache_file(storage, link_count=randint(1, 3))
             for _ in range(3)
-            ]
+        ]
         cleanup.cleanup_cache(storage)
-        cache_dir = os.path.join(storage, 'cache')
+        cache_dir = os.path.join(storage, "cache")
         remaining_cache = [
             os.path.join(cache_dir, filename)
             for filename in os.listdir(cache_dir)
             if os.path.isfile(os.path.join(cache_dir, filename))
-            ]
-        self.assertItemsEqual(
-            cache_nlink_greater_than_1, remaining_cache)
+        ]
+        self.assertItemsEqual(cache_nlink_greater_than_1, remaining_cache)
 
     def test_cleanup_snapshots_and_cache_calls(self):
         storage = self.make_dir()
-        mock_snapshots = self.patch_autospec(cleanup, 'cleanup_snapshots')
-        mock_cache = self.patch_autospec(cleanup, 'cleanup_cache')
+        mock_snapshots = self.patch_autospec(cleanup, "cleanup_snapshots")
+        mock_cache = self.patch_autospec(cleanup, "cleanup_cache")
         cleanup.cleanup_snapshots_and_cache(storage)
         self.assertThat(mock_snapshots, MockCalledOnceWith(storage))
         self.assertThat(mock_cache, MockCalledOnceWith(storage))

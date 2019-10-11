@@ -11,23 +11,13 @@ __all__ = [
     "process_form",
     "settings",
     "TextTemplateView",
-    ]
+]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
+from abc import ABCMeta, abstractmethod
 
 from django.contrib import messages
-from django.http import (
-    Http404,
-    HttpResponseRedirect,
-)
-from django.views.generic import (
-    DeleteView,
-    ListView,
-    TemplateView,
-)
+from django.http import Http404, HttpResponseRedirect
+from django.views.generic import DeleteView, ListView, TemplateView
 from maasserver.enum import ENDPOINT
 from maasserver.forms import ConfigForm
 
@@ -36,9 +26,10 @@ class TextTemplateView(TemplateView):
     """A text-based :class:`django.views.generic.TemplateView`."""
 
     def render_to_response(self, context, **response_kwargs):
-        response_kwargs['content_type'] = 'text/plain'
-        return super(
-            TemplateView, self).render_to_response(context, **response_kwargs)
+        response_kwargs["content_type"] = "text/plain"
+        return super(TemplateView, self).render_to_response(
+            context, **response_kwargs
+        )
 
 
 class HelpfulDeleteView(DeleteView, metaclass=ABCMeta):
@@ -161,21 +152,30 @@ class PaginatedListView(ListView):
         if page_obj.has_previous():
             context["first_page_link"] = self._make_page_link(1)
             context["previous_page_link"] = self._make_page_link(
-                page_obj.previous_page_number())
+                page_obj.previous_page_number()
+            )
         else:
             context["first_page_link"] = context["previous_page_link"] = ""
         if page_obj.has_next():
             context["next_page_link"] = self._make_page_link(
-                page_obj.next_page_number())
+                page_obj.next_page_number()
+            )
             context["last_page_link"] = self._make_page_link(
-                page_obj.paginator.num_pages)
+                page_obj.paginator.num_pages
+            )
         else:
             context["next_page_link"] = context["last_page_link"] = ""
         return context
 
 
-def process_form(request, form_class, redirect_url, prefix,
-                 success_message=None, form_kwargs=None):
+def process_form(
+    request,
+    form_class,
+    redirect_url,
+    prefix,
+    success_message=None,
+    form_kwargs=None,
+):
     """Utility method to process subforms (i.e. forms with a prefix).
 
     :param request: The request which contains the data to be validated.
@@ -200,9 +200,8 @@ def process_form(request, form_class, redirect_url, prefix,
     """
     if form_kwargs is None:
         form_kwargs = {}
-    if '%s_submit' % prefix in request.POST:
-        form = form_class(
-            data=request.POST, prefix=prefix, **form_kwargs)
+    if "%s_submit" % prefix in request.POST:
+        form = form_class(data=request.POST, prefix=prefix, **form_kwargs)
         if form.is_valid():
             if success_message is not None:
                 messages.info(request, success_message)

@@ -15,10 +15,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-)
+from testtools.matchers import Equals, Is
 
 
 SAMPLE_TEXT = """\
@@ -32,14 +29,13 @@ culpa qui officia deserunt mollit anim id est laborum.
 
 
 class VersionedTextFileTest(MAASServerTestCase):
-
     def test_creates_versionedtextfile(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
         textfile.save()
         from_db = VersionedTextFile.objects.get(id=textfile.id)
         self.assertEqual(
-            (from_db.id, from_db.data),
-            (textfile.id, SAMPLE_TEXT))
+            (from_db.id, from_db.data), (textfile.id, SAMPLE_TEXT)
+        )
 
     def test_contents_immutable(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
@@ -103,7 +99,8 @@ class VersionedTextFileTest(MAASServerTestCase):
             textfile_ids.append(textfile.id)
         self.assertEquals(textfile, textfile.revert(0))
         self.assertItemsEqual(
-            textfile_ids, [f.id for f in textfile.previous_versions()])
+            textfile_ids, [f.id for f in textfile.previous_versions()]
+        )
 
     def test_revert_by_negative_with_garbage_collection(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
@@ -116,11 +113,14 @@ class VersionedTextFileTest(MAASServerTestCase):
         reverted_ids = textfile_ids[revert_to:]
         remaining_ids = textfile_ids[:revert_to]
         self.assertEquals(
-            textfile_ids[revert_to - 1], textfile.revert(revert_to).id)
+            textfile_ids[revert_to - 1], textfile.revert(revert_to).id
+        )
         for i in reverted_ids:
             self.assertRaises(
                 VersionedTextFile.DoesNotExist,
-                VersionedTextFile.objects.get, id=i)
+                VersionedTextFile.objects.get,
+                id=i,
+            )
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
 
@@ -133,7 +133,8 @@ class VersionedTextFileTest(MAASServerTestCase):
             textfile_ids.append(textfile.id)
         revert_to = random.randint(-10, -1)
         self.assertEquals(
-            textfile_ids[revert_to - 1], textfile.revert(revert_to, False).id)
+            textfile_ids[revert_to - 1], textfile.revert(revert_to, False).id
+        )
         for i in textfile_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
 
@@ -163,11 +164,14 @@ class VersionedTextFileTest(MAASServerTestCase):
                 reverted_or_remaining = reverted_ids
         self.assertEquals(
             VersionedTextFile.objects.get(id=revert_to),
-            textfile.revert(revert_to))
+            textfile.revert(revert_to),
+        )
         for i in reverted_ids:
             self.assertRaises(
                 VersionedTextFile.DoesNotExist,
-                VersionedTextFile.objects.get, id=i)
+                VersionedTextFile.objects.get,
+                id=i,
+            )
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
 
@@ -181,7 +185,8 @@ class VersionedTextFileTest(MAASServerTestCase):
         revert_to = random.choice(textfile_ids)
         self.assertEquals(
             VersionedTextFile.objects.get(id=revert_to),
-            textfile.revert(revert_to, False))
+            textfile.revert(revert_to, False),
+        )
         for i in textfile_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
 
@@ -218,7 +223,9 @@ class VersionedTextFileTest(MAASServerTestCase):
         for i in reverted_ids:
             self.assertRaises(
                 VersionedTextFile.DoesNotExist,
-                VersionedTextFile.objects.get, id=i)
+                VersionedTextFile.objects.get,
+                id=i,
+            )
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
         self.assertThat(gc_hook, MockCalledOnceWith(textfile))

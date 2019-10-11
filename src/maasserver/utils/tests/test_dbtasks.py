@@ -49,14 +49,17 @@ class TestDatabaseTaskService(MAASTestCase):
 
     def test__init(self):
         service = DatabaseTasksService()
-        self.assertThat(service, MatchesStructure(
-            # The queue does not permit anything to go in it.
-            queue=MatchesAll(
-                IsInstance(DeferredQueue),
-                MatchesStructure.byEquality(size=0, backlog=1),
-                first_only=True,
+        self.assertThat(
+            service,
+            MatchesStructure(
+                # The queue does not permit anything to go in it.
+                queue=MatchesAll(
+                    IsInstance(DeferredQueue),
+                    MatchesStructure.byEquality(size=0, backlog=1),
+                    first_only=True,
+                )
             ),
-        ))
+        )
 
     def test__cannot_add_task_to_unstarted_service(self):
         service = DatabaseTasksService()
@@ -72,13 +75,16 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            self.assertThat(service, MatchesStructure(
-                queue=MatchesAll(
-                    IsInstance(DeferredQueue),
-                    MatchesStructure.byEquality(backlog=1),
-                    first_only=True,
+            self.assertThat(
+                service,
+                MatchesStructure(
+                    queue=MatchesAll(
+                        IsInstance(DeferredQueue),
+                        MatchesStructure.byEquality(backlog=1),
+                        first_only=True,
+                    )
                 ),
-            ))
+            )
         finally:
             service.stopService()
 
@@ -95,7 +101,6 @@ class TestDatabaseTaskService(MAASTestCase):
             service.stopService()
 
     def test__arguments_are_passed_through_to_task(self):
-
         def return_args(*args, **kwargs):
             return sentinel.here, args, kwargs
 
@@ -103,9 +108,12 @@ class TestDatabaseTaskService(MAASTestCase):
         service.startService()
         try:
             result = service.deferTask(
-                return_args, sentinel.arg, kw=sentinel.kw).wait(30)
-            self.assertThat(result, Equals(
-                (sentinel.here, (sentinel.arg,), {"kw": sentinel.kw})))
+                return_args, sentinel.arg, kw=sentinel.kw
+            ).wait(30)
+            self.assertThat(
+                result,
+                Equals((sentinel.here, (sentinel.arg,), {"kw": sentinel.kw})),
+            )
         finally:
             service.stopService()
 
@@ -120,15 +128,17 @@ class TestDatabaseTaskService(MAASTestCase):
                 service.addTask(event.wait)
             # The queue has `count` tasks (or `count - 1` tasks; the first may
             # have already been pulled off the queue) still pending.
-            self.assertThat(queue.pending, MatchesAny(
-                HasLength(count), HasLength(count - 1)))
+            self.assertThat(
+                queue.pending,
+                MatchesAny(HasLength(count), HasLength(count - 1)),
+            )
         finally:
             event.set()
             service.stopService()
         # The queue is empty and nothing is waiting.
         self.assertThat(
-            queue, MatchesStructure.byEquality(
-                waiting=[], pending=[]))
+            queue, MatchesStructure.byEquality(waiting=[], pending=[])
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -202,7 +212,8 @@ class TestDatabaseTaskService(MAASTestCase):
         try:
             service.deferTask(things.append, 1).wait(30)
             self.assertRaises(
-                exception_type, service.deferTask(be_bad).wait, 30)
+                exception_type, service.deferTask(be_bad).wait, 30
+            )
             service.deferTask(things.append, 2).wait(30)
         finally:
             service.stopService()
@@ -244,14 +255,14 @@ class TestDatabaseTaskService(MAASTestCase):
             ...
             builtins.ZeroDivisionError: ...
             """,
-            logger.output)
+            logger.output,
+        )
 
 
 class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
     """Tests for `DatabaseTasksService` with the databse."""
 
     def test__task_can_access_database_from_other_thread(self):
-
         @transactional
         def database_task():
             # Merely being here means we've accessed the database.

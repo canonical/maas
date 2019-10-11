@@ -1,19 +1,14 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    'probe_virsh_and_enlist',
-    ]
+__all__ = ["probe_virsh_and_enlist"]
 
 from tempfile import NamedTemporaryFile
 
 from lxml import etree
 import pexpect
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.utils import (
-    commission_node,
-    create_node,
-)
+from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
@@ -29,11 +24,11 @@ XPATH_OS = "/domain/os"
 # label then MAAS. This maps virsh architecture to
 # MAAS architecture.
 ARCH_FIX = {
-    'x86_64': 'amd64',
-    'ppc64': 'ppc64el',
-    'ppc64le': 'ppc64el',
-    'i686': 'i386',
-    }
+    "x86_64": "amd64",
+    "ppc64": "ppc64el",
+    "ppc64le": "ppc64el",
+    "i686": "i386",
+}
 
 
 class VirshVMState:
@@ -56,7 +51,7 @@ VM_STATE_TO_POWER_STATE = {
     VirshVMState.IN_SHUTDOWN: "on",
     VirshVMState.CRASHED: "off",
     VirshVMState.PM_SUSPENDED: "off",
-    }
+}
 
 
 class VirshError(Exception):
@@ -87,11 +82,11 @@ class VirshSSH(pexpect.spawn):
 
     def __init__(self, timeout=30, maxread=2000, dom_prefix=None):
         super(VirshSSH, self).__init__(
-            None, timeout=timeout, maxread=maxread,
-            env=get_env_with_locale())
-        self.name = '<virssh>'
+            None, timeout=timeout, maxread=maxread, env=get_env_with_locale()
+        )
+        self.name = "<virssh>"
         if dom_prefix is None:
-            self.dom_prefix = ''
+            self.dom_prefix = ""
         else:
             self.dom_prefix = dom_prefix
         # Store a mapping of { machine_name: xml }.
@@ -99,7 +94,7 @@ class VirshSSH(pexpect.spawn):
 
     def _execute(self, poweraddr):
         """Spawns the pexpect command."""
-        cmd = 'virsh --connect %s' % poweraddr
+        cmd = "virsh --connect %s" % poweraddr
         self._spawn(cmd)
 
     def get_machine_xml(self, machine):
@@ -110,7 +105,7 @@ class VirshSSH(pexpect.spawn):
             return self.xml[machine]
 
         # Grab the XML from virsh if we don't have it already.
-        output = self.run(['dumpxml', machine]).strip()
+        output = self.run(["dumpxml", machine]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get XML for machine", machine)
             return None
@@ -157,29 +152,29 @@ class VirshSSH(pexpect.spawn):
         return True
 
     def run(self, args):
-        cmd = ' '.join(args)
+        cmd = " ".join(args)
         self.sendline(cmd)
         self.prompt()
         result = self.before.decode("utf-8").splitlines()
-        return '\n'.join(result[1:])
+        return "\n".join(result[1:])
 
     def list(self):
         """Lists all VMs by name."""
-        machines = self.run(['list', '--all', '--name'])
+        machines = self.run(["list", "--all", "--name"])
         machines = machines.strip().splitlines()
         return [m for m in machines if m.startswith(self.dom_prefix)]
 
     def get_state(self, machine):
         """Gets the VM state."""
-        state = self.run(['domstate', machine])
+        state = self.run(["domstate", machine])
         state = state.strip()
-        if state.startswith('error:'):
+        if state.startswith("error:"):
             return None
         return state
 
     def get_mac_addresses(self, machine):
         """Gets list of mac addressess assigned to the VM."""
-        output = self.run(['domiflist', machine]).strip()
+        output = self.run(["domiflist", machine]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get node MAC addresses", machine)
             return None
@@ -219,9 +214,11 @@ class VirshSSH(pexpect.spawn):
         boot_elements = evaluator(XPATH_BOOT)
 
         # Skip this if the boot order is already set up how we want it to be.
-        if (len(boot_elements) == 2 and
-                boot_elements[0].attrib['dev'] == 'network' and
-                boot_elements[1].attrib['dev'] == 'hd'):
+        if (
+            len(boot_elements) == 2
+            and boot_elements[0].attrib["dev"] == "network"
+            and boot_elements[1].attrib["dev"] == "hd"
+        ):
             return True
 
         for element in boot_elements:
@@ -235,10 +232,10 @@ class VirshSSH(pexpect.spawn):
         # Rewrite the XML in a temporary file to use with 'virsh define'.
         with NamedTemporaryFile() as f:
             f.write(etree.tostring(doc))
-            f.write(b'\n')
+            f.write(b"\n")
             f.flush()
-            output = self.run(['define', f.name])
-            if output.startswith('error:'):
+            output = self.run(["define", f.name])
+            if output.startswith("error:"):
                 maaslog.error("%s: Failed to set network boot order", machine)
                 return False
             maaslog.info("%s: Successfully set network boot order", machine)
@@ -246,14 +243,14 @@ class VirshSSH(pexpect.spawn):
 
     def poweron(self, machine):
         """Poweron a VM."""
-        output = self.run(['start', machine]).strip()
+        output = self.run(["start", machine]).strip()
         if output.startswith("error:"):
             return False
         return True
 
     def poweroff(self, machine):
         """Poweroff a VM."""
-        output = self.run(['destroy', machine]).strip()
+        output = self.run(["destroy", machine]).strip()
         if output.startswith("error:"):
             return False
         return True
@@ -262,9 +259,13 @@ class VirshSSH(pexpect.spawn):
 @synchronous
 @typed
 def probe_virsh_and_enlist(
-        user: str, poweraddr: str, password: str = None,
-        prefix_filter: str = None, accept_all: bool = False,
-        domain: str = None):
+    user: str,
+    poweraddr: str,
+    password: str = None,
+    prefix_filter: str = None,
+    accept_all: bool = False,
+    domain: str = None,
+):
     """Extracts all of the VMs from virsh and enlists them
     into MAAS.
 
@@ -277,21 +278,19 @@ def probe_virsh_and_enlist(
     """
     conn = VirshSSH(dom_prefix=prefix_filter)
     if not conn.login(poweraddr, password):
-        raise VirshError('Failed to login to virsh console.')
+        raise VirshError("Failed to login to virsh console.")
 
     for machine in conn.list():
         arch = conn.get_arch(machine)
         state = conn.get_state(machine)
         macs = conn.get_mac_addresses(machine)
 
-        params = {
-            'power_address': poweraddr,
-            'power_id': machine,
-        }
+        params = {"power_address": poweraddr, "power_id": machine}
         if password is not None:
-            params['power_pass'] = password
+            params["power_pass"] = password
         system_id = create_node(
-            macs, arch, 'virsh', params, domain, machine).wait(30)
+            macs, arch, "virsh", params, domain, machine
+        ).wait(30)
 
         # If the system_id is None an error occured when creating the machine.
         # Most likely the error is the node already exists.
@@ -316,25 +315,25 @@ def power_control_virsh(poweraddr, machine, power_change, password=None):
 
     # Force password to None if blank, as the power control
     # script will send a blank password if one is not set.
-    if password == '':
+    if password == "":
         password = None
 
     conn = VirshSSH()
     if not conn.login(poweraddr, password):
-        raise VirshError('Failed to login to virsh console.')
+        raise VirshError("Failed to login to virsh console.")
 
     state = conn.get_state(machine)
     if state is None:
-        raise VirshError('%s: Failed to get power state' % machine)
+        raise VirshError("%s: Failed to get power state" % machine)
 
     if state == VirshVMState.OFF:
-        if power_change == 'on':
+        if power_change == "on":
             if conn.poweron(machine) is False:
-                raise VirshError('%s: Failed to power on VM' % machine)
+                raise VirshError("%s: Failed to power on VM" % machine)
     elif state == VirshVMState.ON:
-        if power_change == 'off':
+        if power_change == "off":
             if conn.poweroff(machine) is False:
-                raise VirshError('%s: Failed to power off VM' % machine)
+                raise VirshError("%s: Failed to power off VM" % machine)
 
 
 def power_state_virsh(poweraddr, machine, password=None):
@@ -342,18 +341,18 @@ def power_state_virsh(poweraddr, machine, password=None):
 
     # Force password to None if blank, as the power control
     # script will send a blank password if one is not set.
-    if password == '':
+    if password == "":
         password = None
 
     conn = VirshSSH()
     if not conn.login(poweraddr, password):
-        raise VirshError('Failed to login to virsh console.')
+        raise VirshError("Failed to login to virsh console.")
 
     state = conn.get_state(machine)
     if state is None:
-        raise VirshError('Failed to get domain: %s' % machine)
+        raise VirshError("Failed to get domain: %s" % machine)
 
     try:
         return VM_STATE_TO_POWER_STATE[state]
     except KeyError:
-        raise VirshError('Unknown state: %s' % state)
+        raise VirshError("Unknown state: %s" % state)

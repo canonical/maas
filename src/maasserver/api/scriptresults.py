@@ -3,10 +3,7 @@
 
 """API handlers: `ScriptResults`."""
 
-__all__ = [
-    'NodeScriptResultHandler',
-    'NodeScriptResultsHandler',
-    ]
+__all__ = ["NodeScriptResultHandler", "NodeScriptResultsHandler"]
 
 from base64 import b64encode
 from collections import OrderedDict
@@ -20,16 +17,8 @@ import time
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from formencode.validators import (
-    Bool,
-    String,
-    StringBool,
-)
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from formencode.validators import Bool, String, StringBool
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.models import Node
@@ -61,24 +50,32 @@ def filter_script_results(script_set, filters, hardware_type=None):
             else:
                 tags = script_result.script.tags
             for f in filters:
-                if (f == script_result.name or f in tags or
-                        (f.isdigit() and int(f) == script_result.id)):
+                if (
+                    f == script_result.name
+                    or f in tags
+                    or (f.isdigit() and int(f) == script_result.id)
+                ):
                     script_results.append(script_result)
     if hardware_type is not None:
         script_results = [
-            script_result for script_result in script_results
-            if script_result.script is not None and
-            script_result.script.hardware_type == hardware_type
+            script_result
+            for script_result in script_results
+            if script_result.script is not None
+            and script_result.script.hardware_type == hardware_type
         ]
-    return sorted(script_results, key=lambda script_result: (
-        script_result.name,
-        getattr(script_result.physical_blockdevice, 'name', None),
-        getattr(script_result.interface, 'name', None),
-    ))
+    return sorted(
+        script_results,
+        key=lambda script_result: (
+            script_result.name,
+            getattr(script_result.physical_blockdevice, "name", None),
+            getattr(script_result.interface, "name", None),
+        ),
+    )
 
 
 class NodeScriptResultsHandler(OperationsHandler):
     """Manage node script results."""
+
     api_doc_section_name = "Node Script Result"
 
     create = update = delete = None
@@ -86,7 +83,7 @@ class NodeScriptResultsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('script_results_handler', ['system_id'])
+        return ("script_results_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title Return script results
@@ -122,14 +119,15 @@ class NodeScriptResultsHandler(OperationsHandler):
             Not Found
         """
         node = Node.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.view)
-        result_type = get_optional_param(request.GET, 'type')
+            system_id=system_id, user=request.user, perm=NodePermission.view
+        )
+        result_type = get_optional_param(request.GET, "type")
         include_output = get_optional_param(
-            request.GET, 'include_output', False, Bool)
-        filters = get_optional_param(request.GET, 'filters', None, String)
+            request.GET, "include_output", False, Bool
+        )
+        filters = get_optional_param(request.GET, "filters", None, String)
         if filters is not None:
-            filters = filters.split(',')
+            filters = filters.split(",")
         if result_type is not None:
             try:
                 result_type = translate_result_type(result_type)
@@ -137,11 +135,12 @@ class NodeScriptResultsHandler(OperationsHandler):
                 raise MAASAPIValidationError(e)
             else:
                 qs = ScriptSet.objects.filter(
-                    node=node, result_type=result_type)
+                    node=node, result_type=result_type
+                )
         else:
             qs = ScriptSet.objects.filter(node=node)
 
-        hardware_type = get_optional_param(request.GET, 'hardware_type')
+        hardware_type = get_optional_param(request.GET, "hardware_type")
         if hardware_type is not None:
             try:
                 hardware_type = translate_hardware_type(hardware_type)
@@ -159,21 +158,22 @@ class NodeScriptResultsHandler(OperationsHandler):
 
 class NodeScriptResultHandler(OperationsHandler):
     """Manage node script results."""
+
     api_doc_section_name = "Node Script Result"
 
     fields = (
-        'id',
-        'system_id',
-        'type',
-        'type_name',
-        'last_ping',
-        'status',
-        'status_name',
-        'started',
-        'ended',
-        'runtime',
-        'results',
-        'suppressed',
+        "id",
+        "system_id",
+        "type",
+        "type_name",
+        "last_ping",
+        "status",
+        "status_name",
+        "started",
+        "ended",
+        "runtime",
+        "results",
+        "suppressed",
     )
 
     model = ScriptSet
@@ -184,12 +184,12 @@ class NodeScriptResultHandler(OperationsHandler):
     def resource_uri(cls, script_set=None):
         # See the comment in NodeHandler.resource_uri.
         if script_set is None:
-            system_id = 'system_id'
-            script_set_id = 'id'
+            system_id = "system_id"
+            script_set_id = "id"
         else:
             system_id = script_set.node.system_id
             script_set_id = script_set.id
-        return ('script_result_handler', [system_id, script_set_id])
+        return ("script_result_handler", [system_id, script_set_id])
 
     @classmethod
     def system_id(cls, script_set):
@@ -219,49 +219,51 @@ class NodeScriptResultHandler(OperationsHandler):
     def results(cls, script_set):
         results = []
         for script_result in filter_script_results(
-                script_set, script_set.filters, script_set.hardware_type):
+            script_set, script_set.filters, script_set.hardware_type
+        ):
             result = {
-                'id': script_result.id,
-                'created': format_datetime(script_result.created),
-                'updated': format_datetime(script_result.updated),
-                'name': script_result.name,
-                'status': script_result.status,
-                'status_name': script_result.status_name,
-                'exit_status': script_result.exit_status,
-                'started': fmt_time(script_result.started),
-                'ended': fmt_time(script_result.ended),
-                'runtime': script_result.runtime,
-                'starttime': script_result.starttime,
-                'endtime': script_result.endtime,
-                'estimated_runtime': script_result.estimated_runtime,
-                'parameters': script_result.parameters,
-                'script_id': script_result.script_id,
-                'script_revision_id': script_result.script_version_id,
-                'suppressed': script_result.suppressed,
+                "id": script_result.id,
+                "created": format_datetime(script_result.created),
+                "updated": format_datetime(script_result.updated),
+                "name": script_result.name,
+                "status": script_result.status,
+                "status_name": script_result.status_name,
+                "exit_status": script_result.exit_status,
+                "started": fmt_time(script_result.started),
+                "ended": fmt_time(script_result.ended),
+                "runtime": script_result.runtime,
+                "starttime": script_result.starttime,
+                "endtime": script_result.endtime,
+                "estimated_runtime": script_result.estimated_runtime,
+                "parameters": script_result.parameters,
+                "script_id": script_result.script_id,
+                "script_revision_id": script_result.script_version_id,
+                "suppressed": script_result.suppressed,
             }
             if script_set.include_output:
-                result['output'] = b64encode(script_result.output)
-                result['stdout'] = b64encode(script_result.stdout)
-                result['stderr'] = b64encode(script_result.stderr)
-                result['result'] = b64encode(script_result.result)
+                result["output"] = b64encode(script_result.output)
+                result["stdout"] = b64encode(script_result.stdout)
+                result["stderr"] = b64encode(script_result.stderr)
+                result["result"] = b64encode(script_result.result)
             results.append(result)
         return results
 
     def _get_script_set(self, request, system_id, id):
         node = Node.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.view)
+            system_id=system_id, user=request.user, perm=NodePermission.view
+        )
         script_sets = {
-            'current-commissioning': node.current_commissioning_script_set,
-            'current-testing': node.current_testing_script_set,
-            'current-installation': node.current_installation_script_set,
+            "current-commissioning": node.current_commissioning_script_set,
+            "current-testing": node.current_testing_script_set,
+            "current-installation": node.current_installation_script_set,
         }
         script_set = script_sets.get(id)
         if script_set is None and not id.isdigit():
             raise MAASAPIValidationError(
                 'Unknown id "%s" must be current-commissioning, '
-                'current-testing, current-installation, or the id number of a '
-                'specific result.' % id)
+                "current-testing, current-installation, or the id number of a "
+                "specific result." % id
+            )
         elif script_set is None:
             return get_object_or_404(ScriptSet, id=id, node=node)
         else:
@@ -303,11 +305,12 @@ class NodeScriptResultHandler(OperationsHandler):
         """
         script_set = self._get_script_set(request, system_id, id)
         include_output = get_optional_param(
-            request.GET, 'include_output', False, Bool)
-        filters = get_optional_param(request.GET, 'filters', None, String)
+            request.GET, "include_output", False, Bool
+        )
+        filters = get_optional_param(request.GET, "filters", None, String)
         if filters is not None:
-            filters = filters.split(',')
-        hardware_type = get_optional_param(request.GET, 'hardware_type')
+            filters = filters.split(",")
+        hardware_type = get_optional_param(request.GET, "hardware_type")
         if hardware_type is not None:
             try:
                 hardware_type = translate_hardware_type(hardware_type)
@@ -345,23 +348,25 @@ class NodeScriptResultHandler(OperationsHandler):
     def __make_file_title(self, script_result, filetype, extention=None):
         title = script_result.name
         if extention is not None:
-            title = '%s.%s' % (title, extention)
+            title = "%s.%s" % (title, extention)
 
         if script_result.physical_blockdevice:
-            if filetype == 'txt':
-                title = '%s - /dev/%s' % (
-                    title, script_result.physical_blockdevice.name)
+            if filetype == "txt":
+                title = "%s - /dev/%s" % (
+                    title,
+                    script_result.physical_blockdevice.name,
+                )
             else:
-                title = '%s-%s' % (
-                    title, script_result.physical_blockdevice.name)
+                title = "%s-%s" % (
+                    title,
+                    script_result.physical_blockdevice.name,
+                )
 
         if script_result.interface:
-            if filetype == 'txt':
-                title = '%s - %s' % (
-                    title, script_result.interface.name)
+            if filetype == "txt":
+                title = "%s - %s" % (title, script_result.interface.name)
             else:
-                title = '%s-%s' % (
-                    title, script_result.interface.name)
+                title = "%s-%s" % (title, script_result.interface.name)
 
         return title
 
@@ -404,93 +409,102 @@ class NodeScriptResultHandler(OperationsHandler):
             Not Found
         """
         script_set = self._get_script_set(request, system_id, id)
-        filters = get_optional_param(request.GET, 'filters', None, String)
-        output = get_optional_param(request.GET, 'output', 'combined', String)
-        filetype = get_optional_param(request.GET, 'filetype', 'txt', String)
+        filters = get_optional_param(request.GET, "filters", None, String)
+        output = get_optional_param(request.GET, "output", "combined", String)
+        filetype = get_optional_param(request.GET, "filetype", "txt", String)
         files = OrderedDict()
         times = {}
         if filters is not None:
-            filters = filters.split(',')
-        hardware_type = get_optional_param(request.GET, 'hardware_type')
+            filters = filters.split(",")
+        hardware_type = get_optional_param(request.GET, "hardware_type")
         if hardware_type is not None:
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
                 raise MAASAPIValidationError(e)
 
-        bin_regex = re.compile(r'.+\.tar(\..+)?')
+        bin_regex = re.compile(r".+\.tar(\..+)?")
         for script_result in filter_script_results(
-                script_set, filters, hardware_type):
+            script_set, filters, hardware_type
+        ):
             mtime = time.mktime(script_result.updated.timetuple())
             if bin_regex.search(script_result.name) is not None:
                 # Binary files only have one output
                 files[script_result.name] = script_result.output
                 times[script_result.name] = mtime
-            elif output == 'combined':
+            elif output == "combined":
                 title = self.__make_file_title(script_result, filetype)
                 files[title] = script_result.output
                 times[title] = mtime
-            elif output == 'stdout':
-                title = self.__make_file_title(script_result, filetype, 'out')
+            elif output == "stdout":
+                title = self.__make_file_title(script_result, filetype, "out")
                 files[title] = script_result.stdout
                 times[title] = mtime
-            elif output == 'stderr':
-                title = self.__make_file_title(script_result, filetype, 'err')
+            elif output == "stderr":
+                title = self.__make_file_title(script_result, filetype, "err")
                 files[title] = script_result.stderr
                 times[title] = mtime
-            elif output == 'result':
-                title = self.__make_file_title(script_result, filetype, 'yaml')
+            elif output == "result":
+                title = self.__make_file_title(script_result, filetype, "yaml")
                 files[title] = script_result.result
                 times[title] = mtime
-            elif output == 'all':
+            elif output == "all":
                 title = self.__make_file_title(script_result, filetype)
                 files[title] = script_result.output
                 times[title] = mtime
-                title = self.__make_file_title(script_result, filetype, 'out')
+                title = self.__make_file_title(script_result, filetype, "out")
                 files[title] = script_result.stdout
                 times[title] = mtime
-                title = self.__make_file_title(script_result, filetype, 'err')
+                title = self.__make_file_title(script_result, filetype, "err")
                 files[title] = script_result.stderr
                 times[title] = mtime
-                title = self.__make_file_title(script_result, filetype, 'yaml')
+                title = self.__make_file_title(script_result, filetype, "yaml")
                 files[title] = script_result.result
                 times[title] = mtime
 
-        if filetype == 'txt' and len(files) == 1:
+        if filetype == "txt" and len(files) == 1:
             # Just output the result with no break to allow for piping.
             return HttpResponse(
-                list(files.values())[0], content_type='application/binary')
-        elif filetype == 'txt':
+                list(files.values())[0], content_type="application/binary"
+            )
+        elif filetype == "txt":
             binary = BytesIO()
             for filename, content in files.items():
-                dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
+                dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
                 binary.write(
-                    ('%s %s %s\n' % (dashes, filename, dashes)).encode())
+                    ("%s %s %s\n" % (dashes, filename, dashes)).encode()
+                )
                 if bin_regex.search(filename) is not None:
-                    binary.write(b'Binary file')
+                    binary.write(b"Binary file")
                 else:
                     binary.write(content)
-                binary.write(b'\n')
+                binary.write(b"\n")
             return HttpResponse(
-                binary.getvalue(), content_type='application/binary')
-        elif filetype == 'tar.xz':
+                binary.getvalue(), content_type="application/binary"
+            )
+        elif filetype == "tar.xz":
             binary = BytesIO()
-            root_dir = '%s-%s-%s' % (
-                script_set.node.hostname, script_set.result_type_name.lower(),
-                script_set.id)
-            with tarfile.open(mode='w:xz', fileobj=binary) as tar:
+            root_dir = "%s-%s-%s" % (
+                script_set.node.hostname,
+                script_set.result_type_name.lower(),
+                script_set.id,
+            )
+            with tarfile.open(mode="w:xz", fileobj=binary) as tar:
                 for filename, content in files.items():
-                    tarinfo = tarfile.TarInfo(name=os.path.join(
-                        root_dir, os.path.basename(filename)))
+                    tarinfo = tarfile.TarInfo(
+                        name=os.path.join(root_dir, os.path.basename(filename))
+                    )
                     tarinfo.size = len(content)
                     tarinfo.mode = 0o644
                     tarinfo.mtime = times[filename]
                     tar.addfile(tarinfo, BytesIO(content))
             return HttpResponse(
-                binary.getvalue(), content_type='application/x-tar')
+                binary.getvalue(), content_type="application/x-tar"
+            )
         else:
             raise MAASAPIValidationError(
-                'Unknown filetype "%s" must be txt or tar.xz' % filetype)
+                'Unknown filetype "%s" must be txt or tar.xz' % filetype
+            )
 
     @admin_method
     def update(self, request, system_id, id):
@@ -532,11 +546,12 @@ class NodeScriptResultHandler(OperationsHandler):
         """
         script_set = self._get_script_set(request, system_id, id)
         include_output = get_optional_param(
-            request.PUT, 'include_output', False, Bool)
-        filters = get_optional_param(request.PUT, 'filters', None, String)
+            request.PUT, "include_output", False, Bool
+        )
+        filters = get_optional_param(request.PUT, "filters", None, String)
         if filters is not None:
-            filters = filters.split(',')
-        hardware_type = get_optional_param(request.PUT, 'hardware_type')
+            filters = filters.split(",")
+        hardware_type = get_optional_param(request.PUT, "hardware_type")
         if hardware_type is not None:
             try:
                 hardware_type = translate_hardware_type(hardware_type)
@@ -546,11 +561,13 @@ class NodeScriptResultHandler(OperationsHandler):
         script_set.filters = filters
         script_set.hardware_type = hardware_type
         suppressed = get_optional_param(
-            request.data, 'suppressed', None, StringBool)
+            request.data, "suppressed", None, StringBool
+        )
         # Set the suppressed flag for the script results.
         if suppressed is not None:
             for script_result in filter_script_results(
-                    script_set, filters, hardware_type):
+                script_set, filters, hardware_type
+            ):
                 script_result.suppressed = suppressed
                 script_result.save()
         return script_set

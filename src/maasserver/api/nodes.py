@@ -16,10 +16,7 @@ import bson
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from formencode.validators import (
-    Int,
-    StringBool,
-)
+from formencode.validators import Int, StringBool
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -76,105 +73,113 @@ from piston3.utils import rc
 from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
 
 
-NODES_SELECT_RELATED = (
-    'bmc',
-    'controllerinfo',
-    'owner',
-    'zone',
-)
+NODES_SELECT_RELATED = ("bmc", "controllerinfo", "owner", "zone")
 
 NODES_PREFETCH = [
-    'domain__dnsresource_set__ip_addresses',
-    'domain__dnsresource_set__dnsdata_set',
-    'domain__globaldefault_set',
-    'ownerdata_set',
-    'special_filesystems',
-    'gateway_link_ipv4__subnet',
-    'gateway_link_ipv6__subnet',
+    "domain__dnsresource_set__ip_addresses",
+    "domain__dnsresource_set__dnsdata_set",
+    "domain__globaldefault_set",
+    "ownerdata_set",
+    "special_filesystems",
+    "gateway_link_ipv4__subnet",
+    "gateway_link_ipv6__subnet",
     Prefetch(
-        'blockdevice_set__filesystem_set',
+        "blockdevice_set__filesystem_set",
         queryset=Filesystem.objects.select_related(
-            'cache_set', 'filesystem_group'),
+            "cache_set", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__partitiontable_set__partitions__filesystem_set',
+        "blockdevice_set__partitiontable_set__partitions__filesystem_set",
         queryset=Filesystem.objects.select_related(
-            'cache_set', 'filesystem_group'),
+            "cache_set", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__iscsiblockdevice',
-        queryset=ISCSIBlockDevice.objects.select_related('node'),
+        "blockdevice_set__iscsiblockdevice",
+        queryset=ISCSIBlockDevice.objects.select_related("node"),
     ),
     Prefetch(
-        'blockdevice_set__iscsiblockdevice__filesystem_set',
+        "blockdevice_set__iscsiblockdevice__filesystem_set",
         queryset=Filesystem.objects.select_related(
-            'cache_set', 'filesystem_group'),
+            "cache_set", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__iscsiblockdevice__partitiontable_set__partitions__'
-        'filesystem_set',
+        "blockdevice_set__iscsiblockdevice__partitiontable_set__partitions__"
+        "filesystem_set",
         queryset=Filesystem.objects.select_related(
-            'cache_set', 'filesystem_group'),
+            "cache_set", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__physicalblockdevice',
-        queryset=PhysicalBlockDevice.objects.select_related('node'),
+        "blockdevice_set__physicalblockdevice",
+        queryset=PhysicalBlockDevice.objects.select_related("node"),
     ),
     Prefetch(
-        'blockdevice_set__physicalblockdevice__filesystem_set',
+        "blockdevice_set__physicalblockdevice__filesystem_set",
         queryset=Filesystem.objects.select_related(
-            'cache_set', 'filesystem_group'),
+            "cache_set", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__physicalblockdevice__partitiontable_set__'
-        'partitions__filesystem_set',
+        "blockdevice_set__physicalblockdevice__partitiontable_set__"
+        "partitions__filesystem_set",
         queryset=Filesystem.objects.select_related(
-            'cache_set', 'filesystem_group'),
+            "cache_set", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__physicalblockdevice__numa_node',
-        queryset=NUMANode.objects.select_related('node'),
+        "blockdevice_set__physicalblockdevice__numa_node",
+        queryset=NUMANode.objects.select_related("node"),
     ),
     Prefetch(
-        'blockdevice_set__virtualblockdevice',
+        "blockdevice_set__virtualblockdevice",
         queryset=VirtualBlockDevice.objects.select_related(
-            'node', 'filesystem_group'),
+            "node", "filesystem_group"
+        ),
     ),
     Prefetch(
-        'blockdevice_set__virtualblockdevice__filesystem_set',
-        queryset=Filesystem.objects.select_related('filesystem_group'),
+        "blockdevice_set__virtualblockdevice__filesystem_set",
+        queryset=Filesystem.objects.select_related("filesystem_group"),
     ),
     Prefetch(
-        'blockdevice_set__virtualblockdevice__partitiontable_set__'
-        'partitions__filesystem_set',
-        queryset=Filesystem.objects.select_related('filesystem_group'),
+        "blockdevice_set__virtualblockdevice__partitiontable_set__"
+        "partitions__filesystem_set",
+        queryset=Filesystem.objects.select_related("filesystem_group"),
     ),
-    'boot_interface__node',
-    'boot_interface__vlan__primary_rack',
-    'boot_interface__vlan__secondary_rack',
-    'boot_interface__vlan__fabric__vlan_set',
-    'boot_interface__vlan__space',
-    'boot_interface__ip_addresses__subnet',
-    'boot_interface__parents',
-    ('boot_interface__children_relationships__child__'
-     'children_relationships__child'),
-    'interface_set__vlan__primary_rack',
-    'interface_set__vlan__secondary_rack',
-    'interface_set__vlan__fabric__vlan_set',
-    'interface_set__vlan__space',
-    'interface_set__parents',
-    'interface_set__ip_addresses__subnet',
-    'interface_set__numa_node',
+    "boot_interface__node",
+    "boot_interface__vlan__primary_rack",
+    "boot_interface__vlan__secondary_rack",
+    "boot_interface__vlan__fabric__vlan_set",
+    "boot_interface__vlan__space",
+    "boot_interface__ip_addresses__subnet",
+    "boot_interface__parents",
+    (
+        "boot_interface__children_relationships__child__"
+        "children_relationships__child"
+    ),
+    "interface_set__vlan__primary_rack",
+    "interface_set__vlan__secondary_rack",
+    "interface_set__vlan__fabric__vlan_set",
+    "interface_set__vlan__space",
+    "interface_set__parents",
+    "interface_set__ip_addresses__subnet",
+    "interface_set__numa_node",
     # Prefetch 3 levels deep, anything more will require extra queries.
-    'interface_set__children_relationships__child__vlan',
-    ('interface_set__children_relationships__child__'
-     'children_relationships__child__vlan'),
-    ('interface_set__children_relationships__child__'
-     'children_relationships__child__'
-     'children_relationships__child__vlan'),
-    'tags',
-    'nodemetadata_set',
-    'numanode_set',
+    "interface_set__children_relationships__child__vlan",
+    (
+        "interface_set__children_relationships__child__"
+        "children_relationships__child__vlan"
+    ),
+    (
+        "interface_set__children_relationships__child__"
+        "children_relationships__child__"
+        "children_relationships__child__vlan"
+    ),
+    "tags",
+    "nodemetadata_set",
+    "numanode_set",
 ]
 
 
@@ -184,7 +189,7 @@ def store_node_power_parameters(node, request):
     The parameters should be JSON, passed with key `power_parameters`.
     """
     # Don't overwrite redfish power type with ipmi.
-    if node.power_type == 'redfish':
+    if node.power_type == "redfish":
         power_type = node.power_type
     else:
         power_type = request.POST.get("power_type", None)
@@ -194,7 +199,8 @@ def store_node_power_parameters(node, request):
     power_types = get_driver_types(ignore_errors=True)
     if len(power_types) == 0:
         raise ClusterUnavailable(
-            "No rack controllers connected to validate the power_type.")
+            "No rack controllers connected to validate the power_type."
+        )
 
     if power_type not in list(power_types) + [UNKNOWN_POWER_TYPE]:
         raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)
@@ -205,7 +211,7 @@ def store_node_power_parameters(node, request):
             power_parameters = json.loads(power_parameters)
         except ValueError:
             raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
-        if power_type == 'redfish':
+        if power_type == "redfish":
             power_parameters.update(node.instance_power_parameters)
     if not power_parameters:
         power_parameters = {}
@@ -236,45 +242,46 @@ def filtered_nodes_list_from_request(request, model=None):
         nodes with matching agent names will be returned.
     """
     # Get filters from request.
-    match_ids = get_optional_list(request.GET, 'id')
+    match_ids = get_optional_list(request.GET, "id")
 
-    match_macs = get_optional_list(request.GET, 'mac_address')
+    match_macs = get_optional_list(request.GET, "mac_address")
     if match_macs is not None:
-        invalid_macs = [
-            mac for mac in match_macs if MAC_RE.match(mac) is None]
+        invalid_macs = [mac for mac in match_macs if MAC_RE.match(mac) is None]
         if len(invalid_macs) != 0:
             raise MAASAPIValidationError(
-                "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
+                "Invalid MAC address(es): %s" % ", ".join(invalid_macs)
+            )
 
     if model is None:
         model = Node
     # Fetch nodes and apply filters.
     nodes = model.objects.get_nodes(
-        request.user, NodePermission.view, ids=match_ids)
+        request.user, NodePermission.view, ids=match_ids
+    )
     if match_macs is not None:
         nodes = nodes.filter(interface__mac_address__in=match_macs)
-    match_hostnames = get_optional_list(request.GET, 'hostname')
+    match_hostnames = get_optional_list(request.GET, "hostname")
     if match_hostnames is not None:
         nodes = nodes.filter(hostname__in=match_hostnames)
-    match_domains = get_optional_list(request.GET, 'domain')
+    match_domains = get_optional_list(request.GET, "domain")
     if match_domains is not None:
         nodes = nodes.filter(domain__name__in=match_domains)
-    match_zone_name = request.GET.get('zone', None)
+    match_zone_name = request.GET.get("zone", None)
     if match_zone_name is not None:
         nodes = nodes.filter(zone__name=match_zone_name)
-    match_pool_name = request.GET.get('pool', None)
+    match_pool_name = request.GET.get("pool", None)
     if match_pool_name is not None:
         nodes = nodes.filter(pool__name=match_pool_name)
-    match_agent_name = request.GET.get('agent_name', None)
+    match_agent_name = request.GET.get("agent_name", None)
     if match_agent_name is not None:
         nodes = nodes.filter(agent_name=match_agent_name)
 
-    return nodes.order_by('id')
+    return nodes.order_by("id")
 
 
 def is_registered(request, ignore_statuses=None):
     """Used by both `NodesHandler` and `AnonNodesHandler`."""
-    mac_address = get_mandatory_param(request.GET, 'mac_address')
+    mac_address = get_mandatory_param(request.GET, "mac_address")
     interfaces = Interface.objects.filter(mac_address=mac_address)
     interfaces = interfaces.exclude(node__isnull=True)
     if ignore_statuses is None:
@@ -285,26 +292,31 @@ def is_registered(request, ignore_statuses=None):
 
 def get_cached_script_results(node):
     """Load script results into cache and return the cached list."""
-    if not hasattr(node, '_cached_script_results'):
+    if not hasattr(node, "_cached_script_results"):
         node._cached_script_results = list(
             node.get_latest_script_results.only(
-                'status', 'script_set', 'script', 'suppressed'))
+                "status", "script_set", "script", "suppressed"
+            )
+        )
         node._cached_commissioning_script_results = []
         node._cached_testing_script_results = []
         for script_result in node._cached_script_results:
-            if (script_result.script_set.result_type ==
-                    RESULT_TYPE.INSTALLATION):
+            if (
+                script_result.script_set.result_type
+                == RESULT_TYPE.INSTALLATION
+            ):
                 # Don't include installation results in the health
                 # status.
                 continue
             elif script_result.status == SCRIPT_STATUS.ABORTED:
                 # LP: #1724235 - Ignore aborted scripts.
                 continue
-            elif (script_result.script_set.result_type ==
-                    RESULT_TYPE.COMMISSIONING):
+            elif (
+                script_result.script_set.result_type
+                == RESULT_TYPE.COMMISSIONING
+            ):
                 node._cached_commissioning_script_results.append(script_result)
-            elif (script_result.script_set.result_type ==
-                    RESULT_TYPE.TESTING):
+            elif script_result.script_set.result_type == RESULT_TYPE.TESTING:
                 node._cached_testing_script_results.append(script_result)
 
     return node._cached_script_results
@@ -314,7 +326,7 @@ def get_script_status_name(script_status):
     for id, name in SCRIPT_STATUS_CHOICES:
         if id == script_status:
             return name
-    return 'Unknown'
+    return "Unknown"
 
 
 class NodeHandler(OperationsHandler):
@@ -323,6 +335,7 @@ class NodeHandler(OperationsHandler):
 
     The Node is identified by its system_id.
     """
+
     api_doc_section_name = "Node"
 
     # Disable create and update
@@ -374,10 +387,13 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def cpu_test_status(handler, node):
         get_cached_script_results(node)
-        return get_status_from_qs([
-            script_result for script_result
-            in node._cached_testing_script_results
-            if script_result.script.hardware_type == HARDWARE_TYPE.CPU])
+        return get_status_from_qs(
+            [
+                script_result
+                for script_result in node._cached_testing_script_results
+                if script_result.script.hardware_type == HARDWARE_TYPE.CPU
+            ]
+        )
 
     @classmethod
     def cpu_test_status_name(handler, node):
@@ -386,10 +402,13 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def memory_test_status(handler, node):
         get_cached_script_results(node)
-        return get_status_from_qs([
-            script_result for script_result
-            in node._cached_testing_script_results
-            if script_result.script.hardware_type == HARDWARE_TYPE.MEMORY])
+        return get_status_from_qs(
+            [
+                script_result
+                for script_result in node._cached_testing_script_results
+                if script_result.script.hardware_type == HARDWARE_TYPE.MEMORY
+            ]
+        )
 
     @classmethod
     def memory_test_status_name(handler, node):
@@ -398,10 +417,13 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def storage_test_status(handler, node):
         get_cached_script_results(node)
-        return get_status_from_qs([
-            script_result for script_result
-            in node._cached_testing_script_results
-            if script_result.script.hardware_type == HARDWARE_TYPE.STORAGE])
+        return get_status_from_qs(
+            [
+                script_result
+                for script_result in node._cached_testing_script_results
+                if script_result.script.hardware_type == HARDWARE_TYPE.STORAGE
+            ]
+        )
 
     @classmethod
     def storage_test_status_name(handler, node):
@@ -410,10 +432,13 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def other_test_status(handler, node):
         get_cached_script_results(node)
-        return get_status_from_qs([
-            script_result for script_result
-            in node._cached_testing_script_results
-            if script_result.script.hardware_type == HARDWARE_TYPE.NODE])
+        return get_status_from_qs(
+            [
+                script_result
+                for script_result in node._cached_testing_script_results
+                if script_result.script.hardware_type == HARDWARE_TYPE.NODE
+            ]
+        )
 
     @classmethod
     def other_test_status_name(handler, node):
@@ -422,10 +447,13 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def interface_test_status(handler, node):
         get_cached_script_results(node)
-        return get_status_from_qs([
-            script_result for script_result
-            in node._cached_testing_script_results
-            if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK])
+        return get_status_from_qs(
+            [
+                script_result
+                for script_result in node._cached_testing_script_results
+                if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK
+            ]
+        )
 
     @classmethod
     def interface_test_status_name(handler, node):
@@ -434,15 +462,15 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def hardware_info(handler, node):
         ret = {
-            'system_vendor': 'Unknown',
-            'system_product': 'Unknown',
-            'system_version': 'Unknown',
-            'system_serial': 'Unknown',
-            'cpu_model': 'Unknown',
-            'mainboard_vendor': 'Unknown',
-            'mainboard_product': 'Unknown',
-            'mainboard_firmware_version': 'Unknown',
-            'mainboard_firmware_date': 'Unknown',
+            "system_vendor": "Unknown",
+            "system_product": "Unknown",
+            "system_version": "Unknown",
+            "system_serial": "Unknown",
+            "cpu_model": "Unknown",
+            "mainboard_vendor": "Unknown",
+            "mainboard_product": "Unknown",
+            "mainboard_firmware_version": "Unknown",
+            "mainboard_firmware_date": "Unknown",
         }
         # Iterate over the NodeMetadata objects instead of filtering to
         # avoid another database call as the values have been prefetched.
@@ -470,7 +498,8 @@ class NodeHandler(OperationsHandler):
             Not Found
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.view)
+            system_id=system_id, user=request.user, perm=NodePermission.view
+        )
         if self.model != Node:
             return node
         else:
@@ -496,8 +525,8 @@ class NodeHandler(OperationsHandler):
         node.
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         node.as_self().delete()
         return rc.DELETED
 
@@ -527,7 +556,7 @@ class NodeHandler(OperationsHandler):
         node_system_id = "system_id"
         if node is not None:
             node_system_id = node.system_id
-        return ('node_handler', (node_system_id, ))
+        return ("node_handler", (node_system_id,))
 
     @operation(idempotent=True)
     def details(self, request, system_id):
@@ -566,7 +595,8 @@ class NodeHandler(OperationsHandler):
         return HttpResponse(
             bson.BSON.encode(probe_details_report),
             # Not sure what media type to use here.
-            content_type='application/bson')
+            content_type="application/bson",
+        )
 
     @operation(idempotent=True)
     def power_parameters(self, request, system_id):
@@ -592,12 +622,14 @@ class NodeHandler(OperationsHandler):
             Not Found
         """
         node = Node.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         return node.power_parameters
 
 
 class AnonNodeHandler(AnonymousOperationsHandler):
     """Anonymous access to Node."""
+
     read = create = update = delete = None
     model = Node
 
@@ -606,6 +638,7 @@ class AnonNodeHandler(AnonymousOperationsHandler):
 
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
+
     create = read = update = delete = None
 
     @operation(idempotent=True)
@@ -635,10 +668,9 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         # which will execute all user selected commissioning and testing
         # scripts.
         return is_registered(
-            request, [
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.RETIRED])
+            request,
+            [NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING, NODE_STATUS.RETIRED],
+        )
 
     @operation(idempotent=True)
     def is_action_in_progress(self, request):
@@ -661,20 +693,21 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         @error-example "no-address"
             No provided mac_address!
         """
-        mac_address = get_mandatory_param(request.GET, 'mac_address')
+        mac_address = get_mandatory_param(request.GET, "mac_address")
         interfaces = Interface.objects.filter(mac_address=mac_address)
         interfaces = interfaces.filter(
-            node__status__in=[
-                NODE_STATUS.COMMISSIONING, NODE_STATUS.DEPLOYING])
+            node__status__in=[NODE_STATUS.COMMISSIONING, NODE_STATUS.DEPLOYING]
+        )
         return interfaces.exists()
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('nodes_handler', [])
+        return ("nodes_handler", [])
 
 
 class NodesHandler(OperationsHandler):
     """Manage the collection of all the nodes in the MAAS."""
+
     api_doc_section_name = "Nodes"
     create = update = delete = None
     anonymous = AnonNodesHandler
@@ -768,27 +801,32 @@ class NodesHandler(OperationsHandler):
             from maasserver.api.machines import MachinesHandler
             from maasserver.api.rackcontrollers import RackControllersHandler
             from maasserver.api.regioncontrollers import (
-                RegionControllersHandler
+                RegionControllersHandler,
             )
+
             racks = RackControllersHandler().read(request).order_by("id")
-            nodes = list(chain(
-                DevicesHandler().read(request).order_by("id"),
-                MachinesHandler().read(request).order_by("id"),
-                racks,
-                RegionControllersHandler().read(request).exclude(
-                    id__in=racks).order_by("id"),
-            ))
+            nodes = list(
+                chain(
+                    DevicesHandler().read(request).order_by("id"),
+                    MachinesHandler().read(request).order_by("id"),
+                    racks,
+                    RegionControllersHandler()
+                    .read(request)
+                    .exclude(id__in=racks)
+                    .order_by("id"),
+                )
+            )
             return nodes
         else:
             form = ReadNodesForm(data=request.GET)
             if not form.is_valid():
                 raise MAASAPIValidationError(form.errors)
             nodes = self.base_model.objects.get_nodes(
-                request.user, NodePermission.view)
+                request.user, NodePermission.view
+            )
             nodes, _, _ = form.filter_nodes(nodes)
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
-            nodes = prefetch_queryset(
-                nodes, NODES_PREFETCH).order_by('id')
+            nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
             # Set related node parents so no extra queries are needed.
             for node in nodes:
                 for interface in node.interface_set.all():
@@ -840,8 +878,8 @@ class NodesHandler(OperationsHandler):
         @error (content) "bad-param" The given parameters were not correct.
         """
         data = {
-            'zone': request.data.get('zone'),
-            'system_id': get_optional_list(request.data, 'nodes'),
+            "zone": request.data.get("zone"),
+            "system_id": get_optional_list(request.data, "nodes"),
         }
         form = BulkNodeSetZoneForm(request.user, data=data)
         if not form.is_valid():
@@ -850,7 +888,7 @@ class NodesHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('nodes_handler', [])
+        return ("nodes_handler", [])
 
 
 class OwnerDataMixin:
@@ -860,10 +898,7 @@ class OwnerDataMixin:
     @classmethod
     def owner_data(handler, machine):
         """Owner data placed on machine."""
-        return {
-            data.key: data.value
-            for data in machine.ownerdata_set.all()
-        }
+        return {data.key: data.value for data in machine.ownerdata_set.all()}
 
     @operation(idempotent=False)
     def set_owner_data(self, request, system_id):
@@ -888,10 +923,12 @@ class OwnerDataMixin:
         @error (content) "no-perms" The user does not have set the zone.
         """
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NodePermission.edit)
+            user=request.user, system_id=system_id, perm=NodePermission.edit
+        )
         if node.owner_id != request.user.id:
             raise NodeStateViolation(
-                "Cannot set owner data: it hasn't been allocated.")
+                "Cannot set owner data: it hasn't been allocated."
+            )
         owner_data = {
             key: None if value == "" else value
             for key, value in request.POST.items()
@@ -927,11 +964,9 @@ class PowerMixin:
             Not Found
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.view)
-        return {
-            "state": node.power_query().wait(60),
-        }
+            system_id=system_id, user=request.user, perm=NodePermission.view
+        )
+        return {"state": node.power_query().wait(60)}
 
     @operation(idempotent=False)
     def power_on(self, request, system_id):
@@ -963,15 +998,16 @@ class PowerMixin:
         allocate an IP address, and there were no IP addresses available on the
         relevant cluster interface.
         """
-        user_data = request.POST.get('user_data', None)
-        comment = get_optional_param(request.POST, 'comment')
+        user_data = request.POST.get("user_data", None)
+        comment = get_optional_param(request.POST, "comment")
 
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         if node.owner is None and node.node_type != NODE_TYPE.RACK_CONTROLLER:
             raise NodeStateViolation(
-                "Can't start node: it hasn't been allocated.")
+                "Can't start node: it hasn't been allocated."
+            )
         if user_data is not None:
             user_data = b64decode(user_data)
         try:
@@ -979,31 +1015,47 @@ class PowerMixin:
             # maasserver.api.machines.deploy when powering on
             # the node for deployment.
             install_kvm = get_optional_param(
-                request.POST, 'install_kvm',
-                default=False, validator=StringBool)
+                request.POST,
+                "install_kvm",
+                default=False,
+                validator=StringBool,
+            )
             bridge_type = get_optional_param(
-                request.POST, 'bridge_type', default=None)
-            if (bridge_type is not None and
-                    bridge_type not in BRIDGE_TYPE_CHOICES_DICT):
-                raise MAASAPIValidationError({
-                    'bridge_type': compose_invalid_choice_text(
-                        'bridge_type', BRIDGE_TYPE_CHOICES)
-                })
+                request.POST, "bridge_type", default=None
+            )
+            if (
+                bridge_type is not None
+                and bridge_type not in BRIDGE_TYPE_CHOICES_DICT
+            ):
+                raise MAASAPIValidationError(
+                    {
+                        "bridge_type": compose_invalid_choice_text(
+                            "bridge_type", BRIDGE_TYPE_CHOICES
+                        )
+                    }
+                )
             bridge_stp = get_optional_param(
-                request.POST, 'bridge_stp', default=None,
-                validator=StringBool)
+                request.POST, "bridge_stp", default=None, validator=StringBool
+            )
             bridge_fd = get_optional_param(
-                request.POST, 'bridge_fd', default=None, validator=Int)
+                request.POST, "bridge_fd", default=None, validator=Int
+            )
             node.start(
-                request.user, user_data=user_data, comment=comment,
-                install_kvm=install_kvm, bridge_type=bridge_type,
-                bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+                request.user,
+                user_data=user_data,
+                comment=comment,
+                install_kvm=install_kvm,
+                bridge_type=bridge_type,
+                bridge_stp=bridge_stp,
+                bridge_fd=bridge_fd,
+            )
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
             # system_id in it, as that is the primary API key to a node.
             raise StaticIPAddressExhaustion(
                 "%s: Unable to allocate static IP due to address"
-                " exhaustion." % system_id)
+                " exhaustion." % system_id
+            )
         return node
 
     @operation(idempotent=False)
@@ -1035,13 +1087,14 @@ class PowerMixin:
         @error (content) "no-perms" The user is not authorized to power off the
         node.
         """
-        stop_mode = request.POST.get('stop_mode', 'hard')
-        comment = get_optional_param(request.POST, 'comment')
+        stop_mode = request.POST.get("stop_mode", "hard")
+        comment = get_optional_param(request.POST, "comment")
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         power_action_sent = node.stop(
-            request.user, stop_mode=stop_mode, comment=comment)
+            request.user, stop_mode=stop_mode, comment=comment
+        )
         if power_action_sent:
             return node
         else:
@@ -1082,13 +1135,14 @@ class PowerMixin:
             Not Found
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         form = TestForm(instance=node, user=request.user, data=request.data)
         if form.is_valid():
             try:
                 return form.save()
             except NoScriptsFound:
-                raise MAASAPIValidationError('No testing scripts found!')
+                raise MAASAPIValidationError("No testing scripts found!")
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -1110,9 +1164,10 @@ class PowerMixin:
         @error (content) "no-perms" The user is not authorized to override
         tests.
         """
-        comment = get_optional_param(request.POST, 'comment')
+        comment = get_optional_param(request.POST, "comment")
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NodePermission.admin)
+            user=request.user, system_id=system_id, perm=NodePermission.admin
+        )
         node.override_failed_testing(request.user, comment)
         return node
 
@@ -1134,10 +1189,10 @@ class PowerMixin:
         @error (content) "no-perms" The user is not authorized to abort the
         current operation.
         """
-        comment = get_optional_param(request.POST, 'comment')
+        comment = get_optional_param(request.POST, "comment")
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         node.abort_operation(request.user, comment)
         return node
 
@@ -1169,12 +1224,13 @@ class PowersMixin:
         @error (content) "no-perms" The user is not authorized to view the
         power parameters.
         """
-        match_ids = get_optional_list(request.GET, 'id')
+        match_ids = get_optional_list(request.GET, "id")
 
         if match_ids is None:
             machines = self.base_model.objects.all()
         else:
             machines = self.base_model.objects.filter(system_id__in=match_ids)
 
-        return {machine.system_id: machine.power_parameters
-                for machine in machines}
+        return {
+            machine.system_id: machine.power_parameters for machine in machines
+        }

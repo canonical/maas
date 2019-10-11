@@ -3,17 +3,9 @@
 
 """NodeMetadata objects."""
 
-__all__ = [
-    "NodeMetadata",
-    ]
+__all__ = ["NodeMetadata"]
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-    Manager,
-    TextField,
-)
+from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
@@ -25,7 +17,6 @@ maaslog = get_maas_logger("nodemetadata")
 
 
 class NodeMetadataManager(Manager):
-
     def get(self, *args, default=None, **kwargs):
         """A modified version of Django's get which works like dict's get."""
         try:
@@ -51,12 +42,13 @@ class NodeMetadata(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         verbose_name = "NodeMetadata"
         verbose_name_plural = "NodeMetadata"
-        unique_together = ('node', 'key')
+        unique_together = ("node", "key")
 
     objects = NodeMetadataManager()
 
     node = ForeignKey(
-        Node, null=False, blank=False, editable=False, on_delete=CASCADE)
+        Node, null=False, blank=False, editable=False, on_delete=CASCADE
+    )
 
     key = CharField(max_length=64, null=False, blank=False)
 
@@ -64,7 +56,10 @@ class NodeMetadata(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "%s (%s/%s)" % (
-            self.__class__.__name__, self.node.hostname, self.key)
+            self.__class__.__name__,
+            self.node.hostname,
+            self.key,
+        )
 
     def delete(self):
         """Delete this node metadata entry."""

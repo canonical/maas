@@ -22,25 +22,26 @@ from testtools.matchers import Equals
 
 
 class TestZoneHandler(MAASServerTestCase):
-
     def dehydrate_zone(self, zone):
         node_count_by_type = defaultdict(
             int,
-            zone.node_set.values('node_type').annotate(
-                node_count=Count('node_type')).values_list(
-                    'node_type', 'node_count'))
+            zone.node_set.values("node_type")
+            .annotate(node_count=Count("node_type"))
+            .values_list("node_type", "node_count"),
+        )
         return {
             "id": zone.id,
             "name": zone.name,
             "description": zone.description,
             "updated": dehydrate_datetime(zone.updated),
             "created": dehydrate_datetime(zone.created),
-            'devices_count': node_count_by_type[NODE_TYPE.DEVICE],
-            'machines_count': node_count_by_type[NODE_TYPE.MACHINE],
-            'controllers_count': (
-                node_count_by_type[NODE_TYPE.RACK_CONTROLLER] +
-                node_count_by_type[NODE_TYPE.REGION_CONTROLLER] +
-                node_count_by_type[NODE_TYPE.REGION_AND_RACK_CONTROLLER]),
+            "devices_count": node_count_by_type[NODE_TYPE.DEVICE],
+            "machines_count": node_count_by_type[NODE_TYPE.MACHINE],
+            "controllers_count": (
+                node_count_by_type[NODE_TYPE.RACK_CONTROLLER]
+                + node_count_by_type[NODE_TYPE.REGION_CONTROLLER]
+                + node_count_by_type[NODE_TYPE.REGION_AND_RACK_CONTROLLER]
+            ),
         }
 
     def test_get(self):
@@ -56,11 +57,10 @@ class TestZoneHandler(MAASServerTestCase):
         for _ in range(3):
             factory.make_RegionController(zone=zone)
         result = handler.get({"id": zone.id})
-        self.assertEqual(
-            self.dehydrate_zone(zone), result)
-        self.assertEquals(3, result['machines_count'])
-        self.assertEquals(3, result['devices_count'])
-        self.assertEquals(6, result['controllers_count'])
+        self.assertEqual(self.dehydrate_zone(zone), result)
+        self.assertEquals(3, result["machines_count"])
+        self.assertEquals(3, result["devices_count"])
+        self.assertEquals(6, result["controllers_count"])
 
     def test_get_query_count(self):
         user = factory.make_User()
@@ -82,23 +82,17 @@ class TestZoneHandler(MAASServerTestCase):
         handler = ZoneHandler(user, {}, None)
         factory.make_Zone()
         expected_zones = [
-            self.dehydrate_zone(zone)
-            for zone in Zone.objects.all()
-            ]
-        self.assertItemsEqual(
-            expected_zones,
-            handler.list({}))
+            self.dehydrate_zone(zone) for zone in Zone.objects.all()
+        ]
+        self.assertItemsEqual(expected_zones, handler.list({}))
 
 
 class TestZoneHandlerDelete(MAASServerTestCase):
-
     def test__delete_as_admin_success(self):
         user = factory.make_admin()
         handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
-        handler.delete({
-            "id": zone.id,
-        })
+        handler.delete({"id": zone.id})
         zone = reload_object(zone)
         self.assertThat(zone, Equals(None))
 
@@ -107,15 +101,11 @@ class TestZoneHandlerDelete(MAASServerTestCase):
         handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
         with ExpectedException(AssertionError, "Permission denied."):
-            handler.delete({
-                "id": zone.id,
-            })
+            handler.delete({"id": zone.id})
 
     def test__delete_default_zone_fails(self):
         zone = Zone.objects.get_default_zone()
         user = factory.make_admin()
         handler = ZoneHandler(user, {}, None)
         with ExpectedException(ValidationError):
-            handler.delete({
-                "id": zone.id,
-            })
+            handler.delete({"id": zone.id})

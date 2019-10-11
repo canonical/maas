@@ -14,69 +14,95 @@ from testtools.matchers import Equals
 
 
 class TestNovaPowerDriver(MAASTestCase):
-
     def test_missing_packages(self):
         driver = nova_module.NovaPowerDriver()
-        mock = self.patch(driver, 'try_novaapi_import')
+        mock = self.patch(driver, "try_novaapi_import")
         mock.return_value = False
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(['python3-novaclient'], missing)
+        self.assertItemsEqual(["python3-novaclient"], missing)
 
     def test_no_missing_packages(self):
         driver = nova_module.NovaPowerDriver()
-        mock = self.patch(driver, 'try_novaapi_import')
+        mock = self.patch(driver, "try_novaapi_import")
         mock.return_value = True
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
     def make_parameters(self):
-        system_id = factory.make_name('system_id')
-        machine = factory.make_name('nova_id')
-        tenant = factory.make_name('os_tenantname')
-        username = factory.make_name('os_username')
-        password = factory.make_name('os_password')
-        authurl = 'http://%s' % (factory.make_name('os_authurl'))
+        system_id = factory.make_name("system_id")
+        machine = factory.make_name("nova_id")
+        tenant = factory.make_name("os_tenantname")
+        username = factory.make_name("os_username")
+        password = factory.make_name("os_password")
+        authurl = "http://%s" % (factory.make_name("os_authurl"))
         context = {
-            'system_id': system_id,
-            'nova_id': machine,
-            'os_tenantname': tenant,
-            'os_username': username,
-            'os_password': password,
-            'os_authurl': authurl,
+            "system_id": system_id,
+            "nova_id": machine,
+            "os_tenantname": tenant,
+            "os_username": username,
+            "os_password": password,
+            "os_authurl": authurl,
         }
         return system_id, machine, tenant, username, password, authurl, context
 
     def test_power_on_calls_power_control_nova(self):
-        system_id, machine, tenant, username, password, authurl, context = (
-            self.make_parameters())
+        (
+            system_id,
+            machine,
+            tenant,
+            username,
+            password,
+            authurl,
+            context,
+        ) = self.make_parameters()
         nova_power_driver = NovaPowerDriver()
         power_control_nova_mock = self.patch(
-            nova_power_driver, 'power_control_nova')
+            nova_power_driver, "power_control_nova"
+        )
         nova_power_driver.power_on(system_id, context)
 
         self.assertThat(
-            power_control_nova_mock, MockCalledOnceWith('on', **context))
+            power_control_nova_mock, MockCalledOnceWith("on", **context)
+        )
 
     def test_power_off_calls_power_control_nova(self):
-        system_id, machine, tenant, username, password, authurl, context = (
-            self.make_parameters())
+        (
+            system_id,
+            machine,
+            tenant,
+            username,
+            password,
+            authurl,
+            context,
+        ) = self.make_parameters()
         nova_power_driver = NovaPowerDriver()
         power_control_nova_mock = self.patch(
-            nova_power_driver, 'power_control_nova')
+            nova_power_driver, "power_control_nova"
+        )
         nova_power_driver.power_off(system_id, context)
 
         self.assertThat(
-            power_control_nova_mock, MockCalledOnceWith('off', **context))
+            power_control_nova_mock, MockCalledOnceWith("off", **context)
+        )
 
     def test_power_query_calls_power_state_nova(self):
-        system_id, machine, tenant, username, password, authurl, context = (
-            self.make_parameters())
+        (
+            system_id,
+            machine,
+            tenant,
+            username,
+            password,
+            authurl,
+            context,
+        ) = self.make_parameters()
         nova_power_driver = NovaPowerDriver()
         power_control_nova_mock = self.patch(
-            nova_power_driver, 'power_control_nova')
-        power_control_nova_mock.return_value = 'off'
+            nova_power_driver, "power_control_nova"
+        )
+        power_control_nova_mock.return_value = "off"
         expected_result = nova_power_driver.power_query(system_id, context)
 
         self.expectThat(
-            power_control_nova_mock, MockCalledOnceWith('query', **context))
-        self.expectThat(expected_result, Equals('off'))
+            power_control_nova_mock, MockCalledOnceWith("query", **context)
+        )
+        self.expectThat(expected_result, Equals("off"))

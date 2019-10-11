@@ -3,9 +3,7 @@
 
 """The `BootImageMapping` class."""
 
-__all__ = [
-    'BootImageMapping',
-    ]
+__all__ = ["BootImageMapping"]
 
 import json
 
@@ -21,8 +19,13 @@ def gen_image_spec_with_resource(os, data):
                 for release in data[arch][subarch][kflavor]:
                     for label in data[arch][subarch][kflavor][release]:
                         image = ImageSpec(
-                            os=os, arch=arch, subarch=subarch,
-                            kflavor=kflavor, release=release, label=label)
+                            os=os,
+                            arch=arch,
+                            subarch=subarch,
+                            kflavor=kflavor,
+                            release=release,
+                            label=label,
+                        )
                         resource = data[arch][subarch][kflavor][release][label]
                         yield image, resource
 
@@ -38,8 +41,13 @@ def gen_image_spec_with_resource_legacy(os, data):
             for release in data[arch][subarch]:
                 for label in data[arch][subarch][release]:
                     image = ImageSpec(
-                        os=os, arch=arch, subarch=subarch,
-                        kflavor='generic', release=release, label=label)
+                        os=os,
+                        arch=arch,
+                        subarch=subarch,
+                        kflavor="generic",
+                        release=release,
+                        label=label,
+                    )
                     resource = data[arch][subarch][release][label]
                     yield image, resource
 
@@ -117,17 +125,20 @@ class BootImageMapping:
             # Support for older data. This has no operating system, then
             # it is ubuntu.
             for image, resource in gen_image_spec_with_resource(
-                    "ubuntu", data):
+                "ubuntu", data
+            ):
                 mapping.setdefault(image, resource)
         elif depth == 6:
             for os in data:
                 for image, resource in gen_image_spec_with_resource_legacy(
-                        os, data[os]):
+                    os, data[os]
+                ):
                     mapping.setdefault(image, resource)
         elif depth == 7:
             for os in data:
                 for image, resource in gen_image_spec_with_resource(
-                        os, data[os]):
+                    os, data[os]
+                ):
                     mapping.setdefault(image, resource)
         return mapping
 

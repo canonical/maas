@@ -9,17 +9,12 @@ will raise a notify message in Postgres that a regiond process is listening
 for.
 """
 
-__all__ = [
-    "register_system_triggers"
-    ]
+__all__ = ["register_system_triggers"]
 
 from textwrap import dedent
 
 from maasserver.models.dnspublication import zone_serial
-from maasserver.triggers import (
-    register_procedure,
-    register_trigger,
-)
+from maasserver.triggers import register_procedure, register_trigger
 from maasserver.utils.orm import transactional
 
 # Note that the corresponding test module (test_system) only tests that the
@@ -30,7 +25,8 @@ from maasserver.utils.orm import transactional
 
 # Helper that returns the number of rack controllers that region process is
 # currently managing.
-CORE_GET_MANAGING_COUNT = dedent("""\
+CORE_GET_MANAGING_COUNT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_get_managing_count(
       process maasserver_regioncontrollerprocess)
     RETURNS integer as $$
@@ -40,11 +36,13 @@ CORE_GET_MANAGING_COUNT = dedent("""\
         WHERE maasserver_node.managing_process_id = process.id);
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Helper that returns the total number of RPC connections for the
 # rack controller.
-CORE_GET_NUMBER_OF_CONN = dedent("""\
+CORE_GET_NUMBER_OF_CONN = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_get_num_conn(rack maasserver_node)
     RETURNS integer as $$
     BEGIN
@@ -55,10 +53,12 @@ CORE_GET_NUMBER_OF_CONN = dedent("""\
         WHERE connection.rack_controller_id = rack.id);
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Helper that returns the total number of region processes.
-CORE_GET_NUMBER_OF_PROCESSES = dedent("""\
+CORE_GET_NUMBER_OF_PROCESSES = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_get_num_processes()
     RETURNS integer as $$
     BEGIN
@@ -66,11 +66,13 @@ CORE_GET_NUMBER_OF_PROCESSES = dedent("""\
         SELECT count(*) FROM maasserver_regioncontrollerprocess);
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Helper that picks a new region process that can manage the given
 # rack controller.
-CORE_PICK_NEW_REGION = dedent("""\
+CORE_PICK_NEW_REGION = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_pick_new_region(rack maasserver_node)
     RETURNS maasserver_regioncontrollerprocess as $$
     DECLARE
@@ -120,11 +122,13 @@ CORE_PICK_NEW_REGION = dedent("""\
       RETURN selected_process;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Helper that picks and sets a new region process to manage this rack
 # controller.
-CORE_SET_NEW_REGION = dedent("""\
+CORE_SET_NEW_REGION = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_set_new_region(rack maasserver_node)
     RETURNS void as $$
     DECLARE
@@ -142,13 +146,15 @@ CORE_SET_NEW_REGION = dedent("""\
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a new region <-> rack RPC connection is made. This provides
 # the logic to select the region controller that should manage this rack
 # controller. Balancing of managed rack controllers is also done by this
 # trigger.
-CORE_REGIONRACKRPCONNECTION_INSERT = dedent("""\
+CORE_REGIONRACKRPCONNECTION_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_rpc_insert()
     RETURNS trigger as $$
     DECLARE
@@ -215,12 +221,14 @@ CORE_REGIONRACKRPCONNECTION_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a region <-> rack connection is delete. When the managing
 # region process is the one that loses its connection it will find a
 # new region process to manage the rack controller.
-CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
+CORE_REGIONRACKRPCONNECTION_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_core_rpc_delete()
     RETURNS trigger as $$
     DECLARE
@@ -274,12 +282,14 @@ CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when the VLAN is modified. When DHCP is turned off/on it will alert
 # the primary/secondary rack controller to update. If the primary rack or
 # secondary rack is changed it will alert the previous and new rack controller.
-DHCP_VLAN_UPDATE = dedent("""\
+DHCP_VLAN_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_vlan_update()
     RETURNS trigger as $$
     DECLARE
@@ -384,10 +394,12 @@ DHCP_VLAN_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Helper that alerts the primary and secondary rack controller for a VLAN.
-DHCP_ALERT = dedent("""\
+DHCP_ALERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_alert(vlan maasserver_vlan)
     RETURNS void AS $$
     DECLARE
@@ -415,13 +427,15 @@ DHCP_ALERT = dedent("""\
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a subnet's VLAN, CIDR, gateway IP, or DNS servers change.
 # If the VLAN was changed it alerts both the rack controllers of the old VLAN
 # and then the rack controllers of the new VLAN. Any other field that is
 # updated just alerts the rack controllers of the current VLAN.
-DHCP_SUBNET_UPDATE = dedent("""\
+DHCP_SUBNET_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_subnet_update()
     RETURNS trigger as $$
     DECLARE
@@ -451,11 +465,13 @@ DHCP_SUBNET_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when the subnet is deleted. Alerts the rack controllers of the
 # VLAN the subnet belonged to.
-DHCP_SUBNET_DELETE = dedent("""\
+DHCP_SUBNET_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_subnet_delete()
     RETURNS trigger as $$
     DECLARE
@@ -468,11 +484,13 @@ DHCP_SUBNET_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a dynamic DHCP range is added to a subnet that is on a managed
 # VLAN. Alerts the rack controllers for that VLAN.
-DHCP_IPRANGE_INSERT = dedent("""\
+DHCP_IPRANGE_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_iprange_insert()
     RETURNS trigger as $$
     DECLARE
@@ -489,11 +507,13 @@ DHCP_IPRANGE_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a dynamic DHCP range is updated on a subnet that is on a
 # managed VLAN. Alerts the rack controllers for that VLAN.
-DHCP_IPRANGE_UPDATE = dedent("""\
+DHCP_IPRANGE_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_iprange_update()
     RETURNS trigger as $$
     DECLARE
@@ -510,11 +530,13 @@ DHCP_IPRANGE_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a dynamic DHCP range is deleted from a subnet that is on a
 # managed VLAN. Alerts the rack controllers for that VLAN.
-DHCP_IPRANGE_DELETE = dedent("""\
+DHCP_IPRANGE_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_iprange_delete()
     RETURNS trigger as $$
     DECLARE
@@ -531,12 +553,14 @@ DHCP_IPRANGE_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when an IP address that has an IP set (not temp) and is not
 # DISCOVERED is inserted to a subnet on a managed VLAN. Alerts the rack
 # controllers for that VLAN.
-DHCP_STATICIPADDRESS_INSERT = dedent("""\
+DHCP_STATICIPADDRESS_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_insert()
     RETURNS trigger as $$
     DECLARE
@@ -554,12 +578,14 @@ DHCP_STATICIPADDRESS_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when an IP address that has an IP set (not temp) and is not
 # DISCOVERED is updated. If the subnet changes then it alerts the rack
 # controllers of each VLAN if the VLAN differs from the previous VLAN.
-DHCP_STATICIPADDRESS_UPDATE = dedent("""\
+DHCP_STATICIPADDRESS_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_update()
     RETURNS trigger as $$
     DECLARE
@@ -602,11 +628,13 @@ DHCP_STATICIPADDRESS_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when an IP address is removed from a subnet that is on a
 # managed VLAN. Alerts the rack controllers of that VLAN.
-DHCP_STATICIPADDRESS_DELETE = dedent("""\
+DHCP_STATICIPADDRESS_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_delete()
     RETURNS trigger as $$
     DECLARE
@@ -623,12 +651,14 @@ DHCP_STATICIPADDRESS_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when the interface name or MAC address is updated. Alerts
 # rack controllers on all managed VLAN's that the interface has a non
 # DISCOVERED IP address on.
-DHCP_INTERFACE_UPDATE = dedent("""\
+DHCP_INTERFACE_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_interface_update()
     RETURNS trigger as $$
     DECLARE
@@ -660,11 +690,13 @@ DHCP_INTERFACE_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when the hostname of the node is changed. Alerts rack controllers
 # for all VLAN's that this interface has a non DISCOVERED IP address.
-DHCP_NODE_UPDATE = dedent("""\
+DHCP_NODE_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_node_update()
     RETURNS trigger as $$
     DECLARE
@@ -698,9 +730,11 @@ DHCP_NODE_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_UPDATE_ALL_VLANS = dedent("""\
+DHCP_UPDATE_ALL_VLANS = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_update_all_vlans()
     RETURNS void as $$
     DECLARE
@@ -722,9 +756,11 @@ DHCP_UPDATE_ALL_VLANS = dedent("""\
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_SNIPPET_UPDATE_SUBNET = dedent("""\
+DHCP_SNIPPET_UPDATE_SUBNET = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update_subnet(
       _subnet_id INTEGER)
     RETURNS void as $$
@@ -747,9 +783,11 @@ DHCP_SNIPPET_UPDATE_SUBNET = dedent("""\
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_SNIPPET_UPDATE_NODE = dedent("""\
+DHCP_SNIPPET_UPDATE_NODE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update_node(_node_id INTEGER)
     RETURNS void as $$
     DECLARE
@@ -774,9 +812,11 @@ DHCP_SNIPPET_UPDATE_NODE = dedent("""\
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_SNIPPET_UPDATE_VALUE = dedent("""\
+DHCP_SNIPPET_UPDATE_VALUE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update_value(
         _dhcp_snippet maasserver_dhcpsnippet)
     RETURNS void as $$
@@ -794,9 +834,11 @@ DHCP_SNIPPET_UPDATE_VALUE = dedent("""\
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_SNIPPET_INSERT = dedent("""\
+DHCP_SNIPPET_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_insert()
     RETURNS trigger as $$
     BEGIN
@@ -806,9 +848,11 @@ DHCP_SNIPPET_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_SNIPPET_UPDATE = dedent("""\
+DHCP_SNIPPET_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update()
     RETURNS trigger as $$
     BEGIN
@@ -841,9 +885,11 @@ DHCP_SNIPPET_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_SNIPPET_DELETE = dedent("""\
+DHCP_SNIPPET_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_delete()
     RETURNS trigger as $$
     BEGIN
@@ -853,9 +899,11 @@ DHCP_SNIPPET_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_CONFIG_NTP_SERVERS_INSERT = dedent("""\
+DHCP_CONFIG_NTP_SERVERS_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_insert()
     RETURNS trigger as $$
     BEGIN
@@ -867,9 +915,11 @@ DHCP_CONFIG_NTP_SERVERS_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_CONFIG_NTP_SERVERS_UPDATE = dedent("""\
+DHCP_CONFIG_NTP_SERVERS_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_update()
     RETURNS trigger as $$
     BEGIN
@@ -882,9 +932,11 @@ DHCP_CONFIG_NTP_SERVERS_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
-DHCP_CONFIG_NTP_SERVERS_DELETE = dedent("""\
+DHCP_CONFIG_NTP_SERVERS_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_delete()
     RETURNS trigger as $$
     BEGIN
@@ -894,12 +946,14 @@ DHCP_CONFIG_NTP_SERVERS_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when DNS needs to be published. In essense this means on insert
 # into maasserver_dnspublication.
-DNS_PUBLISH = dedent("""\
+DNS_PUBLISH = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_publish()
     RETURNS trigger AS $$
     BEGIN
@@ -907,11 +961,13 @@ DNS_PUBLISH = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Procedure to mark DNS as needing an update.
-DNS_PUBLISH_UPDATE = dedent("""\
+DNS_PUBLISH_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_publish_update(reason text)
     RETURNS void as $$
     BEGIN
@@ -922,12 +978,14 @@ DNS_PUBLISH_UPDATE = dedent("""\
          substring(reason FOR 255));
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a new domain is added. Increments the zone serial and
 # notifies that DNS needs to be updated.
-DNS_DOMAIN_INSERT = dedent("""\
+DNS_DOMAIN_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_domain_insert()
     RETURNS trigger as $$
     BEGIN
@@ -938,13 +996,15 @@ DNS_DOMAIN_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a domain is updated. Increments the zone serial and
 # notifies that DNS needs to be updated. Only watches authoritative, name,
 # and ttl.
-DNS_DOMAIN_UPDATE = dedent("""\
+DNS_DOMAIN_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_domain_update()
     RETURNS trigger as $$
     DECLARE
@@ -974,12 +1034,14 @@ DNS_DOMAIN_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a domain is deleted. Increments the zone serial and
 # notifies that DNS needs to be updated.
-DNS_DOMAIN_DELETE = dedent("""\
+DNS_DOMAIN_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_domain_delete()
     RETURNS trigger as $$
     BEGIN
@@ -990,12 +1052,14 @@ DNS_DOMAIN_DELETE = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a static IP address is updated. Increments the zone serial and
 # notifies that DNS needs to be updated. Only watches ip.
-DNS_STATICIPADDRESS_UPDATE = dedent("""\
+DNS_STATICIPADDRESS_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_staticipaddress_update()
     RETURNS trigger as $$
     BEGIN
@@ -1066,12 +1130,14 @@ DNS_STATICIPADDRESS_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when an interface is linked to an IP address. Increments the zone
 # serial and notifies that DNS needs to be updated.
-DNS_NIC_IP_LINK = dedent("""\
+DNS_NIC_IP_LINK = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_nic_ip_link()
     RETURNS trigger as $$
     DECLARE
@@ -1103,12 +1169,14 @@ DNS_NIC_IP_LINK = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when an interface is unlinked to an IP address. Increments the zone
 # serial and notifies that DNS needs to be updated.
-DNS_NIC_IP_UNLINK = dedent("""\
+DNS_NIC_IP_UNLINK = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_nic_ip_unlink()
     RETURNS trigger as $$
     DECLARE
@@ -1140,13 +1208,15 @@ DNS_NIC_IP_UNLINK = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a subnet is inserted. Increments the zone serial and notifies
 # that DNS needs to be updated. Doesn't notify if the rdns_mode is
 # disabled (0).
-DNS_SUBNET_INSERT = dedent("""\
+DNS_SUBNET_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_subnet_insert()
     RETURNS trigger as $$
     DECLARE
@@ -1158,13 +1228,15 @@ DNS_SUBNET_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a subnet is updated. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches changes on the cidr, rdns_mode
 # and allow_dns.
-DNS_SUBNET_UPDATE = dedent("""\
+DNS_SUBNET_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
     RETURNS trigger as $$
     BEGIN
@@ -1186,13 +1258,15 @@ DNS_SUBNET_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a subnet is deleted. Increments the zone serial and notifies
 # that DNS needs to be updated. Doesn't notify if the rdns_mode is
 # disabled (0).
-DNS_SUBNET_DELETE = dedent("""\
+DNS_SUBNET_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_subnet_delete()
     RETURNS trigger as $$
     DECLARE
@@ -1204,13 +1278,15 @@ DNS_SUBNET_DELETE = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a node is updated. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches changes on the hostname and
 # linked domain for the node.
-DNS_NODE_UPDATE = dedent("""\
+DNS_NODE_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_node_update()
     RETURNS trigger as $$
     DECLARE
@@ -1247,12 +1323,14 @@ DNS_NODE_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a node is deleted. Increments the zone serial and notifies
 # that DNS needs to be updated.
-DNS_NODE_DELETE = dedent("""\
+DNS_NODE_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_node_DELETE()
     RETURNS trigger as $$
     DECLARE
@@ -1272,13 +1350,15 @@ DNS_NODE_DELETE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a interface is updated. Increments the zone serial and
 # notifies that DNS needs to be updated. Only watches changes on the name and
 # the node that the interface belongs to.
-DNS_INTERFACE_UPDATE = dedent("""\
+DNS_INTERFACE_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_interface_update()
     RETURNS trigger as $$
     DECLARE
@@ -1356,14 +1436,16 @@ DNS_INTERFACE_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a config is inserted. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches for inserts on config
 # upstream_dns, dnssec_validation, default_dns_ttl, windows_kms_host,
 # dns_trusted_acls and maas_internal_domain.
-DNS_CONFIG_INSERT = dedent("""\
+DNS_CONFIG_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_config_insert()
     RETURNS trigger as $$
     BEGIN
@@ -1382,13 +1464,15 @@ DNS_CONFIG_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 # Triggered when a config is updated. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches for updates on config
 # upstream_dns, dnssec_validation, dns_trusted_acl, default_dns_ttl,
 # and windows_kms_host.
-DNS_CONFIG_UPDATE = dedent("""\
+DNS_CONFIG_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_config_update()
     RETURNS trigger as $$
     BEGIN
@@ -1408,12 +1492,14 @@ DNS_CONFIG_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a DNS resource is inserted. Increments the zone serial and
 # notifies that DNS needs to be updated.
-DNS_DNSRESOURCE_INSERT = dedent("""\
+DNS_DNSRESOURCE_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsresource_insert()
     RETURNS trigger as $$
     DECLARE
@@ -1428,12 +1514,14 @@ DNS_DNSRESOURCE_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a DNS resource is updated. Increments the zone serial and
 # notifies that DNS needs to be updated.
-DNS_DNSRESOURCE_UPDATE = dedent("""\
+DNS_DNSRESOURCE_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsresource_update()
     RETURNS trigger as $$
     DECLARE
@@ -1468,12 +1556,14 @@ DNS_DNSRESOURCE_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a DNS resource is deleted. Increments the zone serial and
 # notifies that DNS needs to be updated.
-DNS_DNSRESOURCE_DELETE = dedent("""\
+DNS_DNSRESOURCE_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsresource_delete()
     RETURNS trigger as $$
     DECLARE
@@ -1488,12 +1578,14 @@ DNS_DNSRESOURCE_DELETE = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when an IP address is linked to a DNS resource. Increments the zone
 # serial and notifies that DNS needs to be updated.
-DNS_DNSRESOURCE_IP_LINK = dedent("""\
+DNS_DNSRESOURCE_IP_LINK = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsresource_ip_link()
     RETURNS trigger as $$
     DECLARE
@@ -1518,12 +1610,14 @@ DNS_DNSRESOURCE_IP_LINK = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when an IP address is unlinked to a DNS resource. Increments the
 # zone serial and notifies that DNS needs to be updated.
-DNS_DNSRESOURCE_IP_UNLINK = dedent("""\
+DNS_DNSRESOURCE_IP_UNLINK = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsresource_ip_unlink()
     RETURNS trigger as $$
     DECLARE
@@ -1548,12 +1642,14 @@ DNS_DNSRESOURCE_IP_UNLINK = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when data is added to a DNS resource. Increments the
 # zone serial and notifies that DNS needs to be updated.
-DNS_DNSDATA_INSERT = dedent("""\
+DNS_DNSDATA_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsdata_insert()
     RETURNS trigger as $$
     DECLARE
@@ -1572,12 +1668,14 @@ DNS_DNSDATA_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when data is update for a DNS resource. Increments the
 # zone serial and notifies that DNS needs to be updated.
-DNS_DNSDATA_UPDATE = dedent("""\
+DNS_DNSDATA_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsdata_update()
     RETURNS trigger as $$
     DECLARE
@@ -1596,12 +1694,14 @@ DNS_DNSDATA_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when data is removed from a DNS resource. Increments the
 # zone serial and notifies that DNS needs to be updated.
-DNS_DNSDATA_DELETE = dedent("""\
+DNS_DNSDATA_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_dns_dnsdata_delete()
     RETURNS trigger as $$
     DECLARE
@@ -1620,12 +1720,14 @@ DNS_DNSDATA_DELETE = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a subnet is updated. Increments notifies that proxy needs to
 # be updated. Only watches changes on the cidr and allow_proxy.
-PROXY_SUBNET_UPDATE = dedent("""\
+PROXY_SUBNET_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_proxy_subnet_update()
     RETURNS trigger as $$
     BEGIN
@@ -1635,11 +1737,13 @@ PROXY_SUBNET_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when the proxy settings are updated.
-PEER_PROXY_CONFIG_INSERT = dedent("""\
+PEER_PROXY_CONFIG_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_proxy_config_use_peer_proxy_insert()
     RETURNS trigger as $$
     BEGIN
@@ -1653,11 +1757,13 @@ PEER_PROXY_CONFIG_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when the proxy settings are updated.
-PEER_PROXY_CONFIG_UPDATE = dedent("""\
+PEER_PROXY_CONFIG_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_proxy_config_use_peer_proxy_update()
     RETURNS trigger as $$
     BEGIN
@@ -1671,12 +1777,14 @@ PEER_PROXY_CONFIG_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when RBAC need to be synced. In essense this means on
 # insert into maasserver_rbacsync.
-RBAC_SYNC = dedent("""\
+RBAC_SYNC = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_sync()
     RETURNS trigger AS $$
     BEGIN
@@ -1684,11 +1792,13 @@ RBAC_SYNC = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Procedure to mark RBAC as needing a sync.
-RBAC_SYNC_UPDATE = dedent("""\
+RBAC_SYNC_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_sync_update(
       reason text,
       action text DEFAULT 'full',
@@ -1704,12 +1814,14 @@ RBAC_SYNC_UPDATE = dedent("""\
         action, resource_type, resource_id, resource_name);
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a new resource pool is added. Notifies that RBAC needs
 # to be synced.
-RBAC_RPOOL_INSERT = dedent("""\
+RBAC_RPOOL_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_rpool_insert()
     RETURNS trigger as $$
     BEGIN
@@ -1719,12 +1831,14 @@ RBAC_RPOOL_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a resource pool is updated. Notifies that RBAC needs
 # to be synced. Only watches name.
-RBAC_RPOOL_UPDATE = dedent("""\
+RBAC_RPOOL_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_rpool_update()
     RETURNS trigger as $$
     DECLARE
@@ -1738,12 +1852,14 @@ RBAC_RPOOL_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when a resource pool is deleted. Notifies that RBAC needs
 # to be synced.
-RBAC_RPOOL_DELETE = dedent("""\
+RBAC_RPOOL_DELETE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_rpool_delete()
     RETURNS trigger as $$
     BEGIN
@@ -1753,12 +1869,14 @@ RBAC_RPOOL_DELETE = dedent("""\
       RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when the Candid/RBAC settings are inserted. Notifies that RBAC
 # needs to be synced.
-RBAC_CONFIG_INSERT = dedent("""\
+RBAC_CONFIG_INSERT = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_config_insert()
     RETURNS trigger as $$
     BEGIN
@@ -1773,14 +1891,16 @@ RBAC_CONFIG_INSERT = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 # Triggered when the Candid/RBAC settings are updated. Notifies that RBAC
 # needs to be synced. The external_auth_* keys are included that way if
 # the agent account that MAAS uses to update RBAC is updated in MAAS, MAAS will
 # ensure that a full sync of data is performed.
-RBAC_CONFIG_UPDATE = dedent("""\
+RBAC_CONFIG_UPDATE = dedent(
+    """\
     CREATE OR REPLACE FUNCTION sys_rbac_config_update()
     RETURNS trigger as $$
     BEGIN
@@ -1795,7 +1915,8 @@ RBAC_CONFIG_UPDATE = dedent("""\
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """
+)
 
 
 def render_sys_proxy_procedure(proc_name, on_delete=False):
@@ -1805,14 +1926,17 @@ def render_sys_proxy_procedure(proc_name, on_delete=False):
     :param proc_name: Name of the procedure.
     :param on_delete: True when procedure will be used as a delete trigger.
     """
-    return dedent("""\
+    return dedent(
+        """\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
         BEGIN
           PERFORM pg_notify('sys_proxy', '');
           RETURN %s;
         END;
         $$ LANGUAGE plpgsql;
-        """ % (proc_name, 'NEW' if not on_delete else 'OLD'))
+        """
+        % (proc_name, "NEW" if not on_delete else "OLD")
+    )
 
 
 @transactional
@@ -1828,14 +1952,12 @@ def register_system_triggers():
     # RegionRackRPCConnection
     register_procedure(CORE_REGIONRACKRPCONNECTION_INSERT)
     register_trigger(
-        "maasserver_regionrackrpcconnection",
-        "sys_core_rpc_insert",
-        "insert")
+        "maasserver_regionrackrpcconnection", "sys_core_rpc_insert", "insert"
+    )
     register_procedure(CORE_REGIONRACKRPCONNECTION_DELETE)
     register_trigger(
-        "maasserver_regionrackrpcconnection",
-        "sys_core_rpc_delete",
-        "delete")
+        "maasserver_regionrackrpcconnection", "sys_core_rpc_delete", "delete"
+    )
 
     # DHCP
     register_procedure(DHCP_ALERT)
@@ -1863,31 +1985,30 @@ def register_system_triggers():
     register_trigger(
         "maasserver_staticipaddress",
         "sys_dhcp_staticipaddress_insert",
-        "insert")
+        "insert",
+    )
     register_procedure(DHCP_STATICIPADDRESS_UPDATE)
     register_trigger(
         "maasserver_staticipaddress",
         "sys_dhcp_staticipaddress_update",
-        "update")
+        "update",
+    )
     register_procedure(DHCP_STATICIPADDRESS_DELETE)
     register_trigger(
         "maasserver_staticipaddress",
         "sys_dhcp_staticipaddress_delete",
-        "delete")
+        "delete",
+    )
 
     # - Interface
     register_procedure(DHCP_INTERFACE_UPDATE)
     register_trigger(
-        "maasserver_interface",
-        "sys_dhcp_interface_update",
-        "update")
+        "maasserver_interface", "sys_dhcp_interface_update", "update"
+    )
 
     # - Node
     register_procedure(DHCP_NODE_UPDATE)
-    register_trigger(
-        "maasserver_node",
-        "sys_dhcp_node_update",
-        "update")
+    register_trigger("maasserver_node", "sys_dhcp_node_update", "update")
 
     # - DHCPSnippet
     register_procedure(DHCP_UPDATE_ALL_VLANS)
@@ -1897,24 +2018,30 @@ def register_system_triggers():
 
     register_procedure(DHCP_SNIPPET_INSERT)
     register_trigger(
-        "maasserver_dhcpsnippet", "sys_dhcp_snippet_insert", "insert")
+        "maasserver_dhcpsnippet", "sys_dhcp_snippet_insert", "insert"
+    )
     register_procedure(DHCP_SNIPPET_UPDATE)
     register_trigger(
-        "maasserver_dhcpsnippet", "sys_dhcp_snippet_update", "update")
+        "maasserver_dhcpsnippet", "sys_dhcp_snippet_update", "update"
+    )
     register_procedure(DHCP_SNIPPET_DELETE)
     register_trigger(
-        "maasserver_dhcpsnippet", "sys_dhcp_snippet_delete", "delete")
+        "maasserver_dhcpsnippet", "sys_dhcp_snippet_delete", "delete"
+    )
 
     # - Config/ntp_servers (and ntp_external_only)
     register_procedure(DHCP_CONFIG_NTP_SERVERS_INSERT)
     register_trigger(
-        "maasserver_config", "sys_dhcp_config_ntp_servers_insert", "insert")
+        "maasserver_config", "sys_dhcp_config_ntp_servers_insert", "insert"
+    )
     register_procedure(DHCP_CONFIG_NTP_SERVERS_UPDATE)
     register_trigger(
-        "maasserver_config", "sys_dhcp_config_ntp_servers_update", "update")
+        "maasserver_config", "sys_dhcp_config_ntp_servers_update", "update"
+    )
     register_procedure(DHCP_CONFIG_NTP_SERVERS_DELETE)
     register_trigger(
-        "maasserver_config", "sys_dhcp_config_ntp_servers_delete", "delete")
+        "maasserver_config", "sys_dhcp_config_ntp_servers_delete", "delete"
+    )
 
     # DNS
     # The zone serial is used in the 'sys_dns' triggers. Ensure that it exists
@@ -1923,166 +2050,140 @@ def register_system_triggers():
 
     # - DNSPublication
     register_procedure(DNS_PUBLISH)
-    register_trigger(
-        "maasserver_dnspublication",
-        "sys_dns_publish", "insert")
+    register_trigger("maasserver_dnspublication", "sys_dns_publish", "insert")
     register_procedure(DNS_PUBLISH_UPDATE)
 
     # - Domain
     register_procedure(DNS_DOMAIN_INSERT)
-    register_trigger(
-        "maasserver_domain", "sys_dns_domain_insert", "insert")
+    register_trigger("maasserver_domain", "sys_dns_domain_insert", "insert")
     register_procedure(DNS_DOMAIN_UPDATE)
-    register_trigger(
-        "maasserver_domain", "sys_dns_domain_update", "update")
+    register_trigger("maasserver_domain", "sys_dns_domain_update", "update")
     register_procedure(DNS_DOMAIN_DELETE)
-    register_trigger(
-        "maasserver_domain", "sys_dns_domain_delete", "delete")
+    register_trigger("maasserver_domain", "sys_dns_domain_delete", "delete")
 
     # - StaticIPAddress
     register_procedure(DNS_STATICIPADDRESS_UPDATE)
     register_trigger(
         "maasserver_staticipaddress",
-        "sys_dns_staticipaddress_update", "update")
+        "sys_dns_staticipaddress_update",
+        "update",
+    )
 
     # - Interface -> StaticIPAddress
     register_procedure(DNS_NIC_IP_LINK)
     register_trigger(
-        "maasserver_interface_ip_addresses",
-        "sys_dns_nic_ip_link", "insert")
+        "maasserver_interface_ip_addresses", "sys_dns_nic_ip_link", "insert"
+    )
     register_procedure(DNS_NIC_IP_UNLINK)
     register_trigger(
-        "maasserver_interface_ip_addresses",
-        "sys_dns_nic_ip_unlink", "delete")
+        "maasserver_interface_ip_addresses", "sys_dns_nic_ip_unlink", "delete"
+    )
 
     # - DNSResource
     register_procedure(DNS_DNSRESOURCE_INSERT)
     register_trigger(
-        "maasserver_dnsresource",
-        "sys_dns_dnsresource_insert", "insert")
+        "maasserver_dnsresource", "sys_dns_dnsresource_insert", "insert"
+    )
     register_procedure(DNS_DNSRESOURCE_UPDATE)
     register_trigger(
-        "maasserver_dnsresource",
-        "sys_dns_dnsresource_update", "update")
+        "maasserver_dnsresource", "sys_dns_dnsresource_update", "update"
+    )
     register_procedure(DNS_DNSRESOURCE_DELETE)
     register_trigger(
-        "maasserver_dnsresource",
-        "sys_dns_dnsresource_delete", "delete")
+        "maasserver_dnsresource", "sys_dns_dnsresource_delete", "delete"
+    )
 
     # - DNSResource -> StaticIPAddress
     register_procedure(DNS_DNSRESOURCE_IP_LINK)
     register_trigger(
         "maasserver_dnsresource_ip_addresses",
-        "sys_dns_dnsresource_ip_link", "insert")
+        "sys_dns_dnsresource_ip_link",
+        "insert",
+    )
     register_procedure(DNS_DNSRESOURCE_IP_UNLINK)
     register_trigger(
         "maasserver_dnsresource_ip_addresses",
-        "sys_dns_dnsresource_ip_unlink", "delete")
+        "sys_dns_dnsresource_ip_unlink",
+        "delete",
+    )
 
     # - DNSData
     register_procedure(DNS_DNSDATA_INSERT)
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_dnsdata_insert", "insert")
+    register_trigger("maasserver_dnsdata", "sys_dns_dnsdata_insert", "insert")
     register_procedure(DNS_DNSDATA_UPDATE)
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_dnsdata_update", "update")
+    register_trigger("maasserver_dnsdata", "sys_dns_dnsdata_update", "update")
     register_procedure(DNS_DNSDATA_DELETE)
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_dnsdata_delete", "delete")
+    register_trigger("maasserver_dnsdata", "sys_dns_dnsdata_delete", "delete")
 
     # - Subnet
     register_procedure(DNS_SUBNET_INSERT)
-    register_trigger(
-        "maasserver_subnet",
-        "sys_dns_subnet_insert", "insert")
+    register_trigger("maasserver_subnet", "sys_dns_subnet_insert", "insert")
     register_procedure(DNS_SUBNET_UPDATE)
-    register_trigger(
-        "maasserver_subnet",
-        "sys_dns_subnet_update", "update")
+    register_trigger("maasserver_subnet", "sys_dns_subnet_update", "update")
     register_procedure(DNS_SUBNET_DELETE)
-    register_trigger(
-        "maasserver_subnet",
-        "sys_dns_subnet_delete", "delete")
+    register_trigger("maasserver_subnet", "sys_dns_subnet_delete", "delete")
 
     # - Node
     register_procedure(DNS_NODE_UPDATE)
-    register_trigger(
-        "maasserver_node",
-        "sys_dns_node_update", "update")
+    register_trigger("maasserver_node", "sys_dns_node_update", "update")
     register_procedure(DNS_NODE_DELETE)
-    register_trigger(
-        "maasserver_node",
-        "sys_dns_node_delete", "delete")
+    register_trigger("maasserver_node", "sys_dns_node_delete", "delete")
 
     # - Interface
     register_procedure(DNS_INTERFACE_UPDATE)
     register_trigger(
-        "maasserver_interface",
-        "sys_dns_interface_update", "update")
+        "maasserver_interface", "sys_dns_interface_update", "update"
+    )
 
     # - Config
     register_procedure(DNS_CONFIG_INSERT)
     register_procedure(DNS_CONFIG_UPDATE)
-    register_trigger(
-        "maasserver_config", "sys_dns_config_insert", "insert")
-    register_trigger(
-        "maasserver_config", "sys_dns_config_update", "update")
+    register_trigger("maasserver_config", "sys_dns_config_insert", "insert")
+    register_trigger("maasserver_config", "sys_dns_config_update", "update")
 
     # Proxy
 
     # - Subnet
-    register_procedure(
-        render_sys_proxy_procedure("sys_proxy_subnet_insert"))
-    register_trigger(
-        "maasserver_subnet",
-        "sys_proxy_subnet_insert", "insert")
+    register_procedure(render_sys_proxy_procedure("sys_proxy_subnet_insert"))
+    register_trigger("maasserver_subnet", "sys_proxy_subnet_insert", "insert")
     register_procedure(PROXY_SUBNET_UPDATE)
-    register_trigger(
-        "maasserver_subnet",
-        "sys_proxy_subnet_update", "update")
+    register_trigger("maasserver_subnet", "sys_proxy_subnet_update", "update")
     register_procedure(
-        render_sys_proxy_procedure("sys_proxy_subnet_delete", on_delete=True))
-    register_trigger(
-        "maasserver_subnet",
-        "sys_proxy_subnet_delete", "delete")
+        render_sys_proxy_procedure("sys_proxy_subnet_delete", on_delete=True)
+    )
+    register_trigger("maasserver_subnet", "sys_proxy_subnet_delete", "delete")
 
     # - Config/http_proxy (when use_peer_proxy)
     register_procedure(PEER_PROXY_CONFIG_INSERT)
     register_trigger(
-        "maasserver_config", "sys_proxy_config_use_peer_proxy_insert",
-        "insert")
+        "maasserver_config", "sys_proxy_config_use_peer_proxy_insert", "insert"
+    )
     register_procedure(PEER_PROXY_CONFIG_UPDATE)
     register_trigger(
-        "maasserver_config", "sys_proxy_config_use_peer_proxy_update",
-        "update")
+        "maasserver_config", "sys_proxy_config_use_peer_proxy_update", "update"
+    )
 
     # - RBACSync
     register_procedure(RBAC_SYNC)
-    register_trigger(
-        "maasserver_rbacsync",
-        "sys_rbac_sync", "insert")
+    register_trigger("maasserver_rbacsync", "sys_rbac_sync", "insert")
     register_procedure(RBAC_SYNC_UPDATE)
 
     # - ResourcePool
     register_procedure(RBAC_RPOOL_INSERT)
     register_trigger(
-        "maasserver_resourcepool", "sys_rbac_rpool_insert", "insert")
+        "maasserver_resourcepool", "sys_rbac_rpool_insert", "insert"
+    )
     register_procedure(RBAC_RPOOL_UPDATE)
     register_trigger(
-        "maasserver_resourcepool", "sys_rbac_rpool_update", "update")
+        "maasserver_resourcepool", "sys_rbac_rpool_update", "update"
+    )
     register_procedure(RBAC_RPOOL_DELETE)
     register_trigger(
-        "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete")
+        "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
+    )
 
     # - Config (Candid/RBAC)
     register_procedure(RBAC_CONFIG_INSERT)
-    register_trigger(
-        "maasserver_config", "sys_rbac_config_insert",
-        "insert")
+    register_trigger("maasserver_config", "sys_rbac_config_insert", "insert")
     register_procedure(RBAC_CONFIG_UPDATE)
-    register_trigger(
-        "maasserver_config", "sys_rbac_config_update",
-        "update")
+    register_trigger("maasserver_config", "sys_rbac_config_update", "update")

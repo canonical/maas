@@ -9,40 +9,31 @@ from contextlib import closing
 import gzip
 from io import BytesIO
 from os.path import relpath
-from socket import (
-    gethostbyname,
-    gethostname,
-)
+from socket import gethostbyname, gethostname
 from unittest import skip
 from urllib.parse import urljoin
-from urllib.request import (
-    Request,
-    urlopen,
-)
+from urllib.request import Request, urlopen
 
 from maastesting.fixtures import ProxiesDisabledFixture
-from maastesting.httpd import (
-    HTTPServerFixture,
-    ThreadingHTTPServer,
-)
+from maastesting.httpd import HTTPServerFixture, ThreadingHTTPServer
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import FileExists
 
 
 class TestHTTPServerFixture(MAASTestCase):
-
     def setUp(self):
         super(TestHTTPServerFixture, self).setUp()
         self.useFixture(ProxiesDisabledFixture())
 
-    @skip(
-        "XXX: bigjools 2013-09-13 bug=1224837: Causes intermittent failures")
+    @skip("XXX: bigjools 2013-09-13 bug=1224837: Causes intermittent failures")
     def test_init(self):
         host = gethostname()
         fixture = HTTPServerFixture(host=host)
         self.assertIsInstance(fixture.server, ThreadingHTTPServer)
         expected_url = "http://%s:%d/" % (
-            gethostbyname(host), fixture.server.server_port)
+            gethostbyname(host),
+            fixture.server.server_port,
+        )
         self.assertEqual(expected_url, fixture.url)
 
     def test_use(self):
@@ -55,8 +46,10 @@ class TestHTTPServerFixture(MAASTestCase):
         with open(filename, "rb") as file_in:
             file_data_in = file_in.read()
         self.assertEqual(
-            file_data_in, http_data_in,
-            "The content of %s differs from %s." % (url, filename))
+            file_data_in,
+            http_data_in,
+            "The content of %s differs from %s." % (url, filename),
+        )
 
     def ungzip(self, content):
         gz = gzip.GzipFile(fileobj=BytesIO(content))
@@ -66,15 +59,17 @@ class TestHTTPServerFixture(MAASTestCase):
         filename = relpath(__file__)
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, filename)
-            headers = {'Accept-Encoding': 'gzip, deflate'}
+            headers = {"Accept-Encoding": "gzip, deflate"}
             request = Request(url, None, headers=headers)
             with closing(urlopen(request)) as http_in:
                 http_headers = http_in.info()
                 http_data_in = http_in.read()
-        self.assertEqual('gzip', http_headers['Content-Encoding'])
+        self.assertEqual("gzip", http_headers["Content-Encoding"])
         with open(filename, "rb") as file_in:
             file_data_in = file_in.read()
         http_data_decompressed = self.ungzip(http_data_in)
         self.assertEqual(
-            file_data_in, http_data_decompressed,
-            "The content of %s differs from %s." % (url, filename))
+            file_data_in,
+            http_data_decompressed,
+            "The content of %s differs from %s." % (url, filename),
+        )

@@ -3,9 +3,7 @@
 
 """Test helpers for `provisioningserver.events`."""
 
-__all__ = [
-    "EventTypesAllRegistered",
-]
+__all__ = ["EventTypesAllRegistered"]
 
 from fixtures import Fixture
 from provisioningserver import events

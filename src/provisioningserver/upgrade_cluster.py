@@ -18,10 +18,7 @@ whether its migration is needed.
 Backwards migrations are not supported.
 """
 
-__all__ = [
-    'add_arguments',
-    'run',
-    ]
+__all__ = ["add_arguments", "run"]
 
 import os
 from os import makedirs
@@ -31,10 +28,7 @@ from textwrap import dedent
 
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.boot.tftppath import (
-    drill_down,
-    list_subdirs,
-)
+from provisioningserver.boot.tftppath import drill_down, list_subdirs
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import snappy
@@ -47,7 +41,7 @@ def make_maas_own_boot_resources(tftp_root):
     """Upgrade hook: make the `maas` user the owner of the boot resources."""
     # This reduces the privileges required for importing and managing images.
     if os.path.isdir(tftp_root):
-        check_call(['chown', '-R', 'maas', tftp_root])
+        check_call(["chown", "-R", "maas", tftp_root])
 
 
 def create_gnupg_home(tftp_root=None):
@@ -59,11 +53,11 @@ def create_gnupg_home(tftp_root=None):
             # Make the maas user the owner of its GPG home.  Do this only if
             # running as root; otherwise it would probably fail.  We want to
             # be able to start a development instance without triggering that.
-            check_call(['chown', 'maas:maas', gpghome])
+            check_call(["chown", "maas:maas", gpghome])
 
 
 # Path to obsolete boot-resources configuration.
-BOOTRESOURCES_FILE = '/etc/maas/bootresources.yaml'
+BOOTRESOURCES_FILE = "/etc/maas/bootresources.yaml"
 
 # Recognisable header, to be prefixed to BOOTRESOURCES_FILE as part of the
 # warning that the file is obsolete.  The retire_bootresources_yaml upgrade
@@ -73,7 +67,11 @@ BOOTRESOURCES_HEADER = "# THIS FILE IS OBSOLETE."
 
 # Warning, to be prefixed to BOOTRESOURCES_FILE as an indication that the
 # file is obsolete.
-BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
+BOOTRESOURCES_WARNING = (
+    BOOTRESOURCES_HEADER
+    + "\n"
+    + dedent(
+        """\
     #
     # The configuration below is no longer in use, and can be removed. By
     # default, cluster controllers now import images for all supported Ubuntu
@@ -105,7 +103,10 @@ BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
     # the MAAS web UI, web API, or the "maas" command to trigger manual
     # imports.
     #
-    """) + '\n'
+    """
+    )
+    + "\n"
+)
 
 
 def retire_bootresources_yaml(tftp_root=None):
@@ -119,9 +120,9 @@ def retire_bootresources_yaml(tftp_root=None):
     """
     if not os.path.isfile(BOOTRESOURCES_FILE):
         return
-    header = BOOTRESOURCES_HEADER.encode('ascii')
-    warning = BOOTRESOURCES_WARNING.encode('ascii')
-    with open(BOOTRESOURCES_FILE, 'r+b') as old_config:
+    header = BOOTRESOURCES_HEADER.encode("ascii")
+    warning = BOOTRESOURCES_WARNING.encode("ascii")
+    with open(BOOTRESOURCES_FILE, "r+b") as old_config:
         old_contents = old_config.read()
         if old_contents.startswith(header):
             # Warning is already there.
@@ -157,7 +158,7 @@ def migrate_architectures_into_ubuntu_directory(tftp_root):
     if not os.path.isdir(tftp_root):
         return
     # If ubuntu folder already exists, then no reason to continue
-    if 'ubuntu' in list_subdirs(tftp_root):
+    if "ubuntu" in list_subdirs(tftp_root):
         return
 
     # Starting point for iteration: paths that contain only the
@@ -168,7 +169,7 @@ def migrate_architectures_into_ubuntu_directory(tftp_root):
     # Extend paths deeper into the filesystem, through the levels that
     # represent sub-architecture, release, and label.
     # Any directory that doesn't extend this deep isn't a boot image.
-    for level in ['subarch', 'release', 'label']:
+    for level in ["subarch", "release", "label"]:
         paths = drill_down(tftp_root, paths)
     paths = filter_out_directories_with_extra_levels(paths)
 
@@ -180,7 +181,7 @@ def migrate_architectures_into_ubuntu_directory(tftp_root):
 
     # Create the ubuntu directory and move the archiecture folders under that
     # directory.
-    ubuntu_dir = os.path.join(tftp_root, 'ubuntu')
+    ubuntu_dir = os.path.join(tftp_root, "ubuntu")
     os.mkdir(ubuntu_dir)
     for arch in arches:
         shutil.move(os.path.join(tftp_root, arch), ubuntu_dir)
@@ -213,7 +214,7 @@ UPGRADE_HOOKS = [
     retire_bootresources_yaml,
     migrate_architectures_into_ubuntu_directory,
     create_bootloader_sym_links,
-    ]
+]
 
 
 def add_arguments(parser):
@@ -231,7 +232,9 @@ def run(args):
         tftp_root = config.tftp_root
     for hook in UPGRADE_HOOKS:
         maaslog.info(
-            "Rack controller upgrade hook '%s' started." % hook.__name__)
+            "Rack controller upgrade hook '%s' started." % hook.__name__
+        )
         hook(tftp_root)
         maaslog.info(
-            "Rack controller upgrade hook '%s' finished." % hook.__name__)
+            "Rack controller upgrade hook '%s' finished." % hook.__name__
+        )

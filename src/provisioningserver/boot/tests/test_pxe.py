@@ -10,34 +10,22 @@ import os
 import re
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockAnyCall,
-    MockNotCalled,
-)
+from maastesting.matchers import MockAnyCall, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
-from provisioningserver.boot import (
-    BytesReader,
-    pxe as pxe_module,
-)
+from provisioningserver.boot import BytesReader, pxe as pxe_module
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     maaslog,
     PXEBootMethod,
     re_config_file,
 )
-from provisioningserver.boot.testing import (
-    TFTPPath,
-    TFTPPathAndComponents,
-)
+from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
-from provisioningserver.utils.fs import (
-    atomic_symlink,
-    tempdir,
-)
+from provisioningserver.utils.fs import atomic_symlink, tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
 from testtools.matchers import (
     Contains,
@@ -68,11 +56,11 @@ def compose_config_path(mac: str) -> TFTPPath:
     # practice for us they're the same. We always assume that the ARP HTYPE
     # (hardware type) that PXELINUX sends is Ethernet.
     return "pxelinux.cfg/{htype:02x}-{mac}".format(
-        htype=ARP_HTYPE.ETHERNET, mac=mac).encode("ascii")
+        htype=ARP_HTYPE.ETHERNET, mac=mac
+    ).encode("ascii")
 
 
 class TestPXEBootMethod(MAASTestCase):
-
     def make_tftp_root(self):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
@@ -94,45 +82,47 @@ class TestPXEBootMethod(MAASTestCase):
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         mac = factory.make_mac_address("-")
         self.assertEqual(
-            'pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, mac),
-            compose_config_path(mac).decode("ascii"))
+            "pxelinux.cfg/%02x-%s" % (ARP_HTYPE.ETHERNET, mac),
+            compose_config_path(mac).decode("ascii"),
+        )
 
     def test_compose_config_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root().asBytesMode()
         mac = factory.make_mac_address("-")
         self.assertThat(
-            compose_config_path(mac),
-            Not(StartsWith(tftproot.path)))
+            compose_config_path(mac), Not(StartsWith(tftproot.path))
+        )
 
     def test_bootloader_path(self):
         method = PXEBootMethod()
-        self.assertEqual('lpxelinux.0', method.bootloader_path)
+        self.assertEqual("lpxelinux.0", method.bootloader_path)
 
     def test_bootloader_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root()
         method = PXEBootMethod()
-        self.assertThat(
-            method.bootloader_path,
-            Not(StartsWith(tftproot.path)))
+        self.assertThat(method.bootloader_path, Not(StartsWith(tftproot.path)))
 
     def test_name(self):
         method = PXEBootMethod()
-        self.assertEqual('pxe', method.name)
+        self.assertEqual("pxe", method.name)
 
     def test_template_subdir(self):
         method = PXEBootMethod()
-        self.assertEqual('pxe', method.template_subdir)
+        self.assertEqual("pxe", method.template_subdir)
 
     def test_arch_octet(self):
         method = PXEBootMethod()
-        self.assertEqual('00:00', method.arch_octet)
+        self.assertEqual("00:00", method.arch_octet)
 
     def test_link_simplestream_bootloaders_creates_syslinux_link(self):
         method = PXEBootMethod()
         with tempdir() as tmp:
             stream_path = os.path.join(
-                tmp, 'bootloader', method.bios_boot_method,
-                method.bootloader_arches[0])
+                tmp,
+                "bootloader",
+                method.bios_boot_method,
+                method.bootloader_arches[0],
+            )
             os.makedirs(stream_path)
             for bootloader_file in method.bootloader_files:
                 factory.make_file(stream_path, bootloader_file)
@@ -142,7 +132,7 @@ class TestPXEBootMethod(MAASTestCase):
             for bootloader_file in method.bootloader_files:
                 bootloader_file_path = os.path.join(tmp, bootloader_file)
                 self.assertTrue(os.path.islink(bootloader_file_path))
-            syslinux_link = os.path.join(tmp, 'syslinux')
+            syslinux_link = os.path.join(tmp, "syslinux")
             self.assertTrue(os.path.islink(syslinux_link))
             self.assertEquals(stream_path, os.path.realpath(syslinux_link))
 
@@ -150,60 +140,64 @@ class TestPXEBootMethod(MAASTestCase):
         method = PXEBootMethod()
         with tempdir() as tmp:
             stream_path = os.path.join(
-                tmp, 'bootloader', method.bios_boot_method,
-                method.bootloader_arches[0])
+                tmp,
+                "bootloader",
+                method.bios_boot_method,
+                method.bootloader_arches[0],
+            )
             os.makedirs(stream_path)
             for bootloader_file in method.bootloader_files:
                 factory.make_file(stream_path, bootloader_file)
 
             method.link_bootloader(tmp)
 
-            self.assertTrue(os.path.exists(os.path.join(tmp, 'lpxelinux.0')))
-            self.assertTrue(os.path.islink(os.path.join(tmp, 'pxelinux.0')))
+            self.assertTrue(os.path.exists(os.path.join(tmp, "lpxelinux.0")))
+            self.assertTrue(os.path.islink(os.path.join(tmp, "pxelinux.0")))
 
     def test_link_bootloader_copies_previously_downloaded_files(self):
         method = PXEBootMethod()
         with tempdir() as tmp:
-            new_dir = os.path.join(tmp, 'new')
-            current_dir = os.path.join(tmp, 'current')
+            new_dir = os.path.join(tmp, "new")
+            current_dir = os.path.join(tmp, "current")
             os.makedirs(new_dir)
             os.makedirs(current_dir)
             factory.make_file(current_dir, method.bootloader_files[0])
             for bootloader_file in method.bootloader_files[1:]:
                 factory.make_file(current_dir, bootloader_file)
-            real_syslinux_dir = os.path.join(tmp, 'syslinux')
+            real_syslinux_dir = os.path.join(tmp, "syslinux")
             os.makedirs(real_syslinux_dir)
             atomic_symlink(
-                real_syslinux_dir,
-                os.path.join(current_dir, 'syslinux'))
+                real_syslinux_dir, os.path.join(current_dir, "syslinux")
+            )
 
             method.link_bootloader(new_dir)
 
             for bootloader_file in method.bootloader_files:
                 bootloader_file_path = os.path.join(new_dir, bootloader_file)
                 self.assertTrue(os.path.isfile(bootloader_file_path))
-            syslinux_link = os.path.join(new_dir, 'syslinux')
+            syslinux_link = os.path.join(new_dir, "syslinux")
             self.assertTrue(os.path.islink(syslinux_link))
             self.assertEquals(
-                real_syslinux_dir,
-                os.path.realpath(syslinux_link))
+                real_syslinux_dir, os.path.realpath(syslinux_link)
+            )
 
     def test_link_bootloader_links_files_found_on_fs(self):
         method = PXEBootMethod()
         bootloader_dir = (
-            '/var/lib/maas/boot-resources/snapshot-%s' %
-            factory.make_name('snapshot'))
+            "/var/lib/maas/boot-resources/snapshot-%s"
+            % factory.make_name("snapshot")
+        )
 
         def fake_exists(path):
-            if '/usr/lib/syslinux/modules/bios' in path:
+            if "/usr/lib/syslinux/modules/bios" in path:
                 return True
             else:
                 return False
 
-        self.patch(pxe_module.os.path, 'exists').side_effect = fake_exists
-        mock_atomic_copy = self.patch(pxe_module, 'atomic_copy')
-        mock_atomic_symlink = self.patch(pxe_module, 'atomic_symlink')
-        mock_shutil_copy = self.patch(pxe_module.shutil, 'copy')
+        self.patch(pxe_module.os.path, "exists").side_effect = fake_exists
+        mock_atomic_copy = self.patch(pxe_module, "atomic_copy")
+        mock_atomic_symlink = self.patch(pxe_module, "atomic_symlink")
+        mock_shutil_copy = self.patch(pxe_module.shutil, "copy")
 
         method.link_bootloader(bootloader_dir)
 
@@ -211,26 +205,30 @@ class TestPXEBootMethod(MAASTestCase):
         self.assertThat(mock_shutil_copy, MockNotCalled())
         for bootloader_file in method.bootloader_files:
             bootloader_src = os.path.join(
-                '/usr/lib/syslinux/modules/bios', bootloader_file)
+                "/usr/lib/syslinux/modules/bios", bootloader_file
+            )
             bootloader_dst = os.path.join(bootloader_dir, bootloader_file)
             self.assertThat(
                 mock_atomic_symlink,
-                MockAnyCall(bootloader_src, bootloader_dst))
+                MockAnyCall(bootloader_src, bootloader_dst),
+            )
         self.assertThat(
             mock_atomic_symlink,
             MockAnyCall(
-                '/usr/lib/syslinux/modules/bios',
-                os.path.join(bootloader_dir, 'syslinux')))
+                "/usr/lib/syslinux/modules/bios",
+                os.path.join(bootloader_dir, "syslinux"),
+            ),
+        )
 
     def test_link_bootloader_logs_missing_files(self):
         method = PXEBootMethod()
-        mock_maaslog = self.patch(maaslog, 'error')
+        mock_maaslog = self.patch(maaslog, "error")
         # If we don't mock the return value and the test system has the
         # pxelinux and syslinux-common package installed the fallback kicks
         # which makes PXE work but this test fail.
-        self.patch(os.path, 'exists').return_value = False
-        self.patch(pxe_module, 'atomic_symlink')
-        method.link_bootloader('foo')
+        self.patch(os.path, "exists").return_value = False
+        self.patch(pxe_module, "atomic_symlink")
+        method.link_bootloader("foo")
         self.assertTrue(mock_maaslog.called)
 
 
@@ -250,16 +248,16 @@ def parse_pxe_config(text):
     sections = re.split("^LABEL ", text, flags=re.MULTILINE)
     for index, section in enumerate(sections):
         elements = [
-            line.split(None, 1) for line in section.splitlines()
+            line.split(None, 1)
+            for line in section.splitlines()
             if line and not line.isspace()
-            ]
+        ]
         if index == 0:
             result.header = OrderedDict(elements)
         else:
             [label] = elements.pop(0)
             if label in result:
-                raise AssertionError(
-                    "Section %r already defined" % label)
+                raise AssertionError("Section %r already defined" % label)
             result[label] = OrderedDict(elements)
     return result
 
@@ -285,11 +283,17 @@ class TestPXEBootMethodRender(MAASTestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = PXEBootMethod()
-        xtra = "custom_xtra_cfg=http://{{ kernel_params.fs_host }}/" \
-               "my_extra_config?mac={{ kernel_params.mac }}"
-        params = make_kernel_parameters(self, arch="amd64", subarch="generic",
-                                        purpose="ephemeral",
-                                        extra_opts=xtra)
+        xtra = (
+            "custom_xtra_cfg=http://{{ kernel_params.fs_host }}/"
+            "my_extra_config?mac={{ kernel_params.mac }}"
+        )
+        params = make_kernel_parameters(
+            self,
+            arch="amd64",
+            subarch="generic",
+            purpose="ephemeral",
+            extra_opts=xtra,
+        )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -299,33 +303,42 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s$' % (
-                        re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+KERNEL %s/%s$"
+                    % (re.escape(image_dir), params.kernel),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+APPEND initrd=%s/%s\s+' % (
-                        re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+APPEND initrd=%s/%s\s+"
+                    % (re.escape(image_dir), params.initrd),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*\s+custom_xtra_cfg=http://%s/my_extra_config.*?\s+' % (
-                        params.fs_host),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*\s+maas_url=.+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*\s+custom_xtra_cfg=http://%s/my_extra_config.*?\s+"
+                    % (params.fs_host),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*\s+maas_url=.+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_install(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = PXEBootMethod()
         params = make_kernel_parameters(self, purpose="xinstall")
-        fs_host = 'http://%s:5248/images' % (
-            convert_host_to_uri_str(params.fs_host))
+        fs_host = "http://%s:5248/images" % (
+            convert_host_to_uri_str(params.fs_host)
+        )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -335,23 +348,36 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s/%s$' % (
-                        re.escape(fs_host), re.escape(image_dir),
-                        params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+KERNEL %s/%s/%s$"
+                    % (
+                        re.escape(fs_host),
+                        re.escape(image_dir),
+                        params.kernel,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/%s/%s$' % (
-                        re.escape(fs_host), re.escape(image_dir),
-                        params.initrd),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*^\s+APPEND .+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*^\s+INITRD %s/%s/%s$"
+                    % (
+                        re.escape(fs_host),
+                        re.escape(image_dir),
+                        params.initrd,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_install_mustang_dtb(self):
         # Architecture specific test.
@@ -359,8 +385,12 @@ class TestPXEBootMethodRender(MAASTestCase):
         # correctly rendered for Mustang.
         method = PXEBootMethod()
         params = make_kernel_parameters(
-            testcase=self, osystem="ubuntu", arch="arm64",
-            subarch="xgene-uboot-mustang", purpose="xinstall")
+            testcase=self,
+            osystem="ubuntu",
+            arch="arm64",
+            subarch="xgene-uboot-mustang",
+            purpose="xinstall",
+        )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -370,25 +400,33 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s$' % (
-                        re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+KERNEL %s/%s$"
+                    % (re.escape(image_dir), params.kernel),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/%s$' % (
-                        re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+INITRD %s/%s$"
+                    % (re.escape(image_dir), params.initrd),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+FDT %s/%s$' % (
-                        re.escape(image_dir), params.boot_dtb),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*^\s+APPEND .+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*^\s+FDT %s/%s$"
+                    % (re.escape(image_dir), params.boot_dtb),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_xinstall_mustang_dtb(self):
         # Architecture specific test.
@@ -396,8 +434,12 @@ class TestPXEBootMethodRender(MAASTestCase):
         # correctly rendered for Mustang.
         method = PXEBootMethod()
         params = make_kernel_parameters(
-            testcase=self, osystem="ubuntu", arch="arm64",
-            subarch="xgene-uboot-mustang", purpose="xinstall")
+            testcase=self,
+            osystem="ubuntu",
+            arch="arm64",
+            subarch="xgene-uboot-mustang",
+            purpose="xinstall",
+        )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -407,25 +449,33 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s$' % (
-                        re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+KERNEL %s/%s$"
+                    % (re.escape(image_dir), params.kernel),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/%s$' % (
-                        re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+INITRD %s/%s$"
+                    % (re.escape(image_dir), params.initrd),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+FDT %s/%s$' % (
-                        re.escape(image_dir), params.boot_dtb),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*^\s+APPEND .+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*^\s+FDT %s/%s$"
+                    % (re.escape(image_dir), params.boot_dtb),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
@@ -439,7 +489,8 @@ class TestPXEBootMethodRender(MAASTestCase):
         # Sprinkle some magic in.
         options.update(
             (factory.make_name("name"), factory.make_name("value"))
-            for _ in range(10))
+            for _ in range(10)
+        )
         # Capture the output after sprinking in some random options.
         output_after = method.get_reader(**options).read(10000)
         # The generated template is the same.
@@ -452,7 +503,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(purpose="local"),
-            }
+        }
         output = method.get_reader(**options).read(10000)
         self.assertIn(b"LOCALBOOT 0", output)
 
@@ -463,7 +514,8 @@ class TestPXEBootMethodRender(MAASTestCase):
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
-                arch="i386", purpose="local"),
+                arch="i386", purpose="local"
+            ),
         }
         output = method.get_reader(**options).read(10000)
         self.assertIn(b"chain.c32", output)
@@ -476,7 +528,8 @@ class TestPXEBootMethodRender(MAASTestCase):
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
-                arch="amd64", purpose="local"),
+                arch="amd64", purpose="local"
+            ),
         }
         output = method.get_reader(**options).read(10000)
         self.assertIn(b"chain.c32", output)
@@ -489,23 +542,28 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
     scenarios = [
         ("commissioning", dict(purpose="commissioning")),
         ("xinstall", dict(purpose="xinstall")),
-        ]
+    ]
 
     def test_get_reader_scenarios(self):
         method = PXEBootMethod()
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
-        osystem = factory.make_name('osystem')
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
+        osystem = factory.make_name("osystem")
+        arch = factory.make_name("arch")
+        subarch = factory.make_name("subarch")
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
-                testcase=self, osystem=osystem, subarch=subarch,
-                arch=arch, purpose=self.purpose),
+                testcase=self,
+                osystem=osystem,
+                subarch=subarch,
+                arch=arch,
+                purpose=self.purpose,
+            ),
         }
-        fs_host = 'http://%s:5248/images' % (
-            convert_host_to_uri_str(options['kernel_params'].fs_host))
+        fs_host = "http://%s:5248/images" % (
+            convert_host_to_uri_str(options["kernel_params"].fs_host)
+        )
         output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
@@ -514,29 +572,33 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         default_section = dict(config[default_section_label])
 
         contains_arch_path = StartsWith(
-            "%s/%s/%s/%s" % (fs_host, osystem, arch, subarch))
+            "%s/%s/%s/%s" % (fs_host, osystem, arch, subarch)
+        )
         self.assertThat(default_section["KERNEL"], contains_arch_path)
         self.assertThat(default_section["INITRD"], contains_arch_path)
         self.assertEqual("2", default_section["IPAPPEND"])
 
 
 class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
-
     def test_get_reader_scenarios(self):
         # The commissioning config uses an extra PXELINUX module to auto
         # select between i386 and amd64.
         method = PXEBootMethod()
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
-        osystem = factory.make_name('osystem')
+        osystem = factory.make_name("osystem")
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
-                testcase=self, osystem=osystem, subarch="generic",
-                purpose='enlist'),
+                testcase=self,
+                osystem=osystem,
+                subarch="generic",
+                purpose="enlist",
+            ),
         }
-        fs_host = 'http://%s:5248/images' % (
-            convert_host_to_uri_str(options['kernel_params'].fs_host))
+        fs_host = "http://%s:5248/images" % (
+            convert_host_to_uri_str(options["kernel_params"].fs_host)
+        )
         output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
@@ -547,8 +609,8 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
         # or "amd64" labels accordingly.
         self.assertEqual("ifcpu64.c32", default_section["KERNEL"])
         self.assertEqual(
-            ["amd64", "--", "i386"],
-            default_section["APPEND"].split())
+            ["amd64", "--", "i386"], default_section["APPEND"].split()
+        )
         # Both "i386" and "amd64" sections exist.
         self.assertThat(config, ContainsAll(("i386", "amd64")))
         # Each section defines KERNEL, INITRD, and APPEND settings.  The
@@ -557,9 +619,11 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
         for section_label in ("i386", "amd64"):
             section = config[section_label]
             self.assertThat(
-                section, ContainsAll(("KERNEL", "INITRD", "APPEND")))
+                section, ContainsAll(("KERNEL", "INITRD", "APPEND"))
+            )
             contains_arch_path = StartsWith(
-                "%s/%s/%s/" % (fs_host, osystem, section_label))
+                "%s/%s/%s/" % (fs_host, osystem, section_label)
+            )
             self.assertThat(section["KERNEL"], contains_arch_path)
             self.assertThat(section["INITRD"], contains_arch_path)
             self.assertIn("APPEND", section)
@@ -620,83 +684,86 @@ class TestPXEBootMethodRegex(MAASTestCase):
     def test_re_config_file_matches_classic_pxelinux_cfg(self):
         # The default config path is simply "pxelinux.cfg" (without
         # leading slash).  The regex matches this.
-        mac = b'aa-bb-cc-dd-ee-ff'
-        match = re_config_file.match(b'pxelinux.cfg/01-%s' % mac)
+        mac = b"aa-bb-cc-dd-ee-ff"
+        match = re_config_file.match(b"pxelinux.cfg/01-%s" % mac)
         self.assertIsNotNone(match)
         self.assertDictEqual(
-            {
-                'mac': mac,
-                'hardware_uuid': None,
-                'arch': None,
-                'subarch': None,
-            }, match.groupdict())
+            {"mac": mac, "hardware_uuid": None, "arch": None, "subarch": None},
+            match.groupdict(),
+        )
 
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
-        mac = b'aa-bb-cc-dd-ee-ff'
-        match = re_config_file.match(b'/pxelinux.cfg/01-%s' % mac)
+        mac = b"aa-bb-cc-dd-ee-ff"
+        match = re_config_file.match(b"/pxelinux.cfg/01-%s" % mac)
         self.assertIsNotNone(match)
         self.assertDictEqual(
-            {
-                'mac': mac,
-                'hardware_uuid': None,
-                'arch': None,
-                'subarch': None
-            }, match.groupdict())
+            {"mac": mac, "hardware_uuid": None, "arch": None, "subarch": None},
+            match.groupdict(),
+        )
 
     def test_re_config_file_matches_pxelinux_cfg_with_hardware_uuid(self):
         hardware_uuid = factory.make_UUID().encode()
-        match = re_config_file.match(b'pxelinux.cfg/%s' % hardware_uuid)
+        match = re_config_file.match(b"pxelinux.cfg/%s" % hardware_uuid)
         self.assertIsNotNone(match)
         self.assertDictEqual(
             {
-                'mac': None,
-                'hardware_uuid': hardware_uuid,
-                'arch': None,
-                'subarch': None,
-            }, match.groupdict())
+                "mac": None,
+                "hardware_uuid": hardware_uuid,
+                "arch": None,
+                "subarch": None,
+            },
+            match.groupdict(),
+        )
 
     def test_re_config_file_does_not_match_non_config_file(self):
-        self.assertIsNone(re_config_file.match(b'pxelinux.cfg/kernel'))
+        self.assertIsNone(re_config_file.match(b"pxelinux.cfg/kernel"))
 
     def test_re_config_file_does_not_match_file_in_root(self):
-        self.assertIsNone(re_config_file.match(b'01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b"01-aa-bb-cc-dd-ee-ff"))
 
     def test_re_config_file_does_not_match_file_not_in_pxelinux_cfg(self):
-        self.assertIsNone(re_config_file.match(b'foo/01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b"foo/01-aa-bb-cc-dd-ee-ff"))
 
     def test_re_config_file_with_default(self):
-        match = re_config_file.match(b'pxelinux.cfg/default')
+        match = re_config_file.match(b"pxelinux.cfg/default")
         self.assertIsNotNone(match)
         self.assertDictEqual(
             {
-                'mac': None,
-                'hardware_uuid': None,
-                'arch': None,
-                'subarch': None,
-            }, match.groupdict())
+                "mac": None,
+                "hardware_uuid": None,
+                "arch": None,
+                "subarch": None,
+            },
+            match.groupdict(),
+        )
 
     def test_re_config_file_with_default_arch(self):
-        arch = factory.make_name('arch', sep='').encode("ascii")
-        match = re_config_file.match(b'pxelinux.cfg/default.%s' % arch)
+        arch = factory.make_name("arch", sep="").encode("ascii")
+        match = re_config_file.match(b"pxelinux.cfg/default.%s" % arch)
         self.assertIsNotNone(match)
         self.assertDictEqual(
             {
-                'mac': None,
-                'hardware_uuid': None,
-                'arch': arch,
-                'subarch': None,
-            }, match.groupdict())
+                "mac": None,
+                "hardware_uuid": None,
+                "arch": arch,
+                "subarch": None,
+            },
+            match.groupdict(),
+        )
 
     def test_re_config_file_with_default_arch_and_subarch(self):
-        arch = factory.make_name('arch', sep='').encode("ascii")
-        subarch = factory.make_name('subarch', sep='').encode("ascii")
+        arch = factory.make_name("arch", sep="").encode("ascii")
+        subarch = factory.make_name("subarch", sep="").encode("ascii")
         match = re_config_file.match(
-            b'pxelinux.cfg/default.%s-%s' % (arch, subarch))
+            b"pxelinux.cfg/default.%s-%s" % (arch, subarch)
+        )
         self.assertIsNotNone(match)
         self.assertDictEqual(
             {
-                'mac': None,
-                'hardware_uuid': None,
-                'arch': arch,
-                'subarch': subarch,
-            }, match.groupdict())
+                "mac": None,
+                "hardware_uuid": None,
+                "arch": arch,
+                "subarch": subarch,
+            },
+            match.groupdict(),
+        )

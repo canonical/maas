@@ -25,17 +25,9 @@ from maastesting.matchers import (
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import (
-    always_succeed_with,
-    TwistedLoggerFixture,
-)
+from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import (
-    AllMatch,
-    Equals,
-    IsInstance,
-    MatchesStructure,
-)
+from testtools.matchers import AllMatch, Equals, IsInstance, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -97,8 +89,9 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
         restartService = self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
         self.assertThat(
-            configure_region, MockCalledOnceWith(
-                refs, Matches(AllMatch(ContainedBy(peers)))))
+            configure_region,
+            MockCalledOnceWith(refs, Matches(AllMatch(ContainedBy(peers)))),
+        )
         self.assertThat(restartService, MockCalledOnceWith("ntp_region"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure_region`.
@@ -108,7 +101,8 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
 
 
 class TestRegionNetworkTimeProtocolService_Errors(
-        MAASTransactionServerTestCase):
+    MAASTransactionServerTestCase
+):
     """Tests for error handing in `RegionNetworkTimeProtocolService`."""
 
     scenarios = (
@@ -128,20 +122,24 @@ class TestRegionNetworkTimeProtocolService_Errors(
         # Ensure that we never actually execute against systemd or write an
         # actual configuration file.
         self.patch_autospec(
-            ntp, "deferToThread").side_effect = always_succeed_with(None)
+            ntp, "deferToThread"
+        ).side_effect = always_succeed_with(None)
         self.patch_autospec(service_monitor, "restartService")
 
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 
         self.assertThat(
-            logger.output, DocTestMatches(
+            logger.output,
+            DocTestMatches(
                 """
                 Failed to update NTP configuration.
                 Traceback (most recent call last):
                 ...
                 maastesting.factory.TestException#...
-                """))
+                """
+            ),
+        )
 
 
 class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
@@ -167,5 +165,9 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
         expected_references = Equals(frozenset(ntp_servers))
         expected_peers = AllMatch(ContainedBy({addr4.ip, addr6.ip}))
 
-        self.assertThat(observed, MatchesStructure(
-            references=expected_references, peers=expected_peers))
+        self.assertThat(
+            observed,
+            MatchesStructure(
+                references=expected_references, peers=expected_peers
+            ),
+        )

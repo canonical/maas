@@ -25,25 +25,25 @@ import provisioningserver.utils.send_beacons
 
 
 COMMON_COMMANDS = {
-    'observe-arp': provisioningserver.utils.arp,
-    'observe-beacons': provisioningserver.utils.beaconing,
-    'observe-mdns': provisioningserver.utils.avahi,
-    'observe-dhcp': provisioningserver.utils.dhcp,
-    'send-beacons': provisioningserver.utils.send_beacons,
-    'scan-network': provisioningserver.utils.scan_network,
-    'setup-dns': provisioningserver.dns.commands.setup_dns,
-    'get-named-conf': provisioningserver.dns.commands.get_named_conf,
-    'edit-named-options': provisioningserver.dns.commands.edit_named_options,
+    "observe-arp": provisioningserver.utils.arp,
+    "observe-beacons": provisioningserver.utils.beaconing,
+    "observe-mdns": provisioningserver.utils.avahi,
+    "observe-dhcp": provisioningserver.utils.dhcp,
+    "send-beacons": provisioningserver.utils.send_beacons,
+    "scan-network": provisioningserver.utils.scan_network,
+    "setup-dns": provisioningserver.dns.commands.setup_dns,
+    "get-named-conf": provisioningserver.dns.commands.get_named_conf,
+    "edit-named-options": provisioningserver.dns.commands.edit_named_options,
 }
 
 RACK_ONLY_COMMANDS = {
-    'check-for-shared-secret': security.CheckForSharedSecretScript,
-    'config': provisioningserver.cluster_config_command,
-    'install-shared-secret': security.InstallSharedSecretScript,
-    'install-uefi-config': provisioningserver.boot.install_grub,
-    'register': provisioningserver.register_command,
-    'support-dump': provisioningserver.support_dump,
-    'upgrade-cluster': provisioningserver.upgrade_cluster,
+    "check-for-shared-secret": security.CheckForSharedSecretScript,
+    "config": provisioningserver.cluster_config_command,
+    "install-shared-secret": security.InstallSharedSecretScript,
+    "install-uefi-config": provisioningserver.boot.install_grub,
+    "register": provisioningserver.register_command,
+    "support-dump": provisioningserver.support_dump,
+    "upgrade-cluster": provisioningserver.upgrade_cluster,
 }
 
 
@@ -53,7 +53,7 @@ commands = COMMON_COMMANDS.copy()
 
 # If 'maas-common' isn't being executed, add rack-specific commands in addition
 # to the generic set of commands.
-if not sys.argv[0].endswith('/maas-common'):
+if not sys.argv[0].endswith("/maas-common"):
     commands.update(RACK_ONLY_COMMANDS)
 
 for name, command in sorted(commands.items()):

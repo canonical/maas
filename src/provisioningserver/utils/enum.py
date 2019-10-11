@@ -3,11 +3,7 @@
 
 """Enum-related utilities."""
 
-__all__ = [
-    'map_enum',
-    'map_enum_reverse',
-    'map_enum_unique_values',
-    ]
+__all__ = ["map_enum", "map_enum_reverse", "map_enum_unique_values"]
 
 
 def map_enum(enum_class):
@@ -20,7 +16,7 @@ def map_enum(enum_class):
     return {
         key: value
         for key, value in vars(enum_class).items()
-        if not key.startswith('_')
+        if not key.startswith("_")
     }
 
 
@@ -30,7 +26,7 @@ def map_enum_unique_values(enum_class):
     values_seen = set()
     values = dict()
     for key, value in vars(enum_class).items():
-        if value not in values_seen and not key.startswith('_'):
+        if value not in values_seen and not key.startswith("_"):
             values[key] = value
         values_seen.add(value)
     return values
@@ -51,4 +47,4 @@ def map_enum_reverse(enum_class, ignore=None):
         value: key
         for key, value in map_enum(enum_class).items()
         if key not in ignore
-        }
+    }

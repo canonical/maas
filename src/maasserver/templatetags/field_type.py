@@ -3,9 +3,7 @@
 
 """Field type template tag."""
 
-__all__ = [
-    "field_type",
-]
+__all__ = ["field_type"]
 
 from django import template
 
@@ -13,6 +11,6 @@ from django import template
 register = template.Library()
 
 
-@register.filter('field_type')
+@register.filter("field_type")
 def field_type(field):
     return field.field.widget.__class__.__name__

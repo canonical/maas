@@ -3,10 +3,7 @@
 
 """API handlers: `LicenseKey`."""
 
-__all__ = [
-    'LicenseKeyHandler',
-    'LicenseKeysHandler',
-    ]
+__all__ = ["LicenseKeyHandler", "LicenseKeysHandler"]
 
 
 from django.shortcuts import get_object_or_404
@@ -20,6 +17,7 @@ from piston3.utils import rc
 
 class LicenseKeysHandler(OperationsHandler):
     """Manage the license keys."""
+
     api_doc_section_name = "License Keys"
 
     update = delete = None
@@ -34,7 +32,7 @@ class LicenseKeysHandler(OperationsHandler):
         @success-example "success-json" [exkey=license-keys-placeholder]
         placeholder text
         """
-        return LicenseKey.objects.all().order_by('osystem', 'distro_series')
+        return LicenseKey.objects.all().order_by("osystem", "distro_series")
 
     def create(self, request):
         """@description-title Define a license key
@@ -75,7 +73,9 @@ class LicenseKeysHandler(OperationsHandler):
                 # expects.
                 if "osystem" in data:
                     data["distro_series"] = "%s/%s" % (
-                        data["osystem"], data["distro_series"])
+                        data["osystem"],
+                        data["distro_series"],
+                    )
         form = LicenseKeyForm(data=data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -83,15 +83,16 @@ class LicenseKeysHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('license_keys_handler', [])
+        return ("license_keys_handler", [])
 
 
 class LicenseKeyHandler(OperationsHandler):
     """Manage a license key."""
+
     api_doc_section_name = "License Key"
 
     model = LicenseKey
-    fields = ('osystem', 'distro_series', 'license_key')
+    fields = ("osystem", "distro_series", "license_key")
 
     # Creation happens on the LicenseKeysHandler.
     create = None
@@ -120,7 +121,8 @@ class LicenseKeyHandler(OperationsHandler):
             Unknown API endpoint: /MAAS/api/2.0/license-key/windows/win2012/.
         """
         return get_object_or_404(
-            LicenseKey, osystem=osystem, distro_series=distro_series)
+            LicenseKey, osystem=osystem, distro_series=distro_series
+        )
 
     def update(self, request, osystem, distro_series):
         """@description-title Update license key
@@ -149,7 +151,8 @@ class LicenseKeyHandler(OperationsHandler):
             Unknown API endpoint: /MAAS/api/2.0/license-key/windows/win2012/.
         """
         license_key = get_object_or_404(
-            LicenseKey, osystem=osystem, distro_series=distro_series)
+            LicenseKey, osystem=osystem, distro_series=distro_series
+        )
         data = request.data
         if data is None:
             data = {}
@@ -179,7 +182,9 @@ class LicenseKeyHandler(OperationsHandler):
         """
         license_key = get_one(
             LicenseKey.objects.filter(
-                osystem=osystem, distro_series=distro_series))
+                osystem=osystem, distro_series=distro_series
+            )
+        )
         if license_key is not None:
             license_key.delete()
         return rc.DELETED
@@ -188,9 +193,9 @@ class LicenseKeyHandler(OperationsHandler):
     def resource_uri(cls, license_key=None):
         # See the comment in NodeHandler.resource_uri.
         if license_key is None:
-            osystem = 'osystem'
-            distro_series = 'distro_series'
+            osystem = "osystem"
+            distro_series = "distro_series"
         else:
             osystem = license_key.osystem
             distro_series = license_key.distro_series
-        return ('license_key_handler', (osystem, distro_series))
+        return ("license_key_handler", (osystem, distro_series))

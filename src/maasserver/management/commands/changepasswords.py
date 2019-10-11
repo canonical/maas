@@ -3,22 +3,17 @@
 
 """Django command: Batch update multiple passwords non-interactively."""
 
-from fileinput import (
-    hook_encoded,
-    input as fileinput,
-)
+from fileinput import hook_encoded, input as fileinput
 from textwrap import dedent
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import BaseCommand, CommandError
 from maasserver.utils.orm import transactional
 
 
 class Command(BaseCommand):
-    help = dedent("""\
+    help = dedent(
+        """\
         Update passwords in batch mode.
 
         Like the chpasswd command, this command reads a list of username and
@@ -29,7 +24,8 @@ class Command(BaseCommand):
             username:password
 
         A list of files can be provided as arguments. If provided, the input
-        will be read from the files instead of standard input.""")
+        will be read from the files instead of standard input."""
+    )
 
     @transactional
     def handle(self, *args, **options):
@@ -37,14 +33,16 @@ class Command(BaseCommand):
         UserModel = get_user_model()
         for line in fileinput(args, openhook=hook_encoded("utf-8")):
             try:
-                username, password = line.rstrip('\r\n').split(":", 1)
+                username, password = line.rstrip("\r\n").split(":", 1)
             except ValueError:
                 raise CommandError(
                     "Invalid input provided. "
-                    "Format is 'username:password', one per line.")
+                    "Format is 'username:password', one per line."
+                )
             try:
                 user = UserModel._default_manager.get(
-                    **{UserModel.USERNAME_FIELD: username})
+                    **{UserModel.USERNAME_FIELD: username}
+                )
             except UserModel.DoesNotExist:
                 raise CommandError("User '%s' does not exist." % username)
             user.set_password(password)

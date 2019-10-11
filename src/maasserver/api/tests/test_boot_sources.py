@@ -16,22 +16,15 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
-from testtools.matchers import (
-    Contains,
-    MatchesStructure,
-    Not,
-)
+from testtools.matchers import Contains, MatchesStructure, Not
 
 
 def get_boot_source_uri(boot_source):
     """Return a boot source's URI on the API."""
-    return reverse(
-        'boot_source_handler',
-        args=[boot_source.id])
+    return reverse("boot_source_handler", args=[boot_source.id])
 
 
 class TestBootSourceAPI(APITestCase.ForUser):
-
     def setUp(self):
         super(TestBootSourceAPI, self).setUp()
         # Disable boot source cache signals.
@@ -40,8 +33,9 @@ class TestBootSourceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/MAAS/api/2.0/boot-sources/3/',
-            reverse('boot_source_handler', args=['3']))
+            "/MAAS/api/2.0/boot-sources/3/",
+            reverse("boot_source_handler", args=["3"]),
+        )
 
     def test_GET_returns_boot_source(self):
         self.become_admin()
@@ -51,27 +45,28 @@ class TestBootSourceAPI(APITestCase.ForUser):
         returned_boot_source = json_load_bytes(response.content)
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
-            reverse(
-                'boot_source_handler',
-                args=[boot_source.id]
-            ),
-            returned_boot_source['resource_uri'])
+            reverse("boot_source_handler", args=[boot_source.id]),
+            returned_boot_source["resource_uri"],
+        )
         # The other fields are the boot source's fields.
-        del returned_boot_source['resource_uri']
+        del returned_boot_source["resource_uri"]
         # JSON loads the keyring_data as a str, but it needs to be bytes.
-        returned_boot_source['keyring_data'] = (
-            returned_boot_source['keyring_data'].encode('utf-8'))
+        returned_boot_source["keyring_data"] = returned_boot_source[
+            "keyring_data"
+        ].encode("utf-8")
         # All the fields are present.
         self.assertItemsEqual(
-            DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys())
+            DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys()
+        )
         # Remove created and updated that is handled by django.
-        del returned_boot_source['created']
-        del returned_boot_source['updated']
+        del returned_boot_source["created"]
+        del returned_boot_source["updated"]
         self.assertThat(
-            boot_source,
-            MatchesStructure.byEquality(**returned_boot_source))
+            boot_source, MatchesStructure.byEquality(**returned_boot_source)
+        )
         self.assertThat(
-            returned_boot_source['keyring_data'], Not(Contains("<memory at")))
+            returned_boot_source["keyring_data"], Not(Contains("<memory at"))
+        )
 
     def test_GET_requires_admin(self):
         boot_source = factory.make_BootSource()
@@ -94,11 +89,12 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.become_admin()
         boot_source = factory.make_BootSource()
         new_values = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('filename'),
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
-            get_boot_source_uri(boot_source), new_values)
+            get_boot_source_uri(boot_source), new_values
+        )
         self.assertEqual(http.client.OK, response.status_code)
         boot_source = reload_object(boot_source)
         self.assertAttributes(boot_source, new_values)
@@ -106,11 +102,12 @@ class TestBootSourceAPI(APITestCase.ForUser):
     def test_PUT_requires_admin(self):
         boot_source = factory.make_BootSource()
         new_values = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('filename'),
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
-            get_boot_source_uri(boot_source), new_values)
+            get_boot_source_uri(boot_source), new_values
+        )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
@@ -125,85 +122,80 @@ class TestBootSourcesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/MAAS/api/2.0/boot-sources/',
-            reverse('boot_sources_handler'))
+            "/MAAS/api/2.0/boot-sources/", reverse("boot_sources_handler")
+        )
 
     def test_GET_returns_boot_source_list(self):
         self.become_admin()
-        sources = [
-            factory.make_BootSource() for _ in range(3)]
-        response = self.client.get(
-            reverse('boot_sources_handler'))
+        sources = [factory.make_BootSource() for _ in range(3)]
+        response = self.client.get(reverse("boot_sources_handler"))
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [boot_source.id for boot_source in sources],
-            [boot_source.get('id') for boot_source in parsed_result])
+            [boot_source.get("id") for boot_source in parsed_result],
+        )
 
     def test_GET_requires_admin(self):
-        response = self.client.get(
-            reverse('boot_sources_handler'))
+        response = self.client.get(reverse("boot_sources_handler"))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_with_keyring_filename(self):
         self.become_admin()
 
         params = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('filename'),
-            'keyring_data': b'',
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
+            "keyring_data": b"",
         }
-        response = self.client.post(
-            reverse('boot_sources_handler'), params)
+        response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_result = json_load_bytes(response.content)
 
-        boot_source = BootSource.objects.get(id=parsed_result['id'])
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
         # boot_source.keyring_data is returned as a read-only buffer, test
         # it separately from the rest of the attributes.
-        self.assertEqual(b'', boot_source.keyring_data)
-        del params['keyring_data']
+        self.assertEqual(b"", boot_source.keyring_data)
+        del params["keyring_data"]
         self.assertAttributes(boot_source, params)
 
     def test_POST_creates_boot_source_with_keyring_data(self):
         self.become_admin()
 
         params = {
-            'url': 'http://example.com/',
-            'keyring_filename': '',
-            'keyring_data': (
-                factory.make_file_upload(content=sample_binary_data)),
+            "url": "http://example.com/",
+            "keyring_filename": "",
+            "keyring_data": (
+                factory.make_file_upload(content=sample_binary_data)
+            ),
         }
-        response = self.client.post(
-            reverse('boot_sources_handler'), params)
+        response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_result = json_load_bytes(response.content)
 
-        boot_source = BootSource.objects.get(id=parsed_result['id'])
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
         # boot_source.keyring_data is returned as a read-only buffer, test
         # it separately from the rest of the attributes.
         self.assertEqual(sample_binary_data, bytes(boot_source.keyring_data))
-        del params['keyring_data']
+        del params["keyring_data"]
         self.assertAttributes(boot_source, params)
 
     def test_POST_validates_boot_source(self):
         self.become_admin()
 
-        params = {
-            'url': 'http://example.com/',
-        }
-        response = self.client.post(
-            reverse('boot_sources_handler'), params)
+        params = {"url": "http://example.com/"}
+        response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_requires_admin(self):
         params = {
-            'url': 'http://example.com/',
-            'keyring_filename': '',
-            'keyring_data': (
-                factory.make_file_upload(content=sample_binary_data)),
+            "url": "http://example.com/",
+            "keyring_filename": "",
+            "keyring_data": (
+                factory.make_file_upload(content=sample_binary_data)
+            ),
         }
-        response = self.client.post(
-            reverse('boot_sources_handler'), params)
+        response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.FORBIDDEN, response.status_code)

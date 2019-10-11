@@ -14,7 +14,7 @@ def migrate_spaces_from_subnet_to_vlan(apps, schema_editor):
         if len(spaces) == 1:
             default_space = spaces[0]
             name = default_space.name
-            if name is None or name == '' or name == 'space-0':
+            if name is None or name == "" or name == "space-0":
                 # One space, default name. Skip migration to VLANs.
                 return
             else:
@@ -38,10 +38,6 @@ def migrate_spaces_from_subnet_to_vlan(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0099_set_default_vlan_field'),
-    ]
+    dependencies = [("maasserver", "0099_set_default_vlan_field")]
 
-    operations = [
-        migrations.RunPython(migrate_spaces_from_subnet_to_vlan),
-    ]
+    operations = [migrations.RunPython(migrate_spaces_from_subnet_to_vlan)]

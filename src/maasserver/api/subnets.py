@@ -4,41 +4,35 @@
 """API handlers: `Subnet`."""
 
 from formencode.validators import StringBool
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.subnet import SubnetForm
-from maasserver.models import (
-    Space,
-    Subnet,
-)
+from maasserver.models import Space, Subnet
 from maasserver.permissions import NodePermission
 from piston3.utils import rc
 from provisioningserver.utils.network import IPRangeStatistics
 
 
 DISPLAYED_SUBNET_FIELDS = (
-    'id',
-    'name',
-    'vlan',
-    'space',
-    'cidr',
-    'gateway_ip',
-    'dns_servers',
-    'rdns_mode',
-    'active_discovery',
-    'allow_dns',
-    'allow_proxy',
-    'managed',
+    "id",
+    "name",
+    "vlan",
+    "space",
+    "cidr",
+    "gateway_ip",
+    "dns_servers",
+    "rdns_mode",
+    "active_discovery",
+    "allow_dns",
+    "allow_proxy",
+    "managed",
 )
 
 
 class SubnetsHandler(OperationsHandler):
     """Manage subnets."""
+
     api_doc_section_name = "Subnets"
     update = delete = None
     fields = DISPLAYED_SUBNET_FIELDS
@@ -46,7 +40,7 @@ class SubnetsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('subnets_handler', [])
+        return ("subnets_handler", [])
 
     def read(self, request):
         """@description-title List all subnets
@@ -138,6 +132,7 @@ class SubnetsHandler(OperationsHandler):
 
 class SubnetHandler(OperationsHandler):
     """Manage subnet."""
+
     api_doc_section_name = "Subnet"
     create = None
     model = Subnet
@@ -149,7 +144,7 @@ class SubnetHandler(OperationsHandler):
         subnet_id = "id"
         if subnet is not None:
             subnet_id = subnet.id
-        return ('subnet_handler', (subnet_id,))
+        return ("subnet_handler", (subnet_id,))
 
     @classmethod
     def space(cls, subnet):
@@ -176,7 +171,8 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         return Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update a subnet
@@ -255,7 +251,8 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         form = SubnetForm(instance=subnet, data=request.data)
         if form.is_valid():
             return form.save()
@@ -276,7 +273,8 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         subnet.delete()
         return rc.DELETED
 
@@ -299,7 +297,8 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
         return subnet.get_ipranges_in_use().render_json()
 
     @operation(idempotent=True)
@@ -321,9 +320,11 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
         return subnet.get_ipranges_not_in_use().render_json(
-            include_purpose=False)
+            include_purpose=False
+        )
 
     @operation(idempotent=True)
     def statistics(self, request, id):
@@ -367,17 +368,23 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
         include_ranges = get_optional_param(
-            request.GET, 'include_ranges', default=False, validator=StringBool)
+            request.GET, "include_ranges", default=False, validator=StringBool
+        )
         include_suggestions = get_optional_param(
-            request.GET, 'include_suggestions', default=False,
-            validator=StringBool)
+            request.GET,
+            "include_suggestions",
+            default=False,
+            validator=StringBool,
+        )
         full_iprange = subnet.get_iprange_usage()
         statistics = IPRangeStatistics(full_iprange)
         return statistics.render_json(
             include_ranges=include_ranges,
-            include_suggestions=include_suggestions)
+            include_suggestions=include_suggestions,
+        )
 
     @operation(idempotent=True)
     def ip_addresses(self, request, id):
@@ -409,15 +416,20 @@ class SubnetHandler(OperationsHandler):
             Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
         with_username = get_optional_param(
-            request.GET, 'with_username', default=True, validator=StringBool)
+            request.GET, "with_username", default=True, validator=StringBool
+        )
         with_summary = get_optional_param(
-            request.GET, 'with_summary', True, validator=StringBool)
+            request.GET, "with_summary", True, validator=StringBool
+        )
         with_node_summary = get_optional_param(
-            request.GET, 'with_node_summary', True, validator=StringBool)
+            request.GET, "with_node_summary", True, validator=StringBool
+        )
         # Handle deprecated with_node_summary parameter.
         if with_node_summary is False:
             with_summary = False
         return subnet.render_json_for_related_ips(
-            with_username=with_username, with_summary=with_summary)
+            with_username=with_username, with_summary=with_summary
+        )

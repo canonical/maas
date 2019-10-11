@@ -8,10 +8,7 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
-from maasserver.models import (
-    SSLKey,
-    sslkey as sslkey_module,
-)
+from maasserver.models import SSLKey, sslkey as sslkey_module
 from maasserver.models.sslkey import (
     crypto,
     find_ssl_common_name,
@@ -21,39 +18,34 @@ from maasserver.models.sslkey import (
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import (
-    Contains,
-    StartsWith,
-)
+from testtools.matchers import Contains, StartsWith
 
 
 class SSLKeyValidatorTest(MAASServerTestCase):
-
     def test_validates_x509_public_key(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         validate_ssl_key(key_string)
         # No ValidationError.
 
     def test_does_not_validate_random_data(self):
         key_string = factory.make_string()
-        self.assertRaises(
-            ValidationError, validate_ssl_key, key_string)
+        self.assertRaises(ValidationError, validate_ssl_key, key_string)
 
 
 class GetHTMLDisplayForKeyTest(MAASServerTestCase):
     """Testing for the method `get_html_display_for_key`."""
 
     def test_display_returns_only_md5(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, key_string)
         subject = cert.get_subject()
         cn = find_ssl_common_name(subject)
-        self.patch(sslkey_module, 'find_ssl_common_name').return_value = None
+        self.patch(sslkey_module, "find_ssl_common_name").return_value = None
         display = get_html_display_for_key(key_string)
         self.assertNotIn(cn, display)
 
     def test_display_returns_cn_and_md5(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, key_string)
         subject = cert.get_subject()
         cn = find_ssl_common_name(subject)
@@ -62,7 +54,7 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
 
     def test_decode_md5_as_ascii(self):
         # the key MD5 is correctly printed (and not repr'd)
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         display = get_html_display_for_key(key_string)
         self.assertNotIn("b\\'", display)
 
@@ -71,7 +63,7 @@ class SSLKeyTest(MAASServerTestCase):
     """Testing for the :class:`SSLKey`."""
 
     def test_sslkey_validation_with_valid_key(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         key.full_clean()
@@ -81,11 +73,10 @@ class SSLKeyTest(MAASServerTestCase):
         key_string = factory.make_string()
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
-        self.assertRaises(
-            ValidationError, key.full_clean)
+        self.assertRaises(ValidationError, key.full_clean)
 
     def test_sslkey_display_is_marked_as_HTML_safe(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         display = key.display_html()
@@ -93,8 +84,9 @@ class SSLKeyTest(MAASServerTestCase):
 
     def test_sslkey_display_is_HTML_safe(self):
         self.patch(
-            sslkey_module, 'find_ssl_common_name').return_value = "<escape>"
-        key_string = get_data('data/test_x509_0.pem')
+            sslkey_module, "find_ssl_common_name"
+        ).return_value = "<escape>"
+        key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         display = key.display_html()
@@ -103,18 +95,17 @@ class SSLKeyTest(MAASServerTestCase):
         self.assertNotIn(">", display)
 
     def test_sslkey_user_and_key_unique_together(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         key.save()
         key2 = SSLKey(key=key_string, user=user)
-        self.assertRaises(
-            ValidationError, key2.full_clean)
+        self.assertRaises(ValidationError, key2.full_clean)
 
     def test_sslkey_user_and_key_unique_together_db_level(self):
         # Even if we hack our way around model-level checks, uniqueness
         # of the user/key combination is enforced at the database level.
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         existing_key = SSLKey(key=key_string, user=user)
         existing_key.save()
@@ -127,10 +118,11 @@ class SSLKeyTest(MAASServerTestCase):
         self.assertRaises(
             IntegrityError,
             SSLKey.objects.filter(id=redundant_key.id).update,
-            user=user)
+            user=user,
+        )
 
     def test_sslkey_same_key_can_be_used_by_different_users(self):
-        key_string = get_data('data/test_x509_0.pem')
+        key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         key.save()
@@ -150,7 +142,8 @@ class SSLKeyManagerTest(MAASServerTestCase):
 
     def test_get_keys_for_user_with_keys(self):
         user1, created_keys = factory.make_user_with_ssl_keys(
-            n_keys=3, username='user1')
+            n_keys=3, username="user1"
+        )
         # user2
         factory.make_user_with_ssl_keys(n_keys=2)
         keys = SSLKey.objects.get_keys_for_user(user1)

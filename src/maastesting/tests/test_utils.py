@@ -10,7 +10,6 @@ from maastesting.utils import extract_word_list
 
 
 class TestFunctions(MAASTestCase):
-
     def test_extract_word_list(self):
         expected = {
             "one 2": ["one", "2"],
@@ -19,9 +18,6 @@ class TestFunctions(MAASTestCase):
             "one;2": ["one", "2"],
             "\none\t 2;": ["one", "2"],
             "\none-two\t 3;": ["one-two", "3"],
-            }
-        observed = {
-            string: extract_word_list(string)
-            for string in expected
-            }
+        }
+        observed = {string: extract_word_list(string) for string in expected}
         self.assertEqual(expected, observed)

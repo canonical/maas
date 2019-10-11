@@ -3,18 +3,10 @@
 
 """Model for a cache of images available in a boot source."""
 
-__all__ = [
-    'BootSourceCache',
-    ]
+__all__ = ["BootSourceCache"]
 
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    DateField,
-    ForeignKey,
-    Manager,
-)
+from django.db.models import CASCADE, CharField, DateField, ForeignKey, Manager
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.bootsource import BootSource
@@ -23,11 +15,13 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 
 class BootSourceCacheManager(Manager):
-
     def get_release_title(self, os, release):
         """Return the release title."""
-        cache = self.filter(os=os, release=release).exclude(
-            release_title__isnull=True, release_title__exact='').first()
+        cache = (
+            self.filter(os=os, release=release)
+            .exclude(release_title__isnull=True, release_title__exact="")
+            .first()
+        )
         if cache is None:
             return None
         else:
@@ -35,8 +29,11 @@ class BootSourceCacheManager(Manager):
 
     def get_release_codename(self, os, release):
         """Return the release codename."""
-        cache = self.filter(os=os, release=release).exclude(
-            release_codename__isnull=True, release_codename__exact='').first()
+        cache = (
+            self.filter(os=os, release=release)
+            .exclude(release_codename__isnull=True, release_codename__exact="")
+            .first()
+        )
         if cache is None:
             return None
         else:
@@ -78,5 +75,6 @@ class BootSourceCache(CleanSave, TimestampedModel):
     def __str__(self):
         return (
             "<BootSourceCache os=%s, release=%s, arch=%s, subarch=%s, "
-            "kflavor=%s>" % (
-                self.os, self.release, self.arch, self.subarch, self.kflavor))
+            "kflavor=%s>"
+            % (self.os, self.release, self.arch, self.subarch, self.kflavor)
+        )

@@ -7,13 +7,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0170_add_subnet_allow_dns'),
-    ]
+    dependencies = [("maasserver", "0170_add_subnet_allow_dns")]
 
-    operations = [
-        migrations.RemoveField(
-            model_name='bmc',
-            name='host',
-        ),
-    ]
+    operations = [migrations.RemoveField(model_name="bmc", name="host")]

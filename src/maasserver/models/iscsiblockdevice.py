@@ -3,25 +3,20 @@
 
 """Model for a nodes iscsi block device."""
 
-__all__ = [
-    'ISCSIBlockDevice',
-    ]
+__all__ = ["ISCSIBlockDevice"]
 
 from curtin.block.iscsi import IscsiDisk
 from django.core.exceptions import ValidationError
 from django.db.models import CharField
 from maasserver import DefaultMeta
-from maasserver.models.blockdevice import (
-    BlockDevice,
-    BlockDeviceManager,
-)
+from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 
 
 def get_iscsi_target(target):
     """Formats the iscsi target to always include a 'iscsi:' at the beginning.
     """
-    if not target.startswith('iscsi:'):
-        return 'iscsi:%s' % target
+    if not target.startswith("iscsi:"):
+        return "iscsi:%s" % target
     else:
         return target
 
@@ -54,12 +49,18 @@ class ISCSIBlockDevice(BlockDevice):
     objects = ISCSIBlockDeviceManager()
 
     target = CharField(
-        max_length=4096, unique=True, null=False, blank=False, editable=True,
-        validators=[validate_iscsi_target])
+        max_length=4096,
+        unique=True,
+        null=False,
+        blank=False,
+        editable=True,
+        validators=[validate_iscsi_target],
+    )
 
     def __str__(self):
-        return '{target} attached to {node}'.format(
-            target=self.target, node=self.node)
+        return "{target} attached to {node}".format(
+            target=self.target, node=self.node
+        )
 
     def save(self, *args, **kwargs):
         # Normilize the target to always include a 'iscsi:' at the start.

@@ -3,15 +3,12 @@
 
 """Abstract handler class for a ViewModel. All fields are read-only."""
 
-__all__ = [
-    "ViewModelHandler",
-    ]
+__all__ = ["ViewModelHandler"]
 
 from maasserver.websockets.base import Handler
 
 
 class ViewModelHandler(Handler):
-
     class Meta:
         abstract = True
 

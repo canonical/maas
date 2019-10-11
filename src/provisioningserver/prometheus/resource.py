@@ -14,5 +14,5 @@ class PrometheusMetricsResource(Resource):
         content = self.prometheus_metrics.generate_latest()
         if content is None:
             request.setResponseCode(404)
-            return b''
+            return b""
         return content

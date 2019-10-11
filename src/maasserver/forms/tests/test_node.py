@@ -5,10 +5,7 @@
 
 __all__ = []
 
-from maasserver.forms import (
-    AdminNodeForm,
-    NodeForm,
-)
+from maasserver.forms import AdminNodeForm, NodeForm
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -23,12 +20,9 @@ class TestNodeForm(MAASServerTestCase):
         form = NodeForm()
 
         self.assertItemsEqual(
-            [
-                'hostname',
-                'domain',
-                'disable_ipv4',
-                'swap_size',
-            ], list(form.fields))
+            ["hostname", "domain", "disable_ipv4", "swap_size"],
+            list(form.fields),
+        )
 
     def test_accepts_hostname(self):
         machine = factory.make_Node()
@@ -37,10 +31,11 @@ class TestNodeForm(MAASServerTestCase):
 
         form = NodeForm(
             data={
-                'hostname': hostname,
-                'architecture': make_usable_architecture(self),
-                },
-            instance=machine)
+                "hostname": hostname,
+                "architecture": make_usable_architecture(self),
+            },
+            instance=machine,
+        )
         form.save()
 
         self.assertEqual(hostname, machine.hostname)
@@ -50,11 +45,7 @@ class TestNodeForm(MAASServerTestCase):
         domain = factory.make_Domain()
         patch_usable_architectures(self, [machine.architecture])
 
-        form = NodeForm(
-            data={
-                'domain': domain.name,
-                },
-            instance=machine)
+        form = NodeForm(data={"domain": domain.name}, instance=machine)
         form.save()
 
         self.assertEqual(domain.name, machine.domain.name)
@@ -64,11 +55,7 @@ class TestNodeForm(MAASServerTestCase):
         domain = factory.make_Domain()
         patch_usable_architectures(self, [machine.architecture])
 
-        form = NodeForm(
-            data={
-                'domain': domain.id,
-                },
-            instance=machine)
+        form = NodeForm(data={"domain": domain.id}, instance=machine)
         form.save()
 
         self.assertEqual(domain.name, machine.domain.name)
@@ -78,33 +65,32 @@ class TestNodeForm(MAASServerTestCase):
         patch_usable_architectures(self, [machine.architecture])
 
         form = NodeForm(
-            data={
-                'domain': factory.make_name('domain'),
-                },
-            instance=machine)
+            data={"domain": factory.make_name("domain")}, instance=machine
+        )
 
         self.assertFalse(form.is_valid())
 
     def test_accepts_disable_ipv4_if_false(self):
         form = NodeForm(
             data={
-                'architecture': make_usable_architecture(self),
-                'disable_ipv4': False,
-                })
+                "architecture": make_usable_architecture(self),
+                "disable_ipv4": False,
+            }
+        )
         form.save()
         # The field does not get to the model.
 
     def test_rejects_disable_ipv4_if_true(self):
         form = NodeForm(
             data={
-                'architecture': make_usable_architecture(self),
-                'disable_ipv4': True,
-                })
+                "architecture": make_usable_architecture(self),
+                "disable_ipv4": True,
+            }
+        )
         self.assertFalse(form.is_valid())
 
 
 class TestAdminNodeForm(MAASServerTestCase):
-
     def test_contains_limited_set_of_fields(self):
         user = factory.make_User()
         self.client.login(user=user)
@@ -113,17 +99,18 @@ class TestAdminNodeForm(MAASServerTestCase):
 
         self.assertItemsEqual(
             [
-                'hostname',
-                'description',
-                'domain',
-                'disable_ipv4',
-                'swap_size',
-                'cpu_count',
-                'memory',
-                'zone',
-                'pool',
+                "hostname",
+                "description",
+                "domain",
+                "disable_ipv4",
+                "swap_size",
+                "cpu_count",
+                "memory",
+                "zone",
+                "pool",
             ],
-            list(form.fields))
+            list(form.fields),
+        )
 
     def test_initialises_zone(self):
         # The zone field uses "to_field_name", so that it can refer to a zone
@@ -134,11 +121,11 @@ class TestAdminNodeForm(MAASServerTestCase):
         zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
         # We'll create a form that makes a change, but not to the zone.
-        data = {'hostname': factory.make_name('host')}
+        data = {"hostname": factory.make_name("host")}
         form = AdminNodeForm(instance=node, data=data)
         # The Django bug would stop the initial field value from being set,
         # but the workaround ensures that it is initialised.
-        self.assertEqual(zone.name, form.initial['zone'])
+        self.assertEqual(zone.name, form.initial["zone"])
 
     def test_changes_zone(self):
         node = factory.make_Node()
@@ -146,11 +133,12 @@ class TestAdminNodeForm(MAASServerTestCase):
         hostname = factory.make_string()
         form = AdminNodeForm(
             data={
-                'hostname': hostname,
-                'architecture': make_usable_architecture(self),
-                'zone': zone.name,
+                "hostname": hostname,
+                "architecture": make_usable_architecture(self),
+                "zone": zone.name,
             },
-            instance=node)
+            instance=node,
+        )
         form.save()
 
         node = reload_object(node)

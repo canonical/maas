@@ -18,16 +18,10 @@ import re
 from tempfile import NamedTemporaryFile
 
 from netaddr import IPAddress
-from provisioningserver.dhcp import (
-    DHCPv4Server,
-    DHCPv6Server,
-)
+from provisioningserver.dhcp import DHCPv4Server, DHCPv6Server
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.omshell import Omshell
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
@@ -35,27 +29,15 @@ from provisioningserver.rpc.exceptions import (
     CannotRemoveHostMap,
 )
 from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils.fs import (
-    sudo_delete_file,
-    sudo_write_file,
-)
+from provisioningserver.utils.fs import sudo_delete_file, sudo_write_file
 from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
     ServiceActionError,
 )
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-)
+from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 from provisioningserver.utils.text import split_string_list
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-)
+from provisioningserver.utils.twisted import asynchronous, synchronous
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
 from twisted.internet.threads import deferToThread
 
 
@@ -67,64 +49,73 @@ log = LegacyLogger()
 _current_server_state = {}
 
 
-DHCPStateBase = namedtuple("DHCPStateBase", [
-    "omapi_key",
-    "failover_peers",
-    "shared_networks",
-    "hosts",
-    "interfaces",
-    "global_dhcp_snippets",
-])
+DHCPStateBase = namedtuple(
+    "DHCPStateBase",
+    [
+        "omapi_key",
+        "failover_peers",
+        "shared_networks",
+        "hosts",
+        "interfaces",
+        "global_dhcp_snippets",
+    ],
+)
 
 
 class DHCPState(DHCPStateBase):
     """Holds the current known state of the DHCP server."""
 
     def __new__(
-            cls, omapi_key, failover_peers,
-            shared_networks, hosts, interfaces, global_dhcp_snippets):
+        cls,
+        omapi_key,
+        failover_peers,
+        shared_networks,
+        hosts,
+        interfaces,
+        global_dhcp_snippets,
+    ):
         failover_peers = sorted(failover_peers, key=itemgetter("name"))
         shared_networks = sorted(shared_networks, key=itemgetter("name"))
-        hosts = {
-            host["mac"]: host
-            for host in hosts
-        }
-        interfaces = sorted(
-            interface["name"]
-            for interface in interfaces
-        )
+        hosts = {host["mac"]: host for host in hosts}
+        interfaces = sorted(interface["name"] for interface in interfaces)
         global_dhcp_snippets = sorted(
-            global_dhcp_snippets, key=itemgetter("name"))
+            global_dhcp_snippets, key=itemgetter("name")
+        )
         return DHCPStateBase.__new__(
             cls,
             omapi_key=omapi_key,
             failover_peers=failover_peers,
             shared_networks=shared_networks,
-            hosts=hosts, interfaces=interfaces,
-            global_dhcp_snippets=global_dhcp_snippets)
+            hosts=hosts,
+            interfaces=interfaces,
+            global_dhcp_snippets=global_dhcp_snippets,
+        )
 
     def requires_restart(self, other_state):
         """Return True when this state differs from `other_state` enough to
         require a restart."""
+
         def gather_hosts_dhcp_snippets(hosts):
             hosts_dhcp_snippets = list()
             for _, host in hosts.items():
-                for dhcp_snippet in host['dhcp_snippets']:
+                for dhcp_snippet in host["dhcp_snippets"]:
                     hosts_dhcp_snippets.append(dhcp_snippet)
-            return sorted(hosts_dhcp_snippets, key=itemgetter('name'))
+            return sorted(hosts_dhcp_snippets, key=itemgetter("name"))
 
         # Currently the OMAPI doesn't allow you to add or remove arbitrary
         # config options. So gather a list of DHCP snippets from
         hosts_dhcp_snippets = gather_hosts_dhcp_snippets(self.hosts)
         other_hosts_dhcp_snippets = gather_hosts_dhcp_snippets(
-            other_state.hosts)
+            other_state.hosts
+        )
         return (
-            self.omapi_key != other_state.omapi_key or
-            self.failover_peers != other_state.failover_peers or
-            self.shared_networks != other_state.shared_networks or
-            self.interfaces != other_state.interfaces or
-            self.global_dhcp_snippets != other_state.global_dhcp_snippets or
-            hosts_dhcp_snippets != other_hosts_dhcp_snippets)
+            self.omapi_key != other_state.omapi_key
+            or self.failover_peers != other_state.failover_peers
+            or self.shared_networks != other_state.shared_networks
+            or self.interfaces != other_state.interfaces
+            or self.global_dhcp_snippets != other_state.global_dhcp_snippets
+            or hosts_dhcp_snippets != other_hosts_dhcp_snippets
+        )
 
     def host_diff(self, other_state):
         """Return tuple with the hosts that need to be removed, need to be
@@ -133,7 +124,7 @@ class DHCPState(DHCPStateBase):
         for mac, host in self.hosts.items():
             if mac not in other_state.hosts:
                 add.append(host)
-            elif host['ip'] != other_state.hosts[mac]['ip']:
+            elif host["ip"] != other_state.hosts[mac]["ip"]:
                 modify.append(host)
         for mac, host in other_state.hosts.items():
             if mac not in self.hosts:
@@ -143,12 +134,16 @@ class DHCPState(DHCPStateBase):
     def get_config(self, server):
         """Return the configuration for `server`."""
         dhcpd_config = get_config(
-            server.template_basename, omapi_key=self.omapi_key,
-            failover_peers=self.failover_peers, ipv6=server.ipv6,
+            server.template_basename,
+            omapi_key=self.omapi_key,
+            failover_peers=self.failover_peers,
+            ipv6=server.ipv6,
             shared_networks=self.shared_networks,
             hosts=sorted(self.hosts.values(), key=itemgetter("host")),
             global_dhcp_snippets=sorted(
-                self.global_dhcp_snippets, key=itemgetter("name")))
+                self.global_dhcp_snippets, key=itemgetter("name")
+            ),
+        )
         return dhcpd_config, " ".join(self.interfaces)
 
 
@@ -158,12 +153,13 @@ def _write_config(server, state):
     dhcpd_config, interfaces_config = state.get_config(server)
     try:
         sudo_write_file(
-            server.config_filename, dhcpd_config.encode("utf-8"),
-            mode=0o640)
+            server.config_filename, dhcpd_config.encode("utf-8"), mode=0o640
+        )
         sudo_write_file(
             server.interfaces_filename,
             interfaces_config.encode("utf-8"),
-            mode=0o640)
+            mode=0o640,
+        )
     except ExternalProcessError as e:
         # ExternalProcessError.__str__ contains a generic failure message
         # as well as the command and its error output. On the other hand,
@@ -173,11 +169,15 @@ def _write_config(server, state):
         # short and to the point.
         maaslog.error(
             "Could not rewrite %s server configuration (for network "
-            "interfaces %s): %s", server.descriptive_name,
-            interfaces_config, str(e))
+            "interfaces %s): %s",
+            server.descriptive_name,
+            interfaces_config,
+            str(e),
+        )
         raise CannotConfigureDHCP(
-            "Could not rewrite %s server configuration: %s" % (
-                server.descriptive_name, e.output_as_unicode))
+            "Could not rewrite %s server configuration: %s"
+            % (server.descriptive_name, e.output_as_unicode)
+        )
 
 
 @synchronous
@@ -192,7 +192,7 @@ def _remove_host_map(omshell, mac):
     try:
         omshell.remove(mac)
     except ExternalProcessError as e:
-        if 'not connected.' in e.output_as_unicode:
+        if "not connected." in e.output_as_unicode:
             msg = "The DHCP server could not be reached."
         else:
             msg = str(e)
@@ -206,12 +206,15 @@ def _create_host_map(omshell, mac, ip_address):
     try:
         omshell.create(ip_address, mac)
     except ExternalProcessError as e:
-        if 'not connected.' in e.output_as_unicode:
+        if "not connected." in e.output_as_unicode:
             msg = "The DHCP server could not be reached."
         else:
             msg = str(e)
         err = "Could not create host map for %s -> %s: %s" % (
-            mac, ip_address, msg)
+            mac,
+            ip_address,
+            msg,
+        )
         maaslog.error(err)
         raise CannotCreateHostMap(err)
 
@@ -221,12 +224,15 @@ def _modify_host_map(omshell, mac, ip_address):
     try:
         omshell.modify(ip_address, mac)
     except ExternalProcessError as e:
-        if 'not connected.' in e.output_as_unicode:
+        if "not connected." in e.output_as_unicode:
             msg = "The DHCP server could not be reached."
         else:
             msg = str(e)
         err = "Could not modify host map for %s -> %s: %s" % (
-            mac, ip_address, msg)
+            mac,
+            ip_address,
+            msg,
+        )
         maaslog.error(err)
         raise CannotModifyHostMap(err)
 
@@ -235,8 +241,10 @@ def _modify_host_map(omshell, mac, ip_address):
 def _update_hosts(server, remove, add, modify):
     """Update the hosts using the OMAPI."""
     omshell = Omshell(
-        server_address='127.0.0.1', shared_key=server.omapi_key,
-        ipv6=server.ipv6)
+        server_address="127.0.0.1",
+        shared_key=server.omapi_key,
+        ipv6=server.ipv6,
+    )
     for host in remove:
         _remove_host_map(omshell, host["mac"])
     for host in add:
@@ -252,7 +260,10 @@ def _catch_service_error(server, action, call, *args, **kwargs):
 
     def eb(failure):
         message = "%s server failed to %s: %s" % (
-            server.descriptive_name, action, failure.value)
+            server.descriptive_name,
+            action,
+            failure.value,
+        )
         # A ServiceActionError will have already been logged by the
         # service monitor, so don't log a second time.
         if not failure.check(ServiceActionError):
@@ -268,9 +279,9 @@ def _debug_hostmap_msg_remove(hosts):
 
     def _inner():
         if hosts:
-            return ', '.join(host["mac"] for host in hosts)
+            return ", ".join(host["mac"] for host in hosts)
         else:
-            return 'none'
+            return "none"
 
     # Uses and inner function so its only called if the rack controller is
     # configured in debug mode. In normal mode this will not be called and
@@ -283,10 +294,11 @@ def _debug_hostmap_msg(hosts):
 
     def _inner():
         if hosts:
-            return ', '.join(
-                "%s -> %s" % (host["mac"], host["ip"]) for host in hosts)
+            return ", ".join(
+                "%s -> %s" % (host["mac"], host["ip"]) for host in hosts
+            )
         else:
-            return 'none'
+            return "none"
 
     # Uses and inner function so its only called if the rack controller is
     # configured in debug mode. In normal mode this will not be called and
@@ -297,8 +309,13 @@ def _debug_hostmap_msg(hosts):
 @asynchronous
 @inlineCallbacks
 def configure(
-        server, failover_peers, shared_networks, hosts, interfaces,
-        global_dhcp_snippets=None):
+    server,
+    failover_peers,
+    shared_networks,
+    hosts,
+    interfaces,
+    global_dhcp_snippets=None,
+):
     """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
     This method is not safe to call concurrently. The clusterserver ensures
@@ -323,7 +340,8 @@ def configure(
     if stopping:
         log.debug(
             "Deleting configuration and stopping the {name} service.",
-            name=server.descriptive_name)
+            name=server.descriptive_name,
+        )
 
         # Remove the config so that the even an administrator cannot turn it on
         # accidently when it should be off.
@@ -333,21 +351,27 @@ def configure(
         service = service_monitor.getServiceByName(server.dhcp_service)
         service.off()
         yield _catch_service_error(
-            server, "stop",
-            service_monitor.ensureService, server.dhcp_service)
+            server, "stop", service_monitor.ensureService, server.dhcp_service
+        )
         _current_server_state[server.dhcp_service] = None
     else:
         # Get the new state for the DHCP server.
         new_state = DHCPState(
-            server.omapi_key, failover_peers, shared_networks,
-            hosts, interfaces, global_dhcp_snippets)
+            server.omapi_key,
+            failover_peers,
+            shared_networks,
+            hosts,
+            interfaces,
+            global_dhcp_snippets,
+        )
 
         # Always write the config, that way its always up-to-date. Even if
         # we are not going to restart the services. This makes sure that even
         # the comments in the file are updated.
         log.debug(
             "Writing updated DHCP configuration for {name} service.",
-            name=server.descriptive_name)
+            name=server.descriptive_name,
+        )
         yield deferToThread(_write_config, server, new_state)
 
         # Service should always be on if shared_networks exists.
@@ -359,18 +383,26 @@ def configure(
         if current_state is None:
             log.debug(
                 "Unknown previous state; restarting {name} service.",
-                name=server.descriptive_name)
+                name=server.descriptive_name,
+            )
             yield _catch_service_error(
-                server, "restart",
-                service_monitor.restartService, server.dhcp_service)
+                server,
+                "restart",
+                service_monitor.restartService,
+                server.dhcp_service,
+            )
         elif new_state.requires_restart(current_state):
             log.debug(
                 "Restarting {name} service; configuration change requires "
                 "full restart.",
-                name=server.descriptive_name)
+                name=server.descriptive_name,
+            )
             yield _catch_service_error(
-                server, "restart",
-                service_monitor.restartService, server.dhcp_service)
+                server,
+                "restart",
+                service_monitor.restartService,
+                server.dhcp_service,
+            )
         else:
             # No restart required update the host mappings if needed.
             remove, add, modify = new_state.host_diff(current_state)
@@ -379,22 +411,31 @@ def configure(
                 log.debug(
                     "Doing nothing; {name} service configuration has not "
                     "changed.",
-                    name=server.descriptive_name)
+                    name=server.descriptive_name,
+                )
                 yield _catch_service_error(
-                    server, "start",
-                    service_monitor.ensureService, server.dhcp_service)
+                    server,
+                    "start",
+                    service_monitor.ensureService,
+                    server.dhcp_service,
+                )
             else:
                 log.debug(
                     "Ensuring {name} service is running before updating "
                     "using the OMAPI.",
-                    name=server.descriptive_name)
+                    name=server.descriptive_name,
+                )
                 # Check the state of the service. Only if the services was on
                 # should the host maps be updated over the OMAPI.
                 before_state = yield service_monitor.getServiceState(
-                    server.dhcp_service, now=True)
+                    server.dhcp_service, now=True
+                )
                 yield _catch_service_error(
-                    server, "start",
-                    service_monitor.ensureService, server.dhcp_service)
+                    server,
+                    "start",
+                    service_monitor.ensureService,
+                    server.dhcp_service,
+                )
                 if before_state.active_state == SERVICE_STATE.ON:
                     # Was already running, so update host maps over OMAPI
                     # instead of performing a full restart.
@@ -406,27 +447,33 @@ def configure(
                         name=server.descriptive_name,
                         remove=_debug_hostmap_msg_remove(remove),
                         add=_debug_hostmap_msg(add),
-                        modify=_debug_hostmap_msg(modify))
+                        modify=_debug_hostmap_msg(modify),
+                    )
                     try:
                         yield deferToThread(
-                            _update_hosts, server, remove, add, modify)
+                            _update_hosts, server, remove, add, modify
+                        )
                     except Exception:
                         # Error updating the host maps over the OMAPI.
                         # Restart the DHCP service so that the host maps
                         # are in-sync with what MAAS expects.
                         maaslog.warning(
                             "Failed to update all host maps. Restarting %s "
-                            "service to ensure host maps are in-sync." % (
-                                server.descriptive_name))
+                            "service to ensure host maps are in-sync."
+                            % (server.descriptive_name)
+                        )
                         yield _catch_service_error(
-                            server, "restart",
+                            server,
+                            "restart",
                             service_monitor.restartService,
-                            server.dhcp_service)
+                            server.dhcp_service,
+                        )
                 else:
                     log.debug(
                         "Usage of OMAPI skipped; {name} service was started "
                         "with new configuration.",
-                        name=server.descriptive_name)
+                        name=server.descriptive_name,
+                    )
 
         # Update the current state to the new state.
         _current_server_state[server.dhcp_service] = new_state
@@ -442,7 +489,7 @@ def _parse_dhcpd_errors(error_str):
     processing_config = False
     errors = []
     error = {}
-    error_regex = re.compile('line (?P<line_num>[0-9]+): (?P<error>.+)')
+    error_regex = re.compile("line (?P<line_num>[0-9]+): (?P<error>.+)")
     for line in error_str.splitlines():
         m = error_regex.search(line)
         # Don't start processing till we get past header and end processing
@@ -451,19 +498,19 @@ def _parse_dhcpd_errors(error_str):
             continue
         elif not processing_config and m is not None:
             processing_config = True
-        elif line.startswith('Configuration file errors encountered'):
+        elif line.startswith("Configuration file errors encountered"):
             break
         if m is not None:
             # New error, append previous error to the list of errors
-            if error.get('error') is not None:
+            if error.get("error") is not None:
                 errors.append(error)
                 error = {}
-            error['error'] = m.group('error')
-            error['line_num'] = int(m.group('line_num'))
-        elif m is None and line.strip() == '^':
-            error['position'] = line
+            error["error"] = m.group("error")
+            error["line_num"] = int(m.group("line_num"))
+        elif m is None and line.strip() == "^":
+            error["position"] = line
         else:
-            error['line'] = line
+            error["line"] = line
 
     if error != {}:
         errors.append(error)
@@ -472,8 +519,13 @@ def _parse_dhcpd_errors(error_str):
 
 
 def validate(
-        server, failover_peers, shared_networks, hosts, interfaces,
-        global_dhcp_snippets=None):
+    server,
+    failover_peers,
+    shared_networks,
+    hosts,
+    interfaces,
+    global_dhcp_snippets=None,
+):
     """Validate the DHCPv6/DHCPv4 configuration.
 
     :param server: A `DHCPServer` instance.
@@ -490,18 +542,27 @@ def validate(
     if global_dhcp_snippets is None:
         global_dhcp_snippets = []
     state = DHCPState(
-        server.omapi_key, failover_peers, shared_networks,
-        hosts, interfaces, global_dhcp_snippets)
+        server.omapi_key,
+        failover_peers,
+        shared_networks,
+        hosts,
+        interfaces,
+        global_dhcp_snippets,
+    )
     dhcpd_config, _ = state.get_config(server)
-    with NamedTemporaryFile(prefix='maas-dhcpd-') as tmp_dhcpd:
-        tmp_dhcpd.file.write(dhcpd_config.encode('utf-8'))
+    with NamedTemporaryFile(prefix="maas-dhcpd-") as tmp_dhcpd:
+        tmp_dhcpd.file.write(dhcpd_config.encode("utf-8"))
         tmp_dhcpd.file.flush()
         try:
-            call_and_check([
-                'dhcpd', '-t', '-cf',
-                '-6' if server.ipv6 else '-4',
-                tmp_dhcpd.name,
-            ])
+            call_and_check(
+                [
+                    "dhcpd",
+                    "-t",
+                    "-cf",
+                    "-6" if server.ipv6 else "-4",
+                    tmp_dhcpd.name,
+                ]
+            )
         except ExternalProcessError as e:
             return _parse_dhcpd_errors(e.output_as_unicode)
     return None

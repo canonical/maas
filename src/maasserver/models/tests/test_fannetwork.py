@@ -8,10 +8,7 @@ __all__ = []
 
 import random
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from maasserver.models.fannetwork import FanNetwork
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
@@ -20,28 +17,31 @@ from testtools import ExpectedException
 
 
 class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
-
     def test__user_view_returns_fannetwork(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
         self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
-                fannetwork.id, user, NodePermission.view))
+                fannetwork.id, user, NodePermission.view
+            ),
+        )
 
     def test__user_edit_raises_PermissionError(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
         with ExpectedException(PermissionDenied):
             FanNetwork.objects.get_fannetwork_or_404(
-                fannetwork.id, user, NodePermission.edit)
+                fannetwork.id, user, NodePermission.edit
+            )
 
     def test__user_admin_raises_PermissionError(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
         with ExpectedException(PermissionDenied):
             FanNetwork.objects.get_fannetwork_or_404(
-                fannetwork.id, user, NodePermission.admin)
+                fannetwork.id, user, NodePermission.admin
+            )
 
     def test__admin_view_returns_fannetwork(self):
         admin = factory.make_admin()
@@ -49,7 +49,9 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
         self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
-                fannetwork.id, admin, NodePermission.view))
+                fannetwork.id, admin, NodePermission.view
+            ),
+        )
 
     def test__admin_edit_returns_fannetwork(self):
         admin = factory.make_admin()
@@ -57,7 +59,9 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
         self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
-                fannetwork.id, admin, NodePermission.edit))
+                fannetwork.id, admin, NodePermission.edit
+            ),
+        )
 
     def test__admin_admin_returns_fannetwork(self):
         admin = factory.make_admin()
@@ -65,13 +69,14 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
         self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
-                fannetwork.id, admin, NodePermission.admin))
+                fannetwork.id, admin, NodePermission.admin
+            ),
+        )
 
 
 class TestFanNetwork(MAASServerTestCase):
-
     def test_creates_fannetwork(self):
-        name = factory.make_name('name')
+        name = factory.make_name("name")
         fannetwork = factory.make_FanNetwork(name=name)
         self.assertEqual(name, fannetwork.name)
 
@@ -83,26 +88,30 @@ class TestFanNetwork(MAASServerTestCase):
     def test_cannot_create_ipv6_fannetwork(self):
         with ExpectedException(ValidationError):
             factory.make_FanNetwork(
-                underlay="2001:db8:1:1::/96", overlay="2001:db8:2:1::/64")
+                underlay="2001:db8:1:1::/96", overlay="2001:db8:2:1::/64"
+            )
 
     def test_rejects_undersize_overlay(self):
         slash = random.randint(4, 28)
         with ExpectedException(ValidationError):
             factory.make_FanNetwork(
                 underlay=factory.make_ipv4_network(slash=slash),
-                overlay=factory.make_ipv4_network(slash=slash + 2))
+                overlay=factory.make_ipv4_network(slash=slash + 2),
+            )
 
     def test_rejects_overlapping_networks(self):
         with ExpectedException(ValidationError):
             factory.make_FanNetwork(
-                underlay="10.0.0.0/8", overlay="10.0.1.0/24")
+                underlay="10.0.0.0/8", overlay="10.0.1.0/24"
+            )
 
     def test_stores_host_reserve(self):
         host_reserve = random.randint(1, 200)
         fannetwork = factory.make_FanNetwork(
             underlay=factory.make_ipv4_network(slash=16),
             overlay=factory.make_ipv4_network(slash=8),
-            host_reserve=host_reserve)
+            host_reserve=host_reserve,
+        )
         self.assertEqual(host_reserve, fannetwork.host_reserve)
 
     def test_rejects_negative_host_reserve(self):
@@ -114,7 +123,8 @@ class TestFanNetwork(MAASServerTestCase):
             factory.make_FanNetwork(
                 underlay=factory.make_ipv4_network(slash=16),
                 overlay=factory.make_ipv4_network(slash=8),
-                host_reserve=256)
+                host_reserve=256,
+            )
 
     def test_stores_dhcp(self):
         dhcp = factory.pick_bool()
@@ -122,7 +132,7 @@ class TestFanNetwork(MAASServerTestCase):
         self.assertEqual(dhcp, fannetwork.dhcp)
 
     def test_stores_bridge(self):
-        bridge = factory.make_name('bridge')
+        bridge = factory.make_name("bridge")
         fannetwork = factory.make_FanNetwork(bridge=bridge)
         self.assertEqual(bridge, fannetwork.bridge)
 
@@ -132,6 +142,6 @@ class TestFanNetwork(MAASServerTestCase):
         self.assertEqual(off, fannetwork.off)
 
     def test_rejects_invalid_bridge_name(self):
-        bridge = factory.make_name(prefix='bridge', sep='.')
+        bridge = factory.make_name(prefix="bridge", sep=".")
         with ExpectedException(ValidationError):
             factory.make_FanNetwork(bridge=bridge)

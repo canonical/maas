@@ -8,25 +8,15 @@ __all__ = []
 from contextlib import closing
 import os
 from pipes import quote
-from subprocess import (
-    PIPE,
-    Popen,
-    STDOUT,
-)
+from subprocess import PIPE, Popen, STDOUT
 
 from maasserver.testing.config import RegionConfigurationFixture
 from maastesting import root
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 from postgresfixture import ClusterFixture
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
-from testtools.matchers import (
-    HasLength,
-    Not,
-)
+from testtools.content import Content, UTF8_TEXT
+from testtools.matchers import HasLength, Not
 
 
 def get_plpgsql_function_names(conn):
@@ -35,24 +25,27 @@ def get_plpgsql_function_names(conn):
         cursor.execute(
             "SELECT proname FROM pg_proc, pg_language"
             " WHERE pg_language.oid = pg_proc.prolang"
-            "   AND pg_language.lanname = 'plpgsql'")
+            "   AND pg_language.lanname = 'plpgsql'"
+        )
         return cursor.fetchall()
 
 
 def create_trigger_to_delete(conn, namespace):
     with closing(conn.cursor()) as cursor:
         cursor.execute(
-            "CREATE TABLE %s__test_table(id integer NOT NULL);" % (
-                namespace))
+            "CREATE TABLE %s__test_table(id integer NOT NULL);" % namespace
+        )
         cursor.execute(
             "CREATE FUNCTION test_table_procedure() "
             "RETURNS trigger AS $$ "
             "BEGIN RETURN NEW; END; "
-            "$$ LANGUAGE plpgsql;")
+            "$$ LANGUAGE plpgsql;"
+        )
         cursor.execute(
             "CREATE TRIGGER test_table_trigger BEFORE INSERT "
             "ON %s__test_table FOR EACH ROW "
-            "EXECUTE PROCEDURE test_table_procedure();" % namespace)
+            "EXECUTE PROCEDURE test_table_procedure();" % namespace
+        )
     return "%s__test_table" % namespace
 
 
@@ -61,11 +54,9 @@ def get_all_triggers(conn):
         cursor.execute(
             "SELECT tgname::text "
             "FROM pg_trigger, pg_class "
-            "WHERE NOT pg_trigger.tgisinternal;")
-        return [
-            row[0]
-            for row in cursor.fetchall()
-        ]
+            "WHERE NOT pg_trigger.tgisinternal;"
+        )
+        return [row[0] for row in cursor.fetchall()]
 
 
 class TestDBUpgrade(MAASTestCase):
@@ -77,9 +68,14 @@ class TestDBUpgrade(MAASTestCase):
         super(TestDBUpgrade, self).setUp()
         self.datadir = self.useFixture(TempDirectory()).path
         self.cluster = self.useFixture(ClusterFixture(self.datadir))
-        self.useFixture(RegionConfigurationFixture(
-            database_name=self.dbname, database_user=None,
-            database_pass=None, database_host=self.datadir))
+        self.useFixture(
+            RegionConfigurationFixture(
+                database_name=self.dbname,
+                database_user=None,
+                database_pass=None,
+                database_host=self.datadir,
+            )
+        )
 
     def execute(self, command, env):
         process = Popen(command, stdout=PIPE, stderr=STDOUT, env=env)
@@ -94,7 +90,9 @@ class TestDBUpgrade(MAASTestCase):
         env["MAAS_PREVENT_MIGRATIONS"] = "0"
         mra = os.path.join(root, "bin", "maas-region")
         cmd = [
-            mra, "dbupgrade", "--settings",
+            mra,
+            "dbupgrade",
+            "--settings",
             "maasserver.djangosettings.settings",
         ]
         self.execute(cmd, env=env)

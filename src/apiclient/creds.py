@@ -12,10 +12,7 @@ but can also be converted to a colon-separated string format for easy
 transport between processes.
 """
 
-__all__ = [
-    'convert_string_to_tuple',
-    'convert_tuple_to_string',
-    ]
+__all__ = ["convert_string_to_tuple", "convert_tuple_to_string"]
 
 
 def convert_tuple_to_string(creds_tuple):
@@ -23,17 +20,17 @@ def convert_tuple_to_string(creds_tuple):
     if len(creds_tuple) != 3:
         raise ValueError(
             "Credentials tuple does not consist of 3 elements as expected; "
-            "it contains %d."
-            % len(creds_tuple))
-    return ':'.join(creds_tuple)
+            "it contains %d." % len(creds_tuple)
+        )
+    return ":".join(creds_tuple)
 
 
 def convert_string_to_tuple(creds_string):
     """Recreate a MAAS API credentials tuple from a colon-separated string."""
-    creds_tuple = tuple(creds_string.split(':'))
+    creds_tuple = tuple(creds_string.split(":"))
     if len(creds_tuple) != 3:
         raise ValueError(
             "Malformed credentials string.  Expected 3 colon-separated items, "
-            "got %r."
-            % creds_string)
+            "got %r." % creds_string
+        )
     return creds_tuple

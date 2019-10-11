@@ -4,15 +4,15 @@
 """Metadata API."""
 
 __all__ = [
-    'AnonMetaDataHandler',
-    'CommissioningScriptsHandler',
-    'CurtinUserDataHandler',
-    'IndexHandler',
-    'MAASScriptsHandler',
-    'MetaDataHandler',
-    'NETPLAN_TAR_PATH',
-    'UserDataHandler',
-    'VersionIndexHandler',
+    "AnonMetaDataHandler",
+    "CommissioningScriptsHandler",
+    "CurtinUserDataHandler",
+    "IndexHandler",
+    "MAASScriptsHandler",
+    "MetaDataHandler",
+    "NETPLAN_TAR_PATH",
+    "UserDataHandler",
+    "VersionIndexHandler",
 ]
 
 import base64
@@ -31,26 +31,16 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from formencode.validators import (
-    Int,
-    String,
-)
+from formencode.validators import Int, String
 from maasserver.api.nodes import store_node_power_parameters
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
     extract_oauth_key,
     get_mandatory_param,
     get_optional_param,
 )
 from maasserver.compose_preseed import get_apt_proxy
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
-    NODE_TYPE,
-)
+from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT, NODE_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPINotFound,
@@ -77,10 +67,7 @@ from maasserver.preseed import (
 )
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.utils import find_rack_controller
-from maasserver.utils.orm import (
-    get_one,
-    is_retryable_failure,
-)
+from maasserver.utils.orm import get_one, is_retryable_failure
 from metadataserver import logger
 from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
@@ -153,7 +140,8 @@ def get_node_for_mac(mac):
     """
     if not settings.ALLOW_UNSAFE_METADATA_ACCESS:
         raise PermissionDenied(
-            "Unauthenticated metadata access is not allowed on this MAAS.")
+            "Unauthenticated metadata access is not allowed on this MAAS."
+        )
     match = get_one(Interface.objects.filter(mac_address=mac))
     if match is None:
         raise MAASAPINotFound()
@@ -186,93 +174,108 @@ def make_text_response(contents):
     # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default) but
     # only sets the charset parameter in the content-type header when a
     # content-type is NOT provided.
-    return HttpResponse(contents, content_type='text/plain')
+    return HttpResponse(contents, content_type="text/plain")
 
 
 def make_list_response(items):
     """Create an `HttpResponse` listing `items`, one per line."""
-    return make_text_response('\n'.join(items))
+    return make_text_response("\n".join(items))
 
 
 def check_version(version):
     """Check that `version` is a supported metadata version."""
-    if version not in ('latest', '2012-03-01'):
+    if version not in ("latest", "2012-03-01"):
         raise UnknownMetadataVersion("Unknown metadata version: %s" % version)
 
 
 def add_event_to_node_event_log(
-        node, origin, action, description,
-        event_type, result=None, created=None):
+    node, origin, action, description, event_type, result=None, created=None
+):
     """Add an entry to the node's event log."""
     if node.status == NODE_STATUS.COMMISSIONING:
-        if result in ['SUCCESS', None]:
+        if result in ["SUCCESS", None]:
             type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
         else:
             type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT_FAILED
     elif node.status == NODE_STATUS.DEPLOYING:
-        if result in ['SUCCESS', None]:
+        if result in ["SUCCESS", None]:
             type_name = EVENT_TYPES.NODE_INSTALL_EVENT
         else:
             type_name = EVENT_TYPES.NODE_INSTALL_EVENT_FAILED
-    elif node.status == NODE_STATUS.DEPLOYED and result in ['FAIL']:
+    elif node.status == NODE_STATUS.DEPLOYED and result in ["FAIL"]:
         type_name = EVENT_TYPES.NODE_POST_INSTALL_EVENT_FAILED
     elif node.status == NODE_STATUS.ENTERING_RESCUE_MODE:
-        if result in ['SUCCESS', None]:
+        if result in ["SUCCESS", None]:
             type_name = EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT
         else:
             type_name = EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT_FAILED
     elif node.node_type in [
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
+        NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+    ]:
         type_name = EVENT_TYPES.REQUEST_CONTROLLER_REFRESH
     else:
         type_name = EVENT_TYPES.NODE_STATUS_EVENT
 
     # Create an extra event for the machine status messages.
-    if action in EVENT_STATUS_MESSAGES and event_type == 'start':
+    if action in EVENT_STATUS_MESSAGES and event_type == "start":
         Event.objects.register_event_and_event_type(
             EVENT_STATUS_MESSAGES[action],
-            type_level=EVENT_DETAILS[
-                EVENT_STATUS_MESSAGES[action]].level,
+            type_level=EVENT_DETAILS[EVENT_STATUS_MESSAGES[action]].level,
             type_description=EVENT_DETAILS[
-                EVENT_STATUS_MESSAGES[action]].description,
-            event_action=action, system_id=node.system_id, created=created)
+                EVENT_STATUS_MESSAGES[action]
+            ].description,
+            event_action=action,
+            system_id=node.system_id,
+            created=created,
+        )
 
     return Event.objects.register_event_and_event_type(
-        type_name, type_level=EVENT_DETAILS[type_name].level,
+        type_name,
+        type_level=EVENT_DETAILS[type_name].level,
         type_description=EVENT_DETAILS[type_name].description,
         event_action=action,
         event_description="'%s' %s" % (origin, description),
-        system_id=node.system_id, created=created)
+        system_id=node.system_id,
+        created=created,
+    )
 
 
 def process_file(
-        results, script_set, script_name, content, request,
-        default_exit_status=None):
+    results,
+    script_set,
+    script_name,
+    content,
+    request,
+    default_exit_status=None,
+):
     """Process a file sent to MAAS over the metadata service."""
 
     script_result_id = get_optional_param(
-        request, 'script_result_id', None, Int)
+        request, "script_result_id", None, Int
+    )
 
     # The .out or .err indicates this should be stored in the stdout or stderr
     # column of ScriptResult. If neither are given put it in the combined
     # output column. If given, we look up by script_result_id along with the
     # name to allow .out or .err in the name.
-    if script_name.lower().endswith('.out'):
+    if script_name.lower().endswith(".out"):
         script_name = script_name[0:-4]
-        key = 'stdout'
-    elif script_name.lower().endswith('.err'):
+        key = "stdout"
+    elif script_name.lower().endswith(".err"):
         script_name = script_name[0:-4]
-        key = 'stderr'
-    elif script_name.lower().endswith('.yaml'):
+        key = "stderr"
+    elif script_name.lower().endswith(".yaml"):
         script_name = script_name[0:-5]
-        key = 'result'
+        key = "result"
     else:
-        key = 'output'
+        key = "output"
 
-    script_result = script_set.scriptresult_set.filter(
-        id=script_result_id).defer(
-            'parameters', 'output', 'stdout', 'stderr', 'result').first()
+    script_result = (
+        script_set.scriptresult_set.filter(id=script_result_id)
+        .defer("parameters", "output", "stdout", "stderr", "result")
+        .first()
+    )
     if script_result is None:
         # If the script_result_id doesn't exist or wasn't sent try to find the
         # ScriptResult by script_name. Since ScriptResults can get their name
@@ -288,8 +291,10 @@ def process_file(
         # it.
         if not script_result_found:
             script_result = ScriptResult.objects.create(
-                script_set=script_set, script_name=script_name,
-                status=SCRIPT_STATUS.RUNNING)
+                script_set=script_set,
+                script_name=script_name,
+                status=SCRIPT_STATUS.RUNNING,
+            )
 
     # Store the processed file in the given results dictionary. This allows
     # requests with multipart file uploads to include STDOUT and STDERR.
@@ -299,9 +304,10 @@ def process_file(
         # Internally this is called exit_status, cloud-init sends this as
         # result, using the StatusHandler, and previously the commissioning
         # scripts sent this as script_result.
-        for exit_status_name in ['exit_status', 'script_result', 'result']:
+        for exit_status_name in ["exit_status", "script_result", "result"]:
             exit_status = get_optional_param(
-                request, exit_status_name, None, Int)
+                request, exit_status_name, None, Int
+            )
             if exit_status is not None:
                 break
         if exit_status is None:
@@ -310,15 +316,13 @@ def process_file(
             else:
                 exit_status = default_exit_status
 
-        results[script_result] = {
-            'exit_status': exit_status,
-            key: content,
-        }
+        results[script_result] = {"exit_status": exit_status, key: content}
 
         script_version_id = get_optional_param(
-            request, 'script_version_id', None, Int)
+            request, "script_version_id", None, Int
+        )
         if script_version_id is not None:
-            results[script_result]['script_version_id'] = script_version_id
+            results[script_result]["script_version_id"] = script_version_id
 
 
 class MetadataViewHandler(OperationsHandler):
@@ -331,7 +335,7 @@ class MetadataViewHandler(OperationsHandler):
 class IndexHandler(MetadataViewHandler):
     """Top-level metadata listing."""
 
-    subfields = ('latest', '2012-03-01')
+    subfields = ("latest", "2012-03-01")
 
 
 class StatusHandler(MetadataViewHandler):
@@ -402,12 +406,14 @@ class StatusHandler(MetadataViewHandler):
         # documentation, all operations are now performed by the
         # `api_twisted.StatusHandlerResource.render_POST`.
         raise AttributeError(
-            'api_twisted.StatusHandlerResource.render_POST should '
-            'be used instead.')
+            "api_twisted.StatusHandlerResource.render_POST should "
+            "be used instead."
+        )
 
 
 def try_or_log_event(
-        machine, signal_status, error_message, func, *args, **kwargs):
+    machine, signal_status, error_message, func, *args, **kwargs
+):
     """
     Attempts to run the specified function, related to the specified node and
     signal status. Will log the specified error, and create a node event,
@@ -439,15 +445,17 @@ def try_or_log_event(
         Event.objects.create_node_event(
             system_id=machine.system_id,
             event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
-            event_description=error_message)
+            event_description=error_message,
+        )
         signal_status = SIGNAL_STATUS.FAILED
     return signal_status
 
 
 class VersionIndexHandler(MetadataViewHandler):
     """Listing for a given metadata version."""
+
     create = update = delete = None
-    subfields = ('maas-commissioning-scripts', 'meta-data', 'user-data')
+    subfields = ("maas-commissioning-scripts", "meta-data", "user-data")
 
     # States in which a node is allowed to signal. Only in these states
     # will signaling have an effect.
@@ -465,7 +473,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.TESTING,
         NODE_STATUS.FAILED_TESTING,
         NODE_STATUS.NEW,
-        ]
+    ]
 
     effective_signalable_states = [
         NODE_STATUS.COMMISSIONING,
@@ -485,7 +493,7 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_subfields = self.subfields
         else:
             shown_subfields = list(self.subfields)
-            shown_subfields.remove('user-data')
+            shown_subfields.remove("user-data")
         return make_list_response(sorted(shown_subfields))
 
     def _store_results(self, node, script_set, request, status):
@@ -495,19 +503,22 @@ class VersionIndexHandler(MetadataViewHandler):
         for script_name, uploaded_file in request.FILES.items():
             content = uploaded_file.read()
             process_file(
-                results, script_set, script_name, content, request.POST)
+                results, script_set, script_name, content, request.POST
+            )
 
         # Commit results to the database.
         for script_result, args in results.items():
             script_result.store_result(
-                **args, timedout=(status == SIGNAL_STATUS.TIMEDOUT))
+                **args, timedout=(status == SIGNAL_STATUS.TIMEDOUT)
+            )
 
         script_set.last_ping = datetime.now()
         script_set.save()
 
         if status == SIGNAL_STATUS.APPLYING_NETCONF:
             script_result_id = get_optional_param(
-                request.POST, 'script_result_id', None, Int)
+                request.POST, "script_result_id", None, Int
+            )
             if script_result_id is not None:
                 script_result = script_set.find_script_result(script_result_id)
                 # Only update the script status if it was in a pending state
@@ -515,32 +526,38 @@ class VersionIndexHandler(MetadataViewHandler):
                 # already.
                 if script_result.status == SCRIPT_STATUS.PENDING:
                     script_result.status = SCRIPT_STATUS.APPLYING_NETCONF
-                    script_result.save(update_fields=['status'])
+                    script_result.save(update_fields=["status"])
         if status == SIGNAL_STATUS.INSTALLING:
             script_result_id = get_optional_param(
-                request.POST, 'script_result_id', None, Int)
+                request.POST, "script_result_id", None, Int
+            )
             if script_result_id is not None:
                 script_result = script_set.find_script_result(script_result_id)
                 # Only update the script status if it was in a pending state
                 # incase the script result has been uploaded and proceeded
                 # already.
                 if script_result.status in [
-                        SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF]:
+                    SCRIPT_STATUS.PENDING,
+                    SCRIPT_STATUS.APPLYING_NETCONF,
+                ]:
                     script_result.status = SCRIPT_STATUS.INSTALLING
-                    script_result.save(update_fields=['status'])
+                    script_result.save(update_fields=["status"])
         elif status == SIGNAL_STATUS.WORKING:
             script_result_id = get_optional_param(
-                request.POST, 'script_result_id', None, Int)
+                request.POST, "script_result_id", None, Int
+            )
             if script_result_id is not None:
                 script_result = script_set.find_script_result(script_result_id)
                 # Only update the script status if it was in a pending or
                 # installing state incase the script result has been uploaded
                 # and proceeded already.
                 if script_result.status in [
-                        SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
-                        SCRIPT_STATUS.INSTALLING]:
+                    SCRIPT_STATUS.PENDING,
+                    SCRIPT_STATUS.APPLYING_NETCONF,
+                    SCRIPT_STATUS.INSTALLING,
+                ]:
                     script_result.status = SCRIPT_STATUS.RUNNING
-                    script_result.save(update_fields=['status'])
+                    script_result.save(update_fields=["status"])
 
     def _process_new(self, node, request, status):
         if status != SIGNAL_STATUS.COMMISSIONING:
@@ -553,9 +570,11 @@ class VersionIndexHandler(MetadataViewHandler):
         # commissioning Scripts.
         script_set = node.current_commissioning_script_set
         if script_set is None or script_set.status not in (
-                SCRIPT_STATUS_RUNNING_OR_PENDING):
+            SCRIPT_STATUS_RUNNING_OR_PENDING
+        ):
             script_set = ScriptSet.objects.create_commissioning_script_set(
-                node, ['none'])
+                node, ["none"]
+            )
             node.current_commissioning_script_set = script_set
 
         return NODE_STATUS.COMMISSIONING
@@ -566,13 +585,14 @@ class VersionIndexHandler(MetadataViewHandler):
         # node is still operating.
         if node.status_expires is not None:
             node.status_expires = None
-            node.save(update_fields=['status_expires'])
+            node.save(update_fields=["status_expires"])
 
         self._store_results(
-            node, node.current_testing_script_set, request, status)
+            node, node.current_testing_script_set, request, status
+        )
 
         if status == SIGNAL_STATUS.OK:
-            enlisting = NodeMetadata.objects.get(node=node, key='enlisting')
+            enlisting = NodeMetadata.objects.get(node=node, key="enlisting")
             if enlisting is not None:
                 enlisting.delete()
                 return NODE_STATUS.NEW
@@ -593,16 +613,18 @@ class VersionIndexHandler(MetadataViewHandler):
         # makes sure the node is still operating.
         if node.status_expires is not None:
             node.status_expires = None
-            node.save(update_fields=['status_expires'])
+            node.save(update_fields=["status_expires"])
 
         self._store_results(
-            node, node.current_commissioning_script_set, request, status)
+            node, node.current_commissioning_script_set, request, status
+        )
 
         # This is skipped when its the rack controller using this endpoint.
         if node.node_type not in (
-                NODE_TYPE.RACK_CONTROLLER,
-                NODE_TYPE.REGION_CONTROLLER,
-                NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        ):
             # XXX 2014-10-21 newell, bug=1382075
             # Auto detection for IPMI tries to save power parameters
             # for Moonshot and RSD.  This causes issues if the node's power
@@ -621,45 +643,60 @@ class VersionIndexHandler(MetadataViewHandler):
             SIGNAL_STATUS.TESTING: NODE_STATUS.TESTING,
         }
         target_status = signaling_statuses.get(status)
-        enlisting = NodeMetadata.objects.get(node=node, key='enlisting')
+        enlisting = NodeMetadata.objects.get(node=node, key="enlisting")
         if enlisting is not None and target_status in [
-                NODE_STATUS.READY, NODE_STATUS.FAILED_COMMISSIONING]:
+            NODE_STATUS.READY,
+            NODE_STATUS.FAILED_COMMISSIONING,
+        ]:
             enlisting.delete()
             if target_status == NODE_STATUS.READY:
                 target_status = NODE_STATUS.NEW
 
         if target_status in [
-                NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.TESTING]:
+            NODE_STATUS.NEW,
+            NODE_STATUS.READY,
+            NODE_STATUS.TESTING,
+        ]:
             # Commissioning has ended. Check if any scripts failed during
             # post-processing; if so, the commissioning counts as a failure.
             qs = node.current_commissioning_script_set.scriptresult_set.filter(
-                status=SCRIPT_STATUS.FAILED)
+                status=SCRIPT_STATUS.FAILED
+            )
             if qs.count() > 0:
                 target_status = NODE_STATUS.FAILED_COMMISSIONING
             else:
                 # Recalculate tags when commissioning ends.
                 try_or_log_event(
-                    node, status, "Failed to update tags.",
+                    node,
+                    status,
+                    "Failed to update tags.",
                     populate_tags_for_single_node,
-                    Tag.objects.exclude(definition=None), node)
+                    Tag.objects.exclude(definition=None),
+                    node,
+                )
 
-        if (target_status == NODE_STATUS.FAILED_COMMISSIONING and
-                node.current_testing_script_set is not None):
+        if (
+            target_status == NODE_STATUS.FAILED_COMMISSIONING
+            and node.current_testing_script_set is not None
+        ):
             # If commissioning failed, testing doesn't run; mark any pending
             # scripts as aborted.
             qs = node.current_testing_script_set.scriptresult_set.filter(
-                status=SCRIPT_STATUS.PENDING)
+                status=SCRIPT_STATUS.PENDING
+            )
             qs.update(status=SCRIPT_STATUS.ABORTED, updated=now())
 
         return target_status
 
     def _process_deploying(self, node, request, status):
         self._store_results(
-            node, node.current_installation_script_set, request, status)
+            node, node.current_installation_script_set, request, status
+        )
         if status == SIGNAL_STATUS.FAILED:
             node.mark_failed(
                 comment="Installation failed (refer to the installation log "
-                "for more information).")
+                "for more information)."
+            )
         return None
 
     def _process_disk_erasing(self, node, request, status):
@@ -680,7 +717,8 @@ class VersionIndexHandler(MetadataViewHandler):
 
     def _process_rescue_mode(self, node, request, status):
         self._store_results(
-            node, node.current_commissioning_script_set, request, status)
+            node, node.current_commissioning_script_set, request, status
+        )
         return None
 
     @operation(idempotent=False)
@@ -712,21 +750,26 @@ class VersionIndexHandler(MetadataViewHandler):
         :param exit_status: The return code of the script run.
         """
         node = get_queried_node(request, for_mac=mac)
-        status = get_mandatory_param(request.POST, 'status', String)
+        status = get_mandatory_param(request.POST, "status", String)
         target_status = None
-        if (node.status not in self.signalable_states and
-                node.node_type == NODE_TYPE.MACHINE):
+        if (
+            node.status not in self.signalable_states
+            and node.node_type == NODE_TYPE.MACHINE
+        ):
             raise NodeStateViolation(
-                "Machine status isn't valid (status is %s)" %
-                NODE_STATUS_CHOICES_DICT[node.status])
+                "Machine status isn't valid (status is %s)"
+                % NODE_STATUS_CHOICES_DICT[node.status]
+            )
 
         # These statuses are acceptable for commissioning, disk erasing,
         # entering rescue mode and deploying.
         if status not in [choice[0] for choice in SIGNAL_STATUS_CHOICES]:
             raise MAASAPIBadRequest("Unknown status: '%s'" % status)
 
-        if (node.status not in self.effective_signalable_states and
-                node.node_type == NODE_TYPE.MACHINE):
+        if (
+            node.status not in self.effective_signalable_states
+            and node.node_type == NODE_TYPE.MACHINE
+        ):
             # If commissioning, it is already registered.  Nothing to be done.
             # If it is installing, should be in deploying state.
             return rc.ALL_OK
@@ -738,8 +781,7 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_STATUS.COMMISSIONING: self._process_commissioning,
                 NODE_STATUS.DEPLOYING: self._process_deploying,
                 NODE_STATUS.DISK_ERASING: self._process_disk_erasing,
-                NODE_STATUS.ENTERING_RESCUE_MODE:
-                    self._process_entering_rescue_mode,
+                NODE_STATUS.ENTERING_RESCUE_MODE: self._process_entering_rescue_mode,
                 NODE_STATUS.RESCUE_MODE: self._process_rescue_mode,
             }
             process = process_status_dict[node.status]
@@ -761,7 +803,8 @@ class VersionIndexHandler(MetadataViewHandler):
             Event.objects.create_node_event(node, EVENT_TYPES.READY)
         elif target_status == NODE_STATUS.FAILED_COMMISSIONING:
             Event.objects.create_node_event(
-                node, EVENT_TYPES.FAILED_COMMISSIONING)
+                node, EVENT_TYPES.FAILED_COMMISSIONING
+            )
         elif target_status == NODE_STATUS.RESCUE_MODE:
             Event.objects.create_node_event(node, EVENT_TYPES.RESCUE_MODE)
         elif target_status == NODE_STATUS.NEW:
@@ -776,11 +819,13 @@ class VersionIndexHandler(MetadataViewHandler):
         # Only machines can change their status. This is to allow controllers
         # to send refresh data without having their status changed to READY.
         # The exception to this is if testing was run.
-        if (node.node_type == NODE_TYPE.MACHINE or
-                node.status == NODE_STATUS.TESTING):
+        if (
+            node.node_type == NODE_TYPE.MACHINE
+            or node.status == NODE_STATUS.TESTING
+        ):
             node.status = target_status
 
-        node.error = get_optional_param(request.POST, 'error', '', String)
+        node.error = get_optional_param(request.POST, "error", "", String)
 
         # Done.
         node.save()
@@ -809,11 +854,11 @@ class MetaDataHandler(VersionIndexHandler):
     """Meta-data listing for a given version."""
 
     subfields = (
-        'instance-id',
-        'local-hostname',
-        'public-keys',
-        'vendor-data',
-        'x509',
+        "instance-id",
+        "local-hostname",
+        "public-keys",
+        "vendor-data",
+        "x509",
     )
 
     def get_attribute_producer(self, item):
@@ -827,16 +872,16 @@ class MetaDataHandler(VersionIndexHandler):
             returns an HttpResponse.
         :rtype: Callable
         """
-        subfield = item.split('/')[0]
+        subfield = item.split("/")[0]
         if subfield not in self.subfields:
             raise MAASAPINotFound("Unknown metadata attribute: %s" % subfield)
 
         producers = {
-            'instance-id': self.instance_id,
-            'local-hostname': self.local_hostname,
-            'public-keys': self.public_keys,
-            'vendor-data': self.vendor_data,
-            'x509': self.ssl_certs,
+            "instance-id": self.instance_id,
+            "local-hostname": self.local_hostname,
+            "public-keys": self.public_keys,
+            "vendor-data": self.vendor_data,
+            "x509": self.ssl_certs,
         }
 
         return producers[subfield]
@@ -850,13 +895,14 @@ class MetaDataHandler(VersionIndexHandler):
         if item is None or len(item) == 0:
             subfields = list(self.subfields)
             commissioning_without_ssh = (
-                node.status == NODE_STATUS.COMMISSIONING and
-                not node.enable_ssh)
+                node.status == NODE_STATUS.COMMISSIONING
+                and not node.enable_ssh
+            )
             # Add public-keys to the list of attributes, if the
             # node has registered SSH keys.
             keys = SSHKey.objects.get_keys_for_user(user=node.owner)
             if not keys or commissioning_without_ssh:
-                subfields.remove('public-keys')
+                subfields.remove("public-keys")
             return make_list_response(sorted(subfields))
 
         producer = self.get_attribute_producer(item)
@@ -875,24 +921,29 @@ class MetaDataHandler(VersionIndexHandler):
         return make_text_response(node.system_id)
 
     def vendor_data(self, node, version, item, proxy):
-        vendor_data = {"cloud-init": "#cloud-config\n%s" % yaml.safe_dump(
-            get_vendor_data(node, proxy)
-        )}
+        vendor_data = {
+            "cloud-init": "#cloud-config\n%s"
+            % yaml.safe_dump(get_vendor_data(node, proxy))
+        }
         vendor_data_dump = yaml.safe_dump(
-            vendor_data, encoding="utf-8", default_flow_style=False)
+            vendor_data, encoding="utf-8", default_flow_style=False
+        )
         # Use the same Content-Type as Piston 3 for YAML content.
         return HttpResponse(
-            vendor_data_dump, content_type="application/x-yaml; charset=utf-8")
+            vendor_data_dump, content_type="application/x-yaml; charset=utf-8"
+        )
 
     def public_keys(self, node, version, item):
         """ Produce public-keys attribute."""
         return make_list_response(
-            SSHKey.objects.get_keys_for_user(user=node.owner))
+            SSHKey.objects.get_keys_for_user(user=node.owner)
+        )
 
     def ssl_certs(self, node, version, item):
         """ Produce x509 certs attribute. """
         return make_list_response(
-            SSLKey.objects.get_keys_for_user(user=node.owner))
+            SSLKey.objects.get_keys_for_user(user=node.owner)
+        )
 
 
 class UserDataHandler(MetadataViewHandler):
@@ -922,20 +973,24 @@ class UserDataHandler(MetadataViewHandler):
                     node.end_deployment()
             # If this node is supposed to be powered off, serve the
             # 'poweroff' userdata.
-            if node.get_boot_purpose() == 'poweroff':
+            if node.get_boot_purpose() == "poweroff":
                 user_data = generate_user_data_for_poweroff(
-                    node=node, request=request)
+                    node=node, request=request
+                )
             else:
                 user_data = NodeUserData.objects.get_user_data(node)
             if node.status == NODE_STATUS.COMMISSIONING:
                 # Create a status message for GATHERING_INFO.
                 Event.objects.create_node_event(
-                    node, EVENT_TYPES.GATHERING_INFO)
+                    node, EVENT_TYPES.GATHERING_INFO
+                )
             return HttpResponse(
-                user_data, content_type='application/octet-stream')
+                user_data, content_type="application/octet-stream"
+            )
         except NodeUserData.DoesNotExist:
             logger.info(
-                "No user data registered for node named %s" % node.hostname)
+                "No user data registered for node named %s" % node.hostname
+            )
             return HttpResponse(status=int(http.client.NOT_FOUND))
 
 
@@ -946,9 +1001,7 @@ class CurtinUserDataHandler(MetadataViewHandler):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
         user_data = get_curtin_userdata(request, node)
-        return HttpResponse(
-            user_data,
-            content_type='application/octet-stream')
+        return HttpResponse(user_data, content_type="application/octet-stream")
 
 
 def add_file_to_tar(tar, path, content, mtime, permission=0o755):
@@ -971,11 +1024,12 @@ class CommissioningScriptsHandler(MetadataViewHandler):
 
     def _iter_builtin_scripts(self):
         for script in NODE_INFO_SCRIPTS.values():
-            yield script['name'], script['content']
+            yield script["name"], script["content"]
 
     def _iter_user_scripts(self):
         for script in Script.objects.filter(
-                script_type=SCRIPT_TYPE.COMMISSIONING):
+            script_type=SCRIPT_TYPE.COMMISSIONING
+        ):
             try:
                 # Check if the script is a base64 encoded binary.
                 content = base64.b64decode(script.script.data)
@@ -985,10 +1039,7 @@ class CommissioningScriptsHandler(MetadataViewHandler):
             yield script.name, content
 
     def _iter_scripts(self):
-        return chain(
-            self._iter_builtin_scripts(),
-            self._iter_user_scripts(),
-        )
+        return chain(self._iter_builtin_scripts(), self._iter_user_scripts())
 
     def _get_archive(self):
         """Produce a tar archive of all commissionig scripts.
@@ -997,9 +1048,8 @@ class CommissioningScriptsHandler(MetadataViewHandler):
         """
         binary = BytesIO()
         scripts = sorted(self._iter_scripts())
-        with tarfile.open(mode='w', fileobj=binary) as tarball:
-            add_script = partial(
-                add_file_to_tar, tarball, mtime=time.time())
+        with tarfile.open(mode="w", fileobj=binary) as tarball:
+            add_script = partial(add_file_to_tar, tarball, mtime=time.time())
             for name, content in scripts:
                 add_script(os.path.join("commissioning.d", name), content)
         return binary.getvalue()
@@ -1007,11 +1057,11 @@ class CommissioningScriptsHandler(MetadataViewHandler):
     def read(self, request, version, mac=None):
         check_version(version)
         return HttpResponse(
-            self._get_archive(), content_type='application/tar')
+            self._get_archive(), content_type="application/tar"
+        )
 
 
 class MAASScriptsHandler(OperationsHandler):
-
     def _add_script_set_to_tar(self, script_set, tar, prefix, mtime):
         if script_set is None:
             return []
@@ -1028,20 +1078,23 @@ class MAASScriptsHandler(OperationsHandler):
                 # data from the source.
                 if script_result.name in NODE_INFO_SCRIPTS:
                     script = NODE_INFO_SCRIPTS[script_result.name]
-                    add_file_to_tar(tar, path, script['content'], mtime)
+                    add_file_to_tar(tar, path, script["content"], mtime)
                     md_item = {
-                        'name': script_result.name,
-                        'path': path,
-                        'script_result_id': script_result.id,
-                        'timeout_seconds': script['timeout'].seconds,
-                        'parallel': script.get(
-                            'parallel', SCRIPT_PARALLEL.DISABLED),
-                        'hardware_type': script.get(
-                            'hardware_type', HARDWARE_TYPE.NODE),
-                        'packages': script.get('packages', {}),
-                        'for_hardware': script.get('for_hardware', []),
-                        'apply_configured_networking': script.get(
-                            'apply_configured_networking', False),
+                        "name": script_result.name,
+                        "path": path,
+                        "script_result_id": script_result.id,
+                        "timeout_seconds": script["timeout"].seconds,
+                        "parallel": script.get(
+                            "parallel", SCRIPT_PARALLEL.DISABLED
+                        ),
+                        "hardware_type": script.get(
+                            "hardware_type", HARDWARE_TYPE.NODE
+                        ),
+                        "packages": script.get("packages", {}),
+                        "for_hardware": script.get("for_hardware", []),
+                        "apply_configured_networking": script.get(
+                            "apply_configured_networking", False
+                        ),
                     }
                 else:
                     # Script was deleted by the user and it is not a builtin
@@ -1052,57 +1105,71 @@ class MAASScriptsHandler(OperationsHandler):
                 content = script_result.script.script.data.encode()
                 add_file_to_tar(tar, path, content, mtime)
                 md_item = {
-                    'name': script_result.name,
-                    'path': path,
-                    'script_result_id': script_result.id,
-                    'script_version_id': script_result.script.script.id,
-                    'timeout_seconds': script_result.script.timeout.seconds,
-                    'parallel': script_result.script.parallel,
-                    'hardware_type': script_result.script.hardware_type,
-                    'parameters': script_result.parameters,
-                    'packages': script_result.script.packages,
-                    'for_hardware': script_result.script.for_hardware,
-                    'apply_configured_networking': (
-                        script_result.script.apply_configured_networking),
+                    "name": script_result.name,
+                    "path": path,
+                    "script_result_id": script_result.id,
+                    "script_version_id": script_result.script.script.id,
+                    "timeout_seconds": script_result.script.timeout.seconds,
+                    "parallel": script_result.script.parallel,
+                    "hardware_type": script_result.script.hardware_type,
+                    "parameters": script_result.parameters,
+                    "packages": script_result.script.packages,
+                    "for_hardware": script_result.script.for_hardware,
+                    "apply_configured_networking": (
+                        script_result.script.apply_configured_networking
+                    ),
                 }
             if script_result.status == SCRIPT_STATUS.PENDING:
-                md_item['has_started'] = False
+                md_item["has_started"] = False
             else:
-                md_item['has_started'] = True
+                md_item["has_started"] = True
                 # If the script has already started send any results MAAS has
                 # received. The script runner will append these files and send
                 # them back when done.
-                out_path = os.path.join('out', '%s.%s' % (
-                    script_result.name, script_result.id))
+                out_path = os.path.join(
+                    "out", "%s.%s" % (script_result.name, script_result.id)
+                )
                 add_file_to_tar(tar, out_path, script_result.output, mtime)
                 add_file_to_tar(
-                    tar, '%s.out' % out_path, script_result.stdout, mtime)
+                    tar, "%s.out" % out_path, script_result.stdout, mtime
+                )
                 add_file_to_tar(
-                    tar, '%s.err' % out_path, script_result.stderr, mtime)
+                    tar, "%s.err" % out_path, script_result.stderr, mtime
+                )
                 add_file_to_tar(
-                    tar, '%s.yaml' % out_path, script_result.result, mtime)
+                    tar, "%s.yaml" % out_path, script_result.result, mtime
+                )
 
             # Only generate and add network configuration if the Script needs
             # it and it hasn't already been added.
-            if (md_item['apply_configured_networking'] and
-                    NETPLAN_TAR_PATH not in tar.getnames()):
+            if (
+                md_item["apply_configured_networking"]
+                and NETPLAN_TAR_PATH not in tar.getnames()
+            ):
                 node = script_result.script_set.node
                 # Testing is always done in the commissioning environment.
-                configs = Config.objects.get_configs([
-                    'commissioning_osystem',
-                    'commissioning_distro_series',
-                ])
+                configs = Config.objects.get_configs(
+                    ["commissioning_osystem", "commissioning_distro_series"]
+                )
                 network_yaml_settings = get_network_yaml_settings(
-                    configs['commissioning_osystem'],
-                    configs['commissioning_distro_series'])
+                    configs["commissioning_osystem"],
+                    configs["commissioning_distro_series"],
+                )
                 network_config = NodeNetworkConfiguration(
-                    node, version=network_yaml_settings.version,
-                    source_routing=network_yaml_settings.source_routing)
+                    node,
+                    version=network_yaml_settings.version,
+                    source_routing=network_yaml_settings.source_routing,
+                )
                 network_config_yaml = yaml.safe_dump(
-                    network_config.config, default_flow_style=False)
+                    network_config.config, default_flow_style=False
+                )
                 add_file_to_tar(
-                    tar, NETPLAN_TAR_PATH,
-                    network_config_yaml.encode(), mtime, 0o644)
+                    tar,
+                    NETPLAN_TAR_PATH,
+                    network_config_yaml.encode(),
+                    mtime,
+                    0o644,
+                )
 
             meta_data.append(md_item)
 
@@ -1124,17 +1191,21 @@ class MAASScriptsHandler(OperationsHandler):
         tar_meta_data = {}
         # Responses are currently gzip compressed using
         # django.middleware.gzip.GZipMiddleware.
-        with tarfile.open(mode='w', fileobj=binary) as tar:
+        with tarfile.open(mode="w", fileobj=binary) as tar:
             # Commissioning scripts should only be run during commissioning or
             # in rescue mode.
-            if (node.status in (
+            if (
+                node.status
+                in (
                     NODE_STATUS.COMMISSIONING,
                     NODE_STATUS.ENTERING_RESCUE_MODE,
                     NODE_STATUS.RESCUE_MODE,
-                    ) and node.current_commissioning_script_set is not None):
+                )
+                and node.current_commissioning_script_set is not None
+            ):
                 # Prefetch all the data we need.
                 qs = node.current_commissioning_script_set.scriptresult_set
-                qs = qs.select_related('script', 'script__script')
+                qs = qs.select_related("script", "script__script")
                 # After the script runner finishes sending all commissioning
                 # results it redownloads the script tar. It does this in-case
                 # a commissioning script discovers hardware associated with
@@ -1150,32 +1221,43 @@ class MAASScriptsHandler(OperationsHandler):
                         script_set.select_for_hardware_scripts()
                         break
                 meta_data = self._add_script_set_to_tar(
-                    node.current_commissioning_script_set, tar,
-                    'commissioning', mtime)
+                    node.current_commissioning_script_set,
+                    tar,
+                    "commissioning",
+                    mtime,
+                )
                 if meta_data != []:
-                    tar_meta_data['commissioning_scripts'] = sorted(
-                        meta_data, key=itemgetter('name', 'script_result_id'))
+                    tar_meta_data["commissioning_scripts"] = sorted(
+                        meta_data, key=itemgetter("name", "script_result_id")
+                    )
 
             # Always send testing scripts.
             if node.current_testing_script_set is not None:
                 # prefetch all the data we need
                 qs = node.current_testing_script_set.scriptresult_set
-                qs = qs.select_related('script', 'script__script')
+                qs = qs.select_related("script", "script__script")
                 meta_data = self._add_script_set_to_tar(
-                    qs, tar, 'testing', mtime)
+                    qs, tar, "testing", mtime
+                )
                 if meta_data != []:
-                    tar_meta_data['testing_scripts'] = sorted(
-                        meta_data, key=itemgetter('name', 'script_result_id'))
+                    tar_meta_data["testing_scripts"] = sorted(
+                        meta_data, key=itemgetter("name", "script_result_id")
+                    )
 
             if not tar_meta_data:
                 return HttpResponse(status=int(http.client.NO_CONTENT))
 
             add_file_to_tar(
-                tar, 'index.json', json.dumps({'1.0': tar_meta_data}).encode(),
-                mtime, 0o644)
+                tar,
+                "index.json",
+                json.dumps({"1.0": tar_meta_data}).encode(),
+                mtime,
+                0o644,
+            )
 
         return HttpResponse(
-            binary.getvalue(), content_type='application/x-tar')
+            binary.getvalue(), content_type="application/x-tar"
+        )
 
 
 class EnlistMetaDataHandler(OperationsHandler):
@@ -1186,9 +1268,9 @@ class EnlistMetaDataHandler(OperationsHandler):
     create = update = delete = None
 
     data = {
-        'instance-id': 'i-maas-enlistment',
-        'local-hostname': "maas-enlisting-node",
-        'public-keys': "",
+        "instance-id": "i-maas-enlistment",
+        "local-hostname": "maas-enlisting-node",
+        "public-keys": "",
     }
 
     def read(self, request, version, item=None):
@@ -1200,7 +1282,7 @@ class EnlistMetaDataHandler(OperationsHandler):
             # There's nothing in public-keys, so we don't advertise it.
             # But cloud-init does ask for it and it's not worth logging
             # a traceback for.
-            keys.remove('public-keys')
+            keys.remove("public-keys")
             return make_list_response(keys)
 
         if item not in self.data:
@@ -1221,17 +1303,23 @@ class EnlistUserDataHandler(OperationsHandler):
         # a content-type is NOT provided.
         return HttpResponse(
             generate_user_data_for_status(
-                None, NODE_STATUS.NEW, rack_controller=rack_controller,
-                request=request, extra_content={
-                    'enlist_commissioning': Config.objects.get_config(
-                        'enlist_commissioning'),
-                }),
-            content_type="text/plain")
+                None,
+                NODE_STATUS.NEW,
+                rack_controller=rack_controller,
+                request=request,
+                extra_content={
+                    "enlist_commissioning": Config.objects.get_config(
+                        "enlist_commissioning"
+                    )
+                },
+            ),
+            content_type="text/plain",
+        )
 
 
 class EnlistVersionIndexHandler(OperationsHandler):
     create = update = delete = None
-    subfields = ('meta-data', 'user-data')
+    subfields = ("meta-data", "user-data")
 
     def read(self, request, version):
         return make_list_response(sorted(self.subfields))
@@ -1248,8 +1336,7 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
-        preseed = get_enlist_preseed(
-            request, rack_controller=rack_controller)
+        preseed = get_enlist_preseed(request, rack_controller=rack_controller)
         return HttpResponse(preseed, content_type="text/plain")
 
     @operation(idempotent=True)
@@ -1278,6 +1365,8 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # called when the node has finished installing, so it's an
         # accurate predictor of the end of the install process.
         Event.objects.create_node_event(
-            node, EVENT_TYPES.NODE_INSTALLATION_FINISHED,
-            event_description="Node disabled netboot")
+            node,
+            EVENT_TYPES.NODE_INSTALLATION_FINISHED,
+            event_description="Node disabled netboot",
+        )
         return rc.ALL_OK

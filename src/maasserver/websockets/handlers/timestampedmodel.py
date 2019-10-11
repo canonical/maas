@@ -3,18 +3,12 @@
 
 """The nodes handler for the WebSocket connection."""
 
-__all__ = [
-    "TimestampedModelHandler",
-    ]
+__all__ = ["TimestampedModelHandler"]
 
-from maasserver.websockets.base import (
-    dehydrate_datetime,
-    Handler,
-)
+from maasserver.websockets.base import dehydrate_datetime, Handler
 
 
 class TimestampedModelHandler(Handler):
-
     class Meta:
         abstract = True
 

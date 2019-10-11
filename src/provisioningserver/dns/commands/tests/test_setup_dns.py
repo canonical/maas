@@ -11,24 +11,16 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.dns.commands.setup_dns import (
-    add_arguments,
-    run,
-)
+from provisioningserver.dns.commands.setup_dns import add_arguments, run
 from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
 )
 from provisioningserver.dns.testing import patch_dns_config_path
-from testtools.matchers import (
-    AllMatch,
-    FileContains,
-    FileExists,
-)
+from testtools.matchers import AllMatch, FileContains, FileExists
 
 
 class TestSetupCommand(MAASTestCase):
-
     def setUp(self):
         super().setUp()
         self.output = io.StringIO()
@@ -53,9 +45,12 @@ class TestSetupCommand(MAASTestCase):
         patch_dns_config_path(self, dns_conf_dir)
         random_content = factory.make_string()
         factory.make_file(
-            location=dns_conf_dir, name=MAAS_NAMED_CONF_NAME,
-            contents=random_content)
-        self.run_command('--no-clobber')
+            location=dns_conf_dir,
+            name=MAAS_NAMED_CONF_NAME,
+            contents=random_content,
+        )
+        self.run_command("--no-clobber")
         self.assertThat(
             os.path.join(dns_conf_dir, MAAS_NAMED_CONF_NAME),
-            FileContains(random_content))
+            FileContains(random_content),
+        )

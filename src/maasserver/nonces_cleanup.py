@@ -3,10 +3,7 @@
 
 """Nonces cleanup utilities."""
 
-__all__ = [
-    'cleanup_old_nonces',
-    'NonceCleanupService',
-    ]
+__all__ = ["cleanup_old_nonces", "NonceCleanupService"]
 
 
 import time
@@ -54,7 +51,9 @@ def create_checkpoint_nonce():
     """
     now = time.time()
     Nonce.objects.get_or_create(
-        token_key='', consumer_key='', key=get_time_string(now))
+        token_key="", consumer_key="", key=get_time_string(now)
+    )
+
 
 # Key prefix used when creating checkpoint nonces to avoid clashing with
 # real-world nonce created by piston.
@@ -82,10 +81,13 @@ def find_checkpoint_nonce():
     """
     time_limit = get_time_string(time.time() - timestamp_threshold)
     nonces = Nonce.objects.filter(
-        token_key='', consumer_key='',
-        key__lte=time_limit, key__startswith=key_prefix)
+        token_key="",
+        consumer_key="",
+        key__lte=time_limit,
+        key__startswith=key_prefix,
+    )
     try:
-        return nonces.latest('id')
+        return nonces.latest("id")
     except Nonce.DoesNotExist:
         return None
 
@@ -101,4 +103,5 @@ class NonceCleanupService(TimerService, object):
     def __init__(self, interval=(24 * 60 * 60)):
         cleanup = synchronous(transactional(cleanup_old_nonces))
         super(NonceCleanupService, self).__init__(
-            interval, deferToDatabase, cleanup)
+            interval, deferToDatabase, cleanup
+        )

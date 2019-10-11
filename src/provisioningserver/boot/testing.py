@@ -3,17 +3,9 @@
 
 """Testing helpers for `provisioningserver.boot`."""
 
-__all__ = [
-    "TFTPPath",
-    "TFTPPathAndComponents",
-    "TFTPPathComponents",
-]
+__all__ = ["TFTPPath", "TFTPPathAndComponents", "TFTPPathComponents"]
 
-from typing import (
-    Dict,
-    Optional,
-    Tuple,
-)
+from typing import Dict, Optional, Tuple
 
 from provisioningserver.utils.tftp import TFTPPath
 

@@ -15,7 +15,6 @@ from testtools.matchers import MatchesStructure
 
 
 class TestIPRangeHandler(MAASServerTestCase):
-
     def dehydrate_iprange(self, iprange, for_list=False):
         data = {
             "id": iprange.id,
@@ -27,7 +26,7 @@ class TestIPRangeHandler(MAASServerTestCase):
             "comment": iprange.comment,
             "user": iprange.user.username if iprange.user else "",
             "type": iprange.type,
-            "vlan": iprange.subnet.vlan_id if iprange.subnet else None
+            "vlan": iprange.subnet.vlan_id if iprange.subnet else None,
         }
         return data
 
@@ -37,8 +36,8 @@ class TestIPRangeHandler(MAASServerTestCase):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.iprange_set.first()
         self.assertEqual(
-            self.dehydrate_iprange(iprange),
-            handler.get({"id": iprange.id}))
+            self.dehydrate_iprange(iprange), handler.get({"id": iprange.id})
+        )
 
     def test_list(self):
         user = factory.make_User()
@@ -47,51 +46,57 @@ class TestIPRangeHandler(MAASServerTestCase):
         expected_ipranges = [
             self.dehydrate_iprange(iprange, for_list=True)
             for iprange in IPRange.objects.all()
-            ]
-        self.assertItemsEqual(
-            expected_ipranges,
-            handler.list({}))
+        ]
+        self.assertItemsEqual(expected_ipranges, handler.list({}))
 
     def test_create(self):
         user = factory.make_User()
         factory.make_Subnet(cidr="192.168.0.0/24")
         handler = IPRangeHandler(user, {}, None)
-        ip_range = handler.create({
-            "type": "reserved",
-            "start_ip": "192.168.0.10",
-            "end_ip": "192.168.0.20",
-        })
+        ip_range = handler.create(
+            {
+                "type": "reserved",
+                "start_ip": "192.168.0.10",
+                "end_ip": "192.168.0.20",
+            }
+        )
         self.assertThat(
-            IPRange.objects.get(id=ip_range['id']),
+            IPRange.objects.get(id=ip_range["id"]),
             MatchesStructure.byEquality(
-                type="reserved", start_ip="192.168.0.10",
-                end_ip="192.168.0.20"))
+                type="reserved", start_ip="192.168.0.10", end_ip="192.168.0.20"
+            ),
+        )
 
     def test_update(self):
         user = factory.make_User()
         factory.make_Subnet(cidr="192.168.0.0/24")
         handler = IPRangeHandler(user, {}, None)
-        ip_range = handler.create({
-            "type": "reserved",
-            "start_ip": "192.168.0.10",
-            "end_ip": "192.168.0.20",
-        })
+        ip_range = handler.create(
+            {
+                "type": "reserved",
+                "start_ip": "192.168.0.10",
+                "end_ip": "192.168.0.20",
+            }
+        )
         ip_range["end_ip"] = "192.168.0.30"
         handler.update(ip_range)
         self.assertThat(
-            IPRange.objects.get(id=ip_range['id']),
+            IPRange.objects.get(id=ip_range["id"]),
             MatchesStructure.byEquality(
-                type="reserved", start_ip="192.168.0.10",
-                end_ip="192.168.0.30"))
+                type="reserved", start_ip="192.168.0.10", end_ip="192.168.0.30"
+            ),
+        )
 
     def test_delete(self):
         user = factory.make_User()
         factory.make_Subnet(cidr="192.168.0.0/24")
         handler = IPRangeHandler(user, {}, None)
-        ip_range = handler.create({
-            "type": "reserved",
-            "start_ip": "192.168.0.10",
-            "end_ip": "192.168.0.20",
-        })
+        ip_range = handler.create(
+            {
+                "type": "reserved",
+                "start_ip": "192.168.0.10",
+                "end_ip": "192.168.0.20",
+            }
+        )
         handler.delete(ip_range)
-        self.assertIsNone(get_one(IPRange.objects.filter(id=ip_range['id'])))
+        self.assertIsNone(get_one(IPRange.objects.filter(id=ip_range["id"])))

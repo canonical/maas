@@ -3,9 +3,7 @@
 
 """Operating System class used for custom images."""
 
-__all__ = [
-    "UbuntuCoreOS",
-    ]
+__all__ = ["UbuntuCoreOS"]
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
@@ -37,4 +35,5 @@ class UbuntuCoreOS(OperatingSystem):
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Returns the xinstall image name and type for given image."""
         return self._find_image(
-            arch, subarch, release, label, dd=True, default_fname='root-dd.xz')
+            arch, subarch, release, label, dd=True, default_fname="root-dd.xz"
+        )

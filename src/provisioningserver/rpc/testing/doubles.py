@@ -14,10 +14,7 @@ from unittest.mock import sentinel
 
 import attr
 from provisioningserver.drivers.osystem import OperatingSystem
-from provisioningserver.rpc.interfaces import (
-    IConnection,
-    IConnectionToRegion,
-)
+from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
 from twisted.internet.defer import succeed
 from zope.interface import implementer
 from zope.interface.verify import verifyObject
@@ -34,7 +31,7 @@ class DummyConnection:
 @attr.s(cmp=False)
 @implementer(IConnection)
 class FakeConnection:
-    "A fake `IConnection`."""
+    "A fake `IConnection`." ""
 
     ident = attr.ib(default=sentinel.ident)
     hostCertificate = attr.ib(default=sentinel.hostCertificate)
@@ -43,13 +40,14 @@ class FakeConnection:
     def callRemote(self, cmd, **arguments):
         return succeed(sentinel.response)
 
+
 verifyObject(IConnection, FakeConnection())
 
 
 @attr.s(cmp=False)
 @implementer(IConnectionToRegion)
 class FakeConnectionToRegion:
-    "A fake `IConnectionToRegion`."""
+    "A fake `IConnectionToRegion`." ""
 
     ident = attr.ib(default=sentinel.ident)
     localIdent = attr.ib(default=sentinel.localIdent)
@@ -59,6 +57,7 @@ class FakeConnectionToRegion:
 
     def callRemote(self, cmd, **arguments):
         return succeed(sentinel.response)
+
 
 verifyObject(IConnectionToRegion, FakeConnectionToRegion())
 

@@ -22,10 +22,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
-from provisioningserver.rpc.utils import (
-    commission_node,
-    create_node,
-)
+from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
@@ -37,20 +34,24 @@ class MicrosoftOCSState(object):
 
 class MicrosoftOCSPowerDriver(PowerDriver):
 
-    name = 'msftocs'
+    name = "msftocs"
     chassis = True
     description = "Microsoft OCS - Chassis Manager"
     settings = [
-        make_setting_field('power_address', "Power address", required=True),
-        make_setting_field('power_port', "Power port"),
-        make_setting_field('power_user', "Power user"),
+        make_setting_field("power_address", "Power address", required=True),
+        make_setting_field("power_port", "Power port"),
+        make_setting_field("power_user", "Power user"),
         make_setting_field(
-            'power_pass', "Power password", field_type='password'),
+            "power_pass", "Power password", field_type="password"
+        ),
         make_setting_field(
-            'blade_id', "Blade ID (Typically 1-24)",
-            scope=SETTING_SCOPE.NODE, required=True),
+            "blade_id",
+            "Blade ID (Typically 1-24)",
+            scope=SETTING_SCOPE.NODE,
+            required=True,
+        ),
     ]
-    ip_extractor = make_ip_extractor('power_address')
+    ip_extractor = make_ip_extractor("power_address")
 
     def detect_missing_packages(self):
         # uses urllib2 http client - nothing to look for!
@@ -60,8 +61,8 @@ class MicrosoftOCSPowerDriver(PowerDriver):
         """Extract text from first element with element_tag in response."""
         root = fromstring(response)
         return root.findtext(
-            './/ns:%s' % element_tag,
-            namespaces={'ns': root.nsmap[None]})
+            ".//ns:%s" % element_tag, namespaces={"ns": root.nsmap[None]}
+        )
 
     def get(self, command, context, params=None):
         """Dispatch a GET request to a Microsoft OCS chassis."""
@@ -69,11 +70,12 @@ class MicrosoftOCSPowerDriver(PowerDriver):
             params = []
         else:
             params = [param for param in params if bool(param)]
-        url_base = 'http://{power_address}:{power_port}/'.format(**context)
-        url = urllib.parse.urljoin(url_base, command) + '?' + '&'.join(params)
+        url_base = "http://{power_address}:{power_port}/".format(**context)
+        url = urllib.parse.urljoin(url_base, command) + "?" + "&".join(params)
         authinfo = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         authinfo.add_password(
-            None, url, context['power_user'], context['power_pass'])
+            None, url, context["power_user"], context["power_pass"]
+        )
         proxy_handler = urllib.request.ProxyHandler({})
         auth_handler = urllib.request.HTTPBasicAuthHandler(authinfo)
         opener = urllib.request.build_opener(proxy_handler, auth_handler)
@@ -83,25 +85,30 @@ class MicrosoftOCSPowerDriver(PowerDriver):
         except urllib.error.HTTPError as e:
             raise PowerConnError(
                 "Could not make proper connection to Microsoft OCS Chassis."
-                " HTTP error code: %s" % e.code)
+                " HTTP error code: %s" % e.code
+            )
         except urllib.error.URLError as e:
             raise PowerConnError(
                 "Could not make proper connection to Microsoft OCS Chassis."
-                " Server could not be reached: %s" % e.reason)
+                " Server could not be reached: %s" % e.reason
+            )
         else:
             return response.read()
 
-    def set_next_boot_device(self, context, pxe=False,
-                             uefi=False, persistent=False):
+    def set_next_boot_device(
+        self, context, pxe=False, uefi=False, persistent=False
+    ):
         """Set Next Boot Device."""
-        boot_pxe = '2' if pxe else '3'
-        boot_uefi = 'true' if uefi else 'false'
-        boot_persistent = 'true' if persistent else 'false'
+        boot_pxe = "2" if pxe else "3"
+        boot_uefi = "true" if uefi else "false"
+        boot_persistent = "true" if persistent else "false"
         params = [
-            "bladeid=%s" % context['blade_id'], "bootType=%s" % boot_pxe,
-            "uefi=%s" % boot_uefi, "persistent=%s" % boot_persistent
+            "bladeid=%s" % context["blade_id"],
+            "bootType=%s" % boot_pxe,
+            "uefi=%s" % boot_uefi,
+            "persistent=%s" % boot_persistent,
         ]
-        self.get('SetNextBoot', context, params)
+        self.get("SetNextBoot", context, params)
 
     def get_blades(self, context):
         """Gets available blades.
@@ -110,25 +117,28 @@ class MicrosoftOCSPowerDriver(PowerDriver):
         MAC Addresses.
         """
         blades = {}
-        root = fromstring(self.get('GetChassisInfo', context))
-        namespace = {'ns': root.nsmap[None]}
+        root = fromstring(self.get("GetChassisInfo", context))
+        namespace = {"ns": root.nsmap[None]}
         blade_collections = root.find(
-            './/ns:bladeCollections', namespaces=namespace)
+            ".//ns:bladeCollections", namespaces=namespace
+        )
         # Iterate over all BladeInfo Elements
         for blade_info in blade_collections:
             blade_mac_address = blade_info.find(
-                './/ns:bladeMacAddress', namespaces=namespace)
+                ".//ns:bladeMacAddress", namespaces=namespace
+            )
             macs = []
             # Iterate over all NicInfo Elements and add MAC Addresses
             for nic_info in blade_mac_address:
                 macs.append(
-                    nic_info.findtext(
-                        './/ns:macAddress', namespaces=namespace))
+                    nic_info.findtext(".//ns:macAddress", namespaces=namespace)
+                )
             macs = [mac for mac in macs if bool(mac)]
             if macs:
                 # Retrive blade id number
                 bladeid = blade_info.findtext(
-                    './/ns:bladeNumber', namespaces=namespace)
+                    ".//ns:bladeNumber", namespaces=namespace
+                )
                 # Add MAC Addresses for blade
                 blades[bladeid] = macs
 
@@ -136,7 +146,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on MicrosoftOCS blade."""
-        if self.power_query(system_id, context) == 'on':
+        if self.power_query(system_id, context) == "on":
             self.power_off(system_id, context)
         try:
             # Set default (persistent) boot to HDD
@@ -145,51 +155,66 @@ class MicrosoftOCSPowerDriver(PowerDriver):
             self.set_next_boot_device(context, pxe=True)
             # Power on blade
             self.get(
-                'SetBladeOn', context, ["bladeid=%s" % context['blade_id']])
+                "SetBladeOn", context, ["bladeid=%s" % context["blade_id"]]
+            )
         except PowerConnError as e:
             raise PowerActionError(
                 "MicrosoftOCS Power Driver unable to power on blade_id %s: %s"
-                % (context['blade_id'], e))
+                % (context["blade_id"], e)
+            )
 
     def power_off(self, system_id, context):
         """Power off MicrosoftOCS blade."""
         try:
             # Power off blade
             self.get(
-                'SetBladeOff', context, ["bladeid=%s" % context['blade_id']])
+                "SetBladeOff", context, ["bladeid=%s" % context["blade_id"]]
+            )
         except PowerConnError as e:
             raise PowerActionError(
                 "MicrosoftOCS Power Driver unable to power off blade_id %s: %s"
-                % (context['blade_id'], e))
+                % (context["blade_id"], e)
+            )
 
     def power_query(self, system_id, context):
         """Power query MicrosoftOCS blade."""
         try:
             power_state = self.extract_from_response(
                 self.get(
-                    'GetBladeState', context,
-                    ["bladeid=%s" % context['blade_id']]), 'bladeState')
+                    "GetBladeState",
+                    context,
+                    ["bladeid=%s" % context["blade_id"]],
+                ),
+                "bladeState",
+            )
         except PowerConnError as e:
             raise PowerActionError(
                 "MicrosoftOCS Power Driver unable to power query blade_id %s:"
-                " %r" % (context['blade_id'], e))
+                " %r" % (context["blade_id"], e)
+            )
         else:
             if power_state == MicrosoftOCSState.OFF:
-                return 'off'
+                return "off"
             elif power_state == MicrosoftOCSState.ON:
-                return 'on'
+                return "on"
             else:
                 raise PowerFatalError(
                     "MicrosoftOCS Power Driver retrieved unknown power state"
-                    " %s for blade_id %s" % (
-                        power_state, context['blade_id']))
+                    " %s for blade_id %s" % (power_state, context["blade_id"])
+                )
 
 
 @synchronous
 @typed
 def probe_and_enlist_msftocs(
-        user: str, ip: str, port: Optional[int], username: Optional[str],
-        password: Optional[str], accept_all: bool = False, domain: str = None):
+    user: str,
+    ip: str,
+    port: Optional[int],
+    username: Optional[str],
+    password: Optional[str],
+    accept_all: bool = False,
+    domain: str = None,
+):
     """ Extracts all of nodes from msftocs, sets all of them to boot via
     HDD by, default, sets them to bootonce via PXE, and then enlists them
     into MAAS.
@@ -200,10 +225,10 @@ def probe_and_enlist_msftocs(
 
     msftocs_driver = MicrosoftOCSPowerDriver()
     context = {
-        'power_address': ip,
-        'power_port': str(port),
-        'power_user': username,
-        'power_pass': password,
+        "power_address": ip,
+        "power_port": str(port),
+        "power_user": username,
+        "power_pass": password,
     }
     try:
         # if get_blades works, we have access to the system
@@ -212,22 +237,25 @@ def probe_and_enlist_msftocs(
         raise PowerFatalError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
             "port=%s, username=%s, password=%s. HTTP error code: %s"
-            % (ip, port, username, password, e.code))
+            % (ip, port, username, password, e.code)
+        )
     except urllib.error.URLError as e:
         raise PowerFatalError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
             "port=%s, username=%s, password=%s. "
             "Server could not be reached: %s"
-            % (ip, port, username, password, e.reason))
+            % (ip, port, username, password, e.reason)
+        )
     else:
         for blade_id, macs in blades.items():
-            context['blade_id'] = blade_id
+            context["blade_id"] = blade_id
             # Set default (persistent) boot to HDD
             msftocs_driver.set_next_boot_device(context, persistent=True)
             # Set next boot to PXE
             msftocs_driver.set_next_boot_device(context, pxe=True)
             system_id = create_node(
-                macs, 'amd64', 'msftocs', context, domain).wait(30)
+                macs, "amd64", "msftocs", context, domain
+            ).wait(30)
 
             if accept_all:
                 commission_node(system_id, user).wait(30)

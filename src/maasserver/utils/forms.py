@@ -3,11 +3,7 @@
 
 """Form utilities."""
 
-__all__ = [
-    'compose_invalid_choice_text',
-    'get_QueryDict',
-    'set_form_error',
-]
+__all__ = ["compose_invalid_choice_text", "get_QueryDict", "set_form_error"]
 
 from django.http import QueryDict
 
@@ -34,7 +30,7 @@ def compose_invalid_choice_text(choice_of_what, valid_choices):
 
 def get_QueryDict(params, mutable=True):
     """Convert `params` to a `QueryDict`."""
-    query_dict = QueryDict('', mutable=mutable)
+    query_dict = QueryDict("", mutable=mutable)
     for k, v in params.items():
         if isinstance(v, list):
             query_dict.setlist(k, v)
@@ -52,4 +48,5 @@ def set_form_error(form, field_name, error_value):
     """
     # Hey Django devs, this is a crap API to set errors.
     form.errors.setdefault(field_name, []).extend(
-        form.error_class([error_value]))
+        form.error_class([error_value])
+    )

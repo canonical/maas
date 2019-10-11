@@ -14,20 +14,14 @@ from provisioningserver.path import get_data_path
 from provisioningserver.utils import env
 from provisioningserver.utils.fs import atomic_delete
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    FileContains,
-    FileExists,
-    Is,
-    Not,
-)
+from testtools.matchers import Equals, FileContains, FileExists, Is, Not
 
 
 class TestEnvironmentVariables(MAASTestCase):
     """Tests for `env.environment_variables`."""
 
     def make_variable(self):
-        return factory.make_name('testvar'), factory.make_name('value')
+        return factory.make_name("testvar"), factory.make_name("value")
 
     def test__sets_variables(self):
         var, value = self.make_variable()
@@ -37,7 +31,7 @@ class TestEnvironmentVariables(MAASTestCase):
 
     def test__overrides_prior_values(self):
         var, prior_value = self.make_variable()
-        temp_value = factory.make_name('temp-value')
+        temp_value = factory.make_name("temp-value")
         with env.environment_variables({var: prior_value}):
             with env.environment_variables({var: temp_value}):
                 environment = os.environ.copy()
@@ -53,7 +47,7 @@ class TestEnvironmentVariables(MAASTestCase):
 
     def test__restores_variables_to_previous_values(self):
         var, prior_value = self.make_variable()
-        temp_value = factory.make_name('temp-value')
+        temp_value = factory.make_name("temp-value")
         with env.environment_variables({var: prior_value}):
             with env.environment_variables({var: temp_value}):
                 pass
@@ -94,7 +88,7 @@ class TestMAASID(MAASTestCase):
 
     def setUp(self):
         super(TestMAASID, self).setUp()
-        self.maas_id_path = get_data_path('/var/lib/maas/maas_id')
+        self.maas_id_path = get_data_path("/var/lib/maas/maas_id")
         self.addCleanup(env.set_maas_id, None)
         env.set_maas_id(None)
 
@@ -189,7 +183,7 @@ class TestMAASID(MAASTestCase):
         self.assertThat(env.get_maas_id(), Is(None))
 
     def test_set_does_not_cache_when_write_fails(self):
-        mock_atomic_write = self.patch_autospec(env, 'atomic_write')
+        mock_atomic_write = self.patch_autospec(env, "atomic_write")
         exception = factory.make_exception()
         mock_atomic_write.side_effect = exception
         contents = factory.make_name("contents")

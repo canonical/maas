@@ -29,38 +29,52 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # This will create the filesystem group but not a virtual block
         # device since its a volume group.
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
+        )
         self.assertItemsEqual(
             [],
             VirtualBlockDevice.objects.filter(
-                filesystem_group=filesystem_group))
+                filesystem_group=filesystem_group
+            ),
+        )
 
     def test_create_or_update_for_raid_creates_block_device(self):
         # This will create the filesystem group and a virtual block device.
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0
+        )
         self.assertThat(
-            filesystem_group.virtual_device, MatchesStructure.byEquality(
+            filesystem_group.virtual_device,
+            MatchesStructure.byEquality(
                 name=filesystem_group.name,
                 size=filesystem_group.get_size(),
                 block_size=(
-                    filesystem_group.get_virtual_block_device_block_size())))
+                    filesystem_group.get_virtual_block_device_block_size()
+                ),
+            ),
+        )
 
     def test_create_or_update_for_bcache_creates_block_device(self):
         # This will create the filesystem group and a virtual block device.
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE
+        )
         self.assertThat(
-            filesystem_group.virtual_device, MatchesStructure.byEquality(
+            filesystem_group.virtual_device,
+            MatchesStructure.byEquality(
                 name=filesystem_group.name,
                 size=filesystem_group.get_size(),
                 block_size=(
-                    filesystem_group.get_virtual_block_device_block_size())))
+                    filesystem_group.get_virtual_block_device_block_size()
+                ),
+            ),
+        )
 
     def test_create_or_update_for_raid_updates_block_device(self):
         # This will create the filesystem group and a virtual block device.
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0
+        )
         # Update the size of all block devices to change the size of the
         # filesystem group.
         # The hard-coded size is due to this random ValidationError:
@@ -79,12 +93,14 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         array_size = new_size * filesystem_group.filesystems.count()
         self.assertEqual(
             array_size - RAID_SUPERBLOCK_OVERHEAD,
-            reload_object(filesystem_group.virtual_device).size)
+            reload_object(filesystem_group.virtual_device).size,
+        )
 
     def test_create_or_update_for_bcache_updates_block_device(self):
         # This will create the filesystem group and a virtual block device.
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE
+        )
         # Update the size of the backing device to change the size of the
         # filesystem group.
         # The hard-coded size is due to this random ValidationError:
@@ -97,7 +113,8 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # filesystem_group.save() does not need to be called here. The
         # post_save performs that operation.
         self.assertEqual(
-            new_size, reload_object(filesystem_group.virtual_device).size)
+            new_size, reload_object(filesystem_group.virtual_device).size
+        )
 
 
 class TestVirtualBlockDevice(MAASServerTestCase):
@@ -108,69 +125,81 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         vgname = factory.make_name("vg")
         volume_group = factory.make_VolumeGroup(name=vgname)
         logical_volume = factory.make_VirtualBlockDevice(
-            name=name, filesystem_group=volume_group)
+            name=name, filesystem_group=volume_group
+        )
         self.assertEqual("%s-%s" % (vgname, name), logical_volume.get_name())
 
     def test_get_name_returns_just_name(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+            )
+        )
         virtual_device = filesystem_group.virtual_device
         self.assertEqual(virtual_device.name, virtual_device.get_name())
 
     def test_node_is_set_to_same_node_from_filesystem_group(self):
         block_device = factory.make_VirtualBlockDevice()
         self.assertEqual(
-            block_device.filesystem_group.get_node(), block_device.node)
+            block_device.filesystem_group.get_node(), block_device.node
+        )
 
     def test_cannot_save_if_node_is_not_same_node_from_filesystem_group(self):
         block_device = factory.make_VirtualBlockDevice()
         block_device.node = factory.make_Node()
         with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['Node must be the same node as the "
-                    "filesystem_group.']}")):
+            ValidationError,
+            re.escape(
+                "{'__all__': ['Node must be the same node as the "
+                "filesystem_group.']}"
+            ),
+        ):
             block_device.save()
 
     def test_cannot_save_if_size_larger_than_volume_group(self):
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
+        )
         factory.make_VirtualBlockDevice(
             filesystem_group=filesystem_group,
-            size=filesystem_group.get_size() / 2)
+            size=filesystem_group.get_size() / 2,
+        )
         new_block_device_size = filesystem_group.get_size()
         human_readable_size = human_readable_bytes(new_block_device_size)
         with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['There is not enough free space (%s) "
-                    "on volume group %s.']}" % (
-                        human_readable_size,
-                        filesystem_group.name,
-                    ))):
+            ValidationError,
+            re.escape(
+                "{'__all__': ['There is not enough free space (%s) "
+                "on volume group %s.']}"
+                % (human_readable_size, filesystem_group.name)
+            ),
+        ):
             factory.make_VirtualBlockDevice(
-                filesystem_group=filesystem_group,
-                size=new_block_device_size)
+                filesystem_group=filesystem_group, size=new_block_device_size
+            )
 
     def test_save_doesnt_overwrite_uuid(self):
         uuid = uuid4()
         block_device = factory.make_VirtualBlockDevice(uuid=uuid)
-        self.assertEqual('%s' % uuid, block_device.uuid)
+        self.assertEqual("%s" % uuid, block_device.uuid)
 
     def test_get_parents_finds_devices(self):
         node = factory.make_Node()
         factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
-        fs_group_disks = [block_device.blockdevice_ptr
-                          for block_device in
-                          node.physicalblockdevice_set.all()
-                          if not block_device.is_boot_disk()]
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+            ),
+        )
+        fs_group_disks = [
+            block_device.blockdevice_ptr
+            for block_device in node.physicalblockdevice_set.all()
+            if not block_device.is_boot_disk()
+        ]
         virtualblockdevice = node.virtualblockdevice_set.first()
         self.assertEqual(
-            len(fs_group_disks), len(virtualblockdevice.get_parents()))
+            len(fs_group_disks), len(virtualblockdevice.get_parents())
+        )
 
     def test_get_parents_handles_cache_set(self):
         # Regression test for lp1519397
@@ -180,10 +209,12 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         vguuid = "%s" % uuid4()
         size = random.randint(MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
         logical_volume = volume_group.create_logical_volume(
-            name=name, uuid=vguuid, size=size)
+            name=name, uuid=vguuid, size=size
+        )
         logical_volume = reload_object(logical_volume)
         sdb = factory.make_PhysicalBlockDevice(node=node)
         factory.make_CacheSet(block_device=sdb, node=node)
         self.assertItemsEqual(
             [fs.block_device_id for fs in volume_group.filesystems.all()],
-            [parent.id for parent in logical_volume.get_parents()])
+            [parent.id for parent in logical_volume.get_parents()],
+        )

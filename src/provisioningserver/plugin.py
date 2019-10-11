@@ -3,23 +3,14 @@
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
 
-__all__ = [
-    "Options",
-    "ProvisioningServiceMaker",
-]
+__all__ = ["Options", "ProvisioningServiceMaker"]
 
 from errno import ENOPROTOOPT
 import socket
 from socket import error as socket_error
 
-from provisioningserver import (
-    logger,
-    settings,
-)
-from provisioningserver.config import (
-    ClusterConfiguration,
-    is_dev_environment,
-)
+from provisioningserver import logger, settings
+from provisioningserver.config import ClusterConfiguration, is_dev_environment
 from provisioningserver.monkey import (
     add_patches_to_twisted,
     add_patches_to_txtftp,
@@ -64,27 +55,29 @@ class ProvisioningServiceMaker:
         except socket_error as e:
             if e.errno != ENOPROTOOPT:
                 raise e
-        s.bind(('::', port))
+        s.bind(("::", port))
         # Use a backlog of 50, which seems to be fairly common.
         s.listen(50)
         # Adopt this socket into Twisted's reactor.
         site_endpoint = AdoptedStreamServerEndpoint(
-            reactor, s.fileno(), s.family)
+            reactor, s.fileno(), s.family
+        )
         site_endpoint.port = port  # Make it easy to get the port number.
         site_endpoint.socket = s  # Prevent garbage collection.
 
         http_service = StreamServerEndpointService(
-            site_endpoint, SiteNoLog(HTTPResource()))
+            site_endpoint, SiteNoLog(HTTPResource())
+        )
         http_service.setName("http_service")
         return http_service
 
-    def _makeTFTPService(
-            self, tftp_root, tftp_port, rpc_service):
+    def _makeTFTPService(self, tftp_root, tftp_port, rpc_service):
         """Create the dynamic TFTP service."""
         from provisioningserver.rackdservices.tftp import TFTPService
+
         tftp_service = TFTPService(
-            resource_root=tftp_root, port=tftp_port,
-            client_service=rpc_service)
+            resource_root=tftp_root, port=tftp_port, client_service=rpc_service
+        )
         tftp_service.setName("tftp")
 
         # *** EXPERIMENTAL ***
@@ -95,12 +88,16 @@ class ProvisioningServiceMaker:
             from provisioningserver.path import get_data_path
             from provisioningserver.rackdservices import tftp_offload
             from twisted.internet.endpoints import UNIXServerEndpoint
+
             tftp_offload_socket = get_data_path(
-                "/var/lib/maas/tftp-offload.sock")
+                "/var/lib/maas/tftp-offload.sock"
+            )
             tftp_offload_endpoint = UNIXServerEndpoint(
-                reactor, tftp_offload_socket, wantPID=False)
+                reactor, tftp_offload_socket, wantPID=False
+            )
             tftp_offload_service = tftp_offload.TFTPOffloadService(
-                reactor, tftp_offload_endpoint, tftp_service.backend)
+                reactor, tftp_offload_endpoint, tftp_service.backend
+            )
             tftp_offload_service.setName("tftp-offload")
             return tftp_offload_service
         # *** /EXPERIMENTAL ***
@@ -108,30 +105,37 @@ class ProvisioningServiceMaker:
         return tftp_service
 
     def _makeImageDownloadService(self, rpc_service, tftp_root):
-        from provisioningserver.rackdservices.image_download_service \
-            import ImageDownloadService
+        from provisioningserver.rackdservices.image_download_service import (
+            ImageDownloadService,
+        )
+
         image_download_service = ImageDownloadService(
-            rpc_service, tftp_root, reactor)
+            rpc_service, tftp_root, reactor
+        )
         image_download_service.setName("image_download")
         return image_download_service
 
     def _makeLeaseSocketService(self, rpc_service):
         from provisioningserver.rackdservices.lease_socket_service import (
-            LeaseSocketService)
-        lease_socket_service = LeaseSocketService(
-            rpc_service, reactor)
+            LeaseSocketService,
+        )
+
+        lease_socket_service = LeaseSocketService(rpc_service, reactor)
         lease_socket_service.setName("lease_socket_service")
         return lease_socket_service
 
     def _makeNodePowerMonitorService(self):
-        from provisioningserver.rackdservices.node_power_monitor_service \
-            import NodePowerMonitorService
+        from provisioningserver.rackdservices.node_power_monitor_service import (
+            NodePowerMonitorService,
+        )
+
         node_monitor = NodePowerMonitorService(reactor)
         node_monitor.setName("node_monitor")
         return node_monitor
 
     def _makeRPCService(self):
         from provisioningserver.rpc.clusterservice import ClusterClientService
+
         rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
         return rpc_service
@@ -140,41 +144,50 @@ class ProvisioningServiceMaker:
         from provisioningserver.rpc.clusterservice import (
             ClusterClientCheckerService,
         )
+
         service = ClusterClientCheckerService(rpc_service, reactor)
         service.setName("rpc-ping")
         return service
 
     def _makeNetworksMonitoringService(self, rpc_service, clock=reactor):
-        from provisioningserver.rackdservices.networks_monitoring_service \
-            import RackNetworksMonitoringService
+        from provisioningserver.rackdservices.networks_monitoring_service import (
+            RackNetworksMonitoringService,
+        )
+
         networks_monitor = RackNetworksMonitoringService(rpc_service, clock)
         networks_monitor.setName("networks_monitor")
         return networks_monitor
 
     def _makeDHCPProbeService(self, rpc_service):
-        from provisioningserver.rackdservices.dhcp_probe_service \
-            import DHCPProbeService
-        dhcp_probe_service = DHCPProbeService(
-            rpc_service, reactor)
+        from provisioningserver.rackdservices.dhcp_probe_service import (
+            DHCPProbeService,
+        )
+
+        dhcp_probe_service = DHCPProbeService(rpc_service, reactor)
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
     def _makeServiceMonitorService(self, rpc_service):
-        from provisioningserver.rackdservices.service_monitor_service \
-            import ServiceMonitorService
+        from provisioningserver.rackdservices.service_monitor_service import (
+            ServiceMonitorService,
+        )
+
         service_monitor = ServiceMonitorService(rpc_service, reactor)
         service_monitor.setName("service_monitor")
         return service_monitor
 
     def _makeRackHTTPService(self, resource_root, rpc_service):
         from provisioningserver.rackdservices import http
+
         http_service = http.RackHTTPService(
-            resource_root, rpc_service, reactor)
+            resource_root, rpc_service, reactor
+        )
         http_service.setName("http")
         return http_service
 
     def _makeExternalService(self, rpc_service):
         from provisioningserver.rackdservices import external
+
         external_service = external.RackExternalService(rpc_service, reactor)
         external_service.setName("external")
         return external_service
@@ -209,6 +222,7 @@ class ProvisioningServiceMaker:
         # Prevent other libraries from starting the reactor via crochet.
         # In other words, this makes crochet.setup() a no-op.
         import crochet
+
         crochet.no_setup()
 
     def _configureLogging(self, verbosity: int):
@@ -217,7 +231,7 @@ class ProvisioningServiceMaker:
 
     def makeService(self, options, clock=reactor):
         """Construct the MAAS Cluster service."""
-        register_sigusr1_toggle_cprofile('rackd')
+        register_sigusr1_toggle_cprofile("rackd")
         register_sigusr2_thread_dump_handler()
         clean_prometheus_dir()
         add_patches_to_txtftp()
@@ -236,6 +250,7 @@ class ProvisioningServiceMaker:
             tftp_port = config.tftp_port
 
         from provisioningserver import services
+
         for service in self._makeServices(tftp_root, tftp_port, clock=clock):
             service.setServiceParent(services)
 

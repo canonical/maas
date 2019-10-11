@@ -3,16 +3,10 @@
 
 """Model base class with creation/update timestamps."""
 
-__all__ = [
-    'now',
-    'TimestampedModel',
-    ]
+__all__ = ["now", "TimestampedModel"]
 
 
-from django.db.models import (
-    DateTimeField,
-    Model,
-)
+from django.db.models import DateTimeField, Model
 from django.utils import timezone
 from maasserver import DefaultMeta
 
@@ -81,10 +75,10 @@ class TimestampedModel(Model, object):
             if self.updated < self.created:
                 self.created = self.updated
                 update_created = True
-        if 'update_fields' in kwargs:
-            kwargs['update_fields'] = set(kwargs['update_fields'])
+        if "update_fields" in kwargs:
+            kwargs["update_fields"] = set(kwargs["update_fields"])
             if update_created:
-                kwargs['update_fields'].add('created')
+                kwargs["update_fields"].add("created")
             if update_updated:
-                kwargs['update_fields'].add('updated')
+                kwargs["update_fields"].add("updated")
         return super(TimestampedModel, self).save(*args, **kwargs)

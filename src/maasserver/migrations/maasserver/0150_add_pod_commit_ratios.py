@@ -3,27 +3,26 @@
 from __future__ import unicode_literals
 
 from django.core.validators import MinValueValidator
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0149_userprofile_auth_last_check'),
-    ]
+    dependencies = [("maasserver", "0149_userprofile_auth_last_check")]
 
     operations = [
         migrations.AddField(
-            model_name='bmc',
-            name='cpu_over_commit_ratio',
-            field=models.FloatField(default=1, validators=[MinValueValidator(0)]),
+            model_name="bmc",
+            name="cpu_over_commit_ratio",
+            field=models.FloatField(
+                default=1, validators=[MinValueValidator(0)]
+            ),
         ),
         migrations.AddField(
-            model_name='bmc',
-            name='memory_over_commit_ratio',
-            field=models.FloatField(default=1, validators=[MinValueValidator(0)]),
+            model_name="bmc",
+            name="memory_over_commit_ratio",
+            field=models.FloatField(
+                default=1, validators=[MinValueValidator(0)]
+            ),
         ),
     ]

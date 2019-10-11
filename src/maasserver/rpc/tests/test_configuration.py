@@ -15,7 +15,6 @@ from maastesting.factory import factory
 
 
 class TestGetProxies(MAASServerTestCase):
-
     def setUp(self):
         super(TestGetProxies, self).setUp()
         # Disable boot source cache signals.
@@ -25,22 +24,18 @@ class TestGetProxies(MAASServerTestCase):
     def test_returns_populated_dict_when_http_proxy_is_not_set(self):
         Config.objects.set_config("enable_http_proxy", True)
         Config.objects.set_config("http_proxy", None)
-        self.assertEqual(
-            {"http": None, "https": None},
-            get_proxies())
+        self.assertEqual({"http": None, "https": None}, get_proxies())
 
     def test_returns_populated_dict_when_http_proxy_is_set(self):
         Config.objects.set_config("enable_http_proxy", True)
         url = factory.make_parsed_url().geturl()
         Config.objects.set_config("http_proxy", url)
         self.assertEqual(
-            {"http": urlparse(url), "https": urlparse(url)},
-            get_proxies())
+            {"http": urlparse(url), "https": urlparse(url)}, get_proxies()
+        )
 
     def test_returns_populated_dict_when_http_proxy_is_disabled(self):
         Config.objects.set_config("enable_http_proxy", False)
         url = factory.make_parsed_url().geturl()
         Config.objects.set_config("http_proxy", url)
-        self.assertEqual(
-            {"http": None, "https": None},
-            get_proxies())
+        self.assertEqual({"http": None, "https": None}, get_proxies())

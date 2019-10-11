@@ -16,13 +16,10 @@ from maasserver.utils.dns import (
 )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import (
-    Equals,
-    HasLength,
-)
+from testtools.matchers import Equals, HasLength
 
 
-EXTENDED_SCHEMES = ['http', 'https', 'ftp', 'ftps', 'git', 'file', 'git+ssh']
+EXTENDED_SCHEMES = ["http", "https", "ftp", "ftps", "git", "file", "git+ssh"]
 
 
 class TestURLValidator(MAASTestCase):
@@ -36,42 +33,56 @@ class TestURLValidator(MAASTestCase):
             raise AssertionError(str(e))
 
     def test_accepts_domain_without_explicit_top_level_domain(self):
-        self.assertAccepts('http://foo')
-        self.assertAccepts('http://foo/')
-        self.assertAccepts('http://foo/bar')
-        self.assertAccepts('http://foo/bar/')
+        self.assertAccepts("http://foo")
+        self.assertAccepts("http://foo/")
+        self.assertAccepts("http://foo/bar")
+        self.assertAccepts("http://foo/bar/")
 
     def test_accepts_localhost(self):
-        self.assertIsNone(validate_url(
-            'file://localhost/path', schemes=EXTENDED_SCHEMES))
+        self.assertIsNone(
+            validate_url("file://localhost/path", schemes=EXTENDED_SCHEMES)
+        )
 
     def test_accepts_git_scheme(self):
-        self.assertIsNone(validate_url(
-            'git://example.com/', schemes=EXTENDED_SCHEMES))
+        self.assertIsNone(
+            validate_url("git://example.com/", schemes=EXTENDED_SCHEMES)
+        )
 
     def test_accepts_git_ssh_scheme(self):
-        self.assertIsNone(validate_url(
-            'git+ssh://git@github.com/example/hg-git.git',
-            schemes=EXTENDED_SCHEMES))
+        self.assertIsNone(
+            validate_url(
+                "git+ssh://git@github.com/example/hg-git.git",
+                schemes=EXTENDED_SCHEMES,
+            )
+        )
 
     def test_fails_hostname_starting_with_hyphen(self):
         self.assertRaises(
-            ValidationError, validate_url,
-            'git://-invalid.com', EXTENDED_SCHEMES)
+            ValidationError,
+            validate_url,
+            "git://-invalid.com",
+            EXTENDED_SCHEMES,
+        )
 
     def test_fails_newlines_at_end(self):
         self.assertRaises(
-            ValidationError, validate_url, 'http://www.djangoproject.com/\n')
+            ValidationError, validate_url, "http://www.djangoproject.com/\n"
+        )
         self.assertRaises(
-            ValidationError, validate_url, 'http://[::ffff:192.9.5.5]\n')
+            ValidationError, validate_url, "http://[::ffff:192.9.5.5]\n"
+        )
 
     def test_fails_for_trailing_junk(self):
         self.assertRaises(
-            ValidationError, validate_url,
-            'http://www.asdasdasdasdsadfm.com.br ')
+            ValidationError,
+            validate_url,
+            "http://www.asdasdasdasdsadfm.com.br ",
+        )
         self.assertRaises(
-            ValidationError, validate_url,
-            'http://www.asdasdasdasdsadfm.com.br z')
+            ValidationError,
+            validate_url,
+            "http://www.asdasdasdasdsadfm.com.br z",
+        )
 
 
 class TestHostnameValidator(MAASTestCase):
@@ -85,6 +96,7 @@ class TestHostnameValidator(MAASTestCase):
     validator would have to validate both versions: the unicode input for
     invalid characters, and the encoded version for length.
     """
+
     def make_maximum_hostname(self):
         """Create a hostname of the maximum permitted length.
 
@@ -97,8 +109,8 @@ class TestHostnameValidator(MAASTestCase):
         # A hostname may contain any number of labels, separated by dots.
         # Each of the labels has a maximum length of 63 characters, so this has
         # to be built up from multiple labels.
-        ten_chars = ('a' * 9) + '.'
-        hostname = ten_chars * 25 + ('b' * 5)
+        ten_chars = ("a" * 9) + "."
+        hostname = ten_chars * 25 + ("b" * 5)
         self.assertThat(hostname, HasLength(255))
         return hostname
 
@@ -125,106 +137,105 @@ class TestHostnameValidator(MAASTestCase):
         self.assertRaises(ValidationError, validate_domain_name, hostname)
 
     def test_accepts_ascii_letters(self):
-        self.assertAccepts('abcde')
+        self.assertAccepts("abcde")
 
     def test_accepts_dots(self):
-        self.assertAccepts('abc.def')
+        self.assertAccepts("abc.def")
 
     def test_accepts_subdomain(self):
-        self.assertAccepts('abc.def.ubuntu.com')
+        self.assertAccepts("abc.def.ubuntu.com")
 
     def test_rejects_adjacent_dots(self):
-        self.assertRejects('abc..def')
+        self.assertRejects("abc..def")
 
     def test_rejects_leading_dot(self):
-        self.assertRejects('.abc')
+        self.assertRejects(".abc")
 
     def test_rejects_trailing_dot(self):
-        self.assertRejects('abc.')
+        self.assertRejects("abc.")
 
     def test_accepts_ascii_digits(self):
-        self.assertAccepts('abc123')
+        self.assertAccepts("abc123")
 
     def test_accepts_leading_digits(self):
         # Leading digits used to be forbidden, but are now allowed.
-        self.assertAccepts('123abc')
+        self.assertAccepts("123abc")
 
     def test_rejects_whitespace(self):
-        self.assertRejects('a b')
-        self.assertRejects('a\nb')
-        self.assertRejects('a\tb')
+        self.assertRejects("a b")
+        self.assertRejects("a\nb")
+        self.assertRejects("a\tb")
 
     def test_rejects_other_ascii_characters(self):
-        self.assertRejects('a?b')
-        self.assertRejects('a!b')
-        self.assertRejects('a,b')
-        self.assertRejects('a:b')
-        self.assertRejects('a;b')
-        self.assertRejects('a+b')
-        self.assertRejects('a=b')
+        self.assertRejects("a?b")
+        self.assertRejects("a!b")
+        self.assertRejects("a,b")
+        self.assertRejects("a:b")
+        self.assertRejects("a;b")
+        self.assertRejects("a+b")
+        self.assertRejects("a=b")
 
     def test_rejects_underscore_in_domain(self):
-        self.assertRejects('host.local_domain')
+        self.assertRejects("host.local_domain")
 
     def test_rejects_underscore_in_host(self):
-        self.assertRejects('host_name.local')
+        self.assertRejects("host_name.local")
 
     def test_accepts_hyphen(self):
-        self.assertAccepts('a-b')
+        self.assertAccepts("a-b")
 
     def test_rejects_hyphen_at_start_of_label(self):
-        self.assertRejects('-ab')
+        self.assertRejects("-ab")
 
     def test_rejects_hyphen_at_end_of_label(self):
-        self.assertRejects('ab-')
+        self.assertRejects("ab-")
 
     def test_accepts_maximum_valid_length(self):
         self.assertAccepts(self.make_maximum_hostname())
 
     def test_rejects_oversized_hostname(self):
-        self.assertRejects(self.make_maximum_hostname() + 'x')
+        self.assertRejects(self.make_maximum_hostname() + "x")
 
     def test_accepts_maximum_label_length(self):
-        self.assertAccepts('a' * 63)
+        self.assertAccepts("a" * 63)
 
     def test_rejects_oversized_label(self):
-        self.assertRejects('b' * 64)
+        self.assertRejects("b" * 64)
 
     def test_rejects_nonascii_letter(self):
         # The \u03be is the Greek letter xi.  Perfectly good letter, just not
         # ASCII.
-        self.assertRejects('\u03be')
+        self.assertRejects("\u03be")
 
     def test_rejects_domain_underscores(self):
-        self.assertDomainValidatorRejects('_foo')
-        self.assertDomainValidatorRejects('_foo._bar')
-        self.assertDomainValidatorRejects('_.o_O._')
+        self.assertDomainValidatorRejects("_foo")
+        self.assertDomainValidatorRejects("_foo._bar")
+        self.assertDomainValidatorRejects("_.o_O._")
 
 
 class TestIpBasedHostnameGenerator(MAASTestCase):
-
     def test_ipv4_numeric(self):
-        self.expectThat(
-            get_ip_based_hostname(2130706433),
-            Equals("127-0-0-1"))
+        self.expectThat(get_ip_based_hostname(2130706433), Equals("127-0-0-1"))
         self.expectThat(
             get_ip_based_hostname(int(pow(2, 32) - 1)),
-            Equals("255-255-255-255"))
+            Equals("255-255-255-255"),
+        )
 
     def test_ipv4_text(self):
         ipv4 = factory.make_ipv4_address()
         self.expectThat(
-            get_ip_based_hostname(ipv4),
-            Equals(ipv4.replace('.', '-')))
+            get_ip_based_hostname(ipv4), Equals(ipv4.replace(".", "-"))
+        )
         self.expectThat(
-            get_ip_based_hostname("172.16.0.1"),
-            Equals("172-16-0-1"))
+            get_ip_based_hostname("172.16.0.1"), Equals("172-16-0-1")
+        )
 
     def test_ipv6_text(self):
         ipv4 = factory.make_ipv6_address()
         self.expectThat(
-            get_ip_based_hostname(ipv4),
-            Equals(ipv4.replace(':', '-')))
+            get_ip_based_hostname(ipv4), Equals(ipv4.replace(":", "-"))
+        )
         self.expectThat(
             get_ip_based_hostname("2001:67c:1562::15"),
-            Equals("2001-67c-1562--15"))
+            Equals("2001-67c-1562--15"),
+        )

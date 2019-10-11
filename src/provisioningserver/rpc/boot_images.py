@@ -7,7 +7,7 @@ __all__ = [
     "import_boot_images",
     "list_boot_images",
     "is_import_boot_images_running",
-    ]
+]
 
 from urllib.parse import urlparse
 
@@ -19,15 +19,9 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLastImageSync
-from provisioningserver.utils.env import (
-    environment_variables,
-    get_maas_id,
-)
+from provisioningserver.utils.env import environment_variables, get_maas_id
 from provisioningserver.utils.twisted import synchronous
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-)
+from twisted.internet.defer import fail, inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 
@@ -70,12 +64,12 @@ def get_hosts_from_sources(sources):
     function is used for), need it that way."""
     hosts = set()
     for source in sources:
-        url = urlparse(source['url'])
+        url = urlparse(source["url"])
         if url.hostname is not None:
             hosts.add(url.hostname)
         # If it's the IPv6 address, we add also add it inside []
-        if ':' in url.hostname:
-            hosts.add('[%s]' % url.hostname)
+        if ":" in url.hostname:
+            hosts.add("[%s]" % url.hostname)
     return hosts
 
 
@@ -84,19 +78,19 @@ def fix_sources_for_cluster(sources, maas_url):
     cluster configuration instead of the one the region suggested."""
     sources = list(sources)
     maas_url_parsed = urlparse(maas_url)
-    maas_url_path = maas_url_parsed.path.lstrip('/').rstrip('/')
+    maas_url_path = maas_url_parsed.path.lstrip("/").rstrip("/")
     for source in sources:
-        url = urlparse(source['url'])
-        source_path = url.path.lstrip('/')
+        url = urlparse(source["url"])
+        source_path = url.path.lstrip("/")
         # Most likely they will both have 'MAAS/' at the start. We can't just
         # append because then the URL would be 'MAAS/MAAS/' which is incorrect.
         # If the initial part of the URL defined in the config matches the
         # beginning of what the region told the cluster to use then strip it
         # out and build the new URL.
         if source_path.startswith(maas_url_path):
-            source_path = source_path[len(maas_url_path):]
-        url = maas_url.rstrip('/') + '/' + source_path.lstrip('/')
-        source['url'] = url
+            source_path = source_path[len(maas_url_path) :]
+        url = maas_url.rstrip("/") + "/" + source_path.lstrip("/")
+        source["url"] = url
     return sources
 
 
@@ -109,19 +103,22 @@ def _run_import(sources, maas_url, http_proxy=None, https_proxy=None):
     # Fix the sources to download from the IP address defined in the cluster
     # configuration, instead of the URL that the region asked it to use.
     sources = fix_sources_for_cluster(sources, maas_url)
-    variables = {
-        'GNUPGHOME': get_maas_user_gpghome(),
-        }
+    variables = {"GNUPGHOME": get_maas_user_gpghome()}
     if http_proxy is not None:
-        variables['http_proxy'] = http_proxy
+        variables["http_proxy"] = http_proxy
     if https_proxy is not None:
-        variables['https_proxy'] = https_proxy
+        variables["https_proxy"] = https_proxy
     # Communication to the sources and loopback should not go through proxy.
     no_proxy_hosts = [
-        "localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1",
-        "[::ffff:127.0.0.1]", "[::1]"]
+        "localhost",
+        "::ffff:127.0.0.1",
+        "127.0.0.1",
+        "::1",
+        "[::ffff:127.0.0.1]",
+        "[::1]",
+    ]
     no_proxy_hosts += list(get_hosts_from_sources(sources))
-    variables['no_proxy'] = ','.join(no_proxy_hosts)
+    variables["no_proxy"] = ",".join(no_proxy_hosts)
     with environment_variables(variables):
         imported = boot_resources.import_images(sources)
 
@@ -144,8 +141,12 @@ def import_boot_images(sources, maas_url, http_proxy=None, https_proxy=None):
     # original import another will be fired.
     if not lock.waiting:
         return lock.run(
-            _import_boot_images, sources, maas_url, http_proxy=http_proxy,
-            https_proxy=https_proxy)
+            _import_boot_images,
+            sources,
+            maas_url,
+            http_proxy=http_proxy,
+            https_proxy=https_proxy,
+        )
 
 
 @inlineCallbacks
@@ -157,7 +158,8 @@ def _import_boot_images(sources, maas_url, http_proxy=None, https_proxy=None):
     proxies = dict(http_proxy=http_proxy, https_proxy=https_proxy)
     yield deferToThread(_run_import, sources, maas_url, **proxies)
     yield touch_last_image_sync_timestamp().addErrback(
-        log.err, "Failure touching last image sync timestamp.")
+        log.err, "Failure touching last image sync timestamp."
+    )
 
 
 def is_import_boot_images_running():

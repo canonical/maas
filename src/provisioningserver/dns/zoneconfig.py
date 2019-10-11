@@ -3,20 +3,12 @@
 
 """Classes for generating BIND zone config files."""
 
-__all__ = [
-    'DNSForwardZoneConfig',
-    'DNSReverseZoneConfig',
-    'DomainInfo',
-    ]
+__all__ = ["DNSForwardZoneConfig", "DNSReverseZoneConfig", "DomainInfo"]
 
 from datetime import datetime
 from itertools import chain
 
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    spanning_cidr,
-)
+from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
 from provisioningserver.dns.config import (
     compose_config_path,
@@ -36,7 +28,7 @@ def get_fqdn_or_ip_address(target):
     try:
         return IPAddress(target).format()
     except AddrFormatError:
-        return target.rstrip('.') + '.'
+        return target.rstrip(".") + "."
 
 
 def enumerate_ip_mapping(mapping):
@@ -95,8 +87,8 @@ def get_details_for_ip_range(ip_range):
             # out a $GENERATE expression for a subset of the /24.
             intersecting_subnets.append(intersect)
 
-    octet_one = (cidr.value & 0xff000000) >> 24
-    octet_two = (cidr.value & 0x00ff0000) >> 16
+    octet_one = (cidr.value & 0xFF000000) >> 24
+    octet_two = (cidr.value & 0x00FF0000) >> 16
 
     # The first two octets of the network range formatted in the
     # usual dotted-quad style. We can precalculate the start of any IP
@@ -123,7 +115,7 @@ class DomainInfo:
         self.subnetwork = subnetwork
         self.zone_name = zone_name
         if target_path is None:
-            self.target_path = compose_config_path('zone.%s' % zone_name)
+            self.target_path = compose_config_path("zone.%s" % zone_name)
         else:
             self.target_path = target_path
 
@@ -131,7 +123,7 @@ class DomainInfo:
 class DomainConfigBase:
     """Base class for zone writers."""
 
-    template_file_name = 'zone.template'
+    template_file_name = "zone.template"
 
     def __init__(self, domain, zone_info, serial=None, **kwargs):
         """
@@ -145,22 +137,22 @@ class DomainConfigBase:
         :param default_ttl: The default TTL for the zone.
         """
         self.domain = domain
-        self.ns_host_name = kwargs.pop('ns_host_name', None)
+        self.ns_host_name = kwargs.pop("ns_host_name", None)
         self.serial = serial
         self.zone_info = zone_info
-        self.target_base = compose_config_path('zone')
-        self.default_ttl = kwargs.pop('default_ttl', 30)
-        self.ns_ttl = kwargs.pop('ns_ttl', self.default_ttl)
+        self.target_base = compose_config_path("zone")
+        self.default_ttl = kwargs.pop("default_ttl", 30)
+        self.ns_ttl = kwargs.pop("ns_ttl", self.default_ttl)
 
     def make_parameters(self):
         """Return a dict of the common template parameters."""
         return {
-            'domain': self.domain,
-            'serial': self.serial,
-            'modified': str(datetime.today()),
-            'ttl': self.default_ttl,
-            'ns_ttl': self.ns_ttl,
-            'ns_host_name': self.ns_host_name,
+            "domain": self.domain,
+            "serial": self.serial,
+            "modified": str(datetime.today()),
+            "ttl": self.default_ttl,
+            "ns_ttl": self.ns_ttl,
+            "ns_host_name": self.ns_host_name,
         }
 
     @classmethod
@@ -201,16 +193,15 @@ class DNSForwardZoneConfig(DomainConfigBase):
             the zone.  They will be mapped as A records.
         :param default_ttl: The default TTL for the zone.
         """
-        self._mapping = kwargs.pop('mapping', {})
-        self._network = kwargs.pop('network', None)
-        self._dynamic_ranges = kwargs.pop('dynamic_ranges', [])
-        self._other_mapping = kwargs.pop('other_mapping', {})
-        self._ipv4_ttl = kwargs.pop('ipv4_ttl', None)
-        self._ipv6_ttl = kwargs.pop('ipv6_ttl', None)
+        self._mapping = kwargs.pop("mapping", {})
+        self._network = kwargs.pop("network", None)
+        self._dynamic_ranges = kwargs.pop("dynamic_ranges", [])
+        self._other_mapping = kwargs.pop("other_mapping", {})
+        self._ipv4_ttl = kwargs.pop("ipv4_ttl", None)
+        self._ipv6_ttl = kwargs.pop("ipv6_ttl", None)
         super(DNSForwardZoneConfig, self).__init__(
-            domain,
-            zone_info=[DomainInfo(None, domain)],
-            **kwargs)
+            domain, zone_info=[DomainInfo(None, domain)], **kwargs
+        )
 
     @classmethod
     def get_mapping(cls, mapping, addr_ttl):
@@ -263,8 +254,9 @@ class DNSForwardZoneConfig(DomainConfigBase):
         """Return the GENERATE directives for the forward zone of a network.
         """
         slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
-        if (dynamic_range.size > 256 ** 2 or
-           not ip_range_within_network(dynamic_range, slash_16)):
+        if dynamic_range.size > 256 ** 2 or not ip_range_within_network(
+            dynamic_range, slash_16
+        ):
             # We can't issue a sane set of $GENERATEs for any network
             # larger than a /16, or for one that spans two /16s, so we
             # don't try.
@@ -274,23 +266,21 @@ class DNSForwardZoneConfig(DomainConfigBase):
         subnets, prefix, rdns_suffix = get_details_for_ip_range(dynamic_range)
         for subnet in subnets:
             iterator = "%d-%d" % (
-                (subnet.first & 0x000000ff),
-                (subnet.last & 0x000000ff))
+                (subnet.first & 0x000000FF),
+                (subnet.last & 0x000000FF),
+            )
 
             hostname = "%s-%d-$" % (
-                prefix.replace('.', '-'),
+                prefix.replace(".", "-"),
                 # Calculate what the third quad (i.e. 10.0.X.1) value should
                 # be for this subnet.
-                (subnet.first & 0x0000ff00) >> 8,
-                )
+                (subnet.first & 0x0000FF00) >> 8,
+            )
 
-            ip_address = "%s.%d.$" % (
-                prefix,
-                (subnet.first & 0x0000ff00) >> 8)
+            ip_address = "%s.%d.$" % (prefix, (subnet.first & 0x0000FF00) >> 8)
             generate_directives.add((iterator, hostname, ip_address))
 
-        return sorted(
-            generate_directives, key=lambda directive: directive[2])
+        return sorted(generate_directives, key=lambda directive: directive[2])
 
     def write_config(self):
         """Write the zone file."""
@@ -301,22 +291,24 @@ class DNSForwardZoneConfig(DomainConfigBase):
                     self.get_GENERATE_directives(dynamic_range)
                     for dynamic_range in self._dynamic_ranges
                     if dynamic_range.version == 4
-                ))
+                )
+            )
             self.write_zone_file(
-                zi.target_path, self.make_parameters(),
+                zi.target_path,
+                self.make_parameters(),
                 {
-                    'mappings': {
-                        'A': self.get_A_mapping(
-                            self._mapping, self._ipv4_ttl),
-                        'AAAA': self.get_AAAA_mapping(
-                            self._mapping, self._ipv6_ttl),
+                    "mappings": {
+                        "A": self.get_A_mapping(self._mapping, self._ipv4_ttl),
+                        "AAAA": self.get_AAAA_mapping(
+                            self._mapping, self._ipv6_ttl
+                        ),
                     },
-                    'other_mapping': enumerate_rrset_mapping(
-                        self._other_mapping),
-                    'generate_directives': {
-                        'A': generate_directives,
-                    }
-                })
+                    "other_mapping": enumerate_rrset_mapping(
+                        self._other_mapping
+                    ),
+                    "generate_directives": {"A": generate_directives},
+                },
+            )
 
 
 class DNSReverseZoneConfig(DomainConfigBase):
@@ -342,13 +334,14 @@ class DNSReverseZoneConfig(DomainConfigBase):
         :param rfc2317_ranges: List of ranges to generate RFC2317 CNAMEs for
         :type rfc2317_ranges: [:class:`netaddr.IPNetwork`]
         """
-        self._mapping = kwargs.pop('mapping', {})
+        self._mapping = kwargs.pop("mapping", {})
         self._network = kwargs.pop("network", None)
-        self._dynamic_ranges = kwargs.pop('dynamic_ranges', [])
-        self._rfc2317_ranges = kwargs.pop('rfc2317_ranges', [])
+        self._dynamic_ranges = kwargs.pop("dynamic_ranges", [])
+        self._rfc2317_ranges = kwargs.pop("rfc2317_ranges", [])
         zone_info = self.compose_zone_info(self._network)
         super(DNSReverseZoneConfig, self).__init__(
-            domain, zone_info=zone_info, **kwargs)
+            domain, zone_info=zone_info, **kwargs
+        )
 
     @classmethod
     def compose_zone_info(cls, network):
@@ -385,7 +378,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
             if step < 16:
                 step = 16
             # Grab the base (hex) and trailing labels for our reverse zone.
-            split_zone = first.reverse_dns.split('.')
+            split_zone = first.reverse_dns.split(".")
             zone_rest = ".".join(split_zone[rest_limit:-1])
             base = int(split_zone[rest_limit - 1], 16)
         else:
@@ -400,7 +393,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
                 step = 256
             # Grab the base (decimal) and trailing labels for our reverse
             # zone.
-            split_zone = first.reverse_dns.split('.')
+            split_zone = first.reverse_dns.split(".")
             zone_rest = ".".join(split_zone[rest_limit:-1])
             base = int(split_zone[rest_limit - 1])
         while first <= last:
@@ -417,9 +410,11 @@ class DNSReverseZoneConfig(DomainConfigBase):
                 new_zone = "%x-%d.%s" % (base, network.prefixlen, zone_rest)
             else:
                 new_zone = "%d-%d.%s" % (base, network.prefixlen, zone_rest)
-            info.append(DomainInfo(
-                IPNetwork("%s/%d" % (first, subnet_prefix)),
-                new_zone))
+            info.append(
+                DomainInfo(
+                    IPNetwork("%s/%d" % (first, subnet_prefix)), new_zone
+                )
+            )
             base += 1
             try:
                 first += step
@@ -446,20 +441,23 @@ class DNSReverseZoneConfig(DomainConfigBase):
         :param network: DNS Zone's network. (Not a supernet.)
         :type network: :class:`netaddr.IPNetwork`
         """
+
         def short_name(ip, network):
             long_name = IPAddress(ip).reverse_dns
             if network.version == 4:
-                short_name = ".".join(long_name.split('.')[
-                    :(31 - network.prefixlen) // 8 + 1])
+                short_name = ".".join(
+                    long_name.split(".")[: (31 - network.prefixlen) // 8 + 1]
+                )
             else:
-                short_name = ".".join(long_name.split('.')[
-                    :(127 - network.prefixlen) // 4 + 1])
+                short_name = ".".join(
+                    long_name.split(".")[: (127 - network.prefixlen) // 4 + 1]
+                )
             return short_name
 
         if mapping is None:
             return ()
         return (
-            (short_name(ip, network), ttl, '%s.' % (hostname))
+            (short_name(ip, network), ttl, "%s." % hostname)
             for hostname, ttl, ip in enumerate_ip_mapping(mapping)
             # Filter out the IP addresses that are not in `network`.
             if IPAddress(ip) in network
@@ -469,8 +467,9 @@ class DNSReverseZoneConfig(DomainConfigBase):
     def get_GENERATE_directives(cls, dynamic_range, domain, zone_info):
         """Return the GENERATE directives for the reverse zone of a network."""
         slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
-        if (dynamic_range.size > 256 ** 2 or
-           not ip_range_within_network(dynamic_range, slash_16)):
+        if dynamic_range.size > 256 ** 2 or not ip_range_within_network(
+            dynamic_range, slash_16
+        ):
             # We can't issue a sane set of $GENERATEs for any network
             # larger than a /16, or for one that spans two /16s, so we
             # don't try.
@@ -480,29 +479,32 @@ class DNSReverseZoneConfig(DomainConfigBase):
         # The largest subnet returned is a /24.
         subnets, prefix, rdns_suffix = get_details_for_ip_range(dynamic_range)
         for subnet in subnets:
-            if (IPAddress(subnet.first) in zone_info.subnetwork):
+            if IPAddress(subnet.first) in zone_info.subnetwork:
                 iterator = "%d-%d" % (
-                    (subnet.first & 0x000000ff),
-                    (subnet.last & 0x000000ff))
+                    (subnet.first & 0x000000FF),
+                    (subnet.last & 0x000000FF),
+                )
                 hostname = "%s-%d-$" % (
-                    prefix.replace('.', '-'),
-                    (subnet.first & 0x0000ff00) >> 8)
+                    prefix.replace(".", "-"),
+                    (subnet.first & 0x0000FF00) >> 8,
+                )
                 # If we're at least a /24, then fully specify the name,
                 # rather than trying to figure out how much of the name
                 # is in the zone name.
                 if zone_info.subnetwork.prefixlen <= 24:
                     rdns = "$.%d.%s" % (
-                        (subnet.first & 0x0000ff00) >> 8,
-                        rdns_suffix)
+                        (subnet.first & 0x0000FF00) >> 8,
+                        rdns_suffix,
+                    )
                 else:
                     # Let the zone declaration provide the suffix.
                     # rather than trying to calculate it.
                     rdns = "$"
                 generate_directives.add(
-                    (iterator, rdns, "%s.%s." % (hostname, domain)))
+                    (iterator, rdns, "%s.%s." % (hostname, domain))
+                )
 
-        return sorted(
-            generate_directives, key=lambda directive: directive[2])
+        return sorted(generate_directives, key=lambda directive: directive[2])
 
     @classmethod
     def get_rfc2317_GENERATE_directives(cls, network, rfc2317_ranges, domain):
@@ -514,20 +516,24 @@ class DNSReverseZoneConfig(DomainConfigBase):
         for subnet in rfc2317_ranges:
             if network.version == 4:
                 iterator = "%d-%d" % (
-                    (subnet.first & 0x000000ff),
-                    (subnet.last & 0x000000ff))
+                    (subnet.first & 0x000000FF),
+                    (subnet.last & 0x000000FF),
+                )
                 hostname = "$.%d-%d" % (
-                    (subnet.first & 0x000000ff),
-                    subnet.prefixlen)
-                generate_directives.add((iterator, '$', hostname))
+                    (subnet.first & 0x000000FF),
+                    subnet.prefixlen,
+                )
+                generate_directives.add((iterator, "$", hostname))
             else:
                 iterator = "%x-%d" % (
-                    (subnet.first & 0x0000000f),
-                    (subnet.last & 0x0000000f))
+                    (subnet.first & 0x0000000F),
+                    (subnet.last & 0x0000000F),
+                )
                 hostname = "${0,1,x}.%x-%d" % (
-                    (subnet.first & 0x0000000f),
-                    subnet.prefixlen)
-                generate_directives.add((iterator, '${0,1,x}', hostname))
+                    (subnet.first & 0x0000000F),
+                    subnet.prefixlen,
+                )
+                generate_directives.add((iterator, "${0,1,x}", hostname))
         return sorted(generate_directives)
 
     def write_config(self):
@@ -537,26 +543,27 @@ class DNSReverseZoneConfig(DomainConfigBase):
             generate_directives = list(
                 chain.from_iterable(
                     self.get_GENERATE_directives(
-                        dynamic_range,
-                        self.domain,
-                        zi)
+                        dynamic_range, self.domain, zi
+                    )
                     for dynamic_range in self._dynamic_ranges
                     if dynamic_range.version == 4
-                ))
+                )
+            )
             self.write_zone_file(
-                zi.target_path, self.make_parameters(),
+                zi.target_path,
+                self.make_parameters(),
                 {
-                    'mappings': {
-                        'PTR': self.get_PTR_mapping(
-                            self._mapping, zi.subnetwork),
+                    "mappings": {
+                        "PTR": self.get_PTR_mapping(
+                            self._mapping, zi.subnetwork
+                        )
                     },
-                    'other_mapping': [],
-                    'generate_directives': {
-                        'PTR': generate_directives,
-                        'CNAME': self.get_rfc2317_GENERATE_directives(
-                            zi.subnetwork,
-                            self._rfc2317_ranges,
-                            self.domain),
-                    }
-                }
+                    "other_mapping": [],
+                    "generate_directives": {
+                        "PTR": generate_directives,
+                        "CNAME": self.get_rfc2317_GENERATE_directives(
+                            zi.subnetwork, self._rfc2317_ranges, self.domain
+                        ),
+                    },
+                },
             )

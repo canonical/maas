@@ -6,14 +6,8 @@
 __all__ = []
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import (
-    FILESYSTEM_GROUP_TYPE,
-    PARTITION_TABLE_TYPE,
-)
-from maasserver.models.blockdevice import (
-    BlockDevice,
-    MIN_BLOCK_DEVICE_SIZE,
-)
+from maasserver.enum import FILESYSTEM_GROUP_TYPE, PARTITION_TABLE_TYPE
+from maasserver.models.blockdevice import BlockDevice, MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import (
     MAX_PARTITION_SIZE_FOR_MBR,
     MIN_PARTITION_SIZE,
@@ -35,50 +29,63 @@ class TestPartitionTable(MAASServerTestCase):
     def test_get_node_returns_block_device_node(self):
         partition_table = factory.make_PartitionTable()
         self.assertEqual(
-            partition_table.block_device.node, partition_table.get_node())
+            partition_table.block_device.node, partition_table.get_node()
+        )
 
     def test_get_size_returns_block_device_size_minus_initial_offset(self):
         partition_table = factory.make_PartitionTable()
         self.assertEqual(
             round_size_to_nearest_block(
-                partition_table.block_device.size -
-                PARTITION_TABLE_EXTRA_SPACE,
+                partition_table.block_device.size
+                - PARTITION_TABLE_EXTRA_SPACE,
                 PARTITION_ALIGNMENT_SIZE,
-                False),
-            partition_table.get_size())
+                False,
+            ),
+            partition_table.get_size(),
+        )
 
     def test_get_size_returns_block_device_size_minus_ppc64el(self):
         node = factory.make_Node(architecture="ppc64el/generic")
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         self.assertEqual(
             round_size_to_nearest_block(
-                partition_table.block_device.size -
-                PARTITION_TABLE_EXTRA_SPACE - PREP_PARTITION_SIZE,
+                partition_table.block_device.size
+                - PARTITION_TABLE_EXTRA_SPACE
+                - PREP_PARTITION_SIZE,
                 PARTITION_ALIGNMENT_SIZE,
-                False),
-            partition_table.get_size())
+                False,
+            ),
+            partition_table.get_size(),
+        )
 
     def test_get_size_returns_block_device_size_minus_amd64_gpt(self):
         node = factory.make_Node(architecture="amd64/generic")
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * (1024 ** 4))
+            node=node, size=2 * (1024 ** 4)
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         self.assertEqual(
             round_size_to_nearest_block(
-                partition_table.block_device.size -
-                PARTITION_TABLE_EXTRA_SPACE - BIOS_GRUB_PARTITION_SIZE,
+                partition_table.block_device.size
+                - PARTITION_TABLE_EXTRA_SPACE
+                - BIOS_GRUB_PARTITION_SIZE,
                 PARTITION_ALIGNMENT_SIZE,
-                False),
-            partition_table.get_size())
+                False,
+            ),
+            partition_table.get_size(),
+        )
 
     def test_get_block_size_returns_block_device_block_size(self):
         partition_table = factory.make_PartitionTable()
         self.assertEqual(
             partition_table.block_device.block_size,
-            partition_table.get_block_size())
+            partition_table.get_block_size(),
+        )
 
     def test_add_misaligned_partition(self):
         """Tests whether a partition size are adjusted according to
@@ -86,14 +93,16 @@ class TestPartitionTable(MAASServerTestCase):
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_PARTITION_SIZE * 2 + PARTITION_TABLE_EXTRA_SPACE,
-            block_size=block_size)
+            block_size=block_size,
+        )
         partition_table = factory.make_PartitionTable(block_device=device)
-        partition = partition_table.add_partition(
-            size=MIN_PARTITION_SIZE + 54)
+        partition = partition_table.add_partition(size=MIN_PARTITION_SIZE + 54)
         self.assertEqual(
             round_size_to_nearest_block(
-                MIN_PARTITION_SIZE + 54, PARTITION_ALIGNMENT_SIZE, False),
-            partition.size)
+                MIN_PARTITION_SIZE + 54, PARTITION_ALIGNMENT_SIZE, False
+            ),
+            partition.size,
+        )
 
     def test_add_partition_no_size(self):
         """Tests whether a partition with no specified size stretches to the
@@ -101,24 +110,27 @@ class TestPartitionTable(MAASServerTestCase):
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_BLOCK_DEVICE_SIZE * 2 + PARTITION_TABLE_EXTRA_SPACE,
-            block_size=block_size)
+            block_size=block_size,
+        )
         partition_table = factory.make_PartitionTable(block_device=device)
         partition = partition_table.add_partition()
-        self.assertEqual(
-            partition.size, MIN_BLOCK_DEVICE_SIZE * 2)
+        self.assertEqual(partition.size, MIN_BLOCK_DEVICE_SIZE * 2)
 
     def test_add_partition_no_size_sets_mbr_max(self):
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=3 * (1024 ** 4),
-            block_size=block_size)
+            size=3 * (1024 ** 4), block_size=block_size
+        )
         partition_table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.MBR, block_device=device)
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=device
+        )
         partition = partition_table.add_partition()
         self.assertEqual(
             round_size_to_nearest_block(
-                MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False),
-            partition.size)
+                MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False
+            ),
+            partition.size,
+        )
 
     def test_add_second_partition_no_size(self):
         """Tests whether a second partition with no specified size starts from
@@ -127,7 +139,8 @@ class TestPartitionTable(MAASServerTestCase):
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_PARTITION_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
-            block_size=block_size)
+            block_size=block_size,
+        )
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition(size=MIN_PARTITION_SIZE)
         partition = partition_table.add_partition()
@@ -139,81 +152,94 @@ class TestPartitionTable(MAASServerTestCase):
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_BLOCK_DEVICE_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
-            block_size=block_size)
+            block_size=block_size,
+        )
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition()
-        self.assertRaises(
-            ValidationError, partition_table.add_partition)
+        self.assertRaises(ValidationError, partition_table.add_partition)
 
     def test_get_overhead_size(self):
         node = factory.make_Node(bios_boot_method="pxe")
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         self.assertEquals(
-            PARTITION_TABLE_EXTRA_SPACE,
-            partition_table.get_overhead_size())
+            PARTITION_TABLE_EXTRA_SPACE, partition_table.get_overhead_size()
+        )
 
     def test_get_overhead_size_for_ppc64el(self):
         node = factory.make_Node(architecture="ppc64el/generic")
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         self.assertEquals(
             PARTITION_TABLE_EXTRA_SPACE + PREP_PARTITION_SIZE,
-            partition_table.get_overhead_size())
+            partition_table.get_overhead_size(),
+        )
 
     def test_get_overhead_size_for_amd64_gpt(self):
         node = factory.make_Node(architecture="amd64/generic")
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * (1024 ** 4))
+            node=node, size=2 * (1024 ** 4)
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         self.assertEquals(
             PARTITION_TABLE_EXTRA_SPACE + BIOS_GRUB_PARTITION_SIZE,
-            partition_table.get_overhead_size())
+            partition_table.get_overhead_size(),
+        )
 
     def test_get_available_size(self):
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_PARTITION_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
-            block_size=block_size)
+            block_size=block_size,
+        )
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition(size=MIN_PARTITION_SIZE)
         self.assertEqual(
-            MIN_PARTITION_SIZE * 2, partition_table.get_available_size())
+            MIN_PARTITION_SIZE * 2, partition_table.get_available_size()
+        )
 
     def test_get_available_size_skips_partitions(self):
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_PARTITION_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
-            block_size=block_size)
+            block_size=block_size,
+        )
         partition_table = factory.make_PartitionTable(block_device=device)
         ignore_partitions = [
             partition_table.add_partition(size=MIN_PARTITION_SIZE)
             for _ in range(2)
-            ]
+        ]
         partition_table.add_partition(size=MIN_PARTITION_SIZE)
         self.assertEqual(
             MIN_PARTITION_SIZE * 2,
             partition_table.get_available_size(
-                ignore_partitions=ignore_partitions))
+                ignore_partitions=ignore_partitions
+            ),
+        )
 
     def test_save_sets_table_type_to_mbr_for_boot_when_type_miss_match(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
-            block_device=BlockDevice.objects.get(id=boot_disk.id))
+            block_device=BlockDevice.objects.get(id=boot_disk.id)
+        )
         self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_2tib_boot(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * 1024 * 1024 * 1024 * 1024)
+            node=node, size=2 * 1024 * 1024 * 1024 * 1024
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=BlockDevice.objects.get(id=boot_disk.id))
-        self.assertEqual(
-            PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+            block_device=BlockDevice.objects.get(id=boot_disk.id)
+        )
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
@@ -223,14 +249,16 @@ class TestPartitionTable(MAASServerTestCase):
 
     def test_save_sets_table_type_to_gpt_for_powernv_boot(self):
         node = factory.make_Node(
-            with_boot_disk=False, bios_boot_method="powernv")
+            with_boot_disk=False, bios_boot_method="powernv"
+        )
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=boot_disk)
         self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_powerkvm_boot(self):
         node = factory.make_Node(
-            with_boot_disk=False, bios_boot_method="powerkvm")
+            with_boot_disk=False, bios_boot_method="powerkvm"
+        )
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=boot_disk)
         self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
@@ -245,10 +273,12 @@ class TestPartitionTable(MAASServerTestCase):
     def test_save_allows_gpt_on_2tib_boot_disk_pxe(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * 1024 * 1024 * 1024 * 1024)
+            node=node, size=2 * 1024 * 1024 * 1024 * 1024
+        )
         # ValidationError should not be raised.
         factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk
+        )
 
     def test_save_force_mbr_on_boot_disk_pxe_force_gpt_on_boot_disk_uefi(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
@@ -256,12 +286,18 @@ class TestPartitionTable(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError,
             factory.make_PartitionTable,
-            table_type=PARTITION_TABLE_TYPE.MBR, block_device=boot_disk)
-        self.assertEqual({
-            "table_type": [
-                "Partition table on this node's boot disk must "
-                "be using 'GPT'."],
-            }, error.message_dict)
+            table_type=PARTITION_TABLE_TYPE.MBR,
+            block_device=boot_disk,
+        )
+        self.assertEqual(
+            {
+                "table_type": [
+                    "Partition table on this node's boot disk must "
+                    "be using 'GPT'."
+                ]
+            },
+            error.message_dict,
+        )
 
     def test_save_no_force_on_none_boot_disk(self):
         node = factory.make_Node(bios_boot_method="uefi")
@@ -269,29 +305,42 @@ class TestPartitionTable(MAASServerTestCase):
         other_disk = factory.make_PhysicalBlockDevice(node=node)
         # No error should be raised.
         factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.MBR, block_device=other_disk)
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=other_disk
+        )
 
     def test_clean_no_partition_table_on_logical_volume(self):
         node = factory.make_Node()
         virtual_device = factory.make_VirtualBlockDevice(node=node)
         error = self.assertRaises(
             ValidationError,
-            factory.make_PartitionTable, block_device=virtual_device)
-        self.assertEqual({
-            "block_device": [
-                "Cannot create a partition table on a logical volume."],
-            }, error.message_dict)
+            factory.make_PartitionTable,
+            block_device=virtual_device,
+        )
+        self.assertEqual(
+            {
+                "block_device": [
+                    "Cannot create a partition table on a logical volume."
+                ]
+            },
+            error.message_dict,
+        )
 
     def test_clean_no_partition_table_on_bcache(self):
         node = factory.make_Node()
         bcache_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-            node=node)
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, node=node
+        )
         bcache_device = bcache_group.virtual_device
         error = self.assertRaises(
             ValidationError,
-            factory.make_PartitionTable, block_device=bcache_device)
-        self.assertEqual({
-            "block_device": [
-                "Cannot create a partition table on a Bcache volume."],
-            }, error.message_dict)
+            factory.make_PartitionTable,
+            block_device=bcache_device,
+        )
+        self.assertEqual(
+            {
+                "block_device": [
+                    "Cannot create a partition table on a Bcache volume."
+                ]
+            },
+            error.message_dict,
+        )

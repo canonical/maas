@@ -24,37 +24,22 @@ from maasserver.dns.config import (
     get_upstream_dns,
 )
 from maasserver.dns.zonegenerator import InternalDomainResourseRecord
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    NODE_STATUS,
-)
+from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.listener import PostgresListenerService
-from maasserver.models import (
-    Config,
-    Domain,
-)
+from maasserver.models import Config, Domain
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPAddress
-from provisioningserver.dns.commands import (
-    get_named_conf,
-    setup_dns,
-)
-from provisioningserver.dns.config import (
-    compose_config_path,
-    DNSConfig,
-)
+from provisioningserver.dns.commands import get_named_conf, setup_dns
+from provisioningserver.dns.config import compose_config_path, DNSConfig
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
     patch_dns_rndc_port,
 )
-from provisioningserver.testing.bindfixture import (
-    allocate_ports,
-    BINDServer,
-)
+from provisioningserver.testing.bindfixture import allocate_ports, BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from provisioningserver.utils.twisted import retries
 from testtools.matchers import (
@@ -69,7 +54,6 @@ from testtools.matchers import (
 
 
 class TestDNSUtilities(MAASServerTestCase):
-
     def make_listener_without_delay(self):
         listener = PostgresListenerService()
         self.patch(listener, "HANDLE_NOTIFY_DELAY", 0)
@@ -78,9 +62,7 @@ class TestDNSUtilities(MAASServerTestCase):
     def test_current_zone_serial_returns_serial_of_latest_publication(self):
         publication = DNSPublication(source=factory.make_name("source"))
         publication.save()
-        self.assertThat(
-            int(current_zone_serial()),
-            Equals(publication.serial))
+        self.assertThat(int(current_zone_serial()), Equals(publication.serial))
 
     def test_dns_force_reload_saves_new_publication(self):
         # A 'sys_dns' signal is also sent, but that is a side-effect of
@@ -88,11 +70,13 @@ class TestDNSUtilities(MAASServerTestCase):
         # the system triggers code.
         self.assertThat(
             DNSPublication.objects.get_most_recent(),
-            MatchesStructure.byEquality(source="Initial publication"))
+            MatchesStructure.byEquality(source="Initial publication"),
+        )
         dns_force_reload()
         self.assertThat(
             DNSPublication.objects.get_most_recent(),
-            MatchesStructure.byEquality(source="Force reload"))
+            MatchesStructure.byEquality(source="Force reload"),
+        )
 
 
 class TestDNSServer(MAASServerTestCase):
@@ -118,7 +102,7 @@ class TestDNSServer(MAASServerTestCase):
         self.bind = self.useFixture(BINDServer())
         # Use the dnspython resolver for at least some queries.
         self.resolver = dns.resolver.Resolver()
-        self.resolver.nameservers = ['127.0.0.1']
+        self.resolver.nameservers = ["127.0.0.1"]
         self.resolver.port = self.bind.config.port
         patch_dns_config_path(self, self.bind.config.homedir)
         # Use a random port for rndc.
@@ -135,24 +119,28 @@ class TestDNSServer(MAASServerTestCase):
         get_named_conf.add_arguments(parser)
         get_named_conf.run(
             parser.parse_args(
-                ['--edit', '--config-path', self.bind.config.conf_file]))
+                ["--edit", "--config-path", self.bind.config.conf_file]
+            )
+        )
         # Reload BIND.
-        self.bind.runner.rndc('reload')
+        self.bind.runner.rndc("reload")
 
-    def create_node_with_static_ip(
-            self, domain=None, subnet=None):
+    def create_node_with_static_ip(self, domain=None, subnet=None):
         if domain is None:
             domain = Domain.objects.get_default_domain()
         if subnet is None:
             network = factory.make_ipv4_network()
             subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.READY, domain=domain)
+            interface=True, status=NODE_STATUS.READY, domain=domain
+        )
         nic = node.get_boot_interface()
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         return node, static_ip
 
     def create_rack_with_static_ip(self, subnet=None):
@@ -164,7 +152,9 @@ class TestDNSServer(MAASServerTestCase):
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         return rack, static_ip
 
     def dns_wait_soa(self, fqdn, removing=False):
@@ -172,8 +162,8 @@ class TestDNSServer(MAASServerTestCase):
         # nicely for the SOA for the FQDN.  If it's top-of-zone, we get an
         # answer, if it's not, we get the SOA in authority.
 
-        if not fqdn.endswith('.'):
-            fqdn = fqdn + '.'
+        if not fqdn.endswith("."):
+            fqdn = fqdn + "."
 
         for elapsed, remaining, wait in retries(15, 0.02):
             query_name = fqdn
@@ -183,7 +173,8 @@ class TestDNSServer(MAASServerTestCase):
             while serial is undefined:
                 try:
                     ans = self.resolver.query(
-                        query_name, 'SOA', raise_on_no_answer=False)
+                        query_name, "SOA", raise_on_no_answer=False
+                    )
                 except dns.resolver.NXDOMAIN:
                     if removing:
                         # The zone has gone; we're done.
@@ -193,7 +184,7 @@ class TestDNSServer(MAASServerTestCase):
                         # For most things, this will be the correct DNS zone.
                         # In the case of SRV records, we'll actually need to
                         # strip more, hence the loop.
-                        query_name = query_name.split('.', 1)[1]
+                        query_name = query_name.split(".", 1)[1]
                     else:
                         # We've hit the root zone; no SOA found.
                         serial = None
@@ -227,20 +218,19 @@ class TestDNSServer(MAASServerTestCase):
         # - it changes the type of query from 'A' to 'AAAA';
         # - it forces dig to only use IPv6 query transport.
         self.dns_wait_soa(fqdn, removing)
-        record_type = 'AAAA' if version == 6 else 'A'
-        commands = [fqdn, '+short', '-%i' % version, record_type]
-        output = dig_call(
-            port=self.bind.config.port,
-            commands=commands)
-        return output.split('\n')
+        record_type = "AAAA" if version == 6 else "A"
+        commands = [fqdn, "+short", "-%i" % version, record_type]
+        output = dig_call(port=self.bind.config.port, commands=commands)
+        return output.split("\n")
 
     def dig_reverse_resolve(self, ip, version=4, removing=False):
         """Reverse resolve `ip` using dig.  Returns a list of results."""
         self.dns_wait_soa(IPAddress(ip).reverse_dns, removing)
         output = dig_call(
             port=self.bind.config.port,
-            commands=['-x', ip, '+short', '-%i' % version])
-        return output.split('\n')
+            commands=["-x", ip, "+short", "-%i" % version],
+        )
+        return output.split("\n")
 
     def assertDNSMatches(self, hostname, domain, ip, version=-1, reverse=True):
         # A forward lookup on the hostname returns the IP address.
@@ -256,40 +246,47 @@ class TestDNSServer(MAASServerTestCase):
         # or timeout (15 seconds because of slow jenkins sometimes.)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
         self.assertThat(
-            forward_lookup_result, Contains(ip),
-            "Failed to resolve '%s' (results: '%s')." % (
-                fqdn, ','.join(forward_lookup_result)))
+            forward_lookup_result,
+            Contains(ip),
+            "Failed to resolve '%s' (results: '%s')."
+            % (fqdn, ",".join(forward_lookup_result)),
+        )
         # A reverse lookup on the IP address returns the hostname.
         if reverse:
             reverse_lookup_result = self.dig_reverse_resolve(
-                ip, version=version)
+                ip, version=version
+            )
             self.assertThat(
-                reverse_lookup_result, Contains("%s." % fqdn),
+                reverse_lookup_result,
+                Contains("%s." % fqdn),
                 "Failed to reverse resolve '%s' missing '%s' "
-                "(results: '%s')." % (
-                    ip, "%s." % fqdn, ','.join(reverse_lookup_result)))
+                "(results: '%s')."
+                % (ip, "%s." % fqdn, ",".join(reverse_lookup_result)),
+            )
 
 
 class TestDNSConfigModifications(TestDNSServer):
-
     def test_dns_update_all_zones_loads_full_dns_config(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
         dns_update_all_zones()
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_dns_update_all_zones_includes_internal_domain(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         rack, static = self.create_rack_with_static_ip()
         factory.make_RegionRackRPCConnection(rack)
         dns_update_all_zones()
         resource_name = get_resource_name_for_subnet(static.subnet)
         self.assertDNSMatches(
-            resource_name, Config.objects.get_config('maas_internal_domain'),
-            static.ip, reverse=False)
+            resource_name,
+            Config.objects.get_config("maas_internal_domain"),
+            static.ip,
+            reverse=False,
+        )
 
     def test_dns_update_all_zones_includes_multiple_racks(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         rack1, static1 = self.create_rack_with_static_ip()
         factory.make_RegionRackRPCConnection(rack1)
         rack2, static2 = self.create_rack_with_static_ip(subnet=static1.subnet)
@@ -297,59 +294,74 @@ class TestDNSConfigModifications(TestDNSServer):
         dns_update_all_zones()
         resource_name = get_resource_name_for_subnet(static1.subnet)
         self.assertDNSMatches(
-            resource_name, Config.objects.get_config('maas_internal_domain'),
-            static1.ip, reverse=False)
+            resource_name,
+            Config.objects.get_config("maas_internal_domain"),
+            static1.ip,
+            reverse=False,
+        )
         self.assertDNSMatches(
-            resource_name, Config.objects.get_config('maas_internal_domain'),
-            static2.ip, reverse=False)
+            resource_name,
+            Config.objects.get_config("maas_internal_domain"),
+            static2.ip,
+            reverse=False,
+        )
 
     def test_dns_update_all_zones_passes_reload_retry_parameter(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         bind_reload_with_retries = self.patch_autospec(
-            dns_config_module, "bind_reload_with_retries")
+            dns_config_module, "bind_reload_with_retries"
+        )
         dns_update_all_zones(reload_retry=True)
         self.assertThat(
-            bind_reload_with_retries, MockCalledOnceWith(timeout=2))
+            bind_reload_with_retries, MockCalledOnceWith(timeout=2)
+        )
 
     def test_dns_update_all_zones_passes_upstream_dns_parameter(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         random_ip = factory.make_ipv4_address()
         Config.objects.set_config("upstream_dns", random_ip)
         bind_write_options = self.patch_autospec(
-            dns_config_module, "bind_write_options")
+            dns_config_module, "bind_write_options"
+        )
         dns_update_all_zones()
         self.assertThat(
             bind_write_options,
             MockCalledOnceWith(
-                dnssec_validation='auto', upstream_dns=[random_ip]))
+                dnssec_validation="auto", upstream_dns=[random_ip]
+            ),
+        )
 
     def test_dns_update_all_zones_writes_trusted_networks_parameter(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
-            dns_config_module, 'get_trusted_networks')
+            dns_config_module, "get_trusted_networks"
+        )
         get_trusted_networks_patch.return_value = [trusted_network]
         dns_update_all_zones()
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
-            FileContains(matcher=Contains(trusted_network)))
+            FileContains(matcher=Contains(trusted_network)),
+        )
 
     def test_dns_update_all_zones_writes_trusted_networks_params_extra(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         extra_trusted_network = factory.make_ipv6_network()
         get_trusted_acls_patch = self.patch(
-            dns_config_module, 'get_trusted_acls')
+            dns_config_module, "get_trusted_acls"
+        )
         get_trusted_acls_patch.return_value = [extra_trusted_network.cidr]
         dns_update_all_zones()
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
-            FileContains(matcher=Contains(str(extra_trusted_network))))
+            FileContains(matcher=Contains(str(extra_trusted_network))),
+        )
 
     def test_dns_config_has_NS_record(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         ip = factory.make_ipv4_address()
         with RegionConfiguration.open_for_update() as config:
-            config.maas_url = 'http://%s/' % ip
+            config.maas_url = "http://%s/" % ip
         domain = factory.make_Domain()
         node, static = self.create_node_with_static_ip(domain=domain)
         dns_update_all_zones()
@@ -358,18 +370,18 @@ class TestDNSConfigModifications(TestDNSServer):
         self.dns_wait_soa(domain.name)
         # Get the NS record for the zone 'domain.name'.
         ns_record = dig_call(
-            port=self.bind.config.port,
-            commands=[domain.name, 'NS', '+short'])
-        self.assertGreater(
-            len(ns_record), 0, "No NS record for domain.name.")
+            port=self.bind.config.port, commands=[domain.name, "NS", "+short"]
+        )
+        self.assertGreater(len(ns_record), 0, "No NS record for domain.name.")
         # Resolve that hostname.
         self.dns_wait_soa(ns_record)
         ip_of_ns_record = dig_call(
-            port=self.bind.config.port, commands=[ns_record, '+short'])
+            port=self.bind.config.port, commands=[ns_record, "+short"]
+        )
         self.assertEqual(ip, ip_of_ns_record)
 
     def test_dns_update_all_zones_returns_serial_and_domains(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         domain = factory.make_Domain()
         # These domains should not show up. Just to test we create them.
         for _ in range(3):
@@ -377,15 +389,20 @@ class TestDNSConfigModifications(TestDNSServer):
         node, static = self.create_node_with_static_ip(domain=domain)
         fake_serial = random.randint(1, 1000)
         self.patch(
-            dns_config_module,
-            "current_zone_serial").return_value = fake_serial
+            dns_config_module, "current_zone_serial"
+        ).return_value = fake_serial
         serial, reloaded, domains = dns_update_all_zones()
         self.assertThat(serial, Equals(fake_serial))
         self.assertThat(reloaded, Is(True))
-        self.assertThat(domains, MatchesSetwise(*[
-            Equals(domain.name)
-            for domain in Domain.objects.filter(authoritative=True)
-        ]))
+        self.assertThat(
+            domains,
+            MatchesSetwise(
+                *[
+                    Equals(domain.name)
+                    for domain in Domain.objects.filter(authoritative=True)
+                ]
+            ),
+        )
 
 
 class TestDNSDynamicIPAddresses(TestDNSServer):
@@ -394,17 +411,19 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
     """
 
     def test_bind_configuration_includes_dynamic_ips_of_deployed_nodes(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
-        node = factory.make_Node(
-            interface=True, status=NODE_STATUS.DEPLOYED)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYED)
         nic = node.get_boot_interface()
         # Get an IP in the dynamic range.
         dynamic_range = subnet.get_dynamic_ranges()[0]
         ip = factory.pick_ip_in_IPRange(dynamic_range)
         ip_obj = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
-            subnet=subnet, interface=nic)
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=ip,
+            subnet=subnet,
+            interface=nic,
+        )
         dns_update_all_zones()
         self.assertDNSMatches(node.hostname, node.domain.name, ip_obj.ip)
 
@@ -413,32 +432,32 @@ class TestDNSResource(TestDNSServer):
     """Tests for DNSResource records."""
 
     def test_dnsresources_are_in_the_dns(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         domain = factory.make_Domain()
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         dynamic_range = subnet.get_dynamic_ranges()[0]
         ip = factory.pick_ip_in_IPRange(dynamic_range)
         ip_obj = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip,
-            subnet=subnet)
-        rrname = factory.make_name('label')
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip, subnet=subnet
+        )
+        rrname = factory.make_name("label")
         dnsrr = factory.make_DNSResource(
-            name=rrname, domain=domain,
-            ip_addresses=[ip_obj])
+            name=rrname, domain=domain, ip_addresses=[ip_obj]
+        )
         dns_update_all_zones()
         self.assertDNSMatches(dnsrr.name, domain.name, ip_obj.ip)
 
 
 class TestIPv6DNS(TestDNSServer):
-
     def test_bind_configuration_includes_ipv6_zone(self):
-        self.patch(settings, 'DNS_CONNECT', True)
+        self.patch(settings, "DNS_CONNECT", True)
         network = factory.make_ipv6_network(slash=random.randint(118, 125))
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         node, static = self.create_node_with_static_ip(subnet=subnet)
         dns_update_all_zones()
         self.assertDNSMatches(
-            node.hostname, node.domain.name, static.ip, version=6)
+            node.hostname, node.domain.name, static.ip, version=6
+        )
 
 
 class TestGetUpstreamDNS(MAASServerTestCase):
@@ -453,8 +472,7 @@ class TestGetUpstreamDNS(MAASServerTestCase):
         self.assertEqual([address], get_upstream_dns())
 
     def test__returns_list_if_space_separated_ips(self):
-        addresses = [
-            factory.make_ip_address() for _ in range(3)]
+        addresses = [factory.make_ip_address() for _ in range(3)]
         Config.objects.set_config("upstream_dns", " ".join(addresses))
         self.assertEqual(addresses, get_upstream_dns())
 
@@ -471,16 +489,17 @@ class TestGetTrustedAcls(MAASServerTestCase):
 
     def test__returns_single_network(self):
         subnet = factory.make_ipv6_network()
-        Config.objects.set_config('dns_trusted_acl', str(subnet))
+        Config.objects.set_config("dns_trusted_acl", str(subnet))
         expected = [str(subnet)]
         self.assertEqual(expected, get_trusted_acls())
 
     def test__returns_many_networks(self):
         subnets = [
-            str(factory.make_ipv4_network()) for _ in range(
-                random.randint(1, 5))]
-        actual_subnets = ' '.join(subnets)
-        Config.objects.set_config('dns_trusted_acl', str(actual_subnets))
+            str(factory.make_ipv4_network())
+            for _ in range(random.randint(1, 5))
+        ]
+        actual_subnets = " ".join(subnets)
+        Config.objects.set_config("dns_trusted_acl", str(actual_subnets))
         expected = [subnet for subnet in subnets]
         # Note: This test was seen randomly failing because the networks were
         # in an unexpected order...
@@ -520,8 +539,8 @@ class TestGetInternalDomain(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_internal_domain()"""
 
     def test__uses_maas_internal_domain_config(self):
-        internal_domain = factory.make_name('internal')
-        Config.objects.set_config('maas_internal_domain', internal_domain)
+        internal_domain = factory.make_name("internal")
+        Config.objects.set_config("maas_internal_domain", internal_domain)
         domain = get_internal_domain()
         self.assertEqual(internal_domain, domain.name)
 
@@ -535,7 +554,9 @@ class TestGetInternalDomain(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         domain = get_internal_domain()
         self.assertEqual(0, len(domain.resources))
 
@@ -548,13 +569,17 @@ class TestGetInternalDomain(MAASServerTestCase):
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         domain = get_internal_domain()
         self.assertEqual(
-            get_resource_name_for_subnet(subnet), domain.resources[0].name)
+            get_resource_name_for_subnet(subnet), domain.resources[0].name
+        )
         self.assertEqual(
-            InternalDomainResourseRecord(rrtype='A', rrdata=static_ip.ip),
-            domain.resources[0].records[0])
+            InternalDomainResourseRecord(rrtype="A", rrdata=static_ip.ip),
+            domain.resources[0].records[0],
+        )
 
     def test__adds_connected_rack_ipv6(self):
         rack = factory.make_RackController()
@@ -565,13 +590,17 @@ class TestGetInternalDomain(MAASServerTestCase):
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         domain = get_internal_domain()
         self.assertEqual(
-            get_resource_name_for_subnet(subnet), domain.resources[0].name)
+            get_resource_name_for_subnet(subnet), domain.resources[0].name
+        )
         self.assertEqual(
-            InternalDomainResourseRecord(rrtype='AAAA', rrdata=static_ip.ip),
-            domain.resources[0].records[0])
+            InternalDomainResourseRecord(rrtype="AAAA", rrdata=static_ip.ip),
+            domain.resources[0].records[0],
+        )
 
     def test__adds_connected_multiple_racks_ipv4(self):
         rack1 = factory.make_RackController()
@@ -583,20 +612,34 @@ class TestGetInternalDomain(MAASServerTestCase):
         static_ip1 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=rack1.get_boot_interface())
+            subnet=subnet,
+            interface=rack1.get_boot_interface(),
+        )
         static_ip2 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=rack2.get_boot_interface())
+            subnet=subnet,
+            interface=rack2.get_boot_interface(),
+        )
         domain = get_internal_domain()
         self.assertEqual(
-            get_resource_name_for_subnet(subnet),
-            domain.resources[0].name)
-        self.assertThat(domain.resources[0].records, MatchesSetwise(
-            Equals(InternalDomainResourseRecord(
-                rrtype='A', rrdata=static_ip1.ip)),
-            Equals(InternalDomainResourseRecord(
-                rrtype='A', rrdata=static_ip2.ip))))
+            get_resource_name_for_subnet(subnet), domain.resources[0].name
+        )
+        self.assertThat(
+            domain.resources[0].records,
+            MatchesSetwise(
+                Equals(
+                    InternalDomainResourseRecord(
+                        rrtype="A", rrdata=static_ip1.ip
+                    )
+                ),
+                Equals(
+                    InternalDomainResourseRecord(
+                        rrtype="A", rrdata=static_ip2.ip
+                    )
+                ),
+            ),
+        )
 
     def test__adds_connected_multiple_racks_ipv6(self):
         rack1 = factory.make_RackController()
@@ -608,20 +651,34 @@ class TestGetInternalDomain(MAASServerTestCase):
         static_ip1 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=rack1.get_boot_interface())
+            subnet=subnet,
+            interface=rack1.get_boot_interface(),
+        )
         static_ip2 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=rack2.get_boot_interface())
+            subnet=subnet,
+            interface=rack2.get_boot_interface(),
+        )
         domain = get_internal_domain()
         self.assertEqual(
-            get_resource_name_for_subnet(subnet),
-            domain.resources[0].name)
-        self.assertThat(domain.resources[0].records, MatchesSetwise(
-            Equals(InternalDomainResourseRecord(
-                rrtype='AAAA', rrdata=static_ip1.ip)),
-            Equals(InternalDomainResourseRecord(
-                rrtype='AAAA', rrdata=static_ip2.ip))))
+            get_resource_name_for_subnet(subnet), domain.resources[0].name
+        )
+        self.assertThat(
+            domain.resources[0].records,
+            MatchesSetwise(
+                Equals(
+                    InternalDomainResourseRecord(
+                        rrtype="AAAA", rrdata=static_ip1.ip
+                    )
+                ),
+                Equals(
+                    InternalDomainResourseRecord(
+                        rrtype="AAAA", rrdata=static_ip2.ip
+                    )
+                ),
+            ),
+        )
 
     def test__prefers_static_ip_over_dhcp(self):
         rack = factory.make_RackController()
@@ -632,36 +689,39 @@ class TestGetInternalDomain(MAASServerTestCase):
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=nic)
+            subnet=subnet,
+            interface=nic,
+        )
         domain = get_internal_domain()
         self.assertThat(domain.resources, HasLength(1))
         self.assertEqual(
-            get_resource_name_for_subnet(subnet), domain.resources[0].name)
+            get_resource_name_for_subnet(subnet), domain.resources[0].name
+        )
         self.assertEqual(
-            InternalDomainResourseRecord(rrtype='A', rrdata=static_ip.ip),
-            domain.resources[0].records[0])
+            InternalDomainResourseRecord(rrtype="A", rrdata=static_ip.ip),
+            domain.resources[0].records[0],
+        )
 
 
 class TestGetResourceNameForSubnet(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_resource_name_for_subnet()"""
 
     scenarios = (
-        ('10.0.0.0/8', {
-            'cidr': '10.0.0.0/8',
-            'result': '10-0-0-0--8',
-        }),
-        ('192.168.1.0/24', {
-            'cidr': '192.168.1.0/24',
-            'result': '192-168-1-0--24',
-        }),
-        ('2001:db8:0::/64', {
-            'cidr': '2001:db8:0::/64',
-            'result': '2001-db8----64',
-        }),
+        ("10.0.0.0/8", {"cidr": "10.0.0.0/8", "result": "10-0-0-0--8"}),
+        (
+            "192.168.1.0/24",
+            {"cidr": "192.168.1.0/24", "result": "192-168-1-0--24"},
+        ),
+        (
+            "2001:db8:0::/64",
+            {"cidr": "2001:db8:0::/64", "result": "2001-db8----64"},
+        ),
     )
 
     def test__returns_valid(self):

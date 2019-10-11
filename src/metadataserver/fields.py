@@ -3,14 +3,9 @@
 
 """Custom field types for the metadata server."""
 
-__all__ = [
-    'BinaryField',
-    ]
+__all__ = ["BinaryField"]
 
-from base64 import (
-    b64decode,
-    b64encode,
-)
+from base64 import b64decode, b64encode
 
 from django.db import connection
 from maasserver.fields import Field
@@ -46,7 +41,8 @@ class Bin(bytes):
         # tests that checked those logs.
         if not isinstance(initializer, bytes):
             raise AssertionError(
-                "Not a binary string: '%s'" % repr(initializer))
+                "Not a binary string: '%s'" % repr(initializer)
+            )
         return super(Bin, cls).__new__(cls, initializer)
 
     def __emittable__(self):
@@ -54,7 +50,7 @@ class Bin(bytes):
 
         Exists as a hook for Piston's JSON encoder.
         """
-        return b64encode(self).decode('ascii')
+        return b64encode(self).decode("ascii")
 
 
 class BinaryField(Field):
@@ -83,7 +79,8 @@ class BinaryField(Field):
         else:
             raise AssertionError(
                 "Invalid BinaryField value (expected unicode): '%s'"
-                % repr(value))
+                % repr(value)
+            )
 
     def from_db_value(self, value, expression, connection, context):
         return self.to_python(value)
@@ -101,24 +98,26 @@ class BinaryField(Field):
             raise AssertionError(
                 "Converting a binary string to BinaryField: "
                 "either conversion is going the wrong way, or the value "
-                "needs to be wrapped in a Bin.")
+                "needs to be wrapped in a Bin."
+            )
         elif isinstance(value, str):
             # Django 1.7 migration framework generates the default value based
             # on the 'internal_type' which, in this instance, is 'TextField';
             # Here we cope with the default empty value instead of raising
             # an exception.
-            if value == '':
-                return ''
+            if value == "":
+                return ""
             # Unicode here is almost certainly a sign of a mistake.
             raise AssertionError(
-                "A unicode string is being mistaken for binary data.")
+                "A unicode string is being mistaken for binary data."
+            )
         else:
             raise AssertionError(
-                "Invalid BinaryField value (expected Bin): '%s'"
-                % repr(value))
+                "Invalid BinaryField value (expected Bin): '%s'" % repr(value)
+            )
 
     def get_internal_type(self):
-        return 'TextField'
+        return "TextField"
 
     def _get_default(self):
         """Cargo-cult of Django's `Field.get_default`.

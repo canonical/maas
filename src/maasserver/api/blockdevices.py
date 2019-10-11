@@ -4,11 +4,7 @@
 """API handlers: `BlockDevice`."""
 
 from django.core.exceptions import PermissionDenied
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
@@ -36,51 +32,55 @@ from piston3.utils import rc
 
 
 DISPLAYED_BLOCKDEVICE_FIELDS = (
-    'system_id',
-    'id',
-    'name',
-    'uuid',
-    'type',
-    'path',
-    'model',
-    'serial',
-    'id_path',
-    'size',
-    'block_size',
-    'available_size',
-    'used_size',
-    'used_for',
-    'tags',
-    'filesystem',
-    'partition_table_type',
-    'partitions',
-    'firmware_version',
-    'storage_pool',
-    'numa_node',
+    "system_id",
+    "id",
+    "name",
+    "uuid",
+    "type",
+    "path",
+    "model",
+    "serial",
+    "id_path",
+    "size",
+    "block_size",
+    "available_size",
+    "used_size",
+    "used_for",
+    "tags",
+    "filesystem",
+    "partition_table_type",
+    "partitions",
+    "firmware_version",
+    "storage_pool",
+    "numa_node",
 )
 
 
 def raise_error_for_invalid_state_on_allocated_operations(
-        node, user, operation):
+    node, user, operation
+):
     if node.status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]:
         raise NodeStateViolation(
             "Cannot %s block device because the machine is not Ready "
-            "or Allocated." % operation)
+            "or Allocated." % operation
+        )
     if node.status == NODE_STATUS.READY and not user.is_superuser:
         raise PermissionDenied(
             "Cannot %s block device because you don't have the "
-            "permissions on a Ready machine." % operation)
+            "permissions on a Ready machine." % operation
+        )
 
 
 class BlockDevicesHandler(OperationsHandler):
     """Manage block devices on a machine."""
+
     api_doc_section_name = "Block devices"
     replace = update = delete = None
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('blockdevices_handler', ["system_id"])
+        return ("blockdevices_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title List block devices
@@ -100,7 +100,8 @@ class BlockDevicesHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         return machine.blockdevice_set.all()
 
     @admin_method
@@ -138,7 +139,8 @@ class BlockDevicesHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         form = CreatePhysicalBlockDeviceForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
@@ -148,6 +150,7 @@ class BlockDevicesHandler(OperationsHandler):
 
 class BlockDeviceHandler(OperationsHandler):
     """Manage a block device on a machine."""
+
     api_doc_section_name = "Block device"
     create = replace = None
     model = BlockDevice
@@ -162,7 +165,7 @@ class BlockDeviceHandler(OperationsHandler):
         else:
             device_id = block_device.id
             system_id = block_device.node.system_id
-        return ('blockdevice_handler', (system_id, device_id))
+        return ("blockdevice_handler", (system_id, device_id))
 
     @classmethod
     def system_id(cls, block_device):
@@ -211,11 +214,11 @@ class BlockDeviceHandler(OperationsHandler):
         filesystem = block_device.get_effective_filesystem()
         if filesystem is not None:
             return {
-                'fstype': filesystem.fstype,
-                'label': filesystem.label,
-                'uuid': filesystem.uuid,
-                'mount_point': filesystem.mount_point,
-                'mount_options': filesystem.mount_options,
+                "fstype": filesystem.fstype,
+                "label": filesystem.label,
+                "uuid": filesystem.uuid,
+                "mount_point": filesystem.mount_point,
+                "mount_options": filesystem.mount_options,
             }
         else:
             return None
@@ -238,8 +241,10 @@ class BlockDeviceHandler(OperationsHandler):
     @classmethod
     def storage_pool(cls, block_device):
         block_device = block_device.actual_instance
-        if (isinstance(block_device, PhysicalBlockDevice) and
-                block_device.storage_pool is not None):
+        if (
+            isinstance(block_device, PhysicalBlockDevice)
+            and block_device.storage_pool is not None
+        ):
             return block_device.storage_pool.pool_id
         return None
 
@@ -270,7 +275,8 @@ class BlockDeviceHandler(OperationsHandler):
             Not Found
         """
         return BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def delete(self, request, system_id, id):
         """@description-title Delete a block device
@@ -295,11 +301,13 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete block device because the machine is not Ready.")
+                "Cannot delete block device because the machine is not Ready."
+            )
         device.delete()
         return rc.DELETED
 
@@ -363,29 +371,36 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = device.get_node()
         if node.status not in [NODE_STATUS.READY, NODE_STATUS.DEPLOYED]:
             raise NodeStateViolation(
-                "Cannot update block device because the machine is not Ready.")
+                "Cannot update block device because the machine is not Ready."
+            )
         if node.status == NODE_STATUS.DEPLOYED:
-            if device.type == 'physical':
+            if device.type == "physical":
                 form = UpdateDeployedPhysicalBlockDeviceForm(
-                    instance=device, data=request.data)
+                    instance=device, data=request.data
+                )
             else:
                 raise NodeStateViolation(
                     "Cannot update virtual block device because the machine "
-                    "is Deployed.")
+                    "is Deployed."
+                )
         else:
-            if device.type == 'physical':
+            if device.type == "physical":
                 form = UpdatePhysicalBlockDeviceForm(
-                    instance=device, data=request.data)
-            elif device.type == 'virtual':
+                    instance=device, data=request.data
+                )
+            elif device.type == "virtual":
                 form = UpdateVirtualBlockDeviceForm(
-                    instance=device, data=request.data)
+                    instance=device, data=request.data
+                )
             else:
                 raise ValueError(
-                    'Cannot update block device of type %s' % device.type)
+                    "Cannot update block device of type %s" % device.type
+                )
         if form.is_valid():
             return form.save()
         else:
@@ -421,12 +436,14 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because the machine is not Ready.")
-        device.add_tag(get_mandatory_param(request.POST, 'tag'))
+                "Cannot update block device because the machine is not Ready."
+            )
+        device.add_tag(get_mandatory_param(request.POST, "tag"))
         device.save()
         return device
 
@@ -460,12 +477,14 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because the machine is not Ready.")
-        device.remove_tag(get_mandatory_param(request.POST, 'tag'))
+                "Cannot update block device because the machine is not Ready."
+            )
+        device.remove_tag(get_mandatory_param(request.POST, "tag"))
         device.save()
         return device
 
@@ -501,10 +520,12 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.edit)
+            system_id, id, request.user, NodePermission.edit
+        )
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "format")
+            node, request.user, "format"
+        )
         form = FormatBlockDeviceForm(device, data=request.data)
         if form.is_valid():
             return form.save()
@@ -543,24 +564,28 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.edit)
+            system_id, id, request.user, NodePermission.edit
+        )
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "unformat")
+            node, request.user, "unformat"
+        )
         filesystem = device.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Block device is not formatted.")
         if filesystem.is_mounted:
             raise MAASAPIBadRequest(
                 "Filesystem is mounted and cannot be unformatted. Unmount the "
-                "filesystem before unformatting the block device.")
+                "filesystem before unformatting the block device."
+            )
         if filesystem.filesystem_group is not None:
             nice_name = filesystem.filesystem_group.get_nice_name()
             raise MAASAPIBadRequest(
                 "Filesystem is part of a %s, and cannot be "
                 "unformatted. Remove block device from %s "
-                "before unformatting the block device." % (
-                    nice_name, nice_name))
+                "before unformatting the block device."
+                % (nice_name, nice_name)
+            )
         filesystem.delete()
         return device
 
@@ -598,9 +623,11 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.edit)
+            system_id, id, request.user, NodePermission.edit
+        )
         raise_error_for_invalid_state_on_allocated_operations(
-            device.get_node(), request.user, "mount")
+            device.get_node(), request.user, "mount"
+        )
         filesystem = device.get_effective_filesystem()
         form = MountFilesystemForm(filesystem, data=request.data)
         if form.is_valid():
@@ -641,10 +668,12 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.edit)
+            system_id, id, request.user, NodePermission.edit
+        )
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "unmount")
+            node, request.user, "unmount"
+        )
         filesystem = device.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Block device is not formatted.")
@@ -685,14 +714,17 @@ class BlockDeviceHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot set as boot disk because the machine is not Ready.")
+                "Cannot set as boot disk because the machine is not Ready."
+            )
         if not isinstance(device, PhysicalBlockDevice):
             raise MAASAPIBadRequest(
-                "Cannot set a %s block device as the boot disk." % device.type)
+                "Cannot set a %s block device as the boot disk." % device.type
+            )
         device.node.boot_disk = device
         device.node.save()
         return rc.ALL_OK
@@ -708,6 +740,7 @@ class ISCSIBlockDeviceHandler(BlockDeviceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = ISCSIBlockDevice
 
@@ -722,6 +755,7 @@ class PhysicalBlockDeviceHandler(BlockDeviceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = PhysicalBlockDevice
 
@@ -736,5 +770,6 @@ class VirtualBlockDeviceHandler(BlockDeviceHandler):
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
     """
+
     hidden = True
     model = VirtualBlockDevice

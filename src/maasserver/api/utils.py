@@ -4,23 +4,20 @@
 """Helpers for Piston-based MAAS APIs."""
 
 __all__ = [
-    'extract_bool',
-    'extract_oauth_key',
-    'get_list_from_dict_or_multidict',
-    'get_mandatory_param',
-    'get_oauth_token',
-    'get_optional_list',
-    'get_optional_param',
-    'get_overridden_query_dict',
-    ]
+    "extract_bool",
+    "extract_oauth_key",
+    "get_list_from_dict_or_multidict",
+    "get_mandatory_param",
+    "get_oauth_token",
+    "get_optional_list",
+    "get_optional_param",
+    "get_overridden_query_dict",
+]
 
 from django.http import QueryDict
 from formencode.validators import Invalid
 from maasserver.config_forms import DictCharField
-from maasserver.exceptions import (
-    MAASAPIValidationError,
-    Unauthorized,
-)
+from maasserver.exceptions import MAASAPIValidationError, Unauthorized
 from piston3.models import Token
 
 
@@ -38,9 +35,9 @@ def extract_bool(value):
     :raise ValueError: If `value` is not an accepted encoding of a boolean.
     """
     assert isinstance(value, str)
-    if value == '0':
+    if value == "0":
         return False
-    elif value == '1':
+    elif value == "1":
         return True
     else:
         raise ValueError("Not a valid Boolean value (0 or 1): '%s'" % value)
@@ -131,7 +128,7 @@ def get_list_from_dict_or_multidict(data, key, default=None):
     MultiDict, but data POSTed as application/json gets parsed into a plain
     dict(key:list).
     """
-    getlist = getattr(data, 'getlist', None)
+    getlist = getattr(data, "getlist", None)
     if getlist is not None:
         return getlist(key, default)
     return data.get(key, default)
@@ -158,7 +155,7 @@ def get_overridden_query_dict(defaults, data, fields):
     :raises: :class:`django.http.QueryDict`
     """
     # Create a writable query dict.
-    new_data = QueryDict('').copy()
+    new_data = QueryDict("").copy()
     # If the fields are a dict of django Fields see if one is a DictCharField.
     # DictCharField must have their values prefixed with the DictField name in
     # the returned data or defaults don't get carried.
@@ -196,18 +193,18 @@ def extract_oauth_key_from_auth_header(auth_data):
     # Values only separated by commas (no whitespace).
     if len(auth_data.split()) == 2:
         for entry in auth_data.split()[1].split(","):
-            key_value = entry.split('=', 1)
+            key_value = entry.split("=", 1)
             if len(key_value) == 2:
                 key, value = key_value
-                if key == 'oauth_token':
+                if key == "oauth_token":
                     return value.strip('"')
     else:
         for entry in auth_data.split():
-            key_value = entry.split('=', 1)
+            key_value = entry.split("=", 1)
             if len(key_value) == 2:
                 key, value = key_value
-                if key == 'oauth_token':
-                    return value.rstrip(',').strip('"')
+                if key == "oauth_token":
+                    return value.rstrip(",").strip('"')
     return None
 
 
@@ -216,7 +213,7 @@ def extract_oauth_key(request):
 
     Raises :class:`Unauthorized` if no key is found.
     """
-    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    auth_header = request.META.get("HTTP_AUTHORIZATION")
     if auth_header is None:
         raise Unauthorized("No authorization header received.")
     key = extract_oauth_key_from_auth_header(auth_header)

@@ -3,14 +3,9 @@
 
 """Networks monitoring service."""
 
-__all__ = [
-    "NetworksMonitoringService",
-]
+__all__ = ["NetworksMonitoringService"]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from datetime import timedelta
 import json
@@ -24,10 +19,7 @@ import time
 
 from netaddr import IPAddress
 from provisioningserver.config import is_dev_environment
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.beaconing import (
     age_out_uuid_queue,
     BEACON_IPV4_MULTICAST,
@@ -39,10 +31,7 @@ from provisioningserver.utils.beaconing import (
     ReceivedBeacon,
     TopologyHint,
 )
-from provisioningserver.utils.fs import (
-    get_maas_common_command,
-    NamedLock,
-)
+from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.network import (
     enumerate_ipv4_addresses,
     get_all_interfaces_definition,
@@ -56,20 +45,10 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.application.internet import TimerService
 from twisted.application.service import MultiService
-from twisted.internet.defer import (
-    Deferred,
-    inlineCallbacks,
-    maybeDeferred,
-)
-from twisted.internet.error import (
-    ProcessDone,
-    ProcessTerminated,
-)
+from twisted.internet.defer import Deferred, inlineCallbacks, maybeDeferred
+from twisted.internet.error import ProcessDone, ProcessTerminated
 from twisted.internet.interfaces import IReactorMulticast
-from twisted.internet.protocol import (
-    DatagramProtocol,
-    ProcessProtocol,
-)
+from twisted.internet.protocol import DatagramProtocol, ProcessProtocol
 from twisted.internet.threads import deferToThread
 from zope.interface.exceptions import DoesNotImplement
 from zope.interface.verify import verifyObject
@@ -93,8 +72,8 @@ class JSONPerLineProtocol(ProcessProtocol):
 
     def connectionMade(self):
         super().connectionMade()
-        self._outbuf = b''
-        self._errbuf = b''
+        self._outbuf = b""
+        self._errbuf = b""
 
     def outReceived(self, data):
         lines, self._outbuf = self.splitLines(self._outbuf + data)
@@ -111,10 +90,10 @@ class JSONPerLineProtocol(ProcessProtocol):
         lines = data.splitlines(True)
         if len(lines) == 0:
             # Nothing to do.
-            remaining = b''
-        elif lines[-1].endswith(b'\n'):
+            remaining = b""
+        elif lines[-1].endswith(b"\n"):
             # All lines are complete.
-            remaining = b''
+            remaining = b""
         else:
             # The last line is incomplete.
             remaining = lines.pop()
@@ -160,7 +139,7 @@ class ProtocolForObserveARP(JSONPerLineProtocol):
         self.interface = interface
 
     def objectReceived(self, obj):
-        obj['interface'] = self.interface
+        obj["interface"] = self.interface
         super().objectReceived(obj)
 
     def errLineReceived(self, line):
@@ -182,7 +161,7 @@ class ProtocolForObserveBeacons(JSONPerLineProtocol):
         self.interface = interface
 
     def objectReceived(self, obj):
-        obj['interface'] = self.interface
+        obj["interface"] = self.interface
         super().objectReceived(obj)
 
     def errLineReceived(self, line):
@@ -203,8 +182,7 @@ class ProtocolForObserveMDNS(JSONPerLineProtocol):
     "observe-mdns".
     """
 
-    _re_ignore_stderr = re.compile(
-        "^Got SIG[A-Z]+, quitting[.]")
+    _re_ignore_stderr = re.compile("^Got SIG[A-Z]+, quitting[.]")
 
     def errLineReceived(self, line):
         line = line.decode("utf-8").rstrip()
@@ -213,7 +191,6 @@ class ProtocolForObserveMDNS(JSONPerLineProtocol):
 
 
 class ProcessProtocolService(TimerService, metaclass=ABCMeta):
-
     def __init__(self, interval=60.0, clock=None, reactor=None):
         super().__init__(interval, self.startProcess)
         self._process = self._protocol = None
@@ -221,6 +198,7 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         self.reactor = reactor
         if self.reactor is None:
             from twisted.internet import reactor
+
             self.reactor = reactor
         self.clock = clock
         if self.clock is None:
@@ -231,11 +209,13 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         env = get_env_with_bytes_locale()
         log.msg("%s started." % self.getDescription())
         args = self.getProcessParameters()
-        assert all(isinstance(arg, bytes) for arg in args), (
-            "Process arguments must all be bytes, got: %s" % repr(args))
+        assert all(
+            isinstance(arg, bytes) for arg in args
+        ), "Process arguments must all be bytes, got: %s" % repr(args)
         self._protocol = self.createProcessProtocol()
         self._process = self.reactor.spawnProcess(
-            self._protocol, args[0], args, env=env)
+            self._protocol, args[0], args, env=env
+        )
         return self._protocol.done.addBoth(self._processEnded)
 
     def _processEnded(self, failure):
@@ -296,15 +276,10 @@ class NeighbourDiscoveryService(ProcessProtocolService):
 
     def getProcessParameters(self):
         maas_rack_cmd = get_maas_common_command().encode("utf-8")
-        return [
-            maas_rack_cmd,
-            b"observe-arp",
-            self.ifname.encode("utf-8")
-        ]
+        return [maas_rack_cmd, b"observe-arp", self.ifname.encode("utf-8")]
 
     def createProcessProtocol(self):
-        return ProtocolForObserveARP(
-            self.ifname, callback=self.callback)
+        return ProtocolForObserveARP(self.ifname, callback=self.callback)
 
 
 class BeaconingService(ProcessProtocolService):
@@ -320,15 +295,10 @@ class BeaconingService(ProcessProtocolService):
 
     def getProcessParameters(self):
         maas_rack_cmd = get_maas_common_command().encode("utf-8")
-        return [
-            maas_rack_cmd,
-            b"observe-beacons",
-            self.ifname.encode("utf-8")
-        ]
+        return [maas_rack_cmd, b"observe-beacons", self.ifname.encode("utf-8")]
 
     def createProcessProtocol(self):
-        return ProtocolForObserveBeacons(
-            self.ifname, callback=self.callback)
+        return ProtocolForObserveBeacons(self.ifname, callback=self.callback)
 
 
 class MDNSResolverService(ProcessProtocolService):
@@ -343,10 +313,7 @@ class MDNSResolverService(ProcessProtocolService):
 
     def getProcessParameters(self):
         maas_rack_cmd = get_maas_common_command().encode("utf-8")
-        return [
-            maas_rack_cmd,
-            b"observe-mdns",
-        ]
+        return [maas_rack_cmd, b"observe-mdns"]
 
     def createProcessProtocol(self):
         return ProtocolForObserveMDNS(callback=self.callback)
@@ -366,23 +333,23 @@ def interface_info_to_beacon_remote_payload(ifname, ifdata, rx_vid=None):
     """
     remote = ifdata.copy()
     if ifname is not None:
-        remote['name'] = ifname
+        remote["name"] = ifname
     # It will be obvious to the receiver that the source interface
     # was enabled. ;-)
-    remote.pop('enabled', None)
+    remote.pop("enabled", None)
     # Remote doesn't need to know which interfaces are monitored.
-    remote.pop('monitored', None)
+    remote.pop("monitored", None)
     # Don't need all the links, just the one that originated this
     # packet.
-    remote.pop('links', None)
+    remote.pop("links", None)
     # Remote doesn't need to know the source or index.
-    remote.pop('source', None)
-    remote.pop('index', None)
+    remote.pop("source", None)
+    remote.pop("index", None)
     # The subnet will be replaced by the value of each subnet link, but if
     # no link is configured, None is the default.
-    remote['subnet'] = None
+    remote["subnet"] = None
     if rx_vid is not None:
-        remote['vid'] = rx_vid
+        remote["vid"] = rx_vid
     return remote
 
 
@@ -395,11 +362,12 @@ def set_ipv4_multicast_source_address(sock, source_address):
     :param sock: An opened IP socket.
     :param source_address: A string representing an IPv4 source address.
     """
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
     sock.setsockopt(
-        socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
-    sock.setsockopt(
-        socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
-        socket.inet_aton(source_address))
+        socket.IPPROTO_IP,
+        socket.IP_MULTICAST_IF,
+        socket.inet_aton(source_address),
+    )
 
 
 def set_ipv6_multicast_source_ifindex(sock, ifindex):
@@ -411,12 +379,11 @@ def set_ipv6_multicast_source_ifindex(sock, ifindex):
     :param sock: An opened IP socket.
     :param ifindex: An integer representing the interface index.
     """
+    sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 1)
+    packed_ifindex = struct.pack("I", ifindex)
     sock.setsockopt(
-        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 1)
-    packed_ifindex = struct.pack('I', ifindex)
-    sock.setsockopt(
-        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF,
-        packed_ifindex)
+        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF, packed_ifindex
+    )
 
 
 def join_ipv6_beacon_group(sock, ifindex):
@@ -428,14 +395,13 @@ def join_ipv6_beacon_group(sock, ifindex):
     # XXX mpontillo 2017-06-21: Twisted doesn't support IPv6 here yet.
     # It would be nice to do this:
     # transport.joinGroup(BEACON_IPV6_MULTICAST)
-    ipv6_join_sockopt_args = (
-        socket.inet_pton(socket.AF_INET6, BEACON_IPV6_MULTICAST) +
-        struct.pack("I", ifindex)
-    )
+    ipv6_join_sockopt_args = socket.inet_pton(
+        socket.AF_INET6, BEACON_IPV6_MULTICAST
+    ) + struct.pack("I", ifindex)
     try:
         sock.setsockopt(
-            socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
-            ipv6_join_sockopt_args)
+            socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, ipv6_join_sockopt_args
+        )
     except OSError:
         # Do this on a best-effort basis. We might get an "Address already in
         # use" error if the group is already joined, or (for whatever reason)
@@ -454,16 +420,25 @@ def set_ipv6_multicast_loopback(sock, loopback):
         multicast to the receive path.
     """
     sock.setsockopt(
-        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_LOOP,
-        struct.pack("I", 1 if loopback else 0))
+        socket.IPPROTO_IPV6,
+        socket.IPV6_MULTICAST_LOOP,
+        struct.pack("I", 1 if loopback else 0),
+    )
 
 
 class BeaconingSocketProtocol(DatagramProtocol):
     """Protocol to handle beaconing packets received from the socket layer."""
 
     def __init__(
-            self, reactor, process_incoming=False, debug=False, interface="::",
-            loopback=False, port=BEACON_PORT, interfaces=None):
+        self,
+        reactor,
+        process_incoming=False,
+        debug=False,
+        interface="::",
+        loopback=False,
+        port=BEACON_PORT,
+        interfaces=None,
+    ):
         super().__init__()
         self.interface = interface
         self.loopback = loopback
@@ -498,26 +473,27 @@ class BeaconingSocketProtocol(DatagramProtocol):
             return
         if self.listen_port is None:
             self.listen_port = self.reactor.listenMulticast(
-                self.port, self, interface=self.interface, listenMultiple=True)
+                self.port, self, interface=self.interface, listenMultiple=True
+            )
         sock = self.transport.getHandle()
         if self.loopback:
             # This is only necessary for testing.
             self.transport.setLoopbackMode(self.loopback)
             set_ipv6_multicast_loopback(sock, self.loopback)
             self.transport.joinGroup(
-                BEACON_IPV4_MULTICAST, interface="127.0.0.1")
+                BEACON_IPV4_MULTICAST, interface="127.0.0.1"
+            )
             # Loopback interface always has ifindex == 1.
             join_ipv6_beacon_group(sock, 1)
         for _, ifdata in self.interfaces.items():
             # Always try to join the IPv6 group on each interface.
-            join_ipv6_beacon_group(sock, ifdata['index'])
+            join_ipv6_beacon_group(sock, ifdata["index"])
             # Merely joining the group with the default parameters is not
             # enough, since we want to join the group on *all* interfaces.
             # So we need to join each group using an assigned IPv4 address
             # on each Ethernet interface.
             for ip in enumerate_ipv4_addresses(ifdata):
-                self.transport.joinGroup(
-                    BEACON_IPV4_MULTICAST, interface=ip)
+                self.transport.joinGroup(BEACON_IPV4_MULTICAST, interface=ip)
                 # Use the first IP address on each interface. Since the
                 # underlying interface is the same, joining using a
                 # secondary IP address on the same interface will produce
@@ -576,14 +552,16 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # If the packet cannot be sent for whatever reason, OSError will
             # be raised, and we won't record sending a beacon we didn't
             # actually send.
-            uuid = beacon.payload['uuid']
+            uuid = beacon.payload["uuid"]
             self.tx_queue[uuid] = beacon
             age_out_uuid_queue(self.tx_queue)
             return True
         except OSError as e:
             if self.debug:
-                log.msg("Error while sending beacon to %r: %s" % (
-                    destination_address, e))
+                log.msg(
+                    "Error while sending beacon to %r: %s"
+                    % (destination_address, e)
+                )
         return False
 
     def send_multicast_beacon(self, source, beacon, port=BEACON_PORT):
@@ -612,7 +590,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
         self.send_beacon(beacon, (destination_ip, port))
 
     def send_multicast_beacons(
-            self, interfaces, beacon_type='solicitation', verbose=False):
+        self, interfaces, beacon_type="solicitation", verbose=False
+    ):
         """Sends out multicast beacons on each interface in `interfaces`.
 
         :param interfaces: The output of `get_all_interfaces_definition()`.
@@ -622,7 +601,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         for ifname, ifdata in interfaces.items():
             if self.debug:
                 log.msg("Sending multicast beacon on '%s'." % ifname)
-            if not ifdata['enabled']:
+            if not ifdata["enabled"]:
                 continue
             remote = interface_info_to_beacon_remote_payload(ifname, ifdata)
             # We'll make slight adjustments to the beacon payload depending
@@ -641,12 +620,12 @@ class BeaconingSocketProtocol(DatagramProtocol):
             sent_ipv6 = False
             for link in ifdata["links"]:
                 subnet = link["address"]
-                remote['subnet'] = subnet
+                remote["subnet"] = subnet
                 address = subnet.split("/")[0]
                 beacon = create_beacon_payload(beacon_type, payload)
                 if verbose:
                     log.msg("Beacon payload:\n%s" % pformat(beacon.payload))
-                if ':' not in address:
+                if ":" not in address:
                     # An IPv4 socket requires the source address to be the
                     # IPv4 address assigned to the interface.
                     self.send_multicast_beacon(address, beacon)
@@ -656,7 +635,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
                     self.send_multicast_beacon(ifdata["index"], beacon)
                     sent_ipv6 = True
             if not sent_ipv6:
-                remote['subnet'] = None
+                remote["subnet"] = None
                 beacon = create_beacon_payload(beacon_type, payload)
                 self.send_multicast_beacon(ifdata["index"], beacon)
 
@@ -666,12 +645,10 @@ class BeaconingSocketProtocol(DatagramProtocol):
         Replies to each soliciation with a corresponding advertisement.
         """
         remote = interface_info_to_beacon_remote_payload(
-            beacon.ifname, beacon.ifinfo, beacon.vid)
+            beacon.ifname, beacon.ifinfo, beacon.vid
+        )
         # Construct the reply payload.
-        payload = {
-            "remote": remote,
-            "acks": beacon.uuid
-        }
+        payload = {"remote": remote, "acks": beacon.uuid}
         reply = create_beacon_payload("advertisement", payload)
         self.send_beacon(reply, beacon.reply_address)
         if len(self.interfaces) > 0:
@@ -685,7 +662,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
         """
         mtime = time.monotonic()
         beacon_type = (
-            'solicitation' if self.mcast_solicitation else 'advertisement')
+            "solicitation" if self.mcast_solicitation else "advertisement"
+        )
         if self.debug:
             log.msg("Sending multicast beacon %ss." % beacon_type)
         self.send_multicast_beacons(self.interfaces, beacon_type)
@@ -733,15 +711,15 @@ class BeaconingSocketProtocol(DatagramProtocol):
         # (1) If we received our own beacon, that means the interface we sent
         # the packet out on is on the same fabric as the interface that
         # received it.
-        own_beacon = rx.json.get('own_beacon', False)
+        own_beacon = rx.json.get("own_beacon", False)
         if rx.multicast and own_beacon:
             self._add_own_beacon_hints(hints, rx)
         # (2) If we receive a duplicate beacon on two different interfaces,
         # that means those two interfaces are on the same fabric.
-        is_dup = rx.json.get('is_dup', False)
+        is_dup = rx.json.get("is_dup", False)
         if rx.multicast and is_dup:
             self._add_duplicate_beacon_hints(hints, rx)
-        remote_ifinfo = rx.json.get('payload', {}).get('remote', None)
+        remote_ifinfo = rx.json.get("payload", {}).get("remote", None)
         if remote_ifinfo is not None and not own_beacon:
             self._add_remote_fabric_hints(hints, remote_ifinfo, rx)
         if len(hints) > 0:
@@ -757,14 +735,21 @@ class BeaconingSocketProtocol(DatagramProtocol):
         beacons indicate an on-link network. If a unicast beacon was received,
         we can assume that the two endpoints are mutually routable.
         """
-        remote_ifname = remote_ifinfo.get('name')
-        remote_vid = remote_ifinfo.get('vid')
-        remote_mac = remote_ifinfo.get('mac_address')
+        remote_ifname = remote_ifinfo.get("name")
+        remote_vid = remote_ifinfo.get("vid")
+        remote_mac = remote_ifinfo.get("mac_address")
         hint = "on_remote_network" if rx.multicast else "routable_to"
         if remote_ifname is not None and remote_mac is not None:
-            hints.add(TopologyHint(
-                rx.ifname, rx.vid, hint, remote_ifname, remote_vid,
-                remote_mac))
+            hints.add(
+                TopologyHint(
+                    rx.ifname,
+                    rx.vid,
+                    hint,
+                    remote_ifname,
+                    remote_vid,
+                    remote_mac,
+                )
+            )
 
     def _add_duplicate_beacon_hints(self, hints, rx):
         """Adds hints regarding duplicate beacons received.
@@ -784,9 +769,16 @@ class BeaconingSocketProtocol(DatagramProtocol):
                         for ifname2, vid2 in duplicate_interfaces:
                             if ifname1 == ifname2 and vid1 == vid2:
                                 continue
-                            hints.add(TopologyHint(
-                                ifname1, vid1, "same_local_fabric_as", ifname2,
-                                vid2, None))
+                            hints.add(
+                                TopologyHint(
+                                    ifname1,
+                                    vid1,
+                                    "same_local_fabric_as",
+                                    ifname2,
+                                    vid2,
+                                    None,
+                                )
+                            )
 
     def _add_own_beacon_hints(self, hints, rx):
         """Adds hints regarding own beacons received.
@@ -798,19 +790,32 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # We received our own solicitation.
             sent_beacon = self.tx_queue.get(rx.uuid, None)
             if sent_beacon is not None:
-                sent_ifname = sent_beacon.payload.get('remote', {}).get('name')
+                sent_ifname = sent_beacon.payload.get("remote", {}).get("name")
                 if sent_ifname == rx.ifname:
                     # Someone sent us our own beacon. This indicates a network
                     # misconfiguration such as a loop/broadcast storm, or
                     # a malicious attack.
-                    hints.add(TopologyHint(
-                        sent_ifname, None, "rx_own_beacon_on_tx_interface",
-                        rx.ifname, rx.vid, None))
+                    hints.add(
+                        TopologyHint(
+                            sent_ifname,
+                            None,
+                            "rx_own_beacon_on_tx_interface",
+                            rx.ifname,
+                            rx.vid,
+                            None,
+                        )
+                    )
                 else:
-                    hints.add(TopologyHint(
-                        sent_ifname, None, "rx_own_beacon_on_other_interface",
-                        rx.ifname, rx.vid, None
-                    ))
+                    hints.add(
+                        TopologyHint(
+                            sent_ifname,
+                            None,
+                            "rx_own_beacon_on_other_interface",
+                            rx.ifname,
+                            rx.vid,
+                            None,
+                        )
+                    )
 
     def advertisementReceived(self, beacon: ReceivedBeacon):
         """Called when an advertisement beacon is received."""
@@ -831,21 +836,26 @@ class BeaconingSocketProtocol(DatagramProtocol):
         if beacon.uuid is None:
             if self.debug:
                 log.msg(
-                    "Rejecting incoming beacon: no UUID found: \n%s" % (
-                        pformat(beacon_json)))
+                    "Rejecting incoming beacon: no UUID found: \n%s"
+                    % (pformat(beacon_json))
+                )
             return
         own_beacon = False
         if beacon.uuid in self.tx_queue:
             own_beacon = True
-        beacon_json['own_beacon'] = own_beacon
+        beacon_json["own_beacon"] = own_beacon
         is_dup = self.remember_beacon_and_check_duplicate(beacon)
-        beacon_json['is_dup'] = is_dup
+        beacon_json["is_dup"] = is_dup
         if self.debug:
-            log.msg("%s %sreceived:\n%s" % (
-                "Own beacon" if own_beacon else "Beacon",
-                "(duplicate) " if is_dup else "",
-                beacon_json))
-        beacon_type = beacon_json['type']
+            log.msg(
+                "%s %sreceived:\n%s"
+                % (
+                    "Own beacon" if own_beacon else "Beacon",
+                    "(duplicate) " if is_dup else "",
+                    beacon_json,
+                )
+            )
+        beacon_type = beacon_json["type"]
         self.processTopologyHints(beacon)
         if own_beacon:
             # No need to reply to our own beacon. We already know we received
@@ -863,24 +873,25 @@ class BeaconingSocketProtocol(DatagramProtocol):
         :param beacon_json: received beacon JSON
         :return: `ReceivedBeacon` namedtuple
         """
-        reply_ip = beacon_json['source_ip']
-        reply_port = beacon_json['source_port']
-        if ':' not in reply_ip:
+        reply_ip = beacon_json["source_ip"]
+        reply_port = beacon_json["source_port"]
+        if ":" not in reply_ip:
             # Since we opened an IPv6-compatible socket, need IPv6 syntax
             # here to send to IPv4 addresses.
-            reply_ip = '::ffff:' + reply_ip
+            reply_ip = "::ffff:" + reply_ip
         reply_address = (reply_ip, reply_port)
-        destination_ip = beacon_json.get('destination_ip')
+        destination_ip = beacon_json.get("destination_ip")
         multicast = False
         if destination_ip is not None:
             ip = IPAddress(destination_ip)
             multicast = ip.is_multicast()
-        uuid = beacon_json.get('payload', {}).get("uuid")
-        ifname = beacon_json.get('interface')
+        uuid = beacon_json.get("payload", {}).get("uuid")
+        ifname = beacon_json.get("interface")
         ifinfo = self.interfaces.get(ifname, {})
-        vid = beacon_json.get('vid')
+        vid = beacon_json.get("vid")
         beacon = ReceivedBeacon(
-            uuid, beacon_json, ifname, ifinfo, vid, reply_address, multicast)
+            uuid, beacon_json, ifname, ifinfo, vid, reply_address, multicast
+        )
         return beacon
 
     def remember_beacon_and_check_duplicate(self, beacon: ReceivedBeacon):
@@ -910,14 +921,14 @@ class BeaconingSocketProtocol(DatagramProtocol):
         information from the monitoring process.
         """
         receive_interface_info = {
-            "name": context.get('interface'),
-            "source_ip": context.get('source_ip'),
-            "destination_ip": context.get('destination_ip'),
-            "source_mac": context.get('source_mac'),
-            "destination_mac": context.get('destination_mac'),
+            "name": context.get("interface"),
+            "source_ip": context.get("source_ip"),
+            "destination_ip": context.get("destination_ip"),
+            "source_mac": context.get("source_mac"),
+            "destination_mac": context.get("destination_mac"),
         }
-        if 'vid' in context:
-            receive_interface_info['vid'] = context['vid']
+        if "vid" in context:
+            receive_interface_info["vid"] = context["vid"]
         return receive_interface_info
 
     def datagramReceived(self, datagram, addr):
@@ -931,10 +942,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         commands), we *will* listen to the socket layer for beacons.
         """
         if self.process_incoming:
-            context = {
-                "source_ip": addr[0],
-                "source_port": addr[1]
-            }
+            context = {"source_ip": addr[0], "source_port": addr[1]}
             beacon_json = beacon_to_json(read_beacon_payload(datagram))
             beacon_json.update(context)
             self.beaconReceived(beacon_json)
@@ -959,7 +967,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     interval = timedelta(seconds=30).total_seconds()
 
     def __init__(
-            self, clock=None, enable_monitoring=True, enable_beaconing=True):
+        self, clock=None, enable_monitoring=True, enable_beaconing=True
+    ):
         # Order is very important here. First we set the clock to the passed-in
         # reactor, so that unit tests can fake out the clock if necessary.
         # Then we call super(). The superclass will set up the structures
@@ -985,7 +994,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self._lock = NetworksMonitoringLock()
         # Set up child service to update interface.
         self.interface_monitor = TimerService(
-            self.interval, self.updateInterfaces)
+            self.interval, self.updateInterfaces
+        )
         self.interface_monitor.setName("updateInterfaces")
         self.interface_monitor.clock = self.clock
         self.interface_monitor.setServiceParent(self)
@@ -1080,7 +1090,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             else:
                 maaslog.info(
                     "Networks monitoring service: Process ID %d assumed "
-                    "responsibility." % os.getpid())
+                    "responsibility." % os.getpid()
+                )
                 self._locked = True
                 return True
 
@@ -1112,7 +1123,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 # Retry beacon soliciations, in case any packet loss occurred
                 # the first time.
                 self.beaconing_protocol.queueMulticastBeaconing(
-                    solicitation=True)
+                    solicitation=True
+                )
                 yield pause(3.0)
                 hints = self.beaconing_protocol.getJSONTopologyHints()
             yield maybeDeferred(self.recordInterfaces, interfaces, hints)
@@ -1126,7 +1138,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # will reply and the hinting will be accurate.)
             if self.enable_beaconing:
                 self.beaconing_protocol.queueMulticastBeaconing(
-                    solicitation=True)
+                    solicitation=True
+                )
             # If the interfaces didn't change, we still need to poll for
             # monitoring state changes.
             yield maybeDeferred(self._configureNetworkDiscovery, interfaces)
@@ -1141,13 +1154,15 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         if is_dev_environment() or not self._locked or interfaces is None:
             return set()
         monitored_interfaces = {
-            ifname for ifname, ifdata in interfaces.items()
-            if ifdata['monitored']
+            ifname
+            for ifname, ifdata in interfaces.items()
+            if ifdata["monitored"]
         }
         return monitored_interfaces
 
     def _getInterfacesForNeighbourDiscovery(
-            self, interfaces: dict, monitoring_state: dict):
+        self, interfaces: dict, monitoring_state: dict
+    ):
         """Return the interfaces which will be used for neighbour discovery.
 
         :return: The set of interface names to run neighbour discovery on.
@@ -1158,9 +1173,12 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         if is_dev_environment() or not self._locked or interfaces is None:
             return set()
         monitored_interfaces = {
-            ifname for ifname in interfaces
-            if (ifname in monitoring_state and
-                monitoring_state[ifname].get('neighbour', False))
+            ifname
+            for ifname in interfaces
+            if (
+                ifname in monitoring_state
+                and monitoring_state[ifname].get("neighbour", False)
+            )
         }
         return monitored_interfaces
 
@@ -1223,7 +1241,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             else:
                 service.disownServiceParent()
                 maaslog.info(
-                    "Stopped neighbour observation service for %s." % ifname)
+                    "Stopped neighbour observation service for %s." % ifname
+                )
 
     def _startBeaconingServices(self, new_interfaces):
         """Start monitoring services for the specified set of interfaces."""
@@ -1246,14 +1265,13 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 pass
             else:
                 service.disownServiceParent()
-                maaslog.info(
-                    "Stopped beaconing service for %s." % ifname)
+                maaslog.info("Stopped beaconing service for %s." % ifname)
 
     def _shouldMonitorMDNS(self, monitoring_state):
         # If any interface is configured for mDNS, we must start the monitoring
         # process. (You cannot select interfaces when using `avahi-browse`.)
         mdns_state = {
-            monitoring_state[ifname].get('mdns', False)
+            monitoring_state[ifname].get("mdns", False)
             for ifname in monitoring_state.keys()
         }
         return True in mdns_state
@@ -1315,16 +1333,18 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         new_interfaces = beaconing_interfaces.difference(self._beaconing)
         deleted_interfaces = self._beaconing.difference(beaconing_interfaces)
         if len(new_interfaces) > 0:
-            log.msg("Starting beaconing for interfaces: %r" % (new_interfaces))
+            log.msg("Starting beaconing for interfaces: %r" % new_interfaces)
             self._startBeaconingServices(new_interfaces)
         if len(deleted_interfaces) > 0:
             log.msg(
-                "Stopping beaconing for interfaces: %r" % (deleted_interfaces))
+                "Stopping beaconing for interfaces: %r" % deleted_interfaces
+            )
             self._stopBeaconingServices(deleted_interfaces)
         self._beaconing = beaconing_interfaces
         if self.beaconing_protocol is None:
             self.beaconing_protocol = BeaconingSocketProtocol(
-                self.clock, interfaces=interfaces)
+                self.clock, interfaces=interfaces
+            )
         else:
             self.beaconing_protocol.updateInterfaces(interfaces)
         # If the interfaces have changed, perform beaconing again.
@@ -1335,20 +1355,24 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
     def _configureNeighbourDiscovery(self, interfaces, monitoring_state):
         monitored_interfaces = self._getInterfacesForNeighbourDiscovery(
-            interfaces, monitoring_state)
+            interfaces, monitoring_state
+        )
         # Calculate the difference between the sets. We need to know which
         # interfaces were added and deleted (with respect to the interfaces we
         # were already monitoring).
         new_interfaces = monitored_interfaces.difference(self._monitored)
         deleted_interfaces = self._monitored.difference(monitored_interfaces)
         if len(new_interfaces) > 0:
-            log.msg("Starting neighbour discovery for interfaces: %r" % (
-                new_interfaces))
+            log.msg(
+                "Starting neighbour discovery for interfaces: %r"
+                % new_interfaces
+            )
             self._startNeighbourDiscoveryServices(new_interfaces)
         if len(deleted_interfaces) > 0:
             log.msg(
-                "Stopping neighbour discovery for interfaces: %r" % (
-                    deleted_interfaces))
+                "Stopping neighbour discovery for interfaces: %r"
+                % deleted_interfaces
+            )
             self._stopNeighbourDiscoveryServices(deleted_interfaces)
         self._monitored = monitored_interfaces
 

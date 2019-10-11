@@ -3,11 +3,7 @@
 
 """Check Python 3 type hints."""
 
-__all__ = [
-    "ArgumentTypeError",
-    "ReturnTypeError",
-    "typed",
-]
+__all__ = ["ArgumentTypeError", "ReturnTypeError", "typed"]
 
 from functools import wraps
 import inspect
@@ -35,9 +31,15 @@ class ArgumentTypeError(TypeError):
     def __init__(self, func, name, value, expected):
         super(ArgumentTypeError, self).__init__(
             "In %s, for argument '%s', %r is not of type %s; "
-            "it is of type %s." % (
-                name_of(func), name, value, describe_typesig(expected),
-                name_of(type(value))))
+            "it is of type %s."
+            % (
+                name_of(func),
+                name,
+                value,
+                describe_typesig(expected),
+                name_of(type(value)),
+            )
+        )
 
 
 class ReturnTypeError(TypeError):
@@ -46,9 +48,14 @@ class ReturnTypeError(TypeError):
     def __init__(self, func, value, expected):
         super(ReturnTypeError, self).__init__(
             "In %s, the returned value %r is not of type %s; "
-            "it is of type %s." % (
-                name_of(func), value, describe_typesig(expected),
-                name_of(type(value))))
+            "it is of type %s."
+            % (
+                name_of(func),
+                value,
+                describe_typesig(expected),
+                name_of(type(value)),
+            )
+        )
 
 
 def typed(func):
@@ -77,6 +84,7 @@ def typed(func):
     type_out = get_type_out(type_hints, func)
 
     if type_out is None:
+
         @wraps(func)
         def checked(*args, **kwargs):
             bound = signature.bind(*args, **kwargs)
@@ -95,6 +103,7 @@ def typed(func):
             return func(*args, **kwargs)
 
     else:
+
         @wraps(func)
         def checked(*args, **kwargs):
             bound = signature.bind(*args, **kwargs)
@@ -117,6 +126,7 @@ def typed(func):
 
 
 if typing_is_broken:
+
     def typed(func):  # noqa
         """Return `func` unchanged.
 
@@ -138,7 +148,8 @@ def get_types_in(hints, func):
         else:
             raise AnnotationError(
                 "In %s, annotation %r for argument '%s' is "
-                "not understood." % (name_of(func), hint, name))
+                "not understood." % (name_of(func), hint, name)
+            )
 
 
 def get_type_out(hints, func):
@@ -152,7 +163,8 @@ def get_type_out(hints, func):
         else:
             raise AnnotationError(
                 "In %s, annotation %r for return value is "
-                "not understood." % (name_of(func), hint))
+                "not understood." % (name_of(func), hint)
+            )
     else:
         return None
 

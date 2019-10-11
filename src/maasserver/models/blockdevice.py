@@ -3,19 +3,14 @@
 
 """Model for a nodes block device."""
 
-__all__ = [
-    'BlockDevice',
-    ]
+__all__ = ["BlockDevice"]
 
 from collections import Iterable
 import re
 import string
 
 from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
 from django.db.models import (
     BigIntegerField,
@@ -33,10 +28,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
-from maasserver.utils.storage import (
-    get_effective_filesystem,
-    used_for,
-)
+from maasserver.utils.storage import get_effective_filesystem, used_for
 
 
 MIN_BLOCK_DEVICE_SIZE = 4 * 1024 * 1024  # 4MiB
@@ -68,9 +60,7 @@ class BlockDeviceManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        kwargs = {
-            "node__system_id": system_id,
-        }
+        kwargs = {"node__system_id": system_id}
         try:
             blockdevice_id = int(blockdevice_id)
         except ValueError:
@@ -102,9 +92,9 @@ class BlockDeviceManager(Manager):
             tags = list(tags)
         tags_where, tags_params = psql_array(tags, sql_type="text")
         where_contains = (
-            '"maasserver_blockdevice"."tags"::text[] @> %s' % tags_where)
-        return self.extra(
-            where=[where_contains], params=tags_params)
+            '"maasserver_blockdevice"."tags"::text[] @> %s' % tags_where
+        )
+        return self.extra(where=[where_contains], params=tags_params)
 
 
 class BlockDevice(CleanSave, TimestampedModel):
@@ -112,33 +102,42 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         unique_together = ("node", "name")
         ordering = ["id"]
 
     objects = BlockDeviceManager()
 
-    node = ForeignKey('Node', null=False, editable=False, on_delete=CASCADE)
+    node = ForeignKey("Node", null=False, editable=False, on_delete=CASCADE)
 
     name = CharField(
-        max_length=255, blank=False,
-        help_text="Name of block device. (e.g. sda)")
+        max_length=255,
+        blank=False,
+        help_text="Name of block device. (e.g. sda)",
+    )
 
     id_path = FilePathField(
-        blank=True, null=True, max_length=4096,
-        help_text="Path of by-id alias. (e.g. /dev/disk/by-id/wwn-0x50004...)")
+        blank=True,
+        null=True,
+        max_length=4096,
+        help_text="Path of by-id alias. (e.g. /dev/disk/by-id/wwn-0x50004...)",
+    )
 
     size = BigIntegerField(
-        blank=False, null=False,
+        blank=False,
+        null=False,
         validators=[MinValueValidator(MIN_BLOCK_DEVICE_SIZE)],
-        help_text="Size of block device in bytes.")
+        help_text="Size of block device in bytes.",
+    )
 
     block_size = IntegerField(
-        blank=False, null=False,
+        blank=False,
+        null=False,
         validators=[MinValueValidator(MIN_BLOCK_DEVICE_BLOCK_SIZE)],
-        help_text="Size of a block on the device in bytes.")
+        help_text="Size of a block on the device in bytes.",
+    )
 
-    tags = ArrayField(
-        TextField(), blank=True, null=True, default=list)
+    tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
     def get_name(self):
         """Return the name.
@@ -163,6 +162,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
+
         actual_instance = self.actual_instance
         if isinstance(actual_instance, ISCSIBlockDevice):
             return "iscsi"
@@ -173,7 +173,8 @@ class BlockDevice(CleanSave, TimestampedModel):
         else:
             raise ValueError(
                 "BlockDevice is not a subclass of "
-                "ISCSIBlockDevice, PhysicalBlockDevice or VirtualBlockDevice")
+                "ISCSIBlockDevice, PhysicalBlockDevice or VirtualBlockDevice"
+            )
 
     @property
     def actual_instance(self):
@@ -189,9 +190,12 @@ class BlockDevice(CleanSave, TimestampedModel):
         from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
-        if (isinstance(self, ISCSIBlockDevice) or
-                isinstance(self, PhysicalBlockDevice) or
-                isinstance(self, VirtualBlockDevice)):
+
+        if (
+            isinstance(self, ISCSIBlockDevice)
+            or isinstance(self, PhysicalBlockDevice)
+            or isinstance(self, VirtualBlockDevice)
+        ):
             return self
         try:
             return self.iscsiblockdevice
@@ -248,9 +252,9 @@ class BlockDevice(CleanSave, TimestampedModel):
         return used_for(self)
 
     def __str__(self):
-        return '{size} attached to {node}'.format(
-            size=human_readable_bytes(self.size),
-            node=self.node)
+        return "{size} attached to {node}".format(
+            size=human_readable_bytes(self.size), node=self.node
+        )
 
     def get_block_size(self):
         """Return the block size for the block device."""
@@ -286,9 +290,11 @@ class BlockDevice(CleanSave, TimestampedModel):
         if self.get_partitiontable() is not None:
             raise ValueError(
                 "Cannot call create_partition_if_boot_disk when a "
-                "partition table already exists on the block device.")
+                "partition table already exists on the block device."
+            )
         # Circular imports.
         from maasserver.models.partitiontable import PartitionTable
+
         partition_table = PartitionTable.objects.create(block_device=self)
         return partition_table.add_partition()
 
@@ -312,11 +318,12 @@ class BlockDevice(CleanSave, TimestampedModel):
             if filesystem_group is not None:
                 raise ValidationError(
                     "Cannot delete block device because its part of "
-                    "a %s." % filesystem_group.get_nice_name())
+                    "a %s." % filesystem_group.get_nice_name()
+                )
         super(BlockDevice, self).delete()
 
     @staticmethod
-    def _get_block_name_from_idx(idx, prefix='sd'):
+    def _get_block_name_from_idx(idx, prefix="sd"):
         """Calculate a block name based on the `idx`.
 
         Drive#  Name
@@ -339,7 +346,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         return prefix + name
 
     @staticmethod
-    def _get_idx_from_block_name(name, prefix='sd'):
+    def _get_idx_from_block_name(name, prefix="sd"):
         """Calculate a idx based on `name`.
 
         Name   Drive#
@@ -355,7 +362,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         sdaab  703
         sdzzz  18277
         """
-        match = re.match('%s([a-z]+)' % prefix, name)
+        match = re.match("%s([a-z]+)" % prefix, name)
         if match is None:
             return None
         else:

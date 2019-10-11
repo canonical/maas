@@ -16,23 +16,15 @@ The current implementation is limited in a number of ways:
   not for commissioning or fastpath installations.
 """
 
-__all__ = [
-    'get_third_party_driver',
-    ]
+__all__ = ["get_third_party_driver"]
 
 from copy import deepcopy
 import fnmatch
 
 from formencode import ForEach
 from formencode.validators import String
-from provisioningserver.config import (
-    ConfigBase,
-    ConfigMeta,
-)
-from provisioningserver.utils.config import (
-    ByteString,
-    Schema,
-)
+from provisioningserver.config import ConfigBase, ConfigMeta
+from provisioningserver.utils.config import ByteString, Schema
 
 
 """
@@ -117,7 +109,7 @@ class DriversConfig(ConfigBase, Schema, metaclass=DriversConfigMeta):
 def match_aliases_to_driver(detected_aliases, drivers):
     """Find the first driver that matches any supplied modalias."""
     for driver in drivers:
-        for alias in driver['modaliases']:
+        for alias in driver["modaliases"]:
             matches = fnmatch.filter(detected_aliases, alias)
             if len(matches) > 0:
                 return driver
@@ -127,9 +119,9 @@ def match_aliases_to_driver(detected_aliases, drivers):
 
 def populate_kernel_opts(driver):
     """Create kernel option string from module blacklist."""
-    blacklist = driver.get('blacklist')
+    blacklist = driver.get("blacklist")
     if blacklist is not None:
-        driver['kernel_opts'] = 'modprobe.blacklist=%s' % blacklist
+        driver["kernel_opts"] = "modprobe.blacklist=%s" % blacklist
 
     return driver
 
@@ -144,10 +136,11 @@ def get_third_party_driver(node, detected_aliases=None):
         detected_aliases = node.modaliases
 
     third_party_drivers_config = DriversConfig.load_from_cache()
-    third_party_drivers = third_party_drivers_config['drivers']
+    third_party_drivers = third_party_drivers_config["drivers"]
 
-    matched_driver = match_aliases_to_driver(detected_aliases,
-                                             third_party_drivers)
+    matched_driver = match_aliases_to_driver(
+        detected_aliases, third_party_drivers
+    )
 
     if matched_driver is None:
         return dict()

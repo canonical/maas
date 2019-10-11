@@ -19,8 +19,9 @@ class TestDeleteKeySourceWhenNoMoreKeys(MAASServerTestCase):
     def test_delete_keysource_deleted_when_no_more_keys(self):
         user = factory.make_User()
         protocol = random.choice(
-            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
-        auth_id = factory.make_name('auth_id')
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
         keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         sshkey = factory.make_SSHKey(user=user, keysource=keysource)
         sshkey.delete()
@@ -29,8 +30,9 @@ class TestDeleteKeySourceWhenNoMoreKeys(MAASServerTestCase):
     def test_do_not_delete_keysource_when_keys(self):
         user = factory.make_User()
         protocol = random.choice(
-            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
-        auth_id = factory.make_name('auth_id')
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
         keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         factory.make_SSHKey(user=user, keysource=keysource)
         self.assertIsNotNone(reload_object(keysource))

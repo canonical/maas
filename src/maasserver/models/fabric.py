@@ -3,24 +3,14 @@
 
 """Fabric objects."""
 
-__all__ = [
-    "DEFAULT_FABRIC_NAME",
-    "Fabric",
-    ]
+__all__ = ["DEFAULT_FABRIC_NAME", "Fabric"]
 
 import datetime
 from operator import attrgetter
 import re
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
-from django.db.models import (
-    CharField,
-    Manager,
-    TextField,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import CharField, Manager, TextField
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
@@ -35,28 +25,31 @@ def validate_fabric_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile(r'^[\w-]+$')
+    namespec = re.compile(r"^[\w-]+$")
     if not namespec.search(value):
         raise ValidationError("Invalid fabric name: %s." % value)
 
+
 # Name of the special, default fabric.  This fabric cannot be deleted.
-DEFAULT_FABRIC_NAME = 'fabric-0'
+DEFAULT_FABRIC_NAME = "fabric-0"
 
 
 class FabricQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'name': "__name",
-            'class': "__class_type",
+            "name": "__name",
+            "class": "__class_type",
         }
         return super(FabricQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class FabricQuerySet(QuerySet, FabricQueriesMixin):
@@ -79,12 +72,7 @@ class FabricManager(Manager, FabricQueriesMixin):
         now = datetime.datetime.now()
         fabric, created = self.get_or_create(
             id=0,
-            defaults={
-                'id': 0,
-                'name': None,
-                'created': now,
-                'updated': now,
-            },
+            defaults={"id": 0, "name": None, "created": now, "updated": now},
         )
         if created:
             fabric._create_default_vlan()
@@ -97,10 +85,14 @@ class FabricManager(Manager, FabricQueriesMixin):
         that was just created).
         """
         from maasserver.models import Subnet
+
         default_fabric = self.get_default_fabric()
-        if Subnet.objects.filter(
-                vlan__fabric=default_fabric).exclude(
-                id=subnet.id).count() == 0:
+        if (
+            Subnet.objects.filter(vlan__fabric=default_fabric)
+            .exclude(id=subnet.id)
+            .count()
+            == 0
+        ):
             return default_fabric
         else:
             return Fabric.objects.create()
@@ -111,7 +103,8 @@ class FabricManager(Manager, FabricQueriesMixin):
         """
         return self.filter(
             vlan__subnet__nodegroupinterface__nodegroup=nodegroup,
-            vlan__subnet__nodegroupinterface__interface=ifname)
+            vlan__subnet__nodegroupinterface__interface=ifname,
+        )
 
     def get_fabric_or_404(self, specifiers, user, perm):
         """Fetch a `Fabric` by its id.  Raise exceptions if no `Fabric` with
@@ -147,6 +140,7 @@ class Fabric(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         verbose_name = "Fabric"
         verbose_name_plural = "Fabrics"
 
@@ -155,14 +149,23 @@ class Fabric(CleanSave, TimestampedModel):
     # We don't actually allow blank or null name, but that is enforced in
     # clean() and save().
     name = CharField(
-        max_length=256, editable=True, null=True, blank=True, unique=True,
-        validators=[validate_fabric_name])
+        max_length=256,
+        editable=True,
+        null=True,
+        blank=True,
+        unique=True,
+        validators=[validate_fabric_name],
+    )
 
     description = TextField(null=False, blank=True)
 
     class_type = CharField(
-        max_length=256, editable=True, null=True, blank=True,
-        validators=[MODEL_NAME_VALIDATOR])
+        max_length=256,
+        editable=True,
+        null=True,
+        blank=True,
+        validators=[MODEL_NAME_VALIDATOR],
+    )
 
     def __str__(self):
         return "name=%s" % self.get_name()
@@ -174,7 +177,7 @@ class Fabric(CleanSave, TimestampedModel):
     def get_default_vlan(self):
         # This logic is replicated in the dehydrate() function of the
         # websockets handler.
-        return sorted(self.vlan_set.all(), key=attrgetter('id'))[0]
+        return sorted(self.vlan_set.all(), key=attrgetter("id"))[0]
 
     def get_name(self):
         """Return the name of the fabric."""
@@ -186,36 +189,40 @@ class Fabric(CleanSave, TimestampedModel):
     def delete(self):
         if self.is_default():
             raise ValidationError(
-                "This fabric is the default fabric, it cannot be deleted.")
+                "This fabric is the default fabric, it cannot be deleted."
+            )
         if Subnet.objects.filter(vlan__fabric=self).exists():
-            subnets = Subnet.objects.filter(vlan__fabric=self).order_by(
-                'cidr')
+            subnets = Subnet.objects.filter(vlan__fabric=self).order_by("cidr")
             descriptions = [str(subnet.cidr) for subnet in subnets]
             raise ValidationError(
                 "Can't delete fabric; the following subnets are "
-                "still present: %s" % (", ".join(descriptions)))
+                "still present: %s" % (", ".join(descriptions))
+            )
         if Interface.objects.filter(vlan__fabric=self).exists():
             interfaces = Interface.objects.filter(vlan__fabric=self).order_by(
-                'node', 'name')
+                "node", "name"
+            )
             descriptions = [iface.get_log_string() for iface in interfaces]
             raise ValidationError(
                 "Can't delete fabric; the following interfaces are "
-                "still connected: %s" % (", ".join(descriptions)))
+                "still connected: %s" % (", ".join(descriptions))
+            )
         super(Fabric, self).delete()
 
     def _create_default_vlan(self):
         # Circular imports.
-        from maasserver.models.vlan import (
-            VLAN, DEFAULT_VLAN_NAME, DEFAULT_VID)
+        from maasserver.models.vlan import VLAN, DEFAULT_VLAN_NAME, DEFAULT_VID
+
         VLAN.objects.create(
-            name=DEFAULT_VLAN_NAME, vid=DEFAULT_VID, fabric=self)
+            name=DEFAULT_VLAN_NAME, vid=DEFAULT_VID, fabric=self
+        )
 
     def save(self, *args, **kwargs):
         # Name will get set by clean_name() if None or empty, and there is an
         # id. We just need to handle names here for creation.
         created = self.id is None
         super(Fabric, self).save(*args, **kwargs)
-        if self.name is None or self.name == '':
+        if self.name is None or self.name == "":
             # If we got here, then we have a newly created fabric that needs a
             # default name.
             self.name = "fabric-%d" % self.id
@@ -225,12 +232,11 @@ class Fabric(CleanSave, TimestampedModel):
             self._create_default_vlan()
 
     def clean_name(self):
-        reserved = re.compile(r'^fabric-\d+$')
-        if self.name is not None and self.name != '':
+        reserved = re.compile(r"^fabric-\d+$")
+        if self.name is not None and self.name != "":
             if reserved.search(self.name):
-                if (self.id is None or self.name != 'fabric-%d' % self.id):
-                    raise ValidationError(
-                        {'name': ["Reserved fabric name."]})
+                if self.id is None or self.name != "fabric-%d" % self.id:
+                    raise ValidationError({"name": ["Reserved fabric name."]})
         elif self.id is not None:
             # Since we are not creating the fabric, force the (null or empty)
             # name to be the default name.
@@ -238,5 +244,5 @@ class Fabric(CleanSave, TimestampedModel):
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
-        if self._state.has_changed('name'):
+        if self._state.has_changed("name"):
             self.clean_name()

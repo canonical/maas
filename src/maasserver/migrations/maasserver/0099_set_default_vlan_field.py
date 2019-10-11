@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 import django.db.models.deletion
 import maasserver.models.subnet
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0098_add_space_to_vlan'),
-    ]
+    dependencies = [("maasserver", "0098_add_space_to_vlan")]
 
     operations = [
         migrations.AlterField(
-            model_name='subnet',
-            name='vlan',
-            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT),
-        ),
+            model_name="subnet",
+            name="vlan",
+            field=models.ForeignKey(
+                to="maasserver.VLAN",
+                on_delete=django.db.models.deletion.PROTECT,
+            ),
+        )
     ]

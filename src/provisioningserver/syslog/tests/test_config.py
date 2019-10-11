@@ -14,12 +14,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.syslog import config
 from provisioningserver.utils import snappy
-from testtools.matchers import (
-    Contains,
-    FileContains,
-    MatchesAll,
-    Not,
-)
+from testtools.matchers import Contains, FileContains, MatchesAll, Not
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -30,17 +25,21 @@ class TestGetConfigDir(MAASTestCase):
 
     def test_returns_default(self):
         self.assertEquals(
-            "/var/lib/maas/rsyslog.conf",
-            config.get_syslog_config_path())
+            "/var/lib/maas/rsyslog.conf", config.get_syslog_config_path()
+        )
 
     def test_env_overrides_default(self):
-        os.environ['MAAS_SYSLOG_CONFIG_DIR'] = factory.make_name('env')
+        os.environ["MAAS_SYSLOG_CONFIG_DIR"] = factory.make_name("env")
         self.assertEquals(
-            os.sep.join([
-                os.environ['MAAS_SYSLOG_CONFIG_DIR'],
-                config.MAAS_SYSLOG_CONF_NAME]),
-            config.get_syslog_config_path())
-        del(os.environ['MAAS_SYSLOG_CONFIG_DIR'])
+            os.sep.join(
+                [
+                    os.environ["MAAS_SYSLOG_CONFIG_DIR"],
+                    config.MAAS_SYSLOG_CONF_NAME,
+                ]
+            ),
+            config.get_syslog_config_path(),
+        )
+        del os.environ["MAAS_SYSLOG_CONFIG_DIR"]
 
 
 class TestWriteConfig(MAASTestCase):
@@ -51,57 +50,55 @@ class TestWriteConfig(MAASTestCase):
         self.tmpdir = self.make_dir()
         self.syslog_path = Path(self.tmpdir) / config.MAAS_SYSLOG_CONF_NAME
         self.useFixture(
-            EnvironmentVariableFixture('MAAS_SYSLOG_CONFIG_DIR', self.tmpdir))
+            EnvironmentVariableFixture("MAAS_SYSLOG_CONFIG_DIR", self.tmpdir)
+        )
 
     def assertLinesContain(self, match, lines):
         for line in lines:
             if match in line:
                 return
-        self.fail('%s was not present in: %s' % (match, lines))
+        self.fail("%s was not present in: %s" % (match, lines))
 
     def test__packaging_maas_user_group_with_drop(self):
         config.write_config(False)
         matchers = [
-            Contains('$FileOwner maas'),
-            Contains('$FileGroup maas'),
-            Contains('$PrivDropToUser maas'),
-            Contains('$PrivDropToGroup maas'),
+            Contains("$FileOwner maas"),
+            Contains("$FileGroup maas"),
+            Contains("$PrivDropToUser maas"),
+            Contains("$PrivDropToGroup maas"),
         ]
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=MatchesAll(*matchers)))
+            FileContains(matcher=MatchesAll(*matchers)),
+        )
 
     def test__snappy_root_user_group_no_drop(self):
-        self.patch(snappy, 'running_in_snap').return_value = True
+        self.patch(snappy, "running_in_snap").return_value = True
         config.write_config(False)
-        matchers = [
-            Contains('$FileOwner root'),
-            Contains('$FileGroup root'),
-        ]
+        matchers = [Contains("$FileOwner root"), Contains("$FileGroup root")]
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=MatchesAll(*matchers)))
+            FileContains(matcher=MatchesAll(*matchers)),
+        )
 
     def test__udp_and_tcp(self):
         config.write_config(False)
-        matcher_one = Contains(
-            'input(type="imtcp" port="5247")')
-        matcher_two = Contains(
-            'input(type="imudp" port="5247")')
+        matcher_one = Contains('input(type="imtcp" port="5247")')
+        matcher_two = Contains('input(type="imudp" port="5247")')
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)))
+            FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
+        )
 
     def test__udp_and_tcp_both_use_different_port(self):
         port = factory.pick_port()
         config.write_config(False, port=port)
-        matcher_one = Contains(
-            'input(type="imtcp" port="%d")' % port)
-        matcher_two = Contains(
-            'input(type="imudp" port="%d")' % port)
+        matcher_one = Contains('input(type="imtcp" port="%d")' % port)
+        matcher_two = Contains('input(type="imudp" port="%d")' % port)
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)))
+            FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
+        )
 
     def test__adds_tcp_stop(self):
         cidr = factory.make_ipv4_network()
@@ -109,36 +106,42 @@ class TestWriteConfig(MAASTestCase):
         matcher = Contains(':inputname, isequal, "imtcp" stop')
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=matcher))
+            FileContains(matcher=matcher),
+        )
 
     def test__write_local(self):
         config.write_config(True)
         matcher_one = Contains(
-            ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist')
-        matcher_two = Contains(
-            ':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot')
+            ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist'
+        )
+        matcher_two = Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot')
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)))
+            FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
+        )
 
     def test__no_write_local(self):
         config.write_config(False)
         matcher_one = Not(
-            Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist'))
+            Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist')
+        )
         matcher_two = Not(
-            Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot'))
+            Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot')
+        )
         # maas.log is still local when no write local.
         matcher_three = Contains(':syslogtag, contains, "maas"')
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
             FileContains(
-                matcher=MatchesAll(matcher_one, matcher_two, matcher_three)))
+                matcher=MatchesAll(matcher_one, matcher_two, matcher_three)
+            ),
+        )
 
     def test__forwarders(self):
         forwarders = [
             {
-                'ip': factory.make_ip_address(),
-                'name': factory.make_name('name')
+                "ip": factory.make_ip_address(),
+                "name": factory.make_name("name"),
             }
             for _ in range(3)
         ]
@@ -146,17 +149,17 @@ class TestWriteConfig(MAASTestCase):
         with self.syslog_path.open() as syslog_file:
             lines = [line.strip() for line in syslog_file.readlines()]
             for host in forwarders:
+                self.assertLinesContain('target="%s"' % host["ip"], lines)
                 self.assertLinesContain(
-                    'target="%s"' % host['ip'], lines)
-                self.assertLinesContain(
-                    'queue.filename="%s"' % host['name'], lines)
+                    'queue.filename="%s"' % host["name"], lines
+                )
 
     def test__forwarders_diff_port(self):
         port = factory.pick_port()
         forwarders = [
             {
-                'ip': factory.make_ip_address(),
-                'name': factory.make_name('name')
+                "ip": factory.make_ip_address(),
+                "name": factory.make_name("name"),
             }
             for _ in range(3)
         ]
@@ -164,16 +167,14 @@ class TestWriteConfig(MAASTestCase):
         with self.syslog_path.open() as syslog_file:
             lines = [line.strip() for line in syslog_file.readlines()]
             for host in forwarders:
-                self.assertLinesContain(
-                    'target="%s"' % host['ip'], lines)
-                self.assertLinesContain(
-                    'port="%d"' % port, lines)
+                self.assertLinesContain('target="%s"' % host["ip"], lines)
+                self.assertLinesContain('port="%d"' % port, lines)
 
     def test__write_local_and_forwarders(self):
         forwarders = [
             {
-                'ip': factory.make_ip_address(),
-                'name': factory.make_name('name')
+                "ip": factory.make_ip_address(),
+                "name": factory.make_name("name"),
             }
             for _ in range(3)
         ]
@@ -181,11 +182,13 @@ class TestWriteConfig(MAASTestCase):
         with self.syslog_path.open() as syslog_file:
             lines = [line.strip() for line in syslog_file.readlines()]
             self.assertIn(
-                ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist', lines)
+                ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist', lines
+            )
             self.assertIn(
-                ':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot', lines)
+                ':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot', lines
+            )
             for host in forwarders:
+                self.assertLinesContain('target="%s"' % host["ip"], lines)
                 self.assertLinesContain(
-                    'target="%s"' % host['ip'], lines)
-                self.assertLinesContain(
-                    'queue.filename="%s"' % host['name'], lines)
+                    'queue.filename="%s"' % host["name"], lines
+                )

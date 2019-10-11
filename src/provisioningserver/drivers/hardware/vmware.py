@@ -2,15 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
-    'power_control_vmware',
-    'power_query_vmware',
-    'probe_vmware_and_enlist',
-    ]
+    "power_control_vmware",
+    "power_query_vmware",
+    "probe_vmware_and_enlist",
+]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from importlib import import_module
 from inspect import getcallargs
@@ -20,10 +17,7 @@ from typing import Optional
 from urllib.parse import unquote
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.utils import (
-    commission_node,
-    create_node,
-)
+from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
@@ -43,10 +37,10 @@ def try_pyvmomi_import():
     global vmomi_api
     try:
         if vim is None:
-            vim_module = import_module('pyVmomi')
-            vim = getattr(vim_module, 'vim')
+            vim_module = import_module("pyVmomi")
+            vim = getattr(vim_module, "vim")
         if vmomi_api is None:
-            vmomi_api = import_module('pyVim.connect')
+            vmomi_api = import_module("pyVim.connect")
     except ImportError:
         return False
     else:
@@ -76,8 +70,8 @@ class VMwareAPI(metaclass=ABCMeta):
     - Powering on/off VMs
     - Checking the power status of VMs
     """
-    def __init__(self, host, username, password,
-                 port=None, protocol=None):
+
+    def __init__(self, host, username, password, port=None, protocol=None):
         """
         :param host: The VMware host to connect to
         :type host: string
@@ -179,10 +173,10 @@ class VMwareAPI(metaclass=ABCMeta):
 
 
 class VMwarePyvmomiAPI(VMwareAPI):
-    def __init__(
-            self, host, username, password, port=None, protocol=None):
+    def __init__(self, host, username, password, port=None, protocol=None):
         super(VMwarePyvmomiAPI, self).__init__(
-            host, username, password, port=port, protocol=protocol)
+            host, username, password, port=port, protocol=protocol
+        )
         self.service_instance = None
 
     def connect(self):
@@ -190,34 +184,36 @@ class VMwarePyvmomiAPI(VMwareAPI):
         # VMware API call; otherwise the API will see 'None' and fail.
         extra_args = {}
         if self.port is not None:
-            extra_args['port'] = self.port
+            extra_args["port"] = self.port
         if self.protocol is not None:
             if self.protocol == "https+unverified":
                 # This is a workaround for using untrusted certificates.
-                extra_args['protocol'] = 'https'
-                if 'sslContext' in getcallargs(vmomi_api.SmartConnect):
+                extra_args["protocol"] = "https"
+                if "sslContext" in getcallargs(vmomi_api.SmartConnect):
                     context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                     context.verify_mode = ssl.CERT_NONE
-                    extra_args['sslContext'] = context
+                    extra_args["sslContext"] = context
                 else:
                     maaslog.error(
                         "Unable to use unverified SSL context to connect to "
                         "'%s'. (In order to use this feature, you must update "
                         "to a more recent version of the python3-pyvmomi "
-                        "package.)" % self.host)
+                        "package.)" % self.host
+                    )
                     raise VMwareAPIException(
                         "Failed to set up unverified SSL context. Please "
                         "update to a more recent version of the "
-                        "python3-pyvmomi package.")
+                        "python3-pyvmomi package."
+                    )
             else:
-                extra_args['protocol'] = self.protocol
-        self.service_instance = vmomi_api.SmartConnect(host=self.host,
-                                                       user=self.username,
-                                                       pwd=self.password,
-                                                       **extra_args)
+                extra_args["protocol"] = self.protocol
+        self.service_instance = vmomi_api.SmartConnect(
+            host=self.host, user=self.username, pwd=self.password, **extra_args
+        )
         if not self.service_instance:
             raise VMwareAPIConnectionFailed(
-                "Could not connect to VMware service API")
+                "Could not connect to VMware service API"
+            )
         return self.service_instance is not None
 
     def is_folder(self, obj):
@@ -248,7 +244,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
         mac_addresses = []
         nic_keys = []
         for device in vm.config.hardware.device:
-            if hasattr(device, 'macAddress'):
+            if hasattr(device, "macAddress"):
                 mac = device.macAddress
                 if mac is not None and mac != "":
                     mac_addresses.append(mac)
@@ -258,11 +254,15 @@ class VMwarePyvmomiAPI(VMwareAPI):
     def _get_uuid(self, vm):
         # In vCenter environments, using the BIOS UUID (uuid) is deprecated.
         # But we can use it as a fallback, since the API supports both.
-        if hasattr(vm.summary.config, 'instanceUuid') \
-                and vm.summary.config.instanceUuid is not None:
+        if (
+            hasattr(vm.summary.config, "instanceUuid")
+            and vm.summary.config.instanceUuid is not None
+        ):
             return vm.summary.config.instanceUuid
-        elif hasattr(vm.summary.config, 'uuid') \
-                and vm.summary.config.uuid is not None:
+        elif (
+            hasattr(vm.summary.config, "uuid")
+            and vm.summary.config.uuid is not None
+        ):
             return vm.summary.config.uuid
         return None
 
@@ -311,11 +311,11 @@ class VMwarePyvmomiAPI(VMwareAPI):
 
     def pyvmomi_to_maas_powerstate(self, power_state):
         """Returns a MAAS power state given the specified pyvmomi state"""
-        if power_state == 'poweredOn':
+        if power_state == "poweredOn":
             return "on"
-        elif power_state == 'poweredOff':
+        elif power_state == "poweredOff":
             return "off"
-        elif power_state == 'suspended':
+        elif power_state == "suspended":
             return "on"  # TODO: model this in MAAS
         else:
             return "error"
@@ -325,18 +325,20 @@ class VMwarePyvmomiAPI(VMwareAPI):
 
     def set_power_state(self, vm, power_change):
         if vm is not None:
-            if power_change == 'on':
+            if power_change == "on":
                 vm.PowerOn()
-            elif power_change == 'off':
+            elif power_change == "off":
                 vm.PowerOff()
             else:
                 raise ValueError(
-                    "set_power_state: Invalid power_change state: {state}"
-                    .format(power_change))
+                    "set_power_state: Invalid power_change state: {state}".format(
+                        power_change
+                    )
+                )
 
     def set_pxe_boot(self, vm_properties):
         boot_devices = []
-        for nic in vm_properties['nics']:
+        for nic in vm_properties["nics"]:
             boot_nic = vim.vm.BootOptions.BootableEthernetDevice()
             boot_nic.deviceKey = nic
             boot_devices.append(boot_nic)
@@ -344,25 +346,26 @@ class VMwarePyvmomiAPI(VMwareAPI):
             vmconf = vim.vm.ConfigSpec()
             vmconf.bootOptions = vim.vm.BootOptions(bootOrder=boot_devices)
             # use the reference to the VM we stashed away in the properties
-            vm_properties['this'].ReconfigVM_Task(vmconf)
+            vm_properties["this"].ReconfigVM_Task(vmconf)
 
     def _get_vm_properties(self, vm):
         """Gathers the properties for the specified VM, for inclusion into
         the dictionary containing the properties of all VMs."""
         properties = {}
 
-        properties['this'] = vm
-        properties['uuid'] = self._get_uuid(vm)
+        properties["this"] = vm
+        properties["uuid"] = self._get_uuid(vm)
 
         if "64" in vm.summary.config.guestId:
-            properties['architecture'] = "amd64"
+            properties["architecture"] = "amd64"
         else:
-            properties['architecture'] = "i386"
+            properties["architecture"] = "i386"
 
-        properties['power_state'] = self.pyvmomi_to_maas_powerstate(
-            self._get_power_state(vm))
+        properties["power_state"] = self.pyvmomi_to_maas_powerstate(
+            self._get_power_state(vm)
+        )
 
-        properties['macs'], properties['nics'] = self._probe_network_cards(vm)
+        properties["macs"], properties["nics"] = self._probe_network_cards(vm)
 
         # These aren't needed now, but we might want them one day...
         # properties['cpus'] = vm.summary.config.numCpu
@@ -384,22 +387,23 @@ class VMwarePyvmomiAPI(VMwareAPI):
         return virtual_machines
 
 
-def _get_vmware_api(
-        host, username, password, port=None, protocol=None):
+def _get_vmware_api(host, username, password, port=None, protocol=None):
     if try_pyvmomi_import():
         # Attempt to detect the best available VMware API
         return VMwarePyvmomiAPI(
-            host, username, password, port=port, protocol=protocol)
+            host, username, password, port=port, protocol=protocol
+        )
     else:
         raise VMwareClientNotFound(
-            "Could not find a suitable VMware API (install python3-pyvmomi)")
+            "Could not find a suitable VMware API (install python3-pyvmomi)"
+        )
 
 
-def get_vmware_servers(
-        host, username, password, port=None, protocol=None):
+def get_vmware_servers(host, username, password, port=None, protocol=None):
     servers = {}
     api = _get_vmware_api(
-        host, username, password, port=port, protocol=protocol)
+        host, username, password, port=port, protocol=protocol
+    )
 
     if api.connect():
         try:
@@ -412,46 +416,76 @@ def get_vmware_servers(
 @synchronous
 @typed
 def probe_vmware_and_enlist(
-        user: str, host: str, username: Optional[str], password: Optional[str],
-        port: int = None, protocol: str = None, prefix_filter: str = None,
-        accept_all: bool = False, domain: str = None):
+    user: str,
+    host: str,
+    username: Optional[str],
+    password: Optional[str],
+    port: int = None,
+    protocol: str = None,
+    prefix_filter: str = None,
+    accept_all: bool = False,
+    domain: str = None,
+):
 
     # Both '' and None mean the same thing, so normalize it.
     if prefix_filter is None:
-        prefix_filter = ''
+        prefix_filter = ""
 
     api = _get_vmware_api(
-        host, username, password, port=port, protocol=protocol)
+        host, username, password, port=port, protocol=protocol
+    )
 
     if api.connect():
         try:
             servers = api.get_all_vm_properties()
             _probe_and_enlist_vmware_servers(
-                api, accept_all, host, password, port, prefix_filter, protocol,
-                servers, user, username, domain)
+                api,
+                accept_all,
+                host,
+                password,
+                port,
+                prefix_filter,
+                protocol,
+                servers,
+                user,
+                username,
+                domain,
+            )
         finally:
             api.disconnect()
 
 
 def _probe_and_enlist_vmware_servers(
-        api, accept_all, host, password, port, prefix_filter, protocol,
-        servers, user, username, domain):
+    api,
+    accept_all,
+    host,
+    password,
+    port,
+    prefix_filter,
+    protocol,
+    servers,
+    user,
+    username,
+    domain,
+):
     maaslog.info("Found %d VMware servers", len(servers))
     for system_name in servers:
         if not system_name.startswith(prefix_filter):
             maaslog.info(
                 "Skipping node named '%s'; does not match prefix filter '%s'",
-                system_name, prefix_filter)
+                system_name,
+                prefix_filter,
+            )
             continue
         properties = servers[system_name]
         params = {
-            'power_vm_name': system_name,
-            'power_uuid': properties['uuid'],
-            'power_address': host,
-            'power_port': port,
-            'power_protocol': protocol,
-            'power_user': username,
-            'power_pass': password,
+            "power_vm_name": system_name,
+            "power_uuid": properties["uuid"],
+            "power_address": host,
+            "power_port": port,
+            "power_protocol": protocol,
+            "power_user": username,
+            "power_pass": password,
         }
 
         # Note: the system name is URL encoded, so before we go to log
@@ -460,11 +494,18 @@ def _probe_and_enlist_vmware_servers(
         system_name = unquote(system_name)
         maaslog.info(
             "Creating VMware node with MACs: %s (%s)",
-            properties['macs'], system_name)
+            properties["macs"],
+            system_name,
+        )
 
         system_id = create_node(
-            properties['macs'], properties['architecture'],
-            'vmware', params, domain, system_name).wait(30)
+            properties["macs"],
+            properties["architecture"],
+            "vmware",
+            params,
+            domain,
+            system_name,
+        ).wait(30)
 
         if system_id is not None:
             api.set_pxe_boot(properties)
@@ -480,15 +521,24 @@ def _find_vm_by_uuid_or_name(api, uuid, vm_name):
         vm = api.find_vm_by_name(vm_name)
     else:
         raise VMwareVMNotFound(
-            "Failed to find VM; need a UUID or a VM name for power control")
+            "Failed to find VM; need a UUID or a VM name for power control"
+        )
     return vm
 
 
 def power_control_vmware(
-        host, username, password, vm_name, uuid, power_change,
-        port=None, protocol=None):
+    host,
+    username,
+    password,
+    vm_name,
+    uuid,
+    power_change,
+    port=None,
+    protocol=None,
+):
     api = _get_vmware_api(
-        host, username, password, port=port, protocol=protocol)
+        host, username, password, port=port, protocol=protocol
+    )
 
     if api.connect():
         try:
@@ -496,8 +546,10 @@ def power_control_vmware(
 
             if vm is None:
                 raise VMwareVMNotFound(
-                    "Failed to find VM; uuid={uuid}, name={name}"
-                    .format(uuid=uuid, name=vm_name))
+                    "Failed to find VM; uuid={uuid}, name={name}".format(
+                        uuid=uuid, name=vm_name
+                    )
+                )
 
             api.set_power_state(vm, power_change)
         except VMwareAPIException:
@@ -506,18 +558,23 @@ def power_control_vmware(
             # This is to cover what might go wrong in set_power_state(), if
             # an exception occurs while poweriing on or off.
             raise VMwareAPIException(
-                "Failed to set power state to {state} for uuid={uuid}"
-                .format(state=power_change, uuid=uuid), traceback.format_exc())
+                "Failed to set power state to {state} for uuid={uuid}".format(
+                    state=power_change, uuid=uuid
+                ),
+                traceback.format_exc(),
+            )
         finally:
             api.disconnect()
 
 
 def power_query_vmware(
-        host, username, password, vm_name, uuid, port=None, protocol=None):
+    host, username, password, vm_name, uuid, port=None, protocol=None
+):
     """Return the power state for the VM with the specified UUID,
      using the VMware API."""
     api = _get_vmware_api(
-        host, username, password, port=port, protocol=protocol)
+        host, username, password, port=port, protocol=protocol
+    )
 
     if api.connect():
         try:
@@ -528,7 +585,8 @@ def power_query_vmware(
             raise
         except Exception:
             raise VMwareAPIException(
-                "Failed to get power state for uuid={uuid}"
-                .format(uuid=uuid), traceback.format_exc())
+                "Failed to get power state for uuid={uuid}".format(uuid=uuid),
+                traceback.format_exc(),
+            )
         finally:
             api.disconnect()

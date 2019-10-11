@@ -10,10 +10,7 @@ __all__ = []
 import random
 
 from maastesting.factory import factory
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import vmware
 from provisioningserver.drivers.hardware.vmware import (
     VMwarePyvmomiAPI,
@@ -21,12 +18,7 @@ from provisioningserver.drivers.hardware.vmware import (
 )
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-    IsInstance,
-    Not,
-)
+from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
@@ -48,17 +40,16 @@ class FakeVmomiVMSummaryConfig(object):
 class FakeVmomiVMSummary(object):
     def __init__(self, name, has_instance_uuid=None, has_uuid=None):
         self.config = FakeVmomiVMSummaryConfig(
-            name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid)
+            name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid
+        )
 
 
 class FakeVmomiVMRuntime(object):
     def __init__(self):
         # add an invalid power state into the mix
         self.powerState = random.choice(
-            ["poweredOn",
-             "poweredOff",
-             "suspended",
-             "warp9"])
+            ["poweredOn", "poweredOff", "suspended", "warp9"]
+        )
 
 
 class FakeVmomiVMConfigHardwareDevice(object):
@@ -100,7 +91,8 @@ class FakeVmomiVMConfig(object):
 
 class FakeVmomiVM(object):
     def __init__(
-            self, name=None, nics=None, has_instance_uuid=None, has_uuid=None):
+        self, name=None, nics=None, has_instance_uuid=None, has_uuid=None
+    ):
 
         if name is None:
             self._name = factory.make_hostname()
@@ -108,7 +100,8 @@ class FakeVmomiVM(object):
             self._name = name
 
         self.summary = FakeVmomiVMSummary(
-            self._name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid)
+            self._name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid
+        )
         self.runtime = FakeVmomiVMRuntime()
         self.config = FakeVmomiVMConfig(nics=nics)
 
@@ -127,22 +120,29 @@ class FakeVmomiVmFolder(object):
         self.childEntity = []
         for i in range(0, servers):
             vm = FakeVmomiVM(
-                has_instance_uuid=has_instance_uuid, has_uuid=has_uuid)
+                has_instance_uuid=has_instance_uuid, has_uuid=has_uuid
+            )
             self.childEntity.append(vm)
 
 
 class FakeVmomiDatacenter(object):
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.vmFolder = FakeVmomiVmFolder(
-            servers=servers, has_instance_uuid=has_instance_uuid,
-            has_uuid=has_uuid)
+            servers=servers,
+            has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid,
+        )
 
 
 class FakeVmomiRootFolder(object):
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
-        self.childEntity = [FakeVmomiDatacenter(
-            servers=servers, has_instance_uuid=has_instance_uuid,
-            has_uuid=has_uuid)]
+        self.childEntity = [
+            FakeVmomiDatacenter(
+                servers=servers,
+                has_instance_uuid=has_instance_uuid,
+                has_uuid=has_uuid,
+            )
+        ]
 
 
 class FakeVmomiSearchIndex(object):
@@ -151,21 +151,27 @@ class FakeVmomiSearchIndex(object):
         self.vms_by_uuid = {}
 
         for child in content.rootFolder.childEntity:
-            if hasattr(child, 'vmFolder'):
+            if hasattr(child, "vmFolder"):
                 datacenter = child
                 vm_folder = datacenter.vmFolder
                 vm_list = vm_folder.childEntity
                 for vm in vm_list:
-                    if hasattr(vm.summary.config, 'instanceUuid') \
-                            and vm.summary.config.instanceUuid is not None:
+                    if (
+                        hasattr(vm.summary.config, "instanceUuid")
+                        and vm.summary.config.instanceUuid is not None
+                    ):
                         self.vms_by_instance_uuid[
-                            vm.summary.config.instanceUuid] = vm
-                    if hasattr(vm.summary.config, 'uuid')\
-                            and vm.summary.config.uuid is not None:
+                            vm.summary.config.instanceUuid
+                        ] = vm
+                    if (
+                        hasattr(vm.summary.config, "uuid")
+                        and vm.summary.config.uuid is not None
+                    ):
                         self.vms_by_uuid[vm.summary.config.uuid] = vm
 
-    def FindByUuid(self, datacenter, uuid, search_vms,
-                   search_by_instance_uuid):
+    def FindByUuid(
+        self, datacenter, uuid, search_vms, search_by_instance_uuid
+    ):
         assert datacenter is None
         assert uuid is not None
         assert search_vms is True
@@ -182,16 +188,20 @@ class FakeVmomiSearchIndex(object):
 class FakeVmomiContent(object):
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.rootFolder = FakeVmomiRootFolder(
-            servers=servers, has_instance_uuid=has_instance_uuid,
-            has_uuid=has_uuid)
+            servers=servers,
+            has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid,
+        )
         self.searchIndex = FakeVmomiSearchIndex(self)
 
 
 class FakeVmomiServiceInstance(object):
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.content = FakeVmomiContent(
-            servers=servers, has_instance_uuid=has_instance_uuid,
-            has_uuid=has_uuid)
+            servers=servers,
+            has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid,
+        )
 
     def RetrieveContent(self):
         return self.content
@@ -204,52 +214,59 @@ class TestVMwarePyvmomi(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def configure_vmomi_api(
-            self, servers=10, has_instance_uuid=None, has_uuid=None):
-        mock_vmomi_api = self.patch(vmware, 'vmomi_api')
+        self, servers=10, has_instance_uuid=None, has_uuid=None
+    ):
+        mock_vmomi_api = self.patch(vmware, "vmomi_api")
         mock_vmomi_api.SmartConnect.return_value = FakeVmomiServiceInstance(
-            servers=servers, has_instance_uuid=has_instance_uuid,
-            has_uuid=has_uuid)
-        is_datacenter = self.patch(vmware.VMwarePyvmomiAPI, 'is_datacenter')
+            servers=servers,
+            has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid,
+        )
+        is_datacenter = self.patch(vmware.VMwarePyvmomiAPI, "is_datacenter")
         is_datacenter.side_effect = lambda x: isinstance(
-            x, FakeVmomiDatacenter)
-        is_datacenter = self.patch(vmware.VMwarePyvmomiAPI, 'is_vm')
-        is_datacenter.side_effect = lambda x: isinstance(
-            x, FakeVmomiVM)
-        is_folder = self.patch(vmware.VMwarePyvmomiAPI, 'is_folder')
+            x, FakeVmomiDatacenter
+        )
+        is_datacenter = self.patch(vmware.VMwarePyvmomiAPI, "is_vm")
+        is_datacenter.side_effect = lambda x: isinstance(x, FakeVmomiVM)
+        is_folder = self.patch(vmware.VMwarePyvmomiAPI, "is_folder")
         is_folder.side_effect = lambda x: isinstance(
-            x, (FakeVmomiVmFolder, FakeVmomiRootFolder))
-        has_children = self.patch(vmware.VMwarePyvmomiAPI, 'has_children')
+            x, (FakeVmomiVmFolder, FakeVmomiRootFolder)
+        )
+        has_children = self.patch(vmware.VMwarePyvmomiAPI, "has_children")
         has_children.side_effect = lambda x: isinstance(
-            x, (FakeVmomiVmFolder, FakeVmomiDatacenter))
+            x, (FakeVmomiVmFolder, FakeVmomiDatacenter)
+        )
         return mock_vmomi_api
 
     def setUp(self):
         super(TestVMwarePyvmomi, self).setUp()
         if vmware.try_pyvmomi_import() is False:
-            self.skipTest('cannot test VMware without python3-pyvmomi')
+            self.skipTest("cannot test VMware without python3-pyvmomi")
 
     def test_api_connection(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=0)
         api = VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
-            factory.make_username())
+            factory.make_username(),
+        )
         api.connect()
         self.expectThat(
-            api.service_instance,
-            IsInstance(FakeVmomiServiceInstance))
+            api.service_instance, IsInstance(FakeVmomiServiceInstance)
+        )
         self.expectThat(api.is_connected(), Equals(True))
         api.disconnect()
         self.expectThat(mock_vmomi_api.SmartConnect.called, Equals(True))
         self.expectThat(mock_vmomi_api.Disconnect.called, Equals(True))
 
     def test_api_failed_connection(self):
-        mock_vmomi_api = self.patch(vmware, 'vmomi_api')
+        mock_vmomi_api = self.patch(vmware, "vmomi_api")
         mock_vmomi_api.SmartConnect.return_value = None
         api = VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
-            factory.make_username())
+            factory.make_username(),
+        )
         with ExpectedException(vmware.VMwareAPIConnectionFailed):
             api.connect()
         self.expectThat(api.service_instance, Is(None))
@@ -264,7 +281,9 @@ class TestVMwarePyvmomi(MAASTestCase):
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username(),
-            port=8443, protocol='https')
+            port=8443,
+            protocol="https",
+        )
         self.expectThat(servers, Equals({}))
 
     def test_get_vmware_servers(self):
@@ -272,14 +291,17 @@ class TestVMwarePyvmomi(MAASTestCase):
         servers = vmware.get_vmware_servers(
             factory.make_hostname(),
             factory.make_username(),
-            factory.make_username())
+            factory.make_username(),
+        )
         self.expectThat(servers, Not(Equals({})))
 
     def test_get_server_by_instance_uuid(self):
         mock_vmomi_api = self.configure_vmomi_api(
-            servers=1, has_instance_uuid=True, has_uuid=False)
-        search_index = \
+            servers=1, has_instance_uuid=True, has_uuid=False
+        )
+        search_index = (
             mock_vmomi_api.SmartConnect.return_value.content.searchIndex
+        )
         instance_uuids = search_index.vms_by_instance_uuid.keys()
         for uuid in instance_uuids:
             vm = vmware._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
@@ -287,9 +309,11 @@ class TestVMwarePyvmomi(MAASTestCase):
 
     def test_get_server_by_uuid(self):
         mock_vmomi_api = self.configure_vmomi_api(
-            servers=1, has_instance_uuid=True, has_uuid=False)
-        search_index = \
+            servers=1, has_instance_uuid=True, has_uuid=False
+        )
+        search_index = (
             mock_vmomi_api.SmartConnect.return_value.content.searchIndex
+        )
         uuids = search_index.vms_by_uuid.keys()
         for uuid in uuids:
             vm = vmware._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
@@ -297,35 +321,39 @@ class TestVMwarePyvmomi(MAASTestCase):
 
     def test_get_server_by_name(self):
         mock_vmomi_api = self.configure_vmomi_api(
-            servers=1, has_instance_uuid=False, has_uuid=True)
+            servers=1, has_instance_uuid=False, has_uuid=True
+        )
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
         servers = vmware.get_vmware_servers(host, username, password)
         for vm_name in servers.keys():
-            vm = vmware._find_vm_by_uuid_or_name(
-                mock_vmomi_api, None, vm_name)
+            vm = vmware._find_vm_by_uuid_or_name(mock_vmomi_api, None, vm_name)
             self.assertIsNotNone(vm)
 
     def test_get_missing_server_raises_VMwareVMNotFound(self):
         mock_vmomi_api = self.configure_vmomi_api(
-            servers=1, has_instance_uuid=True, has_uuid=True)
+            servers=1, has_instance_uuid=True, has_uuid=True
+        )
         with ExpectedException(VMwareVMNotFound):
             vmware._find_vm_by_uuid_or_name(mock_vmomi_api, None, None)
 
     def test_power_control_missing_server_raises_VMwareVMNotFound(self):
         self.configure_vmomi_api(
-            servers=1, has_instance_uuid=True, has_uuid=True)
+            servers=1, has_instance_uuid=True, has_uuid=True
+        )
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
         with ExpectedException(VMwareVMNotFound):
             vmware.power_control_vmware(
-                host, username, password, None, None, "on")
+                host, username, password, None, None, "on"
+            )
 
     def test_power_query_missing_server_raises_VMwareVMNotFound(self):
         self.configure_vmomi_api(
-            servers=1, has_instance_uuid=True, has_uuid=True)
+            servers=1, has_instance_uuid=True, has_uuid=True
+        )
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
@@ -342,8 +370,9 @@ class TestVMwarePyvmomi(MAASTestCase):
         servers = vmware.get_vmware_servers(host, username, password)
 
         # here we're grabbing indexes only available in the private mock object
-        search_index = \
+        search_index = (
             mock_vmomi_api.SmartConnect.return_value.content.searchIndex
+        )
 
         bios_uuids = list(search_index.vms_by_uuid)
         instance_uuids = list(search_index.vms_by_instance_uuid)
@@ -353,32 +382,33 @@ class TestVMwarePyvmomi(MAASTestCase):
         vm_name = None
 
         for uuid in bios_uuids:
-            vmware.power_query_vmware(
-                host, username, password, vm_name, uuid)
+            vmware.power_query_vmware(host, username, password, vm_name, uuid)
         for uuid in instance_uuids:
-            vmware.power_query_vmware(
-                host, username, password, vm_name, uuid)
+            vmware.power_query_vmware(host, username, password, vm_name, uuid)
         for vm_name in servers:
-            vmware.power_query_vmware(
-                host, username, password, vm_name, None)
+            vmware.power_query_vmware(host, username, password, vm_name, None)
 
         # turn on a set of VMs, then verify they are on
         for uuid in bios_uuids:
             vmware.power_control_vmware(
-                host, username, password, vm_name, uuid, "on")
+                host, username, password, vm_name, uuid, "on"
+            )
 
         for uuid in bios_uuids:
             state = vmware.power_query_vmware(
-                host, username, password, vm_name, uuid)
+                host, username, password, vm_name, uuid
+            )
             self.expectThat(state, Equals("on"))
 
         # turn off a set of VMs, then verify they are off
         for uuid in instance_uuids:
             vmware.power_control_vmware(
-                host, username, password, vm_name, uuid, "off")
+                host, username, password, vm_name, uuid, "off"
+            )
         for uuid in instance_uuids:
             state = vmware.power_query_vmware(
-                host, username, password, vm_name, uuid)
+                host, username, password, vm_name, uuid
+            )
             self.expectThat(state, Equals("off"))
 
         self.expectThat(servers, Not(Equals({})))
@@ -387,11 +417,12 @@ class TestVMwarePyvmomi(MAASTestCase):
     def test_probe_and_enlist(self):
         num_servers = 100
         self.configure_vmomi_api(servers=num_servers)
-        mock_create_node = self.patch(vmware, 'create_node')
-        system_id = factory.make_name('system_id')
+        mock_create_node = self.patch(vmware, "create_node")
+        system_id = factory.make_name("system_id")
         mock_create_node.side_effect = asynchronous(
-            lambda *args, **kwargs: system_id)
-        mock_commission_node = self.patch(vmware, 'commission_node')
+            lambda *args, **kwargs: system_id
+        )
+        mock_commission_node = self.patch(vmware, "commission_node")
 
         host = factory.make_hostname()
         username = factory.make_username()
@@ -403,7 +434,8 @@ class TestVMwarePyvmomi(MAASTestCase):
             host,
             username,
             password,
-            accept_all=True)
+            accept_all=True,
+        )
 
         self.assertEqual(mock_create_node.call_count, num_servers)
         self.assertEqual(mock_commission_node.call_count, num_servers)
@@ -412,14 +444,15 @@ class TestVMwarePyvmomi(MAASTestCase):
     def test_probe_and_enlist_reconfigures_boot_order_if_create_node_ok(self):
         num_servers = 1
         self.configure_vmomi_api(servers=num_servers)
-        mock_create_node = self.patch(vmware, 'create_node')
-        system_id = factory.make_name('system_id')
+        mock_create_node = self.patch(vmware, "create_node")
+        system_id = factory.make_name("system_id")
         mock_create_node.side_effect = asynchronous(
-            lambda *args, **kwargs: system_id)
-        mock_reconfigure_vm = self.patch(FakeVmomiVM, 'ReconfigVM_Task')
+            lambda *args, **kwargs: system_id
+        )
+        mock_reconfigure_vm = self.patch(FakeVmomiVM, "ReconfigVM_Task")
 
         # We need to not actually try to commission any nodes...
-        self.patch(vmware, 'commission_node')
+        self.patch(vmware, "commission_node")
 
         host = factory.make_hostname()
         username = factory.make_username()
@@ -431,7 +464,8 @@ class TestVMwarePyvmomi(MAASTestCase):
             host,
             username,
             password,
-            accept_all=True)
+            accept_all=True,
+        )
 
         self.assertEqual(mock_reconfigure_vm.call_count, num_servers)
 
@@ -439,13 +473,14 @@ class TestVMwarePyvmomi(MAASTestCase):
     def test_probe_and_enlist_skips_pxe_config_if_create_node_failed(self):
         num_servers = 1
         self.configure_vmomi_api(servers=num_servers)
-        mock_create_node = self.patch(vmware, 'create_node')
+        mock_create_node = self.patch(vmware, "create_node")
         mock_create_node.side_effect = asynchronous(
-            lambda *args, **kwargs: None)
-        mock_reconfigure_vm = self.patch(FakeVmomiVM, 'ReconfigVM_Task')
+            lambda *args, **kwargs: None
+        )
+        mock_reconfigure_vm = self.patch(FakeVmomiVM, "ReconfigVM_Task")
 
         # We need to not actually try to commission any nodes...
-        self.patch(vmware, 'commission_node')
+        self.patch(vmware, "commission_node")
 
         host = factory.make_hostname()
         username = factory.make_username()
@@ -457,6 +492,7 @@ class TestVMwarePyvmomi(MAASTestCase):
             host,
             username,
             password,
-            accept_all=True)
+            accept_all=True,
+        )
 
         self.assertEqual(mock_reconfigure_vm.call_count, 0)

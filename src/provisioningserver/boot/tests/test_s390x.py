@@ -10,10 +10,7 @@ from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.boot import (
-    BytesReader,
-    s390x as s390x_module,
-)
+from provisioningserver.boot import BytesReader, s390x as s390x_module
 from provisioningserver.boot.s390x import (
     ARP_HTYPE,
     format_bootif,
@@ -53,7 +50,8 @@ def compose_config_path(mac: str) -> bytes:
     # practice for us they're the same. We always assume that the ARP HTYPE
     # (hardware type) that PXELINUX sends is Ethernet.
     return "s390x/pxelinux.cfg/{htype:02x}-{mac}".format(
-        htype=ARP_HTYPE.ETHERNET, mac=mac).encode("ascii")
+        htype=ARP_HTYPE.ETHERNET, mac=mac
+    ).encode("ascii")
 
 
 @typed
@@ -68,7 +66,6 @@ def get_example_path_and_components() -> TFTPPathAndComponents:
 
 
 class TestS390XBootMethod(MAASTestCase):
-
     def make_tftp_root(self):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
@@ -78,42 +75,41 @@ class TestS390XBootMethod(MAASTestCase):
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         mac = factory.make_mac_address("-")
         self.assertEqual(
-            's390x/pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, mac),
-            compose_config_path(mac).decode("ascii"))
+            "s390x/pxelinux.cfg/%02x-%s" % (ARP_HTYPE.ETHERNET, mac),
+            compose_config_path(mac).decode("ascii"),
+        )
 
     def test_compose_config_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root().asBytesMode()
         mac = factory.make_mac_address("-")
         self.assertThat(
-            compose_config_path(mac),
-            Not(StartsWith(tftproot.path)))
+            compose_config_path(mac), Not(StartsWith(tftproot.path))
+        )
 
     def test_bootloader_path(self):
         method = S390XBootMethod()
-        self.assertEqual('boots390x.bin', method.bootloader_path)
+        self.assertEqual("boots390x.bin", method.bootloader_path)
 
     def test_bootloader_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root()
         method = S390XBootMethod()
-        self.assertThat(
-            method.bootloader_path,
-            Not(StartsWith(tftproot.path)))
+        self.assertThat(method.bootloader_path, Not(StartsWith(tftproot.path)))
 
     def test_name(self):
         method = S390XBootMethod()
-        self.assertEqual('s390x', method.name)
+        self.assertEqual("s390x", method.name)
 
     def test_template_subdir(self):
         method = S390XBootMethod()
-        self.assertEqual('pxe', method.template_subdir)
+        self.assertEqual("pxe", method.template_subdir)
 
     def test_arch_octet(self):
         method = S390XBootMethod()
-        self.assertEqual('00:1F', method.arch_octet)
+        self.assertEqual("00:1F", method.arch_octet)
 
     def test_path_prefix(self):
         method = S390XBootMethod()
-        self.assertEqual('s390x/', method.path_prefix)
+        self.assertEqual("s390x/", method.path_prefix)
 
 
 class TestS390XBootMethodMatchPath(MAASTestCase):
@@ -125,33 +121,30 @@ class TestS390XBootMethodMatchPath(MAASTestCase):
         method = S390XBootMethod()
         config_path, args = get_example_path_and_components()
         params = method.match_path(None, config_path)
-        expected = {'arch': 's390x', 'mac': args['mac'].decode("ascii")}
+        expected = {"arch": "s390x", "mac": args["mac"].decode("ascii")}
         self.assertEqual(expected, params)
 
     def test_match_path_pxe_config_without_mac(self):
         method = S390XBootMethod()
         fake_mac = factory.make_mac_address("-")
-        self.patch(s390x_module, 'get_remote_mac').return_value = fake_mac
-        config_path = b's390x/pxelinux.cfg/default'
+        self.patch(s390x_module, "get_remote_mac").return_value = fake_mac
+        config_path = b"s390x/pxelinux.cfg/default"
         params = method.match_path(None, config_path)
-        expected = {
-            'arch': 's390x',
-            'mac': fake_mac,
-            }
+        expected = {"arch": "s390x", "mac": fake_mac}
         self.assertEqual(expected, params)
 
     def test_match_path_pxe_prefix_request(self):
         method = S390XBootMethod()
         fake_mac = factory.make_mac_address("-")
-        self.patch(s390x_module, 'get_remote_mac').return_value = fake_mac
-        file_path = b's390x/file'
+        self.patch(s390x_module, "get_remote_mac").return_value = fake_mac
+        file_path = b"s390x/file"
         params = method.match_path(None, file_path)
         expected = {
-            'arch': 's390x',
-            'mac': fake_mac,
+            "arch": "s390x",
+            "mac": fake_mac,
             # The "s390x/" prefix has been removed from the path.
-            'path': file_path.decode("utf-8")[6:],
-            }
+            "path": file_path.decode("utf-8")[6:],
+        }
         self.assertEqual(expected, params)
 
 
@@ -164,8 +157,7 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = S390XBootMethod()
-        params = make_kernel_parameters(
-            self, arch="s390x", purpose="xinstall")
+        params = make_kernel_parameters(self, arch="s390x", purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -175,21 +167,28 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s$' % (
-                        re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s+KERNEL %s/%s$"
+                    % (re.escape(image_dir), params.kernel),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/%s$' % (
-                        re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*^\s+APPEND .+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*^\s+INITRD %s/%s$"
+                    % (re.escape(image_dir), params.initrd),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
@@ -197,14 +196,16 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
-                self, arch="s390x", purpose="install"),
+                self, arch="s390x", purpose="install"
+            ),
         }
         # Capture the output before sprinking in some random options.
         output_before = method.get_reader(**options).read(10000)
         # Sprinkle some magic in.
         options.update(
             (factory.make_name("name"), factory.make_name("value"))
-            for _ in range(10))
+            for _ in range(10)
+        )
         # Capture the output after sprinking in some random options.
         output_after = method.get_reader(**options).read(10000)
         # The generated template is the same.
@@ -216,8 +217,9 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
-                arch="amd64", purpose="local"),
-            }
+                arch="amd64", purpose="local"
+            ),
+        }
         output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertIn("", output)
 
@@ -226,24 +228,27 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         fake_mac = factory.make_mac_address("-")
         params = make_kernel_parameters(self, arch="amd64", purpose="install")
         output = method.get_reader(
-            backend=None, kernel_params=params, arch='s390x', mac=fake_mac)
+            backend=None, kernel_params=params, arch="s390x", mac=fake_mac
+        )
         output = output.read(10000).decode("utf-8")
         config = parse_pxe_config(output)
-        expected = 'BOOTIF=%s' % format_bootif(fake_mac)
-        self.assertIn(expected, config['execute']['APPEND'])
+        expected = "BOOTIF=%s" % format_bootif(fake_mac)
+        self.assertIn(expected, config["execute"]["APPEND"])
 
     def test_format_bootif_replaces_colon(self):
         fake_mac = factory.make_mac_address("-")
         self.assertEqual(
-            '01-%s' % fake_mac.replace(':', '-').lower(),
-            format_bootif(fake_mac))
+            "01-%s" % fake_mac.replace(":", "-").lower(),
+            format_bootif(fake_mac),
+        )
 
     def test_format_bootif_makes_mac_address_lower(self):
         fake_mac = factory.make_mac_address("-")
         fake_mac = fake_mac.upper()
         self.assertEqual(
-            '01-%s' % fake_mac.replace(':', '-').lower(),
-            format_bootif(fake_mac))
+            "01-%s" % fake_mac.replace(":", "-").lower(),
+            format_bootif(fake_mac),
+        )
 
 
 class TestS390XBootMethodPathPrefix(MAASTestCase):
@@ -328,32 +333,32 @@ class TestS390XBootMethodRegex(MAASTestCase):
         # The default config path is simply "pxelinux.cfg" (without
         # leading slash).  The regex matches this.
         mac = factory.make_mac_address("-").encode("ascii")
-        match = re_config_file.match(b's390x/pxelinux.cfg/01-%s' % mac)
+        match = re_config_file.match(b"s390x/pxelinux.cfg/01-%s" % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac}, match.groupdict())
+        self.assertEqual({"mac": mac}, match.groupdict())
 
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
         mac = factory.make_mac_address("-").encode("ascii")
-        match = re_config_file.match(b'/s390x/pxelinux.cfg/01-%s' % mac)
+        match = re_config_file.match(b"/s390x/pxelinux.cfg/01-%s" % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac}, match.groupdict())
+        self.assertEqual({"mac": mac}, match.groupdict())
 
     def test_re_config_file_matches_pxelinux_cfg_without_pxelinux_cfg(self):
         mac = factory.make_mac_address("-").encode("ascii")
-        match = re_config_file.match(b'/s390x/01-%s' % mac)
+        match = re_config_file.match(b"/s390x/01-%s" % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac}, match.groupdict())
+        self.assertEqual({"mac": mac}, match.groupdict())
 
     def test_re_config_file_does_not_match_non_config_file(self):
-        self.assertIsNone(re_config_file.match(b's390x/pxelinux.cfg/kernel'))
+        self.assertIsNone(re_config_file.match(b"s390x/pxelinux.cfg/kernel"))
 
     def test_re_config_file_does_not_match_file_in_root(self):
-        self.assertIsNone(re_config_file.match(b'01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b"01-aa-bb-cc-dd-ee-ff"))
 
     def test_re_config_file_does_not_match_file_not_in_pxelinux_cfg(self):
-        self.assertIsNone(re_config_file.match(b'foo/01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b"foo/01-aa-bb-cc-dd-ee-ff"))
 
     def test_re_config_file_with_default(self):
-        match = re_config_file.match(b's390x/pxelinux.cfg/default')
+        match = re_config_file.match(b"s390x/pxelinux.cfg/default")
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': None}, match.groupdict())
+        self.assertEqual({"mac": None}, match.groupdict())

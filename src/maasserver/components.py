@@ -42,7 +42,8 @@ def register_persistent_error(component, error_message):
         notification = Notification.objects.get(ident=component)
     except Notification.DoesNotExist:
         notification = Notification.objects.create_error_for_admins(
-            error_message, ident=component)
+            error_message, ident=component
+        )
     else:
         if notification.message != error_message:
             notification.message = error_message
@@ -63,6 +64,6 @@ def get_persistent_errors():
     """Return list of current persistent error messages."""
     components = map_enum(COMPONENT).values()
     return sorted(
-        notification.render() for notification in
-        Notification.objects.filter(ident__in=components)
+        notification.render()
+        for notification in Notification.objects.filter(ident__in=components)
     )

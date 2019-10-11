@@ -3,20 +3,14 @@
 
 """MAAS-specific test HTTP clients."""
 
-__all__ = [
-    'MAASSensibleClient',
-    'MAASSensibleOAuthClient',
-]
+__all__ = ["MAASSensibleClient", "MAASSensibleOAuthClient"]
 
 from time import time
 
 from django.conf import settings
 from django.test.client import RequestFactory
 from maasserver.models.user import get_auth_tokens
-from maasserver.utils.orm import (
-    post_commit_hooks,
-    transactional,
-)
+from maasserver.utils.orm import post_commit_hooks, transactional
 from maastesting.djangoclient import SensibleClient
 from maastesting.factory import factory
 from oauth.oauth import (
@@ -41,9 +35,9 @@ class MAASSensibleGetPathMixin:
         # the SCRIPT_NAME in the environ. We perform the same behaviour here
         # by removing the initial FORCE_SCRIPT_NAME from the url path. The
         # WSGIRequest will add it back on just like in a running MAAS.
-        script_path = settings.FORCE_SCRIPT_NAME.rstrip('/')
+        script_path = settings.FORCE_SCRIPT_NAME.rstrip("/")
         if parsed.path.startswith(script_path):
-            parsed = parsed._replace(path=parsed.path[len(script_path):])
+            parsed = parsed._replace(path=parsed.path[len(script_path) :])
         return super(MAASSensibleGetPathMixin, self)._get_path(parsed)
 
 
@@ -138,28 +132,29 @@ class MAASSensibleOAuthClient(MAASSensibleClient):
     def _compose_auth_header(self, url):
         """Return additional header entries for request to `url`."""
         params = {
-            'oauth_version': "1.0",
-            'oauth_nonce': generate_nonce(),
-            'oauth_timestamp': int(time()),
-            'oauth_token': self.token.key,
-            'oauth_consumer_key': self.consumer.key,
+            "oauth_version": "1.0",
+            "oauth_nonce": generate_nonce(),
+            "oauth_timestamp": int(time()),
+            "oauth_token": self.token.key,
+            "oauth_consumer_key": self.consumer.key,
         }
         req = OAuthRequest(http_url=url, parameters=params)
         req.sign_request(
-            OAuthSignatureMethod_PLAINTEXT(), self.consumer, self.token)
+            OAuthSignatureMethod_PLAINTEXT(), self.consumer, self.token
+        )
         header = req.to_header()
         # Django uses the 'HTTP_AUTHORIZATION' to look up Authorization
         # credentials.
-        header['HTTP_AUTHORIZATION'] = header['Authorization']
+        header["HTTP_AUTHORIZATION"] = header["Authorization"]
         return header
 
     def _compose_url(self, path):
         """Put together a full URL for the resource at `path`."""
         environ = self._base_environ()
-        return '%s://%s' % (environ['wsgi.url_scheme'], path)
+        return "%s://%s" % (environ["wsgi.url_scheme"], path)
 
     def request(self, **kwargs):
-        url = self._compose_url(kwargs['PATH_INFO'])
+        url = self._compose_url(kwargs["PATH_INFO"])
         if self.consumer is not None:
             kwargs.update(self._compose_auth_header(url))
         return super(MAASSensibleOAuthClient, self).request(**kwargs)

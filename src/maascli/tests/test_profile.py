@@ -17,7 +17,6 @@ from maastesting.testcase import MAASTestCase
 
 
 class TestProfile(MAASTestCase):
-
     def test_get_profile_finds_profile(self):
         profiles = make_configs()
         [name] = profiles.keys()
@@ -27,7 +26,10 @@ class TestProfile(MAASTestCase):
         profiles = make_configs()
         self.assertRaises(
             InvalidProfile,
-            get_profile, profiles, factory.make_name('nonexistent-profile'))
+            get_profile,
+            profiles,
+            factory.make_name("nonexistent-profile"),
+        )
 
     def test_name_default_profile_picks_single_profile(self):
         profiles = make_configs(1)

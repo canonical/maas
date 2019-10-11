@@ -16,51 +16,31 @@ from maasserver.enum import (
     POWER_STATE,
     POWER_STATE_CHOICES,
 )
-from maasserver.models import (
-    Node,
-    StaticIPAddress,
-)
-from maasserver.models.service import (
-    RACK_SERVICES,
-    REGION_SERVICES,
-    Service,
-)
+from maasserver.models import Node, StaticIPAddress
+from maasserver.models.service import RACK_SERVICES, REGION_SERVICES, Service
 from maasserver.models.signals import power
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from metadataserver.models.nodekey import NodeKey
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-    MatchesStructure,
-    Not,
-)
+from testtools.matchers import Equals, HasLength, Is, MatchesStructure, Not
 
 
 class TestNodeDeletion(MAASServerTestCase):
-
     def test_deleting_node_updates_event_node_hostname(self):
         """Test that event's `node_hostname` is set when the node is going to be
         deleted."""
         node = factory.make_Node()
         node_hostname = node.hostname
-        events = [
-            factory.make_Event(node=node)
-            for _ in range(3)
-        ]
+        events = [factory.make_Event(node=node) for _ in range(3)]
         node.delete()
         for event in events:
             self.assertEquals(event.node_hostname, node_hostname)
 
     def test_deleting_node_sets_node_to_null(self):
         node = factory.make_Node()
-        events = [
-            factory.make_Event(node=node)
-            for _ in range(3)
-        ]
+        events = [factory.make_Event(node=node) for _ in range(3)]
         node.delete()
         for event in events:
             event = reload_object(event)
@@ -85,7 +65,9 @@ class TestNodePreviousStatus(MAASServerTestCase):
         self.assertThat(
             node,
             MatchesStructure.byEquality(
-                status=new_status, previous_status=old_status))
+                status=new_status, previous_status=old_status
+            ),
+        )
 
     def test_chaning_status_doesnt_store_blacklisted_statuses(self):
         black_listed_statuses = [
@@ -98,9 +80,11 @@ class TestNodePreviousStatus(MAASServerTestCase):
         ]
         status = random.choice(black_listed_statuses)
         previous_status = factory.pick_choice(
-            NODE_STATUS_CHOICES, but_not=black_listed_statuses)
+            NODE_STATUS_CHOICES, but_not=black_listed_statuses
+        )
         node = factory.make_Node(
-            previous_status=previous_status, status=status)
+            previous_status=previous_status, status=status
+        )
         node.status = random.choice(NODE_TRANSITIONS[node.status])
         node.save()
         self.assertEquals(previous_status, node.previous_status)
@@ -119,8 +103,8 @@ class TestNodeClearsOwnerNEWOrREADYStatus(MAASServerTestCase):
 
     def test_changing_to_new_status_clears_owner(self):
         node = factory.make_Node(
-            owner=factory.make_User(),
-            status=NODE_STATUS.COMMISSIONING)
+            owner=factory.make_User(), status=NODE_STATUS.COMMISSIONING
+        )
         node.status = NODE_STATUS.NEW
         node.save()
         self.assertIsNone(node.owner)
@@ -189,30 +173,26 @@ class TestNodeCreateServices(MAASServerTestCase):
     def test_doesnt_create_services_for_machine(self):
         machine = factory.make_Node()
         services = Service.objects.filter(node=machine)
-        self.assertThat(
-            {service.name for service in services},
-            HasLength(0))
+        self.assertThat({service.name for service in services}, HasLength(0))
 
     def test_doesnt_create_services_for_device(self):
         device = factory.make_Device()
         services = Service.objects.filter(node=device)
-        self.assertThat(
-            {service.name for service in services},
-            HasLength(0))
+        self.assertThat({service.name for service in services}, HasLength(0))
 
     def test_creates_services_for_rack_controller(self):
         rack_controller = factory.make_RackController()
         services = Service.objects.filter(node=rack_controller)
         self.assertThat(
-            {service.name for service in services},
-            Equals(RACK_SERVICES))
+            {service.name for service in services}, Equals(RACK_SERVICES)
+        )
 
     def test_creates_services_for_region_controller(self):
         region_controller = factory.make_RegionController()
         services = Service.objects.filter(node=region_controller)
         self.assertThat(
-            {service.name for service in services},
-            Equals(REGION_SERVICES))
+            {service.name for service in services}, Equals(REGION_SERVICES)
+        )
 
     def test_creates_services_when_region_converts_to_region_rack(self):
         controller = factory.make_RegionController()
@@ -221,7 +201,8 @@ class TestNodeCreateServices(MAASServerTestCase):
         services = Service.objects.filter(node=controller)
         self.assertThat(
             {service.name for service in services},
-            Equals(REGION_SERVICES | RACK_SERVICES))
+            Equals(REGION_SERVICES | RACK_SERVICES),
+        )
 
     def test_creates_services_when_rack_controller_becomes_just_region(self):
         controller = factory.make_RackController()
@@ -229,12 +210,11 @@ class TestNodeCreateServices(MAASServerTestCase):
         controller.save()
         services = Service.objects.filter(node=controller)
         self.assertThat(
-            {service.name for service in services},
-            Equals(REGION_SERVICES))
+            {service.name for service in services}, Equals(REGION_SERVICES)
+        )
 
 
 class TestNodeDefaultNUMANode(MAASServerTestCase):
-
     def test_create_node_creates_default_numanode(self):
         node = Node()
         node.save()
@@ -269,7 +249,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             NODE_STATUS.TESTING,
         ]
         self.scenarios = [
-            (status_label, {'status': status})
+            (status_label, {"status": status})
             for status, status_label in NODE_STATUS_CHOICES
             if status not in self.reserved_statuses
         ]
@@ -278,7 +258,8 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
     def test__releases_interface_config_when_turned_off(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=random.choice(self.reserved_statuses),
-            power_state=POWER_STATE.ON)
+            power_state=POWER_STATE.ON,
+        )
         for interface in machine.interface_set.all():
             interface.claim_auto_ips()
 
@@ -289,13 +270,15 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine.save()
 
         for ip in StaticIPAddress.objects.filter(
-                interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO):
+            interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO
+        ):
             self.assertIsNone(ip.ip)
 
     def test__does_nothing_if_not_off(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=random.choice(self.reserved_statuses),
-            power_state=POWER_STATE.ON)
+            power_state=POWER_STATE.ON,
+        )
         for interface in machine.interface_set.all():
             interface.claim_auto_ips()
 
@@ -303,36 +286,43 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         Node.objects.filter(id=machine.id).update(status=self.status)
         machine = reload_object(machine)
         machine.power_state = factory.pick_choice(
-            POWER_STATE_CHOICES, but_not=[POWER_STATE.OFF])
+            POWER_STATE_CHOICES, but_not=[POWER_STATE.OFF]
+        )
         machine.save()
 
         for ip in StaticIPAddress.objects.filter(
-                interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO):
+            interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO
+        ):
             self.assertIsNotNone(ip.ip)
 
     def test__does_nothing_if_reserved_status(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
-            status=self.status, power_state=POWER_STATE.ON)
+            status=self.status, power_state=POWER_STATE.ON
+        )
         for interface in machine.interface_set.all():
             interface.claim_auto_ips()
 
         # Hack to get around node transition model
         Node.objects.filter(id=machine.id).update(
-            status=random.choice(self.reserved_statuses))
+            status=random.choice(self.reserved_statuses)
+        )
         machine = reload_object(machine)
         machine.power_state = POWER_STATE.OFF
         machine.save()
 
         for ip in StaticIPAddress.objects.filter(
-                interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO):
+            interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO
+        ):
             self.assertIsNotNone(ip.ip)
 
     def test__does_nothing_if_not_machine(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             node_type=factory.pick_choice(
-                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]
+            ),
             status=random.choice(self.reserved_statuses),
-            power_state=POWER_STATE.ON)
+            power_state=POWER_STATE.ON,
+        )
         for interface in node.interface_set.all():
             interface.claim_auto_ips()
 
@@ -343,5 +333,6 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         node.save()
 
         for ip in StaticIPAddress.objects.filter(
-                interface__node=node, alloc_type=IPADDRESS_TYPE.AUTO):
+            interface__node=node, alloc_type=IPADDRESS_TYPE.AUTO
+        ):
             self.assertIsNotNone(ip.ip)

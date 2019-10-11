@@ -12,10 +12,7 @@ from maasserver.models.nodeprobeddetails import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from metadataserver.enum import (
-    RESULT_TYPE,
-    SCRIPT_STATUS,
-)
+from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
@@ -23,51 +20,67 @@ from provisioningserver.refresh.node_info_scripts import (
 
 
 class TestNodeDetail(MAASServerTestCase):
-
     def make_script_set_and_results(self, node, suffix="data"):
         script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.COMMISSIONING)
-        return script_set, [
-            factory.make_ScriptResult(
-                script_set=script_set, script_name=LSHW_OUTPUT_NAME,
-                exit_status=0, status=SCRIPT_STATUS.PASSED,
-                stdout=b"<lshw-%s/>" % suffix.encode()),
-            factory.make_ScriptResult(
-                script_set=script_set, script_name=LLDP_OUTPUT_NAME,
-                exit_status=0, status=SCRIPT_STATUS.PASSED,
-                stdout=b"<lldp-%s/>" % suffix.encode()),
-        ]
+            node=node, result_type=RESULT_TYPE.COMMISSIONING
+        )
+        return (
+            script_set,
+            [
+                factory.make_ScriptResult(
+                    script_set=script_set,
+                    script_name=LSHW_OUTPUT_NAME,
+                    exit_status=0,
+                    status=SCRIPT_STATUS.PASSED,
+                    stdout=b"<lshw-%s/>" % suffix.encode(),
+                ),
+                factory.make_ScriptResult(
+                    script_set=script_set,
+                    script_name=LLDP_OUTPUT_NAME,
+                    exit_status=0,
+                    status=SCRIPT_STATUS.PASSED,
+                    stdout=b"<lldp-%s/>" % suffix.encode(),
+                ),
+            ],
+        )
 
     def test__returns_all_details(self):
         node = factory.make_Node(with_empty_script_sets=True)
         script_set = node.current_commissioning_script_set
         for script_name, stdout in (
-                (LSHW_OUTPUT_NAME, b"<lshw-data/>"),
-                (LLDP_OUTPUT_NAME, b"<lldp-data/>")):
+            (LSHW_OUTPUT_NAME, b"<lshw-data/>"),
+            (LLDP_OUTPUT_NAME, b"<lldp-data/>"),
+        ):
             script_result = script_set.find_script_result(
-                script_name=script_name)
+                script_name=script_name
+            )
             script_result.store_result(exit_status=0, stdout=stdout)
         self.assertDictEqual(
             {"lshw": b"<lshw-data/>", "lldp": b"<lldp-data/>"},
-            get_single_probed_details(node))
+            get_single_probed_details(node),
+        )
 
     def test__returns_null_details_when_there_are_none(self):
         node = factory.make_Node()
         self.assertDictEqual(
-            {"lshw": None, "lldp": None}, get_single_probed_details(node))
+            {"lshw": None, "lldp": None}, get_single_probed_details(node)
+        )
 
     def test__returns_only_details_from_okay_commissioning_results(self):
         node = factory.make_Node(with_empty_script_sets=True)
         script_set = node.current_commissioning_script_set
         for script_name, stdout, exit_status in (
-                (LSHW_OUTPUT_NAME, b"<lshw-data/>", 0),
-                (LLDP_OUTPUT_NAME, b"<lldp-data/>", 1)):
+            (LSHW_OUTPUT_NAME, b"<lshw-data/>", 0),
+            (LLDP_OUTPUT_NAME, b"<lldp-data/>", 1),
+        ):
             script_result = script_set.find_script_result(
-                script_name=script_name)
+                script_name=script_name
+            )
             script_result.store_result(exit_status=exit_status, stdout=stdout)
         self.assertDictEqual(
             {"lshw": b"<lshw-data/>", "lldp": None},
-            get_single_probed_details(node))
+            get_single_probed_details(node),
+        )
 
     def test_get_probed_details(self):
         expected = {}

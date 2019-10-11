@@ -4,41 +4,28 @@
 """Supporting infrastructure for Piston-based APIs in MAAS."""
 
 __all__ = [
-    'admin_method',
-    'AnonymousOperationsHandler',
-    'ModelCollectionOperationsHandler',
-    'ModelOperationsHandler',
-    'operation',
-    'OperationsHandler',
-    ]
+    "admin_method",
+    "AnonymousOperationsHandler",
+    "ModelCollectionOperationsHandler",
+    "ModelOperationsHandler",
+    "operation",
+    "OperationsHandler",
+]
 
-from abc import (
-    ABCMeta,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractproperty
 from functools import wraps
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from maasserver.api.doc import get_api_description_hash
-from maasserver.exceptions import (
-    MAASAPIBadRequest,
-    MAASAPIValidationError,
-)
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.utils.orm import get_one
 from piston3.authentication import NoAuthentication
 from piston3.emitters import Emitter
-from piston3.handler import (
-    AnonymousBaseHandler,
-    BaseHandler,
-    HandlerMetaClass,
-)
+from piston3.handler import AnonymousBaseHandler, BaseHandler, HandlerMetaClass
 from piston3.resource import Resource
-from piston3.utils import (
-    HttpStatusCode,
-    rc,
-)
+from piston3.utils import HttpStatusCode, rc
 from provisioningserver.logger import LegacyLogger
 
 
@@ -91,7 +78,8 @@ class OperationsResource(Resource):
         examples of authentication handlers that do *not* count.
         """
         return len(self.authentication) != 0 and not any(
-            isinstance(auth, NoAuthentication) for auth in self.authentication)
+            isinstance(auth, NoAuthentication) for auth in self.authentication
+        )
 
 
 class RestrictedResource(OperationsResource):
@@ -113,8 +101,9 @@ class RestrictedResource(OperationsResource):
             raise AssertionError("Authentication must be attempted.")
 
     def authenticate(self, request, rm):
-        actor, anonymous = super(
-            RestrictedResource, self).authenticate(request, rm)
+        actor, anonymous = super(RestrictedResource, self).authenticate(
+            request, rm
+        )
         if not anonymous and not request.user.is_active:
             raise PermissionDenied("User is not allowed access to this API.")
         else:
@@ -125,8 +114,9 @@ class AdminRestrictedResource(RestrictedResource):
     """A resource that's restricted to administrators."""
 
     def authenticate(self, request, rm):
-        actor, anonymous = super(
-            AdminRestrictedResource, self).authenticate(request, rm)
+        actor, anonymous = super(AdminRestrictedResource, self).authenticate(
+            request, rm
+        )
         if anonymous or not request.user.is_superuser:
             raise PermissionDenied("User is not allowed access to this API.")
         else:
@@ -171,6 +161,7 @@ def admin_method(func):
             raise PermissionDenied(METHOD_RESERVED_ADMIN)
         else:
             return func(self, request, *args, **kwargs)
+
     return wrapper
 
 
@@ -188,21 +179,22 @@ class OperationsHandlerType(HandlerMetaClass):
 
     def __new__(metaclass, name, bases, namespace):
         cls = super(OperationsHandlerType, metaclass).__new__(
-            metaclass, name, bases, namespace)
+            metaclass, name, bases, namespace
+        )
 
         # Create a signature:function mapping for CRUD operations.
         crud = {
             (http_method, None): getattr(cls, method)
             for http_method, method in list(OperationsResource.crudmap.items())
             if getattr(cls, method, None) is not None
-            }
+        }
 
         # Create a signature:function mapping for non-CRUD operations.
         operations = {
             attribute.export: attribute
             for attribute in list(vars(cls).values())
             if getattr(attribute, "export", None) is not None
-            }
+        }
 
         # Create the exports mapping.
         exports = {}
@@ -230,7 +222,8 @@ class OperationsHandlerType(HandlerMetaClass):
             if method in methods_exported:
                 raise AssertionError(
                     "A CRUD operation (%s/%s) has been registered as an "
-                    "operation on %s." % (http_method, method, name))
+                    "operation on %s." % (http_method, method, name)
+                )
 
         # Export CRUD methods.
         exports.update(crud)
@@ -238,7 +231,8 @@ class OperationsHandlerType(HandlerMetaClass):
         # Update the class.
         cls.exports = exports
         cls.allowed_methods = frozenset(
-            http_method for http_method, name in exports)
+            http_method for http_method, name in exports
+        )
 
         # Flags used later.
         has_fields = cls.fields is not BaseHandler.fields
@@ -257,18 +251,25 @@ class OperationsHandlerType(HandlerMetaClass):
                     "{handler.__module__}.{handler.__name__} does not render "
                     "all fields required to construct a self-referential URI. "
                     "Fields missing: {missing}.".format(
-                        handler=cls, missing=" ".join(sorted(missing))))
+                        handler=cls, missing=" ".join(sorted(missing))
+                    )
+                )
 
         # Piston uses `resource_uri` even for handlers without models in order
         # to generate documentation. We ignore those modules we consider "for
         # internal use only" since we do not intend to generate documentation
         # for these.
-        if (not has_resource_uri and not is_internal_only and
-                not cls.is_anonymous):
+        if (
+            not has_resource_uri
+            and not is_internal_only
+            and not cls.is_anonymous
+        ):
             log.warn(
                 "{handler.__module__}.{handler.__name__} does not have "
                 "`resource_uri`. This means it may be omitted from generated "
-                "documentation. Please investigate.", handler=cls)
+                "documentation. Please investigate.",
+                handler=cls,
+            )
 
         return cls
 
@@ -286,6 +287,7 @@ class OperationsHandlerMixin:
     This must be used in cooperation with :class:`OperationsResource` and
     :class:`OperationsHandlerType`.
     """
+
     # CSRF protection is on by default.  Only pure 0-legged oauth API requests
     # don't go through the CSRF machinery (see
     # middleware.CSRFHelperMiddleware).
@@ -305,7 +307,8 @@ class OperationsHandlerMixin:
         function = self.exports.get(signature)
         if function is None:
             raise MAASAPIBadRequest(
-                "Unrecognised signature: method=%s op=%s" % signature)
+                "Unrecognised signature: method=%s op=%s" % signature
+            )
         else:
             return function(self, request, *args, **kwargs)
 
@@ -321,8 +324,7 @@ class OperationsHandlerMixin:
         :param func: A single-argument callable.
         """
         cls.exports = {
-            name: func(export)
-            for name, export in cls.exports.items()
+            name: func(export) for name, export in cls.exports.items()
         }
         # Now also decorate the anonymous handler, if present.
         if cls.anonymous is not None and bool(cls.anonymous):
@@ -331,14 +333,16 @@ class OperationsHandlerMixin:
 
 
 class OperationsHandler(
-        OperationsHandlerMixin, BaseHandler,
-        metaclass=OperationsHandlerType):
+    OperationsHandlerMixin, BaseHandler, metaclass=OperationsHandlerType
+):
     """Base handler that supports operation dispatch."""
 
 
 class AnonymousOperationsHandler(
-        OperationsHandlerMixin, AnonymousBaseHandler,
-        metaclass=OperationsHandlerType):
+    OperationsHandlerMixin,
+    AnonymousBaseHandler,
+    metaclass=OperationsHandlerType,
+):
     """Anonymous base handler that supports operation dispatch."""
 
 
@@ -365,6 +369,7 @@ def method_fields_reserved_fields_patch(self, handler, fields):
             ret[field] = t
     return ret
 
+
 Emitter.method_fields = method_fields_reserved_fields_patch
 
 
@@ -372,8 +377,9 @@ class ModelOperationsHandlerType(OperationsHandlerType, ABCMeta):
     """Metaclass for ModelOperationsHandler"""
 
 
-class ModelOperationsHandler(OperationsHandler,
-                             metaclass=ModelOperationsHandlerType):
+class ModelOperationsHandler(
+    OperationsHandler, metaclass=ModelOperationsHandlerType
+):
     """Manage API access for a model.
 
     By default, the id is used as unique identifier to get instances. It can be
@@ -385,7 +391,7 @@ class ModelOperationsHandler(OperationsHandler,
     def model(self):
         """Model class for database operations."""
 
-    id_field = 'id'  # can be overridden by subclasses
+    id_field = "id"  # can be overridden by subclasses
 
     @abstractproperty
     def model_form(self):
@@ -403,12 +409,12 @@ class ModelOperationsHandler(OperationsHandler,
             id_value = cls.id_field
         return (cls.handler_url_name, [id_value])
 
-    create = None   # create is handled by the collection class.
+    create = None  # create is handled by the collection class.
 
     def read(self, request, **kwargs):
         """GET request.  Return a single model instance."""
         instance = self._get_instance_or_404(**kwargs)
-        permission_read = getattr(self, 'permission_read', None)
+        permission_read = getattr(self, "permission_read", None)
         if permission_read is not None:
             if not request.user.has_perm(permission_read, instance):
                 raise PermissionDenied()
@@ -422,7 +428,7 @@ class ModelOperationsHandler(OperationsHandler,
         """
         instance = self._get_instance_or_404(**kwargs)
         form = self.model_form(instance=instance, data=request.data)
-        if hasattr(form, 'use_perms') and form.use_perms():
+        if hasattr(form, "use_perms") and form.use_perms():
             if not form.has_perm(request.user):
                 raise PermissionDenied()
         if not form.is_valid():
@@ -434,7 +440,7 @@ class ModelOperationsHandler(OperationsHandler,
         """DELETE request.  Delete a model instance."""
         filters = {self.id_field: kwargs[self.id_field]}
         instance = get_one(self.model.objects.filter(**filters))
-        permission_delete = getattr(self, 'permission_delete', None)
+        permission_delete = getattr(self, "permission_delete", None)
         if permission_delete is not None:
             if not request.user.has_perm(permission_delete, instance):
                 raise PermissionDenied()
@@ -446,8 +452,9 @@ class ModelOperationsHandler(OperationsHandler,
         return get_object_or_404(self.model, **kwargs)
 
 
-class ModelCollectionOperationsHandler(OperationsHandler,
-                                       metaclass=ModelOperationsHandlerType):
+class ModelCollectionOperationsHandler(
+    OperationsHandler, metaclass=ModelOperationsHandlerType
+):
     """Manage API access for a model collection."""
 
     @abstractproperty
@@ -463,7 +470,7 @@ class ModelCollectionOperationsHandler(OperationsHandler,
         """Name of the handler for the API."""
 
     # Model field to use for collection ordering.
-    order_field = 'name'
+    order_field = "name"
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -472,7 +479,7 @@ class ModelCollectionOperationsHandler(OperationsHandler,
     def create(self, request):
         """POST request.  Create a new instance of the model."""
         form = self.model_form(request.data)
-        if hasattr(form, 'use_perms') and form.use_perms():
+        if hasattr(form, "use_perms") and form.use_perms():
             if not form.has_perm(request.user):
                 raise PermissionDenied()
         if form.is_valid():

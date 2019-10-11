@@ -3,11 +3,7 @@
 
 """MAAS OAuth API connection library."""
 
-__all__ = [
-    'MAASClient',
-    'MAASDispatcher',
-    'MAASOAuth',
-    ]
+__all__ = ["MAASClient", "MAASDispatcher", "MAASOAuth"]
 
 import collections
 import gzip
@@ -30,7 +26,9 @@ class MAASOAuth:
 
     def __init__(self, consumer_key, resource_token, resource_secret):
         resource_tok_string = "oauth_token_secret=%s&oauth_token=%s" % (
-            resource_secret, resource_token)
+            resource_secret,
+            resource_token,
+        )
         self.resource_token = oauth.OAuthToken.from_string(resource_tok_string)
         self.consumer_token = oauth.OAuthConsumer(consumer_key, "")
 
@@ -42,11 +40,16 @@ class MAASOAuth:
             with the signature.
         """
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(
-            self.consumer_token, token=self.resource_token, http_url=url,
-            parameters={'oauth_nonce': uuid.uuid4().hex})
+            self.consumer_token,
+            token=self.resource_token,
+            http_url=url,
+            parameters={"oauth_nonce": uuid.uuid4().hex},
+        )
         oauth_request.sign_request(
-            oauth.OAuthSignatureMethod_PLAINTEXT(), self.consumer_token,
-            self.resource_token)
+            oauth.OAuthSignatureMethod_PLAINTEXT(),
+            self.consumer_token,
+            self.resource_token,
+        )
         headers.update(oauth_request.to_header())
 
 
@@ -65,14 +68,17 @@ class NoAuth:
 
 class RequestWithMethod(urllib.request.Request):
     """Enhances urllib.Request so an http method can be supplied."""
+
     def __init__(self, *args, **kwargs):
-        self._method = kwargs.pop('method', None)
+        self._method = kwargs.pop("method", None)
         urllib.request.Request.__init__(self, *args, **kwargs)
 
     def get_method(self):
         return (
-            self._method if self._method
-            else super(RequestWithMethod, self).get_method())
+            self._method
+            if self._method
+            else super(RequestWithMethod, self).get_method()
+        )
 
 
 class MAASDispatcher:
@@ -100,16 +106,16 @@ class MAASDispatcher:
         # header keys are case insensitive, so we have to pass over them
         set_accept_encoding = False
         for key in headers:
-            if key.lower() == 'accept-encoding':
+            if key.lower() == "accept-encoding":
                 # The user already supplied a requested encoding, so just pass
                 # it along.
                 break
         else:
             set_accept_encoding = True
-            headers['Accept-encoding'] = 'gzip'
+            headers["Accept-encoding"] = "gzip"
         # Encode 'non-bytes' data into utf-8 bytes as required by urllib.
         if data is not None and not isinstance(data, bytes):
-            data = bytes(data, 'utf-8')
+            data = bytes(data, "utf-8")
         req = RequestWithMethod(request_url, data, headers, method=method)
         # Retry the request maximum of 3 times.
         for try_count in range(3):
@@ -135,15 +141,17 @@ class MAASDispatcher:
         # If we set the Accept-encoding header, then we decode the header for
         # the caller.
         is_gzip = (
-            set_accept_encoding and
-            res.info().get('Content-Encoding') == 'gzip')
+            set_accept_encoding
+            and res.info().get("Content-Encoding") == "gzip"
+        )
         if is_gzip:
             # Workaround python's gzip failure, gzip.GzipFile wants to be able
             # to seek the file object.
             res_content_io = BytesIO(res.read())
-            ungz = gzip.GzipFile(mode='rb', fileobj=res_content_io)
+            ungz = gzip.GzipFile(mode="rb", fileobj=res_content_io)
             res = urllib.request.addinfourl(
-                ungz, res.headers, res.url, res.code)
+                ungz, res.headers, res.url, res.code
+            )
         return res
 
 
@@ -179,17 +187,17 @@ class MAASClient:
         assert not isinstance(path, bytes)
         if not isinstance(path, str):
             assert not any(isinstance(element, bytes) for element in path)
-            path = '/'.join(str(element) for element in path)
+            path = "/".join(str(element) for element in path)
         # urljoin is very sensitive to leading slashes and when spurious
         # slashes appear it removes path parts. This is why joining is
         # done manually here.
-        url = self.url.rstrip('/')
-        path = path.lstrip('/')
-        if url.endswith('MAAS') and path.startswith('MAAS'):
+        url = self.url.rstrip("/")
+        path = path.lstrip("/")
+        if url.endswith("MAAS") and path.startswith("MAAS"):
             # Remove the double '/MAAS/MAAS/' as it should only be
             # a single MAAS in the url.
             path = path[4:]
-            path = path.lstrip('/')
+            path = path.lstrip("/")
         return url + "/" + path
 
     def _flatten(self, kwargs):
@@ -205,7 +213,8 @@ class MAASClient:
             else:
                 raise ValueError(
                     "MAASClient.get did not receive keyword parameters that "
-                    "are either (bytes, unicode) or an iterable as expected.")
+                    "are either (bytes, unicode) or an iterable as expected."
+                )
 
     def _formulate_get(self, path, params=None):
         """Return URL and headers for a GET request.
@@ -238,10 +247,10 @@ class MAASClient:
         :return: A tuple: URL, headers, and body for the request.
         """
         url = self._make_url(path)
-        if 'op' in params:
+        if "op" in params:
             params = dict(params)
-            op = params.pop('op')
-            url += '?' + urlencode([('op', op)])
+            op = params.pop("op")
+            url += "?" + urlencode([("op", op)])
         if as_json:
             body, headers = encode_json_data(params)
         else:
@@ -257,10 +266,11 @@ class MAASClient:
         :return: The result of the dispatch_query call on the dispatcher.
         """
         if op is not None:
-            kwargs['op'] = op
+            kwargs["op"] = op
         url, headers = self._formulate_get(path, kwargs)
         return self.dispatcher.dispatch_query(
-            url, method="GET", headers=headers)
+            url, method="GET", headers=headers
+        )
 
     def post(self, path, op="update", as_json=False, **kwargs):
         """Dispatch POST method `op` on `path`, with the given parameters.
@@ -270,17 +280,20 @@ class MAASClient:
         :return: The result of the dispatch_query call on the dispatcher.
         """
         if op:
-            kwargs['op'] = op
+            kwargs["op"] = op
         url, headers, body = self._formulate_change(
-            path, kwargs, as_json=as_json)
+            path, kwargs, as_json=as_json
+        )
         return self.dispatcher.dispatch_query(
-            url, method="POST", headers=headers, data=body)
+            url, method="POST", headers=headers, data=body
+        )
 
     def put(self, path, **kwargs):
         """Dispatch a PUT on the resource at `path`."""
         url, headers, body = self._formulate_change(path, kwargs)
         return self.dispatcher.dispatch_query(
-            url, method="PUT", headers=headers, data=body)
+            url, method="PUT", headers=headers, data=body
+        )
 
     def delete(self, path):
         """Dispatch a DELETE on the resource at `path`."""
@@ -288,4 +301,5 @@ class MAASClient:
         # The body will be empty, but it must be passed.  Otherwise, the
         # request will hang while trying to read a response (bug 1313556).
         return self.dispatcher.dispatch_query(
-            url, method="DELETE", headers=headers, data=body)
+            url, method="DELETE", headers=headers, data=body
+        )

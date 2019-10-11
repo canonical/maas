@@ -7,19 +7,11 @@ __all__ = []
 
 import logging
 import random
-from unittest.mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
-)
+from unittest.mock import ANY, call, Mock, sentinel
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import download_descriptions
 from provisioningserver.import_images.boot_image_mapping import (
@@ -41,77 +33,98 @@ class TestValidateProduct(MAASTestCase):
 
     def test__ignores_random(self):
         self.assertTrue(
-            validate_product({}, factory.make_name('product_name')))
+            validate_product({}, factory.make_name("product_name"))
+        )
 
     def test__validates_ubuntu(self):
-        self.assertTrue(validate_product(
-            {'os': 'ubuntu'},
-            'com.ubuntu.maas.daily:v%d:boot:%s:%s:%s' % (
-                random.choice([2, 3]), factory.make_name('version'),
-                factory.make_name('arch'), factory.make_name('sub_arch'))))
+        self.assertTrue(
+            validate_product(
+                {"os": "ubuntu"},
+                "com.ubuntu.maas.daily:v%d:boot:%s:%s:%s"
+                % (
+                    random.choice([2, 3]),
+                    factory.make_name("version"),
+                    factory.make_name("arch"),
+                    factory.make_name("sub_arch"),
+                ),
+            )
+        )
 
     def test__validates_ubuntu_core(self):
-        self.assertTrue(validate_product(
-            {'os': 'ubuntu-core'},
-            'com.ubuntu.maas.daily:v4:%s:%s:%s:%s' % (
-                factory.make_name('version'), factory.make_name('arch'),
-                factory.make_name('gadget'), factory.make_name('channel'))))
+        self.assertTrue(
+            validate_product(
+                {"os": "ubuntu-core"},
+                "com.ubuntu.maas.daily:v4:%s:%s:%s:%s"
+                % (
+                    factory.make_name("version"),
+                    factory.make_name("arch"),
+                    factory.make_name("gadget"),
+                    factory.make_name("channel"),
+                ),
+            )
+        )
 
     def test__rejects_unknown_ubuntu_version(self):
-        self.assertFalse(validate_product(
-            {'os': 'ubuntu'},
-            'com.ubuntu.maas.daily:v%d:boot:%s:%s:%s' % (
-                random.randint(4, 100), factory.make_name('version'),
-                factory.make_name('arch'), factory.make_name('sub_arch'))))
+        self.assertFalse(
+            validate_product(
+                {"os": "ubuntu"},
+                "com.ubuntu.maas.daily:v%d:boot:%s:%s:%s"
+                % (
+                    random.randint(4, 100),
+                    factory.make_name("version"),
+                    factory.make_name("arch"),
+                    factory.make_name("sub_arch"),
+                ),
+            )
+        )
 
     def test__validates_bootloaders(self):
         acceptable_bootloaders = [
+            {"os": "pxelinux", "arch": "i386", "bootloader-type": "pxe"},
             {
-                'os': 'pxelinux',
-                'arch': 'i386',
-                'bootloader-type': 'pxe',
+                "os": "grub-efi-signed",
+                "arch": "amd64",
+                "bootloader-type": "uefi",
             },
+            {"os": "grub-efi", "arch": "arm64", "bootloader-type": "uefi"},
             {
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-                'bootloader-type': 'uefi',
-            },
-            {
-                'os': 'grub-efi',
-                'arch': 'arm64',
-                'bootloader-type': 'uefi',
-            },
-            {
-                'os': 'grub-ieee1275',
-                'arch': 'ppc64el',
-                'bootloader-type': 'open-firmware',
+                "os": "grub-ieee1275",
+                "arch": "ppc64el",
+                "bootloader-type": "open-firmware",
             },
         ]
         for bootloader in acceptable_bootloaders:
             product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
-                bootloader['os'], bootloader['bootloader-type'],
-                bootloader['arch'])
+                bootloader["os"],
+                bootloader["bootloader-type"],
+                bootloader["arch"],
+            )
             self.assertTrue(
                 validate_product(bootloader, product_name),
-                "Failed to validate %s" % product_name)
+                "Failed to validate %s" % product_name,
+            )
 
     def test__rejects_unknown_bootloader_version(self):
         version = random.randint(2, 100)
         product_name = "com.ubuntu.maas.daily:%d:pxelinux:pxe:i386" % version
         self.assertFalse(
             validate_product(
-                {'bootloader-type': factory.make_name('bootloader-type')},
-                product_name))
+                {"bootloader-type": factory.make_name("bootloader-type")},
+                product_name,
+            )
+        )
 
     def test__rejects_unknown_bootloader(self):
         bootloader = {
-            'os': factory.make_name('os'),
-            'arch': factory.make_name('arch'),
-            'bootloader-type': factory.make_name('bootloader_type'),
+            "os": factory.make_name("os"),
+            "arch": factory.make_name("arch"),
+            "bootloader-type": factory.make_name("bootloader_type"),
         }
         product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
-            bootloader['os'], bootloader['bootloader-type'],
-            bootloader['arch'])
+            bootloader["os"],
+            bootloader["bootloader-type"],
+            bootloader["arch"],
+        )
         self.assertFalse(validate_product(bootloader, product_name))
 
 
@@ -121,33 +134,42 @@ class TestValuePassesFilterList(MAASTestCase):
     def test_nothing_passes_empty_list(self):
         self.assertFalse(
             download_descriptions.value_passes_filter_list(
-                [], factory.make_name('value')))
+                [], factory.make_name("value")
+            )
+        )
 
     def test_unmatched_value_does_not_pass(self):
         self.assertFalse(
             download_descriptions.value_passes_filter_list(
-                [factory.make_name('filter')], factory.make_name('value')))
+                [factory.make_name("filter")], factory.make_name("value")
+            )
+        )
 
     def test_matched_value_passes(self):
-        value = factory.make_name('value')
+        value = factory.make_name("value")
         self.assertTrue(
-            download_descriptions.value_passes_filter_list([value], value))
+            download_descriptions.value_passes_filter_list([value], value)
+        )
 
     def test_value_passes_if_matched_anywhere_in_filter(self):
-        value = factory.make_name('value')
+        value = factory.make_name("value")
         self.assertTrue(
             download_descriptions.value_passes_filter_list(
                 [
-                    factory.make_name('filter'),
+                    factory.make_name("filter"),
                     value,
-                    factory.make_name('filter'),
+                    factory.make_name("filter"),
                 ],
-                value))
+                value,
+            )
+        )
 
     def test_any_value_passes_asterisk(self):
         self.assertTrue(
             download_descriptions.value_passes_filter_list(
-                ['*'], factory.make_name('value')))
+                ["*"], factory.make_name("value")
+            )
+        )
 
 
 class TestValuePassesFilter(MAASTestCase):
@@ -156,17 +178,22 @@ class TestValuePassesFilter(MAASTestCase):
     def test_unmatched_value_does_not_pass(self):
         self.assertFalse(
             download_descriptions.value_passes_filter(
-                factory.make_name('filter'), factory.make_name('value')))
+                factory.make_name("filter"), factory.make_name("value")
+            )
+        )
 
     def test_matching_value_passes(self):
-        value = factory.make_name('value')
+        value = factory.make_name("value")
         self.assertTrue(
-            download_descriptions.value_passes_filter(value, value))
+            download_descriptions.value_passes_filter(value, value)
+        )
 
     def test_any_value_matches_asterisk(self):
         self.assertTrue(
             download_descriptions.value_passes_filter(
-                '*', factory.make_name('value')))
+                "*", factory.make_name("value")
+            )
+        )
 
 
 class TestImagePassesFilter(MAASTestCase):
@@ -180,40 +207,54 @@ class TestImagePassesFilter(MAASTestCase):
         if image_spec is None:
             image_spec = make_image_spec()
         return {
-            'os': image_spec.os,
-            'arches': [image_spec.arch],
-            'subarches': [image_spec.subarch],
-            'release': image_spec.release,
-            'labels': [image_spec.label],
-            }
+            "os": image_spec.os,
+            "arches": [image_spec.arch],
+            "subarches": [image_spec.subarch],
+            "release": image_spec.release,
+            "labels": [image_spec.label],
+        }
 
     def test_any_image_passes_none_filter(self):
         os, arch, subarch, _, release, label = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
-                None, os, arch, subarch, release, label))
+                None, os, arch, subarch, release, label
+            )
+        )
 
     def test_any_image_passes_empty_filter(self):
         os, arch, subarch, kflavor, release, label = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
-                [], os, arch, subarch, release, label))
+                [], os, arch, subarch, release, label
+            )
+        )
 
     def test_image_passes_matching_filter(self):
         image = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
                 [self.make_filter_from_image(image)],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
     def test_image_does_not_pass_nonmatching_filter(self):
         image = make_image_spec()
         self.assertFalse(
             download_descriptions.image_passes_filter(
                 [self.make_filter_from_image()],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
     def test_image_passes_if_one_filter_matches(self):
         image = make_image_spec()
@@ -224,52 +265,85 @@ class TestImagePassesFilter(MAASTestCase):
                     self.make_filter_from_image(image),
                     self.make_filter_from_image(),
                 ],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
     def test_filter_checks_release(self):
         image = make_image_spec()
         self.assertFalse(
             download_descriptions.image_passes_filter(
                 [
-                    self.make_filter_from_image(image._replace(
-                        release=factory.make_name('other-release')))
+                    self.make_filter_from_image(
+                        image._replace(
+                            release=factory.make_name("other-release")
+                        )
+                    )
                 ],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
     def test_filter_checks_arches(self):
         image = make_image_spec()
         self.assertFalse(
             download_descriptions.image_passes_filter(
                 [
-                    self.make_filter_from_image(image._replace(
-                        arch=factory.make_name('other-arch')))
+                    self.make_filter_from_image(
+                        image._replace(arch=factory.make_name("other-arch"))
+                    )
                 ],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
     def test_filter_checks_subarches(self):
         image = make_image_spec()
         self.assertFalse(
             download_descriptions.image_passes_filter(
                 [
-                    self.make_filter_from_image(image._replace(
-                        subarch=factory.make_name('other-subarch')))
+                    self.make_filter_from_image(
+                        image._replace(
+                            subarch=factory.make_name("other-subarch")
+                        )
+                    )
                 ],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
     def test_filter_checks_labels(self):
         image = make_image_spec()
         self.assertFalse(
             download_descriptions.image_passes_filter(
                 [
-                    self.make_filter_from_image(image._replace(
-                        label=factory.make_name('other-label')))
+                    self.make_filter_from_image(
+                        image._replace(label=factory.make_name("other-label"))
+                    )
                 ],
-                image.os, image.arch, image.subarch,
-                image.release, image.label))
+                image.os,
+                image.arch,
+                image.subarch,
+                image.release,
+                image.label,
+            )
+        )
 
 
 class TestBootMerge(MAASTestCase):
@@ -288,26 +362,29 @@ class TestBootMerge(MAASTestCase):
     def test_obeys_filters(self):
         filters = [
             {
-                'os': factory.make_name('os'),
-                'arches': [factory.make_name('other-arch')],
-                'subarches': [factory.make_name('other-subarch')],
-                'release': factory.make_name('other-release'),
-                'label': [factory.make_name('other-label')],
-            },
-            ]
+                "os": factory.make_name("os"),
+                "arches": [factory.make_name("other-arch")],
+                "subarches": [factory.make_name("other-subarch")],
+                "release": factory.make_name("other-release"),
+                "label": [factory.make_name("other-label")],
+            }
+        ]
         total_resources = BootImageMapping()
         resources_from_repo = set_resource()
         download_descriptions.boot_merge(
-            total_resources, resources_from_repo, filters=filters)
+            total_resources, resources_from_repo, filters=filters
+        )
         self.assertEqual({}, total_resources.mapping)
 
     def test_does_not_overwrite_existing_entry(self):
         image = make_image_spec()
         total_resources = set_resource(
-            resource="Original resource", image_spec=image)
+            resource="Original resource", image_spec=image
+        )
         original_resources = total_resources.mapping.copy()
         resources_from_repo = set_resource(
-            resource="New resource", image_spec=image)
+            resource="New resource", image_spec=image
+        )
         download_descriptions.boot_merge(total_resources, resources_from_repo)
         self.assertEqual(original_resources, total_resources.mapping)
 
@@ -315,64 +392,79 @@ class TestBootMerge(MAASTestCase):
 class TestRepoDumper(MAASTestCase):
     """Tests for `RepoDumper`."""
 
-    def make_item(self, os=None, release=None, version=None, arch=None,
-                  subarch=None, subarches=None, label=None,
-                  bootloader_type=None):
+    def make_item(
+        self,
+        os=None,
+        release=None,
+        version=None,
+        arch=None,
+        subarch=None,
+        subarches=None,
+        label=None,
+        bootloader_type=None,
+    ):
         if os is None:
-            os = factory.make_name('os')
+            os = factory.make_name("os")
         if release is None:
-            release = factory.make_name('release')
+            release = factory.make_name("release")
         if version is None:
-            version = factory.make_name('version')
+            version = factory.make_name("version")
         if arch is None:
-            arch = factory.make_name('arch')
+            arch = factory.make_name("arch")
         if subarch is None:
-            subarch = factory.make_name('subarch')
+            subarch = factory.make_name("subarch")
         if subarches is None:
-            subarches = [factory.make_name('subarch') for _ in range(3)]
+            subarches = [factory.make_name("subarch") for _ in range(3)]
         if subarch not in subarches:
             subarches.append(subarch)
         if label is None:
-            label = factory.make_name('label')
+            label = factory.make_name("label")
         item = {
-            'content_id': factory.make_name('content_id'),
-            'product_name': factory.make_name('product_name'),
-            'version_name': factory.make_name('version_name'),
-            'path': factory.make_name('path'),
-            'os': os,
-            'release': release,
-            'version': version,
-            'arch': arch,
-            'subarch': subarch,
-            'subarches': ','.join(subarches),
-            'label': label,
-            }
+            "content_id": factory.make_name("content_id"),
+            "product_name": factory.make_name("product_name"),
+            "version_name": factory.make_name("version_name"),
+            "path": factory.make_name("path"),
+            "os": os,
+            "release": release,
+            "version": version,
+            "arch": arch,
+            "subarch": subarch,
+            "subarches": ",".join(subarches),
+            "label": label,
+        }
         if bootloader_type is not None:
-            item['bootloader-type'] = bootloader_type
-        if os == 'ubuntu-core':
-            item['gadget_snap'] = factory.make_name('gadget_snap')
-            item['kernel_snap'] = factory.make_name('kernel_snap')
+            item["bootloader-type"] = bootloader_type
+        if os == "ubuntu-core":
+            item["gadget_snap"] = factory.make_name("gadget_snap")
+            item["kernel_snap"] = factory.make_name("kernel_snap")
         return item, clean_up_repo_item(item)
 
     def test_insert_item_adds_item_per_subarch(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
-        subarches = [factory.make_name('subarch') for _ in range(3)]
-        item, _ = self.make_item(
-            subarch=subarches.pop(), subarches=subarches)
+        subarches = [factory.make_name("subarch") for _ in range(3)]
+        item, _ = self.make_item(subarch=subarches.pop(), subarches=subarches)
         self.patch(
-            download_descriptions, 'products_exdata').return_value = item
+            download_descriptions, "products_exdata"
+        ).return_value = item
         dumper.insert_item(
-            sentinel.data, sentinel.src, sentinel.target,
+            sentinel.data,
+            sentinel.src,
+            sentinel.target,
             (
-                factory.make_name('product_name'),
-                factory.make_name('product_version')
-            ), sentinel.contentsource)
+                factory.make_name("product_name"),
+                factory.make_name("product_version"),
+            ),
+            sentinel.contentsource,
+        )
         image_specs = [
             make_image_spec(
-                os=item['os'], release=item['release'],
-                arch=item['arch'], subarch=subarch,
-                label=item['label'])
+                os=item["os"],
+                release=item["release"],
+                arch=item["arch"],
+                subarch=subarch,
+                label=item["label"],
+            )
             for subarch in subarches
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
@@ -380,153 +472,216 @@ class TestRepoDumper(MAASTestCase):
     def test_insert_item_sets_compat_item_specific_to_subarch(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
-        subarches = [factory.make_name('subarch') for _ in range(5)]
+        subarches = [factory.make_name("subarch") for _ in range(5)]
         compat_subarch = subarches.pop()
         item, _ = self.make_item(subarch=subarches.pop(), subarches=subarches)
         second_item, compat_item = self.make_item(
-            os=item['os'], release=item['release'], arch=item['arch'],
-            subarch=compat_subarch, subarches=[compat_subarch],
-            label=item['label'])
-        self.patch(
-            download_descriptions,
-            'products_exdata').side_effect = [item, second_item]
+            os=item["os"],
+            release=item["release"],
+            arch=item["arch"],
+            subarch=compat_subarch,
+            subarches=[compat_subarch],
+            label=item["label"],
+        )
+        self.patch(download_descriptions, "products_exdata").side_effect = [
+            item,
+            second_item,
+        ]
         for _ in range(2):
             dumper.insert_item(
-                sentinel.data, sentinel.src, sentinel.target,
+                sentinel.data,
+                sentinel.src,
+                sentinel.target,
                 (
-                    factory.make_name('product_name'),
-                    factory.make_name('product_version')
-                ), sentinel.contentsource)
+                    factory.make_name("product_name"),
+                    factory.make_name("product_version"),
+                ),
+                sentinel.contentsource,
+            )
         image_spec = make_image_spec(
-            os=item['os'], release=item['release'],
-            arch=item['arch'], subarch=compat_subarch,
-            label=item['label'])
+            os=item["os"],
+            release=item["release"],
+            arch=item["arch"],
+            subarch=compat_subarch,
+            label=item["label"],
+        )
         self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
 
     def test_insert_item_sets_generic_to_release_item_for_hwe_letter(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
-        os = 'ubuntu'
-        release = 'precise'
-        arch = 'amd64'
-        label = 'release'
-        hwep_subarch = 'hwe-p'
-        hwep_subarches = ['generic', 'hwe-p']
-        hwes_subarch = 'hwe-s'
-        hwes_subarches = ['generic', 'hwe-p', 'hwe-s']
+        os = "ubuntu"
+        release = "precise"
+        arch = "amd64"
+        label = "release"
+        hwep_subarch = "hwe-p"
+        hwep_subarches = ["generic", "hwe-p"]
+        hwes_subarch = "hwe-s"
+        hwes_subarches = ["generic", "hwe-p", "hwe-s"]
         hwep_item, compat_item = self.make_item(
-            os=os, release=release,
-            arch=arch, subarch=hwep_subarch,
-            subarches=hwep_subarches, label=label)
+            os=os,
+            release=release,
+            arch=arch,
+            subarch=hwep_subarch,
+            subarches=hwep_subarches,
+            label=label,
+        )
         hwes_item, _ = self.make_item(
-            os=os, release=release,
-            arch=arch, subarch=hwes_subarch,
-            subarches=hwes_subarches, label=label)
-        self.patch(
-            download_descriptions,
-            'products_exdata').side_effect = [hwep_item, hwes_item]
+            os=os,
+            release=release,
+            arch=arch,
+            subarch=hwes_subarch,
+            subarches=hwes_subarches,
+            label=label,
+        )
+        self.patch(download_descriptions, "products_exdata").side_effect = [
+            hwep_item,
+            hwes_item,
+        ]
         for _ in range(2):
             dumper.insert_item(
-                {'os': 'ubuntu'}, sentinel.src, sentinel.target,
+                {"os": "ubuntu"},
+                sentinel.src,
+                sentinel.target,
                 (
-                    'com.ubuntu.maas.daily:v3:boot:12.04:amd64:hwe-p',
-                    factory.make_name('product_version'),
-                ), sentinel.contentsource)
+                    "com.ubuntu.maas.daily:v3:boot:12.04:amd64:hwe-p",
+                    factory.make_name("product_version"),
+                ),
+                sentinel.contentsource,
+            )
         image_spec = make_image_spec(
-            os=os, release=release, arch=arch, subarch='generic',
-            label=label)
+            os=os, release=release, arch=arch, subarch="generic", label=label
+        )
         self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
 
     def test_insert_item_sets_generic_to_release_item_for_hwe_version(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
-        os = 'ubuntu'
-        release = 'xenial'
-        arch = 'amd64'
-        label = 'release'
-        hwep_subarch = 'hwe-16.04'
-        hwep_subarches = ['generic', 'hwe-16.04', 'hwe-16.10']
-        hwes_subarch = 'hwe-16.10'
-        hwes_subarches = ['generic', 'hwe-16.04', 'hwe-16.10']
+        os = "ubuntu"
+        release = "xenial"
+        arch = "amd64"
+        label = "release"
+        hwep_subarch = "hwe-16.04"
+        hwep_subarches = ["generic", "hwe-16.04", "hwe-16.10"]
+        hwes_subarch = "hwe-16.10"
+        hwes_subarches = ["generic", "hwe-16.04", "hwe-16.10"]
         hwep_item, compat_item = self.make_item(
-            os=os, release=release,
-            arch=arch, subarch=hwep_subarch,
-            subarches=hwep_subarches, label=label)
+            os=os,
+            release=release,
+            arch=arch,
+            subarch=hwep_subarch,
+            subarches=hwep_subarches,
+            label=label,
+        )
         hwes_item, _ = self.make_item(
-            os=os, release=release,
-            arch=arch, subarch=hwes_subarch,
-            subarches=hwes_subarches, label=label)
-        self.patch(
-            download_descriptions,
-            'products_exdata').side_effect = [hwep_item, hwes_item]
+            os=os,
+            release=release,
+            arch=arch,
+            subarch=hwes_subarch,
+            subarches=hwes_subarches,
+            label=label,
+        )
+        self.patch(download_descriptions, "products_exdata").side_effect = [
+            hwep_item,
+            hwes_item,
+        ]
         for _ in range(2):
             dumper.insert_item(
-                {'os': 'ubuntu'}, sentinel.src, sentinel.target,
+                {"os": "ubuntu"},
+                sentinel.src,
+                sentinel.target,
                 (
-                    'com.ubuntu.maas.daily:v3:boot:12.04:amd64:hwe-p',
-                    factory.make_name('product_version'),
-                ), sentinel.contentsource)
+                    "com.ubuntu.maas.daily:v3:boot:12.04:amd64:hwe-p",
+                    factory.make_name("product_version"),
+                ),
+                sentinel.contentsource,
+            )
         image_spec = make_image_spec(
-            os=os, release=release, arch=arch, subarch='generic',
-            label=label)
+            os=os, release=release, arch=arch, subarch="generic", label=label
+        )
         self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
 
     def test_insert_item_sets_release_to_bootloader_type(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
         item, _ = self.make_item(
-            arch='amd64', bootloader_type='uefi', os='grub-efi-signed')
+            arch="amd64", bootloader_type="uefi", os="grub-efi-signed"
+        )
         self.patch(
-            download_descriptions, 'products_exdata').return_value = item
+            download_descriptions, "products_exdata"
+        ).return_value = item
         dumper.insert_item(
             {
-                'bootloader_type': 'uefi',
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-            }, sentinel.src, sentinel.target,
+                "bootloader_type": "uefi",
+                "os": "grub-efi-signed",
+                "arch": "amd64",
+            },
+            sentinel.src,
+            sentinel.target,
             (
-                'com.ubuntu.maas.daily:1:grub-efi-signed:uefi:amd64',
-                factory.make_name('product_version'),
-            ), sentinel.contentsource)
+                "com.ubuntu.maas.daily:1:grub-efi-signed:uefi:amd64",
+                factory.make_name("product_version"),
+            ),
+            sentinel.contentsource,
+        )
         image_specs = [
             make_image_spec(
-                os=item['os'], release='uefi', arch=item['arch'],
-                subarch=subarch, kflavor='bootloader', label=item['label'])
-            for subarch in item['subarches'].split(',')
+                os=item["os"],
+                release="uefi",
+                arch=item["arch"],
+                subarch=subarch,
+                kflavor="bootloader",
+                label=item["label"],
+            )
+            for subarch in item["subarches"].split(",")
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
 
     def test_insert_item_validates(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
-        item, _ = self.make_item(os='ubuntu')
+        item, _ = self.make_item(os="ubuntu")
         self.patch(
-            download_descriptions, 'products_exdata').return_value = item
+            download_descriptions, "products_exdata"
+        ).return_value = item
         dumper.insert_item(
-            {'os': 'ubuntu'}, sentinel.src, sentinel.target,
+            {"os": "ubuntu"},
+            sentinel.src,
+            sentinel.target,
             (
-                factory.make_name('product_name'),
-                factory.make_name('product_version'),
-            ), sentinel.contentsource)
+                factory.make_name("product_name"),
+                factory.make_name("product_version"),
+            ),
+            sentinel.contentsource,
+        )
         self.assertItemsEqual([], list(boot_images_dict.mapping))
 
     def test_insert_item_doesnt_validate_when_instructed(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict, validate_products=False)
-        item, _ = self.make_item(os='ubuntu')
+        item, _ = self.make_item(os="ubuntu")
         self.patch(
-            download_descriptions, 'products_exdata').return_value = item
+            download_descriptions, "products_exdata"
+        ).return_value = item
         dumper.insert_item(
-            {'os': 'ubuntu'}, sentinel.src, sentinel.target,
+            {"os": "ubuntu"},
+            sentinel.src,
+            sentinel.target,
             (
-                factory.make_name('product_name'),
-                factory.make_name('product_version'),
-            ), sentinel.contentsource)
+                factory.make_name("product_name"),
+                factory.make_name("product_version"),
+            ),
+            sentinel.contentsource,
+        )
         image_specs = [
             make_image_spec(
-                os=item['os'], release=item['release'], arch=item['arch'],
-                subarch=subarch, label=item['label'])
-            for subarch in item['subarches'].split(',')
+                os=item["os"],
+                release=item["release"],
+                arch=item["arch"],
+                subarch=subarch,
+                label=item["label"],
+            )
+            for subarch in item["subarches"].split(",")
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
 
@@ -541,9 +696,11 @@ class TestRepoDumper(MAASTestCase):
 
         with FakeLogger("maas.import-images", level=logging.INFO) as maaslog:
             self.assertRaises(
-                io_error, dumper.sync, sentinel.reader, sentinel.path)
+                io_error, dumper.sync, sentinel.reader, sentinel.path
+            )
             self.assertDocTestMatches(
-                "...error...syncing boot images...", maaslog.output)
+                "...error...syncing boot images...", maaslog.output
+            )
 
 
 class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
@@ -551,39 +708,45 @@ class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
 
     def test_doesnt_pass_user_agent_when_not_set(self):
         mock_UrlMirrorReader = self.patch(
-            download_descriptions, "UrlMirrorReader")
+            download_descriptions, "UrlMirrorReader"
+        )
         self.patch(download_descriptions.RepoDumper, "sync")
         path = factory.make_url()
         download_descriptions.download_image_descriptions(path)
         self.assertThat(
-            mock_UrlMirrorReader, MockCalledOnceWith(ANY, policy=ANY))
+            mock_UrlMirrorReader, MockCalledOnceWith(ANY, policy=ANY)
+        )
 
     def test_passes_user_agent(self):
         mock_UrlMirrorReader = self.patch(
-            download_descriptions, "UrlMirrorReader")
+            download_descriptions, "UrlMirrorReader"
+        )
         self.patch(download_descriptions.RepoDumper, "sync")
         path = factory.make_url()
         user_agent = factory.make_name("agent")
         download_descriptions.download_image_descriptions(
-            path, user_agent=user_agent)
+            path, user_agent=user_agent
+        )
         self.assertThat(
             mock_UrlMirrorReader,
-            MockCalledOnceWith(ANY, policy=ANY, user_agent=user_agent))
+            MockCalledOnceWith(ANY, policy=ANY, user_agent=user_agent),
+        )
 
     def test_doesnt_pass_user_agenton_fallback(self):
         mock_UrlMirrorReader = self.patch(
-            download_descriptions, "UrlMirrorReader")
-        mock_UrlMirrorReader.side_effect = [
-            TypeError(),
-            Mock(),
-        ]
+            download_descriptions, "UrlMirrorReader"
+        )
+        mock_UrlMirrorReader.side_effect = [TypeError(), Mock()]
         self.patch(download_descriptions.RepoDumper, "sync")
         path = factory.make_url()
         user_agent = factory.make_name("agent")
         download_descriptions.download_image_descriptions(
-            path, user_agent=user_agent)
+            path, user_agent=user_agent
+        )
         self.assertThat(
             mock_UrlMirrorReader,
             MockCallsMatch(
                 call(ANY, policy=ANY, user_agent=user_agent),
-                call(ANY, policy=ANY)))
+                call(ANY, policy=ANY),
+            ),
+        )

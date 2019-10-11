@@ -38,17 +38,20 @@ def set_umask():
 
 
 def run():
-    is_snap = 'SNAP' in os.environ
+    is_snap = "SNAP" in os.environ
     is_devenv = is_dev_environment()
 
     if not is_devenv:
         if is_snap:
-            os.environ.update({
-                "MAAS_PATH": os.environ["SNAP"],
-                "MAAS_ROOT": os.environ["SNAP_DATA"],
-                "MAAS_CLUSTER_CONFIG": os.path.join(
-                    os.environ["SNAP_DATA"], "rackd.conf")
-            })
+            os.environ.update(
+                {
+                    "MAAS_PATH": os.environ["SNAP"],
+                    "MAAS_ROOT": os.environ["SNAP_DATA"],
+                    "MAAS_CLUSTER_CONFIG": os.path.join(
+                        os.environ["SNAP_DATA"], "rackd.conf"
+                    ),
+                }
+            )
 
         users = ["root"]
         # Allow dhcpd user to call dhcp-notify, and maas user to call
@@ -74,4 +77,5 @@ def run():
     # Run the script.
     # Run the main provisioning script.
     from provisioningserver.__main__ import main
+
     main()

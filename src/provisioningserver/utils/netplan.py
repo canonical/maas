@@ -3,10 +3,7 @@
 
 """Utilities for working with Netplan."""
 
-__all__ = [
-    'get_netplan_bond_parameters',
-    'get_netplan_bridge_parameters',
-]
+__all__ = ["get_netplan_bond_parameters", "get_netplan_bridge_parameters"]
 
 import re
 
@@ -80,7 +77,7 @@ def _get_netplan_bond_parameter(key: str, value):
         # Translate any netplan values which have different formats than
         # ifupdown/ifenslave.
         if key == "arp-ip-targets":
-            value = list(filter(lambda x: x, re.split(r'\s+', value)))
+            value = list(filter(lambda x: x, re.split(r"\s+", value)))
         return key, value
     else:
         return None, value
@@ -100,10 +97,12 @@ def get_netplan_bond_parameters(ifenslave_params: dict):
             if key in ifenslave_to_netplan_bond_params:
                 log.msg(
                     "Warning: no netplan equivalent for bond option: '%s=%r'."
-                    % (key, value))
+                    % (key, value)
+                )
             else:
                 log.msg(
-                    "Warning: unknown bond option: '%s=%r'." % (key, value))
+                    "Warning: unknown bond option: '%s=%r'." % (key, value)
+                )
         else:
             netplan_parameters[netplan_key] = netplan_value
     return netplan_parameters
@@ -166,10 +165,12 @@ def get_netplan_bridge_parameters(ifenslave_params: dict):
             if key in bridgeutils_to_netplan_bridge_params:
                 log.msg(
                     "Warning: no netplan equivalent for bridge option: "
-                    "'%s=%r'." % (key, value))
+                    "'%s=%r'." % (key, value)
+                )
             else:
                 log.msg(
-                    "Warning: unknown bridge option: '%s=%r'." % (key, value))
+                    "Warning: unknown bridge option: '%s=%r'." % (key, value)
+                )
         else:
             netplan_parameters[netplan_key] = netplan_value
     return netplan_parameters

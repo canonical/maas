@@ -3,9 +3,7 @@
 
 """RPC helpers related to pod."""
 
-__all__ = [
-    "discover_pod",
-    ]
+__all__ = ["discover_pod"]
 
 from maasserver.exceptions import PodProblem
 from maasserver.rpc import getAllClients
@@ -14,10 +12,7 @@ from provisioningserver.rpc.cluster import (
     DecomposeMachine,
     DiscoverPod,
 )
-from provisioningserver.rpc.exceptions import (
-    PodActionFail,
-    UnknownPodType,
-)
+from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferWithTimeout,
@@ -27,8 +22,7 @@ from twisted.internet.defer import DeferredList
 
 
 @asynchronous(timeout=FOREVER)
-def discover_pod(
-        pod_type, context, pod_id=None, name=None, timeout=120):
+def discover_pod(pod_type, context, pod_id=None, name=None, timeout=120):
     """Discover a pod.
 
     :param pod_type: Type of pod to discover.
@@ -41,10 +35,17 @@ def discover_pod(
         discovered pod information and a mapping of rack controller
         system_id and the failure exception.
     """
+
     def discover(client):
         return deferWithTimeout(
-            timeout, client, DiscoverPod, type=pod_type,
-            context=context, pod_id=pod_id, name=name)
+            timeout,
+            client,
+            DiscoverPod,
+            type=pod_type,
+            context=context,
+            pod_id=pod_id,
+            name=name,
+        )
 
     clients = getAllClients()
     dl = DeferredList(map(discover, clients), consumeErrors=True)
@@ -72,8 +73,11 @@ def get_best_discovered_result(discovered):
     elif len(exceptions) > 0:
         # Raise the best exception that provides the most detail.
         for exc_type in [
-                PodActionFail, NotImplementedError,
-                UnknownPodType, None]:
+            PodActionFail,
+            NotImplementedError,
+            UnknownPodType,
+            None,
+        ]:
             for _, exc in exceptions.items():
                 if exc_type is not None:
                     if isinstance(exc, exc_type):
@@ -85,8 +89,7 @@ def get_best_discovered_result(discovered):
 
 
 @asynchronous(timeout=FOREVER)
-def compose_machine(
-        client, pod_type, context, request, pod_id, name):
+def compose_machine(client, pod_type, context, request, pod_id, name):
     """Compose a machine.
 
     :param client: The client to use to make the RPC call.
@@ -100,20 +103,27 @@ def compose_machine(
         raises an exception.
     """
     d = client(
-        ComposeMachine, type=pod_type,
-        context=context, request=request, pod_id=pod_id, name=name)
-    d.addCallback(lambda result: (result['machine'], result['hints']))
+        ComposeMachine,
+        type=pod_type,
+        context=context,
+        request=request,
+        pod_id=pod_id,
+        name=name,
+    )
+    d.addCallback(lambda result: (result["machine"], result["hints"]))
 
     def wrap_failure(failure):
         prefix = "Unable to compose machine because"
         if failure.check(UnknownPodType):
             raise PodProblem(
-                prefix + " '%s' is an unknown pod type." % pod_type)
+                prefix + " '%s' is an unknown pod type." % pod_type
+            )
         elif failure.check(NotImplementedError):
             raise PodProblem(
-                prefix +
-                " '%s' driver does not implement the 'compose' method." % (
-                    pod_type))
+                prefix
+                + " '%s' driver does not implement the 'compose' method."
+                % pod_type
+            )
         elif failure.check(PodActionFail):
             raise PodProblem(prefix + ": " + str(failure.value))
         else:
@@ -124,8 +134,7 @@ def compose_machine(
 
 
 @asynchronous(timeout=FOREVER)
-def decompose_machine(
-        client, pod_type, context, pod_id, name):
+def decompose_machine(client, pod_type, context, pod_id, name):
     """Decompose a machine.
 
     :param client: The client to use to make the RPC call.
@@ -139,23 +148,29 @@ def decompose_machine(
     """
     d = client(
         DecomposeMachine,
-        type=pod_type, context=context, pod_id=pod_id, name=name)
+        type=pod_type,
+        context=context,
+        pod_id=pod_id,
+        name=name,
+    )
 
     def wrap_failure(failure):
         prefix = "Unable to decompose machine because"
         if failure.check(UnknownPodType):
             raise PodProblem(
-                prefix + " '%s' is an unknown pod type." % pod_type)
+                prefix + " '%s' is an unknown pod type." % pod_type
+            )
         elif failure.check(NotImplementedError):
             raise PodProblem(
-                prefix +
-                " '%s' driver does not implement the 'decompose' method." % (
-                    pod_type))
+                prefix
+                + " '%s' driver does not implement the 'decompose' method."
+                % pod_type
+            )
         elif failure.check(PodActionFail):
             raise PodProblem(prefix + ": " + str(failure.value))
         else:
             return failure
 
-    d.addCallback(lambda result: result['hints'])
+    d.addCallback(lambda result: result["hints"])
     d.addErrback(wrap_failure)
     return d

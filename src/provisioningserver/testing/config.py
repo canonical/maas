@@ -8,19 +8,13 @@ __all__ = [
     "ClusterConfigurationFixture",
     "ConfigFixtureBase",
     "ConfigurationFixtureBase",
-    ]
+]
 
 from os import path
 
-from fixtures import (
-    EnvironmentVariableFixture,
-    Fixture,
-)
+from fixtures import EnvironmentVariableFixture, Fixture
 from maastesting.fixtures import TempDirectory
-from provisioningserver.config import (
-    BootSources,
-    ClusterConfiguration,
-)
+from provisioningserver.config import BootSources, ClusterConfiguration
 import yaml
 
 
@@ -68,7 +62,7 @@ class BootSourcesFixture(ConfigFixtureBase):
 
     schema = BootSources
 
-    def __init__(self, sources=None, name='sources.yaml'):
+    def __init__(self, sources=None, name="sources.yaml"):
         super(BootSourcesFixture, self).__init__(config=sources, name=name)
 
 
@@ -93,7 +87,8 @@ class ConfigurationFixtureBase(Fixture):
         # Create a real configuration file, and populate it.
         self.path = path.join(
             self.useFixture(TempDirectory()).path,
-            path.basename(self.configuration.DEFAULT_FILENAME))
+            path.basename(self.configuration.DEFAULT_FILENAME),
+        )
         with self.configuration.open_for_update(self.path) as config:
             for key, value in self.options.items():
                 setattr(config, key, value)

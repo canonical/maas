@@ -29,7 +29,7 @@ class TestBootImageMapping(MAASTestCase):
 
     def test_items_returns_items(self):
         image = make_image_spec()
-        resource = factory.make_name('resource')
+        resource = factory.make_name("resource")
         image_dict = set_resource(image_spec=image, resource=resource)
         self.assertItemsEqual([(image, resource)], image_dict.items())
 
@@ -38,44 +38,44 @@ class TestBootImageMapping(MAASTestCase):
 
     def test_is_empty_returns_False_if_not_empty(self):
         mapping = BootImageMapping()
-        mapping.setdefault(make_image_spec(), factory.make_name('resource'))
+        mapping.setdefault(make_image_spec(), factory.make_name("resource"))
         self.assertFalse(mapping.is_empty())
 
     def test_setdefault_sets_unset_item(self):
         image_dict = BootImageMapping()
         image = make_image_spec()
-        resource = factory.make_name('resource')
+        resource = factory.make_name("resource")
         image_dict.setdefault(image, resource)
         self.assertItemsEqual([(image, resource)], image_dict.items())
 
     def test_setdefault_leaves_set_item_unchanged(self):
         image = make_image_spec()
-        old_resource = factory.make_name('resource')
+        old_resource = factory.make_name("resource")
         image_dict = set_resource(image_spec=image, resource=old_resource)
-        image_dict.setdefault(image, factory.make_name('newresource'))
+        image_dict.setdefault(image, factory.make_name("newresource"))
         self.assertItemsEqual([(image, old_resource)], image_dict.items())
 
     def test_set_overwrites_item(self):
         image_dict = BootImageMapping()
         image = make_image_spec()
-        resource = factory.make_name('resource')
-        image_dict.setdefault(image, factory.make_name('resource'))
+        resource = factory.make_name("resource")
+        image_dict.setdefault(image, factory.make_name("resource"))
         image_dict.set(image, resource)
         self.assertItemsEqual([(image, resource)], image_dict.items())
 
     def test_dump_json_is_consistent(self):
         image = make_image_spec()
-        resource = factory.make_name('resource')
+        resource = factory.make_name("resource")
         image_dict_1 = set_resource(image_spec=image, resource=resource)
         image_dict_2 = set_resource(image_spec=image, resource=resource)
         self.assertEqual(image_dict_1.dump_json(), image_dict_2.dump_json())
 
     def test_dump_json_represents_empty_dict_as_empty_object(self):
-        self.assertEqual('{}', BootImageMapping().dump_json())
+        self.assertEqual("{}", BootImageMapping().dump_json())
 
     def test_dump_json_represents_entry(self):
         image = make_image_spec()
-        resource = factory.make_name('resource')
+        resource = factory.make_name("resource")
         image_dict = set_resource(image_spec=image, resource=resource)
         self.assertEqual(
             {
@@ -83,23 +83,25 @@ class TestBootImageMapping(MAASTestCase):
                     image.arch: {
                         image.subarch: {
                             image.kflavor: {
-                                image.release: {image.label: resource},
-                            },
-                        },
-                    },
-                },
+                                image.release: {image.label: resource}
+                            }
+                        }
+                    }
+                }
             },
-            json.loads(image_dict.dump_json()))
+            json.loads(image_dict.dump_json()),
+        )
 
     def test_dump_json_combines_similar_entries(self):
         image = make_image_spec()
-        other_release = factory.make_name('other-release')
-        resource1 = factory.make_name('resource')
-        resource2 = factory.make_name('other-resource')
+        other_release = factory.make_name("other-release")
+        resource1 = factory.make_name("resource")
+        resource2 = factory.make_name("other-resource")
         image_dict = BootImageMapping()
         set_resource(image_dict, image, resource1)
         set_resource(
-            image_dict, image._replace(release=other_release), resource2)
+            image_dict, image._replace(release=other_release), resource2
+        )
         self.assertEqual(
             {
                 image.os: {
@@ -108,12 +110,13 @@ class TestBootImageMapping(MAASTestCase):
                             image.kflavor: {
                                 image.release: {image.label: resource1},
                                 other_release: {image.label: resource2},
-                            },
-                        },
-                    },
-                },
+                            }
+                        }
+                    }
+                }
             },
-            json.loads(image_dict.dump_json()))
+            json.loads(image_dict.dump_json()),
+        )
 
     def test_load_json_result_matches_dump_of_own_data_legacy(self):
         # Loading the test data and dumping it again should result in
@@ -133,7 +136,7 @@ class TestBootImageMapping(MAASTestCase):
         test_meta_file_content = make_maas_meta_without_os()
         mapping = BootImageMapping.load_json(test_meta_file_content)
         os = {image.os for image, _ in mapping.items()}.pop()
-        self.assertEqual('ubuntu', os)
+        self.assertEqual("ubuntu", os)
 
     def test_load_json_returns_empty_mapping_for_invalid_json(self):
         bad_json = ""
@@ -145,7 +148,7 @@ class TestBootImageMapping(MAASTestCase):
         mapping = None
         for _ in range(0, 3):
             image_spec = make_image_spec()
-            resource = factory.make_name('resource')
+            resource = factory.make_name("resource")
             expected_arches.add(image_spec.arch)
             mapping = set_resource(mapping, image_spec, resource)
 

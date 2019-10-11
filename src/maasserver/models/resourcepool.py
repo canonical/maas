@@ -4,22 +4,15 @@
 """ResourcePool model."""
 
 __all__ = [
-    'DEFAULT_RESOURCEPOOL_DESCRIPTION',
-    'DEFAULT_RESOURCEPOOL_NAME',
-    'ResourcePool',
+    "DEFAULT_RESOURCEPOOL_DESCRIPTION",
+    "DEFAULT_RESOURCEPOOL_NAME",
+    "ResourcePool",
 ]
 
 from datetime import datetime
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
-from django.db.models import (
-    CharField,
-    Manager,
-    TextField,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import CharField, Manager, TextField
 from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
@@ -27,21 +20,23 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 
 
-DEFAULT_RESOURCEPOOL_NAME = 'default'
-DEFAULT_RESOURCEPOOL_DESCRIPTION = 'Default pool'
+DEFAULT_RESOURCEPOOL_NAME = "default"
+DEFAULT_RESOURCEPOOL_DESCRIPTION = "Default pool"
 
 
 class ResourcePoolQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         specifier_types = {
             None: self._add_default_query,
-            'name': "__name",
-            'id': "__id",
+            "name": "__name",
+            "id": "__id",
         }
         return super(ResourcePoolQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
@@ -53,11 +48,13 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
         pool, _ = self.get_or_create(
             id=0,
             defaults={
-                'id': 0,
-                'name': DEFAULT_RESOURCEPOOL_NAME,
-                'description': DEFAULT_RESOURCEPOOL_DESCRIPTION,
-                'created': now,
-                'updated': now})
+                "id": 0,
+                "name": DEFAULT_RESOURCEPOOL_NAME,
+                "description": DEFAULT_RESOURCEPOOL_DESCRIPTION,
+                "created": now,
+                "updated": now,
+            },
+        )
         return pool
 
     def get_resource_pool_or_404(self, specifiers, user, perm):
@@ -97,10 +94,12 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
         """
         # Circular imports.
         from maasserver.rbac import rbac
+
         if rbac.is_enabled():
             fetched = rbac.get_resource_pool_ids(
-                user.username, 'view', 'view-all')
-            pool_ids = set(fetched['view'] + fetched['view-all'])
+                user.username, "view", "view-all"
+            )
+            pool_ids = set(fetched["view"] + fetched["view-all"])
             return self.filter(id__in=pool_ids)
         return self.all()
 
@@ -111,13 +110,16 @@ class ResourcePool(CleanSave, TimestampedModel):
     objects = ResourcePoolManager()
 
     name = CharField(
-        max_length=256, unique=True, editable=True,
-        validators=[MODEL_NAME_VALIDATOR])
+        max_length=256,
+        unique=True,
+        editable=True,
+        validators=[MODEL_NAME_VALIDATOR],
+    )
     description = TextField(null=False, blank=True, editable=True)
 
     class Meta(DefaultMeta):
 
-        ordering = ['name']
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
@@ -129,8 +131,10 @@ class ResourcePool(CleanSave, TimestampedModel):
     def delete(self):
         if self.is_default():
             raise ValidationError(
-                'This is the default pool, it cannot be deleted.')
+                "This is the default pool, it cannot be deleted."
+            )
         if self.node_set.exists():
             raise ValidationError(
-                'Pool has machines in it, it cannot be deleted.')
+                "Pool has machines in it, it cannot be deleted."
+            )
         super().delete()

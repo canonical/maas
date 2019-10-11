@@ -3,12 +3,7 @@
 
 """Utilities for working with PCAP format streams."""
 
-__all__ = [
-    "PCAP",
-    "PCAPError",
-    "PCAPHeader",
-    "PCAPPacketHeader"
-]
+__all__ = ["PCAP", "PCAPError", "PCAPHeader", "PCAPPacketHeader"]
 
 from collections import namedtuple
 from pprint import pprint
@@ -17,30 +12,37 @@ import sys
 
 # See documentation here for explanation of magic numbers, formats, etc:
 #     https://wiki.wireshark.org/Development/LibpcapFileFormat
-PCAP_NATIVE_BYTE_ORDER_MAGIC_NUMBER = 0xa1b2c3d4
+PCAP_NATIVE_BYTE_ORDER_MAGIC_NUMBER = 0xA1B2C3D4
 PCAP_HEADER_SIZE = 24
 PCAP_PACKET_HEADER_SIZE = 16
 
-PCAPHeader = namedtuple('PCAPHeader', (
-    'magic_number',
-    'pcap_version_major',
-    'pcap_version_minor',
-    'time_zone_gmt_offset',
-    'timestamp_accuracy_sigfigs',
-    'max_capture_bytes_per_packet',
-    'data_link_type',
-))
+PCAPHeader = namedtuple(
+    "PCAPHeader",
+    (
+        "magic_number",
+        "pcap_version_major",
+        "pcap_version_minor",
+        "time_zone_gmt_offset",
+        "timestamp_accuracy_sigfigs",
+        "max_capture_bytes_per_packet",
+        "data_link_type",
+    ),
+)
 
-PCAPPacketHeader = namedtuple('PCAPPacketHeader', (
-    'timestamp_seconds',
-    'timestamp_microseconds',
-    'bytes_captured',
-    'original_packet_length',
-))
+PCAPPacketHeader = namedtuple(
+    "PCAPPacketHeader",
+    (
+        "timestamp_seconds",
+        "timestamp_microseconds",
+        "bytes_captured",
+        "original_packet_length",
+    ),
+)
 
 
 class PCAPError(IOError):
     """Exception class for problems originating in the PCAP I/O stream."""
+
     pass
 
 
@@ -79,7 +81,8 @@ class PCAP:
         #     guint32 network;  /* data link type */
         # } pcap_hdr_t;
         self.global_header = PCAPHeader._make(
-            struct.unpack('IHHiIII', global_header_bytes))
+            struct.unpack("IHHiIII", global_header_bytes)
+        )
         if self.global_header[0] != PCAP_NATIVE_BYTE_ORDER_MAGIC_NUMBER:
             raise PCAPError("Stream is not in native PCAP format.")
 
@@ -99,7 +102,8 @@ class PCAP:
             raise EOFError("End of PCAP stream.")
         if len(pcap_packet_header_bytes) != PCAP_PACKET_HEADER_SIZE:
             raise PCAPError(
-                "Unexpected end of PCAP stream: invalid packet header.")
+                "Unexpected end of PCAP stream: invalid packet header."
+            )
         # typedef struct pcaprec_hdr_s {
         #     guint32 ts_sec;   /* timestamp seconds */
         #     guint32 ts_usec;  /* timestamp microseconds */
@@ -107,7 +111,8 @@ class PCAP:
         #     guint32 orig_len; /* actual length of packet */
         # } pcaprec_hdr_t;
         pcap_packet_header = PCAPPacketHeader._make(
-            struct.unpack('IIII', pcap_packet_header_bytes))
+            struct.unpack("IIII", pcap_packet_header_bytes)
+        )
         packet = self.stream.read(pcap_packet_header.bytes_captured)
         if len(packet) != pcap_packet_header.bytes_captured:
             raise PCAPError("Unexpected end of PCAP stream: invalid packet.")
@@ -138,5 +143,5 @@ def main():
         pprint(packet)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

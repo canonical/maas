@@ -16,7 +16,6 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestNodeMetadata(MAASServerTestCase):
-
     def test_str(self):
         # A NodeMetadata object string representation references the parent
         # node hostname.
@@ -29,16 +28,19 @@ class TestNodeMetadata(MAASServerTestCase):
         # and key.
         entry = factory.make_NodeMetadata()
         self.assertRaises(
-            ValidationError, factory.make_NodeMetadata, node=entry.node,
-            key=entry.key)
+            ValidationError,
+            factory.make_NodeMetadata,
+            node=entry.node,
+            key=entry.key,
+        )
 
     def test_multiple_keys_on_node(self):
         # We can only ever have one NodeMetadata object for a particular node
         # and key.
-        entry1 = factory.make_NodeMetadata(
-            key="key1", value="value")
+        entry1 = factory.make_NodeMetadata(key="key1", value="value")
         entry2 = factory.make_NodeMetadata(
-            node=entry1.node, key="key2", value="value")
+            node=entry1.node, key="key2", value="value"
+        )
         self.assertNotEqual(entry1, entry2)
 
     def test_get(self):
@@ -46,5 +48,6 @@ class TestNodeMetadata(MAASServerTestCase):
         key = factory.make_name("key")
         default = factory.make_name("default")
         self.assertEqual(
-            default, NodeMetadata.objects.get(
-                node=node, key=key, default=default))
+            default,
+            NodeMetadata.objects.get(node=node, key=key, default=default),
+        )

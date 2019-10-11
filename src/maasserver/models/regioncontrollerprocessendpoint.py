@@ -3,19 +3,10 @@
 
 """RegionControllerProcessEndpoint object."""
 
-__all__ = [
-    "RegionControllerProcessEndpoint",
-    ]
+__all__ = ["RegionControllerProcessEndpoint"]
 
-from django.core.validators import (
-    MaxValueValidator,
-    MinValueValidator,
-)
-from django.db.models import (
-    CASCADE,
-    ForeignKey,
-    IntegerField,
-)
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import CASCADE, ForeignKey, IntegerField
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
@@ -35,15 +26,17 @@ class RegionControllerProcessEndpoint(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed recognize this model."""
+
         unique_together = ("process", "address", "port")
 
     process = ForeignKey(
-        RegionControllerProcess, null=False, blank=False,
-        related_name="endpoints", on_delete=CASCADE)
-    address = MAASIPAddressField(
-        null=False, blank=False, editable=False)
+        RegionControllerProcess,
+        null=False,
+        blank=False,
+        related_name="endpoints",
+        on_delete=CASCADE,
+    )
+    address = MAASIPAddressField(null=False, blank=False, editable=False)
     port = IntegerField(
-        default=0, validators=[
-            MinValueValidator(0),
-            MaxValueValidator(65535),
-        ])
+        default=0, validators=[MinValueValidator(0), MaxValueValidator(65535)]
+    )

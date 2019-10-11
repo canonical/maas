@@ -9,7 +9,7 @@ import yaml
 class MAASConfiguration:
     """Manager class for MAAS configuration files."""
 
-    DEFAULT_CONFIG_DIR = '/etc/maas'
+    DEFAULT_CONFIG_DIR = "/etc/maas"
 
     def __init__(self, environ=None):
         if environ is None:
@@ -18,23 +18,22 @@ class MAASConfiguration:
 
     def get(self):
         """Return a dict with the current configuration."""
-        return self._get_from_file('regiond.conf')
+        return self._get_from_file("regiond.conf")
 
     def update(self, configs):
         """Add or update specified configuration entries."""
-        self._update_file(configs, 'regiond.conf')
-        if 'maas_url' in configs:
-            self._update_file({'maas_url': configs['maas_url']}, 'rackd.conf')
+        self._update_file(configs, "regiond.conf")
+        if "maas_url" in configs:
+            self._update_file({"maas_url": configs["maas_url"]}, "rackd.conf")
 
     def write_to_file(self, data, filename):
         """Write the configuration data to `regiond.conf`."""
         config_file = self._config_dir / filename
-        config_file.write_text(
-            yaml.safe_dump(data, default_flow_style=False))
+        config_file.write_text(yaml.safe_dump(data, default_flow_style=False))
 
     @property
     def _config_dir(self):
-        return Path(self._environ.get('SNAP_DATA', self.DEFAULT_CONFIG_DIR))
+        return Path(self._environ.get("SNAP_DATA", self.DEFAULT_CONFIG_DIR))
 
     def _get_from_file(self, filename):
         """Return a dict with the config from the specified file."""

@@ -3,10 +3,7 @@
 
 """Drivers."""
 
-__all__ = [
-    "Architecture",
-    "ArchitectureRegistry",
-    ]
+__all__ = ["Architecture", "ArchitectureRegistry"]
 
 from jsonschema import validate
 from provisioningserver.utils import typed
@@ -17,7 +14,7 @@ class IP_EXTRACTOR_PATTERNS:
     """Commonly used patterns IP extractor patterns."""
 
     # Use the entire string as the value.
-    IDENTITY = '^(?P<address>.+?)$'
+    IDENTITY = "^(?P<address>.+?)$"
 
     # The typical URL pattern. Extracts address field as the value.
     # The given URL has an address component that is one of:
@@ -30,19 +27,18 @@ class IP_EXTRACTOR_PATTERNS:
     # introduces a goodly amount of complexity due to looking forward/backward
     # to determine if [] is ok/expected.
     # The resulting address is simply the IP address (v6 or v4), or a hostname.
-    URL = (r'^'
-           r'((?P<schema>.+?)://)?'
-           r'((?P<user>.+?)(:(?P<password>.*?))?@)?'
-
-           r'(?:\[(?=[0-9a-fA-F]*:[0-9a-fA-F.:]+\]))?'
-           r'(?P<address>(?:(?:[^\[\]/:]*(?!\]))|'
-           r'(?:(?<=\[)[0-9a-fA-F:.]+(?=\]))))\]?'
-
-           r'(:(?P<port>\d+?))?'
-           r'(?P<path>/.*?)?'
-           r'(?P<query>[?].*?)?'
-           r'$'
-           )
+    URL = (
+        r"^"
+        r"((?P<schema>.+?)://)?"
+        r"((?P<user>.+?)(:(?P<password>.*?))?@)?"
+        r"(?:\[(?=[0-9a-fA-F]*:[0-9a-fA-F.:]+\]))?"
+        r"(?P<address>(?:(?:[^\[\]/:]*(?!\]))|"
+        r"(?:(?<=\[)[0-9a-fA-F:.]+(?=\]))))\]?"
+        r"(:(?P<port>\d+?))?"
+        r"(?P<path>/.*?)?"
+        r"(?P<query>[?].*?)?"
+        r"$"
+    )
 
 
 # Python REGEX pattern for extracting IP address from parameter field.
@@ -50,73 +46,49 @@ class IP_EXTRACTOR_PATTERNS:
 # Name the address field 'address' in your Python regex pattern.
 # The pattern will be used as in 're.match(pattern, field_value)'.
 IP_EXTRACTOR_SCHEMA = {
-    'title': "IP Extractor Configuration",
-    'type': 'object',
-    'properties': {
-        'field_name': {
-            'type': 'string',
-        },
-        'pattern': {
-            'type': 'string',
-        },
+    "title": "IP Extractor Configuration",
+    "type": "object",
+    "properties": {
+        "field_name": {"type": "string"},
+        "pattern": {"type": "string"},
     },
-    "dependencies": {
-        "field_name": ["pattern"],
-        "pattern": ["field_name"]
-    },
+    "dependencies": {"field_name": ["pattern"], "pattern": ["field_name"]},
 }
 
 # JSON schema representing the Django choices format as JSON; an array of
 # 2-item arrays.
 CHOICE_FIELD_SCHEMA = {
-    'type': 'array',
-    'items': {
-        'title': "Setting parameter field choice",
-        'type': 'array',
-        'minItems': 2,
-        'maxItems': 2,
-        'uniqueItems': True,
-        'items': {
-            'type': 'string',
-        }
+    "type": "array",
+    "items": {
+        "title": "Setting parameter field choice",
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "uniqueItems": True,
+        "items": {"type": "string"},
     },
 }
 
 # JSON schema for what a settings field should look like.
 SETTING_PARAMETER_FIELD_SCHEMA = {
-    'title': "Setting parameter field",
-    'type': 'object',
-    'properties': {
-        'name': {
-            'type': 'string',
-        },
-        'field_type': {
-            'type': 'string',
-        },
-        'label': {
-            'type': 'string',
-        },
-        'required': {
-            'type': 'boolean',
-        },
+    "title": "Setting parameter field",
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "field_type": {"type": "string"},
+        "label": {"type": "string"},
+        "required": {"type": "boolean"},
         # 'bmc' or 'node': Whether value lives on bmc (global) or node/device.
-        'scope': {
-            'type': 'string',
-        },
-        'choices': CHOICE_FIELD_SCHEMA,
-        'default': {
-            'type': 'string',
-        },
+        "scope": {"type": "string"},
+        "choices": CHOICE_FIELD_SCHEMA,
+        "default": {"type": "string"},
     },
-    'required': ['field_type', 'label', 'required'],
+    "required": ["field_type", "label", "required"],
 }
 
 
 def make_ip_extractor(field_name, pattern=IP_EXTRACTOR_PATTERNS.IDENTITY):
-    return {
-        'field_name': field_name,
-        'pattern': pattern,
-    }
+    return {"field_name": field_name, "pattern": pattern}
 
 
 class SETTING_SCOPE:
@@ -125,8 +97,14 @@ class SETTING_SCOPE:
 
 
 def make_setting_field(
-        name, label, field_type=None, choices=None, default=None,
-        required=False, scope=SETTING_SCOPE.BMC):
+    name,
+    label,
+    field_type=None,
+    choices=None,
+    default=None,
+    required=False,
+    scope=SETTING_SCOPE.BMC,
+):
     """Helper function for building a JSON setting parameters field.
 
     :param name: The name of the field.
@@ -148,8 +126,8 @@ def make_setting_field(
         Defaults to 'bmc'.
     :type scope: string
     """
-    if field_type not in ('string', 'mac_address', 'choice', 'password'):
-        field_type = 'string'
+    if field_type not in ("string", "mac_address", "choice", "password"):
+        field_type = "string"
     if choices is None:
         choices = []
     validate(choices, CHOICE_FIELD_SCHEMA)
@@ -158,20 +136,20 @@ def make_setting_field(
     if scope not in (SETTING_SCOPE.BMC, SETTING_SCOPE.NODE):
         scope = SETTING_SCOPE.BMC
     return {
-        'name': name,
-        'label': label,
-        'required': required,
-        'field_type': field_type,
-        'choices': choices,
-        'default': default,
-        'scope': scope,
+        "name": name,
+        "label": label,
+        "required": required,
+        "field_type": field_type,
+        "choices": choices,
+        "default": default,
+        "scope": scope,
     }
 
 
 class Architecture:
-
-    def __init__(self, name, description, pxealiases=None,
-                 kernel_options=None):
+    def __init__(
+        self, name, description, pxealiases=None, kernel_options=None
+    ):
         """Represents an architecture in the driver context.
 
         :param name: The architecture name as used in MAAS.
@@ -208,31 +186,43 @@ builtin_architectures = [
     Architecture(name="i386/generic", description="i386"),
     Architecture(name="amd64/generic", description="amd64"),
     Architecture(
-        name="arm64/generic", description="arm64/generic",
-        pxealiases=["arm"]),
+        name="arm64/generic", description="arm64/generic", pxealiases=["arm"]
+    ),
     Architecture(
-        name="arm64/xgene-uboot", description="arm64/xgene-uboot",
-        pxealiases=["arm"]),
+        name="arm64/xgene-uboot",
+        description="arm64/xgene-uboot",
+        pxealiases=["arm"],
+    ),
     Architecture(
         name="arm64/xgene-uboot-mustang",
-        description="arm64/xgene-uboot-mustang", pxealiases=["arm"]),
+        description="arm64/xgene-uboot-mustang",
+        pxealiases=["arm"],
+    ),
     Architecture(
-        name="armhf/highbank", description="armhf/highbank",
-        pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
+        name="armhf/highbank",
+        description="armhf/highbank",
+        pxealiases=["arm"],
+        kernel_options=["console=ttyAMA0"],
+    ),
     Architecture(
-        name="armhf/generic", description="armhf/generic",
-        pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
+        name="armhf/generic",
+        description="armhf/generic",
+        pxealiases=["arm"],
+        kernel_options=["console=ttyAMA0"],
+    ),
     Architecture(
-        name="armhf/keystone", description="armhf/keystone",
-        pxealiases=["arm"]),
+        name="armhf/keystone", description="armhf/keystone", pxealiases=["arm"]
+    ),
     # PPC64EL needs a rootdelay for PowerNV. The disk controller
     # in the hardware, takes a little bit longer to come up then
     # the initrd wants to wait. Set this to 60 seconds, just to
     # give the booting machine enough time. This doesn't slow down
     # the booting process, it just increases the timeout.
     Architecture(
-        name="ppc64el/generic", description="ppc64el",
-        kernel_options=['rootdelay=60']),
+        name="ppc64el/generic",
+        description="ppc64el",
+        kernel_options=["rootdelay=60"],
+    ),
 ]
 for arch in builtin_architectures:
     ArchitectureRegistry.register_item(arch.name, arch)

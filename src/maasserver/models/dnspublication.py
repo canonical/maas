@@ -3,37 +3,26 @@
 
 """DNS publication model objects."""
 
-__all__ = [
-    "DNSPublication",
-]
+__all__ = ["DNSPublication"]
 
 from datetime import datetime
 
-from django.core.validators import (
-    MaxValueValidator,
-    MinValueValidator,
-)
-from django.db.models import (
-    Manager,
-    Model,
-)
-from django.db.models.fields import (
-    BigIntegerField,
-    CharField,
-    DateTimeField,
-)
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Manager, Model
+from django.db.models.fields import BigIntegerField, CharField, DateTimeField
 from maasserver import DefaultMeta
-from maasserver.sequence import (
-    INT_MAX,
-    Sequence,
-)
+from maasserver.sequence import INT_MAX, Sequence
 
 # A DNS zone's serial is a 32-bit integer. Also, we start with the value 1
 # because 0 has special meaning for some DNS servers. Even if we control the
 # DNS server we use, better safe than sorry.
 zone_serial = Sequence(
-    'maasserver_zone_serial_seq', increment=1, minvalue=1, maxvalue=INT_MAX,
-    owner='maasserver_dnspublication.serial')
+    "maasserver_zone_serial_seq",
+    increment=1,
+    minvalue=1,
+    maxvalue=INT_MAX,
+    owner="maasserver_dnspublication.serial",
+)
 
 
 def next_serial():
@@ -87,17 +76,26 @@ class DNSPublication(Model):
     # The serial number with which to publish the zone. We don't use the
     # primary key for this because zone serials are allowed to cycle.
     serial = BigIntegerField(
-        editable=False, null=False, default=next_serial, unique=False,
+        editable=False,
+        null=False,
+        default=next_serial,
+        unique=False,
         validators=(
             MinValueValidator(zone_serial.minvalue),
             MaxValueValidator(zone_serial.maxvalue),
-        ))
+        ),
+    )
 
     # This field is informational.
     created = DateTimeField(
-        editable=False, null=False, auto_now=False, auto_now_add=True)
+        editable=False, null=False, auto_now=False, auto_now_add=True
+    )
 
     # This field is informational.
     source = CharField(
-        editable=False, max_length=255, null=False, blank=True,
-        help_text="A brief explanation why DNS was published.")
+        editable=False,
+        max_length=255,
+        null=False,
+        blank=True,
+        help_text="A brief explanation why DNS was published.",
+    )

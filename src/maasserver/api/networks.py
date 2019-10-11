@@ -3,23 +3,12 @@
 
 """API handlers: `Network`."""
 
-__all__ = [
-    'NetworkHandler',
-    'NetworksHandler',
-    ]
+__all__ = ["NetworkHandler", "NetworksHandler"]
 
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import NetworksListingForm
-from maasserver.models import (
-    Interface,
-    Node,
-    Subnet,
-)
+from maasserver.models import Interface, Node, Subnet
 from maasserver.permissions import NodePermission
 from maasserver.utils.django_urls import reverse
 from piston3.utils import rc
@@ -41,15 +30,13 @@ def render_network_json(subnet):
         "default_gateway": subnet.gateway_ip,
         "dns_servers": subnet.dns_servers,
         "resource_uri": reverse(
-            'network_handler', args=["subnet-%d" % subnet.id]),
+            "network_handler", args=["subnet-%d" % subnet.id]
+        ),
     }
 
 
 def render_networks_json(subnets):
-    return [
-        render_network_json(subnet)
-        for subnet in subnets
-    ]
+    return [render_network_json(subnet) for subnet in subnets]
 
 
 class NetworkHandler(OperationsHandler):
@@ -57,13 +44,15 @@ class NetworkHandler(OperationsHandler):
 
     This endpoint is deprecated. Use the new 'subnet' endpoint instead.
     """
+
     api_doc_section_name = "Network"
     create = None
 
     def read(self, request, name):
         """Read network definition."""
         return render_network_json(
-            Subnet.objects.get_object_by_specifiers_or_raise(name))
+            Subnet.objects.get_object_by_specifiers_or_raise(name)
+        )
 
     @admin_method
     def update(self, request, name):
@@ -124,20 +113,24 @@ class NetworkHandler(OperationsHandler):
         """
         subnet = Subnet.objects.get_object_by_specifiers_or_raise(name)
         visible_nodes = Node.objects.get_nodes(
-            request.user, NodePermission.view,
-            from_nodes=Node.objects.all())
+            request.user, NodePermission.view, from_nodes=Node.objects.all()
+        )
         interfaces = Interface.objects.filter(
-            node__in=visible_nodes, ip_addresses__subnet=subnet)
+            node__in=visible_nodes, ip_addresses__subnet=subnet
+        )
         existing_macs = set()
         unique_interfaces_by_mac = [
             interface
             for interface in interfaces
-            if (interface.mac_address not in existing_macs and
-                not existing_macs.add(interface.mac_address))
+            if (
+                interface.mac_address not in existing_macs
+                and not existing_macs.add(interface.mac_address)
+            )
         ]
         unique_interfaces_by_mac = sorted(
             unique_interfaces_by_mac,
-            key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()))
+            key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()),
+        )
         return [
             {"mac_address": str(interface.mac_address)}
             for interface in unique_interfaces_by_mac
@@ -147,10 +140,10 @@ class NetworkHandler(OperationsHandler):
     def resource_uri(cls, network=None):
         # See the comment in NodeHandler.resource_uri.
         if network is None:
-            name = 'name'
+            name = "name"
         else:
             name = convert_to_network_name(network)
-        return ('network_handler', (name, ))
+        return ("network_handler", (name,))
 
 
 class NetworksHandler(OperationsHandler):
@@ -158,6 +151,7 @@ class NetworksHandler(OperationsHandler):
 
     This endpoint is deprecated. Use the new 'subnets' endpoint instead.
     """
+
     api_doc_section_name = "Networks"
     update = delete = None
 
@@ -184,4 +178,4 @@ class NetworksHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('networks_handler', [])
+        return ("networks_handler", [])

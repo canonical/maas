@@ -3,10 +3,7 @@
 
 """Security-related code, primarily relating to TLS."""
 
-__all__ = [
-    "get_region_certificate",
-    "get_shared_secret",
-]
+__all__ = ["get_region_certificate", "get_shared_secret"]
 
 from datetime import datetime
 import os
@@ -14,10 +11,7 @@ import os
 from maasserver import locks
 from maasserver.models.config import Config
 from maasserver.utils import synchronised
-from maasserver.utils.orm import (
-    transactional,
-    with_connection,
-)
+from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.security import (
     get_shared_secret_filesystem_path,
@@ -26,10 +20,7 @@ from provisioningserver.security import (
     to_bin,
     to_hex,
 )
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
+from provisioningserver.utils.twisted import asynchronous, synchronous
 from pytz import UTC
 from twisted.internet import ssl
 
@@ -107,8 +98,9 @@ def get_shared_secret_txn():
     else:
         raise AssertionError(
             "The secret stored in the database does not match the secret "
-            "stored on the filesystem at %s. Please investigate." %
-            get_shared_secret_filesystem_path())
+            "stored on the filesystem at %s. Please investigate."
+            % get_shared_secret_filesystem_path()
+        )
 
     return secret
 

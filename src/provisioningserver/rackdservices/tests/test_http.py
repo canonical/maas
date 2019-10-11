@@ -6,34 +6,19 @@
 __all__ = []
 
 import random
-from unittest.mock import (
-    ANY,
-    Mock,
-)
+from unittest.mock import ANY, Mock
 
 import attr
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-)
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
-from maastesting.twisted import (
-    always_succeed_with,
-    TwistedLoggerFixture,
-)
+from maastesting.matchers import DocTestMatches, MockCalledOnceWith
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver import services
 from provisioningserver.boot import BytesReader
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rackdservices import http
-from provisioningserver.rpc import (
-    common,
-    exceptions,
-)
+from provisioningserver.rpc import common, exceptions
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from testtools.matchers import (
     Contains,
@@ -42,26 +27,13 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
 )
-from tftp.errors import (
-    AccessViolation,
-    FileNotFound,
-)
+from tftp.errors import AccessViolation, FileNotFound
 from twisted.application.service import Service
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.http_headers import Headers
-from twisted.web.server import (
-    NOT_DONE_YET,
-    Request,
-)
-from twisted.web.test.test_web import (
-    DummyChannel,
-    DummyRequest,
-)
+from twisted.web.server import NOT_DONE_YET, Request
+from twisted.web.test.test_web import DummyChannel, DummyRequest
 
 
 def prepareRegion(test):
@@ -72,7 +44,8 @@ def prepareRegion(test):
     fixture = test.useFixture(MockLiveClusterToRegionRPCFixture())
     protocol, connecting = fixture.makeEventLoop()
     protocol.RegisterRackController.side_effect = always_succeed_with(
-        {"system_id": factory.make_name("maas-id")})
+        {"system_id": factory.make_name("maas-id")}
+    )
 
     def connected(teardown):
         test.addCleanup(teardown)
@@ -96,25 +69,30 @@ class TestRackHTTPService(MAASTestCase):
 
     def test_service_uses__tryUpdate_as_periodic_function(self):
         service = http.RackHTTPService(
-            self.make_dir(), StubClusterClientService(), reactor)
+            self.make_dir(), StubClusterClientService(), reactor
+        )
         self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
 
     def test_service_iterates_on_low_interval(self):
         service = http.RackHTTPService(
-            self.make_dir(), StubClusterClientService(), reactor)
+            self.make_dir(), StubClusterClientService(), reactor
+        )
         self.assertThat(service.step, Equals(service.INTERVAL_LOW))
 
     def extract_regions(self, rpc_service):
-        return frozenset({
-            client.address[0]
-            for _, client in rpc_service.connections.items()
-        })
+        return frozenset(
+            {
+                client.address[0]
+                for _, client in rpc_service.connections.items()
+            }
+        )
 
     def make_startable_RackHTTPService(self, *args, **kwargs):
         service = http.RackHTTPService(*args, **kwargs)
         service._orig_tryUpdate = service._tryUpdate
-        self.patch(service, "_tryUpdate").return_value = (
-            always_succeed_with(None))
+        self.patch(service, "_tryUpdate").return_value = always_succeed_with(
+            None
+        )
         service.call = (service._tryUpdate, tuple(), {})
         return service
 
@@ -123,26 +101,29 @@ class TestRackHTTPService(MAASTestCase):
         rpc_service, protocol = yield prepareRegion(self)
         region_ips = self.extract_regions(rpc_service)
         service = self.make_startable_RackHTTPService(
-            self.make_dir(), rpc_service, reactor)
+            self.make_dir(), rpc_service, reactor
+        )
         yield service.startService()
         self.addCleanup((yield service.stopService))
         observed = yield service._getConfiguration()
 
         self.assertThat(observed, IsInstance(http._Configuration))
         self.assertThat(
-            observed, MatchesStructure.byEquality(upstream_http=region_ips))
+            observed, MatchesStructure.byEquality(upstream_http=region_ips)
+        )
 
     @inlineCallbacks
     def test__tryUpdate_writes_nginx_config_reloads_nginx(self):
         self.useFixture(MAASRootFixture())
         rpc_service, _ = yield prepareRegion(self)
         region_ips = self.extract_regions(rpc_service)
-        resource_root = self.make_dir() + '/'
+        resource_root = self.make_dir() + "/"
         service = self.make_startable_RackHTTPService(
-            resource_root, rpc_service, reactor)
+            resource_root, rpc_service, reactor
+        )
 
         # Mock service_monitor to catch reloadService.
-        mock_reloadService = self.patch(http.service_monitor, 'reloadService')
+        mock_reloadService = self.patch(http.service_monitor, "reloadService")
         mock_reloadService.return_value = always_succeed_with(None)
 
         yield service.startService()
@@ -150,25 +131,28 @@ class TestRackHTTPService(MAASTestCase):
         yield service._orig_tryUpdate()
 
         # Verify the contents of the written config.
-        target_path = http.compose_http_config_path('rackd.nginx.conf')
+        target_path = http.compose_http_config_path("rackd.nginx.conf")
         self.assertThat(
             target_path,
-            FileContains(matcher=Contains('alias %s;' % resource_root)))
+            FileContains(matcher=Contains("alias %s;" % resource_root)),
+        )
         for region_ip in region_ips:
             self.assertThat(
-                target_path, FileContains(
-                    matcher=Contains('server %s:5240;' % region_ip)))
+                target_path,
+                FileContains(matcher=Contains("server %s:5240;" % region_ip)),
+            )
         self.assertThat(
             target_path,
             FileContains(
-                matcher=Contains(
-                    'proxy_pass http://maas-regions/MAAS/;')))
-        self.assertThat(mock_reloadService, MockCalledOnceWith('http'))
+                matcher=Contains("proxy_pass http://maas-regions/MAAS/;")
+            ),
+        )
+        self.assertThat(mock_reloadService, MockCalledOnceWith("http"))
 
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
         yield service._orig_tryUpdate()
-        self.assertThat(mock_reloadService, MockCalledOnceWith('http'))
+        self.assertThat(mock_reloadService, MockCalledOnceWith("http"))
 
     @inlineCallbacks
     def test__getConfiguration_updates_interval_to_high(self):
@@ -185,10 +169,10 @@ class TestRackHTTPService(MAASTestCase):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         for _ in range(3):
-            region_name = factory.make_name('region')
+            region_name = factory.make_name("region")
             for _ in range(3):
                 pid = random.randint(0, 10000)
-                eventloop = '%s:pid=%s' % (region_name, pid)
+                eventloop = "%s:pid=%s" % (region_name, pid)
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
@@ -202,10 +186,10 @@ class TestRackHTTPService(MAASTestCase):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         for _ in range(3):
-            region_name = factory.make_name('region')
+            region_name = factory.make_name("region")
             for _ in range(3):
                 pid = random.randint(0, 10000)
-                eventloop = '%s:pid=%s' % (region_name, pid)
+                eventloop = "%s:pid=%s" % (region_name, pid)
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
@@ -221,11 +205,11 @@ class TestRackHTTPService(MAASTestCase):
         mock_rpc.connections = {}
         ip_addresses = set()
         for _ in range(3):
-            region_name = factory.make_name('region')
+            region_name = factory.make_name("region")
             pid = random.randint(0, 10000)
-            eventloop = '%s:pid=%s' % (region_name, pid)
+            eventloop = "%s:pid=%s" % (region_name, pid)
             ip = factory.make_ipv6_address()
-            ip_addresses.add('[%s]' % ip)
+            ip_addresses.add("[%s]" % ip)
             mock_conn = Mock()
             mock_conn.address = (ip, random.randint(5240, 5250))
             mock_rpc.connections[eventloop] = mock_conn
@@ -250,8 +234,9 @@ class TestRackHTTPService_Errors(MAASTestCase):
     def make_startable_RackHTTPService(self, *args, **kwargs):
         service = http.RackHTTPService(*args, **kwargs)
         service._orig_tryUpdate = service._tryUpdate
-        self.patch(service, "_tryUpdate").return_value = (
-            always_succeed_with(None))
+        self.patch(service, "_tryUpdate").return_value = always_succeed_with(
+            None
+        )
         service.call = (service._tryUpdate, tuple(), {})
         return service
 
@@ -259,15 +244,16 @@ class TestRackHTTPService_Errors(MAASTestCase):
     def test__tryUpdate_logs_errors_from_broken_method(self):
         # Patch the logger in the clusterservice so no log messages are printed
         # because the tests run in debug mode.
-        self.patch(common.log, 'debug')
+        self.patch(common.log, "debug")
 
         # Mock service_monitor to catch reloadService.
-        mock_reloadService = self.patch(http.service_monitor, 'reloadService')
+        mock_reloadService = self.patch(http.service_monitor, "reloadService")
         mock_reloadService.return_value = always_succeed_with(None)
 
         rpc_service, _ = yield prepareRegion(self)
         service = self.make_startable_RackHTTPService(
-            self.make_dir(), rpc_service, reactor)
+            self.make_dir(), rpc_service, reactor
+        )
         self.patch_autospec(service, "_configure")  # No-op configuration.
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
@@ -279,28 +265,29 @@ class TestRackHTTPService_Errors(MAASTestCase):
             yield service._orig_tryUpdate()
 
         self.assertThat(
-            logger.output, DocTestMatches(
+            logger.output,
+            DocTestMatches(
                 """
                 Failed to update HTTP configuration.
                 Traceback (most recent call last):
                 ...
                 maastesting.factory.TestException#...
-                """))
+                """
+            ),
+        )
 
 
 class TestHTTPLogResource(MAASTestCase):
-
     def test_render_GET_logs_node_event_with_original_path_ip(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
         request = Request(DummyChannel(), False)
-        request.requestHeaders = Headers({
-            'X-Original-URI': [path],
-            'X-Original-Remote-IP': [ip],
-        })
+        request.requestHeaders = Headers(
+            {"X-Original-URI": [path], "X-Original-Remote-IP": [ip]}
+        )
 
-        log_info = self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        log_info = self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         resource = http.HTTPLogResource()
@@ -309,28 +296,34 @@ class TestHTTPLogResource(MAASTestCase):
         self.assertThat(
             log_info,
             MockCalledOnceWith(
-                "{path} requested by {remote_host}",
-                path=path, remote_host=ip))
+                "{path} requested by {remote_host}", path=path, remote_host=ip
+            ),
+        )
         self.assertThat(
             mock_deferLater,
             MockCalledOnceWith(
-                ANY, 0, http.send_node_event_ip_address,
+                ANY,
+                0,
+                http.send_node_event_ip_address,
                 event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-                ip_address=ip, description=path))
+                ip_address=ip,
+                description=path,
+            ),
+        )
 
     def test_render_GET_logs_node_event_status_message(self):
-        path = factory.make_name('squashfs')
+        path = factory.make_name("squashfs")
         ip = factory.make_ip_address()
         request = Request(DummyChannel(), False)
-        request.requestHeaders = Headers({
-            'X-Original-URI': [path],
-            'X-Original-Remote-IP': [ip],
-        })
+        request.requestHeaders = Headers(
+            {"X-Original-URI": [path], "X-Original-Remote-IP": [ip]}
+        )
 
-        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
         mock_send_node_event_ip_address = self.patch(
-            http, 'send_node_event_ip_address')
+            http, "send_node_event_ip_address"
+        )
 
         resource = http.HTTPLogResource()
         resource.render_GET(request)
@@ -338,12 +331,20 @@ class TestHTTPLogResource(MAASTestCase):
         self.assertThat(
             mock_deferLater,
             MockCalledOnceWith(
-                ANY, 0, http.send_node_event_ip_address,
+                ANY,
+                0,
+                http.send_node_event_ip_address,
                 event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-                ip_address=ip, description=path))
+                ip_address=ip,
+                description=path,
+            ),
+        )
         self.assertThat(
-            mock_send_node_event_ip_address, MockCalledOnceWith(
-                event_type=EVENT_TYPES.LOADING_EPHEMERAL, ip_address=ip))
+            mock_send_node_event_ip_address,
+            MockCalledOnceWith(
+                event_type=EVENT_TYPES.LOADING_EPHEMERAL, ip_address=ip
+            ),
+        )
 
 
 class TestHTTPBootResource(MAASTestCase):
@@ -353,7 +354,7 @@ class TestHTTPBootResource(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.tftp = Service()
-        self.tftp.setName('tftp')
+        self.tftp.setName("tftp")
         self.tftp.backend = Mock()
         self.tftp.backend.get_reader = Mock()
         self.tftp.setServiceParent(services)
@@ -385,18 +386,20 @@ class TestHTTPBootResource(MAASTestCase):
         self.tftp.disownServiceParent()
         self.tftp = None
 
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Server-Addr": ["192.168.1.1"],
+                "X-Server-Port": ["5248"],
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         resource = http.HTTPBootResource()
@@ -404,20 +407,23 @@ class TestHTTPBootResource(MAASTestCase):
 
         self.assertEquals(503, request.responseCode)
         self.assertEquals(
-            b'HTTP boot service not ready.', b''.join(request.written))
+            b"HTTP boot service not ready.", b"".join(request.written)
+        )
 
     @inlineCallbacks
     def test_render_GET_400_when_no_local_addr(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         resource = http.HTTPBootResource()
@@ -425,20 +431,20 @@ class TestHTTPBootResource(MAASTestCase):
 
         self.assertEquals(400, request.responseCode)
         self.assertEquals(
-            b'Missing X-Server-Addr and X-Forwarded-For HTTP headers.',
-            b''.join(request.written))
+            b"Missing X-Server-Addr and X-Forwarded-For HTTP headers.",
+            b"".join(request.written),
+        )
 
     @inlineCallbacks
     def test_render_GET_400_when_no_remote_addr(self):
-        path = factory.make_name('path')
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-        })
+        path = factory.make_name("path")
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {"X-Server-Addr": ["192.168.1.1"], "X-Server-Port": ["5248"]}
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         resource = http.HTTPBootResource()
@@ -446,23 +452,26 @@ class TestHTTPBootResource(MAASTestCase):
 
         self.assertEquals(400, request.responseCode)
         self.assertEquals(
-            b'Missing X-Server-Addr and X-Forwarded-For HTTP headers.',
-            b''.join(request.written))
+            b"Missing X-Server-Addr and X-Forwarded-For HTTP headers.",
+            b"".join(request.written),
+        )
 
     @inlineCallbacks
     def test_render_GET_403_access_violation(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Server-Addr": ["192.168.1.1"],
+                "X-Server-Port": ["5248"],
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         self.tftp.backend.get_reader.return_value = fail(AccessViolation())
@@ -471,23 +480,24 @@ class TestHTTPBootResource(MAASTestCase):
         yield self.render_GET(resource, request)
 
         self.assertEquals(403, request.responseCode)
-        self.assertEquals(
-            b'', b''.join(request.written))
+        self.assertEquals(b"", b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_404_file_not_found(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Server-Addr": ["192.168.1.1"],
+                "X-Server-Port": ["5248"],
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         self.tftp.backend.get_reader.return_value = fail(FileNotFound(path))
@@ -496,23 +506,24 @@ class TestHTTPBootResource(MAASTestCase):
         yield self.render_GET(resource, request)
 
         self.assertEquals(404, request.responseCode)
-        self.assertEquals(
-            b'', b''.join(request.written))
+        self.assertEquals(b"", b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_500_server_error(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Server-Addr": ["192.168.1.1"],
+                "X-Server-Port": ["5248"],
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         exc = factory.make_exception("internal error")
@@ -522,26 +533,27 @@ class TestHTTPBootResource(MAASTestCase):
         yield self.render_GET(resource, request)
 
         self.assertEquals(500, request.responseCode)
-        self.assertEquals(
-            str(exc).encode('utf-8'), b''.join(request.written))
+        self.assertEquals(str(exc).encode("utf-8"), b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_produces_from_reader(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Server-Addr": ["192.168.1.1"],
+                "X-Server-Port": ["5248"],
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
-        content = factory.make_string(size=100).encode('utf-8')
+        content = factory.make_string(size=100).encode("utf-8")
         reader = BytesReader(content)
         self.tftp.backend.get_reader.return_value = succeed(reader)
 
@@ -549,24 +561,26 @@ class TestHTTPBootResource(MAASTestCase):
         yield self.render_GET(resource, request)
 
         self.assertEquals(
-            [100], request.responseHeaders.getRawHeaders(b'Content-Length'))
-        self.assertEquals(
-            content, b''.join(request.written))
+            [100], request.responseHeaders.getRawHeaders(b"Content-Length")
+        )
+        self.assertEquals(content, b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_logs_node_event_with_original_path_ip(self):
-        path = factory.make_name('path')
+        path = factory.make_name("path")
         ip = factory.make_ip_address()
-        request = DummyRequest([path.encode('utf-8')])
-        request.requestHeaders = Headers({
-            'X-Server-Addr': ['192.168.1.1'],
-            'X-Server-Port': ['5248'],
-            'X-Forwarded-For': [ip],
-            'X-Forwarded-Port': ['%s' % factory.pick_port()],
-        })
+        request = DummyRequest([path.encode("utf-8")])
+        request.requestHeaders = Headers(
+            {
+                "X-Server-Addr": ["192.168.1.1"],
+                "X-Server-Port": ["5248"],
+                "X-Forwarded-For": [ip],
+                "X-Forwarded-Port": ["%s" % factory.pick_port()],
+            }
+        )
 
-        log_info = self.patch(http.log, 'info')
-        mock_deferLater = self.patch(http, 'deferLater')
+        log_info = self.patch(http.log, "info")
+        mock_deferLater = self.patch(http, "deferLater")
         mock_deferLater.side_effect = always_succeed_with(None)
 
         self.tftp.backend.get_reader.return_value = fail(AccessViolation())
@@ -577,11 +591,17 @@ class TestHTTPBootResource(MAASTestCase):
         self.assertThat(
             log_info,
             MockCalledOnceWith(
-                "{path} requested by {remoteHost}",
-                path=path, remoteHost=ip))
+                "{path} requested by {remoteHost}", path=path, remoteHost=ip
+            ),
+        )
         self.assertThat(
             mock_deferLater,
             MockCalledOnceWith(
-                ANY, 0, http.send_node_event_ip_address,
+                ANY,
+                0,
+                http.send_node_event_ip_address,
                 event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-                ip_address=ip, description=path))
+                ip_address=ip,
+                description=path,
+            ),
+        )

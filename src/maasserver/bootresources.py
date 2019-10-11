@@ -22,16 +22,9 @@ from textwrap import dedent
 import threading
 import time
 
-from django.db import (
-    connection,
-    connections,
-)
+from django.db import connection, connections
 from django.db.utils import load_backend
-from django.http import (
-    Http404,
-    HttpResponse,
-    StreamingHttpResponse,
-)
+from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver import locks
 from maasserver.bootsources import (
@@ -89,14 +82,8 @@ from provisioningserver.import_images.helpers import (
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
-from provisioningserver.rpc.cluster import (
-    ListBootImages,
-    ListBootImagesV2,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.rpc.cluster import ListBootImages, ListBootImagesV2
 from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
@@ -108,18 +95,11 @@ from provisioningserver.utils.twisted import (
 )
 from provisioningserver.utils.version import get_maas_version_tuple
 from simplestreams import util as sutil
-from simplestreams.mirrors import (
-    BasicMirrorWriter,
-    UrlMirrorReader,
-)
+from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    Deferred,
-    DeferredList,
-    inlineCallbacks,
-)
+from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
 from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
@@ -131,11 +111,12 @@ log = LegacyLogger()
 def get_simplestream_endpoint():
     """Returns the simplestreams endpoint for the Region."""
     return {
-        'url': absolute_reverse(
-            'simplestreams_stream_handler', kwargs={'filename': 'index.json'}),
-        'keyring_data': b'',
-        'selections': [],
-        }
+        "url": absolute_reverse(
+            "simplestreams_stream_handler", kwargs={"filename": "index.json"}
+        ),
+        "keyring_data": b"",
+        "selections": [],
+    }
 
 
 class ConnectionWrapper:
@@ -157,7 +138,7 @@ class ConnectionWrapper:
     def _get_new_connection(self):
         """Create new database connection."""
         db = connections.databases[self.alias]
-        backend = load_backend(db['ENGINE'])
+        backend = load_backend(db["ENGINE"])
         return backend.DatabaseWrapper(db, self.alias)
 
     def _set_up(self):
@@ -173,7 +154,8 @@ class ConnectionWrapper:
             self._connection.in_atomic_block = True
         if self._stream is None:
             self._stream = self.largeobject.open(
-                'rb', connection=self._connection)
+                "rb", connection=self._connection
+            )
 
     def __iter__(self):
         return self
@@ -210,23 +192,24 @@ class SimpleStreamsHandler:
     def get_json_response(self, content):
         """Return `HttpResponse` for JSON content."""
         response = HttpResponse(content)
-        response['Content-Type'] = "application/json"
+        response["Content-Type"] = "application/json"
         return response
 
     def get_boot_resource_identifiers(self, resource):
         """Return tuple (os, arch, subarch, series) for the given resource."""
         arch, subarch = resource.split_arch()
-        if '/' in resource.name:
-            os, series = resource.name.split('/')
+        if "/" in resource.name:
+            os, series = resource.name.split("/")
         else:
-            os = 'custom'
+            os = "custom"
             series = resource.name
         return (os, arch, subarch, series)
 
     def get_product_name(self, resource):
         """Return product name for the given resource."""
-        return 'maas:boot:%s:%s:%s:%s' % self.get_boot_resource_identifiers(
-            resource)
+        return "maas:boot:%s:%s:%s:%s" % self.get_boot_resource_identifiers(
+            resource
+        )
 
     def gen_complete_boot_resources(self):
         """Return generator of `BootResource` that contains a complete set."""
@@ -247,46 +230,55 @@ class SimpleStreamsHandler:
         products = list(self.gen_products_names())
         updated = sutil.timestamp()
         index = {
-            'index': {
-                'maas:v2:download': {
-                    'datatype': "image-downloads",
-                    'path': "streams/v1/maas:v2:download.json",
-                    'updated': updated,
-                    'products': products,
-                    'format': "products:1.0",
-                    },
-                },
-            'updated': updated,
-            'format': "index:1.0"
-            }
+            "index": {
+                "maas:v2:download": {
+                    "datatype": "image-downloads",
+                    "path": "streams/v1/maas:v2:download.json",
+                    "updated": updated,
+                    "products": products,
+                    "format": "products:1.0",
+                }
+            },
+            "updated": updated,
+            "format": "index:1.0",
+        }
         data = sutil.dump_data(index) + b"\n"
         log.debug(
             "Simplestreams product index: {index}.",
-            index=data.decode("utf-8", "replace"))
+            index=data.decode("utf-8", "replace"),
+        )
         return self.get_json_response(data)
 
     def get_product_item(self, resource, resource_set, rfile):
         """Returns the item description for the `rfile`."""
         os, arch, subarch, series = self.get_boot_resource_identifiers(
-            resource)
-        path = '%s/%s/%s/%s/%s/%s' % (
-            os, arch, subarch, series, resource_set.version, rfile.filename)
+            resource
+        )
+        path = "%s/%s/%s/%s/%s/%s" % (
+            os,
+            arch,
+            subarch,
+            series,
+            resource_set.version,
+            rfile.filename,
+        )
         item = {
-            'path': path,
-            'ftype': rfile.filetype,
-            'sha256': rfile.largefile.sha256,
-            'size': rfile.largefile.total_size,
-            }
+            "path": path,
+            "ftype": rfile.filetype,
+            "sha256": rfile.largefile.sha256,
+            "size": rfile.largefile.total_size,
+        }
         item.update(rfile.extra)
         return item
 
     def get_product_data(self, resource):
         """Returns the product data for this resource."""
         os, arch, subarch, series = self.get_boot_resource_identifiers(
-            resource)
+            resource
+        )
         versions = {}
         label = None
-        for resource_set in resource.sets.order_by('id').reverse():
+        for resource_set in resource.sets.order_by("id").reverse():
             if not resource_set.complete:
                 continue
             # Set the label to the latest complete set label. In most cases the
@@ -298,27 +290,26 @@ class SimpleStreamsHandler:
                 label = resource_set.label
             items = {
                 rfile.filename: self.get_product_item(
-                    resource, resource_set, rfile)
+                    resource, resource_set, rfile
+                )
                 for rfile in resource_set.files.all()
-                }
-            versions[resource_set.version] = {
-                'items': items
-                }
-        product = {
-            'versions': versions,
-            'subarch': subarch,
-            'label': label,
-            'version': series,
-            'arch': arch,
-            'release': series,
-            'os': os,
             }
+            versions[resource_set.version] = {"items": items}
+        product = {
+            "versions": versions,
+            "subarch": subarch,
+            "label": label,
+            "version": series,
+            "arch": arch,
+            "release": series,
+            "os": os,
+        }
         if resource.kflavor is not None:
-            product['kflavor'] = resource.kflavor
+            product["kflavor"] = resource.kflavor
         if resource.bootloader_type is not None:
-            product['bootloader-type'] = resource.bootloader_type
+            product["bootloader-type"] = resource.bootloader_type
         if resource.rolling:
-            product['rolling'] = resource.rolling
+            product["rolling"] = resource.rolling
         product.update(resource.extra)
         return product
 
@@ -330,33 +321,35 @@ class SimpleStreamsHandler:
             products[name] = self.get_product_data(resource)
         updated = sutil.timestamp()
         index = {
-            'datatype': "image-downloads",
-            'updated': updated,
-            'content_id': "maas:v2:download",
-            'products': products,
-            'format': "products:1.0"
-            }
+            "datatype": "image-downloads",
+            "updated": updated,
+            "content_id": "maas:v2:download",
+            "products": products,
+            "format": "products:1.0",
+        }
         data = sutil.dump_data(index) + b"\n"
         return self.get_json_response(data)
 
     def streams_handler(self, request, filename):
         """Handles requests into the "streams/" content."""
-        if filename == 'index.json':
+        if filename == "index.json":
             return self.get_product_index()
-        elif filename == 'maas:v2:download.json':
+        elif filename == "maas:v2:download.json":
             return self.get_product_download()
         raise Http404()
 
     def files_handler(
-            self, request, os, arch, subarch, series, version, filename):
+        self, request, os, arch, subarch, series, version, filename
+    ):
         """Handles requests for getting the boot resource data."""
         if os == "custom":
             name = series
         else:
-            name = '%s/%s' % (os, series)
-        arch = '%s/%s' % (arch, subarch)
+            name = "%s/%s" % (os, series)
+        arch = "%s/%s" % (arch, subarch)
         resource = get_object_or_404(
-            BootResource, name=name, architecture=arch)
+            BootResource, name=name, architecture=arch
+        )
         try:
             resource_set = resource.sets.get(version=version)
         except BootResourceSet.DoesNotExist:
@@ -367,8 +360,9 @@ class SimpleStreamsHandler:
             raise Http404()
         response = StreamingHttpResponse(
             ConnectionWrapper(rfile.largefile.content),
-            content_type='application/octet-stream')
-        response['Content-Length'] = rfile.largefile.total_size
+            content_type="application/octet-stream",
+        )
+        response["Content-Length"] = rfile.largefile.total_size
         return response
 
 
@@ -378,10 +372,12 @@ def simplestreams_stream_handler(request, filename):
 
 
 def simplestreams_file_handler(
-        request, os, arch, subarch, series, version, filename):
+    request, os, arch, subarch, series, version, filename
+):
     handler = SimpleStreamsHandler()
     return handler.files_handler(
-        request, os, arch, subarch, series, version, filename)
+        request, os, arch, subarch, series, version, filename
+    )
 
 
 class BootResourceStore(ObjectStore):
@@ -428,13 +424,13 @@ class BootResourceStore(ObjectStore):
 
     def get_resource_identifiers(self, resource):
         """Return os, arch, subarch, and series for the given resource."""
-        os, series = resource.name.split('/')
+        os, series = resource.name.split("/")
         arch, subarch = resource.split_arch()
         return os, arch, subarch, series
 
     def get_resource_identity(self, resource):
         """Return the formatted identity for the given resource."""
-        return '%s/%s/%s/%s' % self.get_resource_identifiers(resource)
+        return "%s/%s/%s/%s" % self.get_resource_identifiers(resource)
 
     def cache_current_resources(self):
         """Load all current synced resources into 'self._resources_to_delete'.
@@ -445,8 +441,9 @@ class BootResourceStore(ObjectStore):
         self._resources_to_delete = {
             self.get_resource_identity(resource)
             for resource in BootResource.objects.filter(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED)
-            }
+                rtype=BOOT_RESOURCE_TYPE.SYNCED
+            )
+        }
 
         # XXX blake_r 2014-10-30 bug=1387133: We store a copy of the resources
         # to delete, so we can check if all the same resources will be delete
@@ -478,41 +475,37 @@ class BootResourceStore(ObjectStore):
         """Get existing `BootResource` for the given product or create a new
         one if one does not exist."""
         os = get_os_from_product(product)
-        arch = product['arch']
-        kflavor = product.get('kflavor')
-        bootloader_type = product.get('bootloader-type')
-        if os == 'ubuntu-core':
-            kflavor = product.get('kernel_snap', 'generic')
-            release = product['release']
-            gadget = product['gadget_snap']
-            architecture = '%s/generic' % arch
+        arch = product["arch"]
+        kflavor = product.get("kflavor")
+        bootloader_type = product.get("bootloader-type")
+        if os == "ubuntu-core":
+            kflavor = product.get("kernel_snap", "generic")
+            release = product["release"]
+            gadget = product["gadget_snap"]
+            architecture = "%s/generic" % arch
             series = "%s-%s" % (release, gadget)
         elif bootloader_type is None:
             # The rack controller assumes the subarch is the kernel. We need to
             # include the kflavor in the subarch otherwise the rack will
             # overwrite the generic kernel with each kernel flavor.
-            subarch = product.get('subarch', 'generic')
-            has_kflavor = (
-                kflavor not in (None, 'generic') and
-                (
-                    subarch.startswith('hwe-') or
-                    subarch.startswith('ga-')
-                )
+            subarch = product.get("subarch", "generic")
+            has_kflavor = kflavor not in (None, "generic") and (
+                subarch.startswith("hwe-") or subarch.startswith("ga-")
             )
             if has_kflavor:
-                if 'edge' in subarch:
-                    subarch_parts = subarch.split('-')
+                if "edge" in subarch:
+                    subarch_parts = subarch.split("-")
                     subarch_parts.insert(-1, kflavor)
-                    subarch = '-'.join(subarch_parts)
+                    subarch = "-".join(subarch_parts)
                 else:
                     subarch = "%s-%s" % (subarch, kflavor)
-            architecture = '%s/%s' % (arch, subarch)
-            series = product['release']
+            architecture = "%s/%s" % (arch, subarch)
+            series = product["release"]
         else:
-            architecture = '%s/generic' % arch
+            architecture = "%s/generic" % arch
             series = bootloader_type
 
-        name = '%s/%s' % (os, series)
+        name = "%s/%s" % (os, series)
 
         # Allow a generated resource to be replaced by a sycned resource. This
         # gives the ability for maas.io to start providing images that
@@ -520,16 +513,21 @@ class BootResourceStore(ObjectStore):
         supported_rtypes = [
             BOOT_RESOURCE_TYPE.SYNCED,
             BOOT_RESOURCE_TYPE.GENERATED,
-            ]
+        ]
         resource = get_one(
             BootResource.objects.filter(
                 rtype__in=supported_rtypes,
-                name=name, architecture=architecture))
+                name=name,
+                architecture=architecture,
+            )
+        )
         if resource is None:
             # No resource currently exists for this product.
             resource = BootResource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
-                architecture=architecture)
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name,
+                architecture=architecture,
+            )
         else:
             if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
                 # Resource already exists and was in the simplestream content,
@@ -542,7 +540,7 @@ class BootResourceStore(ObjectStore):
 
         resource.kflavor = kflavor
         resource.bootloader_type = bootloader_type
-        resource.rolling = product.get('rolling', False)
+        resource.rolling = product.get("rolling", False)
 
         # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to
@@ -551,12 +549,12 @@ class BootResourceStore(ObjectStore):
         # the database. If subarches exist in the product then we store those
         # values to expose in the simplestreams endpoint on the region.
         resource.extra = {}
-        if 'subarches' in product:
-            resource.extra['subarches'] = product['subarches']
+        if "subarches" in product:
+            resource.extra["subarches"] = product["subarches"]
 
         title = get_product_title(product)
         if title is not None:
-            resource.extra['title'] = title
+            resource.extra["title"] = title
 
         resource.save()
         return resource
@@ -564,14 +562,16 @@ class BootResourceStore(ObjectStore):
     def get_or_create_boot_resource_set(self, resource, product):
         """Get existing `BootResourceSet` for the given resource and product
         or create a new one if one does not exist."""
-        version = product['version_name']
+        version = product["version_name"]
         resource_set = get_one(resource.sets.filter(version=version))
         if resource_set is None:
             resource_set = BootResourceSet(resource=resource, version=version)
-        resource_set.label = product['label']
+        resource_set.label = product["label"]
         log.debug(
             "Got boot resource set id={id} {set}.",
-            id=resource_set.id, set=resource_set)
+            id=resource_set.id,
+            set=resource_set,
+        )
         resource_set.save()
         return resource_set
 
@@ -580,15 +580,16 @@ class BootResourceStore(ObjectStore):
         product or create a new one if one does not exist."""
         # For synced resources the filename is the same as the filetype. This
         # is the way the data is from maas.io so we emulate that here.
-        filetype = product['ftype']
-        filename = os.path.basename(product['path'])
+        filetype = product["ftype"]
+        filename = os.path.basename(product["path"])
         rfile = get_one(resource_set.files.filter(filename=filename))
         if rfile is None:
             rfile = BootResourceFile(
-                resource_set=resource_set, filename=filename)
+                resource_set=resource_set, filename=filename
+            )
         log.debug(
-            "Got boot resource file id={id} {set}.",
-            id=rfile.id, set=rfile)
+            "Got boot resource file id={id} {set}.", id=rfile.id, set=rfile
+        )
         rfile.filetype = filetype
         rfile.extra = {}
 
@@ -606,8 +607,12 @@ class BootResourceStore(ObjectStore):
         # specify kernel parameters that are unique to the release. This is
         # needed for certain ephemeral images.
         for extra_key in [
-                'kpackage', 'src_package', 'src_release', 'src_version',
-                'kparams']:
+            "kpackage",
+            "src_package",
+            "src_release",
+            "src_version",
+            "kparams",
+        ]:
             if extra_key in product:
                 rfile.extra[extra_key] = product[extra_key]
 
@@ -617,15 +622,18 @@ class BootResourceStore(ObjectStore):
         return rfile
 
     def get_resource_file_log_identifier(
-            self, rfile, resource_set=None, resource=None):
+        self, rfile, resource_set=None, resource=None
+    ):
         """Return identifier that is used for the maaslog."""
         if resource_set is None:
             resource_set = rfile.resource_set
         if resource is None:
             resource = resource_set.resource
-        return '%s/%s/%s' % (
+        return "%s/%s/%s" % (
             self.get_resource_identity(resource),
-            resource_set.version, rfile.filename)
+            resource_set.version,
+            rfile.filename,
+        )
 
     @transactional
     def insert(self, product, reader):
@@ -643,22 +651,22 @@ class BootResourceStore(ObjectStore):
         """
         resource = self.get_or_create_boot_resource(product)
         is_resource_initially_complete = (
-            resource.get_latest_complete_set() is not None)
-        resource_set = self.get_or_create_boot_resource_set(
-            resource, product)
-        rfile = self.get_or_create_boot_resource_file(
-            resource_set, product)
+            resource.get_latest_complete_set() is not None
+        )
+        resource_set = self.get_or_create_boot_resource_set(resource, product)
+        rfile = self.get_or_create_boot_resource_file(resource_set, product)
 
         # A ROOT_IMAGE may already be downloaded for the release if the stream
         # switched from one not containg SquashFS images to one that does. We
         # want to use the SquashFS image so ignore the tgz.
-        if product['ftype'] == BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE:
+        if product["ftype"] == BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE:
             resource_set.files.filter(
-                filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE).delete()
+                filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
+            ).delete()
 
         checksums = sutil.item_checksums(product)
-        sha256 = checksums['sha256']
-        total_size = int(product['size'])
+        sha256 = checksums["sha256"]
+        total_size = int(product["size"])
         needs_saving = False
         prev_largefile = None
 
@@ -681,7 +689,8 @@ class BootResourceStore(ObjectStore):
                     "resource=%s" % (prev_largefile, resource_set, resource)
                 )
                 Event.objects.create_region_event(
-                    EVENT_TYPES.REGION_IMPORT_WARNING, msg)
+                    EVENT_TYPES.REGION_IMPORT_WARNING, msg
+                )
                 maaslog.warning(msg)
 
         if largefile is None:
@@ -689,8 +698,7 @@ class BootResourceStore(ObjectStore):
             # check that a largefile does not already exist for this sha256.
             # If it does then there will be no reason to save the content into
             # the database.
-            largefile = get_one(
-                LargeFile.objects.filter(sha256=sha256))
+            largefile = get_one(LargeFile.objects.filter(sha256=sha256))
 
         if largefile is None:
             # No largefile exist for this resource file in the database, so a
@@ -698,11 +706,10 @@ class BootResourceStore(ObjectStore):
             largeobject = LargeObjectFile()
             largeobject.open().close()
             largefile = LargeFile.objects.create(
-                sha256=sha256, total_size=total_size,
-                content=largeobject)
+                sha256=sha256, total_size=total_size, content=largeobject
+            )
             needs_saving = True
-            log.debug(
-                "New large file created {lf}.", lf=largefile)
+            log.debug("New large file created {lf}.", lf=largefile)
 
         # A largefile now exists for this resource file. Its either a new
         # largefile or an existing one that already existed in the database.
@@ -710,12 +717,14 @@ class BootResourceStore(ObjectStore):
         rfile.save()
 
         is_resource_broken = (
-            is_resource_initially_complete and
-            resource.get_latest_complete_set() is None)
+            is_resource_initially_complete
+            and resource.get_latest_complete_set() is None
+        )
         if is_resource_broken:
             msg = "Resource %s has no complete resource set!" % resource
             Event.objects.create_region_event(
-                EVENT_TYPES.REGION_IMPORT_ERROR, msg)
+                EVENT_TYPES.REGION_IMPORT_ERROR, msg
+            )
             maaslog.error(msg)
 
         if prev_largefile is not None:
@@ -737,8 +746,9 @@ class BootResourceStore(ObjectStore):
             self.save_content_later(rfile, reader)
         else:
             ident = self.get_resource_file_log_identifier(
-                rfile, resource_set, resource)
-            log.debug('Boot image already up-to-date {ident}.', ident=ident)
+                rfile, resource_set, resource
+            )
+            log.debug("Boot image already up-to-date {ident}.", ident=ident)
 
     def write_content_thread(self, rid, reader):
         """Writes the data from the given reader, into the object storage
@@ -752,13 +762,12 @@ class BootResourceStore(ObjectStore):
             return rfile, ident
 
         rfile, ident = get_rfile_and_ident()
-        cksummer = sutil.checksummer(
-            {'sha256': rfile.largefile.sha256})
+        cksummer = sutil.checksummer({"sha256": rfile.largefile.sha256})
         log.debug("Finalizing boot image {ident}.", ident=ident)
 
         # Ensure that the size of the largefile starts at zero.
         rfile.largefile.size = 0
-        transactional(rfile.largefile.save)(update_fields=['size'])
+        transactional(rfile.largefile.save)(update_fields=["size"])
 
         @transactional
         def write_chunk():
@@ -767,14 +776,14 @@ class BootResourceStore(ObjectStore):
             This ensures that the content and the size is committed into the
             database per chunk. This makes the process be reported correctly.
             """
-            with rfile.largefile.content.open('wb') as stream:
+            with rfile.largefile.content.open("wb") as stream:
                 buf = reader.read(self.read_size)
                 stream.seek(0, 2)
                 stream.write(buf)
                 cksummer.update(buf)
                 buf_len = len(buf)
                 rfile.largefile.size += buf_len
-                rfile.largefile.save(update_fields=['size'])
+                rfile.largefile.save(update_fields=["size"])
                 if buf_len != self.read_size:
                     return True
                 else:
@@ -795,16 +804,21 @@ class BootResourceStore(ObjectStore):
             # will be deleted since it is corrupt.
             msg = (
                 "Failed to finalize boot image %s. Unexpected "
-                "checksum '%s' (found: %s expected: %s)" %
-                (
-                    ident, cksummer.algorithm, cksummer.hexdigest(),
-                    cksummer.expected))
+                "checksum '%s' (found: %s expected: %s)"
+                % (
+                    ident,
+                    cksummer.algorithm,
+                    cksummer.hexdigest(),
+                    cksummer.expected,
+                )
+            )
             Event.objects.create_region_event(
-                EVENT_TYPES.REGION_IMPORT_ERROR, msg)
+                EVENT_TYPES.REGION_IMPORT_ERROR, msg
+            )
             maaslog.error(msg)
             transactional(rfile.delete)()
         else:
-            log.debug('Finalized boot image {ident}.', ident=ident)
+            log.debug("Finalized boot image {ident}.", ident=ident)
 
     def perform_write(self):
         """Performs all writing of content into the object storage.
@@ -834,8 +848,8 @@ class BootResourceStore(ObjectStore):
             rid, reader = self._content_to_finalize.popitem()
             # FIXME: Use deferToDatabase and the coiterator if possible.
             thread = threading.Thread(
-                target=self.write_content_thread,
-                args=(rid, reader))
+                target=self.write_content_thread, args=(rid, reader)
+            )
             thread.start()
             threads.append(thread)
 
@@ -851,17 +865,24 @@ class BootResourceStore(ObjectStore):
         # Filter all resources to only those that should remain.
         related_resources = BootResource.objects.all()
         for deleted_ident in self._resources_to_delete:
-            deleted_os, deleted_arch, deleted_subarch, deleted_series = (
-                deleted_ident.split('/'))
+            (
+                deleted_os,
+                deleted_arch,
+                deleted_subarch,
+                deleted_series,
+            ) = deleted_ident.split("/")
             related_resources = related_resources.exclude(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name='%s/%s' % (deleted_os, deleted_series),
-                architecture='%s/%s' % (deleted_arch, deleted_subarch))
+                name="%s/%s" % (deleted_os, deleted_series),
+                architecture="%s/%s" % (deleted_arch, deleted_subarch),
+            )
         # Filter the remaining resources to those related to this os,
         # arch, series.
         related_resources = related_resources.filter(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED, name='%s/%s' % (os, series),
-            architecture__startswith=arch)
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name="%s/%s" % (os, series),
+            architecture__startswith=arch,
+        )
         return related_resources.exists()
 
     @transactional
@@ -873,13 +894,16 @@ class BootResourceStore(ObjectStore):
             for selection in BootSourceSelection.objects.all()
         ]
         for ident in self._resources_to_delete:
-            os, arch, subarch, series = ident.split('/')
-            name = '%s/%s' % (os, series)
-            architecture = '%s/%s' % (arch, subarch)
+            os, arch, subarch, series = ident.split("/")
+            name = "%s/%s" % (os, series)
+            architecture = "%s/%s" % (arch, subarch)
             delete_resource = get_one(
                 BootResource.objects.filter(
                     rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                    name=name, architecture=architecture))
+                    name=name,
+                    architecture=architecture,
+                )
+            )
             if delete_resource is not None:
                 resource_set = delete_resource.get_latest_set()
                 if resource_set is not None:
@@ -890,32 +914,40 @@ class BootResourceStore(ObjectStore):
                     # otherwise we remove it. Extra subarches for an image
                     # are not kept when simplestreams is still providing that
                     # os, arch, series combination.
-                    if (not image_passes_filter(
-                            selections, os, arch, subarch,
-                            series, resource_set.label) or
-                            self._other_resources_exists(
-                                os, arch, subarch, series)):
+                    if not image_passes_filter(
+                        selections,
+                        os,
+                        arch,
+                        subarch,
+                        series,
+                        resource_set.label,
+                    ) or self._other_resources_exists(
+                        os, arch, subarch, series
+                    ):
                         # It was selected for removal.
                         log.debug(
                             "Deleting boot image {ident}.",
-                            ident=self.get_resource_identity(delete_resource))
+                            ident=self.get_resource_identity(delete_resource),
+                        )
                         delete_resource.delete()
                     else:
                         msg = (
                             "Boot image %s no longer exists in stream, but "
                             "remains in selections. To delete this image "
-                            "remove its selection." %
-                            self.get_resource_identity(delete_resource)
+                            "remove its selection."
+                            % self.get_resource_identity(delete_resource)
                         )
                         Event.objects.create_region_event(
-                            EVENT_TYPES.REGION_IMPORT_INFO, msg)
+                            EVENT_TYPES.REGION_IMPORT_INFO, msg
+                        )
                         maaslog.info(msg)
                 else:
                     # No resource set on the boot resource so it should be
                     # removed as it has not files.
                     log.debug(
                         "Deleting boot image {ident}.",
-                        ident=self.get_resource_identity(delete_resource))
+                        ident=self.get_resource_identity(delete_resource),
+                    )
                     delete_resource.delete()
 
     @transactional
@@ -924,16 +956,18 @@ class BootResourceStore(ObjectStore):
         `BootResource`'s."""
         # Remove the sets that are incomplete and older versions.
         for resource in BootResource.objects.filter(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED):
+            rtype=BOOT_RESOURCE_TYPE.SYNCED
+        ):
             found_complete = False
             # Reverse order by id, so that we keep the newest completed set.
-            for resource_set in resource.sets.order_by('id').reverse():
+            for resource_set in resource.sets.order_by("id").reverse():
                 if not resource_set.complete:
                     # At this point all resource sets should be complete.
                     # Delete the extras that are not.
                     log.debug(
                         "Deleting incomplete resourceset {set}.",
-                        set=resource_set)
+                        set=resource_set,
+                    )
                     resource_set.delete()
                 else:
                     # It is complete, only keep the newest complete set.
@@ -942,7 +976,8 @@ class BootResourceStore(ObjectStore):
                     else:
                         log.debug(
                             "Deleting obsolete resourceset {set}.",
-                            set=resource_set)
+                            set=resource_set,
+                        )
                         resource_set.delete()
 
         # Cleanup the resources that don't have sets. This is done because
@@ -950,10 +985,10 @@ class BootResourceStore(ObjectStore):
         # from a boot resource, so the resource should be removed, instead
         # of being empty.
         for resource in BootResource.objects.filter(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED):
+            rtype=BOOT_RESOURCE_TYPE.SYNCED
+        ):
             if not resource.sets.exists():
-                log.debug(
-                    "Deleting empty resource {res}.", res=resource)
+                log.debug("Deleting empty resource {res}.", res=resource)
                 resource.delete()
 
     @transactional
@@ -980,18 +1015,24 @@ class BootResourceStore(ObjectStore):
         # no nodes will be able to be provisioned.
         log.debug(
             "Finalize will delete {num} images(s).",
-            num=len(self._resources_to_delete))
+            num=len(self._resources_to_delete),
+        )
         log.debug(
             "Finalize will save {num} new images(s).",
-            num=len(self._content_to_finalize))
-        if (self._resources_to_delete == self._init_resources_to_delete and
-                len(self._content_to_finalize) == 0):
+            num=len(self._content_to_finalize),
+        )
+        if (
+            self._resources_to_delete == self._init_resources_to_delete
+            and len(self._content_to_finalize) == 0
+        ):
             error_msg = (
                 "Finalization of imported images skipped, "
-                "or all %s synced images would be deleted." % (
-                    self._resources_to_delete))
+                "or all %s synced images would be deleted."
+                % (self._resources_to_delete)
+            )
             Event.objects.create_region_event(
-                EVENT_TYPES.REGION_IMPORT_ERROR, error_msg)
+                EVENT_TYPES.REGION_IMPORT_ERROR, error_msg
+            )
             maaslog.error(error_msg)
             if notify is not None:
                 failure = Failure(Exception(error_msg))
@@ -1025,8 +1066,9 @@ class BootResourceStore(ObjectStore):
             self._cancel_finalize = True
             self.finalize(notify=notify)
         else:
-            assert notify is None, (
-                "notify is not supported if finalization already started.")
+            assert (
+                notify is None
+            ), "notify is not supported if finalization already started."
             # Finalization is already started so cancel the finalization.
             # Setting to True triggers that running thread spawning process
             # to stop, and perform the cleanup.
@@ -1046,11 +1088,13 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         assert isinstance(store, BootResourceStore)
         self.store = store
         self.product_mapping = product_mapping
-        super(BootResourceRepoWriter, self).__init__(config={
-            # Only download the latest version. Without this all versions
-            # will be downloaded from simplestreams.
-            'max_items': 1,
-            })
+        super(BootResourceRepoWriter, self).__init__(
+            config={
+                # Only download the latest version. Without this all versions
+                # will be downloaded from simplestreams.
+                "max_items": 1
+            }
+        )
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""
@@ -1062,47 +1106,51 @@ class BootResourceRepoWriter(BasicMirrorWriter):
     def filter_version(self, data, src, target, pedigree):
         """Overridable from `BasicMirrorWriter`."""
         return self.product_mapping.contains(
-            sutil.products_exdata(src, pedigree))
+            sutil.products_exdata(src, pedigree)
+        )
 
     def insert_item(self, data, src, target, pedigree, contentsource):
         """Overridable from `BasicMirrorWriter`."""
         item = sutil.products_exdata(src, pedigree)
         product_name = pedigree[0]
         version_name = pedigree[1]
-        versions = src['products'][product_name]['versions']
-        items = versions[version_name]['items']
-        maas_supported = item.get('maas_supported')
+        versions = src["products"][product_name]["versions"]
+        items = versions[version_name]["items"]
+        maas_supported = item.get("maas_supported")
         # If the item requires a specific version of MAAS check the running
         # version meets or exceeds that requirement.
         if maas_supported is not None:
             supported_version = tuple(
-                int(x) for x in maas_supported.split('.'))
+                int(x) for x in maas_supported.split(".")
+            )
             if supported_version > get_maas_version_tuple():
                 maaslog.warning(
-                    'Ignoring %s, requires a newer version of MAAS(%s)' %
-                    (product_name, supported_version))
+                    "Ignoring %s, requires a newer version of MAAS(%s)"
+                    % (product_name, supported_version)
+                )
                 return
         if (
-                item['ftype'] == BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE and
-                BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in items.keys()):
+            item["ftype"] == BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
+            and BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in items.keys()
+        ):
             # If both a SquashFS and root-image.gz are available only insert
             # the SquashFS image.
             return
-        elif item['ftype'] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
+        elif item["ftype"] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
             # Skip filetypes that we don't know about.
             maaslog.warning(
-                'Ignoring unsupported filetype(%s) from %s %s' %
-                (item['ftype'], product_name, version_name))
+                "Ignoring unsupported filetype(%s) from %s %s"
+                % (item["ftype"], product_name, version_name)
+            )
             return
         elif not validate_product(item, product_name):
-            maaslog.warning('Ignoring unsupported product %s' % product_name)
+            maaslog.warning("Ignoring unsupported product %s" % product_name)
             return
         else:
             self.store.insert(item, contentsource)
 
 
-def download_boot_resources(path, store, product_mapping,
-                            keyring_file=None):
+def download_boot_resources(path, store, product_mapping, keyring_file=None):
     """Download boot resources for one simplestreams source.
 
     :param path: The Simplestreams URL for this source.
@@ -1118,8 +1166,8 @@ def download_boot_resources(path, store, product_mapping,
     policy = get_signing_policy(rpath, keyring_file)
     try:
         reader = UrlMirrorReader(
-            mirror, policy=policy,
-            user_agent=get_maas_user_agent())
+            mirror, policy=policy, user_agent=get_maas_user_agent()
+        )
     except TypeError:
         # UrlMirrorReader doesn't support the user_agent argument.
         # simplestream >=bzr429 is required for this feature.
@@ -1128,7 +1176,8 @@ def download_boot_resources(path, store, product_mapping,
 
 
 def download_all_boot_resources(
-        sources, product_mapping, store=None, notify=None):
+    sources, product_mapping, store=None, notify=None
+):
     """Downloads all of the boot resources from the sources.
 
     Boot resources are stored into the `BootResource` model.
@@ -1174,24 +1223,28 @@ def download_all_boot_resources(
                     needs_cancel = True
         if needs_cancel:
             store.cancel_finalize()
+
     listener.register("sys_stop_import", stop_import)
 
     # Download all of the metadata first.
     for source in sources:
-        msg = "Importing images from source: %s" % source['url']
-        Event.objects.create_region_event(
-            EVENT_TYPES.REGION_IMPORT_INFO, msg)
+        msg = "Importing images from source: %s" % source["url"]
+        Event.objects.create_region_event(EVENT_TYPES.REGION_IMPORT_INFO, msg)
         maaslog.info(msg)
         download_boot_resources(
-            source['url'], store, product_mapping,
-            keyring_file=source.get('keyring'))
+            source["url"],
+            store,
+            product_mapping,
+            keyring_file=source.get("keyring"),
+        )
 
     # Start finalizing or cancel finalizing.
     with lock:
         stopped = stop
     if stopped:
         log.debug(
-            "Finalizing BootResourceStore was cancelled before starting.")
+            "Finalizing BootResourceStore was cancelled before starting."
+        )
         store.cancel_finalize(notify=notify)
     else:
         log.debug("Finalizing BootResourceStore.")
@@ -1211,7 +1264,8 @@ def set_global_default_releases():
         Config.objects.get(name="commissioning_distro_series")
     except Config.DoesNotExist:
         commissioning_resources = (
-            BootResource.objects.get_available_commissioning_resources())
+            BootResource.objects.get_available_commissioning_resources()
+        )
         if len(commissioning_resources) > 0:
             default_resource = commissioning_resources[0]
             osystem, release = default_resource.name.split("/")
@@ -1224,7 +1278,8 @@ def set_global_default_releases():
     except Config.DoesNotExist:
         if commissioning_resources is None:
             commissioning_resources = (
-                BootResource.objects.get_available_commissioning_resources())
+                BootResource.objects.get_available_commissioning_resources()
+            )
         if len(commissioning_resources) > 0:
             default_resource = commissioning_resources[0]
             osystem, release = default_resource.name.split("/")
@@ -1279,7 +1334,8 @@ def _import_resources_without_lock(notify=None):
     """
     assert not in_transaction(), (
         "_import_resources_with_lock() must not be called within a "
-        "preexisting transaction; it manages its own.")
+        "preexisting transaction; it manages its own."
+    )
 
     # Make sure that notify is a `Deferred` that has not beed called.
     if notify is not None:
@@ -1301,30 +1357,33 @@ def _import_resources_without_lock(notify=None):
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
     set_simplestreams_env()
 
-    with tempdir('keyrings') as keyrings_path:
+    with tempdir("keyrings") as keyrings_path:
         sources = get_boot_sources()
         sources = write_all_keyrings(keyrings_path, sources)
-        msg = (
-            "Started importing of boot images from %d source(s)." %
-            len(sources))
+        msg = "Started importing of boot images from %d source(s)." % len(
+            sources
+        )
         Event.objects.create_region_event(EVENT_TYPES.REGION_IMPORT_INFO, msg)
         maaslog.info(msg)
 
         image_descriptions = download_all_image_descriptions(
-            sources, get_maas_user_agent())
+            sources, get_maas_user_agent()
+        )
         if image_descriptions.is_empty():
             msg = (
                 "Unable to import boot images, no image "
                 "descriptions avaliable."
             )
             Event.objects.create_region_event(
-                EVENT_TYPES.REGION_IMPORT_WARNING, msg)
+                EVENT_TYPES.REGION_IMPORT_WARNING, msg
+            )
             maaslog.warning(msg)
             return
         product_mapping = map_products(image_descriptions)
 
         successful = download_all_boot_resources(
-            sources, product_mapping, notify=notify)
+            sources, product_mapping, notify=notify
+        )
 
     if successful:
         set_global_default_releases()
@@ -1333,13 +1392,13 @@ def _import_resources_without_lock(notify=None):
         # the import process to make sure all user selected options
         # are downloaded.
         current_sources = get_boot_sources()
-        new_selections = (len(sources) != len(current_sources))
+        new_selections = len(sources) != len(current_sources)
         for old, current in zip(sources, current_sources):
             # Keyring is added by write_all_keyrings above. It is the
             # temporary path of the GPG keyring file extracted from the
             # database.
-            old.pop('keyring', None)
-            current.pop('keyring', None)
+            old.pop("keyring", None)
+            current.pop("keyring", None)
             if current != old:
                 new_selections = True
                 break
@@ -1348,11 +1407,13 @@ def _import_resources_without_lock(notify=None):
         else:
             maaslog.info(
                 "Finished importing of boot images from %d source(s).",
-                len(sources))
+                len(sources),
+            )
     else:
         maaslog.warning(
             "Importing of boot images from %d source(s) was cancelled.",
-            len(sources))
+            len(sources),
+        )
 
 
 @synchronous
@@ -1410,8 +1471,7 @@ def is_import_resources_running():
 @inlineCallbacks
 def stop_import_resources():
     """Stops the running import process."""
-    running = yield deferToDatabase(
-        transactional(is_import_resources_running))
+    running = yield deferToDatabase(transactional(is_import_resources_running))
     if not running:
         # Nothing to do as its not running.
         return
@@ -1421,13 +1481,15 @@ def stop_import_resources():
     def notify():
         with connection.cursor() as cursor:
             cursor.execute("NOTIFY sys_stop_import;")
+
     yield deferToDatabase(notify)
 
     # Wait for the importing lock to be released, before saying it has
     # fully been stopped.
     while True:
         running = yield deferToDatabase(
-            transactional(is_import_resources_running))
+            transactional(is_import_resources_running)
+        )
         if not running:
             break
         yield pause(0.2)
@@ -1446,19 +1508,22 @@ class ImportResourcesService(TimerService, object):
 
     def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
         super(ImportResourcesService, self).__init__(
-            interval.total_seconds(), self.maybe_import_resources)
+            interval.total_seconds(), self.maybe_import_resources
+        )
 
     def maybe_import_resources(self):
         def determine_auto():
-            auto = Config.objects.get_config('boot_images_auto_import')
+            auto = Config.objects.get_config("boot_images_auto_import")
             if not auto:
                 return auto
             dev_without_images = (
-                is_dev_environment() and not BootResourceSet.objects.exists())
+                is_dev_environment() and not BootResourceSet.objects.exists()
+            )
             if dev_without_images:
                 return False
             else:
                 return auto
+
         d = deferToDatabase(transactional(determine_auto))
         d.addCallback(self.import_resources_if_configured)
         d.addErrback(log.err, "Failure importing boot resources.")
@@ -1470,7 +1535,8 @@ class ImportResourcesService(TimerService, object):
         else:
             maaslog.info(
                 "Skipping periodic import of boot resources; "
-                "it has been disabled.")
+                "it has been disabled."
+            )
 
 
 class ImportResourcesProgressService(TimerService, object):
@@ -1478,16 +1544,19 @@ class ImportResourcesProgressService(TimerService, object):
 
     def __init__(self, interval=timedelta(minutes=3)):
         super(ImportResourcesProgressService, self).__init__(
-            interval.total_seconds(), self.try_check_boot_images)
+            interval.total_seconds(), self.try_check_boot_images
+        )
 
     def try_check_boot_images(self):
         return self.check_boot_images().addErrback(
-            log.err, "Failure checking for boot images.")
+            log.err, "Failure checking for boot images."
+        )
 
     @inlineCallbacks
     def check_boot_images(self):
-        if (yield deferToDatabase(
-                self.are_boot_images_available_in_the_region)):
+        if (
+            yield deferToDatabase(self.are_boot_images_available_in_the_region)
+        ):
             # The region has boot resources. The racks will too soon if
             # they haven't already. Nothing to see here, please move along.
             yield deferToDatabase(self.clear_import_warning)
@@ -1501,18 +1570,22 @@ class ImportResourcesProgressService(TimerService, object):
                 warning = self.warning_rack_has_no_boot_images
             yield deferToDatabase(self.set_import_warning, warning)
 
-    warning_rack_has_boot_images = dedent("""\
+    warning_rack_has_boot_images = dedent(
+        """\
     One or more of your rack controller(s) currently has boot images, but your
     region controller does not. Machines will not be able to provision until
     you import boot images into the region. Visit the
     <a href="%(images_link)s">boot images</a> page to start the import.
-    """)
+    """
+    )
 
-    warning_rack_has_no_boot_images = dedent("""\
+    warning_rack_has_no_boot_images = dedent(
+        """\
     Boot image import process not started. Machines will not be able to
     provision without boot images. Visit the
     <a href="%(images_link)s">boot images</a> page to start the import.
-    """)
+    """
+    )
 
     @transactional
     def clear_import_warning(self):
@@ -1520,7 +1593,7 @@ class ImportResourcesProgressService(TimerService, object):
 
     @transactional
     def set_import_warning(self, warning):
-        warning %= {"images_link": absolute_reverse('index') + '#/images'}
+        warning %= {"images_link": absolute_reverse("index") + "#/images"}
         register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
     @transactional

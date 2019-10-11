@@ -5,20 +5,14 @@
 
 __all__ = []
 
-from collections import (
-    Counter,
-    Iterator,
-)
+from collections import Counter, Iterator
 
 from maasserver.clusterrpc.osystems import (
     gen_all_known_operating_systems,
     get_preseed_data,
     validate_license_key,
 )
-from maasserver.enum import (
-    BOOT_RESOURCE_TYPE,
-    PRESEED_TYPE,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE, PRESEED_TYPE
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -67,16 +61,16 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         counter = Counter(
-            osystem["name"] for osystem in
-            gen_all_known_operating_systems())
+            osystem["name"] for osystem in gen_all_known_operating_systems()
+        )
 
         def get_count(item):
             name, count = item
             return count
 
         self.assertThat(
-            counter.items(), AllMatch(
-                AfterPreprocessing(get_count, Equals(1))))
+            counter.items(), AllMatch(AfterPreprocessing(get_count, Equals(1)))
+        )
 
     def test_os_data_is_passed_through_unmolested(self):
         factory.make_RackController()
@@ -87,15 +81,16 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
                     "name": factory.make_name("name"),
                     "foo": factory.make_name("foo"),
                     "bar": factory.make_name("bar"),
-                },
-            ],
+                }
+            ]
         }
         for client in getAllClients():
             callRemote = self.patch(client._conn, "callRemote")
             callRemote.return_value = succeed(example)
 
         self.assertItemsEqual(
-            example["osystems"], gen_all_known_operating_systems())
+            example["osystems"], gen_all_known_operating_systems()
+        )
 
     def test_ignores_failures_when_talking_to_clusters(self):
         factory.make_RackController()
@@ -119,8 +114,8 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         # failures arising from communicating with the other clusters have all
         # been suppressed.
         self.assertItemsEqual(
-            [{"name": clients[0].ident}],
-            gen_all_known_operating_systems())
+            [{"name": clients[0].ident}], gen_all_known_operating_systems()
+        )
 
     def test_fixes_custom_osystem_release_titles(self):
         factory.make_RackController()
@@ -128,30 +123,31 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
 
         releases = [factory.make_name("release") for _ in range(3)]
         os_releases = [
-            {"name": release, "title": release}
-            for release in releases
-            ]
+            {"name": release, "title": release} for release in releases
+        ]
         for release in releases:
             factory.make_BootResource(
-                rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=release,
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+                name=release,
                 architecture=make_usable_architecture(self),
-                extra={"title": release.upper()})
+                extra={"title": release.upper()},
+            )
 
         clients = getAllClients()
         for index, client in enumerate(clients):
             callRemote = self.patch(client._conn, "callRemote")
             example = {
                 "osystems": [{"name": "custom", "releases": os_releases}]
-                }
+            }
             callRemote.return_value = succeed(example)
 
         releases_with_titles = [
-            {"name": release, "title": release.upper()}
-            for release in releases
-            ]
+            {"name": release, "title": release.upper()} for release in releases
+        ]
         self.assertItemsEqual(
             [{"name": "custom", "releases": releases_with_titles}],
-            gen_all_known_operating_systems())
+            gen_all_known_operating_systems(),
+        )
 
 
 class TestGetPreseedData(MAASServerTestCase):
@@ -160,17 +156,18 @@ class TestGetPreseedData(MAASServerTestCase):
     def test_returns_preseed_data(self):
         # The Windows driver is known to provide custom preseed data.
         rack = factory.make_RackController()
-        node = factory.make_Node(
-            interface=True, osystem="windows")
+        node = factory.make_Node(interface=True, osystem="windows")
         boot_interface = node.get_boot_interface()
         boot_interface.vlan.dhcp_on = True
         boot_interface.vlan.primary_rack = rack
         boot_interface.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         preseed_data = get_preseed_data(
-            PRESEED_TYPE.COMMISSIONING, node,
+            PRESEED_TYPE.COMMISSIONING,
+            node,
             token=NodeKey.objects.get_token_for_node(node),
-            metadata_url=factory.make_url())
+            metadata_url=factory.make_url(),
+        )
         self.assertThat(preseed_data, IsInstance(dict))
         self.assertNotIn("data", preseed_data)
         self.assertThat(preseed_data, Not(HasLength(0)))
@@ -179,31 +176,39 @@ class TestGetPreseedData(MAASServerTestCase):
         # The Windows driver is known to *not* provide custom preseed
         # data when using Curtin.
         rack = factory.make_RackController()
-        node = factory.make_Node(
-            interface=True, osystem="windows")
+        node = factory.make_Node(interface=True, osystem="windows")
         boot_interface = node.get_boot_interface()
         boot_interface.vlan.dhcp_on = True
         boot_interface.vlan.primary_rack = rack
         boot_interface.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
-            NotImplementedError, get_preseed_data, PRESEED_TYPE.CURTIN,
-            node, token=NodeKey.objects.get_token_for_node(node),
-            metadata_url=factory.make_url())
+            NotImplementedError,
+            get_preseed_data,
+            PRESEED_TYPE.CURTIN,
+            node,
+            token=NodeKey.objects.get_token_for_node(node),
+            metadata_url=factory.make_url(),
+        )
 
     def test_propagates_NoSuchOperatingSystem(self):
         rack = factory.make_RackController()
         node = factory.make_Node(
-            interface=True, osystem=factory.make_name("foo"))
+            interface=True, osystem=factory.make_name("foo")
+        )
         boot_interface = node.get_boot_interface()
         boot_interface.vlan.dhcp_on = True
         boot_interface.vlan.primary_rack = rack
         boot_interface.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
-            NoSuchOperatingSystem, get_preseed_data, PRESEED_TYPE.CURTIN,
-            node, token=NodeKey.objects.get_token_for_node(node),
-            metadata_url=factory.make_url())
+            NoSuchOperatingSystem,
+            get_preseed_data,
+            PRESEED_TYPE.CURTIN,
+            node,
+            token=NodeKey.objects.get_token_for_node(node),
+            metadata_url=factory.make_url(),
+        )
 
 
 class TestValidateLicenseKey(MAASServerTestCase):
@@ -246,7 +251,8 @@ class TestValidateLicenseKey(MAASServerTestCase):
                 callRemote.return_value = succeed({"is_valid": False})
 
         is_valid = validate_license_key(
-            "windows", "win2012", factory.make_name("key"))
+            "windows", "win2012", factory.make_name("key")
+        )
         self.assertTrue(is_valid)
 
     def test_returns_True_when_only_one_cluster_returns_True_others_fail(self):
@@ -267,12 +273,13 @@ class TestValidateLicenseKey(MAASServerTestCase):
                 callRemote.side_effect = ZeroDivisionError()
 
         is_valid = validate_license_key(
-            "windows", "win2012", factory.make_name("key"))
+            "windows", "win2012", factory.make_name("key")
+        )
         self.assertTrue(is_valid)
 
     def test_returns_False_with_one_cluster(self):
         factory.make_RackController()
-        key = factory.make_name('invalid-key')
+        key = factory.make_name("invalid-key")
         self.useFixture(RunningClusterRPCFixture())
         is_valid = validate_license_key("windows", "win2012", key)
         self.assertFalse(is_valid)
@@ -289,5 +296,6 @@ class TestValidateLicenseKey(MAASServerTestCase):
             callRemote.side_effect = ZeroDivisionError()
 
         is_valid = validate_license_key(
-            "windows", "win2012", factory.make_name('key'))
+            "windows", "win2012", factory.make_name("key")
+        )
         self.assertFalse(is_valid)

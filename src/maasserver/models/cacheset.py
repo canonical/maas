@@ -3,16 +3,11 @@
 
 """Model for a Bcache cache set."""
 
-__all__ = [
-    'CacheSet',
-    ]
+__all__ = ["CacheSet"]
 
 
 from django.core.exceptions import PermissionDenied
-from django.db.models import (
-    Manager,
-    Q,
-)
+from django.db.models import Manager, Q
 from django.http import Http404
 from maasserver import DefaultMeta
 from maasserver.enum import FILESYSTEM_TYPE
@@ -21,14 +16,13 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 
 class CacheSetManager(Manager):
-
     def get_cache_set_idx(self, cache_set):
         """Return the idx of this cache set for its node."""
         node = cache_set.get_node()
         cache_sets = self.filter(
-            Q(filesystems__partition__partition_table__block_device__node=(
-                node)) |
-            Q(filesystems__block_device__node=node)).order_by("id")
+            Q(filesystems__partition__partition_table__block_device__node=node)
+            | Q(filesystems__block_device__node=node)
+        ).order_by("id")
         for idx, cset in enumerate(cache_sets):
             if cset == cache_set:
                 return idx
@@ -38,11 +32,11 @@ class CacheSetManager(Manager):
         """Return the cache sets for the `node`."""
         partition_filter = {
             "filesystems__partition__partition_table__"
-            "block_device__node": node,
+            "block_device__node": node
         }
         return self.filter(
-            Q(filesystems__block_device__node=node) |
-            Q(**partition_filter))
+            Q(filesystems__block_device__node=node) | Q(**partition_filter)
+        )
 
     def get_cache_set_for_block_device(self, block_device):
         """Return the cache set for `block_device`."""
@@ -56,8 +50,8 @@ class CacheSetManager(Manager):
         """Get or create the cache set for the `block_device`."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
-        existing_cache_set = self.get_cache_set_for_block_device(
-            block_device)
+
+        existing_cache_set = self.get_cache_set_for_block_device(block_device)
         if existing_cache_set is not None:
             return existing_cache_set
         else:
@@ -65,15 +59,16 @@ class CacheSetManager(Manager):
             Filesystem.objects.create(
                 block_device=block_device,
                 fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                cache_set=cache_set)
+                cache_set=cache_set,
+            )
             return cache_set
 
     def get_or_create_cache_set_for_partition(self, partition):
         """Get or create the cache set for the `partition`."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
-        existing_cache_set = self.get_cache_set_for_partition(
-            partition)
+
+        existing_cache_set = self.get_cache_set_for_partition(partition)
         if existing_cache_set is not None:
             return existing_cache_set
         else:
@@ -81,7 +76,8 @@ class CacheSetManager(Manager):
             Filesystem.objects.create(
                 partition=partition,
                 fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                cache_set=cache_set)
+                cache_set=cache_set,
+            )
             return cache_set
 
     def get_cache_set_by_id_or_name(self, cache_set_id_or_name, node):
@@ -89,7 +85,7 @@ class CacheSetManager(Manager):
         try:
             cache_set_id = int(cache_set_id_or_name)
         except ValueError:
-            name_split = cache_set_id_or_name.split('cache')
+            name_split = cache_set_id_or_name.split("cache")
             if len(name_split) != 2:
                 # Invalid name.
                 raise self.model.DoesNotExist()
@@ -135,6 +131,7 @@ class CacheSetManager(Manager):
         """
         # Circular imports.
         from maasserver.models.node import Machine
+
         machine = Machine.objects.get_node_or_404(system_id, user, perm)
         try:
             cache_set = self.get_cache_set_by_id_or_name(cache_set_id, machine)

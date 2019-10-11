@@ -3,24 +3,14 @@
 
 """API handlers: `Pod`."""
 
-__all__ = [
-    "PodHandler",
-    "PodsHandler",
-    ]
+__all__ = ["PodHandler", "PodsHandler"]
 
 from django.core.exceptions import PermissionDenied
 from formencode.validators import String
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms.pods import (
-    ComposeMachineForm,
-    PodForm,
-)
+from maasserver.forms.pods import ComposeMachineForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.permissions import PodPermission
 from maasserver.utils.django_urls import reverse
@@ -29,23 +19,23 @@ from provisioningserver.drivers.pod import Capabilities
 
 # Pod fields exposed on the API.
 DISPLAYED_POD_FIELDS = (
-    'id',
-    'name',
-    'tags',
-    'type',
-    'architectures',
-    'capabilities',
-    'total',
-    'used',
-    'available',
-    'zone',
-    'cpu_over_commit_ratio',
-    'memory_over_commit_ratio',
-    'storage_pools',
-    'pool',
-    'host',
-    'default_macvlan_mode',
-    )
+    "id",
+    "name",
+    "tags",
+    "type",
+    "architectures",
+    "capabilities",
+    "total",
+    "used",
+    "available",
+    "zone",
+    "cpu_over_commit_ratio",
+    "memory_over_commit_ratio",
+    "storage_pools",
+    "pool",
+    "host",
+    "default_macvlan_mode",
+)
 
 
 class PodHandler(OperationsHandler):
@@ -54,6 +44,7 @@ class PodHandler(OperationsHandler):
 
     A pod is identified by its id.
     """
+
     api_doc_section_name = "Pod"
 
     create = None
@@ -67,27 +58,27 @@ class PodHandler(OperationsHandler):
     @classmethod
     def total(cls, pod):
         result = {
-            'cores': pod.cores,
-            'memory': pod.memory,
-            'local_storage': pod.local_storage,
+            "cores": pod.cores,
+            "memory": pod.memory,
+            "local_storage": pod.local_storage,
         }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
-            result['local_disks'] = pod.local_disks
+            result["local_disks"] = pod.local_disks
         if Capabilities.ISCSI_STORAGE in pod.capabilities:
-            result['iscsi_storage'] = pod.iscsi_storage
+            result["iscsi_storage"] = pod.iscsi_storage
         return result
 
     @classmethod
     def used(cls, pod):
         result = {
-            'cores': pod.get_used_cores(),
-            'memory': pod.get_used_memory(),
-            'local_storage': pod.get_used_local_storage(),
+            "cores": pod.get_used_cores(),
+            "memory": pod.get_used_memory(),
+            "local_storage": pod.get_used_local_storage(),
         }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
-            result['local_disks'] = pod.get_used_local_disks()
+            result["local_disks"] = pod.get_used_local_disks()
         if Capabilities.ISCSI_STORAGE in pod.capabilities:
-            result['iscsi_storage'] = pod.get_used_iscsi_storage()
+            result["iscsi_storage"] = pod.get_used_iscsi_storage()
         return result
 
     @classmethod
@@ -104,16 +95,18 @@ class PodHandler(OperationsHandler):
         default_id = pod.default_storage_pool_id
         for pool in pod.storage_pools.all():
             used = pool.get_used_storage()
-            pools.append({
-                'id': pool.pool_id,
-                'name': pool.name,
-                'type': pool.pool_type,
-                'path': pool.path,
-                'total': pool.storage,
-                'used': used,
-                'available': pool.storage - used,
-                'default': pool.id == default_id
-            })
+            pools.append(
+                {
+                    "id": pool.pool_id,
+                    "name": pool.name,
+                    "type": pool.pool_type,
+                    "path": pool.path,
+                    "total": pool.storage,
+                    "used": used,
+                    "available": pool.storage - used,
+                    "default": pool.id == default_id,
+                }
+            )
         return pools
 
     @classmethod
@@ -123,10 +116,7 @@ class PodHandler(OperationsHandler):
             system_id = pod.host.system_id
         # __incomplete__ let's user know that this
         # object has more data associated with it.
-        return {
-            'system_id': system_id,
-            '__incomplete__': True,
-        }
+        return {"system_id": system_id, "__incomplete__": True}
 
     @admin_method
     def update(self, request, id):
@@ -334,16 +324,18 @@ class PodHandler(OperationsHandler):
             This method is reserved for admin users.
         """
         pod = Pod.objects.get_pod_or_404(
-            id, request.user, PodPermission.compose)
+            id, request.user, PodPermission.compose
+        )
         if Capabilities.COMPOSABLE not in pod.capabilities:
             raise MAASAPIValidationError("Pod does not support composability.")
         form = ComposeMachineForm(data=request.data, pod=pod, request=request)
         if form.is_valid():
             machine = form.compose()
             return {
-                'system_id': machine.system_id,
-                'resource_uri': reverse(
-                    'machine_handler', kwargs={'system_id': machine.system_id})
+                "system_id": machine.system_id,
+                "resource_uri": reverse(
+                    "machine_handler", kwargs={"system_id": machine.system_id}
+                ),
             }
         else:
             raise MAASAPIValidationError(form.errors)
@@ -373,9 +365,9 @@ class PodHandler(OperationsHandler):
         @error-example (content) "no-perms"
             This method is reserved for admin users.
         """
-        tag = get_mandatory_param(request.data, 'tag', String)
+        tag = get_mandatory_param(request.data, "tag", String)
 
-        if ',' in tag:
+        if "," in tag:
             raise MAASAPIValidationError('Tag may not contain a ",".')
 
         pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
@@ -408,7 +400,7 @@ class PodHandler(OperationsHandler):
         @error-example (content) "no-perms"
             This method is reserved for admin users.
         """
-        tag = get_mandatory_param(request.data, 'tag', String)
+        tag = get_mandatory_param(request.data, "tag", String)
 
         pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         pod.remove_tag(tag)
@@ -425,17 +417,18 @@ class PodHandler(OperationsHandler):
         pod_id = "id"
         if pod is not None:
             pod_id = pod.id
-        return ('pod_handler', (pod_id,))
+        return ("pod_handler", (pod_id,))
 
 
 class PodsHandler(OperationsHandler):
     """Manage the collection of all the pod in the MAAS."""
+
     api_doc_section_name = "Pods"
     update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('pods_handler', [])
+        return ("pods_handler", [])
 
     def read(self, request):
         """@description-title List pods
@@ -447,8 +440,9 @@ class PodsHandler(OperationsHandler):
         @success-example (json) "success-json" [exkey=read-pods]
         placeholder text
         """
-        return Pod.objects.get_pods(
-            request.user, PodPermission.view).order_by('id')
+        return Pod.objects.get_pods(request.user, PodPermission.view).order_by(
+            "id"
+        )
 
     @admin_method
     def create(self, request):

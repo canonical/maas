@@ -4,9 +4,9 @@
 """Populate what nodes are associated with a tag."""
 
 __all__ = [
-    'populate_tag_for_multiple_nodes',
-    'populate_tags',
-    'populate_tags_for_single_node',
+    "populate_tag_for_multiple_nodes",
+    "populate_tags",
+    "populate_tags_for_single_node",
 ]
 
 from functools import partial
@@ -16,10 +16,7 @@ from apiclient.creds import convert_tuple_to_string
 from django.db.transaction import TransactionManagementError
 from lxml import etree
 from maasserver import logger
-from maasserver.models.node import (
-    Node,
-    RackController,
-)
+from maasserver.models.node import Node, RackController
 from maasserver.models.nodeprobeddetails import (
     get_probed_details,
     get_single_probed_details,
@@ -31,14 +28,8 @@ from maasserver.models.user import (
     get_creds_tuple,
 )
 from maasserver.rpc import getAllClients
-from maasserver.utils.orm import (
-    in_transaction,
-    transactional,
-)
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from maasserver.utils.orm import in_transaction, transactional
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.tags import (
     DEFAULT_BATCH_SIZE,
@@ -46,11 +37,7 @@ from provisioningserver.tags import (
     merge_details,
 )
 from provisioningserver.utils import classify
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-    synchronous,
-)
+from provisioningserver.utils.twisted import asynchronous, FOREVER, synchronous
 from provisioningserver.utils.xpath import try_match_xpath
 from twisted.internet.defer import DeferredList
 
@@ -62,8 +49,7 @@ log = LegacyLogger()
 # The nsmap that XPath expression must be compiled with. This will
 # ensure that expressions like //lshw:something will work correctly.
 tag_nsmap = {
-    namespace: namespace
-    for namespace in script_output_nsmap.values()
+    namespace: namespace for namespace in script_output_nsmap.values()
 }
 
 
@@ -78,7 +64,7 @@ def chunk_list(items, num_chunks):
     """
     size = ceil(len(items) / num_chunks)
     for i in range(0, len(items), size):
-        yield items[i:i + size]
+        yield items[i : i + size]
 
 
 @synchronous
@@ -100,7 +86,8 @@ def populate_tags(tag):
     # its own transaction.
     if in_transaction():
         raise TransactionManagementError(
-            '`populate_tags` cannot be called inside an existing transaction.')
+            "`populate_tags` cannot be called inside an existing transaction."
+        )
 
     logger.debug('Evaluating the "%s" tag for all nodes.', tag.name)
 
@@ -125,19 +112,21 @@ def populate_tags(tag):
                 token = _get_or_create_auth_token(rack.owner)
                 creds = convert_tuple_to_string(get_creds_tuple(token))
                 if len(chunked_node_ids) > idx:
-                    connected_racks.append({
-                        "system_id": rack.system_id,
-                        "hostname": rack.hostname,
-                        "client": client,
-                        "tag_name": tag.name,
-                        "tag_definition": tag.definition,
-                        "tag_nsmap": [
-                            {"prefix": prefix, "uri": uri}
-                            for prefix, uri in tag_nsmap.items()
-                        ],
-                        "credentials": creds,
-                        "nodes": list(chunked_node_ids[idx]),
-                    })
+                    connected_racks.append(
+                        {
+                            "system_id": rack.system_id,
+                            "hostname": rack.hostname,
+                            "client": client,
+                            "tag_name": tag.name,
+                            "tag_definition": tag.definition,
+                            "tag_nsmap": [
+                                {"prefix": prefix, "uri": uri}
+                                for prefix, uri in tag_nsmap.items()
+                            ],
+                            "credentials": creds,
+                            "nodes": list(chunked_node_ids[idx]),
+                        }
+                    )
             return connected_racks
 
         return _do_populate_tags(_generate_work())
@@ -168,31 +157,34 @@ def _do_populate_tags(clients):
             tag_definition=client_info["tag_definition"],
             tag_nsmap=client_info["tag_nsmap"],
             credentials=client_info["credentials"],
-            nodes=client_info["nodes"])
+            nodes=client_info["nodes"],
+        )
 
     def check_results(results):
         for client_info, (success, result) in zip(clients, results):
             if success:
                 maaslog.info(
                     "Tag %s (%s) evaluated on rack controller %s (%s)",
-                    client_info['tag_name'],
-                    client_info['tag_definition'],
-                    client_info['hostname'],
-                    client_info['system_id'])
+                    client_info["tag_name"],
+                    client_info["tag_definition"],
+                    client_info["hostname"],
+                    client_info["system_id"],
+                )
             else:
                 maaslog.error(
                     "Tag %s (%s) could not be evaluated on rack controller "
                     "%s (%s): %s",
-                    client_info['tag_name'],
-                    client_info['tag_definition'],
-                    client_info['hostname'],
-                    client_info['system_id'],
-                    result.getErrorMessage())
+                    client_info["tag_name"],
+                    client_info["tag_definition"],
+                    client_info["hostname"],
+                    client_info["system_id"],
+                    result.getErrorMessage(),
+                )
 
-    d = DeferredList((
-        call_client(client_info)
-        for client_info in clients),
-        consumeErrors=True)
+    d = DeferredList(
+        (call_client(client_info) for client_info in clients),
+        consumeErrors=True,
+    )
     d.addCallback(check_results)
     d.addErrback(log.err)
 
@@ -243,6 +235,7 @@ def populate_tag_for_multiple_nodes(tag, nodes, batch_size=DEFAULT_BATCH_SIZE):
         }
         nodes_matching, nodes_nonmatching = classify(
             partial(try_match_xpath, xpath, logger=maaslog),
-            probed_details_docs_by_node.items())
+            probed_details_docs_by_node.items(),
+        )
         tag.node_set.remove(*nodes_nonmatching)
         tag.node_set.add(*nodes_matching)

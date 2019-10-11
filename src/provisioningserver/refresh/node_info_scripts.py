@@ -4,20 +4,20 @@
 """Builtin node info scripts."""
 
 __all__ = [
-    'DHCP_EXPLORE_OUTPUT_NAME',
-    'GET_FRUID_DATA_OUTPUT_NAME',
-    'IPADDR_OUTPUT_NAME',
-    'KERNEL_CMDLINE_OUTPUT_NAME',
-    'LIST_MODALIASES_OUTPUT_NAME',
-    'LLDP_INSTALL_OUTPUT_NAME',
-    'LLDP_OUTPUT_NAME',
-    'LSHW_OUTPUT_NAME',
-    'LXD_OUTPUT_NAME',
-    'NODE_INFO_SCRIPTS',
-    'SERIAL_PORTS_OUTPUT_NAME',
-    'SUPPORT_INFO_OUTPUT_NAME',
-    'VIRTUALITY_OUTPUT_NAME',
-    ]
+    "DHCP_EXPLORE_OUTPUT_NAME",
+    "GET_FRUID_DATA_OUTPUT_NAME",
+    "IPADDR_OUTPUT_NAME",
+    "KERNEL_CMDLINE_OUTPUT_NAME",
+    "LIST_MODALIASES_OUTPUT_NAME",
+    "LLDP_INSTALL_OUTPUT_NAME",
+    "LLDP_OUTPUT_NAME",
+    "LSHW_OUTPUT_NAME",
+    "LXD_OUTPUT_NAME",
+    "NODE_INFO_SCRIPTS",
+    "SERIAL_PORTS_OUTPUT_NAME",
+    "SUPPORT_INFO_OUTPUT_NAME",
+    "VIRTUALITY_OUTPUT_NAME",
+]
 
 from collections import OrderedDict
 from datetime import timedelta
@@ -30,18 +30,18 @@ from textwrap import dedent
 # which is renamed will require a migration otherwise the user will see both
 # the old name and new name as two seperate scripts. See
 # 0014_rename_dhcp_unconfigured_ifaces.py
-SUPPORT_INFO_OUTPUT_NAME = '00-maas-00-support-info'
-LSHW_OUTPUT_NAME = '00-maas-01-lshw'
-VIRTUALITY_OUTPUT_NAME = '00-maas-02-virtuality'
-LLDP_INSTALL_OUTPUT_NAME = '00-maas-03-install-lldpd'
-LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
-DHCP_EXPLORE_OUTPUT_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
-GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
-SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
-IPADDR_OUTPUT_NAME = '40-maas-01-network-interfaces'
-LXD_OUTPUT_NAME = '50-maas-01-commissioning'
-LLDP_OUTPUT_NAME = '99-maas-01-capture-lldp'
-KERNEL_CMDLINE_OUTPUT_NAME = '99-maas-05-kernel-cmdline'
+SUPPORT_INFO_OUTPUT_NAME = "00-maas-00-support-info"
+LSHW_OUTPUT_NAME = "00-maas-01-lshw"
+VIRTUALITY_OUTPUT_NAME = "00-maas-02-virtuality"
+LLDP_INSTALL_OUTPUT_NAME = "00-maas-03-install-lldpd"
+LIST_MODALIASES_OUTPUT_NAME = "00-maas-04-list-modaliases"
+DHCP_EXPLORE_OUTPUT_NAME = "00-maas-05-dhcp-unconfigured-ifaces"
+GET_FRUID_DATA_OUTPUT_NAME = "00-maas-06-get-fruid-api-data"
+SERIAL_PORTS_OUTPUT_NAME = "00-maas-08-serial-ports"
+IPADDR_OUTPUT_NAME = "40-maas-01-network-interfaces"
+LXD_OUTPUT_NAME = "50-maas-01-commissioning"
+LLDP_OUTPUT_NAME = "99-maas-01-capture-lldp"
+KERNEL_CMDLINE_OUTPUT_NAME = "99-maas-05-kernel-cmdline"
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -57,7 +57,8 @@ def make_function_call_script(function, *args, **kwargs):
 
     :return: `bytes`
     """
-    template = dedent("""\
+    template = dedent(
+        """\
     #!/usr/bin/python3
     # -*- coding: utf-8 -*-
 
@@ -69,7 +70,8 @@ def make_function_call_script(function, *args, **kwargs):
         args = json.loads({function_args!r})
         kwargs = json.loads({function_kwargs!r})
         {function_name}(*args, **kwargs)
-    """)
+    """
+    )
     script = template.format(
         function_name=function.__name__,
         function_source=dedent(getsource(function)).strip(),
@@ -82,16 +84,19 @@ def make_function_call_script(function, *args, **kwargs):
 # Built-in script to run lshw. This script runs both on the controller and
 # on a commissioning machine. So the script must check itself if its running
 # within a snap.
-LSHW_SCRIPT = dedent("""\
+LSHW_SCRIPT = dedent(
+    """\
     #!/bin/bash
     if [ -z "$SNAP" ]; then
         sudo -n /usr/bin/lshw -xml
     else
         $SNAP/usr/bin/lshw -xml
     fi
-    """)
+    """
+)
 
-LXD_SCRIPT = dedent("""\
+LXD_SCRIPT = dedent(
+    """\
     #!/bin/bash -e
 
     # When booting into the ephemeral environment root filesystem
@@ -123,16 +128,20 @@ LXD_SCRIPT = dedent("""\
     wget $url/machine-resources/$BINARY -O $DOWNLOAD_PATH/$BINARY 1>&2
     chmod +x $DOWNLOAD_PATH/$BINARY
     $DOWNLOAD_PATH/$BINARY
-    """)
+    """
+)
 
 # Built-in script to run `ip addr`
-IPADDR_SCRIPT = dedent("""\
+IPADDR_SCRIPT = dedent(
+    """\
     #!/bin/bash
     ip addr
-    """)
+    """
+)
 
 # Built-in script to detect virtual instances.
-VIRTUALITY_SCRIPT = dedent("""\
+VIRTUALITY_SCRIPT = dedent(
+    """\
     #!/bin/bash
     # In Bourne Shell `type -p` does not work; `which` is closest.
     if which systemd-detect-virt > /dev/null; then
@@ -148,23 +157,29 @@ VIRTUALITY_SCRIPT = dedent("""\
     else
         echo "none"
     fi
-    """)
+    """
+)
 
-SERIAL_PORTS_SCRIPT = dedent("""\
+SERIAL_PORTS_SCRIPT = dedent(
+    """\
     #!/bin/bash
     find /sys/class/tty/ ! -type d -print0 2> /dev/null \
         | xargs -0 readlink -f \
         | sort -u
     # Do not fail commissioning if this fails.
     exit 0
-    """)
+    """
+)
 
-KERNEL_CMDLINE_SCRIPT = dedent("""\
+KERNEL_CMDLINE_SCRIPT = dedent(
+    """\
     #!/bin/bash
     cat /proc/cmdline
-    """)
+    """
+)
 
-SUPPORT_SCRIPT = dedent(r"""#!/bin/bash
+SUPPORT_SCRIPT = dedent(
+    r"""#!/bin/bash
     echo "-----BEGIN KERNEL INFO-----"
     uname -a
     echo "-----END KERNEL INFO-----"
@@ -298,7 +313,8 @@ SUPPORT_SCRIPT = dedent(r"""#!/bin/bash
     fi
     # Do not fail commissioning if this fails.
     exit 0
-    """)
+    """
+)
 
 
 # Run `dhclient` on all the unconfigured interfaces.
@@ -311,22 +327,23 @@ def dhcp_explore():
 
     def get_iface_list(ifconfig_output):
         return [
-            line.split()[1].split(b':')[0].split(b'@')[0]
-            for line in ifconfig_output.splitlines()]
+            line.split()[1].split(b":")[0].split(b"@")[0]
+            for line in ifconfig_output.splitlines()
+        ]
 
     def has_ipv4_address(iface):
-        output = check_output(('ip', '-4', 'addr', 'list', 'dev', iface))
+        output = check_output(("ip", "-4", "addr", "list", "dev", iface))
         for line in output.splitlines():
-            if line.find(b' inet ') >= 0:
+            if line.find(b" inet ") >= 0:
                 return True
         return False
 
     def has_ipv6_address(iface):
         no_ipv6_found = True
-        output = check_output(('ip', '-6', 'addr', 'list', 'dev', iface))
+        output = check_output(("ip", "-6", "addr", "list", "dev", iface))
         for line in output.splitlines():
-            if line.find(b' inet6 ') >= 0:
-                if line.find(b' inet6 fe80:') == -1:
+            if line.find(b" inet6 ") >= 0:
+                if line.find(b" inet6 fe80:") == -1:
                     return True
                 no_ipv6_found = False
         # Bug 1640147: If there is no IPv6 address, then we consider this to be
@@ -334,12 +351,15 @@ def dhcp_explore():
         return no_ipv6_found
 
     all_ifaces = get_iface_list(check_output(("ip", "-o", "link", "show")))
-    configured_ifaces = get_iface_list(check_output(
-        ("ip", "-o", "link", "show", "up")))
+    configured_ifaces = get_iface_list(
+        check_output(("ip", "-o", "link", "show", "up"))
+    )
     configured_ifaces_4 = [
-        iface for iface in configured_ifaces if has_ipv4_address(iface)]
+        iface for iface in configured_ifaces if has_ipv4_address(iface)
+    ]
     configured_ifaces_6 = [
-        iface for iface in configured_ifaces if has_ipv6_address(iface)]
+        iface for iface in configured_ifaces if has_ipv6_address(iface)
+    ]
     unconfigured_ifaces_4 = set(all_ifaces) - set(configured_ifaces_4)
     unconfigured_ifaces_6 = set(all_ifaces) - set(configured_ifaces_6)
     # Run dhclient in the background to avoid blocking node_info.  We need to
@@ -353,11 +373,15 @@ def dhcp_explore():
     for iface in sorted(unconfigured_ifaces_4):
         call(["dhclient", "-nw", "-4", iface])
     for iface in sorted(unconfigured_ifaces_6):
-        iface_str = iface.decode('utf-8')
-        Popen([
-            "sh", "-c",
-            "for idx in $(seq 10); do"
-            " dhclient -6 %s && break || sleep 10; done" % iface_str])
+        iface_str = iface.decode("utf-8")
+        Popen(
+            [
+                "sh",
+                "-c",
+                "for idx in $(seq 10); do"
+                " dhclient -6 %s && break || sleep 10; done" % iface_str,
+            ]
+        )
         # Ignore return value and continue running dhclient on the
         # other interfaces.
 
@@ -399,11 +423,12 @@ def lldpd_install(config_file):
     """
     from subprocess import check_call
     from codecs import open
+
     with open(config_file, "a", "ascii") as fd:
-        fd.write('\n')  # Ensure there's a newline.
-        fd.write('# Configured by MAAS:\n')
+        fd.write("\n")  # Ensure there's a newline.
+        fd.write("# Configured by MAAS:\n")
         fd.write('DAEMON_ARGS="-c -f -s -e -r"\n')
-    check_call(('systemctl', 'restart', 'lldpd'))
+    check_call(("systemctl", "restart", "lldpd"))
 
 
 # This function must be entirely self-contained. It must not use
@@ -418,6 +443,7 @@ def lldpd_capture(reference_file, time_delay):
     from os.path import getmtime
     from time import sleep, time
     from subprocess import check_call
+
     time_ref = getmtime(reference_file)
     time_remaining = time_ref + time_delay - time()
     if time_remaining > 0:
@@ -429,13 +455,16 @@ def lldpd_capture(reference_file, time_delay):
     check_call(("lldpctl", "-f", "xml"))
 
 
-LIST_MODALIASES_SCRIPT = dedent("""\
+LIST_MODALIASES_SCRIPT = dedent(
+    """\
     #!/bin/bash
     find /sys/devices/ -name modalias -print0 | xargs -0 cat | sort -u
-    """)
+    """
+)
 
 
-GET_FRUID_DATA_SCRIPT = dedent("""\
+GET_FRUID_DATA_SCRIPT = dedent(
+    """\
     #!/bin/bash -x
     # Wait for interfaces to settle and get their IPs after the DHCP job.
     sleep 5
@@ -447,7 +476,8 @@ GET_FRUID_DATA_SCRIPT = dedent("""\
     done
     # Do not fail commissioning if this fails.
     exit 0
-    """)
+    """
+)
 
 
 def null_hook(node, output, exit_status):
@@ -456,6 +486,7 @@ def null_hook(node, output, exit_status):
     Use this to explicitly ignore the response from a built-in
     node info script.
     """
+
 
 # Built-in node info scripts.  These go into the commissioning tarball
 # together with user-provided commissioning scripts or are executed by the
@@ -478,84 +509,124 @@ def null_hook(node, output, exit_status):
 #
 # maasserver/status_monitor.py adds 1 minute to the timeout of all scripts for
 # cleanup and signaling.
-NODE_INFO_SCRIPTS = OrderedDict([
-    (SUPPORT_INFO_OUTPUT_NAME, {
-        'content': SUPPORT_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(minutes=5),
-        'run_on_controller': True,
-    }),
-    (LSHW_OUTPUT_NAME, {
-        'content': LSHW_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(minutes=5),
-        'run_on_controller': True,
-    }),
-    (LXD_OUTPUT_NAME, {
-        'content': LXD_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'packages': {'apt': ['archdetect-deb']},
-        'timeout': timedelta(minutes=1),
-        'run_on_controller': True,
-    }),
-    (VIRTUALITY_OUTPUT_NAME, {
-        'content': VIRTUALITY_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
-        'run_on_controller': True,
-    }),
-    (LLDP_INSTALL_OUTPUT_NAME, {
-        'content': make_function_call_script(
-            lldpd_install, config_file="/etc/default/lldpd"),
-        'hook': null_hook,
-        'packages': {'apt': ['lldpd']},
-        'timeout': timedelta(minutes=10),
-        'run_on_controller': False,
-    }),
-    (LIST_MODALIASES_OUTPUT_NAME, {
-        'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
-        'run_on_controller': True,
-    }),
-    (DHCP_EXPLORE_OUTPUT_NAME, {
-        'content': make_function_call_script(dhcp_explore),
-        'hook': null_hook,
-        'timeout': timedelta(minutes=5),
-        'run_on_controller': False,
-    }),
-    (GET_FRUID_DATA_OUTPUT_NAME, {
-        'content': GET_FRUID_DATA_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(minutes=1),
-        'run_on_controller': False,
-    }),
-    (KERNEL_CMDLINE_OUTPUT_NAME, {
-        'content': KERNEL_CMDLINE_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
-        'run_on_controller': False,
-    }),
-    (SERIAL_PORTS_OUTPUT_NAME, {
-        'content': SERIAL_PORTS_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
-        'run_on_controller': True,
-    }),
-    (LLDP_OUTPUT_NAME, {
-        'content': make_function_call_script(
-            lldpd_capture, "/var/run/lldpd.socket", time_delay=60),
-        'hook': null_hook,
-        'timeout': timedelta(minutes=3),
-        'run_on_controller': False,
-    }),
-    (IPADDR_OUTPUT_NAME, {
-        'content': IPADDR_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
-        'run_on_controller': False,
-    }),
-])
+NODE_INFO_SCRIPTS = OrderedDict(
+    [
+        (
+            SUPPORT_INFO_OUTPUT_NAME,
+            {
+                "content": SUPPORT_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(minutes=5),
+                "run_on_controller": True,
+            },
+        ),
+        (
+            LSHW_OUTPUT_NAME,
+            {
+                "content": LSHW_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(minutes=5),
+                "run_on_controller": True,
+            },
+        ),
+        (
+            LXD_OUTPUT_NAME,
+            {
+                "content": LXD_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "packages": {"apt": ["archdetect-deb"]},
+                "timeout": timedelta(minutes=1),
+                "run_on_controller": True,
+            },
+        ),
+        (
+            VIRTUALITY_OUTPUT_NAME,
+            {
+                "content": VIRTUALITY_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(seconds=10),
+                "run_on_controller": True,
+            },
+        ),
+        (
+            LLDP_INSTALL_OUTPUT_NAME,
+            {
+                "content": make_function_call_script(
+                    lldpd_install, config_file="/etc/default/lldpd"
+                ),
+                "hook": null_hook,
+                "packages": {"apt": ["lldpd"]},
+                "timeout": timedelta(minutes=10),
+                "run_on_controller": False,
+            },
+        ),
+        (
+            LIST_MODALIASES_OUTPUT_NAME,
+            {
+                "content": LIST_MODALIASES_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(seconds=10),
+                "run_on_controller": True,
+            },
+        ),
+        (
+            DHCP_EXPLORE_OUTPUT_NAME,
+            {
+                "content": make_function_call_script(dhcp_explore),
+                "hook": null_hook,
+                "timeout": timedelta(minutes=5),
+                "run_on_controller": False,
+            },
+        ),
+        (
+            GET_FRUID_DATA_OUTPUT_NAME,
+            {
+                "content": GET_FRUID_DATA_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(minutes=1),
+                "run_on_controller": False,
+            },
+        ),
+        (
+            KERNEL_CMDLINE_OUTPUT_NAME,
+            {
+                "content": KERNEL_CMDLINE_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(seconds=10),
+                "run_on_controller": False,
+            },
+        ),
+        (
+            SERIAL_PORTS_OUTPUT_NAME,
+            {
+                "content": SERIAL_PORTS_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(seconds=10),
+                "run_on_controller": True,
+            },
+        ),
+        (
+            LLDP_OUTPUT_NAME,
+            {
+                "content": make_function_call_script(
+                    lldpd_capture, "/var/run/lldpd.socket", time_delay=60
+                ),
+                "hook": null_hook,
+                "timeout": timedelta(minutes=3),
+                "run_on_controller": False,
+            },
+        ),
+        (
+            IPADDR_OUTPUT_NAME,
+            {
+                "content": IPADDR_SCRIPT.encode("ascii"),
+                "hook": null_hook,
+                "timeout": timedelta(seconds=10),
+                "run_on_controller": False,
+            },
+        ),
+    ]
+)
 
 
 def add_names_to_scripts(scripts):

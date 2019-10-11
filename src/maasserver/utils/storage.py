@@ -3,10 +3,7 @@
 
 """Utilities for working with the storage model."""
 
-__all__ = [
-    "get_effective_filesystem",
-    "used_for"
-]
+__all__ = ["get_effective_filesystem", "used_for"]
 
 from maasserver.enum import FILESYSTEM_TYPE
 
@@ -25,6 +22,7 @@ def get_effective_filesystem(model):
     :rtype: `Filesystem`
     """
     from maasserver.models import BlockDevice, Partition
+
     assert isinstance(model, (BlockDevice, Partition))
 
     node = model.get_node()
@@ -59,21 +57,26 @@ def used_for(model):
     """
     # Avoid circular imports
     from maasserver.models import BlockDevice
+
     filesystem = get_effective_filesystem(model)
     if filesystem is not None:
         if filesystem.is_mounted:
-            return ("%s formatted filesystem mounted at %s" %
-                    (filesystem.fstype, filesystem.mount_point))
+            return "%s formatted filesystem mounted at %s" % (
+                filesystem.fstype,
+                filesystem.mount_point,
+            )
         elif filesystem.fstype == FILESYSTEM_TYPE.LVM_PV:
             return "LVM volume for %s" % filesystem.filesystem_group.name
         elif filesystem.fstype == FILESYSTEM_TYPE.RAID:
-            return ("Active %s device for %s" %
-                    (filesystem.filesystem_group.group_type,
-                     filesystem.filesystem_group.name))
+            return "Active %s device for %s" % (
+                filesystem.filesystem_group.group_type,
+                filesystem.filesystem_group.name,
+            )
         elif filesystem.fstype == FILESYSTEM_TYPE.RAID_SPARE:
-            return ("Spare %s device for %s" %
-                    (filesystem.filesystem_group.group_type,
-                     filesystem.filesystem_group.name))
+            return "Spare %s device for %s" % (
+                filesystem.filesystem_group.group_type,
+                filesystem.filesystem_group.name,
+            )
         elif filesystem.fstype == FILESYSTEM_TYPE.BCACHE_CACHE:
             return "Cache device for %s" % filesystem.cache_set.get_name()
         elif filesystem.fstype == FILESYSTEM_TYPE.BCACHE_BACKING:
@@ -81,7 +84,7 @@ def used_for(model):
         elif filesystem.fstype == FILESYSTEM_TYPE.VMFS6:
             return "VMFS extent for %s" % filesystem.filesystem_group.name
         else:
-            return ("Unmounted %s formatted filesystem" % filesystem.fstype)
+            return "Unmounted %s formatted filesystem" % filesystem.fstype
     elif isinstance(model, BlockDevice):
         partition_table = model.get_partitiontable()
         if partition_table is not None:

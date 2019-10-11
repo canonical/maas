@@ -18,7 +18,6 @@ from provisioningserver.service_monitor import (
 
 
 class TestDHCPv4Service(MAASTestCase):
-
     def test_name(self):
         service = DHCPv4Service()
         self.assertEqual("dhcpd", service.name)
@@ -29,7 +28,6 @@ class TestDHCPv4Service(MAASTestCase):
 
 
 class TestDHCPv6Service(MAASTestCase):
-
     def test_name(self):
         service = DHCPv6Service()
         self.assertEqual("dhcpd6", service.name)
@@ -40,7 +38,6 @@ class TestDHCPv6Service(MAASTestCase):
 
 
 class TestNTPServiceOnRack(MAASTestCase):
-
     def test_name_and_service_name(self):
         ntp = NTPServiceOnRack()
         self.assertEqual("chrony", ntp.service_name)
@@ -48,7 +45,6 @@ class TestNTPServiceOnRack(MAASTestCase):
 
 
 class TestDNSServiceOnRack(MAASTestCase):
-
     def test_name_and_service_name(self):
         dns = DNSServiceOnRack()
         self.assertEqual("bind9", dns.service_name)
@@ -56,7 +52,6 @@ class TestDNSServiceOnRack(MAASTestCase):
 
 
 class TestProxyServiceOnRack(MAASTestCase):
-
     def test_name_and_service_name(self):
         proxy = ProxyServiceOnRack()
         self.assertEqual("maas-proxy", proxy.service_name)
@@ -65,7 +60,6 @@ class TestProxyServiceOnRack(MAASTestCase):
 
 
 class TestSyslogServiceOnRack(MAASTestCase):
-
     def test_name_and_service_name(self):
         syslog = SyslogServiceOnRack()
         self.assertEqual("maas-syslog", syslog.service_name)
@@ -74,9 +68,16 @@ class TestSyslogServiceOnRack(MAASTestCase):
 
 
 class TestGlobalServiceMonitor(MAASTestCase):
-
     def test__includes_all_services(self):
-        self.assertItemsEqual([
-            "http", "dhcpd", "dhcpd6", "dns_rack",
-            "ntp_rack", "proxy_rack", "syslog_rack"],
-            service_monitor._services.keys())
+        self.assertItemsEqual(
+            [
+                "http",
+                "dhcpd",
+                "dhcpd6",
+                "dns_rack",
+                "ntp_rack",
+                "proxy_rack",
+                "syslog_rack",
+            ],
+            service_monitor._services.keys(),
+        )

@@ -3,15 +3,9 @@
 
 """Boot Methods."""
 
-__all__ = [
-    "BootMethod",
-    "BootMethodRegistry",
-    ]
+__all__ = ["BootMethod", "BootMethodRegistry"]
 
-from abc import (
-    ABCMeta,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractproperty
 from errno import ENOENT
 from functools import lru_cache
 from io import BytesIO
@@ -19,23 +13,13 @@ import os
 from typing import Dict
 
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.events import (
-    EVENT_TYPES,
-    try_send_rack_event,
-)
+from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
-from provisioningserver.utils import (
-    locate_template,
-    tftp,
-    typed,
-)
-from provisioningserver.utils.fs import (
-    atomic_copy,
-    atomic_symlink,
-)
+from provisioningserver.utils import locate_template, tftp, typed
+from provisioningserver.utils.fs import atomic_copy, atomic_symlink
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
     find_mac_via_arp,
@@ -44,14 +28,11 @@ from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.twisted import asynchronous
 import tempita
 from tftp.backend import IReader
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
+from twisted.internet.defer import inlineCallbacks, returnValue
 from zope.interface import implementer
 
 
-maaslog = get_maas_logger('bootloaders')
+maaslog = get_maas_logger("bootloaders")
 
 
 @asynchronous
@@ -64,7 +45,7 @@ def get_archive_mirrors():
 @inlineCallbacks
 def get_main_archive_url():
     mirrors = yield get_archive_mirrors()
-    main_url = mirrors['main'].geturl()
+    main_url = mirrors["main"].geturl()
     returnValue(main_url)
 
 
@@ -72,13 +53,12 @@ def get_main_archive_url():
 @inlineCallbacks
 def get_ports_archive_url():
     mirrors = yield get_archive_mirrors()
-    ports_url = mirrors['ports'].geturl()
+    ports_url = mirrors["ports"].geturl()
     returnValue(ports_url)
 
 
 @implementer(IReader)
 class BytesReader:
-
     def __init__(self, data):
         super(BytesReader, self).__init__()
         self.buffer = BytesIO(data)
@@ -102,7 +82,7 @@ def get_parameters(match) -> Dict[str, str]:
         key: value.decode("ascii")
         for key, value in match.groupdict().items()
         if value is not None
-        }
+    }
 
 
 def gen_template_filenames(purpose, arch, subarch):
@@ -235,7 +215,8 @@ class BootMethod(metaclass=ABCMeta):
             else:
                 err_msg = (
                     "SimpleStream is missing required bootloader file '%s' "
-                    "from bootloader %s." % (bootloader_file, self.name))
+                    "from bootloader %s." % (bootloader_file, self.name)
+                )
                 try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
                 maaslog.error(err_msg)
 
@@ -248,8 +229,8 @@ class BootMethod(metaclass=ABCMeta):
         :return: True if all bootloaders have been found and copied, False
                  otherwise.
         """
-        boot_sources_base = os.path.realpath(os.path.join(destination, '..'))
-        previous_snapshot = os.path.join(boot_sources_base, 'current')
+        boot_sources_base = os.path.realpath(os.path.join(destination, ".."))
+        previous_snapshot = os.path.join(boot_sources_base, "current")
         files_found = True
         for bootloader_file in self.bootloader_files:
             bootloader_src = os.path.join(previous_snapshot, bootloader_file)
@@ -269,7 +250,8 @@ class BootMethod(metaclass=ABCMeta):
                     err_msg = (
                         "Unable to find a copy of %s in the SimpleStream or a "
                         "previously downloaded copy. The %s bootloader type "
-                        "may not work." % (bootloader_file, self.name))
+                        "may not work." % (bootloader_file, self.name)
+                    )
                     try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
                     maaslog.error(err_msg)
         return files_found
@@ -286,7 +268,8 @@ class BootMethod(metaclass=ABCMeta):
         bootloaders_in_simplestream = False
         for arch in self.bootloader_arches:
             stream_path = os.path.join(
-                destination, 'bootloader', self.bios_boot_method, arch)
+                destination, "bootloader", self.bios_boot_method, arch
+            )
             if os.path.exists(stream_path):
                 bootloaders_in_simplestream = True
                 break
@@ -303,15 +286,24 @@ class BootMethod(metaclass=ABCMeta):
         assert isinstance(self.bios_boot_method, str)
         assert isinstance(self.bootloader_path, str)
         assert isinstance(self.template_subdir, str) or (
-            self.template_subdir is None)
+            self.template_subdir is None
+        )
         assert isinstance(self.bootloader_arches, list) and all(
-            isinstance(element, str) for element in self.bootloader_arches)
+            isinstance(element, str) for element in self.bootloader_arches
+        )
         assert isinstance(self.bootloader_files, list) and all(
-            isinstance(element, str) for element in self.bootloader_files)
-        assert isinstance(self.arch_octet, str) or (isinstance(
-            self.arch_octet, list) and all(
-                isinstance(element, str)
-                for element in self.arch_octet)) or self.arch_octet is None
+            isinstance(element, str) for element in self.bootloader_files
+        )
+        assert (
+            isinstance(self.arch_octet, str)
+            or (
+                isinstance(self.arch_octet, list)
+                and all(
+                    isinstance(element, str) for element in self.arch_octet
+                )
+            )
+            or self.arch_octet is None
+        )
         assert isinstance(self.user_class, str) or self.user_class is None
 
     @lru_cache(1)
@@ -336,7 +328,8 @@ class BootMethod(metaclass=ABCMeta):
             template_name = os.path.join(pxe_templates_dir, filename)
             try:
                 return tempita.Template.from_filename(
-                    template_name, encoding="UTF-8")
+                    template_name, encoding="UTF-8"
+                )
             except IOError as error:
                 if error.errno != ENOENT:
                     raise
@@ -347,8 +340,9 @@ class BootMethod(metaclass=ABCMeta):
                 "This can happen if you manually power up a node when its "
                 "state is not one that allows it. Is the node in the "
                 "'New' or 'Ready' states? It needs to be Enlisting, "
-                "Commissioning or Allocated." % (
-                    pxe_templates_dir, purpose, arch, subarch))
+                "Commissioning or Allocated."
+                % (pxe_templates_dir, purpose, arch, subarch)
+            )
             try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, error)
             raise AssertionError(error)
 
@@ -356,20 +350,26 @@ class BootMethod(metaclass=ABCMeta):
         """Composes the namespace variables that are used by a boot
         method template.
         """
-        dtb_subarchs = ['xgene-uboot-mustang']
+        dtb_subarchs = ["xgene-uboot-mustang"]
 
         def fs_host(params):
-            return 'http://%s:5248/images/' % (
-                convert_host_to_uri_str(params.fs_host))
+            return "http://%s:5248/images/" % (
+                convert_host_to_uri_str(params.fs_host)
+            )
 
         def fs_efihost(params):
-            return '(http,%s:5248)/images/' % (
-                convert_host_to_uri_str(params.fs_host))
+            return "(http,%s:5248)/images/" % (
+                convert_host_to_uri_str(params.fs_host)
+            )
 
         def image_dir(params):
             return compose_image_path(
-                params.osystem, params.arch, params.subarch,
-                params.release, params.label)
+                params.osystem,
+                params.arch,
+                params.subarch,
+                params.release,
+                params.label,
+            )
 
         def initrd_path(params):
             # Normally the initrd filename is the SimpleStream filetype. If
@@ -377,14 +377,14 @@ class BootMethod(metaclass=ABCMeta):
             if params.initrd is not None:
                 initrd = params.initrd
             else:
-                initrd = 'boot-initrd'
+                initrd = "boot-initrd"
             return "%s/%s" % (image_dir(params), initrd)
 
         def kernel_name(params):
             if params.kernel is not None:
                 return params.kernel
             else:
-                return 'boot-kernel'
+                return "boot-kernel"
 
         def kernel_path(params):
             # Normally the kernel filename is the SimpleStream filetype. If
@@ -392,7 +392,7 @@ class BootMethod(metaclass=ABCMeta):
             if params.kernel is not None:
                 kernel = params.kernel
             else:
-                kernel = 'boot-kernel'
+                kernel = "boot-kernel"
             return "%s/%s" % (image_dir(params), kernel)
 
         def dtb_path(params):
@@ -402,7 +402,7 @@ class BootMethod(metaclass=ABCMeta):
                 if params.boot_dtb is not None:
                     boot_dtb = params.boot_dtb
                 else:
-                    boot_dtb = 'boot-dtb'
+                    boot_dtb = "boot-dtb"
                 return "%s/%s" % (image_dir(params), boot_dtb)
             else:
                 return None
@@ -419,7 +419,7 @@ class BootMethod(metaclass=ABCMeta):
             "kernel_path": kernel_path,
             "kernel_name": kernel_name,
             "dtb_path": dtb_path,
-            }
+        }
 
         return namespace
 
@@ -433,11 +433,11 @@ from provisioningserver.boot.ipxe import IPXEBootMethod
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi_amd64 import (
     UEFIAMD64BootMethod,
-    UEFIAMD64HTTPBootMethod
+    UEFIAMD64HTTPBootMethod,
 )
 from provisioningserver.boot.uefi_arm64 import UEFIARM64BootMethod
 from provisioningserver.boot.open_firmware_ppc64el import (
-    OpenFirmwarePPC64ELBootMethod
+    OpenFirmwarePPC64ELBootMethod,
 )
 from provisioningserver.boot.powernv import PowerNVBootMethod
 from provisioningserver.boot.windows import WindowsPXEBootMethod

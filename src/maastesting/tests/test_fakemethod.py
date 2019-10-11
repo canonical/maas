@@ -5,15 +5,11 @@
 
 __all__ = []
 
-from maastesting.fakemethod import (
-    FakeMethod,
-    MultiFakeMethod,
-)
+from maastesting.fakemethod import FakeMethod, MultiFakeMethod
 from maastesting.testcase import MAASTestCase
 
 
 class TestFakeMethod(MAASTestCase):
-
     def test_fakemethod_returns_None_by_default(self):
         self.assertEqual(None, FakeMethod()())
 
@@ -25,8 +21,8 @@ class TestFakeMethod(MAASTestCase):
             pass
 
         self.assertRaises(
-            ExpectedException,
-            FakeMethod(failure=ExpectedException()))
+            ExpectedException, FakeMethod(failure=ExpectedException())
+        )
 
     def test_fakemethod_has_no_calls_initially(self):
         self.assertSequenceEqual([], FakeMethod().calls)
@@ -44,7 +40,7 @@ class TestFakeMethod(MAASTestCase):
     def test_fakemethod_records_kwargs(self):
         stub = FakeMethod()
         stub(x=10)
-        self.assertSequenceEqual([((), {'x': 10})], stub.calls)
+        self.assertSequenceEqual([((), {"x": 10})], stub.calls)
 
     def test_call_count_is_zero_initially(self):
         self.assertEqual(0, FakeMethod().call_count)
@@ -62,11 +58,10 @@ class TestFakeMethod(MAASTestCase):
     def test_extract_kwargs_returns_just_call_kwargs(self):
         stub = FakeMethod()
         stub(1, 2, 3, x=12)
-        self.assertItemsEqual([{'x': 12}], stub.extract_kwargs())
+        self.assertItemsEqual([{"x": 12}], stub.extract_kwargs())
 
 
 class TestMultiFakeMethod(MAASTestCase):
-
     def test_call_calls_all_given_methods(self):
         methods = FakeMethod(), FakeMethod()
         method = MultiFakeMethod(methods)
@@ -75,8 +70,9 @@ class TestMultiFakeMethod(MAASTestCase):
         method(call1_args)
         method(call2_args)
         self.assertEqual(
-            [[('input 1',)], [('input 2',)]],
-            [methods[0].extract_args(), methods[1].extract_args()])
+            [[("input 1",)], [("input 2",)]],
+            [methods[0].extract_args(), methods[1].extract_args()],
+        )
 
     def test_raises_if_called_one_time_too_many(self):
         method = MultiFakeMethod([FakeMethod()])

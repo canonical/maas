@@ -9,27 +9,15 @@ __all__ = [
     "get_shared_secret_from_filesystem",
 ]
 
-from base64 import (
-    urlsafe_b64decode,
-    urlsafe_b64encode,
-)
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 import binascii
-from binascii import (
-    a2b_hex,
-    b2a_hex,
-)
+from binascii import a2b_hex, b2a_hex
 import errno
 from hashlib import sha256
 from hmac import HMAC
-from os import (
-    fchmod,
-    makedirs,
-)
+from os import fchmod, makedirs
 from os.path import dirname
-from sys import (
-    stderr,
-    stdin,
-)
+from sys import stderr, stdin
 from threading import Lock
 
 from cryptography.fernet import Fernet
@@ -162,7 +150,7 @@ def _get_or_create_fernet_psk():
                 # be nice, but that would require protocol support, and
                 # changing the way the PSK is cached.
                 iterations=DEFAULT_ITERATION_COUNT,
-                backend=default_backend()
+                backend=default_backend(),
             )
             key = kdf.derive(secret)
             key = urlsafe_b64encode(key)

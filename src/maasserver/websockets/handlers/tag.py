@@ -3,9 +3,7 @@
 
 """The tag handler for the WebSocket connection."""
 
-__all__ = [
-    "TagHandler",
-    ]
+__all__ = ["TagHandler"]
 
 from maasserver.models.tag import Tag
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -14,11 +12,8 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class TagHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = Tag.objects.all()
-        pk = 'id'
-        allowed_methods = ['list', 'get']
-        listen_channels = [
-            "tag",
-            ]
+        pk = "id"
+        allowed_methods = ["list", "get"]
+        listen_channels = ["tag"]

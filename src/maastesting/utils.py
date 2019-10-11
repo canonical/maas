@@ -60,4 +60,4 @@ def extract_word_list(string):
 #
 # (1) Provided, of course, that man know only about ASCII and
 # UTF.
-sample_binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b'\x00\xff\x00'
+sample_binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b"\x00\xff\x00"

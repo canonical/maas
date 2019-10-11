@@ -3,9 +3,7 @@
 
 """Model for a notification message."""
 
-__all__ = [
-    'Notification',
-]
+__all__ = ["Notification"]
 
 from functools import wraps
 
@@ -30,9 +28,11 @@ from markupsafe import Markup
 
 def _create(method, category):
     """Return a wrapped `method` that passes `category` as first argument."""
+
     @wraps(method)
     def call_with_category(self, *args, **kwargs):
         return method(self, category, *args, **kwargs)
+
     return call_with_category
 
 
@@ -40,13 +40,15 @@ class NotificationManager(Manager):
     """Manager for `Notification` class."""
 
     def _create_for_user(
-            self, category, message, user, *, context=None, ident=None):
+        self, category, message, user, *, context=None, ident=None
+    ):
         """Create a notification for a specific user."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            category, user, False, False, ident, message, context)
+            category, user, False, False, ident, message, context
+        )
         notification.save()
 
         return notification
@@ -57,13 +59,15 @@ class NotificationManager(Manager):
     create_info_for_user = _create(_create_for_user, "info")
 
     def _create_for_users(
-            self, category, message, *, context=None, ident=None):
+        self, category, message, *, context=None, ident=None
+    ):
         """Create a notification for all users and admins."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            category, None, True, True, ident, message, context)
+            category, None, True, True, ident, message, context
+        )
         notification.save()
 
         return notification
@@ -74,13 +78,15 @@ class NotificationManager(Manager):
     create_info_for_users = _create(_create_for_users, "info")
 
     def _create_for_admins(
-            self, category, message, *, context=None, ident=None):
+        self, category, message, *, context=None, ident=None
+    ):
         """Create a notification for all admins, but not users."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            category, None, False, True, ident, message, context)
+            category, None, False, True, ident, message, context
+        )
         notification.save()
 
         return notification
@@ -92,9 +98,14 @@ class NotificationManager(Manager):
 
     def _create(self, category, user, users, admins, ident, message, context):
         return self.model(
-            category=category, ident=ident, message=message,
-            user=user, users=users, admins=admins, context=(
-                {} if context is None else context))
+            category=category,
+            ident=ident,
+            message=message,
+            user=user,
+            users=users,
+            admins=admins,
+            context=({} if context is None else context),
+        )
 
     def find_for_user(self, user):
         """Find notifications for the given user.
@@ -117,7 +128,7 @@ class NotificationManager(Manager):
         # another query to get a QuerySet for a set of Notification rows.
         with connection.cursor() as cursor:
             cursor.execute(query, [user.id, user.id])
-            ids = [nid for (nid, ) in cursor.fetchall()]
+            ids = [nid for (nid,) in cursor.fetchall()]
         return self.filter(id__in=ids)
 
     _sql_find_ids_for_xxx = """\
@@ -165,17 +176,23 @@ class Notification(CleanSave, TimestampedModel):
     ident = CharField(max_length=40, null=True, blank=True, default=None)
 
     user = ForeignKey(
-        User, null=True, blank=True, default=None, on_delete=CASCADE)
+        User, null=True, blank=True, default=None, on_delete=CASCADE
+    )
     users = BooleanField(null=False, blank=True, default=False)
     admins = BooleanField(null=False, blank=True, default=False)
 
     message = TextField(null=False, blank=False)
     context = JSONObjectField(null=False, blank=True, default=dict)
     category = CharField(
-        null=False, blank=True, default="info", max_length=10,
+        null=False,
+        blank=True,
+        default="info",
+        max_length=10,
         choices=[
-            ("error", "Error"), ("warning", "Warning"),
-            ("success", "Success"), ("info", "Informational"),
+            ("error", "Error"),
+            ("warning", "Warning"),
+            ("success", "Success"),
+            ("info", "Informational"),
         ],
     )
 
@@ -192,9 +209,9 @@ class Notification(CleanSave, TimestampedModel):
     def is_relevant_to(self, user):
         """Is this notification relevant to the given user?"""
         return user is not None and (
-            (self.user_id is not None and self.user_id == user.id) or
-            (self.users and not user.is_superuser) or
-            (self.admins and user.is_superuser)
+            (self.user_id is not None and self.user_id == user.id)
+            or (self.users and not user.is_superuser)
+            or (self.admins and user.is_superuser)
         )
 
     def dismiss(self, user):
@@ -203,7 +220,8 @@ class Notification(CleanSave, TimestampedModel):
         :param user: The user dismissing this notification.
         """
         NotificationDismissal.objects.get_or_create(
-            notification=self, user=user)
+            notification=self, user=user
+        )
 
     def clean(self):
         super(Notification, self).clean()
@@ -218,8 +236,7 @@ class Notification(CleanSave, TimestampedModel):
         # won't do). This could be done as a validator but, meh, I'm sick of
         # jumping through Django-hoops like a circus animal.
         if not isinstance(self.context, dict):
-            raise ValidationError(
-                {"context": "Context is not a mapping."})
+            raise ValidationError({"context": "Context is not a mapping."})
         # Finally, check that the notification can be rendered. No point in
         # doing any of this if we cannot relate the message.
         try:
@@ -230,8 +247,12 @@ class Notification(CleanSave, TimestampedModel):
     def __repr__(self):
         username = "None" if self.user is None else repr(self.user.username)
         return "<Notification %s user=%s users=%r admins=%r %r>" % (
-            self.category.upper(), username, self.users, self.admins,
-            self.render())
+            self.category.upper(),
+            username,
+            self.users,
+            self.admins,
+            self.render(),
+        )
 
 
 class NotificationDismissal(Model):
@@ -247,5 +268,6 @@ class NotificationDismissal(Model):
     objects = Manager()
 
     notification = ForeignKey(
-        Notification, null=False, blank=False, on_delete=CASCADE)
+        Notification, null=False, blank=False, on_delete=CASCADE
+    )
     user = ForeignKey(User, null=False, blank=False, on_delete=CASCADE)

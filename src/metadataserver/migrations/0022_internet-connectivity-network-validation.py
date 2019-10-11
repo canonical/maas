@@ -7,9 +7,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('metadataserver', '0021_scriptresult_applying_netconf'),
-    ]
+    dependencies = [("metadataserver", "0021_scriptresult_applying_netconf")]
 
     operations = [
         # Users can change the tags for all Scripts to allow them to choose
@@ -21,5 +19,6 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             "UPDATE metadataserver_script SET "
             "tags = tags || '{network-validation}' "
-            "WHERE name = 'internet-connectivity';"),
+            "WHERE name = 'internet-connectivity';"
+        )
     ]

@@ -3,10 +3,7 @@
 
 """API handlers: `ResourcePool`."""
 
-__all__ = [
-    'ResourcePoolHandler',
-    'ResourcePoolsHandler',
-]
+__all__ = ["ResourcePoolHandler", "ResourcePoolsHandler"]
 
 from maasserver.api.support import (
     AnonymousOperationsHandler,
@@ -20,15 +17,12 @@ from maasserver.permissions import ResourcePoolPermission
 from piston3.utils import rc
 
 
-DISPLAYED_RESOURCEPOOL_FIELDS = (
-    'id',
-    'name',
-    'description',
-)
+DISPLAYED_RESOURCEPOOL_FIELDS = ("id", "name", "description")
 
 
 class AnonResourcePoolHandler(AnonymousOperationsHandler):
     """Anonymous access to a resource pool."""
+
     read = create = update = delete = None
     model = ResourcePool
     fields = DISPLAYED_RESOURCEPOOL_FIELDS
@@ -40,8 +34,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
     model = ResourcePool
     fields = DISPLAYED_RESOURCEPOOL_FIELDS
     model_form = ResourcePoolForm
-    handler_url_name = 'resourcepool_handler'
-    api_doc_section_name = 'Resource pool'
+    handler_url_name = "resourcepool_handler"
+    api_doc_section_name = "Resource pool"
     permission_read = ResourcePoolPermission.view
     permission_edit = ResourcePoolPermission.edit
     permission_delete = ResourcePoolPermission.delete
@@ -68,7 +62,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
             Not Found
         """
         return ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, self.permission_read)
+            id, request.user, self.permission_read
+        )
 
     def update(self, request, id):
         """@description Updates a resource pool's name or description.
@@ -102,7 +97,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
             Not Found
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, self.permission_edit)
+            id, request.user, self.permission_edit
+        )
         form = ResourcePoolForm(instance=pool, data=request.data)
         if form.is_valid():
             return form.save()
@@ -127,7 +123,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
             <no content>
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, self.permission_delete)
+            id, request.user, self.permission_delete
+        )
         pool.delete()
         return rc.DELETED
 
@@ -138,8 +135,8 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
     model_manager = ResourcePool.objects
     fields = DISPLAYED_RESOURCEPOOL_FIELDS
     model_form = ResourcePoolForm
-    handler_url_name = 'resourcepools_handler'
-    api_doc_section_name = 'Resource pools'
+    handler_url_name = "resourcepools_handler"
+    api_doc_section_name = "Resource pools"
 
     def create(self, request):
         """@description Creates a new resource pool.
@@ -186,5 +183,6 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
                 }
             ]
         """
-        return self.model_manager.get_resource_pools(
-            request.user).order_by(self.order_field)
+        return self.model_manager.get_resource_pools(request.user).order_by(
+            self.order_field
+        )

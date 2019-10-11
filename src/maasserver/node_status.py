@@ -8,7 +8,7 @@ __all__ = [
     "get_failed_status",
     "get_node_timeout",
     "is_failed_status",
-    ]
+]
 
 
 from maasserver.enum import NODE_STATUS
@@ -48,11 +48,7 @@ NODE_TESTING_RESET_READY_TRANSITIONS = {
 # }
 #
 NODE_TRANSITIONS = {
-    None: [
-        NODE_STATUS.NEW,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.RETIRED,
-        ],
+    None: [NODE_STATUS.NEW, NODE_STATUS.MISSING, NODE_STATUS.RETIRED],
     NODE_STATUS.NEW: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.TESTING,
@@ -61,7 +57,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RETIRED,
         NODE_STATUS.BROKEN,
         NODE_STATUS.ENTERING_RESCUE_MODE,
-        ],
+    ],
     NODE_STATUS.COMMISSIONING: [
         NODE_STATUS.FAILED_COMMISSIONING,
         NODE_STATUS.READY,
@@ -70,7 +66,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.NEW,
         NODE_STATUS.BROKEN,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.FAILED_COMMISSIONING: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.MISSING,
@@ -78,7 +74,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.BROKEN,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.READY: [
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.COMMISSIONING,
@@ -88,7 +84,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.RESERVED: [
         NODE_STATUS.READY,
         NODE_STATUS.ALLOCATED,
@@ -99,7 +95,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RELEASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.ALLOCATED: [
         NODE_STATUS.READY,
         NODE_STATUS.RETIRED,
@@ -110,7 +106,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RELEASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.RELEASING: [
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.RESERVED,
@@ -121,7 +117,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.FAILED_DISK_ERASING,
         NODE_STATUS.FAILED_RELEASING,
-        ],
+    ],
     NODE_STATUS.DEPLOYING: [
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.MISSING,
@@ -160,7 +156,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.BROKEN,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.RETIRED: [
         NODE_STATUS.NEW,
         NODE_STATUS.READY,
@@ -168,7 +164,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.BROKEN,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.BROKEN: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.READY,
@@ -177,21 +173,21 @@ NODE_TRANSITIONS = {
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
         NODE_STATUS.DEPLOYED,
-        ],
+    ],
     NODE_STATUS.FAILED_RELEASING: [
         NODE_STATUS.RELEASING,
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.READY,
         NODE_STATUS.BROKEN,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.DISK_ERASING: [
         NODE_STATUS.BROKEN,
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.FAILED_DISK_ERASING,
         NODE_STATUS.READY,
         NODE_STATUS.RELEASING,
-        ],
+    ],
     NODE_STATUS.FAILED_DISK_ERASING: [
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.RELEASING,
@@ -200,7 +196,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.READY,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.ENTERING_RESCUE_MODE: [
         NODE_STATUS.READY,
         NODE_STATUS.BROKEN,
@@ -208,18 +204,18 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RESCUE_MODE,
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
         NODE_STATUS.EXITING_RESCUE_MODE,
-        ],
+    ],
     NODE_STATUS.FAILED_ENTERING_RESCUE_MODE: [
         NODE_STATUS.BROKEN,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.EXITING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.RESCUE_MODE: [
         NODE_STATUS.BROKEN,
         NODE_STATUS.EXITING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.EXITING_RESCUE_MODE: [
         NODE_STATUS.NEW,
         NODE_STATUS.BROKEN,
@@ -237,12 +233,12 @@ NODE_TRANSITIONS = {
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
         NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
         NODE_STATUS.FAILED_TESTING,
-        ],
+    ],
     NODE_STATUS.FAILED_EXITING_RESCUE_MODE: [
         NODE_STATUS.BROKEN,
         NODE_STATUS.EXITING_RESCUE_MODE,
         NODE_STATUS.TESTING,
-        ],
+    ],
     NODE_STATUS.TESTING: [
         NODE_STATUS.BROKEN,
         NODE_STATUS.NEW,
@@ -250,7 +246,8 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RESERVED,
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.DEPLOYED,
-        ] + list(NODE_TESTING_RESET_READY_TRANSITIONS),
+    ]
+    + list(NODE_TESTING_RESET_READY_TRANSITIONS),
     NODE_STATUS.FAILED_TESTING: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.BROKEN,
@@ -259,8 +256,8 @@ NODE_TRANSITIONS = {
         NODE_STATUS.TESTING,
         NODE_STATUS.READY,
         NODE_STATUS.DEPLOYED,
-        ],
-    }
+    ],
+}
 
 # State transitions for when a node fails:
 # Mapping between in-progress statuses and the corresponding failed
@@ -299,8 +296,9 @@ NODE_FAILURE_MONITORED_STATUS_TIMEOUTS = {
 MONITORED_STATUSES = list(NODE_FAILURE_STATUS_TRANSITIONS.keys())
 
 # Non-active statuses.
-NON_MONITORED_STATUSES = set(
-    map_enum(NODE_STATUS).values()).difference(set(MONITORED_STATUSES))
+NON_MONITORED_STATUSES = set(map_enum(NODE_STATUS).values()).difference(
+    set(MONITORED_STATUSES)
+)
 
 
 FAILED_STATUSES = list(NODE_FAILURE_STATUS_TRANSITIONS.values())
@@ -321,28 +319,24 @@ COMMISSIONING_LIKE_STATUSES = [
 # power state of the node up-to-date when transitions occur that do not
 # perform a power action directly.
 QUERY_TRANSITIONS = {
-    None: [
-        NODE_STATUS.NEW,
-        ],
+    None: [NODE_STATUS.NEW],
     NODE_STATUS.COMMISSIONING: [
         NODE_STATUS.FAILED_COMMISSIONING,
         NODE_STATUS.READY,
-        ],
+    ],
     NODE_STATUS.DEPLOYING: [
         NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.DEPLOYED,
-        ],
-    NODE_STATUS.DISK_ERASING: [
-        NODE_STATUS.FAILED_DISK_ERASING,
-        ],
+    ],
+    NODE_STATUS.DISK_ERASING: [NODE_STATUS.FAILED_DISK_ERASING],
     NODE_STATUS.TESTING: [
         NODE_STATUS.FAILED_TESTING,
         NODE_STATUS.READY,
         NODE_STATUS.RESERVED,
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.DEPLOYED,
-        ],
-    }
+    ],
+}
 
 
 def get_failed_status(status):
@@ -365,7 +359,7 @@ def get_node_timeout(status, node_timeout=None):
             return NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[status]
         else:
             if node_timeout is None:
-                return Config.objects.get_config('node_timeout')
+                return Config.objects.get_config("node_timeout")
             else:
                 return node_timeout
     return None

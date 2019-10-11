@@ -3,18 +3,13 @@
 
 """Service to periodically refresh the boot images."""
 
-__all__ = [
-    "ImageDownloadService",
-    ]
+__all__ = ["ImageDownloadService"]
 
 
 from datetime import timedelta
 
 from provisioningserver.boot import tftppath
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.boot_images import import_boot_images
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
@@ -22,15 +17,9 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
     GetProxies,
 )
-from provisioningserver.utils.twisted import (
-    pause,
-    retries,
-)
+from provisioningserver.utils.twisted import pause, retries
 from twisted.application.internet import TimerService
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.protocols.amp import UnhandledCommand
 
 
@@ -51,7 +40,8 @@ class ImageDownloadService(TimerService, object):
         :param reactor: An `IReactor` instance.
         """
         super(ImageDownloadService, self).__init__(
-            self.check_interval, self.try_download)
+            self.check_interval, self.try_download
+        )
         self.client_service = client_service
         self.tftp_root = tftp_root
         self.clock = reactor
@@ -62,10 +52,12 @@ class ImageDownloadService(TimerService, object):
         Log the full error to the Twisted log, and a concise error to
         the maas log.
         """
+
         def download_failure(failure):
             log.err(failure, "Downloading images failed.")
             maaslog.error(
-                "Failed to download images: %s", failure.getErrorMessage())
+                "Failed to download images: %s", failure.getErrorMessage()
+            )
 
         return self.maybe_start_download().addErrback(download_failure)
 
@@ -80,9 +72,9 @@ class ImageDownloadService(TimerService, object):
             # parameter. Region does not support boot source selection by os,
             # so its set too allow all operating systems.
             sources = yield client(GetBootSources, uuid=client.localIdent)
-            for source in sources['sources']:
-                for selection in source['selections']:
-                    selection['os'] = '*'
+            for source in sources["sources"]:
+                for selection in source["selections"]:
+                    selection["os"] = "*"
         returnValue(sources)
 
     @inlineCallbacks
@@ -98,7 +90,8 @@ class ImageDownloadService(TimerService, object):
                 yield pause(wait, self.clock)
         else:
             maaslog.error(
-                "Can't initiate image download, no RPC connection to region.")
+                "Can't initiate image download, no RPC connection to region."
+            )
             return
 
         # Get sources from region
@@ -111,8 +104,11 @@ class ImageDownloadService(TimerService, object):
             return None if url is None else url.geturl()
 
         yield import_boot_images(
-            sources.get("sources"), self.client_service.maas_url,
-            get_proxy_url("http"), get_proxy_url("https"))
+            sources.get("sources"),
+            self.client_service.maas_url,
+            get_proxy_url("http"),
+            get_proxy_url("https"),
+        )
 
     @inlineCallbacks
     def maybe_start_download(self):

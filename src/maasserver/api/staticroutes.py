@@ -3,10 +3,7 @@
 
 """API handlers: `StaticRoute`."""
 
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
@@ -15,16 +12,17 @@ from piston3.utils import rc
 
 
 DISPLAYED_STATIC_ROUTE_FIELDS = (
-    'id',
-    'source',
-    'destination',
-    'gateway_ip',
-    'metric',
+    "id",
+    "source",
+    "destination",
+    "gateway_ip",
+    "metric",
 )
 
 
 class StaticRoutesHandler(OperationsHandler):
     """Manage static routes."""
+
     api_doc_section_name = "Static routes"
     update = delete = None
     fields = DISPLAYED_STATIC_ROUTE_FIELDS
@@ -32,7 +30,7 @@ class StaticRoutesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('staticroutes_handler', [])
+        return ("staticroutes_handler", [])
 
     def read(self, request):
         """@description-title List static routes
@@ -78,6 +76,7 @@ class StaticRoutesHandler(OperationsHandler):
 
 class StaticRouteHandler(OperationsHandler):
     """Manage static route."""
+
     api_doc_section_name = "Static route"
     create = None
     model = StaticRoute
@@ -89,7 +88,7 @@ class StaticRouteHandler(OperationsHandler):
         staticroute_id = "id"
         if staticroute is not None:
             staticroute_id = staticroute.id
-        return ('staticroute_handler', (staticroute_id,))
+        return ("staticroute_handler", (staticroute_id,))
 
     def read(self, request, id):
         """@description-title Get a static route
@@ -109,7 +108,8 @@ class StaticRouteHandler(OperationsHandler):
             Not Found
         """
         return StaticRoute.objects.get_staticroute_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update a static route
@@ -141,7 +141,8 @@ class StaticRouteHandler(OperationsHandler):
             Not Found
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         form = StaticRouteForm(instance=staticroute, data=request.data)
         if form.is_valid():
             return form.save()
@@ -162,6 +163,7 @@ class StaticRouteHandler(OperationsHandler):
             Not Found
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         staticroute.delete()
         return rc.DELETED

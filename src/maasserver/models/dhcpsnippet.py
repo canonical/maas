@@ -1,9 +1,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    "DHCPSnippet",
-]
+__all__ = ["DHCPSnippet"]
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -24,19 +22,21 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 
 class DHCPSnippetQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'id': "__id",
-            'name': "__name",
+            "id": "__id",
+            "name": "__name",
         }
         return super(DHCPSnippetQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
 
 class DHCPSnippetQuerySet(QuerySet, DHCPSnippetQueriesMixin):
@@ -48,7 +48,6 @@ class DHCPSnippetQuerySet(QuerySet, DHCPSnippetQueriesMixin):
 
 
 class DHCPSnippetManager(Manager, DHCPSnippetQueriesMixin):
-
     def get_queryset(self):
         return DHCPSnippetQuerySet(self.model, using=self._db)
 
@@ -96,4 +95,5 @@ class DHCPSnippet(CleanSave, TimestampedModel):
         if self.node is not None and self.subnet is not None:
             raise ValidationError(
                 "A DHCP snippet cannot be enabled on a node and subnet at the "
-                "same time.")
+                "same time."
+            )

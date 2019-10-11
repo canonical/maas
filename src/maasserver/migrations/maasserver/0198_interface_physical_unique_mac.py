@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0197_remove_duplicate_physical_interfaces'),
+        ("maasserver", "0197_remove_duplicate_physical_interfaces")
     ]
 
     operations = [

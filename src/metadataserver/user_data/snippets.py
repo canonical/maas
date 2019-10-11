@@ -8,12 +8,12 @@ importing this must not pull in any unnecessary framework modules etc.
 """
 
 __all__ = [
-    'list_snippets',
-    'read_snippet',
-    'strip_name',
-    'get_snippet_context',
-    'get_userdata_template_dir',
-    ]
+    "list_snippets",
+    "read_snippet",
+    "strip_name",
+    "get_snippet_context",
+    "get_userdata_template_dir",
+]
 
 import os
 
@@ -23,24 +23,24 @@ from provisioningserver.utils.fs import read_text_file
 def get_userdata_template_dir():
     """Return the absolute location of the userdata
     template directory."""
-    return os.path.join(
-        os.path.dirname(__file__), 'templates')
+    return os.path.join(os.path.dirname(__file__), "templates")
 
 
-def get_snippet_context(snippets_dir=None, encoding='utf-8'):
+def get_snippet_context(snippets_dir=None, encoding="utf-8"):
     """Return the context of all of the snippets."""
     if snippets_dir is None:
-        snippets_dir = os.path.join(get_userdata_template_dir(), 'snippets')
+        snippets_dir = os.path.join(get_userdata_template_dir(), "snippets")
     snippets = {
         strip_name(name): read_snippet(snippets_dir, name, encoding=encoding)
         for name in list_snippets(snippets_dir)
-        }
-    snippets['base_user_data_sh'] = read_snippet(
-        get_userdata_template_dir(), 'base_user_data.sh', encoding=encoding)
+    }
+    snippets["base_user_data_sh"] = read_snippet(
+        get_userdata_template_dir(), "base_user_data.sh", encoding=encoding
+    )
     return snippets
 
 
-def read_snippet(snippets_dir, name, encoding='utf-8'):
+def read_snippet(snippets_dir, name, encoding="utf-8"):
     """Read a snippet file.
 
     :rtype: `unicode`
@@ -51,12 +51,12 @@ def read_snippet(snippets_dir, name, encoding='utf-8'):
 def is_snippet(filename):
     """Does `filename` represent a valid snippet name?"""
     return (
-        not filename.startswith('.') and
-        not filename.endswith('.pyc') and
-        not filename.endswith('~') and
-        filename != '__pycache__' and
-        filename != '__init__.py' and
-        filename != 'tests'
+        not filename.startswith(".")
+        and not filename.endswith(".pyc")
+        and not filename.endswith("~")
+        and filename != "__pycache__"
+        and filename != "__init__.py"
+        and filename != "tests"
     )
 
 
@@ -68,4 +68,4 @@ def list_snippets(snippets_dir):
 def strip_name(snippet_name):
     """Canonicalize a snippet name."""
     # Dot suffixes do not work well in tempita variable names.
-    return snippet_name.replace('.', '_')
+    return snippet_name.replace(".", "_")

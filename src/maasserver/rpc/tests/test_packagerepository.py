@@ -14,15 +14,17 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestGetArchiveMirrors(MAASServerTestCase):
-
     def test_returns_populated_dict_when_main_and_port_is_set(self):
         PackageRepository.objects.all().delete()
-        main_url = factory.make_url(scheme='http')
-        ports_url = factory.make_url(scheme='http')
+        main_url = factory.make_url(scheme="http")
+        ports_url = factory.make_url(scheme="http")
         factory.make_PackageRepository(
-            url=main_url, default=True, arches=['i386', 'amd64'])
+            url=main_url, default=True, arches=["i386", "amd64"]
+        )
         factory.make_PackageRepository(
-            url=ports_url, default=True, arches=['arm64', 'armhf', 'powerpc'])
+            url=ports_url, default=True, arches=["arm64", "armhf", "powerpc"]
+        )
         self.assertEqual(
             {"main": urlparse(main_url), "ports": urlparse(ports_url)},
-            get_archive_mirrors())
+            get_archive_mirrors(),
+        )

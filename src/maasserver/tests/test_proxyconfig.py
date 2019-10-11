@@ -18,17 +18,10 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.proxy import config
 from provisioningserver.utils import snappy
-from testtools.matchers import (
-    Contains,
-    FileContains,
-    Not,
-)
+from testtools.matchers import Contains, FileContains, Not
 from twisted.internet.defer import inlineCallbacks
 
 
@@ -47,7 +40,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         # re-cached. Disable the signals so no threads are dirty.
         bootsources.signals.disable()
         self.useFixture(
-            EnvironmentVariableFixture('MAAS_PROXY_CONFIG_DIR', self.tmpdir))
+            EnvironmentVariableFixture("MAAS_PROXY_CONFIG_DIR", self.tmpdir)
+        )
 
     @transactional
     def make_subnet(self, allow_proxy=True):
@@ -64,34 +58,39 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         matcher = Contains("acl localnet src %s" % enabled.cidr)
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
-            FileContains(matcher=matcher))
+            FileContains(matcher=matcher),
+        )
         # disabled's cidr must not be present
         matcher = Not(Contains("acl localnet src %s" % disabled.cidr))
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
-            FileContains(matcher=matcher))
+            FileContains(matcher=matcher),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test__with_use_peer_proxy_with_http_proxy(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "enable_http_proxy", True)
+            transactional(Config.objects.set_config), "enable_http_proxy", True
+        )
+        yield deferToDatabase(
+            transactional(Config.objects.set_config), "use_peer_proxy", True
+        )
         yield deferToDatabase(
             transactional(Config.objects.set_config),
-            "use_peer_proxy", True)
-        yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "http_proxy", "http://example.com:8000/")
+            "http_proxy",
+            "http://example.com:8000/",
+        )
         yield deferToDatabase(self.make_subnet, allow_proxy=False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         cache_peer_line = (
-            "cache_peer example.com parent 8000 0 no-query default")
+            "cache_peer example.com parent 8000 0 no-query default"
+        )
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertIn('never_direct allow all', lines)
+            self.assertIn("never_direct allow all", lines)
             self.assertIn(cache_peer_line, lines)
 
     @wait_for_reactor
@@ -99,66 +98,68 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
     def test__with_use_peer_proxy_without_http_proxy(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "enable_http_proxy", True)
+            transactional(Config.objects.set_config), "enable_http_proxy", True
+        )
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "use_peer_proxy", True)
+            transactional(Config.objects.set_config), "use_peer_proxy", True
+        )
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "http_proxy", "")
+            transactional(Config.objects.set_config), "http_proxy", ""
+        )
         yield deferToDatabase(self.make_subnet, allow_proxy=False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn('never_direct allow all', lines)
-            self.assertNotIn('cache_peer', lines)
+            self.assertNotIn("never_direct allow all", lines)
+            self.assertNotIn("cache_peer", lines)
 
     @wait_for_reactor
     @inlineCallbacks
     def test__without_use_peer_proxy(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "enable_http_proxy", True)
+            transactional(Config.objects.set_config), "enable_http_proxy", True
+        )
+        yield deferToDatabase(
+            transactional(Config.objects.set_config), "use_peer_proxy", False
+        )
         yield deferToDatabase(
             transactional(Config.objects.set_config),
-            "use_peer_proxy", False)
-        yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "http_proxy", "http://example.com:8000/")
+            "http_proxy",
+            "http://example.com:8000/",
+        )
         yield deferToDatabase(self.make_subnet, allow_proxy=False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn('never_direct allow all', lines)
-            self.assertNotIn('cache_peer', lines)
+            self.assertNotIn("never_direct allow all", lines)
+            self.assertNotIn("cache_peer", lines)
 
     @wait_for_reactor
     @inlineCallbacks
     def test__with_prefer_v4_proxy_False(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "prefer_v4_proxy", False)
+            transactional(Config.objects.set_config), "prefer_v4_proxy", False
+        )
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn('dns_v4_first on', lines)
+            self.assertNotIn("dns_v4_first on", lines)
 
     @wait_for_reactor
     @inlineCallbacks
     def test__with_prefer_v4_proxy_True(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "prefer_v4_proxy", True)
+            transactional(Config.objects.set_config), "prefer_v4_proxy", True
+        )
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertIn('dns_v4_first on', lines)
+            self.assertIn("dns_v4_first on", lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -166,12 +167,12 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(settings, "PROXY_CONNECT", True)
         port = random.randint(1, 65535)
         yield deferToDatabase(
-            transactional(Config.objects.set_config),
-            "maas_proxy_port", port)
+            transactional(Config.objects.set_config), "maas_proxy_port", port
+        )
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertIn('http_port %s' % port, lines)
+            self.assertIn("http_port %s" % port, lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -181,18 +182,20 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield proxyconfig.proxy_update_config()
         self.assertThat(
             self.service_monitor.reloadService,
-            MockCalledOnceWith("proxy", if_on=True))
+            MockCalledOnceWith("proxy", if_on=True),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
-        self.patch(snappy, 'running_in_snap').return_value = True
+        self.patch(snappy, "running_in_snap").return_value = True
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
         self.assertThat(
             self.service_monitor.restartService,
-            MockCalledOnceWith("proxy", if_on=True))
+            MockCalledOnceWith("proxy", if_on=True),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -200,9 +203,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(settings, "PROXY_CONNECT", False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
-        self.assertThat(
-            self.service_monitor.reloadService,
-            MockNotCalled())
+        self.assertThat(self.service_monitor.reloadService, MockNotCalled())
 
     @wait_for_reactor
     @inlineCallbacks
@@ -210,6 +211,4 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
-        self.assertThat(
-            self.service_monitor.reloadService,
-            MockNotCalled())
+        self.assertThat(self.service_monitor.reloadService, MockNotCalled())

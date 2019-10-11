@@ -41,11 +41,7 @@ from subprocess import (
 )
 import sys
 import tarfile
-from threading import (
-    Event,
-    Lock,
-    Thread,
-)
+from threading import Event, Lock, Thread
 import time
 import traceback
 import zipfile
@@ -74,7 +70,7 @@ except ImportError:
     )
 
 
-NETPLAN_DIR = '/etc/netplan'
+NETPLAN_DIR = "/etc/netplan"
 
 
 def fail(msg):
@@ -93,32 +89,33 @@ def signal_wrapper(*args, **kwargs):
 
 def output_and_send(error, send_result=True, *args, **kwargs):
     """Output the error message to stderr and send iff send_result is True."""
-    sys.stdout.write('%s\n' % error)
+    sys.stdout.write("%s\n" % error)
     sys.stdout.flush()
     if send_result:
         signal_wrapper(*args, error=error, **kwargs)
 
 
 def output_and_send_scripts(
-        error, scripts, send_result=True, error_is_stderr=False,
-        *args, **kwargs):
+    error, scripts, send_result=True, error_is_stderr=False, *args, **kwargs
+):
     """output_and_send for multiple scripts."""
     for script in scripts:
         script_error = error.format(**script)
         new_kwargs = copy.deepcopy(kwargs)
         if error_is_stderr:
-            script_output = '%s\n' % script_error
+            script_output = "%s\n" % script_error
             script_output = script_output.encode()
             # Write output to the filesystem to help with debug.
-            for path in [script['combined_path'], script['stderr_path']]:
-                with open(path, 'ab') as out:
+            for path in [script["combined_path"], script["stderr_path"]]:
+                with open(path, "ab") as out:
                     out.write(script_output)
-            new_kwargs['files'] = {
-                script['combined_name']: script_output,
-                script['stderr_name']: script_output,
+            new_kwargs["files"] = {
+                script["combined_name"]: script_output,
+                script["stderr_name"]: script_output,
             }
         output_and_send(
-            script_error, send_result, *args, **script['args'], **new_kwargs)
+            script_error, send_result, *args, **script["args"], **new_kwargs
+        )
 
 
 def download_and_extract_tar(url, creds, scripts_dir):
@@ -128,46 +125,54 @@ def download_and_extract_tar(url, creds, scripts_dir):
     there is no content.
     """
     sys.stdout.write(
-        "Downloading and extracting %s to %s\n" % (url, scripts_dir))
+        "Downloading and extracting %s to %s\n" % (url, scripts_dir)
+    )
     sys.stdout.flush()
     ret = geturl(url, creds)
     if ret.status == int(http.client.NO_CONTENT):
         return False
     binary = BytesIO(ret.read())
 
-    with tarfile.open(mode='r|*', fileobj=binary) as tar:
+    with tarfile.open(mode="r|*", fileobj=binary) as tar:
         tar.extractall(scripts_dir)
 
     return True
 
 
 def run_and_check(
-        cmd, scripts, status, send_result=True, sudo=False,
-        failure_hook=None):
+    cmd, scripts, status, send_result=True, sudo=False, failure_hook=None
+):
     if sudo:
-        cmd = ['sudo', '-En'] + cmd
+        cmd = ["sudo", "-En"] + cmd
     proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
     capture_script_output(
-        proc, scripts[0]['combined_path'], scripts[0]['stdout_path'],
-        scripts[0]['stderr_path'])
+        proc,
+        scripts[0]["combined_path"],
+        scripts[0]["stdout_path"],
+        scripts[0]["stderr_path"],
+    )
     if proc.returncode != 0 and send_result:
         if failure_hook is not None:
             failure_hook()
         for script in scripts:
-            args = copy.deepcopy(script['args'])
-            script['exit_status'] = args['exit_status'] = proc.returncode
-            args['status'] = status
-            args['files'] = {
-                scripts[0]['combined_name']: open(
-                    scripts[0]['combined_path'], 'rb').read(),
-                scripts[0]['stdout_name']: open(
-                    scripts[0]['stdout_path'], 'rb').read(),
-                scripts[0]['stderr_name']: open(
-                    scripts[0]['stderr_path'], 'rb').read(),
+            args = copy.deepcopy(script["args"])
+            script["exit_status"] = args["exit_status"] = proc.returncode
+            args["status"] = status
+            args["files"] = {
+                scripts[0]["combined_name"]: open(
+                    scripts[0]["combined_path"], "rb"
+                ).read(),
+                scripts[0]["stdout_name"]: open(
+                    scripts[0]["stdout_path"], "rb"
+                ).read(),
+                scripts[0]["stderr_name"]: open(
+                    scripts[0]["stderr_path"], "rb"
+                ).read(),
             }
             output_and_send(
-                'Failed installing package(s) for %s' % script['msg_name'],
-                **args)
+                "Failed installing package(s) for %s" % script["msg_name"],
+                **args
+            )
         return False
     else:
         return True
@@ -175,19 +180,28 @@ def run_and_check(
 
 def _install_apt_dependencies(packages, scripts, send_result=True):
     output_and_send_scripts(
-        'Installing apt packages for {msg_name}', scripts, send_result,
-        status='INSTALLING')
+        "Installing apt packages for {msg_name}",
+        scripts,
+        send_result,
+        status="INSTALLING",
+    )
     # Check if apt-get update needs to be run
-    if not os.path.exists('/var/cache/apt/pkgcache.bin'):
+    if not os.path.exists("/var/cache/apt/pkgcache.bin"):
         if not run_and_check(
-                ['apt-get', '-qy', 'update'], scripts, 'INSTALLING',
-                send_result, True):
+            ["apt-get", "-qy", "update"],
+            scripts,
+            "INSTALLING",
+            send_result,
+            True,
+        ):
             return False
     if not run_and_check(
-            [
-                'apt-get', '-qy', '--no-install-recommends',
-                'install'] + packages,
-            scripts, 'INSTALLING', send_result, True):
+        ["apt-get", "-qy", "--no-install-recommends", "install"] + packages,
+        scripts,
+        "INSTALLING",
+        send_result,
+        True,
+    ):
         return False
 
     return True
@@ -195,26 +209,29 @@ def _install_apt_dependencies(packages, scripts, send_result=True):
 
 def _install_snap_dependencies(packages, scripts, send_result=True):
     output_and_send_scripts(
-        'Installing snap packages for {msg_name}', scripts, send_result,
-        status='INSTALLING')
+        "Installing snap packages for {msg_name}",
+        scripts,
+        send_result,
+        status="INSTALLING",
+    )
     for pkg in packages:
         if isinstance(pkg, str):
-            cmd = ['snap', 'install', pkg]
+            cmd = ["snap", "install", pkg]
         elif isinstance(pkg, dict):
-            cmd = ['snap', 'install', pkg['name']]
-            if 'channel' in pkg:
-                cmd.append('--%s' % pkg['channel'])
-            if 'mode' in pkg:
-                if pkg['mode'] == 'classic':
-                    cmd.append('--classic')
+            cmd = ["snap", "install", pkg["name"]]
+            if "channel" in pkg:
+                cmd.append("--%s" % pkg["channel"])
+            if "mode" in pkg:
+                if pkg["mode"] == "classic":
+                    cmd.append("--classic")
                 else:
-                    cmd.append('--%smode' % pkg['mode'])
+                    cmd.append("--%smode" % pkg["mode"])
         else:
             # The ScriptForm validates that each snap package should be a
             # string or dictionary. This should never happen but just
             # incase it does...
             continue
-        if not run_and_check(cmd, scripts, 'INSTALLING', send_result, True):
+        if not run_and_check(cmd, scripts, "INSTALLING", send_result, True):
             return False
 
     return True
@@ -222,27 +239,33 @@ def _install_snap_dependencies(packages, scripts, send_result=True):
 
 def _install_url_dependencies(packages, scripts, send_result=True):
     output_and_send_scripts(
-        'Downloading and extracting URLs for {msg_name}', scripts, send_result,
-        status='INSTALLING')
+        "Downloading and extracting URLs for {msg_name}",
+        scripts,
+        send_result,
+        status="INSTALLING",
+    )
     path_regex = re.compile("^Saving to: ['‘](?P<path>.+)['’]$", re.M)
     # Install only happens once for all scripts in a group so use the first
     # script's paths.
-    download_path = scripts[0]['download_path']
-    combined_path = scripts[0]['combined_path']
+    download_path = scripts[0]["download_path"]
+    combined_path = scripts[0]["combined_path"]
     for pkg in packages:
         # wget supports multiple protocols, proxying, proper error message,
         # handling user input without protocol information, and getting the
         # filename from the request. Shell out and capture its output
         # instead of implementing all of that here.
         if not run_and_check(
-                ['wget', pkg, '-P', download_path], scripts, 'INSTALLING',
-                send_result):
+            ["wget", pkg, "-P", download_path],
+            scripts,
+            "INSTALLING",
+            send_result,
+        ):
             return False
 
         # Get the filename from the captured output incase the URL does not
         # include a filename. e.g the URL 'ubuntu.com' will create an
         # index.html file.
-        with open(combined_path, 'r') as combined:
+        with open(combined_path, "r") as combined:
             m = path_regex.findall(combined.read())
             if m != []:
                 filename = m[-1]
@@ -251,24 +274,29 @@ def _install_url_dependencies(packages, scripts, send_result=True):
                 continue
 
         if tarfile.is_tarfile(filename):
-            with tarfile.open(filename, 'r|*') as tar:
+            with tarfile.open(filename, "r|*") as tar:
                 tar.extractall(download_path)
         elif zipfile.is_zipfile(filename):
-            with zipfile.ZipFile(filename, 'r') as z:
+            with zipfile.ZipFile(filename, "r") as z:
                 z.extractall(download_path)
-        elif filename.endswith('.deb'):
+        elif filename.endswith(".deb"):
             # Allow dpkg to fail incase it just needs dependencies
             # installed.
             run_and_check(
-                ['dpkg', '-i', filename], scripts, 'INSTALLING', False, True)
+                ["dpkg", "-i", filename], scripts, "INSTALLING", False, True
+            )
             if not run_and_check(
-                    ['apt-get', 'install', '-qyf', '--no-install-recommends'],
-                    scripts, 'INSTALLING', send_result, True):
+                ["apt-get", "install", "-qyf", "--no-install-recommends"],
+                scripts,
+                "INSTALLING",
+                send_result,
+                True,
+            ):
                 return False
-        elif filename.endswith('.snap'):
+        elif filename.endswith(".snap"):
             if not run_and_check(
-                    ['snap', filename], scripts, 'INSTALLING', send_result,
-                    True):
+                ["snap", filename], scripts, "INSTALLING", send_result, True
+            ):
                 return False
 
     return True
@@ -283,8 +311,10 @@ def _clean_logs(scripts):
     # sent as the result in case of failure. If this is called installation
     # or applying network configuration was successful.
     for path in [
-            scripts[0]['combined_path'], scripts[0]['stdout_path'],
-            scripts[0]['stderr_path']]:
+        scripts[0]["combined_path"],
+        scripts[0]["stdout_path"],
+        scripts[0]["stderr_path"],
+    ]:
         if os.path.exists(path):
             os.remove(path)
 
@@ -297,13 +327,13 @@ def install_dependencies(scripts, send_result=True):
     if scripts:
         # A group of scripts is given when instance scripts are running. In
         # this case the packages are all the same.
-        packages = scripts[0].get('packages', {})
+        packages = scripts[0].get("packages", {})
     else:
         return True
     installers = {
-        'apt': _install_apt_dependencies,
-        'snap': _install_snap_dependencies,
-        'url': _install_url_dependencies,
+        "apt": _install_apt_dependencies,
+        "snap": _install_snap_dependencies,
+        "url": _install_url_dependencies,
     }
 
     for t, installer in installers.items():
@@ -319,18 +349,18 @@ def install_dependencies(scripts, send_result=True):
 
 
 class CustomNetworking:
-
     def __init__(self, scripts, config_dir, send_result=True):
         self.scripts = scripts
         self.config_dir = config_dir
-        self.backup_dir = os.path.join(config_dir, 'netplan.bak')
-        self.netplan_yaml = os.path.join(self.config_dir, 'netplan.yaml')
+        self.backup_dir = os.path.join(config_dir, "netplan.bak")
+        self.netplan_yaml = os.path.join(self.config_dir, "netplan.yaml")
         self.send_result = send_result
         if scripts:
-            self.url = scripts[0]['args']['url']
-            self.creds = scripts[0]['args']['creds']
+            self.url = scripts[0]["args"]["url"]
+            self.creds = scripts[0]["args"]["creds"]
             self.apply_configured_networking = scripts[0].get(
-                'apply_configured_networking', False)
+                "apply_configured_networking", False
+            )
         else:
             self.url = self.creds = None
             self.apply_configured_networking = False
@@ -348,14 +378,15 @@ class CustomNetworking:
         This method doesn't trust get_interfaces() as a user provided
         script may have changed the network configuration."""
         for path, cmd in (
-                ('/sys/devices/virtual/net', ['ip', 'link', 'delete']),
-                ('/sys/class/net', ['ip', 'link', 'set', 'down'])):
+            ("/sys/devices/virtual/net", ["ip", "link", "delete"]),
+            ("/sys/class/net", ["ip", "link", "set", "down"]),
+        ):
             for dev in os.listdir(path):
-                if dev == 'lo':
+                if dev == "lo":
                     # lo should always be available and up. netplan will not
                     # reconfigure lo
                     continue
-                if not os.path.isfile(os.path.join(path, dev, 'address')):
+                if not os.path.isfile(os.path.join(path, dev, "address")):
                     # This isn't a device if it doesn't have an address.
                     continue
                 try:
@@ -372,7 +403,7 @@ class CustomNetworking:
         if not os.path.exists(self.backup_dir):
             return
 
-        applied_netplan_yaml = os.path.join(NETPLAN_DIR, 'netplan.yaml')
+        applied_netplan_yaml = os.path.join(NETPLAN_DIR, "netplan.yaml")
         if os.path.exists(applied_netplan_yaml):
             os.remove(applied_netplan_yaml)
         for f in os.listdir(self.backup_dir):
@@ -381,18 +412,21 @@ class CustomNetworking:
 
         self._bring_down_networking()
         try:
-            check_call(['netplan', 'apply', '--debug'], timeout=60)
+            check_call(["netplan", "apply", "--debug"], timeout=60)
         except TimeoutExpired:
-            sys.stderr.write('WARNING: netplan apply --debug timed out!\n')
+            sys.stderr.write("WARNING: netplan apply --debug timed out!\n")
             sys.stderr.flush()
         except CalledProcessError:
-            sys.stderr.write('WARNING: netplan apply --debug failed!\n')
+            sys.stderr.write("WARNING: netplan apply --debug failed!\n")
             sys.stderr.flush()
         if self.send_result:
             # Confirm we can still communicate with MAAS.
             signal_wrapper(
-                self.url, self.creds, 'APPLYING_NETCONF',
-                'ephemeral netplan applied')
+                self.url,
+                self.creds,
+                "APPLYING_NETCONF",
+                "ephemeral netplan applied",
+            )
         # The ephemeral environment network configuration only brings up the
         # PXE interface.
         get_interfaces(clear_cache=True)
@@ -402,17 +436,24 @@ class CustomNetworking:
         if not self.apply_configured_networking:
             return self
         output_and_send_scripts(
-            'Applying custom network configuration for {msg_name}',
-            self.scripts, self.send_result, status='APPLYING_NETCONF')
+            "Applying custom network configuration for {msg_name}",
+            self.scripts,
+            self.send_result,
+            status="APPLYING_NETCONF",
+        )
 
         if not os.path.exists(self.netplan_yaml):
             # This should never happen, if it does it means the Metadata
             # server is sending us incomplete data.
             output_and_send_scripts(
-                'Unable to apply custom network configuration for {msg_name}.'
-                '\n\nnetplan.yaml is missing from tar.', self.scripts,
-                self.send_result, error_is_stderr=True, exit_status=1,
-                status='APPLYING_NETCONF')
+                "Unable to apply custom network configuration for {msg_name}."
+                "\n\nnetplan.yaml is missing from tar.",
+                self.scripts,
+                self.send_result,
+                error_is_stderr=True,
+                exit_status=1,
+                status="APPLYING_NETCONF",
+            )
             raise FileNotFoundError(self.netplan_yaml)
 
         # Backup existing netplan config
@@ -425,10 +466,14 @@ class CustomNetworking:
         self._bring_down_networking()
         # Apply the configuration.
         if not run_and_check(
-                ['netplan', 'apply', '--debug'], self.scripts,
-                'APPLYING_NETCONF', self.send_result, True,
-                lambda: self._apply_ephemeral_netplan()):
-            raise OSError('netplan failed to apply!')
+            ["netplan", "apply", "--debug"],
+            self.scripts,
+            "APPLYING_NETCONF",
+            self.send_result,
+            True,
+            lambda: self._apply_ephemeral_netplan(),
+        ):
+            raise OSError("netplan failed to apply!")
 
         # The new network configuration may change what devices are available.
         # Clear the cache and reload.
@@ -438,15 +483,22 @@ class CustomNetworking:
             # Confirm we can still communicate with MAAS.
             if self.send_result:
                 signal(
-                    self.url, self.creds, 'APPLYING_NETCONF',
-                    'User netplan config applied')
+                    self.url,
+                    self.creds,
+                    "APPLYING_NETCONF",
+                    "User netplan config applied",
+                )
         except SignalException:
             self._apply_ephemeral_netplan()
             output_and_send_scripts(
-                'Unable to communicate to the MAAS metadata service after '
-                'applying custom network configuration.', self.scripts,
-                self.send_result, error_is_stderr=True, exit_status=1,
-                status='APPLYING_NETCONF')
+                "Unable to communicate to the MAAS metadata service after "
+                "applying custom network configuration.",
+                self.scripts,
+                self.send_result,
+                error_is_stderr=True,
+                exit_status=1,
+                status="APPLYING_NETCONF",
+            )
             raise
         else:
             # Network configuration successfully applied. Clear the logs so
@@ -476,19 +528,26 @@ def get_block_devices():
     if _block_devices is None:
         try:
             cmd = [
-                'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
-                'NAME,MODEL,SERIAL',
+                "lsblk",
+                "--exclude",
+                "1,2,7",
+                "-d",
+                "-P",
+                "-o",
+                "NAME,MODEL,SERIAL",
             ]
-            block_list = check_output(cmd, timeout=60).decode('utf-8')
+            block_list = check_output(cmd, timeout=60).decode("utf-8")
         except TimeoutExpired:
             _block_devices = KeyError(
-                "%s timed out after 60 seconds" % ' '.join(cmd))
+                "%s timed out after 60 seconds" % " ".join(cmd)
+            )
         except CalledProcessError as e:
             _block_devices = KeyError(
                 "%s failed with return code %s\n\n"
                 "STDOUT:\n%s\n\n"
-                "STDERR:\n%s\n" % (
-                    ' '.join(cmd), e.returncode, e.stdout, e.stderr))
+                "STDERR:\n%s\n"
+                % (" ".join(cmd), e.returncode, e.stdout, e.stderr)
+            )
         else:
             block_devices = []
             for blockdev in block_list.splitlines():
@@ -535,35 +594,38 @@ def get_interfaces(clear_cache=False):
         for cfg_file in os.listdir(NETPLAN_DIR):
             cfg_path = os.path.join(NETPLAN_DIR, cfg_file)
             try:
-                with open(cfg_path, 'r') as f:
+                with open(cfg_path, "r") as f:
                     cfg = yaml.safe_load(f)
             except Exception:
                 # Ignore bad configs, non-files.
                 continue
             if not isinstance(cfg, dict):
                 continue
-            for value in cfg.get('network', {}).values():
+            for value in cfg.get("network", {}).values():
                 if not isinstance(value, dict):
                     continue
                 for dev, info in value.items():
-                    if 'macaddress' in info:
-                        macaddress = info['macaddress']
-                    elif 'macaddress' in info.get('match', {}):
-                        macaddress = info['match']['macaddress']
+                    if "macaddress" in info:
+                        macaddress = info["macaddress"]
+                    elif "macaddress" in info.get("match", {}):
+                        macaddress = info["match"]["macaddress"]
                     else:
                         continue
                     # We only care about devices which have addresses. This is
                     # how we differentiate between a bond and the interfaces
                     # that make that bond.
-                    if ('addresses' in info or
-                            info.get('dhcp4') or info.get('dhcp6')):
-                        interfaces[macaddress] = info.get('set-name', dev)
+                    if (
+                        "addresses" in info
+                        or info.get("dhcp4")
+                        or info.get("dhcp6")
+                    ):
+                        interfaces[macaddress] = info.get("set-name", dev)
 
         # XXX ltrager 2019-07-26 - netplan is non-blocking(LP:1838114). Try
         # to wait until all devices have come up. If this doesn't happen after
         # 5 seconds continue the error will be reported later.
         for naptime in (0.1, 0.1, 0.1, 0.2, 0.2, 0.3, 0.5, 0.5, 1, 2):
-            live_devs = os.listdir('/sys/class/net')
+            live_devs = os.listdir("/sys/class/net")
             missing = False
             for dev in interfaces.values():
                 if dev not in live_devs:
@@ -574,7 +636,7 @@ def get_interfaces(clear_cache=False):
             else:
                 break
         if missing:
-            sys.stderr.write('Error: Not all interfaces were brought up!')
+            sys.stderr.write("Error: Not all interfaces were brought up!")
         _interfaces = interfaces
 
     if _interfaces_lock.locked():
@@ -584,32 +646,35 @@ def get_interfaces(clear_cache=False):
 
 def parse_parameters(script, scripts_dir):
     """Return a list containg script path and parameters to be passed to it."""
-    ret = [os.path.join(scripts_dir, script['path'])]
-    for param in script.get('parameters', {}).values():
-        param_type = param.get('type')
-        if param_type == 'storage':
-            value = param['value']
-            if value == 'all':
+    ret = [os.path.join(scripts_dir, script["path"])]
+    for param in script.get("parameters", {}).values():
+        param_type = param.get("type")
+        if param_type == "storage":
+            value = param["value"]
+            if value == "all":
                 raise KeyError(
                     "MAAS did not detect any storage devices during "
-                    "commissioning!")
-            model = value.get('model')
-            serial = value.get('serial')
+                    "commissioning!"
+                )
+            model = value.get("model")
+            serial = value.get("serial")
             if not (model and serial):
                 # If no model or serial were included trust that id_path
                 # is correct. This is needed for VirtIO devices.
-                value['path'] = value['input'] = value['id_path']
+                value["path"] = value["input"] = value["id_path"]
             else:
                 # Map the current path of the device to what it currently is
                 # for the device model and serial. This is needed as the
                 # the device name may have changed since commissioning.
                 for blockdev in get_block_devices():
-                    if (model == blockdev['MODEL'] and
-                            serial == blockdev['SERIAL']):
-                        value['path'] = value['input'] = "/dev/%s" % blockdev[
-                            'NAME']
-            argument_format = param.get(
-                'argument_format', '--storage={path}')
+                    if (
+                        model == blockdev["MODEL"]
+                        and serial == blockdev["SERIAL"]
+                    ):
+                        value["path"] = value["input"] = (
+                            "/dev/%s" % blockdev["NAME"]
+                        )
+            argument_format = param.get("argument_format", "--storage={path}")
             try:
                 ret += argument_format.format(**value).split()
             except KeyError:
@@ -619,17 +684,21 @@ def parse_parameters(script, scripts_dir):
                     "the OS is unable to find it due to a hardware failure. "
                     "Please re-commission this node to re-discover the "
                     "storage devices, or delete this device manually."
-                    % (model, serial))
-        elif param_type == 'interface':
-            value = param['value']
-            if value == 'all':
+                    % (model, serial)
+                )
+        elif param_type == "interface":
+            value = param["value"]
+            if value == "all":
                 raise KeyError(
-                    "MAAS did not detect any interfaces during commissioning!")
+                    "MAAS did not detect any interfaces during commissioning!"
+                )
             try:
-                value['input'] = value['name'] = get_interfaces()[
-                    value['mac_address']]
+                value["input"] = value["name"] = get_interfaces()[
+                    value["mac_address"]
+                ]
                 argument_format = param.get(
-                    'argument_format', '--interface={name}')
+                    "argument_format", "--interface={name}"
+                )
                 ret += argument_format.format(**value).split()
             except KeyError:
                 raise KeyError(
@@ -638,13 +707,19 @@ def parse_parameters(script, scripts_dir):
                     "This indicates the interface has been removed or the OS "
                     "is unable to find it due to a hardware failure. Please "
                     "re-commision this node to re-discover the interfaces or "
-                    "delete this interface manually." % (
-                        value['name'], value['vendor'], value['product'],
-                        value['mac_address']))
+                    "delete this interface manually."
+                    % (
+                        value["name"],
+                        value["vendor"],
+                        value["product"],
+                        value["mac_address"],
+                    )
+                )
         else:
             argument_format = param.get(
-                'argument_format', '--%s={input}' % param_type)
-            ret += argument_format.format(input=param['value']).split()
+                "argument_format", "--%s={input}" % param_type
+            )
+            ret += argument_format.format(input=param["value"]).split()
 
     return ret
 
@@ -652,14 +727,15 @@ def parse_parameters(script, scripts_dir):
 def _check_link_connected(script):
     # Only check if a link is connected if its a network script
     # which applies configured networking and has an interface parameter.
-    if (script['hardware_type'] != 4 or not
-            script.get('apply_configured_networking')):
+    if script["hardware_type"] != 4 or not script.get(
+        "apply_configured_networking"
+    ):
         return
     interface = None
-    for param in script.get('parameters', {}).values():
+    for param in script.get("parameters", {}).values():
         try:
-            if param['type'] == 'interface':
-                interface = get_interfaces()[param['value']['mac_address']]
+            if param["type"] == "interface":
+                interface = get_interfaces()[param["value"]["mac_address"]]
                 break
         except KeyError:
             # The parameter's keys should be validated by parse_parameters
@@ -668,18 +744,18 @@ def _check_link_connected(script):
     if not interface:
         return
 
-    operstate_path = os.path.join('/sys/class/net', interface, 'operstate')
-    with open(operstate_path, 'r') as f:
-        link_connected = (f.read().strip() == 'up')
+    operstate_path = os.path.join("/sys/class/net", interface, "operstate")
+    with open(operstate_path, "r") as f:
+        link_connected = f.read().strip() == "up"
 
     # MAAS only allows testing an interface which is connected. If its still
     # connected there is nothing to report.
     if link_connected:
         return
 
-    if os.path.exists(script['result_path']):
+    if os.path.exists(script["result_path"]):
         try:
-            with open(script['result_path'], 'r') as f:
+            with open(script["result_path"], "r") as f:
                 result = yaml.safe_load(f.read())
         except Exception:
             # Ignore errors reading the file so MAAS can report the error
@@ -693,70 +769,76 @@ def _check_link_connected(script):
             # report the error to the user.
             return
         # Don't override link_connected if the script set it.
-        if 'link_connected' in result:
+        if "link_connected" in result:
             return
         # If the test passed don't report link_connected status.
-        if result.get('status') == 'passed':
+        if result.get("status") == "passed":
             return
-        elif script['exit_status'] == 0:
+        elif script["exit_status"] == 0:
             return
-        os.remove(script['result_path'])
+        os.remove(script["result_path"])
     else:
         # If the test passed don't report link_connected status.
-        if script['exit_status'] == 0:
+        if script["exit_status"] == 0:
             return
         result = {}
 
-    result['link_connected'] = link_connected
-    with open(script['result_path'], 'w') as f:
+    result["link_connected"] = link_connected
+    with open(script["result_path"], "w") as f:
         yaml.safe_dump(result, f)
 
 
 def run_script(script, scripts_dir, send_result=True):
-    args = copy.deepcopy(script['args'])
-    args['status'] = 'WORKING'
-    args['send_result'] = send_result
-    timeout_seconds = script.get('timeout_seconds')
-    for param in script.get('parameters', {}).values():
-        if param.get('type') == 'runtime':
-            timeout_seconds = param['value']
+    args = copy.deepcopy(script["args"])
+    args["status"] = "WORKING"
+    args["send_result"] = send_result
+    timeout_seconds = script.get("timeout_seconds")
+    for param in script.get("parameters", {}).values():
+        if param.get("type") == "runtime":
+            timeout_seconds = param["value"]
             break
 
-    output_and_send('Starting %s' % script['msg_name'], **args)
+    output_and_send("Starting %s" % script["msg_name"], **args)
 
     env = copy.deepcopy(os.environ)
-    env['OUTPUT_COMBINED_PATH'] = script['combined_path']
-    env['OUTPUT_STDOUT_PATH'] = script['stdout_path']
-    env['OUTPUT_STDERR_PATH'] = script['stderr_path']
-    env['RESULT_PATH'] = script['result_path']
-    env['DOWNLOAD_PATH'] = script['download_path']
-    env['RUNTIME'] = str(timeout_seconds)
-    env['HAS_STARTED'] = str(script.get('has_started', False))
+    env["OUTPUT_COMBINED_PATH"] = script["combined_path"]
+    env["OUTPUT_STDOUT_PATH"] = script["stdout_path"]
+    env["OUTPUT_STDERR_PATH"] = script["stderr_path"]
+    env["RESULT_PATH"] = script["result_path"]
+    env["DOWNLOAD_PATH"] = script["download_path"]
+    env["RUNTIME"] = str(timeout_seconds)
+    env["HAS_STARTED"] = str(script.get("has_started", False))
 
     try:
         script_arguments = parse_parameters(script, scripts_dir)
     except KeyError as e:
         # 2 is the return code bash gives when it can't execute.
-        script['exit_status'] = args['exit_status'] = 2
+        script["exit_status"] = args["exit_status"] = 2
         output = "Unable to run '%s': %s\n\n" % (
-            script['name'], str(e).replace('"', '').replace('\\n', '\n'))
-        output += 'Given parameters:\n%s\n\n' % str(
-            script.get('parameters', {}))
+            script["name"],
+            str(e).replace('"', "").replace("\\n", "\n"),
+        )
+        output += "Given parameters:\n%s\n\n" % str(
+            script.get("parameters", {})
+        )
         try:
-            output += 'Discovered storage devices:\n%s\n' % str(
-                get_block_devices())
+            output += "Discovered storage devices:\n%s\n" % str(
+                get_block_devices()
+            )
         except KeyError:
             pass
-        output += 'Discovered interfaces:\n%s\n' % str(get_interfaces())
+        output += "Discovered interfaces:\n%s\n" % str(get_interfaces())
 
         output = output.encode()
-        args['files'] = {
-            script['combined_name']: output,
-            script['stderr_name']: output,
+        args["files"] = {
+            script["combined_name"]: output,
+            script["stderr_name"]: output,
         }
         output_and_send(
-            'Failed to execute %s: %d' % (
-                script['msg_name'], args['exit_status']), **args)
+            "Failed to execute %s: %d"
+            % (script["msg_name"], args["exit_status"]),
+            **args
+        )
         return False
 
     try:
@@ -769,67 +851,85 @@ def run_script(script, scripts_dir, send_result=True):
         # to the provided value. Since the runner uses a nice value of -20
         # setting it to 40 gives the actual nice value of 20.
         proc = Popen(
-            script_arguments, stdout=PIPE, stderr=PIPE, env=env,
-            preexec_fn=lambda: os.nice(40))
+            script_arguments,
+            stdout=PIPE,
+            stderr=PIPE,
+            env=env,
+            preexec_fn=lambda: os.nice(40),
+        )
         capture_script_output(
-            proc, script['combined_path'], script['stdout_path'],
-            script['stderr_path'], timeout_seconds)
+            proc,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            timeout_seconds,
+        )
     except OSError as e:
         if isinstance(e.errno, int) and e.errno != 0:
-            script['exit_status'] = args['exit_status'] = e.errno
+            script["exit_status"] = args["exit_status"] = e.errno
         else:
             # 2 is the return code bash gives when it can't execute.
-            script['exit_status'] = args['exit_status'] = 2
+            script["exit_status"] = args["exit_status"] = 2
         _check_link_connected(script)
         stderr = str(e).encode()
-        if stderr == b'':
-            stderr = b'Unable to execute script'
-        args['files'] = {
-            script['combined_name']: stderr,
-            script['stderr_name']: stderr,
+        if stderr == b"":
+            stderr = b"Unable to execute script"
+        args["files"] = {
+            script["combined_name"]: stderr,
+            script["stderr_name"]: stderr,
         }
-        if os.path.exists(script['result_path']):
-            args['files'][script['result_name']] = open(
-                script['result_path'], 'rb').read()
+        if os.path.exists(script["result_path"]):
+            args["files"][script["result_name"]] = open(
+                script["result_path"], "rb"
+            ).read()
         output_and_send(
-            'Failed to execute %s: %d' % (
-                script['msg_name'], args['exit_status']), **args)
-        sys.stdout.write('%s\n' % stderr)
+            "Failed to execute %s: %d"
+            % (script["msg_name"], args["exit_status"]),
+            **args
+        )
+        sys.stdout.write("%s\n" % stderr)
         sys.stdout.flush()
         return False
     except TimeoutExpired:
         # 124 is the exit status from the timeout command.
-        script['exit_status'] = args['exit_status'] = 124
-        args['status'] = 'TIMEDOUT'
+        script["exit_status"] = args["exit_status"] = 124
+        args["status"] = "TIMEDOUT"
         _check_link_connected(script)
-        args['files'] = {
-            script['combined_name']: open(
-                script['combined_path'], 'rb').read(),
-            script['stdout_name']: open(script['stdout_path'], 'rb').read(),
-            script['stderr_name']: open(script['stderr_path'], 'rb').read(),
+        args["files"] = {
+            script["combined_name"]: open(
+                script["combined_path"], "rb"
+            ).read(),
+            script["stdout_name"]: open(script["stdout_path"], "rb").read(),
+            script["stderr_name"]: open(script["stderr_path"], "rb").read(),
         }
-        if os.path.exists(script['result_path']):
-            args['files'][script['result_name']] = open(
-                script['result_path'], 'rb').read()
+        if os.path.exists(script["result_path"]):
+            args["files"][script["result_name"]] = open(
+                script["result_path"], "rb"
+            ).read()
         output_and_send(
-            'Timeout(%s) expired on %s' % (
-                str(timedelta(seconds=timeout_seconds)), script['msg_name']),
-            **args)
+            "Timeout(%s) expired on %s"
+            % (str(timedelta(seconds=timeout_seconds)), script["msg_name"]),
+            **args
+        )
         return False
     else:
-        script['exit_status'] = args['exit_status'] = proc.returncode
+        script["exit_status"] = args["exit_status"] = proc.returncode
         _check_link_connected(script)
-        args['files'] = {
-            script['combined_name']: open(
-                script['combined_path'], 'rb').read(),
-            script['stdout_name']: open(script['stdout_path'], 'rb').read(),
-            script['stderr_name']: open(script['stderr_path'], 'rb').read(),
+        args["files"] = {
+            script["combined_name"]: open(
+                script["combined_path"], "rb"
+            ).read(),
+            script["stdout_name"]: open(script["stdout_path"], "rb").read(),
+            script["stderr_name"]: open(script["stderr_path"], "rb").read(),
         }
-        if os.path.exists(script['result_path']):
-            args['files'][script['result_name']] = open(
-                script['result_path'], 'rb').read()
-        output_and_send('Finished %s: %s' % (
-            script['msg_name'], args['exit_status']), **args)
+        if os.path.exists(script["result_path"]):
+            args["files"][script["result_name"]] = open(
+                script["result_path"], "rb"
+            ).read()
+        output_and_send(
+            "Finished %s: %s" % (script["msg_name"], args["exit_status"]),
+            **args
+        )
         if proc.returncode != 0:
             return False
         else:
@@ -846,8 +946,10 @@ def run_serial_scripts(scripts, scripts_dir, config_dir, send_result=True):
                     fail_count += 1
                     continue
                 if not run_script(
-                        script=script, scripts_dir=scripts_dir,
-                        send_result=send_result):
+                    script=script,
+                    scripts_dir=scripts_dir,
+                    send_result=send_result,
+                ):
                     fail_count += 1
         except SignalException:
             fail_count += 1
@@ -864,28 +966,29 @@ def run_instance_scripts(scripts, scripts_dir, config_dir, send_result=True):
         instance_scripts = []
         for instance_script in scripts:
             # Don't run scripts which have already ran.
-            if 'thread' in instance_script:
+            if "thread" in instance_script:
                 continue
-            if instance_script['name'] == script['name']:
+            if instance_script["name"] == script["name"]:
                 instance_scripts.append(instance_script)
         try:
-            with CustomNetworking(
-                    instance_scripts, config_dir, send_result):
+            with CustomNetworking(instance_scripts, config_dir, send_result):
                 if not install_dependencies(instance_scripts, send_result):
                     fail_count += len(instance_scripts)
                     continue
                 for instance_script in instance_scripts:
-                    instance_script['thread'] = Thread(
-                        target=run_script, name=script['msg_name'],
+                    instance_script["thread"] = Thread(
+                        target=run_script,
+                        name=script["msg_name"],
                         kwargs={
-                            'script': instance_script,
-                            'scripts_dir': scripts_dir,
-                            'send_result': send_result,
-                        })
-                    instance_script['thread'].start()
+                            "script": instance_script,
+                            "scripts_dir": scripts_dir,
+                            "send_result": send_result,
+                        },
+                    )
+                    instance_script["thread"].start()
                 for instance_script in instance_scripts:
-                    instance_script['thread'].join()
-                    if instance_script.get('exit_status') != 0:
+                    instance_script["thread"].join()
+                    if instance_script.get("exit_status") != 0:
                         fail_count += 1
         except SignalException:
             fail_count += len(instance_scripts)
@@ -904,7 +1007,7 @@ def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
     non_netconf_scripts = []
     netconf_scripts = []
     for script in scripts:
-        if script.get('apply_configured_networking'):
+        if script.get("apply_configured_networking"):
             netconf_scripts.append(script)
         else:
             non_netconf_scripts.append(script)
@@ -913,21 +1016,29 @@ def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
             with CustomNetworking(nscripts, config_dir, send_result):
                 # Start scripts which do not have dependencies first so they
                 # can run while other scripts are installing.
-                for script in sorted(nscripts, key=lambda i: (
-                        len(i.get('packages', {}).keys()), i['name'])):
+                for script in sorted(
+                    nscripts,
+                    key=lambda i: (
+                        len(i.get("packages", {}).keys()),
+                        i["name"],
+                    ),
+                ):
                     if not install_dependencies([script], send_result):
                         fail_count += 1
                         continue
-                    script['thread'] = Thread(
-                        target=run_script, name=script['msg_name'], kwargs={
-                            'script': script,
-                            'scripts_dir': scripts_dir,
-                            'send_result': send_result,
-                            })
-                    script['thread'].start()
+                    script["thread"] = Thread(
+                        target=run_script,
+                        name=script["msg_name"],
+                        kwargs={
+                            "script": script,
+                            "scripts_dir": scripts_dir,
+                            "send_result": send_result,
+                        },
+                    )
+                    script["thread"].start()
                 for script in nscripts:
-                    script['thread'].join()
-                    if script.get('exit_status') != 0:
+                    script["thread"].join()
+                    if script.get("exit_status") != 0:
                         fail_count += 1
         except SignalException:
             fail_count += len(nscripts)
@@ -939,7 +1050,7 @@ def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
 
 def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
     """Run and report results for the given scripts."""
-    config_dir = os.path.abspath(os.path.join(scripts_dir, '..', 'config'))
+    config_dir = os.path.abspath(os.path.join(scripts_dir, "..", "config"))
     serial_scripts = []
     instance_scripts = []
     parallel_scripts = []
@@ -948,85 +1059,113 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
     # Run by CPU(1), memory(2), storage(3), network(4) and finally node(0).
     # Because node is hardware_type 0 use 99 when ordering so it always runs
     # last.
-    for script in sorted(scripts, key=lambda i: (
-            99 if i['hardware_type'] == 0 else i['hardware_type'], i['name'])):
+    for script in sorted(
+        scripts,
+        key=lambda i: (
+            99 if i["hardware_type"] == 0 else i["hardware_type"],
+            i["name"],
+        ),
+    ):
         # The arguments used to send MAAS data about the result of the script.
-        script['args'] = {
-            'url': url,
-            'creds': creds,
-            'script_result_id': script['script_result_id'],
+        script["args"] = {
+            "url": url,
+            "creds": creds,
+            "script_result_id": script["script_result_id"],
         }
         # The pretty name of the script with id used for debug messages.
-        script['msg_name'] = '%s (id: %s' % (
-            script['name'], script['script_result_id'])
-        if 'script_version_id' in script:
-            script['msg_name'] = '%s, script_version_id: %s)' % (
-                script['msg_name'], script['script_version_id'])
-            script['args']['script_version_id'] = script['script_version_id']
+        script["msg_name"] = "%s (id: %s" % (
+            script["name"],
+            script["script_result_id"],
+        )
+        if "script_version_id" in script:
+            script["msg_name"] = "%s, script_version_id: %s)" % (
+                script["msg_name"],
+                script["script_version_id"],
+            )
+            script["args"]["script_version_id"] = script["script_version_id"]
         else:
-            script['msg_name'] = '%s)' % script['msg_name']
+            script["msg_name"] = "%s)" % script["msg_name"]
 
         # Create a seperate output directory for each script being run as
         # multiple scripts with the same name may be run.
-        script_out_dir = os.path.join(out_dir, '%s.%s' % (
-            script['name'], script['script_result_id']))
+        script_out_dir = os.path.join(
+            out_dir, "%s.%s" % (script["name"], script["script_result_id"])
+        )
         os.makedirs(script_out_dir, exist_ok=True)
-        script['combined_name'] = script['name']
-        script['combined_path'] = os.path.join(
-            script_out_dir, script['combined_name'])
-        script['stdout_name'] = '%s.out' % script['name']
-        script['stdout_path'] = os.path.join(
-            script_out_dir, script['stdout_name'])
-        script['stderr_name'] = '%s.err' % script['name']
-        script['stderr_path'] = os.path.join(
-            script_out_dir, script['stderr_name'])
-        script['result_name'] = '%s.yaml' % script['name']
-        script['result_path'] = os.path.join(
-            script_out_dir, script['result_name'])
-        script['download_path'] = os.path.join(
-            scripts_dir, 'downloads', script['name'])
+        script["combined_name"] = script["name"]
+        script["combined_path"] = os.path.join(
+            script_out_dir, script["combined_name"]
+        )
+        script["stdout_name"] = "%s.out" % script["name"]
+        script["stdout_path"] = os.path.join(
+            script_out_dir, script["stdout_name"]
+        )
+        script["stderr_name"] = "%s.err" % script["name"]
+        script["stderr_path"] = os.path.join(
+            script_out_dir, script["stderr_name"]
+        )
+        script["result_name"] = "%s.yaml" % script["name"]
+        script["result_path"] = os.path.join(
+            script_out_dir, script["result_name"]
+        )
+        script["download_path"] = os.path.join(
+            scripts_dir, "downloads", script["name"]
+        )
         # Make sure the download path always exists
-        os.makedirs(script['download_path'], exist_ok=True)
+        os.makedirs(script["download_path"], exist_ok=True)
 
         # The numeric values for hardware_type and parallel are defined in
         # enums in src/metadataserver/enum.py. When running on a node enum.py
         # is not available which is why they are hard coded here.
-        if script['parallel'] == 0:
+        if script["parallel"] == 0:
             serial_scripts.append(script)
-        elif script['parallel'] == 1:
+        elif script["parallel"] == 1:
             instance_scripts.append(script)
-        elif script['parallel'] == 2:
+        elif script["parallel"] == 2:
             parallel_scripts.append(script)
 
     fail_count = run_serial_scripts(
-        serial_scripts, scripts_dir, config_dir, send_result)
+        serial_scripts, scripts_dir, config_dir, send_result
+    )
     fail_count += run_instance_scripts(
-        instance_scripts, scripts_dir, config_dir, send_result)
+        instance_scripts, scripts_dir, config_dir, send_result
+    )
     fail_count += run_parallel_scripts(
-        parallel_scripts, scripts_dir, config_dir, send_result)
+        parallel_scripts, scripts_dir, config_dir, send_result
+    )
 
     return fail_count
 
 
 def run_scripts_from_metadata(
-        url, creds, scripts_dir, out_dir, send_result=True, download=True):
+    url, creds, scripts_dir, out_dir, send_result=True, download=True
+):
     """Run all scripts from a tar given by MAAS."""
-    with open(os.path.join(scripts_dir, 'index.json')) as f:
-        scripts = json.load(f)['1.0']
+    with open(os.path.join(scripts_dir, "index.json")) as f:
+        scripts = json.load(f)["1.0"]
 
     fail_count = 0
-    commissioning_scripts = scripts.get('commissioning_scripts')
+    commissioning_scripts = scripts.get("commissioning_scripts")
     if commissioning_scripts is not None:
-        sys.stdout.write('Starting commissioning scripts...\n')
+        sys.stdout.write("Starting commissioning scripts...\n")
         sys.stdout.flush()
         fail_count += run_scripts(
-            url, creds, scripts_dir, out_dir, commissioning_scripts,
-            send_result)
+            url,
+            creds,
+            scripts_dir,
+            out_dir,
+            commissioning_scripts,
+            send_result,
+        )
 
     if fail_count != 0:
         output_and_send(
-            '%d commissioning scripts failed to run' % fail_count, send_result,
-            url, creds, 'FAILED')
+            "%d commissioning scripts failed to run" % fail_count,
+            send_result,
+            url,
+            creds,
+            "FAILED",
+        )
         return fail_count
 
     # After commissioning has successfully finished redownload the scripts tar
@@ -1034,22 +1173,25 @@ def run_scripts_from_metadata(
     # the for_hardware field.
     if commissioning_scripts is not None and download:
         if not download_and_extract_tar(
-                "%smaas-scripts" % url, creds, scripts_dir):
+            "%smaas-scripts" % url, creds, scripts_dir
+        ):
             return fail_count
         return run_scripts_from_metadata(
-            url, creds, scripts_dir, out_dir, send_result, download)
+            url, creds, scripts_dir, out_dir, send_result, download
+        )
 
-    testing_scripts = scripts.get('testing_scripts')
+    testing_scripts = scripts.get("testing_scripts")
     if testing_scripts is not None:
         # If the node status was COMMISSIONING transition the node into TESTING
         # status. If the node is already in TESTING status this is ignored.
         if send_result:
-            signal_wrapper(url, creds, 'TESTING')
+            signal_wrapper(url, creds, "TESTING")
 
         sys.stdout.write("Starting testing scripts...\n")
         sys.stdout.flush()
         fail_count += run_scripts(
-            url, creds, scripts_dir, out_dir, testing_scripts, send_result)
+            url, creds, scripts_dir, out_dir, testing_scripts, send_result
+        )
 
     return fail_count
 
@@ -1062,7 +1204,7 @@ class HeartBeat(Thread):
     """
 
     def __init__(self, url, creds):
-        super().__init__(name='HeartBeat')
+        super().__init__(name="HeartBeat")
         self._url = url
         self._creds = creds
         self._run = Event()
@@ -1080,14 +1222,19 @@ class HeartBeat(Thread):
             heartbeat_start = time.monotonic()
             heartbeat_elapsed = 0
             total_elapsed = heartbeat_start - start
-            args = [self._url, self._creds, 'WORKING']
+            args = [self._url, self._creds, "WORKING"]
             # Log the elapsed time plus the measured clock skew, if this
             # is the second run through the loop.
             if tenths > 0:
                 args.append(
-                    'Elapsed time (real): %d.%ds; Python: %d.%ds' % (
-                        total_elapsed, total_elapsed % 1 * 10,
-                        tenths // 10, tenths % 10))
+                    "Elapsed time (real): %d.%ds; Python: %d.%ds"
+                    % (
+                        total_elapsed,
+                        total_elapsed % 1 * 10,
+                        tenths // 10,
+                        tenths % 10,
+                    )
+                )
             signal_wrapper(*args)
             # Spin for 2 minutes before sending another heartbeat.
             while heartbeat_elapsed < 120 and self._run.is_set():
@@ -1101,105 +1248,144 @@ class HeartBeat(Thread):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Download and run scripts from the MAAS metadata service.')
+        description="Download and run scripts from the MAAS metadata service."
+    )
     parser.add_argument(
-        "--config", metavar="file", help="Specify config file",
-        default='/etc/cloud/cloud.cfg.d/91_kernel_cmdline_url.cfg')
+        "--config",
+        metavar="file",
+        help="Specify config file",
+        default="/etc/cloud/cloud.cfg.d/91_kernel_cmdline_url.cfg",
+    )
     parser.add_argument(
-        "--ckey", metavar="key", help="The consumer key to auth with",
-        default=None)
+        "--ckey",
+        metavar="key",
+        help="The consumer key to auth with",
+        default=None,
+    )
     parser.add_argument(
-        "--tkey", metavar="key", help="The token key to auth with",
-        default=None)
+        "--tkey",
+        metavar="key",
+        help="The token key to auth with",
+        default=None,
+    )
     parser.add_argument(
-        "--csec", metavar="secret", help="The consumer secret (likely '')",
-        default="")
+        "--csec",
+        metavar="secret",
+        help="The consumer secret (likely '')",
+        default="",
+    )
     parser.add_argument(
-        "--tsec", metavar="secret", help="The token secret to auth with",
-        default=None)
+        "--tsec",
+        metavar="secret",
+        help="The token secret to auth with",
+        default=None,
+    )
     parser.add_argument(
-        "--apiver", metavar="version",
-        help="The apiver to use (\"\" can be used)", default=MD_VERSION)
+        "--apiver",
+        metavar="version",
+        help='The apiver to use ("" can be used)',
+        default=MD_VERSION,
+    )
     parser.add_argument(
-        "--url", metavar="url", help="The data source to query", default=None)
+        "--url", metavar="url", help="The data source to query", default=None
+    )
     parser.add_argument(
-        "--no-send", action='store_true', default=False,
-        help="Don't send results back to MAAS")
+        "--no-send",
+        action="store_true",
+        default=False,
+        help="Don't send results back to MAAS",
+    )
     parser.add_argument(
-        "--no-download", action='store_true', default=False,
-        help="Assume scripts have already been downloaded")
+        "--no-download",
+        action="store_true",
+        default=False,
+        help="Assume scripts have already been downloaded",
+    )
 
     parser.add_argument(
-        "storage_directory", nargs='?',
-        default=os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
-        help="Directory to store the extracted data from the metadata service."
+        "storage_directory",
+        nargs="?",
+        default=os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
+        help="Directory to store the extracted data from the metadata service.",
     )
 
     args = parser.parse_args()
 
     creds = {
-        'consumer_key': args.ckey,
-        'token_key': args.tkey,
-        'token_secret': args.tsec,
-        'consumer_secret': args.csec,
-        'metadata_url': args.url,
-        }
+        "consumer_key": args.ckey,
+        "token_key": args.tkey,
+        "token_secret": args.tsec,
+        "consumer_secret": args.csec,
+        "metadata_url": args.url,
+    }
 
     if args.config:
         read_config(args.config, creds)
 
-    url = creds.get('metadata_url')
+    url = creds.get("metadata_url")
     if url is None:
         fail("URL must be provided either in --url or in config\n")
-    if url.endswith('/'):
+    if url.endswith("/"):
         url = url[:-1]
     url = "%s/%s/" % (url, args.apiver)
 
     # Disable the OOM killer on the runner process, the OOM killer will still
     # go after any tests spawned.
     oom_score_adj_path = os.path.join(
-        '/proc', str(os.getpid()), 'oom_score_adj')
-    open(oom_score_adj_path, 'w').write('-1000')
+        "/proc", str(os.getpid()), "oom_score_adj"
+    )
+    open(oom_score_adj_path, "w").write("-1000")
     # Give the runner the highest nice value to ensure the heartbeat keeps
     # running.
     os.nice(-20)
 
     # Make sure installing packages is noninteractive for this process
     # and all subprocesses.
-    if 'DEBIAN_FRONTEND' not in os.environ:
-        os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
+    if "DEBIAN_FRONTEND" not in os.environ:
+        os.environ["DEBIAN_FRONTEND"] = "noninteractive"
 
     heart_beat = HeartBeat(url, creds)
     if not args.no_send:
         heart_beat.start()
 
-    scripts_dir = os.path.join(args.storage_directory, 'scripts')
+    scripts_dir = os.path.join(args.storage_directory, "scripts")
     os.makedirs(scripts_dir, exist_ok=True)
-    out_dir = os.path.join(args.storage_directory, 'out')
+    out_dir = os.path.join(args.storage_directory, "out")
     os.makedirs(out_dir, exist_ok=True)
 
     has_content = True
     fail_count = 0
     if not args.no_download:
         has_content = download_and_extract_tar(
-            "%smaas-scripts" % url, creds, scripts_dir)
+            "%smaas-scripts" % url, creds, scripts_dir
+        )
     if has_content:
         fail_count = run_scripts_from_metadata(
-            url, creds, scripts_dir, out_dir, not args.no_send,
-            not args.no_download)
+            url,
+            creds,
+            scripts_dir,
+            out_dir,
+            not args.no_send,
+            not args.no_download,
+        )
 
     # Signal success or failure after all scripts have ran. This tells the
     # region to transistion the status.
     if fail_count == 0:
         output_and_send(
-            'All scripts successfully ran', not args.no_send, url, creds, 'OK')
+            "All scripts successfully ran", not args.no_send, url, creds, "OK"
+        )
     else:
         output_and_send(
-            '%d test scripts failed to run' % fail_count, not args.no_send,
-            url, creds, 'FAILED')
+            "%d test scripts failed to run" % fail_count,
+            not args.no_send,
+            url,
+            creds,
+            "FAILED",
+        )
 
     heart_beat.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

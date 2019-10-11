@@ -9,10 +9,7 @@ from contextlib import closing
 
 from django.db import connection
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.triggers import (
-    register_procedure,
-    register_trigger,
-)
+from maasserver.triggers import register_procedure, register_trigger
 from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.websocket import (
     register_websocket_triggers,
@@ -25,10 +22,10 @@ EMPTY_SET = frozenset()
 
 
 class TestTriggers(MAASServerTestCase):
-
     def test_register_trigger_doesnt_create_trigger_if_already_exists(self):
         NODE_CREATE_PROCEDURE = render_notification_procedure(
-            'node_create_notify', 'node_create', 'NEW.system_id')
+            "node_create_notify", "node_create", "NEW.system_id"
+        )
         register_procedure(NODE_CREATE_PROCEDURE)
         with closing(connection.cursor()) as cursor:
             cursor.execute(
@@ -36,21 +33,24 @@ class TestTriggers(MAASServerTestCase):
                 "maasserver_node;"
                 "CREATE TRIGGER node_node_create_notify "
                 "AFTER INSERT ON maasserver_node "
-                "FOR EACH ROW EXECUTE PROCEDURE node_create_notify();")
+                "FOR EACH ROW EXECUTE PROCEDURE node_create_notify();"
+            )
 
         # Will raise an OperationError if trigger already exists.
         register_trigger("maasserver_node", "node_create_notify", "insert")
 
     def test_register_trigger_creates_missing_trigger(self):
         NODE_CREATE_PROCEDURE = render_notification_procedure(
-            'node_create_notify', 'node_create', 'NEW.system_id')
+            "node_create_notify", "node_create", "NEW.system_id"
+        )
         register_procedure(NODE_CREATE_PROCEDURE)
         register_trigger("maasserver_node", "node_create_notify", "insert")
 
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "SELECT * FROM pg_trigger WHERE "
-                "tgname = 'node_node_create_notify'")
+                "tgname = 'node_node_create_notify'"
+            )
             triggers = cursor.fetchall()
 
         self.assertEqual(1, len(triggers), "Trigger was not created.")
@@ -131,9 +131,9 @@ class TestTriggersUsed(MAASServerTestCase):
         "config_config_update_notify",
         "config_sys_proxy_config_use_peer_proxy_insert",
         "config_sys_proxy_config_use_peer_proxy_update",
-        'controllerinfo_controllerinfo_link_notify',
-        'controllerinfo_controllerinfo_unlink_notify',
-        'controllerinfo_controllerinfo_update_notify',
+        "controllerinfo_controllerinfo_link_notify",
+        "controllerinfo_controllerinfo_unlink_notify",
+        "controllerinfo_controllerinfo_update_notify",
         "dhcpsnippet_dhcpsnippet_create_notify",
         "dhcpsnippet_dhcpsnippet_delete_notify",
         "dhcpsnippet_dhcpsnippet_update_notify",
@@ -212,9 +212,9 @@ class TestTriggersUsed(MAASServerTestCase):
         "node_resourcepool_unlink_notify",
         "node_tags_machine_device_tag_link_notify",
         "node_tags_machine_device_tag_unlink_notify",
-        'nodemetadata_nodemetadata_link_notify',
-        'nodemetadata_nodemetadata_unlink_notify',
-        'nodemetadata_nodemetadata_update_notify',
+        "nodemetadata_nodemetadata_link_notify",
+        "nodemetadata_nodemetadata_unlink_notify",
+        "nodemetadata_nodemetadata_update_notify",
         "notification_notification_create_notify",
         "notification_notification_delete_notify",
         "notification_notification_update_notify",
@@ -287,8 +287,8 @@ class TestTriggersUsed(MAASServerTestCase):
     def find_triggers_in_database(self):
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT tgname::text FROM pg_trigger "
-                "WHERE NOT tgisinternal")
+                "SELECT tgname::text FROM pg_trigger " "WHERE NOT tgisinternal"
+            )
             return {tgname for tgname, in cursor.fetchall()}
 
     def check_triggers_in_database(self):
@@ -296,11 +296,15 @@ class TestTriggersUsed(MAASServerTestCase):
         # added to the list of expected triggers.
         triggers_found = self.find_triggers_in_database()
         self.expectThat(
-            (self.triggers_all - triggers_found), Equals(EMPTY_SET),
-            "Some triggers were expected but not found.")
+            (self.triggers_all - triggers_found),
+            Equals(EMPTY_SET),
+            "Some triggers were expected but not found.",
+        )
         self.expectThat(
-            (triggers_found - self.triggers_all), Equals(EMPTY_SET),
-            "Some triggers were unexpected.")
+            (triggers_found - self.triggers_all),
+            Equals(EMPTY_SET),
+            "Some triggers were unexpected.",
+        )
 
     def test_all_triggers_present_and_correct(self):
         # Running in a fully migrated database means all triggers should be

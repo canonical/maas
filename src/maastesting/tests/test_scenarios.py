@@ -12,7 +12,6 @@ from maastesting.testcase import MAASTestCase
 
 
 class TestWithScenarios(MAASTestCase):
-
     def test_scenarios_applied(self):
         # Scenarios are applied correctly when a test is called via __call__()
         # instead of run().
@@ -24,7 +23,7 @@ class TestWithScenarios(MAASTestCase):
             scenarios = [
                 ("one", dict(token="one")),
                 ("two", dict(token="two")),
-                ]
+            ]
 
             def test(self):
                 events.append(self.token)
@@ -45,7 +44,7 @@ class TestWithScenarios(MAASTestCase):
             scenarios = [
                 ("one", dict(token="one")),
                 ("two", dict(token="two")),
-                ]
+            ]
 
             def test(self):
                 events.append(self.token)

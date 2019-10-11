@@ -6,7 +6,6 @@
 __all__ = [
     "DatabaseLock",
     "DatabaseXactLock",
-
     "DatabaseLockAttemptOutsideTransaction",
     "DatabaseLockAttemptWithoutConnection",
     "DatabaseLockNotHeld",
@@ -43,15 +42,12 @@ to_try = {
     LOCK_TRY: LOCK_TRY,
     LOCK_SHARED: LOCK_SHARED_TRY,
     LOCK_SHARED_TRY: LOCK_SHARED_TRY,
-
     LOCK_XACT: LOCK_XACT_TRY,
     LOCK_XACT_TRY: LOCK_XACT_TRY,
     LOCK_XACT_SHARED: LOCK_XACT_SHARED_TRY,
     LOCK_XACT_SHARED_TRY: LOCK_XACT_SHARED_TRY,
-
     UNLOCK: UNLOCK,
     UNLOCK_SHARED: UNLOCK_SHARED,
-
     UNUSED: UNUSED,
 }
 
@@ -61,15 +57,12 @@ to_shared = {
     LOCK_TRY: LOCK_SHARED_TRY,
     LOCK_SHARED: LOCK_SHARED,
     LOCK_SHARED_TRY: LOCK_SHARED_TRY,
-
     LOCK_XACT: LOCK_XACT_SHARED,
     LOCK_XACT_TRY: LOCK_XACT_SHARED_TRY,
     LOCK_XACT_SHARED: LOCK_XACT_SHARED,
     LOCK_XACT_SHARED_TRY: LOCK_XACT_SHARED_TRY,
-
     UNLOCK: UNLOCK_SHARED,
     UNLOCK_SHARED: UNLOCK_SHARED,
-
     UNUSED: UNUSED,
 }
 
@@ -138,8 +131,8 @@ class DatabaseLockBase(tuple):
             self.lock, self.unlock = mode
         else:
             raise AssertionError(
-                "Unsupported mode: %r is not in %r" % (
-                    mode, self.MODE_CHOICES))
+                "Unsupported mode: %r is not in %r" % (mode, self.MODE_CHOICES)
+            )
 
     def __enter__(self):
         raise NotImplementedError()
@@ -149,8 +142,12 @@ class DatabaseLockBase(tuple):
 
     def __repr__(self):
         return "<%s classid=%d objid=%d lock=%s unlock=%s>" % (
-            self.__class__.__name__, self.classid, self.objid,
-            self.lock, self.unlock)
+            self.__class__.__name__,
+            self.classid,
+            self.objid,
+            self.lock,
+            self.unlock,
+        )
 
     def is_locked(self):
         stmt = (
@@ -174,14 +171,16 @@ class DatabaseLockBase(tuple):
     @property
     def TRY(self):
         """Return an equivalent lock that uses `try` locking functions."""
-        return self.__class__(self.objid, (
-            to_try[self.lock], to_try[self.unlock]))
+        return self.__class__(
+            self.objid, (to_try[self.lock], to_try[self.unlock])
+        )
 
     @property
     def SHARED(self):
         """Return an equivalent lock that uses `shared` locking functions."""
-        return self.__class__(self.objid, (
-            to_shared[self.lock], to_shared[self.unlock]))
+        return self.__class__(
+            self.objid, (to_shared[self.lock], to_shared[self.unlock])
+        )
 
 
 class DatabaseLock(DatabaseLockBase):

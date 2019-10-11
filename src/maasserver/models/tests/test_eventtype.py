@@ -9,25 +9,17 @@ import random
 import threading
 import time
 
-from maasserver.models.eventtype import (
-    EventType,
-    LOGGING_LEVELS,
-)
+from maasserver.models.eventtype import EventType, LOGGING_LEVELS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import transactional
-from testtools.matchers import (
-    AllMatch,
-    Equals,
-    MatchesStructure,
-)
+from testtools.matchers import AllMatch, Equals, MatchesStructure
 
 
 class EventTypeTest(MAASServerTestCase):
-
     def test_displays_event_type_description(self):
         event_type = factory.make_EventType()
         self.assertIn(event_type.description, "%s" % event_type)
@@ -36,7 +28,7 @@ class EventTypeTest(MAASServerTestCase):
         events_and_levels = [
             (
                 level,
-                factory.make_Event(type=factory.make_EventType(level=level))
+                factory.make_Event(type=factory.make_EventType(level=level)),
             )
             for level in LOGGING_LEVELS
         ]
@@ -51,8 +43,12 @@ class EventTypeTest(MAASServerTestCase):
         desc = factory.make_name("desc")
         level = random.choice(list(LOGGING_LEVELS))
         event_type = EventType.objects.register(name, desc, level)
-        self.assertThat(event_type, MatchesStructure.byEquality(
-            name=name, description=desc, level=level))
+        self.assertThat(
+            event_type,
+            MatchesStructure.byEquality(
+                name=name, description=desc, level=level
+            ),
+        )
 
     def test_register_does_not_update_existing_description_or_level(self):
         name = factory.make_name("name")
@@ -67,12 +63,15 @@ class EventTypeTest(MAASServerTestCase):
         event_type2 = EventType.objects.register(name, desc2, level2)
 
         self.assertThat(event_type2, Equals(event_type1))
-        self.assertThat(event_type2, MatchesStructure.byEquality(
-            name=name, description=desc1, level=level1))
+        self.assertThat(
+            event_type2,
+            MatchesStructure.byEquality(
+                name=name, description=desc1, level=level1
+            ),
+        )
 
 
 class EventTypeConcurrencyTest(MAASTransactionServerTestCase):
-
     def test_register_is_safe_with_concurrency(self):
         name = factory.make_name("name")
         desc = factory.make_name("desc")
@@ -117,5 +116,10 @@ class EventTypeConcurrencyTest(MAASTransactionServerTestCase):
         # All threads return the same event type.
         self.expectThat(len(threads), Equals(len(event_types)))
         self.expectThat(
-            event_types, AllMatch(MatchesStructure.byEquality(
-                name=name, description=desc, level=level)))
+            event_types,
+            AllMatch(
+                MatchesStructure.byEquality(
+                    name=name, description=desc, level=level
+                )
+            ),
+        )

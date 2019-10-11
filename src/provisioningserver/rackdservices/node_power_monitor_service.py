@@ -4,16 +4,11 @@
 """Service to periodically query the power state on this cluster's nodes."""
 
 
-__all__ = [
-    "NodePowerMonitorService"
-]
+__all__ = ["NodePowerMonitorService"]
 
 from datetime import timedelta
 
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -39,7 +34,8 @@ class NodePowerMonitorService(TimerService, object):
     def __init__(self, clock=None):
         # Call self.query_nodes() every self.check_interval.
         super(NodePowerMonitorService, self).__init__(
-            self.check_interval, self.try_query_nodes)
+            self.check_interval, self.try_query_nodes
+        )
         self.clock = clock
 
     def try_query_nodes(self):
@@ -52,7 +48,8 @@ class NodePowerMonitorService(TimerService, object):
             client = getRegionClient()
         except NoConnectionsAvailable:
             log.debug(
-                "Cannot monitor nodes' power status; region not available.")
+                "Cannot monitor nodes' power status; region not available."
+            )
         else:
             d = self.query_nodes(client)
             d.addErrback(self.query_nodes_failed, client.localIdent)
@@ -64,26 +61,30 @@ class NodePowerMonitorService(TimerService, object):
         # power parameters until the region returns an empty list.
         while True:
             response = yield client(
-                ListNodePowerParameters, uuid=client.localIdent)
-            power_parameters = response['nodes']
+                ListNodePowerParameters, uuid=client.localIdent
+            )
+            power_parameters = response["nodes"]
             if len(power_parameters) > 0:
                 yield query_all_nodes(
-                    power_parameters, max_concurrency=self.max_nodes_at_once,
-                    clock=self.clock)
+                    power_parameters,
+                    max_concurrency=self.max_nodes_at_once,
+                    clock=self.clock,
+                )
             else:
                 break
 
     def query_nodes_failed(self, failure, localIdent):
         if failure.check(NoSuchCluster):
             maaslog.error(
-                "Rack controller '%s' is not recognised.", localIdent)
+                "Rack controller '%s' is not recognised.", localIdent
+            )
         elif failure.check(ConnectionDone):
-            maaslog.error(
-                "Lost connection to region controller.")
+            maaslog.error("Lost connection to region controller.")
         else:
             # Log the error in full to the Twisted log.
             log.err(failure, "Querying node power states.")
             # Log something concise to the MAAS log.
             maaslog.error(
                 "Failed to query nodes' power status: %s",
-                failure.getErrorMessage())
+                failure.getErrorMessage(),
+            )

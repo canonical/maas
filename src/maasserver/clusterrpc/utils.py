@@ -3,10 +3,7 @@
 
 """Common code for MAAS Cluster RPC operations."""
 
-__all__ = [
-    'call_clusters',
-    'get_error_message_for_exception',
-    ]
+__all__ = ["call_clusters", "get_error_message_for_exception"]
 
 
 from collections import namedtuple
@@ -23,19 +20,22 @@ from twisted.python.failure import Failure
 
 
 RPCResults = namedtuple(
-    'CallResults', (
-        'results',
-        'failures',
-        'available',
-        'unavailable',
-        'success',
-        'failed',
-        'timeout',
-    ))
+    "CallResults",
+    (
+        "results",
+        "failures",
+        "available",
+        "unavailable",
+        "success",
+        "failed",
+        "timeout",
+    ),
+)
 
 
 def call_racks_synchronously(
-        command, *, kwargs=None, timeout=10, controllers=None):
+    command, *, kwargs=None, timeout=10, controllers=None
+):
     """Calls the specified RPC command on each rack controller synchronously.
 
     Collects the results into a list, then returns a `RPCResults` namedtuple
@@ -55,17 +55,29 @@ def call_racks_synchronously(
     failed_racks = []
     timed_out_racks = []
     failures = []
-    results = list(call_clusters(
-        command, kwargs=kwargs, timeout=timeout, controllers=controllers,
-        available_callback=available_racks.append,
-        unavailable_callback=unavailable_racks.append,
-        success_callback=successful_racks.append,
-        failed_callback=failed_racks.append,
-        failure_callback=failures.append,
-        timeout_callback=timed_out_racks.append))
+    results = list(
+        call_clusters(
+            command,
+            kwargs=kwargs,
+            timeout=timeout,
+            controllers=controllers,
+            available_callback=available_racks.append,
+            unavailable_callback=unavailable_racks.append,
+            success_callback=successful_racks.append,
+            failed_callback=failed_racks.append,
+            failure_callback=failures.append,
+            timeout_callback=timed_out_racks.append,
+        )
+    )
     return RPCResults(
-        results, failures, available_racks, unavailable_racks,
-        successful_racks, failed_racks, timed_out_racks)
+        results,
+        failures,
+        available_racks,
+        unavailable_racks,
+        successful_racks,
+        failed_racks,
+        timed_out_racks,
+    )
 
 
 def _none(_):
@@ -74,10 +86,19 @@ def _none(_):
 
 
 def call_clusters(
-        command, *, kwargs=None, timeout=10, controllers=None,
-        ignore_errors=True, available_callback=_none,
-        unavailable_callback=_none, success_callback=_none,
-        failed_callback=_none, failure_callback=_none, timeout_callback=_none):
+    command,
+    *,
+    kwargs=None,
+    timeout=10,
+    controllers=None,
+    ignore_errors=True,
+    available_callback=_none,
+    unavailable_callback=_none,
+    success_callback=_none,
+    failed_callback=_none,
+    failure_callback=_none,
+    timeout_callback=_none
+):
     """Make an RPC call to all rack controllers in parallel.
 
     Includes optional callbacks to report the status of the call for each
@@ -121,8 +142,10 @@ def call_clusters(
     if kwargs is None:
         kwargs = {}
     command_name = (
-        command.commandName.decode("ascii") if hasattr(command, 'commandName')
-        else "<unknown>")
+        command.commandName.decode("ascii")
+        if hasattr(command, "commandName")
+        else "<unknown>"
+    )
     calls = {}
     if controllers is None:
         controllers = RackController.objects.all()
@@ -132,26 +155,31 @@ def call_clusters(
         except NoConnectionsAvailable:
             logger.error(
                 "Error while calling %s: Unable to get RPC connection for "
-                "rack controller '%s' (%s).", command_name,
-                controller.hostname, controller.system_id)
+                "rack controller '%s' (%s).",
+                command_name,
+                controller.hostname,
+                controller.system_id,
+            )
             unavailable_callback(controller)
             if not ignore_errors:
                 raise ClusterUnavailable(
                     "Unable to get RPC connection for rack controller "
-                    "'%s' (%s)" % (
-                        controller.hostname, controller.system_id))
+                    "'%s' (%s)" % (controller.hostname, controller.system_id)
+                )
         else:
             # The call to partial() requires a `callable`, but `getClientFor()`
             # might return a `Deferred` if it runs in the reactor.
             assert callable(client), (
                 "call_clusters() must not be called in the reactor thread. "
-                "You probably want to use deferToDatabase().")
+                "You probably want to use deferToDatabase()."
+            )
             available_callback(controller)
             call = partial(client, command, **kwargs)
             calls[call] = controller
 
     for call, response in asynchronous.gatherCallResults(
-            calls, timeout=timeout):
+        calls, timeout=timeout
+    ):
         # When a call returns results, figure out which controller it came from
         # and remove it from the list, so we can report which controllers
         # timed out.
@@ -166,9 +194,15 @@ def call_clusters(
             if len(error) > 0:
                 error = ": " + error
             human_readable_error = (
-                "Exception during %s() on rack controller '%s' (%s): %s%s" % (
-                    command_name, controller.hostname, controller.system_id,
-                    exception_class, error))
+                "Exception during %s() on rack controller '%s' (%s): %s%s"
+                % (
+                    command_name,
+                    controller.hostname,
+                    controller.system_id,
+                    exception_class,
+                    error,
+                )
+            )
             logger.warning(human_readable_error)
             # For failures, there are two callbacks: one for the controller
             # that failed, the second for the specific failure that occurred.
@@ -184,8 +218,11 @@ def call_clusters(
         timeout_callback(controller)
         logger.error(
             "Error while calling %s: RPC connection timed out to rack "
-            "controller '%s' (%s).", command_name, controller.hostname,
-            controller.system_id)
+            "controller '%s' (%s).",
+            command_name,
+            controller.hostname,
+            controller.system_id,
+        )
 
 
 def get_error_message_for_exception(exception):
@@ -204,22 +241,23 @@ def get_error_message_for_exception(exception):
     # If we've gt a NoConnectionsAvailable error, check it for a UUID
     # field. If it's got one, we can report the cluster details more
     # helpfully.
-    is_no_connections_error = isinstance(
-        exception, NoConnectionsAvailable)
-    has_uuid_field = getattr(exception, 'uuid', None) is not None
-    if (is_no_connections_error and has_uuid_field):
+    is_no_connections_error = isinstance(exception, NoConnectionsAvailable)
+    has_uuid_field = getattr(exception, "uuid", None) is not None
+    if is_no_connections_error and has_uuid_field:
         controller = RackController.objects.get(system_id=exception.uuid)
         return (
             "Unable to connect to rack controller '%s' (%s); no connections "
-            "available." % (controller.hostname, controller.system_id))
+            "available." % (controller.hostname, controller.system_id)
+        )
     elif isinstance(exception, ValidationError):
-        error_message = ' '.join(exception.messages)
+        error_message = " ".join(exception.messages)
     else:
         error_message = str(exception)
 
     if len(error_message) == 0:
         error_message = (
             "Unexpected exception: %s. See /var/log/maas/regiond.log "
-            "on the region server for more information." %
-            exception.__class__.__name__)
+            "on the region server for more information."
+            % exception.__class__.__name__
+        )
     return error_message

@@ -19,17 +19,17 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestUbuntuCoreOS(MAASTestCase):
-
     def make_resource_path(self, filename):
         self.useFixture(ClusterConfigurationFixture())
         tmpdir = self.make_dir()
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
-        release = factory.make_name('release')
-        label = factory.make_name('label')
-        current_dir = os.path.join(tmpdir, 'current')
+        arch = factory.make_name("arch")
+        subarch = factory.make_name("subarch")
+        release = factory.make_name("release")
+        label = factory.make_name("label")
+        current_dir = os.path.join(tmpdir, "current")
         dirpath = os.path.join(
-            current_dir, 'ubuntu-core', arch, subarch, release, label)
+            current_dir, "ubuntu-core", arch, subarch, release, label
+        )
         os.makedirs(dirpath)
         factory.make_file(dirpath, filename)
         with ClusterConfiguration.open_for_update() as config:
@@ -38,18 +38,18 @@ class TestUbuntuCoreOS(MAASTestCase):
 
     def test_get_boot_image_purposes(self):
         osystem = UbuntuCoreOS()
-        archs = [factory.make_name('arch') for _ in range(2)]
-        subarchs = [factory.make_name('subarch') for _ in range(2)]
-        releases = [factory.make_name('release') for _ in range(2)]
-        labels = [factory.make_name('label') for _ in range(2)]
+        archs = [factory.make_name("arch") for _ in range(2)]
+        subarchs = [factory.make_name("subarch") for _ in range(2)]
+        releases = [factory.make_name("release") for _ in range(2)]
+        labels = [factory.make_name("label") for _ in range(2)]
         for arch, subarch, release, label in product(
-                archs, subarchs, releases, labels):
+            archs, subarchs, releases, labels
+        ):
             expected = osystem.get_boot_image_purposes(
-                arch, subarchs, release, label)
+                arch, subarchs, release, label
+            )
             self.assertIsInstance(expected, list)
-            self.assertEqual(expected, [
-                BOOT_IMAGE_PURPOSE.XINSTALL,
-                ])
+            self.assertEqual(expected, [BOOT_IMAGE_PURPOSE.XINSTALL])
 
     def test_get_default_release(self):
         osystem = UbuntuCoreOS()
@@ -57,13 +57,17 @@ class TestUbuntuCoreOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = UbuntuCoreOS()
-        release = factory.make_name('release')
+        release = factory.make_name("release")
         self.assertEqual(release, osystem.get_release_title(release))
 
     def test_get_xinstall_parameters_default(self):
         osystem = UbuntuCoreOS()
         self.assertItemsEqual(
-            ('root-dd.xz', 'dd-xz'),
+            ("root-dd.xz", "dd-xz"),
             osystem.get_xinstall_parameters(
-                factory.make_name('arch'), factory.make_name('subarch'),
-                factory.make_name('release'), factory.make_name('label')))
+                factory.make_name("arch"),
+                factory.make_name("subarch"),
+                factory.make_name("release"),
+                factory.make_name("label"),
+            ),
+        )

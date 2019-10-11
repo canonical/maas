@@ -18,9 +18,7 @@ The dictionary above is generated given the following input:
         172.16.254.0/24 via 192.168.1.1 dev eno1
 """
 
-__all__ = [
-    'get_ip_route',
-]
+__all__ = ["get_ip_route"]
 
 from provisioningserver.utils.ipaddr import get_settings_dict
 from provisioningserver.utils.shell import call_and_check
@@ -36,8 +34,8 @@ def _parse_route_definition(line):
     """
     subnet, line = line.split(" ", 1)
     settings = get_settings_dict(line.strip())
-    if 'metric' in settings:
-        settings['metric'] = int(settings['metric'])
+    if "metric" in settings:
+        settings["metric"] = int(settings["metric"])
     return subnet.strip(), settings
 
 
@@ -69,5 +67,6 @@ def get_ip_route():
         gathered.
     """
     ip_route_output = call_and_check(
-        ["ip", "route", "list", "scope", "global"])
+        ["ip", "route", "list", "scope", "global"]
+    )
     return parse_ip_route(ip_route_output)

@@ -5,9 +5,7 @@
 Monkey patch for the MAAS region server, with code for region server patching.
 """
 
-__all__ = [
-    "add_patches",
-]
+__all__ = ["add_patches"]
 
 from collections import OrderedDict
 import inspect
@@ -28,7 +26,8 @@ def DeferredAttributePreventer__get__(self, instance, cls=None):
     if instance is None:
         return self
     raise DeferredValueAccessError(
-        "Accessing deferred field is not allowed: %s" % self.field_name)
+        "Accessing deferred field is not allowed: %s" % self.field_name
+    )
 
 
 def fix_django_deferred_attribute():
@@ -41,6 +40,7 @@ def fix_django_deferred_attribute():
     that you explicitly didn't want those attributes loaded.
     """
     from django.db.models.query_utils import DeferredAttribute
+
     DeferredAttribute.__get__ = DeferredAttributePreventer__get__
 
 
@@ -56,8 +56,9 @@ def fix_piston_emitter_related():
     data.
     """
     from piston3 import emitters
-    bad_line = 'return [ _model(m, fields) for m in data.iterator() ]'
-    new_line = 'return [ _model(m, fields) for m in data.all() ]'
+
+    bad_line = "return [ _model(m, fields) for m in data.iterator() ]"
+    new_line = "return [ _model(m, fields) for m in data.all() ]"
     try:
         source = inspect.getsource(emitters.Emitter.construct)
     except OSError:
@@ -67,20 +68,18 @@ def fix_piston_emitter_related():
     else:
         if source.find(bad_line) > 0:
             source = source.replace(bad_line, new_line, 1)
-            func_body = [
-                line[4:]
-                for line in source.splitlines()[1:]
-            ]
-            new_source = ['def emitter_new_construct(self):'] + func_body
-            new_source = '\n'.join(new_source)
+            func_body = [line[4:] for line in source.splitlines()[1:]]
+            new_source = ["def emitter_new_construct(self):"] + func_body
+            new_source = "\n".join(new_source)
             local_vars = {}
             exec(new_source, emitters.__dict__, local_vars)
-            emitters.Emitter.construct = local_vars['emitter_new_construct']
+            emitters.Emitter.construct = local_vars["emitter_new_construct"]
 
 
 def fix_piston_consumer_delete():
     """Fix Piston so it doesn't try to send an email when a user is delete."""
     from piston3 import signals
+
     signals.send_consumer_mail = lambda consumer: None
 
 
@@ -88,8 +87,7 @@ def fix_ordereddict_yaml_representer():
     """Fix PyYAML so an OrderedDict can be dumped."""
 
     def dumper(dumper, data):
-        return dumper.represent_mapping(
-            'tag:yaml.org,2002:map', data.items())
+        return dumper.represent_mapping("tag:yaml.org,2002:map", data.items())
 
     yaml.add_representer(OrderedDict, dumper, Dumper=yaml.Dumper)
     yaml.add_representer(OrderedDict, dumper, Dumper=yaml.SafeDumper)

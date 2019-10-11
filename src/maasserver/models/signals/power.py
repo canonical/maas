@@ -3,19 +3,14 @@
 
 """Query power status on node state changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from datetime import timedelta
 
 from maasserver.exceptions import PowerProblem
 from maasserver.models.node import Node
 from maasserver.node_status import QUERY_TRANSITIONS
-from maasserver.utils.orm import (
-    post_commit,
-    transactional,
-)
+from maasserver.utils.orm import post_commit, transactional
 from maasserver.utils.signals import SignalsManager
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
@@ -47,16 +42,17 @@ def update_power_state_of_node(system_id):
         enum, or `None` which denotes that the status could not be queried or
         updated for any of a number of reasons; check the log.
     """
+
     def eb_error(failure):
-        failure.trap(
-            Node.DoesNotExist, UnknownPowerType, PowerProblem)
+        failure.trap(Node.DoesNotExist, UnknownPowerType, PowerProblem)
 
     d = deferToDatabase(transactional(Node.objects.get), system_id=system_id)
     d.addCallback(lambda node: node.power_query())
     d.addErrback(eb_error)
     d.addErrback(
         log.err,
-        "Failed to update power state of machine after state transition.")
+        "Failed to update power state of machine after state transition.",
+    )
     return d
 
 
@@ -71,8 +67,8 @@ def update_power_state_of_node_soon(system_id, clock=reactor):
         use this outside of the reactor thread though!
     """
     return clock.callLater(
-        WAIT_TO_QUERY.total_seconds(),
-        update_power_state_of_node, system_id)
+        WAIT_TO_QUERY.total_seconds(), update_power_state_of_node, system_id
+    )
 
 
 @synchronous
@@ -85,10 +81,11 @@ def signal_update_power_state_of_node(instance, old_values, **kwargs):
     if old_status in QUERY_TRANSITIONS:
         if node.status in QUERY_TRANSITIONS[old_status]:
             post_commit().addCallback(
-                callOut, update_power_state_of_node_soon, node.system_id)
+                callOut, update_power_state_of_node_soon, node.system_id
+            )
 
-signals.watch_fields(
-    signal_update_power_state_of_node, Node, ['status'])
+
+signals.watch_fields(signal_update_power_state_of_node, Node, ["status"])
 
 
 # Enable all signals by default.

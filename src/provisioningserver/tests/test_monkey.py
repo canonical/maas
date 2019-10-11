@@ -8,10 +8,7 @@ __all__ = []
 from unittest.mock import sentinel
 
 from maastesting.factory import factory
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.monkey import (
     add_patches_to_txtftp,
     augment_twisted_deferToThreadPool,
@@ -25,20 +22,19 @@ from twisted.internet.threads import deferToThread
 
 
 class TestAddTermErrorCodeToTFTP(MAASTestCase):
-
     def test_adds_error_code_8(self):
-        self.patch(tftp.datagram, 'errors', {})
+        self.patch(tftp.datagram, "errors", {})
         add_patches_to_txtftp()
         self.assertIn(8, tftp.datagram.errors)
         self.assertEqual(
             "Terminate transfer due to option negotiation",
-            tftp.datagram.errors.get(8))
+            tftp.datagram.errors.get(8),
+        )
 
     def test_skips_adding_error_code_if_already_present(self):
-        self.patch(tftp.datagram, 'errors', {8: sentinel.error_8})
+        self.patch(tftp.datagram, "errors", {8: sentinel.error_8})
         add_patches_to_txtftp()
-        self.assertEqual(
-            sentinel.error_8, tftp.datagram.errors.get(8))
+        self.assertEqual(sentinel.error_8, tftp.datagram.errors.get(8))
 
 
 class TestAugmentDeferToThreadPool(MAASTestCase):
@@ -58,57 +54,59 @@ class TestAugmentDeferToThreadPool(MAASTestCase):
 
 
 class TestPatchedURI(MAASTestCase):
-
     def test__parses_URL_with_hostname(self):
-        hostname = factory.make_name('host').encode('ascii')
-        path = factory.make_name('path').encode('ascii')
-        uri = get_patched_URI().fromBytes(b'http://%s/%s' % (hostname, path))
+        hostname = factory.make_name("host").encode("ascii")
+        path = factory.make_name("path").encode("ascii")
+        uri = get_patched_URI().fromBytes(b"http://%s/%s" % (hostname, path))
         self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
+        self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(80))
 
     def test__parses_URL_with_hostname_and_port(self):
-        hostname = factory.make_name('host').encode('ascii')
+        hostname = factory.make_name("host").encode("ascii")
         port = factory.pick_port()
-        path = factory.make_name('path').encode('ascii')
+        path = factory.make_name("path").encode("ascii")
         uri = get_patched_URI().fromBytes(
-            b'http://%s:%d/%s' % (hostname, port, path))
+            b"http://%s:%d/%s" % (hostname, port, path)
+        )
         self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
+        self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(port))
 
     def test__parses_URL_with_IPv4_address(self):
-        ip = factory.make_ipv4_address().encode('ascii')
-        path = factory.make_name('path').encode('ascii')
-        uri = get_patched_URI().fromBytes(b'http://%s/%s' % (ip, path))
+        ip = factory.make_ipv4_address().encode("ascii")
+        path = factory.make_name("path").encode("ascii")
+        uri = get_patched_URI().fromBytes(b"http://%s/%s" % (ip, path))
         self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
+        self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(80))
 
     def test__parses_URL_with_IPv4_address_and_port(self):
-        ip = factory.make_ipv4_address().encode('ascii')
+        ip = factory.make_ipv4_address().encode("ascii")
         port = factory.pick_port()
-        path = factory.make_name('path').encode('ascii')
+        path = factory.make_name("path").encode("ascii")
         uri = get_patched_URI().fromBytes(
-            b'http://%s:%d/%s' % (ip, port, path))
+            b"http://%s:%d/%s" % (ip, port, path)
+        )
         self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
+        self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(port))
 
     def test__parses_URL_with_IPv6_address(self):
-        ip = factory.make_ipv6_address().encode('ascii')
-        path = factory.make_name('path').encode('ascii')
-        uri = get_patched_URI().fromBytes(b'http://[%s]/%s' % (ip, path))
-        self.expectThat(uri.host, Equals(b'%s' % ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
+        ip = factory.make_ipv6_address().encode("ascii")
+        path = factory.make_name("path").encode("ascii")
+        uri = get_patched_URI().fromBytes(b"http://[%s]/%s" % (ip, path))
+        self.expectThat(uri.host, Equals(b"%s" % ip))
+        self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(80))
 
     def test__parses_URL_with_IPv6_address_and_port(self):
-        ip = factory.make_ipv6_address().encode('ascii')
+        ip = factory.make_ipv6_address().encode("ascii")
         port = factory.pick_port()
-        path = factory.make_name('path').encode('ascii')
+        path = factory.make_name("path").encode("ascii")
         uri = get_patched_URI().fromBytes(
-            b'http://[%s]:%d/%s' % (ip, port, path))
-        self.expectThat(uri.host, Equals(b'%s' % ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
+            b"http://[%s]:%d/%s" % (ip, port, path)
+        )
+        self.expectThat(uri.host, Equals(b"%s" % ip))
+        self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(port))

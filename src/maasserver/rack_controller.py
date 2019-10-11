@@ -32,9 +32,7 @@ DHCP:
     controller is marked as needing an update.
 """
 
-__all__ = [
-    "RackControllerService",
-]
+__all__ = ["RackControllerService"]
 
 from functools import partial
 import os
@@ -46,17 +44,10 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    callOut,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
 from twisted.application.service import Service
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    maybeDeferred,
-)
+from twisted.internet.defer import CancelledError, maybeDeferred
 from twisted.internet.task import LoopingCall
 
 
@@ -98,7 +89,8 @@ class RackControllerService(Service):
             # Register the coreHandler with postgres.
             self.processId = processId
             self.postgresListener.register(
-                "sys_core_%d" % self.processId, self.coreHandler)
+                "sys_core_%d" % self.processId, self.coreHandler
+            )
             return self.processId
 
         @transactional
@@ -108,13 +100,16 @@ class RackControllerService(Service):
             # while this service was still starting.
             return sorted(
                 RackController.objects.filter(
-                    managing_process=processId).values_list("id", flat=True))
+                    managing_process=processId
+                ).values_list("id", flat=True)
+            )
 
         def cb_handlerMissedMessages(rack_ids):
             # Call the handler as if it came from the postgres listener.
             for rack_id in rack_ids:
                 self.coreHandler(
-                    "sys_core_%d" % self.processId, "watch_%d" % rack_id)
+                    "sys_core_%d" % self.processId, "watch_%d" % rack_id
+                )
 
         def cb_clearStarting(_):
             # Clear starting as its now started.
@@ -128,7 +123,8 @@ class RackControllerService(Service):
         self.starting = self.ipcWorker.processId.get()
         self.starting.addCallback(cb_registerWithPostgres)
         self.starting.addCallback(
-            partial(deferToDatabase, cb_getManagingProcesses))
+            partial(deferToDatabase, cb_getManagingProcesses)
+        )
         self.starting.addCallback(cb_handlerMissedMessages)
         self.starting.addCallback(cb_clearStarting)
         self.starting.addErrback(eb_cancelled)
@@ -145,7 +141,8 @@ class RackControllerService(Service):
             # Unregister the core handler.
             try:
                 self.postgresListener.unregister(
-                    "sys_core_%s" % self.processId, self.coreHandler)
+                    "sys_core_%s" % self.processId, self.coreHandler
+                )
             except PostgresListenerUnregistrationError:
                 # Error is acceptable as it might not have been called yet.
                 pass
@@ -154,7 +151,8 @@ class RackControllerService(Service):
             for rack_id in self.watching:
                 try:
                     self.postgresListener.unregister(
-                        "sys_dhcp_%s" % rack_id, self.dhcpHandler)
+                        "sys_dhcp_%s" % rack_id, self.dhcpHandler
+                    )
                 except PostgresListenerUnregistrationError:
                     # Error is acceptable as it might not have been called yet.
                     pass
@@ -180,26 +178,37 @@ class RackControllerService(Service):
 
         log.debug(
             "[pid:{pid()}] recieved {action} action for rack: {rack_id}",
-            pid=os.getpid, action=action, rack_id=rack_id)
+            pid=os.getpid,
+            action=action,
+            rack_id=rack_id,
+        )
 
         if action == "unwatch":
             if rack_id in self.watching:
                 self.postgresListener.unregister(
-                    "sys_dhcp_%s" % rack_id, self.dhcpHandler)
+                    "sys_dhcp_%s" % rack_id, self.dhcpHandler
+                )
             else:
                 log.warn(
                     "[pid:{pid()}] recieved unwatched when not watching "
-                    "for rack: {rack_id}", pid=os.getpid, rack_id=rack_id)
+                    "for rack: {rack_id}",
+                    pid=os.getpid,
+                    rack_id=rack_id,
+                )
             self.needsDHCPUpdate.discard(rack_id)
             self.watching.discard(rack_id)
         elif action == "watch":
             if rack_id not in self.watching:
                 self.postgresListener.register(
-                    "sys_dhcp_%s" % rack_id, self.dhcpHandler)
+                    "sys_dhcp_%s" % rack_id, self.dhcpHandler
+                )
             else:
                 log.warn(
                     "[pid:{pid()}] recieved watched when already watching "
-                    "for rack: {rack_id}", pid=os.getpid, rack_id=rack_id)
+                    "for rack: {rack_id}",
+                    pid=os.getpid,
+                    rack_id=rack_id,
+                )
             self.watching.add(rack_id)
             self.needsDHCPUpdate.add(rack_id)
             self.startProcessing()
@@ -208,12 +217,18 @@ class RackControllerService(Service):
 
         log.debug(
             "[pid:{pid()}] currently watching racks: {racks()}",
-            pid=os.getpid, racks=lambda: ', '.join(
-                [str(rack_id) for rack_id in self.watching]))
+            pid=os.getpid,
+            racks=lambda: ", ".join(
+                [str(rack_id) for rack_id in self.watching]
+            ),
+        )
         log.debug(
             "[pid:{pid()}] racks requiring DHCP push: {racks()}",
-            pid=os.getpid, racks=lambda: ', '.join(
-                [str(rack_id) for rack_id in self.needsDHCPUpdate]))
+            pid=os.getpid,
+            racks=lambda: ", ".join(
+                [str(rack_id) for rack_id in self.needsDHCPUpdate]
+            ),
+        )
 
     def dhcpHandler(self, channel, message):
         """Called when the `sys_dhcp_{rackd_id}` message is received."""
@@ -225,12 +240,18 @@ class RackControllerService(Service):
 
             log.debug(
                 "[pid:{pid()}] racks requiring DHCP push: {racks()}",
-                pid=os.getpid, racks=lambda: ', '.join(
-                    [str(rack_id) for rack_id in self.needsDHCPUpdate]))
+                pid=os.getpid,
+                racks=lambda: ", ".join(
+                    [str(rack_id) for rack_id in self.needsDHCPUpdate]
+                ),
+            )
         else:
             log.warn(
                 "[pid:{pid()}] recieved DHCP push notify when not watching "
-                "for rack: {rack_id}", pid=os.getpid, rack_id=rack_id)
+                "for rack: {rack_id}",
+                pid=os.getpid,
+                rack_id=rack_id,
+            )
 
     def startProcessing(self):
         """Start the process looping call."""
@@ -246,6 +267,7 @@ class RackControllerService(Service):
             # Nothing more to do.
             self.processing.stop()
         else:
+
             def _retryOnFailure(failure, rack_id):
                 self.needsDHCPUpdate.add(rack_id)
                 return failure
@@ -256,17 +278,21 @@ class RackControllerService(Service):
             d.addErrback(lambda f: f.trap(NoConnectionsAvailable))
             d.addErrback(
                 log.err,
-                "Failed configuring DHCP on rack controller 'id:%d'." % (
-                    rack_id))
+                "Failed configuring DHCP on rack controller 'id:%d'."
+                % rack_id,
+            )
             return d
 
     def processDHCP(self, rack_id):
         """Process DHCP for the rack controller."""
         log.debug(
             "[pid:{pid()}] pushing DHCP to rack: {rack_id}",
-            pid=os.getpid, rack_id=rack_id)
+            pid=os.getpid,
+            rack_id=rack_id,
+        )
 
         d = deferToDatabase(
-            transactional(RackController.objects.get), id=rack_id)
+            transactional(RackController.objects.get), id=rack_id
+        )
         d.addCallback(dhcp.configure_dhcp)
         return d

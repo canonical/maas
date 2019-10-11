@@ -38,14 +38,17 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
     )
 
     scenarios = tuple(
-        (method_name, {
-            "category": category,
-            "method_name": method_name,
-            "target_name": target_name,
-            "targets_user": target_name == "user",
-            "targets_users": target_name == "users",
-            "targets_admins": target_name in {"users", "admins"},
-        })
+        (
+            method_name,
+            {
+                "category": category,
+                "method_name": method_name,
+                "target_name": target_name,
+                "targets_user": target_name == "user",
+                "targets_users": target_name == "users",
+                "targets_admins": target_name in {"users", "admins"},
+            },
+        )
         for category, target_name, method_name in create_methods
     )
 
@@ -60,18 +63,27 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
             user = None
             notification = method(message, context=context, ident=ident)
 
-        self.assertThat(notification, MatchesStructure(
-            user=Is(None) if user is None else Equals(user),
-            message=Equals(message)))
+        self.assertThat(
+            notification,
+            MatchesStructure(
+                user=Is(None) if user is None else Equals(user),
+                message=Equals(message),
+            ),
+        )
 
         return notification
 
     def assertNotification(self, notification, *, ident):
-        self.assertThat(notification, MatchesStructure(
-            users=Is(self.targets_users), admins=Is(self.targets_admins),
-            user=Not(Is(None)) if self.targets_user else Is(None),
-            ident=Is(None) if ident is None else Equals(ident),
-            category=Equals(self.category)))
+        self.assertThat(
+            notification,
+            MatchesStructure(
+                users=Is(self.targets_users),
+                admins=Is(self.targets_admins),
+                user=Not(Is(None)) if self.targets_user else Is(None),
+                ident=Is(None) if ident is None else Equals(ident),
+                category=Equals(self.category),
+            ),
+        )
 
     def test_create_new_notification_without_context(self):
         notification = self.makeNotification()
@@ -98,9 +110,7 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
         self.assertThat(n2, Not(Equals(n1)))
         self.assertNotification(n1, ident=None)
         self.assertNotification(n2, ident=ident)
-        self.assertThat(
-            Notification.objects.filter(ident=ident),
-            HasLength(1))
+        self.assertThat(Notification.objects.filter(ident=ident), HasLength(1))
 
 
 class TestFindingAndDismissingNotifications(MAASServerTestCase):
@@ -120,7 +130,8 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
             MatchesAll(
                 IsInstance(QuerySet),  # Not RawQuerySet.
                 MatchesSetwise(*map(Equals, notifications)),
-            ))
+            ),
+        )
 
     def test_find_and_dismiss_notifications_for_user(self):
         user = factory.make_User()
@@ -165,24 +176,32 @@ class TestNotification(MAASServerTestCase):
         context = {"a": thing_a, "b": thing_b}
         notification = Notification(message=message, context=context)
         self.assertThat(
-            notification.render(), Equals(
-                "There are " + str(thing_b) + " of " +
-                thing_a + " in my suitcase."))
+            notification.render(),
+            Equals(
+                "There are "
+                + str(thing_b)
+                + " of "
+                + thing_a
+                + " in my suitcase."
+            ),
+        )
 
     def test_render_allows_markup_in_message_but_escapes_context(self):
         message = "<foo>{bar}</foo>"
         context = {"bar": "<BAR>"}
         notification = Notification(message=message, context=context)
         self.assertThat(
-            notification.render(), Equals("<foo>&lt;BAR&gt;</foo>"))
+            notification.render(), Equals("<foo>&lt;BAR&gt;</foo>")
+        )
 
     def test_save_checks_that_rendering_works(self):
         message = "Dude, where's my {thing}?"
         notification = Notification(message=message)
         error = self.assertRaises(ValidationError, notification.save)
-        self.assertThat(error.message_dict, Equals({
-            "__all__": ["Notification cannot be rendered."],
-        }))
+        self.assertThat(
+            error.message_dict,
+            Equals({"__all__": ["Notification cannot be rendered."]}),
+        )
         self.assertThat(notification.id, Is(None))
         self.assertThat(Notification.objects.all(), HasLength(0))
 
@@ -202,8 +221,11 @@ class TestNotification(MAASServerTestCase):
             # False, the notification is not in the find_for_user set.
             self.assertThat(notification.is_relevant_to(user), yes_or_no)
             self.assertThat(
-                Notification.objects.find_for_user(user).filter(
-                    id=notification.id).exists(), yes_or_no)
+                Notification.objects.find_for_user(user)
+                .filter(id=notification.id)
+                .exists(),
+                yes_or_no,
+            )
 
         notification_to_user = make_Notification(user=user)
         assertRelevance(notification_to_user, None, No)
@@ -240,27 +262,54 @@ class TestNotificationRepresentation(MAASServerTestCase):
 
     def test_for_user(self):
         notification = Notification(
-            user=factory.make_User("foobar"), message="The cat in the {place}",
-            context=dict(place="bear trap"), category=self.category)
+            user=factory.make_User("foobar"),
+            message="The cat in the {place}",
+            context=dict(place="bear trap"),
+            category=self.category,
+        )
         self.assertThat(
-            notification, AfterPreprocessing(repr, Equals(
-                "<Notification %s user='foobar' users=False admins=False "
-                "'The cat in the bear trap'>" % self.category.upper())))
+            notification,
+            AfterPreprocessing(
+                repr,
+                Equals(
+                    "<Notification %s user='foobar' users=False admins=False "
+                    "'The cat in the bear trap'>" % self.category.upper()
+                ),
+            ),
+        )
 
     def test_for_users(self):
         notification = Notification(
-            users=True, message="The cat in the {place}",
-            context=dict(place="blender"), category=self.category)
+            users=True,
+            message="The cat in the {place}",
+            context=dict(place="blender"),
+            category=self.category,
+        )
         self.assertThat(
-            notification, AfterPreprocessing(repr, Equals(
-                "<Notification %s user=None users=True admins=False "
-                "'The cat in the blender'>" % self.category.upper())))
+            notification,
+            AfterPreprocessing(
+                repr,
+                Equals(
+                    "<Notification %s user=None users=True admins=False "
+                    "'The cat in the blender'>" % self.category.upper()
+                ),
+            ),
+        )
 
     def test_for_admins(self):
         notification = Notification(
-            admins=True, message="The cat in the {place}",
-            context=dict(place="lava pit"), category=self.category)
+            admins=True,
+            message="The cat in the {place}",
+            context=dict(place="lava pit"),
+            category=self.category,
+        )
         self.assertThat(
-            notification, AfterPreprocessing(repr, Equals(
-                "<Notification %s user=None users=False admins=True "
-                "'The cat in the lava pit'>" % self.category.upper())))
+            notification,
+            AfterPreprocessing(
+                repr,
+                Equals(
+                    "<Notification %s user=None users=False admins=True "
+                    "'The cat in the lava pit'>" % self.category.upper()
+                ),
+            ),
+        )

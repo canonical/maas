@@ -10,7 +10,4 @@ from django.conf.urls import url
 from maasserver.views.combo import merge_view
 
 
-urlpatterns = [
-    url(
-        r'^(?P<filename>[^/]*)', merge_view, name='merge'),
-]
+urlpatterns = [url(r"^(?P<filename>[^/]*)", merge_view, name="merge")]

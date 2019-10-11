@@ -25,9 +25,7 @@ RBAC:
     RBAC micro-service will be pushed the changed information.
 """
 
-__all__ = [
-    "RegionControllerService",
-]
+__all__ = ["RegionControllerService"]
 
 from operator import attrgetter
 
@@ -36,37 +34,19 @@ from maasserver.dns.config import dns_update_all_zones
 from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
-from maasserver.models.rbacsync import (
-    RBAC_ACTION,
-    RBACLastSync,
-    RBACSync,
-)
+from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.proxyconfig import proxy_update_config
-from maasserver.rbac import (
-    RBACClient,
-    Resource,
-    SyncConflictError,
-)
+from maasserver.rbac import RBACClient, Resource, SyncConflictError
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import synchronised
-from maasserver.utils.orm import (
-    transactional,
-    with_connection,
-)
+from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-    pause,
-)
+from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from twisted.application.service import Service
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    DeferredList,
-    inlineCallbacks,
-)
+from twisted.internet.defer import DeferredList, inlineCallbacks
 from twisted.internet.task import LoopingCall
 from twisted.names.client import Resolver
 
@@ -88,8 +68,12 @@ class RegionControllerService(Service):
     """
 
     def __init__(
-            self, postgresListener, clock=reactor, retryOnFailure=True,
-            rbacRetryOnFailureDelay=10):
+        self,
+        postgresListener,
+        clock=reactor,
+        retryOnFailure=True,
+        rbacRetryOnFailureDelay=10,
+    ):
         """Initialise a new `RegionControllerService`.
 
         :param postgresListener: The `PostgresListenerService` that is running
@@ -107,8 +91,11 @@ class RegionControllerService(Service):
         self.needsRBACUpdate = False
         self.postgresListener = postgresListener
         self.dnsResolver = Resolver(
-            resolv=None, servers=[('127.0.0.1', 53)],
-            timeout=(1,), reactor=clock)
+            resolv=None,
+            servers=[("127.0.0.1", 53)],
+            timeout=(1,),
+            reactor=clock,
+        )
         self.previousSerial = None
         self.rbacClient = None
         self.rbacInit = False
@@ -121,14 +108,16 @@ class RegionControllerService(Service):
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
         self.postgresListener.events.connected.registerHandler(
-            self.markAllForUpdate)
+            self.markAllForUpdate
+        )
 
     @asynchronous(timeout=FOREVER)
     def stopService(self):
         """Close the controller."""
         super(RegionControllerService, self).stopService()
         self.postgresListener.events.connected.unregisterHandler(
-            self.markAllForUpdate)
+            self.markAllForUpdate
+        )
         self.postgresListener.unregister("sys_dns", self.markDNSForUpdate)
         self.postgresListener.unregister("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.unregister("sys_rbac", self.markRBACForUpdate)
@@ -195,32 +184,27 @@ class RegionControllerService(Service):
             # Order here matters, first needsDNSUpdate is set then pass the
             # failure onto `_onDNSReloadFailure` to do the correct thing
             # with the DNS server.
-            d.addErrback(_onFailureRetry, 'needsDNSUpdate')
+            d.addErrback(_onFailureRetry, "needsDNSUpdate")
             d.addErrback(self._onDNSReloadFailure)
-            d.addErrback(
-                log.err,
-                "Failed configuring DNS.")
+            d.addErrback(log.err, "Failed configuring DNS.")
             defers.append(d)
         if self.needsProxyUpdate:
             self.needsProxyUpdate = False
             d = proxy_update_config(reload_proxy=True)
-            d.addCallback(
-                lambda _: log.msg(
-                    "Successfully configured proxy."))
-            d.addErrback(_onFailureRetry, 'needsProxyUpdate')
-            d.addErrback(
-                log.err,
-                "Failed configuring proxy.")
+            d.addCallback(lambda _: log.msg("Successfully configured proxy."))
+            d.addErrback(_onFailureRetry, "needsProxyUpdate")
+            d.addErrback(log.err, "Failed configuring proxy.")
             defers.append(d)
         if self.needsRBACUpdate:
             self.needsRBACUpdate = False
             d = deferToDatabase(self._rbacSync)
             d.addCallback(_rbacInit)
             d.addCallback(self._logRBACSync)
-            d.addErrback(_onFailureRetry, 'needsRBACUpdate')
+            d.addErrback(_onFailureRetry, "needsRBACUpdate")
             d.addErrback(
                 _rbacFailure,
-                self.rbacRetryOnFailureDelay if self.retryOnFailure else None)
+                self.rbacRetryOnFailureDelay if self.retryOnFailure else None,
+            )
             defers.append(d)
         if len(defers) == 0:
             # Nothing more to do.
@@ -237,14 +221,16 @@ class RegionControllerService(Service):
         serial, reloaded, domain_names = result
         if not reloaded:
             raise DNSReloadError(
-                "Failed to reload DNS; timeout or rdnc command failed.")
+                "Failed to reload DNS; timeout or rdnc command failed."
+            )
         not_matching_domains = set(domain_names)
         loop = 0
         while len(not_matching_domains) > 0 and loop != 30:
             for domain in list(not_matching_domains):
                 try:
                     answers, _, _ = yield self.dnsResolver.lookupAuthority(
-                        domain)
+                        domain
+                    )
                 except (ValueError, TimeoutError):
                     answers = []
                 if len(answers) > 0:
@@ -259,7 +245,8 @@ class RegionControllerService(Service):
         if len(not_matching_domains) > 0:
             raise DNSReloadError(
                 "Failed to reload DNS; serial mismatch "
-                "on domains %s" % ', '.join(not_matching_domains))
+                "on domains %s" % ", ".join(not_matching_domains)
+            )
         return result
 
     def _logDNSReload(self, result):
@@ -270,8 +257,7 @@ class RegionControllerService(Service):
         if self.previousSerial is None:
             # This was the first load for starting the service.
             self.previousSerial = serial
-            log.msg(
-                "Reloaded DNS configuration; regiond started.")
+            log.msg("Reloaded DNS configuration; regiond started.")
         else:
             # This is a reload since the region has been running. Get the
             # reason for the reload.
@@ -279,18 +265,19 @@ class RegionControllerService(Service):
             def _logReason(reasons):
                 if len(reasons) == 0:
                     msg = (
-                        "Reloaded DNS configuration; previous failure (retry)")
+                        "Reloaded DNS configuration; previous failure (retry)"
+                    )
                 elif len(reasons) == 1:
                     msg = "Reloaded DNS configuration; %s" % reasons[0]
                 else:
-                    msg = 'Reloaded DNS configuration: \n' + '\n'.join(
-                        ' * %s' % reason
-                        for reason in reasons
+                    msg = "Reloaded DNS configuration: \n" + "\n".join(
+                        " * %s" % reason for reason in reasons
                     )
                 log.msg(msg)
 
             d = deferToDatabase(
-                self._getReloadReasons, self.previousSerial, serial)
+                self._getReloadReasons, self.previousSerial, serial
+            )
             d.addCallback(_logReason)
             d.addErrback(log.err, "Failed to log reason for DNS reload")
 
@@ -303,7 +290,7 @@ class RegionControllerService(Service):
         if not self.retryOnFailure:
             return failure
         log.err(failure, "Failed configuring DNS; killing and restarting")
-        d = service_monitor.killService('bind9')
+        d = service_monitor.killService("bind9")
         d.addErrback(log.err, "Failed to kill and restart DNS.")
         return d
 
@@ -312,8 +299,8 @@ class RegionControllerService(Service):
         return [
             publication.source
             for publication in DNSPublication.objects.filter(
-                serial__gt=previousSerial,
-                serial__lte=currentSerial).order_by('-id')
+                serial__gt=previousSerial, serial__lte=currentSerial
+            ).order_by("-id")
         ]
 
     def _getRBACClient(self):
@@ -322,16 +309,18 @@ class RegionControllerService(Service):
         This tries to use an already held client when initialized because the
         cookiejar will be updated with the already authenticated macaroon.
         """
-        url = Config.objects.get_config('rbac_url')
+        url = Config.objects.get_config("rbac_url")
         if not url:
             # RBAC is not enabled (or no longer enabled).
             self.rbacClient = None
             return None
 
         auth_info = get_auth_info()
-        if (self.rbacClient is None or
-                self.rbacClient._url != url or
-                self.rbacClient._auth_info != auth_info):
+        if (
+            self.rbacClient is None
+            or self.rbacClient._url != url
+            or self.rbacClient._auth_info != auth_info
+        ):
             self.rbacClient = RBACClient(url, auth_info)
 
         return self.rbacClient
@@ -344,7 +333,7 @@ class RegionControllerService(Service):
         # Currently this whole method is scoped to dealing with
         # 'resource-pool'. As more items are synced to RBAC this
         # will need to be adjusted to handle multiple.
-        changes = RBACSync.objects.changes('resource-pool')
+        changes = RBACSync.objects.changes("resource-pool")
         if not changes and self.rbacInit:
             # Nothing has changed, meaning another region already took care
             # of performing the update.
@@ -353,57 +342,60 @@ class RegionControllerService(Service):
         client = self._getRBACClient()
         if client is None:
             # RBAC is disabled, do nothing.
-            RBACSync.objects.clear('resource-pool')  # Changes not needed.
+            RBACSync.objects.clear("resource-pool")  # Changes not needed.
             return None
 
         # Push the resource information based on the last sync.
         new_sync_id = None
         try:
-            last_sync = RBACLastSync.objects.get(resource_type='resource-pool')
+            last_sync = RBACLastSync.objects.get(resource_type="resource-pool")
         except RBACLastSync.DoesNotExist:
             last_sync = None
         if last_sync is None or self._rbacNeedsFull(changes):
             # First sync or requires a full sync.
             resources = [
                 Resource(identifier=rpool.id, name=rpool.name)
-                for rpool in ResourcePool.objects.order_by('id')
+                for rpool in ResourcePool.objects.order_by("id")
             ]
             new_sync_id = client.update_resources(
-                'resource-pool', updates=resources)
+                "resource-pool", updates=resources
+            )
         else:
             # Send only the difference of what has been changed.
             updates, removals = self._rbacDifference(changes)
             if updates or removals:
                 try:
                     new_sync_id = client.update_resources(
-                        'resource-pool', updates=updates, removals=removals,
-                        last_sync_id=last_sync.sync_id)
+                        "resource-pool",
+                        updates=updates,
+                        removals=removals,
+                        last_sync_id=last_sync.sync_id,
+                    )
                 except SyncConflictError:
                     # Issue occurred syncing, push all information.
                     resources = [
                         Resource(identifier=rpool.id, name=rpool.name)
-                        for rpool in ResourcePool.objects.order_by('id')
+                        for rpool in ResourcePool.objects.order_by("id")
                     ]
                     new_sync_id = client.update_resources(
-                        'resource-pool', updates=resources)
+                        "resource-pool", updates=resources
+                    )
         if new_sync_id:
             RBACLastSync.objects.update_or_create(
-                resource_type='resource-pool',
-                defaults={'sync_id': new_sync_id})
+                resource_type="resource-pool",
+                defaults={"sync_id": new_sync_id},
+            )
 
         if not self.rbacInit:
             # This was initial sync on start-up.
-            RBACSync.objects.clear('resource-pool')
+            RBACSync.objects.clear("resource-pool")
             return []
 
         # Return the changes and clear the table, so new changes will be
         # tracked. Being inside a transaction allows us not to worry about
         # a new change already existing with the clear.
-        changes = [
-            change.source
-            for change in changes
-        ]
-        RBACSync.objects.clear('resource-pool')
+        changes = [change.source for change in changes]
+        RBACSync.objects.clear("resource-pool")
         return changes
 
     def _logRBACSync(self, changes):
@@ -412,26 +404,21 @@ class RegionControllerService(Service):
             return None
         if len(changes) == 0:
             # This was the first load for starting the service.
-            log.msg(
-                "Synced RBAC service; regiond started.")
+            log.msg("Synced RBAC service; regiond started.")
         else:
             # This is a sync since the region has been running. Get the
             # reason for the reload.
             if len(changes) == 1:
                 msg = "Synced RBAC service; %s" % changes[0]
             else:
-                msg = 'Synced RBAC service: \n' + '\n'.join(
-                    ' * %s' % reason
-                    for reason in changes
+                msg = "Synced RBAC service: \n" + "\n".join(
+                    " * %s" % reason for reason in changes
                 )
             log.msg(msg)
 
     def _rbacNeedsFull(self, changes):
         """Return True if any changes are marked requiring full sync."""
-        return any(
-            change.action == RBAC_ACTION.FULL
-            for change in changes
-        )
+        return any(change.action == RBAC_ACTION.FULL for change in changes)
 
     def _rbacDifference(self, changes):
         """Return the only the changes that need to be pushed to RBAC."""
@@ -447,15 +434,23 @@ class RegionControllerService(Service):
         updates = {
             change.resource_id: change.resource_name
             for change in changes
-            if (change.resource_id not in removals and
-                change.action != RBAC_ACTION.REMOVE)
+            if (
+                change.resource_id not in removals
+                and change.action != RBAC_ACTION.REMOVE
+            )
         }
         # Any additions with also a removal is not sync to RBAC.
         for change in changes:
             if change.action == RBAC_ACTION.ADD:
                 if change.resource_id in removals:
                     removals.remove(change.resource_id)
-        return sorted([
-            Resource(identifier=res_id, name=res_name)
-            for res_id, res_name in updates.items()
-        ], key=attrgetter('identifier')), removals
+        return (
+            sorted(
+                [
+                    Resource(identifier=res_id, name=res_name)
+                    for res_id, res_name in updates.items()
+                ],
+                key=attrgetter("identifier"),
+            ),
+            removals,
+        )

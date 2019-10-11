@@ -3,9 +3,7 @@
 
 """Describe the architectures which a cluster controller supports."""
 
-__all__ = [
-    'list_supported_architectures',
-    ]
+__all__ = ["list_supported_architectures"]
 
 
 from collections import OrderedDict
@@ -26,6 +24,7 @@ def list_supported_architectures():
     all_arches = []
     for result in results:
         all_arches += [
-            (arch['name'], arch['description'])
-            for arch in result['architectures']]
+            (arch["name"], arch["description"])
+            for arch in result["architectures"]
+        ]
     return OrderedDict(sorted(all_arches))

@@ -9,17 +9,11 @@ import json
 import os
 import socket
 import time
-from unittest.mock import (
-    MagicMock,
-    sentinel,
-)
+from unittest.mock import MagicMock, sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rackdservices import lease_socket_service
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
@@ -27,20 +21,10 @@ from provisioningserver.rackdservices.lease_socket_service import (
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLease
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.utils.twisted import (
-    DeferredValue,
-    pause,
-    retries,
-)
-from testtools.matchers import (
-    Not,
-    PathExists,
-)
+from provisioningserver.utils.twisted import DeferredValue, pause, retries
+from testtools.matchers import Not, PathExists
 from twisted.application.service import Service
-from twisted.internet import (
-    defer,
-    reactor,
-)
+from twisted.internet import defer, reactor
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet.threads import deferToThread
 
@@ -53,7 +37,8 @@ class TestLeaseSocketService(MAASTestCase):
         path = self.make_dir()
         socket_path = os.path.join(path, "dhcpd.sock")
         self.patch(
-            lease_socket_service, "get_socket_path").return_value = socket_path
+            lease_socket_service, "get_socket_path"
+        ).return_value = socket_path
         return socket_path
 
     def patch_rpc_UpdateLease(self):
@@ -69,8 +54,7 @@ class TestLeaseSocketService(MAASTestCase):
 
     def test_init(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, sentinel.reactor)
+        service = LeaseSocketService(sentinel.service, sentinel.reactor)
         self.assertIsInstance(service, Service)
         self.assertIsInstance(service, DatagramProtocol)
         self.assertIs(service.reactor, sentinel.reactor)
@@ -79,8 +63,7 @@ class TestLeaseSocketService(MAASTestCase):
 
     def test_startService_creates_socket(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, reactor)
+        service = LeaseSocketService(sentinel.service, reactor)
         service.startService()
         self.addCleanup(service.stopService)
         self.assertThat(socket_path, PathExists())
@@ -88,8 +71,7 @@ class TestLeaseSocketService(MAASTestCase):
     @defer.inlineCallbacks
     def test_stopService_deletes_socket(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, reactor)
+        service = LeaseSocketService(sentinel.service, reactor)
         service.startService()
         yield service.stopService()
         self.assertThat(socket_path, Not(PathExists()))
@@ -97,8 +79,7 @@ class TestLeaseSocketService(MAASTestCase):
     @defer.inlineCallbacks
     def test_notification_gets_added_to_notifications(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, reactor)
+        service = LeaseSocketService(sentinel.service, reactor)
         service.startService()
         self.addCleanup(service.stopService)
 
@@ -110,9 +91,7 @@ class TestLeaseSocketService(MAASTestCase):
         service.processor = MagicMock()
 
         # Create test payload to send.
-        packet = {
-            "test": factory.make_name("test")
-        }
+        packet = {"test": factory.make_name("test")}
 
         # Send notification to the socket should appear in notifications.
         yield deferToThread(self.send_notification, socket_path, packet)
@@ -130,13 +109,13 @@ class TestLeaseSocketService(MAASTestCase):
     @defer.inlineCallbacks
     def test_processNotification_gets_called_with_notification(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, reactor)
+        service = LeaseSocketService(sentinel.service, reactor)
         dv = DeferredValue()
 
         # Mock processNotifcation to catch the call.
         def mock_processNotification(*args, **kwargs):
             dv.set(args)
+
         self.patch(service, "processNotification", mock_processNotification)
 
         # Start the service and stop it at the end of the test.
@@ -144,9 +123,7 @@ class TestLeaseSocketService(MAASTestCase):
         self.addCleanup(service.stopService)
 
         # Create test payload to send.
-        packet = {
-            "test": factory.make_name("test")
-        }
+        packet = {"test": factory.make_name("test")}
 
         # Send notification to the socket and wait for notification.
         yield deferToThread(self.send_notification, socket_path, packet)
@@ -158,12 +135,8 @@ class TestLeaseSocketService(MAASTestCase):
     @defer.inlineCallbacks
     def test_processNotification_gets_called_multiple_times(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(
-            sentinel.service, reactor)
-        dvs = [
-            DeferredValue(),
-            DeferredValue(),
-        ]
+        service = LeaseSocketService(sentinel.service, reactor)
+        dvs = [DeferredValue(), DeferredValue()]
 
         # Mock processNotifcation to catch the call.
         def mock_processNotification(*args, **kwargs):
@@ -171,6 +144,7 @@ class TestLeaseSocketService(MAASTestCase):
                 if not dv.isSet:
                     dv.set(args)
                     break
+
         self.patch(service, "processNotification", mock_processNotification)
 
         # Start the service and stop it at the end of the test.
@@ -178,12 +152,8 @@ class TestLeaseSocketService(MAASTestCase):
         self.addCleanup(service.stopService)
 
         # Create test payload to send.
-        packet1 = {
-            "test1": factory.make_name("test1")
-        }
-        packet2 = {
-            "test2": factory.make_name("test2")
-        }
+        packet1 = {"test1": factory.make_name("test1")}
+        packet2 = {"test2": factory.make_name("test2")}
 
         # Send notifications to the socket and wait for notifications.
         yield deferToThread(self.send_notification, socket_path, packet1)
@@ -204,8 +174,7 @@ class TestLeaseSocketService(MAASTestCase):
         client = getRegionClient()
         rpc_service = MagicMock()
         rpc_service.getClientNow.return_value = defer.succeed(client)
-        service = LeaseSocketService(
-            rpc_service, reactor)
+        service = LeaseSocketService(rpc_service, reactor)
 
         # Notification to region.
         packet = {
@@ -229,4 +198,6 @@ class TestLeaseSocketService(MAASTestCase):
                 ip=packet["ip"],
                 timestamp=packet["timestamp"],
                 lease_time=packet["lease_time"],
-                hostname=packet["hostname"]))
+                hostname=packet["hostname"],
+            ),
+        )

@@ -7,8 +7,8 @@ from django.apps import AppConfig
 
 
 class MetadataServerTestsConfig(AppConfig):
-    name = 'metadataserver.tests'
-    label = 'metadataserver_tests'
+    name = "metadataserver.tests"
+    label = "metadataserver_tests"
 
 
-default_app_config = 'metadataserver.tests.MetadataServerTestsConfig'
+default_app_config = "metadataserver.tests.MetadataServerTestsConfig"

@@ -4,10 +4,7 @@ import os
 import re
 from time import time
 
-from provisioningserver.prometheus import (
-    prom_cli,
-    PROMETHEUS_SUPPORTED,
-)
+from provisioningserver.prometheus import prom_cli, PROMETHEUS_SUPPORTED
 from provisioningserver.utils.ps import is_pid_running
 from twisted.internet.defer import Deferred
 
@@ -27,8 +24,12 @@ class PrometheusMetrics:
     """Wrapper for accessing and interacting with Prometheus metrics."""
 
     def __init__(
-            self, definitions=None, extra_labels=None, update_handlers=(),
-            registry=None):
+        self,
+        definitions=None,
+        extra_labels=None,
+        update_handlers=(),
+        registry=None,
+    ):
         self._extra_labels = extra_labels or {}
         self._update_handlers = update_handlers
         if definitions is None:
@@ -46,8 +47,12 @@ class PrometheusMetrics:
                 labels.extend(self._extra_labels)
             cls = getattr(prom_cli, definition.type)
             metrics[definition.name] = cls(
-                definition.name, definition.description, labels,
-                registry=self.registry, **definition.kwargs)
+                definition.name,
+                definition.description,
+                labels,
+                registry=self.registry,
+                **definition.kwargs
+            )
 
         return metrics
 
@@ -92,6 +97,7 @@ class PrometheusMetrics:
             # for generating the samples.
             registry = prom_cli.CollectorRegistry()
             from prometheus_client import multiprocess
+
             multiprocess.MultiProcessCollector(registry)
 
         for handler in self._update_handlers:
@@ -99,7 +105,8 @@ class PrometheusMetrics:
         return prom_cli.generate_latest(registry)
 
     def record_call_latency(
-            self, metric_name, get_labels=lambda *args, **kwargs: {}):
+        self, metric_name, get_labels=lambda *args, **kwargs: {}
+    ):
         """Wrap a function to record its call latency on a metric.
 
         If the function is asynchronous (it returns a Deferred), the time to
@@ -111,7 +118,6 @@ class PrometheusMetrics:
         """
 
         def wrap_func(func):
-
             @wraps(func)
             def wrapper(*args, **kwargs):
                 labels = get_labels(*args, **kwargs)
@@ -121,7 +127,8 @@ class PrometheusMetrics:
                 if not isinstance(result, Deferred):
                     latency = after - before
                     self.update(
-                        metric_name, 'observe', value=latency, labels=labels)
+                        metric_name, "observe", value=latency, labels=labels
+                    )
                     return result
 
                 # attach a callback to the deferred to track time after the
@@ -129,7 +136,8 @@ class PrometheusMetrics:
                 def record_latency(result):
                     latency = time() - before
                     self.update(
-                        metric_name, 'observe', value=latency, labels=labels)
+                        metric_name, "observe", value=latency, labels=labels
+                    )
                     return result
 
                 result.addCallback(record_latency)
@@ -141,13 +149,16 @@ class PrometheusMetrics:
 
 
 def create_metrics(
-        metric_definitions, extra_labels=None, update_handlers=(),
-        registry=None):
+    metric_definitions, extra_labels=None, update_handlers=(), registry=None
+):
     """Return a PrometheusMetrics from the specified definitions."""
     definitions = metric_definitions if PROMETHEUS_SUPPORTED else None
     return PrometheusMetrics(
-        definitions=definitions, extra_labels=extra_labels,
-        update_handlers=update_handlers, registry=registry)
+        definitions=definitions,
+        extra_labels=extra_labels,
+        update_handlers=update_handlers,
+        registry=registry,
+    )
 
 
 def clean_prometheus_dir(path=None):
@@ -156,18 +167,18 @@ def clean_prometheus_dir(path=None):
     Files for PIDs not matching running processes are removed.
     """
     if path is None:
-        path = os.environ.get('prometheus_multiproc_dir')
+        path = os.environ.get("prometheus_multiproc_dir")
     if not path or not os.path.isdir(path):
         return
 
-    file_re = re.compile(r'.*_(?P<pid>[0-9]+)\.db')
+    file_re = re.compile(r".*_(?P<pid>[0-9]+)\.db")
 
-    for dbfile in glob.iglob(path + '/*.db'):
+    for dbfile in glob.iglob(path + "/*.db"):
         match = file_re.match(dbfile)
         if not match:
             continue
 
-        pid = int(match.groupdict()['pid'])
+        pid = int(match.groupdict()["pid"])
         if not is_pid_running(pid):
             try:
                 os.remove(dbfile)

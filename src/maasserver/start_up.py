@@ -3,18 +3,13 @@
 
 """Start-up utilities for the MAAS server."""
 
-__all__ = [
-    'start_up'
-]
+__all__ = ["start_up"]
 
 import logging
 
 from django.db import connection
 from django.db.utils import DatabaseError
-from maasserver import (
-    locks,
-    security,
-)
+from maasserver import locks, security
 from maasserver.fields import register_mac_type
 from maasserver.models.config import Config
 from maasserver.models.domain import dns_kms_setting_changed
@@ -30,15 +25,8 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-    pause,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -80,16 +68,19 @@ def start_up(master=False):
             psycopg2_exception = get_psycopg2_exception(e)
             if psycopg2_exception is None:
                 maaslog.warning(
-                    "Database error during start-up; "
-                    "pausing for 3 seconds.")
+                    "Database error during start-up; " "pausing for 3 seconds."
+                )
             elif psycopg2_exception.pgcode is None:
                 maaslog.warning(
                     "Database error during start-up (PostgreSQL error "
-                    "not reported); pausing for 3 seconds.")
+                    "not reported); pausing for 3 seconds."
+                )
             else:
                 maaslog.warning(
                     "Database error during start-up (PostgreSQL error %s); "
-                    "pausing for 3 seconds.", psycopg2_exception.pgcode)
+                    "pausing for 3 seconds.",
+                    psycopg2_exception.pgcode,
+                )
             logger.error("Database error during start-up", exc_info=True)
             yield pause(3.0)  # Wait 3 seconds before having another go.
         except Exception:
@@ -128,19 +119,25 @@ def inner_start_up(master=False):
 
         # Make sure the commissioning distro series is still a supported LTS.
         commissioning_distro_series = Config.objects.get_config(
-            name="commissioning_distro_series")
+            name="commissioning_distro_series"
+        )
         ubuntu = UbuntuOS()
         if commissioning_distro_series not in (
-                ubuntu.get_supported_commissioning_releases()):
+            ubuntu.get_supported_commissioning_releases()
+        ):
             Config.objects.set_config(
                 "commissioning_distro_series",
-                ubuntu.get_default_commissioning_release())
+                ubuntu.get_default_commissioning_release(),
+            )
             Notification.objects.create_info_for_admins(
                 "Ubuntu %s is no longer a supported commissioning "
-                "series. Ubuntu %s has been automatically selected." % (
+                "series. Ubuntu %s has been automatically selected."
+                % (
                     commissioning_distro_series,
-                    ubuntu.get_default_commissioning_release()),
-                ident="commissioning_release_deprecated")
+                    ubuntu.get_default_commissioning_release(),
+                ),
+                ident="commissioning_release_deprecated",
+            )
 
         # Refresh soon after this transaction is in.
         post_commit_do(reactor.callLater, 0, refreshRegion, region)
@@ -149,4 +146,5 @@ def inner_start_up(master=False):
 def refreshRegion(region):
     """Refresh the region controller, logging errors."""
     return region.refresh().addErrback(
-        log.err, "Failure when refreshing region.")
+        log.err, "Failure when refreshing region."
+    )

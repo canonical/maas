@@ -9,7 +9,7 @@ __all__ = [
     "get_data",
     "get_prefixed_form_data",
     "NoReceivers",
-    ]
+]
 
 import collections
 from contextlib import contextmanager
@@ -38,8 +38,9 @@ def extract_redirect(http_response):
     if http_response.status_code != http.client.FOUND:
         raise ValueError(
             "Not a redirect: http status %d. Content: %s"
-            % (http_response.status_code, http_response.content[:80]))
-    target_url = http_response['Location']
+            % (http_response.status_code, http_response.content[:80])
+        )
+    target_url = http_response["Location"]
     parsed_url = urlparse(target_url)
     return parsed_url.path
 
@@ -58,7 +59,8 @@ def get_data(filename):
     :return: Binary contents of the file, as `bytes`.
     """
     path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), '..', 'tests', filename)
+        os.path.dirname(os.path.abspath(__file__)), "..", "tests", filename
+    )
     with open(path) as fd:
         return fd.read()
 
@@ -76,12 +78,12 @@ def get_prefixed_form_data(prefix, data):
     :param data: A dict of form parameters.
     :return: A new dict of prefixed form parameters.
     """
-    result = {'%s-%s' % (prefix, key): value for key, value in data.items()}
-    result.update({'%s_submit' % prefix: 1})
+    result = {"%s-%s" % (prefix, key): value for key, value in data.items()}
+    result.update({"%s_submit" % prefix: 1})
     return result
 
 
-def get_content_links(response, element='#content'):
+def get_content_links(response, element="#content"):
     """Extract links from :class:`HttpResponse` content.
 
     :param response: An HTTP response object.  Only its `content` attribute is
@@ -98,7 +100,7 @@ def get_content_links(response, element='#content'):
     """
     doc = fromstring(response.content)
     links_per_matching_node = chain.from_iterable(
-        [elem.get('href') for elem in matching_node.cssselect('a')]
+        [elem.get("href") for elem in matching_node.cssselect("a")]
         for matching_node in doc.cssselect(element)
     )
     return list(links_per_matching_node)

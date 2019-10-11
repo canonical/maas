@@ -7,12 +7,7 @@ __all__ = []
 
 from collections import namedtuple
 import errno
-from unittest.mock import (
-    ANY,
-    call,
-    MagicMock,
-    sentinel,
-)
+from unittest.mock import ANY, call, MagicMock, sentinel
 
 from crochet import wait_for
 from django.db import connection
@@ -46,10 +41,7 @@ from testtools.matchers import (
     IsInstance,
     Not,
 )
-from twisted.internet import (
-    error,
-    reactor,
-)
+from twisted.internet import error, reactor
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
@@ -67,7 +59,6 @@ FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
 
 
 class TestPostgresListenerService(MAASServerTestCase):
-
     @transactional
     def send_notification(self, event, obj_id):
         cursor = connection.cursor()
@@ -105,7 +96,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         try:
             yield deferToDatabase(self.send_notification, "sys_test", 1)
             yield dv.get(timeout=2)
-            self.assertEqual(('sys_test', '1'), dv.value)
+            self.assertEqual(("sys_test", "1"), dv.value)
         finally:
             yield listener.stopService()
 
@@ -116,9 +107,11 @@ class TestPostgresListenerService(MAASServerTestCase):
         start_calls = []
         stop_calls = []
         listener.events.connected.registerHandler(
-            lambda: start_calls.append(True))
+            lambda: start_calls.append(True)
+        )
         listener.events.disconnected.registerHandler(
-            lambda reason: stop_calls.append(reason))
+            lambda reason: stop_calls.append(reason)
+        )
         yield listener.startService()
         self.assertEqual(len(start_calls), 1)
         yield listener.stopService()
@@ -134,6 +127,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         class PostgresListenerServiceSpy(PostgresListenerService):
             """Send notices off to `notices` right after processing."""
+
             def doRead(self):
                 try:
                     self.connection.connection.poll()
@@ -203,7 +197,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         try:
             yield deferToDatabase(self.send_notification, "machine_create", 1)
             yield dv.get(timeout=2)
-            self.assertEqual(('create', '1'), dv.value)
+            self.assertEqual(("create", "1"), dv.value)
         finally:
             yield listener.stopService()
 
@@ -219,7 +213,7 @@ class TestPostgresListenerService(MAASServerTestCase):
             listener.register("machine", lambda *args: dv.set(args))
             yield deferToDatabase(self.send_notification, "machine_create", 1)
             yield dv.get(timeout=2)
-            self.assertEqual(('create', '1'), dv.value)
+            self.assertEqual(("create", "1"), dv.value)
         finally:
             yield listener.stopService()
 
@@ -261,11 +255,18 @@ class TestPostgresListenerService(MAASServerTestCase):
                 yield listener.tryConnection()
 
         self.assertThat(logger.events, HasLength(1))
-        self.assertThat(logger.events[0], ContainsDict({
-            "log_format": Equals("Unable to connect to database: {error}"),
-            "log_level": Equals(LogLevel.error),
-            "error": Equals(exception_message),
-        }))
+        self.assertThat(
+            logger.events[0],
+            ContainsDict(
+                {
+                    "log_format": Equals(
+                        "Unable to connect to database: {error}"
+                    ),
+                    "log_level": Equals(LogLevel.error),
+                    "error": Equals(exception_message),
+                }
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -355,9 +356,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         with ExpectedException(exception_type):
             yield listener.tryConnection()
 
-        self.assertThat(
-            mock_registerChannels,
-            MockCalledOnceWith())
+        self.assertThat(mock_registerChannels, MockCalledOnceWith())
 
     @wait_for_reactor
     @inlineCallbacks
@@ -369,9 +368,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         yield listener.tryConnection()
         try:
-            self.assertThat(
-                reactor.addReader,
-                MockCalledOnceWith(listener))
+            self.assertThat(reactor.addReader, MockCalledOnceWith(listener))
         finally:
             yield listener.stopService()
 
@@ -397,8 +394,10 @@ class TestPostgresListenerService(MAASServerTestCase):
         with TwistedLoggerFixture() as logger:
             yield listener.tryConnection()
             try:
-                self.assertThat(logger.output, Equals(
-                    "Listening for database notifications."))
+                self.assertThat(
+                    logger.output,
+                    Equals("Listening for database notifications."),
+                )
             finally:
                 yield listener.stopService()
 
@@ -411,11 +410,15 @@ class TestPostgresListenerService(MAASServerTestCase):
             listener.connectionLost(failure)
 
         self.assertThat(
-            logger.output, DocTestMatches("""\
+            logger.output,
+            DocTestMatches(
+                """\
             Connection lost.
             Traceback (most recent call last):...
             Failure: maastesting.factory.TestException#...: Treason!
-            """))
+            """
+            ),
+        )
 
     @wait_for_reactor
     def test__connectionLost_does_not_log_reason_when_lost_cleanly(self):
@@ -430,20 +433,21 @@ class TestPostgresListenerService(MAASServerTestCase):
         listener = PostgresListenerService()
         channel = factory.make_name("channel")
         listener.register(channel, sentinel.handler)
-        self.assertEqual(
-            [sentinel.handler], listener.listeners[channel])
+        self.assertEqual([sentinel.handler], listener.listeners[channel])
 
     def test__convertChannel_raises_exception_if_not_valid_channel(self):
         listener = PostgresListenerService()
         self.assertRaises(
-            PostgresListenerNotifyError,
-            listener.convertChannel, "node_create")
+            PostgresListenerNotifyError, listener.convertChannel, "node_create"
+        )
 
     def test__convertChannel_raises_exception_if_not_valid_action(self):
         listener = PostgresListenerService()
         self.assertRaises(
             PostgresListenerNotifyError,
-            listener.convertChannel, "node_unknown")
+            listener.convertChannel,
+            "node_unknown",
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -479,9 +483,10 @@ class TestPostgresListenerService(MAASServerTestCase):
         notifications = [
             FakeNotify(
                 channel=factory.make_name("channel_action"),
-                payload=factory.make_name("payload"))
+                payload=factory.make_name("payload"),
+            )
             for _ in range(3)
-            ]
+        ]
 
         connection = self.patch(listener, "connection")
         connection.connection.poll.return_value = None
@@ -491,8 +496,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         self.patch(listener, "handleNotify")
 
         listener.doRead()
-        self.assertItemsEqual(
-            listener.notifications, set(notifications))
+        self.assertItemsEqual(listener.notifications, set(notifications))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -544,9 +548,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         channel = factory.make_name("channel")
         listener.register(channel, sentinel.handler)
         listener.unregister(channel, sentinel.handler)
-        self.assertEquals({
-            channel: []
-        }, listener.listeners)
+        self.assertEquals({channel: []}, listener.listeners)
 
     def test_unregister_calls_unregisterChannel_when_connected(self):
         listener = PostgresListenerService()
@@ -577,7 +579,8 @@ class TestPostgresListenerService(MAASServerTestCase):
         channel = factory.make_name("sys_")
         listener.registerChannel(channel)
         self.assertThat(
-            cursor.execute, MockCalledOnceWith("LISTEN %s;" % channel))
+            cursor.execute, MockCalledOnceWith("LISTEN %s;" % channel)
+        )
 
     def test_registerChannel_calls_listen_per_action_for_channel(self):
         listener = PostgresListenerService()
@@ -587,10 +590,13 @@ class TestPostgresListenerService(MAASServerTestCase):
         channel = factory.make_name("node")
         listener.registerChannel(channel)
         self.assertThat(
-            cursor.execute, MockCallsMatch(
+            cursor.execute,
+            MockCallsMatch(
                 call("LISTEN %s_create;" % channel),
                 call("LISTEN %s_delete;" % channel),
-                call("LISTEN %s_update;" % channel)))
+                call("LISTEN %s_update;" % channel),
+            ),
+        )
 
     def test_unregisterChannel_calls_unlisten_once_for_system_channel(self):
         listener = PostgresListenerService()
@@ -600,7 +606,8 @@ class TestPostgresListenerService(MAASServerTestCase):
         channel = factory.make_name("sys_")
         listener.unregisterChannel(channel)
         self.assertThat(
-            cursor.execute, MockCalledOnceWith("UNLISTEN %s;" % channel))
+            cursor.execute, MockCalledOnceWith("UNLISTEN %s;" % channel)
+        )
 
     def test_unregisterChannel_calls_unlisten_per_action_for_channel(self):
         listener = PostgresListenerService()
@@ -610,7 +617,10 @@ class TestPostgresListenerService(MAASServerTestCase):
         channel = factory.make_name("node")
         listener.unregisterChannel(channel)
         self.assertThat(
-            cursor.execute, MockCallsMatch(
+            cursor.execute,
+            MockCallsMatch(
                 call("UNLISTEN %s_create;" % channel),
                 call("UNLISTEN %s_delete;" % channel),
-                call("UNLISTEN %s_update;" % channel)))
+                call("UNLISTEN %s_update;" % channel),
+            ),
+        )

@@ -36,194 +36,203 @@ class PodMixin:
     def make_pod_info(self):
         # Use virsh pod type as the required fields are specific to the
         # type of pod being created.
-        pod_type = 'virsh'
+        pod_type = "virsh"
         pod_ip_adddress = factory.make_ipv4_address()
-        pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
-        pod_password = factory.make_name('password')
-        pod_tags = [
-            factory.make_name("tag")
-            for _ in range(3)
-        ]
+        pod_power_address = "qemu+ssh://user@%s/system" % pod_ip_adddress
+        pod_password = factory.make_name("password")
+        pod_tags = [factory.make_name("tag") for _ in range(3)]
         pod_zone = factory.make_Zone()
         pod_cpu_over_commit_ratio = random.randint(0, 10)
         pod_memory_over_commit_ratio = random.randint(0, 10)
         return {
-            'type': pod_type,
-            'power_address': pod_power_address,
-            'power_pass': pod_password,
-            'ip_address': pod_ip_adddress,
-            'tags': ",".join(pod_tags),
-            'zone': pod_zone.name,
-            'cpu_over_commit_ratio': pod_cpu_over_commit_ratio,
-            'memory_over_commit_ratio': pod_memory_over_commit_ratio
+            "type": pod_type,
+            "power_address": pod_power_address,
+            "power_pass": pod_password,
+            "ip_address": pod_ip_adddress,
+            "tags": ",".join(pod_tags),
+            "zone": pod_zone.name,
+            "cpu_over_commit_ratio": pod_cpu_over_commit_ratio,
+            "memory_over_commit_ratio": pod_memory_over_commit_ratio,
         }
 
     def fake_pod_discovery(self):
         discovered_pod = DiscoveredPod(
-            architectures=['amd64/generic'],
-            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+            architectures=["amd64/generic"],
+            cores=random.randint(2, 4),
+            memory=random.randint(1024, 4096),
             local_storage=random.randint(1024, 1024 * 1024),
             cpu_speed=random.randint(2048, 4048),
             hints=DiscoveredPodHints(
-                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+                cores=random.randint(2, 4),
+                memory=random.randint(1024, 4096),
                 local_storage=random.randint(1024, 1024 * 1024),
-                cpu_speed=random.randint(2048, 4048)))
+                cpu_speed=random.randint(2048, 4048),
+            ),
+        )
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(pods, "discover_pod").return_value = ({
-            discovered_rack_1.system_id: discovered_pod,
-            discovered_rack_2.system_id: discovered_pod,
-        }, {
-            failed_rack.system_id: factory.make_exception(),
-        })
+        self.patch(pods, "discover_pod").return_value = (
+            {
+                discovered_rack_1.system_id: discovered_pod,
+                discovered_rack_2.system_id: discovered_pod,
+            },
+            {failed_rack.system_id: factory.make_exception()},
+        )
         return (
             discovered_pod,
             [discovered_rack_1, discovered_rack_2],
-            [failed_rack])
+            [failed_rack],
+        )
 
 
 class TestPodsAPI(APITestCase.ForUser, PodMixin):
-
     def test_handler_path(self):
-        self.assertEqual(
-            '/MAAS/api/2.0/pods/', reverse('pods_handler'))
+        self.assertEqual("/MAAS/api/2.0/pods/", reverse("pods_handler"))
 
     def test_read_lists_pods(self):
         factory.make_BMC()
-        pods = [
-            factory.make_Pod()
-            for _ in range(3)
-        ]
-        response = self.client.get(reverse('pods_handler'))
+        pods = [factory.make_Pod() for _ in range(3)]
+        response = self.client.get(reverse("pods_handler"))
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertItemsEqual(
-            [pod.id for pod in pods],
-            [pod.get('id') for pod in parsed_result])
+            [pod.id for pod in pods], [pod.get("id") for pod in parsed_result]
+        )
 
     def test_read_returns_limited_fields(self):
-        pod = factory.make_Pod(capabilities=[
-            Capabilities.FIXED_LOCAL_STORAGE, Capabilities.ISCSI_STORAGE])
+        pod = factory.make_Pod(
+            capabilities=[
+                Capabilities.FIXED_LOCAL_STORAGE,
+                Capabilities.ISCSI_STORAGE,
+            ]
+        )
         for _ in range(3):
             factory.make_PodStoragePool(pod=pod)
-        response = self.client.get(reverse('pods_handler'))
+        response = self.client.get(reverse("pods_handler"))
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
-                'id',
-                'name',
-                'tags',
-                'type',
-                'resource_uri',
-                'capabilities',
-                'architectures',
-                'total',
-                'used',
-                'zone',
-                'available',
-                'cpu_over_commit_ratio',
-                'memory_over_commit_ratio',
-                'storage_pools',
-                'pool',
-                'host',
-                'default_macvlan_mode',
+                "id",
+                "name",
+                "tags",
+                "type",
+                "resource_uri",
+                "capabilities",
+                "architectures",
+                "total",
+                "used",
+                "zone",
+                "available",
+                "cpu_over_commit_ratio",
+                "memory_over_commit_ratio",
+                "storage_pools",
+                "pool",
+                "host",
+                "default_macvlan_mode",
             ],
-            list(parsed_result[0]))
+            list(parsed_result[0]),
+        )
         self.assertItemsEqual(
             [
-                'cores',
-                'memory',
-                'local_storage',
-                'local_disks',
-                'iscsi_storage',
+                "cores",
+                "memory",
+                "local_storage",
+                "local_disks",
+                "iscsi_storage",
             ],
-            list(parsed_result[0]['total']))
+            list(parsed_result[0]["total"]),
+        )
         self.assertItemsEqual(
             [
-                'cores',
-                'memory',
-                'local_storage',
-                'local_disks',
-                'iscsi_storage',
+                "cores",
+                "memory",
+                "local_storage",
+                "local_disks",
+                "iscsi_storage",
             ],
-            list(parsed_result[0]['used']))
+            list(parsed_result[0]["used"]),
+        )
         self.assertItemsEqual(
             [
-                'cores',
-                'memory',
-                'local_storage',
-                'local_disks',
-                'iscsi_storage',
+                "cores",
+                "memory",
+                "local_storage",
+                "local_disks",
+                "iscsi_storage",
             ],
-            list(parsed_result[0]['available']))
+            list(parsed_result[0]["available"]),
+        )
         self.assertItemsEqual(
             [
-                'id',
-                'name',
-                'type',
-                'path',
-                'total',
-                'used',
-                'available',
-                'default',
+                "id",
+                "name",
+                "type",
+                "path",
+                "total",
+                "used",
+                "available",
+                "default",
             ],
-            list(parsed_result[0]['storage_pools'][0]))
+            list(parsed_result[0]["storage_pools"][0]),
+        )
 
     def test_create_requires_admin(self):
         response = self.client.post(
-            reverse('pods_handler'), self.make_pod_info())
+            reverse("pods_handler"), self.make_pod_info()
+        )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_create_creates_pod(self):
         self.become_admin()
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
-        response = self.client.post(reverse('pods_handler'), pod_info)
+        response = self.client.post(reverse("pods_handler"), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(parsed_result['type'], pod_info['type'])
+        self.assertEqual(parsed_result["type"], pod_info["type"])
 
     def test_create_creates_pod_with_default_resource_pool(self):
         self.become_admin()
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
-        pod_info['pool'] = pool.name
-        response = self.client.post(reverse('pods_handler'), pod_info)
+        pod_info["pool"] = pool.name
+        response = self.client.post(reverse("pods_handler"), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(pool.id, parsed_result['pool']['id'])
+        self.assertEqual(pool.id, parsed_result["pool"]["id"])
 
     def test_create_duplicate_provides_nice_error(self):
         self.become_admin()
         pod_info = self.make_pod_info()
         discovered_pod, _, _ = self.fake_pod_discovery()
-        response = self.client.post(reverse('pods_handler'), pod_info)
+        response = self.client.post(reverse("pods_handler"), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
-        response = self.client.post(reverse('pods_handler'), pod_info)
+        response = self.client.post(reverse("pods_handler"), pod_info)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_create_proper_return_on_exception(self):
         self.become_admin()
         failed_rack = factory.make_RackController()
-        self.patch(pods, "discover_pod").return_value = ({}, {
-            failed_rack.system_id: factory.make_exception(),
-        })
+        self.patch(pods, "discover_pod").return_value = (
+            {},
+            {failed_rack.system_id: factory.make_exception()},
+        )
 
         response = self.client.post(
-            reverse('pods_handler'), self.make_pod_info())
+            reverse("pods_handler"), self.make_pod_info()
+        )
         self.assertEqual(http.client.SERVICE_UNAVAILABLE, response.status_code)
 
 
 def get_pod_uri(pod):
     """Return a pod URI on the API."""
-    return reverse('pod_handler', args=[pod.id])
+    return reverse("pod_handler", args=[pod.id])
 
 
 class TestPodAPI(APITestCase.ForUser, PodMixin):
-
     def make_pod_with_hints(self):
         architectures = [
             "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
@@ -233,8 +242,11 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         memory = random.randint(4096, 8192)
         cpu_speed = random.randint(2000, 3000)
         pod = factory.make_Pod(
-            architectures=architectures, cores=cores,
-            memory=memory, cpu_speed=cpu_speed)
+            architectures=architectures,
+            cores=cores,
+            memory=memory,
+            cpu_speed=cpu_speed,
+        )
         pod.capabilities = [Capabilities.COMPOSABLE]
         pod.save()
         pod.hints.cores = pod.cores
@@ -244,26 +256,35 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
 
     def make_compose_machine_result(self, pod):
         composed_machine = DiscoveredMachine(
-            hostname=factory.make_name('hostname'),
+            hostname=factory.make_name("hostname"),
             architecture=pod.architectures[0],
-            cores=1, memory=1024, cpu_speed=300,
-            block_devices=[], interfaces=[])
+            cores=1,
+            memory=1024,
+            cpu_speed=300,
+            block_devices=[],
+            interfaces=[],
+        )
         pod_hints = DiscoveredPodHints(
-            cores=random.randint(0, 10), memory=random.randint(1024, 4096),
-            cpu_speed=random.randint(1000, 3000), local_storage=0)
+            cores=random.randint(0, 10),
+            memory=random.randint(1024, 4096),
+            cpu_speed=random.randint(1000, 3000),
+            local_storage=0,
+        )
         return composed_machine, pod_hints
 
     def test_handler_path(self):
         pod_id = random.randint(0, 10)
         self.assertEqual(
-            '/MAAS/api/2.0/pods/%s/' % pod_id,
-            reverse('pod_handler', args=[pod_id]))
+            "/MAAS/api/2.0/pods/%s/" % pod_id,
+            reverse("pod_handler", args=[pod_id]),
+        )
 
     def test_GET_reads_pod(self):
         pod = factory.make_Pod()
         response = self.client.get(get_pod_uri(pod))
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_pod = json_load_bytes(response.content)
         self.assertEqual(pod.id, parsed_pod["id"])
 
@@ -271,34 +292,39 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         pod = factory.make_Pod()
         response = self.client.put(get_pod_uri(pod))
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_PUT_updates(self):
         self.become_admin()
-        pod = factory.make_Pod(pod_type='virsh')
-        new_name = factory.make_name('pod')
+        pod = factory.make_Pod(pod_type="virsh")
+        new_name = factory.make_name("pod")
         new_tags = [
-            factory.make_name('tag'),
-            factory.make_name('tag'),
-            'pod-console-logging',
+            factory.make_name("tag"),
+            factory.make_name("tag"),
+            "pod-console-logging",
         ]
         new_pool = factory.make_ResourcePool()
         new_zone = factory.make_Zone()
         new_power_parameters = {
-            'power_address': 'qemu+ssh://1.2.3.4/system',
-            'power_pass': factory.make_name('pass'),
+            "power_address": "qemu+ssh://1.2.3.4/system",
+            "power_pass": factory.make_name("pass"),
         }
         discovered_pod, _, _ = self.fake_pod_discovery()
-        response = self.client.put(get_pod_uri(pod), {
-            'name': new_name,
-            'tags': ','.join(new_tags),
-            'power_address': new_power_parameters['power_address'],
-            'power_pass': new_power_parameters['power_pass'],
-            'zone': new_zone.name,
-            'pool': new_pool.name,
-        })
+        response = self.client.put(
+            get_pod_uri(pod),
+            {
+                "name": new_name,
+                "tags": ",".join(new_tags),
+                "power_address": new_power_parameters["power_address"],
+                "power_pass": new_power_parameters["power_pass"],
+                "zone": new_zone.name,
+                "pool": new_pool.name,
+            },
+        )
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         pod.refresh_from_db()
         self.assertIsNotNone(Tag.objects.get(name="pod-console-logging"))
         self.assertEqual(new_name, pod.name)
@@ -310,120 +336,120 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
     def test_PUT_updates_discovers_syncs_and_returns_pod(self):
         self.become_admin()
         pod_info = self.make_pod_info()
-        pod = factory.make_Pod(pod_type=pod_info['type'])
-        new_name = factory.make_name('pod')
+        pod = factory.make_Pod(pod_type=pod_info["type"])
+        new_name = factory.make_name("pod")
         discovered_pod, _, _ = self.fake_pod_discovery()
-        response = self.client.put(get_pod_uri(pod), {
-            'name': new_name,
-            'tags': pod_info['tags'],
-            'power_address': pod_info['power_address'],
-            'power_pass': pod_info['power_pass'],
-            'zone': pod_info['zone'],
-        })
+        response = self.client.put(
+            get_pod_uri(pod),
+            {
+                "name": new_name,
+                "tags": pod_info["tags"],
+                "power_address": pod_info["power_address"],
+                "power_pass": pod_info["power_pass"],
+                "zone": pod_info["zone"],
+            },
+        )
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_output = json_load_bytes(response.content)
-        self.assertEqual(new_name, parsed_output['name'])
-        self.assertEqual(discovered_pod.cores, parsed_output['total']['cores'])
+        self.assertEqual(new_name, parsed_output["name"])
+        self.assertEqual(discovered_pod.cores, parsed_output["total"]["cores"])
 
     def test_PUT_update_minimal(self):
         self.become_admin()
         pod_info = self.make_pod_info()
         power_parameters = {
-            'power_address': pod_info['power_address'],
-            'power_pass': pod_info['power_pass'],
+            "power_address": pod_info["power_address"],
+            "power_pass": pod_info["power_pass"],
         }
         pod = factory.make_Pod(
-            pod_type=pod_info['type'], parameters=power_parameters)
-        new_name = factory.make_name('pool')
+            pod_type=pod_info["type"], parameters=power_parameters
+        )
+        new_name = factory.make_name("pool")
         self.fake_pod_discovery()
-        response = self.client.put(get_pod_uri(pod), {
-            'name': new_name,
-        })
+        response = self.client.put(get_pod_uri(pod), {"name": new_name})
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         pod.refresh_from_db()
-        self.assertIsNotNone(Tag.objects.get(name='pod-console-logging'))
+        self.assertIsNotNone(Tag.objects.get(name="pod-console-logging"))
         self.assertEqual(new_name, pod.name)
         self.assertEqual(power_parameters, pod.power_parameters)
 
     def test_PUT_update_updates_pod_default_macvlan_mode(self):
         self.become_admin()
         pod_info = self.make_pod_info()
-        pod = factory.make_Pod(pod_type=pod_info['type'])
+        pod = factory.make_Pod(pod_type=pod_info["type"])
         default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         self.fake_pod_discovery()
-        response = self.client.put(get_pod_uri(pod), {
-            'default_macvlan_mode': default_macvlan_mode,
-        })
+        response = self.client.put(
+            get_pod_uri(pod), {"default_macvlan_mode": default_macvlan_mode}
+        )
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         pod.refresh_from_db()
         self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
 
     def test_refresh_requires_admin(self):
         pod = factory.make_Pod()
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'refresh',
-        })
+        response = self.client.post(get_pod_uri(pod), {"op": "refresh"})
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_refresh_discovers_syncs_and_returns_pod(self):
         self.become_admin()
         pod = factory.make_Pod()
         discovered_pod, _, _ = self.fake_pod_discovery()
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'refresh',
-        })
+        response = self.client.post(get_pod_uri(pod), {"op": "refresh"})
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_output = json_load_bytes(response.content)
-        self.assertEqual(discovered_pod.cores, parsed_output['total']['cores'])
+        self.assertEqual(discovered_pod.cores, parsed_output["total"]["cores"])
 
     def test_parameters_requires_admin(self):
         pod = factory.make_Pod()
-        response = self.client.get(get_pod_uri(pod), {
-            'op': 'parameters',
-        })
+        response = self.client.get(get_pod_uri(pod), {"op": "parameters"})
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_parameters_returns_pod_parameters(self):
         self.become_admin()
         pod = factory.make_Pod()
         pod.power_parameters = {
-            factory.make_name('key'): factory.make_name('value')
+            factory.make_name("key"): factory.make_name("value")
         }
         pod.save()
-        response = self.client.get(get_pod_uri(pod), {
-            'op': 'parameters',
-        })
+        response = self.client.get(get_pod_uri(pod), {"op": "parameters"})
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_params = json_load_bytes(response.content)
         self.assertEqual(pod.power_parameters, parsed_params)
 
     def test_compose_requires_admin(self):
         pod = self.make_pod_with_hints()
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'compose'
-        })
+        response = self.client.post(get_pod_uri(pod), {"op": "compose"})
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_compose_not_allowed_on_none_composable_pod(self):
         self.become_admin()
         pod = self.make_pod_with_hints()
         pod.capabilities = []
         pod.save()
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'compose'
-        })
+        response = self.client.post(get_pod_uri(pod), {"op": "compose"})
         self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
         self.assertEquals(
-            b"Pod does not support composability.", response.content)
+            b"Pod does not support composability.", response.content
+        )
 
     def test_compose_composes_with_defaults(self):
         self.become_admin()
@@ -440,20 +466,21 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
         mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
-            (composed_machine, pod_hints))
+            (composed_machine, pod_hints)
+        )
 
         # Mock start_commissioning so it doesn't use post commit hooks.
         self.patch(Machine, "start_commissioning")
 
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'compose'
-        })
+        response = self.client.post(get_pod_uri(pod), {"op": "compose"})
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_machine = json_load_bytes(response.content)
         self.assertItemsEqual(
-            parsed_machine.keys(), ['resource_uri', 'system_id'])
-        machine = Machine.objects.get(system_id=parsed_machine['system_id'])
+            parsed_machine.keys(), ["resource_uri", "system_id"]
+        )
+        machine = Machine.objects.get(system_id=parsed_machine["system_id"])
         self.assertEqual(machine.pool, pod.pool)
 
     def test_compose_composes_with_pool(self):
@@ -469,53 +496,59 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
         mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
-            (composed_machine, pod_hints))
+            (composed_machine, pod_hints)
+        )
 
         # Mock start_commissioning so it doesn't use post commit hooks.
         self.patch(Machine, "start_commissioning")
 
         pool = factory.make_ResourcePool()
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'compose',
-            'pool': pool.id,
-        })
+        response = self.client.post(
+            get_pod_uri(pod), {"op": "compose", "pool": pool.id}
+        )
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_machine = json_load_bytes(response.content)
         self.assertItemsEqual(
-            parsed_machine.keys(), ['resource_uri', 'system_id'])
-        machine = Machine.objects.get(system_id=parsed_machine['system_id'])
+            parsed_machine.keys(), ["resource_uri", "system_id"]
+        )
+        machine = Machine.objects.get(system_id=parsed_machine["system_id"])
         self.assertEqual(machine.pool, pool)
 
     def test_compose_raises_error_when_to_large_request(self):
         self.become_admin()
         pod = self.make_pod_with_hints()
 
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'compose',
-            'cores': pod.hints.cores + 1,
-        })
+        response = self.client.post(
+            get_pod_uri(pod), {"op": "compose", "cores": pod.hints.cores + 1}
+        )
         self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
 
     def test_DELETE_calls_async_delete(self):
         self.become_admin()
         pod = factory.make_Pod()
         for _ in range(3):
             factory.make_Machine(
-                bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING)
+                bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING
+            )
         for _ in range(3):
             factory.make_Machine(
-                bmc=pod, creation_type=NODE_CREATION_TYPE.MANUAL)
+                bmc=pod, creation_type=NODE_CREATION_TYPE.MANUAL
+            )
         for _ in range(3):
             factory.make_Machine(
-                bmc=pod, creation_type=NODE_CREATION_TYPE.DYNAMIC)
+                bmc=pod, creation_type=NODE_CREATION_TYPE.DYNAMIC
+            )
         mock_eventual = MagicMock()
         mock_async_delete = self.patch(Pod, "async_delete")
         mock_async_delete.return_value = mock_eventual
         response = self.client.delete(get_pod_uri(pod))
         self.assertEqual(
-            http.client.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
         self.assertThat(mock_eventual.wait, MockCalledOnceWith(60 * 7))
 
     def test_DELETE_rejects_deletion_if_not_permitted(self):
@@ -526,23 +559,27 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
 
     def test_add_tag_requires_admin(self):
         pod = self.make_pod_with_hints()
-        response = self.client.post(get_pod_uri(pod), {
-            'op': 'add_tag', 'tag': factory.make_name('tag')
-        })
+        response = self.client.post(
+            get_pod_uri(pod),
+            {"op": "add_tag", "tag": factory.make_name("tag")},
+        )
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_add_tag_to_pod(self):
         self.become_admin()
         pod = factory.make_Pod()
-        tag_to_be_added = factory.make_name('tag')
+        tag_to_be_added = factory.make_name("tag")
         response = self.client.post(
-            get_pod_uri(pod), {'op': 'add_tag', 'tag': tag_to_be_added})
+            get_pod_uri(pod), {"op": "add_tag", "tag": tag_to_be_added}
+        )
 
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_device = json_load_bytes(response.content)
-        self.assertIn(tag_to_be_added, parsed_device['tags'])
+        self.assertIn(tag_to_be_added, parsed_device["tags"])
         pod = reload_object(pod)
         self.assertIn(tag_to_be_added, pod.tags)
 
@@ -550,22 +587,27 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         pod = factory.make_Pod()
         response = self.client.post(
             get_pod_uri(pod),
-            {'op': 'remove_tag', 'tag': factory.make_name('tag')})
+            {"op": "remove_tag", "tag": factory.make_name("tag")},
+        )
 
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_remove_tag_from_pod(self):
         self.become_admin()
         pod = factory.make_Pod(
-            tags=[factory.make_name('tag') for _ in range(3)])
+            tags=[factory.make_name("tag") for _ in range(3)]
+        )
         tag_to_be_removed = pod.tags[0]
         response = self.client.post(
-            get_pod_uri(pod), {'op': 'remove_tag', 'tag': tag_to_be_removed})
+            get_pod_uri(pod), {"op": "remove_tag", "tag": tag_to_be_removed}
+        )
 
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_device = json_load_bytes(response.content)
-        self.assertNotIn(tag_to_be_removed, parsed_device['tags'])
+        self.assertNotIn(tag_to_be_removed, parsed_device["tags"])
         pod = reload_object(pod)
         self.assertNotIn(tag_to_be_removed, pod.tags)

@@ -3,24 +3,12 @@
 
 """Django-enabled test cases."""
 
-__all__ = [
-    'count_queries',
-    'DjangoTestCase',
-    'DjangoTransactionTestCase',
-    ]
+__all__ = ["count_queries", "DjangoTestCase", "DjangoTransactionTestCase"]
 
-from time import (
-    sleep,
-    time,
-)
+from time import sleep, time
 
 from django.core.signals import request_started
-from django.db import (
-    connection,
-    connections,
-    DEFAULT_DB_ALIAS,
-    reset_queries,
-)
+from django.db import connection, connections, DEFAULT_DB_ALIAS, reset_queries
 from django.http.response import HttpResponseBase
 import django.test
 from maastesting.djangoclient import SensibleClient
@@ -36,7 +24,8 @@ original_HttpResponseBase__init__ = HttpResponseBase.__init__
 
 
 def patched_HttpResponseBase__init__(
-        self, content_type=None, status=None, reason=None, charset=None):
+    self, content_type=None, status=None, reason=None, charset=None
+):
     # This will raise a ValueError if this status cannot be converted to str
     # and then into integer.
     if status is not None:
@@ -44,8 +33,13 @@ def patched_HttpResponseBase__init__(
 
     # Made it this far then the status is usable.
     original_HttpResponseBase__init__(
-        self, content_type=content_type, status=status,
-        reason=reason, charset=charset)
+        self,
+        content_type=content_type,
+        status=status,
+        reason=reason,
+        charset=charset,
+    )
+
 
 HttpResponseBase.__init__ = patched_HttpResponseBase__init__
 
@@ -102,11 +96,13 @@ def get_rogue_database_activity():
         the ``pg_stat_activity`` table, mapping column names to values.
     """
     with connection.temporary_connection() as cursor:
-        cursor.execute("""\
+        cursor.execute(
+            """\
         SELECT * FROM pg_stat_activity
          WHERE pid != pg_backend_pid()
            AND query NOT LIKE 'autovacuum:%'
-        """)
+        """
+        )
         names = tuple(column.name for column in cursor.description)
         return [dict(zip(names, row)) for row in cursor]
 
@@ -121,11 +117,13 @@ def terminate_rogue_database_activity():
         they're running under a different role and we're not a superuser.
     """
     with connection.temporary_connection() as cursor:
-        cursor.execute("""\
+        cursor.execute(
+            """\
         SELECT pid, pg_terminate_backend(pid) FROM pg_stat_activity
          WHERE pid != pg_backend_pid()
            AND query NOT LIKE 'autovacuum:%'
-        """)
+        """
+        )
         return {pid for pid, success in cursor if not success}
 
 
@@ -152,20 +150,24 @@ def check_for_rogue_database_activity(test):
     else:
         not_terminated = terminate_rogue_database_activity()
         if len(not_terminated) == 0:
-            not_terminated_message = (
-                "Rogue activity successfully terminated.")
+            not_terminated_message = "Rogue activity successfully terminated."
         else:
             not_terminated_message = (
-                "Rogue activity NOT all terminated (pids: %s)." % " ".join(
-                    str(pid) for pid in sorted(not_terminated)))
+                "Rogue activity NOT all terminated (pids: %s)."
+                % " ".join(str(pid) for pid in sorted(not_terminated))
+            )
         test.fail(
-            "Rogue database activity:\n--\n" + "\n--\n".join(
+            "Rogue database activity:\n--\n"
+            + "\n--\n".join(
                 "\n".join(
                     "%s=%s" % (name, activity[name])
                     for name in sorted(activity)
                 )
                 for activity in database_activity
-            ) + "\n--\n" + not_terminated_message + "\n"
+            )
+            + "\n--\n"
+            + not_terminated_message
+            + "\n"
         )
 
 

@@ -5,10 +5,7 @@
 
 __all__ = []
 
-from unittest.mock import (
-    Mock,
-    sentinel,
-)
+from unittest.mock import Mock, sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -19,19 +16,13 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rackdservices import dhcp_probe_service
 from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
-from provisioningserver.rpc import (
-    getRegionClient,
-    region,
-)
+from provisioningserver.rpc import getRegionClient, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
@@ -45,16 +36,16 @@ class TestDHCPProbeService(MAASTestCase):
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
-            region.ReportForeignDHCPServer)
+            region.ReportForeignDHCPServer
+        )
         return protocol, connecting
 
     def test_is_called_every_interval(self):
         clock = Clock()
-        service = DHCPProbeService(
-            sentinel.service, clock)
+        service = DHCPProbeService(sentinel.service, clock)
 
         # Avoid actually probing
-        probe_dhcp = self.patch(service, 'probe_dhcp')
+        probe_dhcp = self.patch(service, "probe_dhcp")
 
         # Until the service has started, periodicprobe_dhcp() won't
         # be called.
@@ -83,38 +74,38 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": True,
-                "links": [{"address": "10.0.0.1/24"}]
+                "links": [{"address": "10.0.0.1/24"}],
             }
         }
 
-        maaslog = self.patch(dhcp_probe_service, 'maaslog')
-        deferToThread = self.patch(
-            dhcp_probe_service, 'deferToThread')
-        deferToThread.side_effect = [
-            defer.succeed(interfaces),
-        ]
-        probe_interface = self.patch(
-            dhcp_probe_service, 'probe_interface')
-        probe_interface.return_value = ['192.168.0.100']
+        maaslog = self.patch(dhcp_probe_service, "maaslog")
+        deferToThread = self.patch(dhcp_probe_service, "deferToThread")
+        deferToThread.side_effect = [defer.succeed(interfaces)]
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
+        probe_interface.return_value = ["192.168.0.100"]
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
         del protocol._commandDispatch[
-            region.ReportForeignDHCPServer.commandName]
+            region.ReportForeignDHCPServer.commandName
+        ]
 
         rpc_service = Mock()
         rpc_service.getClientNow.return_value = defer.succeed(
-            getRegionClient())
-        service = DHCPProbeService(
-            rpc_service, clock)
+            getRegionClient()
+        )
+        service = DHCPProbeService(rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
         self.assertThat(
-            maaslog.error, MockCalledOnceWith(
+            maaslog.error,
+            MockCalledOnceWith(
                 "Unable to inform region of DHCP server: the region "
                 "does not yet support the ReportForeignDHCPServer RPC "
-                "method."))
+                "method."
+            ),
+        )
 
     def test_logs_errors(self):
         clock = Clock()
@@ -122,29 +113,36 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": True,
-                "links": [{"address": "10.0.0.1/24"}]
+                "links": [{"address": "10.0.0.1/24"}],
             }
         }
 
-        maaslog = self.patch(dhcp_probe_service, 'maaslog')
+        maaslog = self.patch(dhcp_probe_service, "maaslog")
         mock_interfaces = self.patch(
-            dhcp_probe_service, 'get_all_interfaces_definition')
+            dhcp_probe_service, "get_all_interfaces_definition"
+        )
         mock_interfaces.return_value = interfaces
-        service = DHCPProbeService(
-            sentinel.service, clock)
+        service = DHCPProbeService(sentinel.service, clock)
         error_message = factory.make_string()
-        self.patch(service, 'probe_dhcp').side_effect = Exception(
-            error_message)
+        self.patch(service, "probe_dhcp").side_effect = Exception(
+            error_message
+        )
         with TwistedLoggerFixture() as logger:
             service.startService()
             self.assertThat(
-                maaslog.error, MockCalledOnceWith(
-                    "Unable to probe for DHCP servers: %s",
-                    error_message))
-            self.assertThat(logger.output, DocTestMatches(
-                "Running periodic DHCP probe.\n..."
-                "Unable to probe for DHCP servers.\n..."
-                "Traceback... "))
+                maaslog.error,
+                MockCalledOnceWith(
+                    "Unable to probe for DHCP servers: %s", error_message
+                ),
+            )
+            self.assertThat(
+                logger.output,
+                DocTestMatches(
+                    "Running periodic DHCP probe.\n..."
+                    "Unable to probe for DHCP servers.\n..."
+                    "Traceback... "
+                ),
+            )
 
     @inlineCallbacks
     def test_skips_disabled_interfaces(self):
@@ -153,17 +151,17 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": False,
-                "links": [{"address": "10.0.0.1/24"}]
+                "links": [{"address": "10.0.0.1/24"}],
             }
         }
         mock_interfaces = self.patch(
-            dhcp_probe_service, 'get_all_interfaces_definition')
+            dhcp_probe_service, "get_all_interfaces_definition"
+        )
         mock_interfaces.return_value = interfaces
-        service = DHCPProbeService(
-            sentinel.service, clock)
-        try_get_client = self.patch(service, '_tryGetClient')
+        service = DHCPProbeService(sentinel.service, clock)
+        try_get_client = self.patch(service, "_tryGetClient")
         try_get_client.getClientNow = Mock()
-        probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
         self.assertThat(probe_interface, MockNotCalled())
@@ -175,17 +173,17 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": True,
-                "links": [{"address": "10.0.0.1/24"}]
+                "links": [{"address": "10.0.0.1/24"}],
             }
         }
         mock_interfaces = self.patch(
-            dhcp_probe_service, 'get_all_interfaces_definition')
+            dhcp_probe_service, "get_all_interfaces_definition"
+        )
         mock_interfaces.return_value = interfaces
-        service = DHCPProbeService(
-            sentinel.service, clock)
-        try_get_client = self.patch(service, '_tryGetClient')
+        service = DHCPProbeService(sentinel.service, clock)
+        try_get_client = self.patch(service, "_tryGetClient")
         try_get_client.getClientNow = Mock()
-        probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
         self.assertThat(probe_interface, MockCalledOnce())
@@ -197,17 +195,17 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": True,
-                "links": [{"address": "2001:db8::1/64"}]
+                "links": [{"address": "2001:db8::1/64"}],
             }
         }
         mock_interfaces = self.patch(
-            dhcp_probe_service, 'get_all_interfaces_definition')
+            dhcp_probe_service, "get_all_interfaces_definition"
+        )
         mock_interfaces.return_value = interfaces
-        service = DHCPProbeService(
-            sentinel.service, clock)
-        try_get_client = self.patch(service, '_tryGetClient')
+        service = DHCPProbeService(sentinel.service, clock)
+        try_get_client = self.patch(service, "_tryGetClient")
         try_get_client.getClientNow = Mock()
-        probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
         self.assertThat(probe_interface, MockNotCalled())
@@ -216,20 +214,15 @@ class TestDHCPProbeService(MAASTestCase):
     def test_skips_unconfigured_interfaces(self):
         clock = Clock()
         interface_name = factory.make_name("eth")
-        interfaces = {
-            interface_name: {
-                "enabled": True,
-                "links": []
-            }
-        }
+        interfaces = {interface_name: {"enabled": True, "links": []}}
         mock_interfaces = self.patch(
-            dhcp_probe_service, 'get_all_interfaces_definition')
+            dhcp_probe_service, "get_all_interfaces_definition"
+        )
         mock_interfaces.return_value = interfaces
-        service = DHCPProbeService(
-            sentinel.service, clock)
-        try_get_client = self.patch(service, '_tryGetClient')
+        service = DHCPProbeService(sentinel.service, clock)
+        try_get_client = self.patch(service, "_tryGetClient")
         try_get_client.getClientNow = Mock()
-        probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
         self.assertThat(probe_interface, MockNotCalled())
@@ -241,28 +234,23 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": True,
-                "links": [{"address": "10.0.0.1/24"}]
+                "links": [{"address": "10.0.0.1/24"}],
             }
         }
 
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
-        deferToThread = self.patch(
-            dhcp_probe_service, 'deferToThread')
+        deferToThread = self.patch(dhcp_probe_service, "deferToThread")
         foreign_dhcp_ip = factory.make_ipv4_address()
-        deferToThread.side_effect = [
-            defer.succeed(interfaces),
-        ]
-        probe_interface = self.patch(
-            dhcp_probe_service, 'probe_interface')
+        deferToThread.side_effect = [defer.succeed(interfaces)]
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         probe_interface.return_value = [foreign_dhcp_ip]
         client = getRegionClient()
         rpc_service = Mock()
         rpc_service.getClientNow.return_value = defer.succeed(client)
 
-        service = DHCPProbeService(
-            rpc_service, clock)
+        service = DHCPProbeService(rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
@@ -272,7 +260,9 @@ class TestDHCPProbeService(MAASTestCase):
                 protocol,
                 system_id=client.localIdent,
                 interface_name=interface_name,
-                dhcp_ip=foreign_dhcp_ip))
+                dhcp_ip=foreign_dhcp_ip,
+            ),
+        )
 
     @inlineCallbacks
     def test_reports_lack_of_foreign_dhcp_servers_to_region(self):
@@ -281,27 +271,22 @@ class TestDHCPProbeService(MAASTestCase):
         interfaces = {
             interface_name: {
                 "enabled": True,
-                "links": [{"address": "10.0.0.1/24"}]
+                "links": [{"address": "10.0.0.1/24"}],
             }
         }
 
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
-        deferToThread = self.patch(
-            dhcp_probe_service, 'deferToThread')
-        deferToThread.side_effect = [
-            defer.succeed(interfaces),
-        ]
-        probe_interface = self.patch(
-            dhcp_probe_service, 'probe_interface')
+        deferToThread = self.patch(dhcp_probe_service, "deferToThread")
+        deferToThread.side_effect = [defer.succeed(interfaces)]
+        probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         probe_interface.return_value = []
 
         client = getRegionClient()
         rpc_service = Mock()
         rpc_service.getClientNow.return_value = defer.succeed(client)
-        service = DHCPProbeService(
-            rpc_service, clock)
+        service = DHCPProbeService(rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
@@ -311,4 +296,6 @@ class TestDHCPProbeService(MAASTestCase):
                 protocol,
                 system_id=client.localIdent,
                 interface_name=interface_name,
-                dhcp_ip=None))
+                dhcp_ip=None,
+            ),
+        )

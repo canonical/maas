@@ -3,9 +3,7 @@
 
 """Metadata API URLs."""
 
-__all__ = [
-    'urlpatterns',
-    ]
+__all__ = ["urlpatterns"]
 
 from django.conf.urls import url
 from maasserver.api.auth import api_auth
@@ -27,19 +25,24 @@ from metadataserver.api import (
 
 # Handlers for nodes requesting their own metadata.
 meta_data_handler = OperationsResource(
-    MetaDataHandler, authentication=api_auth)
+    MetaDataHandler, authentication=api_auth
+)
 user_data_handler = OperationsResource(
-    UserDataHandler, authentication=api_auth)
+    UserDataHandler, authentication=api_auth
+)
 curtin_user_data_handler = OperationsResource(
-    CurtinUserDataHandler, authentication=api_auth)
+    CurtinUserDataHandler, authentication=api_auth
+)
 version_index_handler = OperationsResource(
-    VersionIndexHandler, authentication=api_auth)
-index_handler = OperationsResource(
-    IndexHandler, authentication=api_auth)
+    VersionIndexHandler, authentication=api_auth
+)
+index_handler = OperationsResource(IndexHandler, authentication=api_auth)
 maas_scripts_handler = OperationsResource(
-    MAASScriptsHandler, authentication=api_auth)
+    MAASScriptsHandler, authentication=api_auth
+)
 commissioning_scripts_handler = OperationsResource(
-    CommissioningScriptsHandler, authentication=api_auth)
+    CommissioningScriptsHandler, authentication=api_auth
+)
 
 # Handlers for status reporting
 status_handler = OperationsResource(StatusHandler, authentication=api_auth)
@@ -66,15 +69,20 @@ enlist_version_index_handler = OperationsResource(EnlistVersionIndexHandler)
 node_patterns = [
     # The webhook-style status reporting handler.
     url(
-        r'^status/(?P<system_id>[\w\-]+)$', status_handler,
-        name='metadata-status'),
+        r"^status/(?P<system_id>[\w\-]+)$",
+        status_handler,
+        name="metadata-status",
+    ),
     url(
-        r'^[/]*(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        r"^[/]*(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         meta_data_handler,
-        name='metadata-meta-data'),
+        name="metadata-meta-data",
+    ),
     url(
-        r'^[/]*(?P<version>[^/]+)/user-data$', user_data_handler,
-        name='metadata-user-data'),
+        r"^[/]*(?P<version>[^/]+)/user-data$",
+        user_data_handler,
+        name="metadata-user-data",
+    ),
     # Commissioning scripts.  This is a blatant MAAS extension to the
     # metadata API, hence the "maas-" prefix.
     # Scripts are returned as a tar arhive, but the format is not
@@ -82,16 +90,21 @@ node_patterns = [
     # definitive. maas-scripts is xz compressed while
     # maas-commissioning-scripts is not.
     url(
-        r'^[/]*(?P<version>[^/]+)/maas-scripts',
-        maas_scripts_handler, name='maas-scripts'),
+        r"^[/]*(?P<version>[^/]+)/maas-scripts",
+        maas_scripts_handler,
+        name="maas-scripts",
+    ),
     url(
-        r'^[/]*(?P<version>[^/]+)/maas-commissioning-scripts',
-        commissioning_scripts_handler, name='commissioning-scripts'),
+        r"^[/]*(?P<version>[^/]+)/maas-commissioning-scripts",
+        commissioning_scripts_handler,
+        name="commissioning-scripts",
+    ),
     url(
-        r'^[/]*(?P<version>[^/]+)/', version_index_handler,
-        name='metadata-version'),
-    url(
-        r'^[/]*', index_handler, name='metadata'),
+        r"^[/]*(?P<version>[^/]+)/",
+        version_index_handler,
+        name="metadata-version",
+    ),
+    url(r"^[/]*", index_handler, name="metadata"),
 ]
 
 # The curtin-specific metadata API.  Only the user-data end-point is
@@ -99,17 +112,21 @@ node_patterns = [
 # normal metadata API.
 curtin_patterns = [
     url(
-        r'^[/]*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        r"^[/]*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         meta_data_handler,
-        name='curtin-metadata-meta-data'),
+        name="curtin-metadata-meta-data",
+    ),
     url(
-        r'^[/]*curtin/(?P<version>[^/]+)/user-data$', curtin_user_data_handler,
-        name='curtin-metadata-user-data'),
+        r"^[/]*curtin/(?P<version>[^/]+)/user-data$",
+        curtin_user_data_handler,
+        name="curtin-metadata-user-data",
+    ),
     url(
-        r'^[/]*curtin/(?P<version>[^/]+)/', version_index_handler,
-        name='curtin-metadata-version'),
-    url(
-        r'^[/]*curtin[/]*$', index_handler, name='curtin-metadata'),
+        r"^[/]*curtin/(?P<version>[^/]+)/",
+        version_index_handler,
+        name="curtin-metadata-version",
+    ),
+    url(r"^[/]*curtin[/]*$", index_handler, name="curtin-metadata"),
 ]
 
 
@@ -121,14 +138,16 @@ by_id_patterns = [
     # without authentication.  This is a security threat.
     url(
         # could-init adds additional slashes in front of urls.
-        r'^[/]*(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$',
+        r"^[/]*(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$",
         meta_data_anon_handler,
-        name='metadata-node-by-id'),
+        name="metadata-node-by-id",
+    ),
     url(
         # cloud-init adds additional slashes in front of urls.
-        r'^[/]*(?P<version>[^/]+)/enlist-preseed/$',
+        r"^[/]*(?P<version>[^/]+)/enlist-preseed/$",
         meta_data_anon_handler,
-        name='metadata-enlist-preseed'),
+        name="metadata-enlist-preseed",
+    ),
 ]
 
 # UNSAFE anonymous random metadata access, keyed by MAC address.  These won't
@@ -137,35 +156,43 @@ by_id_patterns = [
 by_mac_patterns = [
     url(
         # could-init adds additional slashes in front of urls.
-        r'^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/'
-        r'meta-data/(?P<item>.*)$',
+        r"^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/"
+        r"meta-data/(?P<item>.*)$",
         meta_data_by_mac_handler,
-        name='metadata-meta-data-by-mac'),
+        name="metadata-meta-data-by-mac",
+    ),
     url(
         # could-init adds additional slashes in front of urls.
-        r'^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$',
+        r"^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$",
         user_data_by_mac_handler,
-        name='metadata-user-data-by-mac'),
+        name="metadata-user-data-by-mac",
+    ),
     url(
         # could-init adds additional slashes in front of urls.
-        r'^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/',
+        r"^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/",
         version_index_by_mac_handler,
-        name='metadata-version-by-mac'),
+        name="metadata-version-by-mac",
+    ),
 ]
 
 # Anonymous enlistment entry point
 enlist_metadata_patterns = [
     url(
-        r'^[/]*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        r"^[/]*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         enlist_meta_data_handler,
-        name='enlist-metadata-meta-data'),
+        name="enlist-metadata-meta-data",
+    ),
     url(
-        r'^[/]*enlist/(?P<version>[^/]+)/user-data$', enlist_user_data_handler,
-        name='enlist-metadata-user-data'),
+        r"^[/]*enlist/(?P<version>[^/]+)/user-data$",
+        enlist_user_data_handler,
+        name="enlist-metadata-user-data",
+    ),
     url(
-        r'^[/]*enlist/(?P<version>[^/]+)[/]*$', enlist_version_index_handler,
-        name='enlist-version'),
-    url(r'^[/]*enlist[/]*$', enlist_index_handler, name='enlist'),
+        r"^[/]*enlist/(?P<version>[^/]+)[/]*$",
+        enlist_version_index_handler,
+        name="enlist-version",
+    ),
+    url(r"^[/]*enlist[/]*$", enlist_index_handler, name="enlist"),
 ]
 
 
@@ -173,5 +200,9 @@ enlist_metadata_patterns = [
 # so recognizable: there's no chance of a regular metadata access being
 # mistaken for one of these based on URL pattern match.
 urlpatterns = (
-    enlist_metadata_patterns + by_id_patterns + by_mac_patterns +
-    curtin_patterns + node_patterns)
+    enlist_metadata_patterns
+    + by_id_patterns
+    + by_mac_patterns
+    + curtin_patterns
+    + node_patterns
+)

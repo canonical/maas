@@ -3,9 +3,7 @@
 
 """Fixtures for working with local configuration in the region."""
 
-__all__ = [
-    'RegionConfigurationFixture',
-    ]
+__all__ = ["RegionConfigurationFixture"]
 
 from maasserver.config import RegionConfiguration
 from provisioningserver.testing.config import ConfigurationFixtureBase

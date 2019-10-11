@@ -5,38 +5,25 @@
 
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
-from maasserver.enum import (
-    ENDPOINT,
-    NODE_STATUS,
-)
+from maasserver.enum import ENDPOINT, NODE_STATUS
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
     NodeStateViolation,
 )
-from maasserver.forms import (
-    CreateCacheSetForm,
-    UpdateCacheSetForm,
-)
-from maasserver.models import (
-    CacheSet,
-    Machine,
-)
+from maasserver.forms import CreateCacheSetForm, UpdateCacheSetForm
+from maasserver.models import CacheSet, Machine
 from maasserver.permissions import NodePermission
 from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
 
 
-DISPLAYED_CACHE_SET_FIELDS = (
-    'system_id',
-    'id',
-    'name',
-    'cache_device',
-)
+DISPLAYED_CACHE_SET_FIELDS = ("system_id", "id", "name", "cache_device")
 
 
 class BcacheCacheSetsHandler(OperationsHandler):
     """Manage bcache cache sets on a machine."""
+
     api_doc_section_name = "Bcache Cache Sets"
     update = delete = None
     fields = DISPLAYED_CACHE_SET_FIELDS
@@ -44,7 +31,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('bcache_cache_sets_handler', ["system_id"])
+        return ("bcache_cache_sets_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title List bcache sets
@@ -64,7 +51,8 @@ class BcacheCacheSetsHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         return CacheSet.objects.get_cache_sets_for_node(machine)
 
     def create(self, request, system_id):
@@ -95,15 +83,21 @@ class BcacheCacheSetsHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create cache set because the node is not Ready.")
+                "Cannot create cache set because the node is not Ready."
+            )
         form = CreateCacheSetForm(machine, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request,
-                system_id, "Created bcache cache set.")
+                EVENT_TYPES.NODE,
+                ENDPOINT.API,
+                request,
+                system_id,
+                "Created bcache cache set.",
+            )
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -111,6 +105,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
 
 class BcacheCacheSetHandler(OperationsHandler):
     """Manage bcache cache set on a machine."""
+
     api_doc_section_name = "Bcache Cache Set"
     create = None
     model = CacheSet
@@ -126,7 +121,7 @@ class BcacheCacheSetHandler(OperationsHandler):
             node = cache_set.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('bcache_cache_set_handler', (system_id, cache_set_id))
+        return ("bcache_cache_set_handler", (system_id, cache_set_id))
 
     @classmethod
     def system_id(cls, cache_set):
@@ -156,7 +151,8 @@ class BcacheCacheSetHandler(OperationsHandler):
             Not Found
         """
         return CacheSet.objects.get_cache_set_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def delete(self, request, system_id, id):
         """@description-title Delete a bcache set
@@ -179,19 +175,26 @@ class BcacheCacheSetHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete cache set because the machine is not Ready.")
+                "Cannot delete cache set because the machine is not Ready."
+            )
         if cache_set.filesystemgroup_set.exists():
             raise MAASAPIBadRequest(
-                "Cannot delete cache set; it's currently in use.")
+                "Cannot delete cache set; it's currently in use."
+            )
         else:
             cache_set.delete()
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request,
-                system_id, "Deleted bcache cache set.")
+                EVENT_TYPES.NODE,
+                ENDPOINT.API,
+                request,
+                system_id,
+                "Deleted bcache cache set.",
+            )
             return rc.DELETED
 
     def update(self, request, system_id, id):
@@ -224,16 +227,22 @@ class BcacheCacheSetHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update cache set because the machine is not Ready.")
+                "Cannot update cache set because the machine is not Ready."
+            )
         form = UpdateCacheSetForm(cache_set, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request,
-                system_id, "Updated bcache cache set.")
+                EVENT_TYPES.NODE,
+                ENDPOINT.API,
+                request,
+                system_id,
+                "Updated bcache cache set.",
+            )
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)

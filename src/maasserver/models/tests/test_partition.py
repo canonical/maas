@@ -43,9 +43,11 @@ class TestPartitionManager(MAASServerTestCase):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         free_partitions = [
             partition_table.add_partition(size=MIN_PARTITION_SIZE)
             for _ in range(2)
@@ -54,70 +56,84 @@ class TestPartitionManager(MAASServerTestCase):
         for _ in range(2):
             factory.make_Filesystem(
                 partition=partition_table.add_partition(
-                    size=MIN_PARTITION_SIZE))
+                    size=MIN_PARTITION_SIZE
+                )
+            )
         self.assertItemsEqual(
             free_partitions,
-            Partition.objects.get_free_partitions_for_node(node))
+            Partition.objects.get_free_partitions_for_node(node),
+        )
 
     def test_get_partitions_in_filesystem_group(self):
         node = factory.make_Node()
         filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
+        )
         block_device_with_partitions = factory.make_PhysicalBlockDevice(
-            node=node)
+            node=node
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device_with_partitions)
+            block_device=block_device_with_partitions
+        )
         partition = factory.make_Partition(partition_table=partition_table)
         factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.LVM_PV,
-            partition=partition, filesystem_group=filesystem_group)
-        partitions_in_filesystem_group = (
-            Partition.objects.get_partitions_in_filesystem_group(
-                filesystem_group))
-        self.assertItemsEqual(
-            [partition], partitions_in_filesystem_group)
+            partition=partition,
+            filesystem_group=filesystem_group,
+        )
+        partitions_in_filesystem_group = Partition.objects.get_partitions_in_filesystem_group(
+            filesystem_group
+        )
+        self.assertItemsEqual([partition], partitions_in_filesystem_group)
 
     def test_get_partition_by_id_or_name_returns_valid_with_id(self):
         partition = factory.make_Partition()
         self.assertEqual(
             partition,
-            Partition.objects.get_partition_by_id_or_name(partition.id))
+            Partition.objects.get_partition_by_id_or_name(partition.id),
+        )
 
     def test_get_partition_by_id_or_name_returns_valid_with_name(self):
         partition = factory.make_Partition()
         self.assertEqual(
             partition,
-            Partition.objects.get_partition_by_id_or_name(partition.name))
+            Partition.objects.get_partition_by_id_or_name(partition.name),
+        )
 
     def test_get_partition_by_id_or_name_invalid_id(self):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            random.randint(1000, 5000))
+            random.randint(1000, 5000),
+        )
 
     def test_get_partition_by_id_or_name_empty_string(self):
         factory.make_Partition()
         self.assertRaises(
             Partition.DoesNotExist,
-            Partition.objects.get_partition_by_id_or_name, "")
+            Partition.objects.get_partition_by_id_or_name,
+            "",
+        )
 
     def test_get_partition_by_id_or_name_invalid_part_seperator(self):
         partition = factory.make_Partition()
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            "%spart%s" % (
+            "%spart%s"
+            % (
                 partition.partition_table.block_device.get_name(),
-                partition.get_partition_number()
-                ))
+                partition.get_partition_number(),
+            ),
+        )
 
     def test_get_partition_by_id_or_name_invalid_part_number(self):
         partition = factory.make_Partition()
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            "%spartX" % (
-                partition.partition_table.block_device.get_name()))
+            "%spartX" % (partition.partition_table.block_device.get_name()),
+        )
 
     def test_get_partition_by_id_or_name_by_id_invalid_table(self):
         partition_table = factory.make_PartitionTable()
@@ -126,7 +142,9 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            partition.id, other_table)
+            partition.id,
+            other_table,
+        )
 
     def test_get_partition_by_id_or_name_by_name_invalid_table(self):
         partition_table = factory.make_PartitionTable()
@@ -135,60 +153,62 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            partition.name, other_table)
+            partition.name,
+            other_table,
+        )
 
     def test_get_partition_by_device_name_and_number(self):
         block_device = factory.make_PhysicalBlockDevice()
         partition_table = factory.make_PartitionTable(
-            block_device=block_device)
+            block_device=block_device
+        )
         factory.make_Partition(partition_table=partition_table)
         partition_two = factory.make_Partition(partition_table=partition_table)
         self.assertEqual(
             partition_two,
             Partition.objects.get_partition_by_device_name_and_number(
-                block_device.get_name(), partition_two.get_partition_number()))
+                block_device.get_name(), partition_two.get_partition_number()
+            ),
+        )
 
     def test_filter_by_tags_returns_partitions_with_one_tag(self):
-        tags = [factory.make_name('tag') for _ in range(3)]
-        other_tags = [factory.make_name('tag') for _ in range(3)]
+        tags = [factory.make_name("tag") for _ in range(3)]
+        other_tags = [factory.make_name("tag") for _ in range(3)]
         partitions_with_tags = [
-            factory.make_Partition(tags=tags)
-            for _ in range(3)
-            ]
+            factory.make_Partition(tags=tags) for _ in range(3)
+        ]
         for _ in range(3):
             factory.make_Partition(tags=other_tags)
         self.assertItemsEqual(
-            partitions_with_tags,
-            Partition.objects.filter_by_tags([tags[0]]))
+            partitions_with_tags, Partition.objects.filter_by_tags([tags[0]])
+        )
 
     def test_filter_by_tags_returns_partitions_with_all_tags(self):
-        tags = [factory.make_name('tag') for _ in range(3)]
-        other_tags = [factory.make_name('tag') for _ in range(3)]
+        tags = [factory.make_name("tag") for _ in range(3)]
+        other_tags = [factory.make_name("tag") for _ in range(3)]
         partitions_with_tags = [
-            factory.make_Partition(tags=tags)
-            for _ in range(3)
-            ]
+            factory.make_Partition(tags=tags) for _ in range(3)
+        ]
         for _ in range(3):
             factory.make_Partition(tags=other_tags)
         self.assertItemsEqual(
-            partitions_with_tags,
-            Partition.objects.filter_by_tags(tags))
+            partitions_with_tags, Partition.objects.filter_by_tags(tags)
+        )
 
     def test_filter_by_tags_returns_no_devices(self):
-        tags = [factory.make_name('tag') for _ in range(3)]
+        tags = [factory.make_name("tag") for _ in range(3)]
         for _ in range(3):
             factory.make_Partition(tags=tags)
         self.assertItemsEqual(
-            [],
-            Partition.objects.filter_by_tags([factory.make_name('tag')]))
+            [], Partition.objects.filter_by_tags([factory.make_name("tag")])
+        )
 
     def test_filter_by_tags_returns_devices_with_iterable(self):
-        tags = [factory.make_name('tag') for _ in range(3)]
-        other_tags = [factory.make_name('tag') for _ in range(3)]
+        tags = [factory.make_name("tag") for _ in range(3)]
+        other_tags = [factory.make_name("tag") for _ in range(3)]
         devices_with_tags = [
-            factory.make_Partition(tags=tags)
-            for _ in range(3)
-            ]
+            factory.make_Partition(tags=tags) for _ in range(3)
+        ]
         for _ in range(3):
             factory.make_Partition(tags=other_tags)
 
@@ -198,15 +218,16 @@ class TestPartitionManager(MAASServerTestCase):
 
         self.assertItemsEqual(
             devices_with_tags,
-            Partition.objects.filter_by_tags(tag_generator()))
+            Partition.objects.filter_by_tags(tag_generator()),
+        )
 
     def test_filter_by_tags_raise_TypeError_when_unicode(self):
-        self.assertRaises(
-            TypeError, Partition.objects.filter_by_tags, 'test')
+        self.assertRaises(TypeError, Partition.objects.filter_by_tags, "test")
 
     def test_filter_by_tags_raise_TypeError_when_not_iterable(self):
         self.assertRaises(
-            TypeError, Partition.objects.filter_by_tags, object())
+            TypeError, Partition.objects.filter_by_tags, object()
+        )
 
 
 class TestPartition(MAASServerTestCase):
@@ -235,7 +256,8 @@ class TestPartition(MAASServerTestCase):
     def test_get_node_returns_partition_table_node(self):
         partition = factory.make_Partition()
         self.assertEqual(
-            partition.partition_table.get_node(), partition.get_node())
+            partition.partition_table.get_node(), partition.get_node()
+        )
 
     def test_get_used_size_returns_used_zero_when_no(self):
         partition = factory.make_Partition()
@@ -250,13 +272,15 @@ class TestPartition(MAASServerTestCase):
         partition = factory.make_Partition()
         self.assertEqual(
             partition.get_available_size(),
-            partition.size - partition.get_used_size())
+            partition.size - partition.get_used_size(),
+        )
 
     def test_get_block_size_returns_partition_table_block_size(self):
         partition = factory.make_Partition()
         self.assertEqual(
             partition.partition_table.get_block_size(),
-            partition.get_block_size())
+            partition.get_block_size(),
+        )
 
     def test_set_uuid_if_missing(self):
         table = factory.make_PartitionTable()
@@ -266,10 +290,11 @@ class TestPartition(MAASServerTestCase):
     def test_save_doesnt_overwrite_uuid(self):
         uuid = uuid4()
         table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.GPT)
+            table_type=PARTITION_TABLE_TYPE.GPT
+        )
         partition = factory.make_Partition(partition_table=table, uuid=uuid)
         partition.save()
-        self.assertEqual('%s' % uuid, partition.uuid)
+        self.assertEqual("%s" % uuid, partition.uuid)
 
     def test_size_is_rounded_to_current_block(self):
         partition = factory.make_Partition()
@@ -282,57 +307,81 @@ class TestPartition(MAASServerTestCase):
         partition_table = factory.make_PartitionTable()
         partition_table.add_partition()
         error = self.assertRaises(
-            ValidationError, factory.make_Partition,
-            partition_table=partition_table, size=MIN_PARTITION_SIZE)
-        self.assertEqual({
-            "size": [
-                "Partition cannot be saved; not enough free space "
-                "on the block device."],
-            }, error.message_dict)
+            ValidationError,
+            factory.make_Partition,
+            partition_table=partition_table,
+            size=MIN_PARTITION_SIZE,
+        )
+        self.assertEqual(
+            {
+                "size": [
+                    "Partition cannot be saved; not enough free space "
+                    "on the block device."
+                ]
+            },
+            error.message_dict,
+        )
 
     def test_validate_enough_space_for_resize_partition(self):
         partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
         partition.size += PARTITION_ALIGNMENT_SIZE * 2
         error = self.assertRaises(ValidationError, partition.save)
-        self.assertEqual({
-            "size": [
-                "Partition %s cannot be resized to fit on the "
-                "block device; not enough free space." % partition.id],
-            }, error.message_dict)
+        self.assertEqual(
+            {
+                "size": [
+                    "Partition %s cannot be resized to fit on the "
+                    "block device; not enough free space." % partition.id
+                ]
+            },
+            error.message_dict,
+        )
 
     def test_test_cannot_create_mbr_partition_larger_than_2TiB(self):
         block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR
+        )
         error = self.assertRaises(
-            ValidationError, factory.make_Partition,
+            ValidationError,
+            factory.make_Partition,
             partition_table=partition_table,
-            size=partition_table.get_available_size())
-        self.assertEqual({
-            "size": [
-                "Partition cannot be saved; size is larger than "
-                "the MBR 2TiB maximum."],
-            }, error.message_dict)
+            size=partition_table.get_available_size(),
+        )
+        self.assertEqual(
+            {
+                "size": [
+                    "Partition cannot be saved; size is larger than "
+                    "the MBR 2TiB maximum."
+                ]
+            },
+            error.message_dict,
+        )
 
     def test_test_cannot_resize_mbr_partition_to_more_than_2TiB(self):
         block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR
+        )
         partition = partition_table.add_partition(size=1 * (1024 ** 4))
         partition.size = 2.5 * (1024 ** 4)
         error = self.assertRaises(ValidationError, partition.save)
-        self.assertEqual({
-            "size": [
-                "Partition %s cannot be resized to fit on the "
-                "block device; size is larger than the MBR "
-                "2TiB maximum." % partition.id],
-            }, error.message_dict)
+        self.assertEqual(
+            {
+                "size": [
+                    "Partition %s cannot be resized to fit on the "
+                    "block device; size is larger than the MBR "
+                    "2TiB maximum." % partition.id
+                ]
+            },
+            error.message_dict,
+        )
 
     def test_validate_can_save_gpt_larger_than_2TiB(self):
         block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
+        )
         # Test is that an error is not raised.
         partition_table.add_partition()
 
@@ -346,19 +395,23 @@ class TestPartition(MAASServerTestCase):
 
     def test_get_effective_filesystem(self):
         mock_get_effective_filesystem = self.patch_autospec(
-            partition_module, "get_effective_filesystem")
+            partition_module, "get_effective_filesystem"
+        )
         mock_get_effective_filesystem.return_value = sentinel.filesystem
         partition = factory.make_Partition()
         self.assertEqual(
-            sentinel.filesystem, partition.get_effective_filesystem())
+            sentinel.filesystem, partition.get_effective_filesystem()
+        )
 
     def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
         node = factory.make_Node(bios_boot_method="uefi")
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
+        )
         partitions = [
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
@@ -370,12 +423,15 @@ class TestPartition(MAASServerTestCase):
 
     def test_get_partition_number_starting_at_2_for_amd64_not_gpt(self):
         node = factory.make_Node(
-            bios_boot_method="pxe", architecture="amd64/generic")
+            bios_boot_method="pxe", architecture="amd64/generic"
+        )
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
+        )
         partitions = [
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
@@ -385,17 +441,23 @@ class TestPartition(MAASServerTestCase):
 
     def test_get_partition_number_returns_starting_at_2_for_ppc64el(self):
         node = factory.make_Node(
-            architecture="ppc64el/generic", bios_boot_method="uefi",
-            with_boot_disk=False)
+            architecture="ppc64el/generic",
+            bios_boot_method="uefi",
+            with_boot_disk=False,
+        )
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(
-                (MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE +
-                PREP_PARTITION_SIZE))
+                (MIN_PARTITION_SIZE * 4)
+                + PARTITION_TABLE_EXTRA_SPACE
+                + PREP_PARTITION_SIZE
+            ),
+        )
         node.boot_disk = block_device
         node.save()
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
+        )
         partitions = [
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
@@ -408,27 +470,35 @@ class TestPartition(MAASServerTestCase):
     def test_get_partition_number_returns_vmfs_order(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
         layout = VMFS6StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
         self.assertItemsEqual(
             [1, 2, 3, 5, 6, 7, 8, 9],
-            [part.get_partition_number() for part in pt.partitions.all()])
+            [part.get_partition_number() for part in pt.partitions.all()],
+        )
 
     def test_get_partition_number_returns_starting_at_2_for_amd64_gpt(self):
         node = factory.make_Node(
-            architecture="amd64/generic", bios_boot_method="pxe",
-            with_boot_disk=False)
+            architecture="amd64/generic",
+            bios_boot_method="pxe",
+            with_boot_disk=False,
+        )
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(
-                (2 * (1024 ** 4)) + PARTITION_TABLE_EXTRA_SPACE +
-                BIOS_GRUB_PARTITION_SIZE))
+                (2 * (1024 ** 4))
+                + PARTITION_TABLE_EXTRA_SPACE
+                + BIOS_GRUB_PARTITION_SIZE
+            ),
+        )
         node.boot_disk = block_device
         node.save()
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
+        )
         partitions = [
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
@@ -440,9 +510,11 @@ class TestPartition(MAASServerTestCase):
 
     def test_get_partition_number_returns_correct_numbering_for_mbr(self):
         block_device = factory.make_PhysicalBlockDevice(
-            size=(MIN_BLOCK_DEVICE_SIZE * 6) + PARTITION_TABLE_EXTRA_SPACE)
+            size=(MIN_BLOCK_DEVICE_SIZE * 6) + PARTITION_TABLE_EXTRA_SPACE
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR
+        )
         partitions = [
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(6)
@@ -458,7 +530,8 @@ class TestPartition(MAASServerTestCase):
     def test_is_vmfs_partition(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
         layout = VMFS6StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
@@ -480,8 +553,9 @@ class TestPartition(MAASServerTestCase):
     def test_is_vmfs_partition_false_extra_partition(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
-        layout = VMFS6StorageLayout(node, {'root_size': 10 * 1024 ** 3})
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
+        layout = VMFS6StorageLayout(node, {"root_size": 10 * 1024 ** 3})
         layout.configure()
         pt = bd.get_partitiontable()
         extra_partition = pt.add_partition()
@@ -489,18 +563,22 @@ class TestPartition(MAASServerTestCase):
 
     def test_delete_not_allowed_if_part_of_filesystem_group(self):
         partition = factory.make_Partition(
-            size=1024 ** 3, block_device_size=2 * 1024 ** 3)
+            size=1024 ** 3, block_device_size=2 * 1024 ** 3
+        )
         VolumeGroup.objects.create_volume_group(
-            factory.make_name("vg"), [], [partition])
+            factory.make_name("vg"), [], [partition]
+        )
         error = self.assertRaises(ValidationError, partition.delete)
         self.assertEqual(
             "Cannot delete partition because its part of a volume group.",
-            error.message)
+            error.message,
+        )
 
     def test_delete_not_allowed_if_part_of_vmfs_layout(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
         layout = VMFS6StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
@@ -536,20 +614,20 @@ class TestPartition(MAASServerTestCase):
 
     def test_add_tag_adds_new_tag(self):
         partition = Partition()
-        tag = factory.make_name('tag')
+        tag = factory.make_name("tag")
         partition.add_tag(tag)
         self.assertItemsEqual([tag], partition.tags)
 
     def test_add_tag_doesnt_duplicate(self):
         partition = Partition()
-        tag = factory.make_name('tag')
+        tag = factory.make_name("tag")
         partition.add_tag(tag)
         partition.add_tag(tag)
         self.assertItemsEqual([tag], partition.tags)
 
     def test_remove_tag_deletes_tag(self):
         partition = Partition()
-        tag = factory.make_name('tag')
+        tag = factory.make_name("tag")
         partition.add_tag(tag)
         partition.remove_tag(tag)
         self.assertItemsEqual([], partition.tags)

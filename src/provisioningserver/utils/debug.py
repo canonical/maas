@@ -4,10 +4,10 @@
 """Utilities for debugging."""
 
 __all__ = [
-    'get_full_thread_dump',
-    'print_full_thread_dump',
-    'register_sigusr2_thread_dump_handler',
-    ]
+    "get_full_thread_dump",
+    "print_full_thread_dump",
+    "register_sigusr2_thread_dump_handler",
+]
 
 import cProfile
 from datetime import datetime
@@ -18,10 +18,7 @@ from pathlib import Path
 import signal
 from sys import _current_frames as current_frames
 import threading
-from time import (
-    gmtime,
-    strftime,
-)
+from time import gmtime, strftime
 import traceback
 
 from provisioningserver.path import get_data_path
@@ -43,17 +40,18 @@ def toggle_cprofile(process_name, signum=None, stack=None):
     if _profile is None:
         _profile = cProfile.Profile()
         _profile.enable()
-        print('Profiling enabled')
+        print("Profiling enabled")
     else:
-        base_dir = Path('/') / 'var' / 'lib' / 'maas' / 'profiling'
-        current_time = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        base_dir = Path("/") / "var" / "lib" / "maas" / "profiling"
+        current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
         output_filepath = (
-            base_dir / f'{process_name}-{os.getpid()}-{current_time}.pyprof')
+            base_dir / f"{process_name}-{os.getpid()}-{current_time}.pyprof"
+        )
         full_filepath = get_data_path(str(output_filepath))
         _profile.create_stats()
         _profile.dump_stats(full_filepath)
         _profile = None
-        print(f'Profiling disabled. Output written to {full_filepath}')
+        print(f"Profiling disabled. Output written to {full_filepath}")
 
 
 def get_full_thread_dump():
@@ -66,12 +64,13 @@ def get_full_thread_dump():
     output.write("\n>>>> Begin stack trace (%s) >>>>\n" % time)
     for threadId, stack in current_frames().items():
         output.write(
-            "\n# ThreadID: %s (%s)\n" %
-            (threadId, thread_names.get(threadId, "unknown")))
+            "\n# ThreadID: %s (%s)\n"
+            % (threadId, thread_names.get(threadId, "unknown"))
+        )
         for filename, lineno, name, line in traceback.extract_stack(stack):
             output.write(
-                'File: "%s", line %d, in %s\n' %
-                (filename, lineno, name))
+                'File: "%s", line %d, in %s\n' % (filename, lineno, name)
+            )
             if line:
                 output.write("  %s\n" % (line.strip()))
     output.write("\n<<<< End stack trace <<<<\n\n")
@@ -92,7 +91,7 @@ def register_sigusr2_thread_dump_handler():
     # installing a signal handler only works from the main thread.
     # some of our test cases may run this from something that isn't
     # the main thread, however...
-    if threading.current_thread().__class__.__name__ == '_MainThread':
+    if threading.current_thread().__class__.__name__ == "_MainThread":
         signal.signal(signal.SIGUSR2, print_full_thread_dump)
 
 
@@ -102,5 +101,5 @@ def register_sigusr1_toggle_cprofile(process_name):
     # some of our test cases may run this from something that isn't
     # the main thread, however...
     toggle_process_cprofile = functools.partial(toggle_cprofile, process_name)
-    if threading.current_thread().__class__.__name__ == '_MainThread':
+    if threading.current_thread().__class__.__name__ == "_MainThread":
         signal.signal(signal.SIGUSR1, toggle_process_cprofile)

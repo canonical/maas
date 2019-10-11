@@ -9,20 +9,13 @@ from inspect import getsource
 import os.path
 from pathlib import Path
 import subprocess
-from subprocess import (
-    CalledProcessError,
-    check_output,
-    STDOUT,
-)
+from subprocess import CalledProcessError, check_output, STDOUT
 from textwrap import dedent
 import time
 from unittest.mock import call
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import node_info_scripts as node_info_module
 from provisioningserver.refresh.node_info_scripts import (
@@ -31,61 +24,64 @@ from provisioningserver.refresh.node_info_scripts import (
 )
 from provisioningserver.utils.shell import get_env_with_locale
 from testtools.content import text_content
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    MatchesAny,
-    Not,
-)
+from testtools.matchers import Equals, HasLength, MatchesAny, Not
 
 
 class TestMakeFunctionCallScript(MAASTestCase):
-
     def run_script(self, script):
         script_filename = self.make_file("test.py", script)
         os.chmod(script_filename, 0o700)
         try:
             return check_output((script_filename,), stderr=STDOUT)
         except CalledProcessError as error:
-            self.addDetail("output", text_content(
-                error.output.decode("ascii", "replace")))
+            self.addDetail(
+                "output", text_content(error.output.decode("ascii", "replace"))
+            )
             raise
 
     def test_basic(self):
         def example_function():
             print("Hello, World!", end="")
+
         script = make_function_call_script(example_function)
         self.assertEqual(b"Hello, World!", self.run_script(script))
 
     def test_positional_args_get_passed_through(self):
         def example_function(a, b):
             print("a=%s, b=%d" % (a, b), end="")
+
         script = make_function_call_script(example_function, "foo", 12345)
         self.assertEqual(b"a=foo, b=12345", self.run_script(script))
 
     def test_keyword_args_get_passed_through(self):
         def example_function(a, b):
             print("a=%s, b=%d" % (a, b), end="")
+
         script = make_function_call_script(example_function, a="foo", b=12345)
         self.assertEqual(b"a=foo, b=12345", self.run_script(script))
 
     def test_positional_and_keyword_args_get_passed_through(self):
         def example_function(a, b):
             print("a=%s, b=%d" % (a, b), end="")
+
         script = make_function_call_script(example_function, "foo", b=12345)
         self.assertEqual(b"a=foo, b=12345", self.run_script(script))
 
     def test_non_ascii_positional_args_are_passed_without_corruption(self):
         def example_function(text):
             from sys import stdout
+
             stdout.buffer.write(text.encode("utf-8"))
+
         script = make_function_call_script(example_function, "abc\u1234")
         self.assertEqual("abc\u1234", self.run_script(script).decode("utf-8"))
 
     def test_non_ascii_keyword_args_are_passed_without_corruption(self):
         def example_function(text):
             from sys import stdout
+
             stdout.buffer.write(text.encode("utf-8"))
+
         script = make_function_call_script(example_function, text="abc\u1234")
         self.assertEqual("abc\u1234", self.run_script(script).decode("utf-8"))
 
@@ -96,8 +92,10 @@ class TestMakeFunctionCallScript(MAASTestCase):
                 print("Equal")
             else:
                 print("Unequal, got %s" % repr(arg))
+
         script = make_function_call_script(
-            example_function, {"123": "foo", "bar": [4, 5, 6]})
+            example_function, {"123": "foo", "bar": [4, 5, 6]}
+        )
         self.assertEqual(b"Equal\n", self.run_script(script))
 
 
@@ -110,14 +108,13 @@ def isolate_function(function, namespace=None):
     source = dedent(getsource(function))
     modcode = compile(source, "isolated.py", "exec")
     namespace = {} if namespace is None else namespace
-    if '__file__' not in namespace:
-        namespace['__file__'] = __file__
+    if "__file__" not in namespace:
+        namespace["__file__"] = __file__
     exec(modcode, namespace)
     return namespace[function.__name__]
 
 
 class TestLLDPScripts(MAASTestCase):
-
     def test_install_script_installs_configures_and_restarts_systemd(self):
         config_file = self.make_file("config", "# ...")
         check_call = self.patch(subprocess, "check_call")
@@ -127,17 +124,18 @@ class TestLLDPScripts(MAASTestCase):
         # lldpd is installed and restarted.
         self.assertEqual(
             check_call.call_args_list,
-            [
-                call(("systemctl", "restart", "lldpd")),
-            ])
+            [call(("systemctl", "restart", "lldpd"))],
+        )
         # lldpd's config was updated to include an updated DAEMON_ARGS
         # setting. Note that the new comment is on a new line, and
         # does not interfere with existing config.
-        config_expected = dedent("""\
+        config_expected = dedent(
+            """\
             # ...
             # Configured by MAAS:
             DAEMON_ARGS="-c -f -s -e -r"
-            """).encode("ascii")
+            """
+        ).encode("ascii")
         with open(config_file, "rb") as fd:
             config_observed = fd.read()
         self.assertEqual(config_expected, config_observed)
@@ -162,9 +160,14 @@ class TestLLDPScripts(MAASTestCase):
         self.assertThat(time.time, MockCalledOnceWith())
         # then sleeps until time_delay seconds has passed since the
         # mtime of the reference file.
-        self.assertThat(time.sleep, MockCalledOnceWith(
-            os.path.getmtime.return_value + time_delay -
-            time.time.return_value))
+        self.assertThat(
+            time.sleep,
+            MockCalledOnceWith(
+                os.path.getmtime.return_value
+                + time_delay
+                - time.time.return_value
+            ),
+        )
 
     def test_capture_lldpd_script_doesnt_waits_for_more_than_sixty_secs(self):
         # Regression test for LP:1801152
@@ -185,8 +188,8 @@ class TestLLDPScripts(MAASTestCase):
         lldpd_capture = isolate_function(node_info_module.lldpd_capture)
         lldpd_capture(reference_file, 0.0)
         self.assertEqual(
-            check_call.call_args_list,
-            [call(("lldpctl", "-f", "xml"))])
+            check_call.call_args_list, [call(("lldpctl", "-f", "xml"))]
+        )
 
 
 # The two following example outputs differ because eth2 and eth1 are not
@@ -309,18 +312,31 @@ ip_wlan0 = b"""\
 
 
 DHCP6_TEMPLATE = (
-    "for idx in $(seq 10); do dhclient -6 %s && break || sleep 10; done")
+    "for idx in $(seq 10); do dhclient -6 %s && break || sleep 10; done"
+)
 
 
 class TestDHCPExplore(MAASTestCase):
-
     def test_calls_dhclient_on_unconfigured_interfaces(self):
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
-            ip_link_show_all, ip_link_show,
-            ip_eth0, ip_eth4, ip_eth5, ip_eth6, ip_lo, ip_virbr0, ip_wlan0,
-            ip_eth0, ip_eth4, ip_eth5, ip_eth6, ip_lo, ip_virbr0, ip_wlan0
-            ]
+            ip_link_show_all,
+            ip_link_show,
+            ip_eth0,
+            ip_eth4,
+            ip_eth5,
+            ip_eth6,
+            ip_lo,
+            ip_virbr0,
+            ip_wlan0,
+            ip_eth0,
+            ip_eth4,
+            ip_eth5,
+            ip_eth6,
+            ip_lo,
+            ip_virbr0,
+            ip_wlan0,
+        ]
         mock_call = self.patch(subprocess, "call")
         mock_popen = self.patch(subprocess, "Popen")
         dhcp_explore = isolate_function(node_info_module.dhcp_explore)
@@ -330,7 +346,9 @@ class TestDHCPExplore(MAASTestCase):
             MockCallsMatch(
                 call(["dhclient", "-nw", "-4", b"eth1"]),
                 call(["dhclient", "-nw", "-4", b"eth2"]),
-                call(["dhclient", "-nw", "-4", b"eth6"])))
+                call(["dhclient", "-nw", "-4", b"eth6"]),
+            ),
+        )
         self.assertThat(
             mock_popen,
             MockCallsMatch(
@@ -338,7 +356,9 @@ class TestDHCPExplore(MAASTestCase):
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth2"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth4"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "virbr0"]),
-                call(["sh", "-c", DHCP6_TEMPLATE % "wlan0"])))
+                call(["sh", "-c", DHCP6_TEMPLATE % "wlan0"]),
+            ),
+        )
 
 
 class TestVirtualityScript(MAASTestCase):
@@ -364,8 +384,9 @@ class TestVirtualityScript(MAASTestCase):
         try:
             return check_output((str(script),), stderr=STDOUT, env=env)
         except CalledProcessError as error:
-            self.addDetail("output", text_content(
-                error.output.decode("utf-8", "replace")))
+            self.addDetail(
+                "output", text_content(error.output.decode("utf-8", "replace"))
+            )
             raise
 
     def test_runs_locally(self):
@@ -382,8 +403,8 @@ class TestVirtualityScript(MAASTestCase):
         self.sysdv.chmod(0o700)
         # The name echoed from our script is returned.
         self.assertThat(
-            self.run_script(), Equals(
-                sysdv_name.encode("ascii") + b"\n"))
+            self.run_script(), Equals(sysdv_name.encode("ascii") + b"\n")
+        )
 
     def test_runs_successfully_when_systemd_detect_virt_not_found(self):
         # Remove symlink to systemd-detect-virt.
@@ -391,5 +412,5 @@ class TestVirtualityScript(MAASTestCase):
         # Either "none" or "qemu" will be returned here depending on the host
         # running these tests.
         self.assertThat(
-            self.run_script(), MatchesAny(
-                Equals(b"none\n"), Equals(b"qemu\n")))
+            self.run_script(), MatchesAny(Equals(b"none\n"), Equals(b"qemu\n"))
+        )

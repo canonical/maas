@@ -3,20 +3,13 @@
 
 """:class:`SSHKey` and friends."""
 
-__all__ = [
-    'SSHKey',
-    ]
+__all__ = ["SSHKey"]
 
 from html import escape
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db.models import (
-    CASCADE,
-    ForeignKey,
-    Manager,
-    TextField,
-)
+from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from django.utils.safestring import mark_safe
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
@@ -30,7 +23,7 @@ class SSHKeyManager(Manager):
 
     def get_keys_for_user(self, user):
         """Return the text of the ssh keys associated with a user."""
-        return SSHKey.objects.filter(user=user).values_list('key', flat=True)
+        return SSHKey.objects.filter(user=user).values_list("key", flat=True)
 
 
 def validate_ssh_public_key(value):
@@ -41,7 +34,7 @@ def validate_ssh_public_key(value):
         raise ValidationError("Invalid SSH public key: " + str(error))
 
 
-HELLIPSIS = '&hellip;'
+HELLIPSIS = "&hellip;"
 
 
 def get_html_display_for_key(key, size):
@@ -63,27 +56,30 @@ def get_html_display_for_key(key, size):
     :rtype: unicode
     """
     key = key.strip()
-    key_parts = key.split(' ', 2)
+    key_parts = key.split(" ", 2)
 
     if len(key_parts) == 3:
         key_type = key_parts[0]
         key_string = key_parts[1]
         comment = key_parts[2]
-        room_for_key = (
-            size - (len(key_type) + len(comment) + len(HELLIPSIS) + 2))
+        room_for_key = size - (
+            len(key_type) + len(comment) + len(HELLIPSIS) + 2
+        )
         if room_for_key > 0:
-            return '%s %.*s%s %s' % (
+            return "%s %.*s%s %s" % (
                 escape(key_type, quote=True),
                 room_for_key,
                 escape(key_string, quote=True),
                 HELLIPSIS,
-                escape(comment, quote=True))
+                escape(comment, quote=True),
+            )
 
     if len(key) > size:
-        return '%.*s%s' % (
+        return "%.*s%s" % (
             size - len(HELLIPSIS),
             escape(key, quote=True),
-            HELLIPSIS)
+            HELLIPSIS,
+        )
     else:
         return escape(key, quote=True)
 
@@ -107,10 +103,12 @@ class SSHKey(CleanSave, TimestampedModel):
     user = ForeignKey(User, null=False, editable=False, on_delete=CASCADE)
 
     key = TextField(
-        null=False, editable=True, validators=[validate_ssh_public_key])
+        null=False, editable=True, validators=[validate_ssh_public_key]
+    )
 
     keysource = ForeignKey(
-        KeySource, null=True, blank=True, editable=False, on_delete=CASCADE)
+        KeySource, null=True, blank=True, editable=False, on_delete=CASCADE
+    )
 
     class Meta(DefaultMeta):
         verbose_name = "SSH key"
@@ -136,11 +134,13 @@ class SSHKey(CleanSave, TimestampedModel):
         can't be indexed.
         """
         super().clean(*args, **kwargs)
-        if not self._state.has_changed('key'):
+        if not self._state.has_changed("key"):
             return
 
         existing_key = SSHKey.objects.filter(
-            keysource=self.keysource, user=self.user, key=self.key)
+            keysource=self.keysource, user=self.user, key=self.key
+        )
         if existing_key.exists():
             raise ValidationError(
-                'This key has already been added for this user.')
+                "This key has already been added for this user."
+            )

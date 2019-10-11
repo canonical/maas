@@ -3,10 +3,7 @@
 
 """maasserver fixtures."""
 
-__all__ = [
-    "IntroCompletedFixture",
-    "PackageRepositoryFixture",
-]
+__all__ = ["IntroCompletedFixture", "PackageRepositoryFixture"]
 
 import inspect
 import logging
@@ -14,10 +11,7 @@ import logging
 from django.db import connection
 import fixtures
 from maasserver.models.config import Config
-from maasserver.rbac import (
-    FakeRBACClient,
-    rbac,
-)
+from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.testing.factory import factory
 
 
@@ -39,13 +33,13 @@ class StacktraceFilter(logging.Filter):
     """Injects stack trace information when added as a filter to a logger."""
 
     def filter(self, record):
-        source_trace = ''
+        source_trace = ""
         stack = inspect.stack()
         for s in reversed(stack):
             line = s[2]
-            file = '/'.join(s[1].split('/')[-3:])
+            file = "/".join(s[1].split("/")[-3:])
             calling_method = s[3]
-            source_trace += '%s in %s at %s\n' % (line, file, calling_method)
+            source_trace += "%s in %s at %s\n" % (line, file, calling_method)
         record.sourcetrace = source_trace
         del stack
         return True
@@ -63,7 +57,7 @@ class LogSQL(fixtures.Fixture):
         self.include_stacktrace = include_stacktrace
 
     def _setUp(self):
-        log = logging.getLogger('django.db.backends')
+        log = logging.getLogger("django.db.backends")
         self._origLevel = log.level
         self._setHandler = logging.StreamHandler()
         if self.include_stacktrace:
@@ -71,13 +65,15 @@ class LogSQL(fixtures.Fixture):
             log.addFilter(self._addedFilter)
             self._setHandler.setFormatter(
                 logging.Formatter(
-                    '-' * 80 + '\n%(sql)s\n\nStacktrace of SQL query '
-                    'producer:\n%(sourcetrace)s' + '-' * 80 + '\n'))
+                    "-" * 80 + "\n%(sql)s\n\nStacktrace of SQL query "
+                    "producer:\n%(sourcetrace)s" + "-" * 80 + "\n"
+                )
+            )
         log.setLevel(logging.DEBUG)
         log.addHandler(self._setHandler)
 
     def _tearDown(self):
-        log = logging.getLogger('django.db.backends')
+        log = logging.getLogger("django.db.backends")
         log.setLevel(self._origLevel)
         if self.include_stacktrace:
             log.removeFilter(self._addedFilter)
@@ -115,13 +111,14 @@ class RBACEnabled(fixtures.Fixture):
         # Must be called inside a transaction.
         assert connection.in_atomic_block
 
-        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        Config.objects.set_config("rbac_url", "http://rbac.example.com")
         Config.objects.set_config(
-            'external_auth_url', 'https://auth.example.com')
-        Config.objects.set_config('external_auth_user', 'user@candid')
+            "external_auth_url", "https://auth.example.com"
+        )
+        Config.objects.set_config("external_auth_user", "user@candid")
         Config.objects.set_config(
-            'external_auth_key',
-            'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
+            "external_auth_key", "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY="
+        )
 
         client = FakeRBACClient()
         rbac._store.client = client

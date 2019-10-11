@@ -21,12 +21,14 @@ class AlterUniqueTogetherNoDB(migrations.AlterUniqueTogether):
     """
 
     def database_forwards(
-            self, app_label, schema_editor, from_state, to_state):
+        self, app_label, schema_editor, from_state, to_state
+    ):
         # Do nothing.
         pass
 
     def database_backwards(
-            self, app_label, schema_editor, from_state, to_state):
+        self, app_label, schema_editor, from_state, to_state
+    ):
         # Do nothing.
         pass
 
@@ -34,12 +36,7 @@ class AlterUniqueTogetherNoDB(migrations.AlterUniqueTogether):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0176_rename_user_id_migrate_to_user_id_for_events'),
+        ("maasserver", "0176_rename_user_id_migrate_to_user_id_for_events")
     ]
 
-    operations = [
-        AlterUniqueTogetherNoDB(
-            name='bmc',
-            unique_together=set([]),
-        ),
-    ]
+    operations = [AlterUniqueTogetherNoDB(name="bmc", unique_together=set([]))]

@@ -3,10 +3,7 @@
 
 """API handlers: `CommissioningScript`."""
 
-__all__ = [
-    'CommissioningScriptHandler',
-    'CommissioningScriptsHandler',
-    ]
+__all__ = ["CommissioningScriptHandler", "CommissioningScriptsHandler"]
 
 from base64 import b64encode
 
@@ -28,7 +25,7 @@ from provisioningserver.events import EVENT_TYPES
 
 def get_content_parameter(request):
     """Get the "content" parameter from a CommissioningScript POST or PUT."""
-    content_file = get_mandatory_param(request.FILES, 'content')
+    content_file = get_mandatory_param(request.FILES, "content")
     return content_file.read()
 
 
@@ -39,16 +36,21 @@ class CommissioningScriptsHandler(OperationsHandler):
 
     This endpoint has been deprecated in favor of the node-scripts endpoint.
     """
+
     api_doc_section_name = "Commissioning scripts"
 
     update = delete = None
 
     def read(self, request):
         """List commissioning scripts."""
-        return sorted([
-            script.name
-            for script in Script.objects.filter(
-                script_type=SCRIPT_TYPE.COMMISSIONING)])
+        return sorted(
+            [
+                script.name
+                for script in Script.objects.filter(
+                    script_type=SCRIPT_TYPE.COMMISSIONING
+                )
+            ]
+        )
 
     def create(self, request):
         """Create a new commissioning script.
@@ -84,26 +86,28 @@ class CommissioningScriptsHandler(OperationsHandler):
         """
         content = Bin(get_content_parameter(request))
         data = request.data.copy()
-        data['script'] = content
-        data['script_type'] = SCRIPT_TYPE.COMMISSIONING
+        data["script"] = content
+        data["script_type"] = SCRIPT_TYPE.COMMISSIONING
         form = ScriptForm(data=data)
         if form.is_valid():
             script = form.save(request)
             return {
-                'name': script.name,
-                'content': b64encode(script.script.data.encode()),
-                'deprecated': (
-                    'The commissioning-scripts endpoint is deprecated. '
-                    'Please use the node-scripts endpoint.'),
-                'resource_uri': reverse(
-                    'commissioning_script_handler', args=[script.name]),
+                "name": script.name,
+                "content": b64encode(script.script.data.encode()),
+                "deprecated": (
+                    "The commissioning-scripts endpoint is deprecated. "
+                    "Please use the node-scripts endpoint."
+                ),
+                "resource_uri": reverse(
+                    "commissioning_script_handler", args=[script.name]
+                ),
             }
         else:
             raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls):
-        return ('commissioning_scripts_handler', [])
+        return ("commissioning_scripts_handler", [])
 
 
 class CommissioningScriptHandler(OperationsHandler):
@@ -113,6 +117,7 @@ class CommissioningScriptHandler(OperationsHandler):
 
     This endpoint has been deprecated in favor of the node-script endpoint.
     """
+
     api_doc_section_name = "Commissioning script"
 
     # Relies on Piston's built-in DELETE implementation.  There is no POST.
@@ -122,15 +127,20 @@ class CommissioningScriptHandler(OperationsHandler):
         """Read a commissioning script."""
         script = get_object_or_404(Script, name=name)
         return HttpResponse(
-            script.script.data, content_type='application/binary')
+            script.script.data, content_type="application/binary"
+        )
 
     def delete(self, request, name):
         """Delete a commissioning script."""
         script = get_object_or_404(Script, name=name)
         script.delete()
         create_audit_event(
-            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
-                "Deleted script '%s'." % script.name))
+            EVENT_TYPES.SETTINGS,
+            ENDPOINT.API,
+            request,
+            None,
+            description=("Deleted script '%s'." % script.name),
+        )
         return rc.DELETED
 
     def update(self, request, name):
@@ -138,8 +148,8 @@ class CommissioningScriptHandler(OperationsHandler):
         script = get_object_or_404(Script, name=name)
         content = Bin(get_content_parameter(request))
         data = request.data.copy()
-        data['script'] = content
-        data['script_type'] = SCRIPT_TYPE.COMMISSIONING
+        data["script"] = content
+        data["script_type"] = SCRIPT_TYPE.COMMISSIONING
         form = ScriptForm(instance=script, data=data)
         if form.is_valid():
             form.save(request)
@@ -150,7 +160,7 @@ class CommissioningScriptHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, script=None):
         # See the comment in NodeHandler.resource_uri
-        script_name = 'name'
+        script_name = "name"
         if script is not None:
             script_name = script.name
-        return ('commissioning_script_handler', (script_name, ))
+        return ("commissioning_script_handler", (script_name,))

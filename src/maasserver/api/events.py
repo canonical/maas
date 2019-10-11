@@ -1,9 +1,7 @@
 # Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    "EventsHandler",
-]
+__all__ = ["EventsHandler"]
 
 import urllib.error
 import urllib.parse
@@ -11,21 +9,12 @@ import urllib.request
 
 from formencode.validators import Int
 from maasserver.api.nodes import filtered_nodes_list_from_request
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
-from maasserver.api.utils import (
-    get_optional_param,
-    get_overridden_query_dict,
-)
+from maasserver.api.support import operation, OperationsHandler
+from maasserver.api.utils import get_optional_param, get_overridden_query_dict
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Event
-from maasserver.models.eventtype import (
-    LOGGING_LEVELS,
-    LOGGING_LEVELS_BY_NAME,
-)
+from maasserver.models.eventtype import LOGGING_LEVELS, LOGGING_LEVELS_BY_NAME
 from maasserver.utils.django_urls import reverse
 from provisioningserver.events import AUDIT
 
@@ -38,18 +27,17 @@ def event_to_dict(event):
     """Convert `Event` to a dictionary."""
     return dict(
         username=(event.owner),
-        node=(
-            event.node.system_id
-            if event.node is not None else None),
+        node=(event.node.system_id if event.node is not None else None),
         hostname=(event.hostname),
         id=event.id,
         level=event.type.level_str,
-        created=event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+        created=event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
         type=event.type.description,
         description=(
             event.render_audit_description
-            if event.type.level == AUDIT else event.description
-            )
+            if event.type.level == AUDIT
+            else event.description
+        ),
     )
 
 
@@ -67,22 +55,24 @@ class EventsHandler(OperationsHandler):
 
     model = Event
 
-    all_params = frozenset((
-        'agent_name',
-        'domain',
-        'hostname',
-        'id',  # system_id.
-        'level',
-        'limit',
-        'mac_address',
-        'op',
-        'zone',
-        'owner',
-    ))
+    all_params = frozenset(
+        (
+            "agent_name",
+            "domain",
+            "hostname",
+            "id",  # system_id.
+            "level",
+            "limit",
+            "mac_address",
+            "op",
+            "zone",
+            "owner",
+        )
+    )
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('events_handler', [])
+        return ("events_handler", [])
 
     @operation(idempotent=True)
     def query(self, request):
@@ -129,18 +119,20 @@ class EventsHandler(OperationsHandler):
         @success-example "success-json" [exkey=events-query] placeholder text
         """
         # Extract & validate optional parameters from the request.
-        after = get_optional_param(request.GET, 'after', None, Int)
-        before = get_optional_param(request.GET, 'before', None, Int)
-        level = get_optional_param(request.GET, 'level', 'INFO')
+        after = get_optional_param(request.GET, "after", None, Int)
+        before = get_optional_param(request.GET, "before", None, Int)
+        level = get_optional_param(request.GET, "level", "INFO")
         limit = get_optional_param(
-            request.GET, "limit", DEFAULT_EVENT_LOG_LIMIT, Int)
-        owner = get_optional_param(request.GET, 'owner', default=None)
+            request.GET, "limit", DEFAULT_EVENT_LOG_LIMIT, Int
+        )
+        owner = get_optional_param(request.GET, "owner", default=None)
 
         # Limit what we'll return to avoid being swamped.
         if limit > MAX_EVENT_LOG_COUNT:
-            raise MAASAPIBadRequest((
-                "Requested number of events %d is greater than"
-                " limit: %d") % (limit, MAX_EVENT_LOG_COUNT))
+            raise MAASAPIBadRequest(
+                ("Requested number of events %d is greater than" " limit: %d")
+                % (limit, MAX_EVENT_LOG_COUNT)
+            )
         else:
             # The limit should never be less than 1.
             limit = 1 if limit < 1 else limit
@@ -157,15 +149,12 @@ class EventsHandler(OperationsHandler):
             events = Event.objects.filter(node__in=nodes)
             # Eliminate logs below the requested level.
             events = events.exclude(
-                type__level__lt=LOGGING_LEVELS_BY_NAME[level])
+                type__level__lt=LOGGING_LEVELS_BY_NAME[level]
+            )
         elif level is not None:
-            raise MAASAPIBadRequest(
-                "Unrecognised log level: %s" % level)
+            raise MAASAPIBadRequest("Unrecognised log level: %s" % level)
 
-        events = (
-            events.all()
-            .select_related('type')
-            .select_related('node'))
+        events = events.all().select_related("type").select_related("node")
 
         # Filter events for owner.
         if owner is not None:
@@ -180,37 +169,39 @@ class EventsHandler(OperationsHandler):
 
         if after is None and before is None:
             # Get `limit` events, newest first.
-            events = events.order_by('-id')
+            events = events.order_by("-id")
             events = events[:limit]
         elif after is None:
             # Get `limit` events, newest first, all before `before`.
             events = events.filter(id__lt=before)
-            events = events.order_by('-id')
+            events = events.order_by("-id")
             events = events[:limit]
         elif before is None:
             # Get `limit` events, OLDEST first, all after `after`, then
             # reverse the results.
             events = events.filter(id__gt=after)
-            events = events.order_by('id')
+            events = events.order_by("id")
             events = reversed(events[:limit])
         else:
             raise MAASAPIBadRequest(
                 "There is undetermined behaviour when both "
-                "`after` and `before` are specified.")
+                "`after` and `before` are specified."
+            )
 
         # We need to load all of these events at some point, so save them
         # into a list now so that len() is cheap.
         events = list(events)
 
         # Helper for building prev_uri and next_uri.
-        def make_uri(params, base=reverse('events_handler')):
+        def make_uri(params, base=reverse("events_handler")):
             query = urllib.parse.urlencode(params, doseq=True)
             url = urllib.parse.urlparse(base)._replace(query=query)
             return url.geturl()
 
         # Figure out a URI to obtain a set of newer events.
         next_uri_params = get_overridden_query_dict(
-            request.GET, {"before": []}, self.all_params)
+            request.GET, {"before": []}, self.all_params
+        )
         if len(events) == 0:
             if before is None:
                 # There are no newer events NOW, but there may be later.
@@ -226,7 +217,8 @@ class EventsHandler(OperationsHandler):
 
         # Figure out a URI to obtain a set of older events.
         prev_uri_params = get_overridden_query_dict(
-            request.GET, {"after": []}, self.all_params)
+            request.GET, {"after": []}, self.all_params
+        )
         if len(events) == 0:
             if after is None:
                 # There are no older events and never will be.

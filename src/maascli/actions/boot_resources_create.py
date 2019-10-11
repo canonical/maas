@@ -3,9 +3,7 @@
 
 """MAAS Boot Resources Action."""
 
-__all__ = [
-    'action_class'
-    ]
+__all__ = ["action_class"]
 
 import hashlib
 from io import BytesIO
@@ -17,10 +15,7 @@ from apiclient.multipart import (
     encode_multipart_message,
 )
 from maascli import utils
-from maascli.api import (
-    Action,
-    http_request,
-)
+from maascli.api import Action, http_request
 from maascli.command import CommandError
 
 # Send 4MB of data per request.
@@ -49,16 +44,17 @@ class BootResourcesCreateAction(Action):
         if rfile is None:
             print("Failed to identify created resource.")
             raise CommandError(2)
-        if rfile['complete']:
+        if rfile["complete"]:
             # File already existed in the database, so no
             # reason to upload it.
             return
 
         # Upload content
         data = dict(options.data)
-        upload_uri = urljoin(uri, rfile['upload_uri'])
+        upload_uri = urljoin(uri, rfile["upload_uri"])
         self.upload_content(
-            upload_uri, data['content'], insecure=options.insecure)
+            upload_uri, data["content"], insecure=options.insecure
+        )
 
     def initial_request(self, uri, options):
         """Performs the initial POST request, to create the boot resource."""
@@ -78,8 +74,12 @@ class BootResourcesCreateAction(Action):
         # create custom MAASDispatcher to use httplib2 so that MAASClient can
         # be used.
         response, content = http_request(
-            uri, self.method, body=body, headers=headers,
-            insecure=options.insecure)
+            uri,
+            self.method,
+            body=body,
+            headers=headers,
+            insecure=options.insecure,
+        )
 
         # 2xx status codes are all okay.
         if response.status // 100 != 2:
@@ -101,14 +101,14 @@ class BootResourcesCreateAction(Action):
             query, depending on the type of request.
         """
         data = dict(data)
-        if 'content' not in data:
-            print('Missing content.')
+        if "content" not in data:
+            print("Missing content.")
             raise CommandError(2)
 
-        content = data.pop('content')
+        content = data.pop("content")
         size, sha256 = self.calculate_size_and_sha256(content)
-        data['size'] = '%s' % size
-        data['sha256'] = sha256
+        data["size"] = "%s" % size
+        data["sha256"] = sha256
 
         data = sorted((key, value) for key, value in data.items())
         message = build_multipart_message(data)
@@ -132,33 +132,33 @@ class BootResourcesCreateAction(Action):
     def get_resource_file(self, content):
         """Return the boot resource file for the created file."""
         if isinstance(content, bytes):
-            content = content.decode('utf-8')
+            content = content.decode("utf-8")
         data = json.loads(content)
-        if len(data['sets']) == 0:
+        if len(data["sets"]) == 0:
             # No sets returned, no way to get the resource file.
             return None
-        newest_set = sorted(data['sets'].keys(), reverse=True)[0]
-        resource_set = data['sets'][newest_set]
-        if len(resource_set['files']) != 1:
+        newest_set = sorted(data["sets"].keys(), reverse=True)[0]
+        resource_set = data["sets"][newest_set]
+        if len(resource_set["files"]) != 1:
             # This api only supports uploading one file. If the set doesn't
             # have just one file, then there is no way of knowing which file.
             return None
-        _, rfile = resource_set['files'].popitem()
+        _, rfile = resource_set["files"].popitem()
         return rfile
 
     def put_upload(self, upload_uri, data, insecure=False):
         """Send PUT method to upload data."""
         headers = {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': '%s' % len(data),
+            "Content-Type": "application/octet-stream",
+            "Content-Length": "%s" % len(data),
         }
         if self.credentials is not None:
             self.sign(upload_uri, headers, self.credentials)
         # httplib2 expects the body to be file-like if its binary data
         data = BytesIO(data)
         response, content = http_request(
-            upload_uri, 'PUT', body=data, headers=headers,
-            insecure=insecure)
+            upload_uri, "PUT", body=data, headers=headers, insecure=insecure
+        )
         if response.status != 200:
             utils.print_response_content(response, content)
             raise CommandError(2)

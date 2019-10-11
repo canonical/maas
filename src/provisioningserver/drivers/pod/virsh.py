@@ -3,10 +3,7 @@
 
 """Virsh pod driver."""
 
-__all__ = [
-    'probe_virsh_and_enlist',
-    'VirshPodDriver',
-    ]
+__all__ = ["probe_virsh_and_enlist", "VirshPodDriver"]
 
 from collections import namedtuple
 import os
@@ -39,31 +36,24 @@ from provisioningserver.enum import LIBVIRT_NETWORK
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_path
 from provisioningserver.rpc.exceptions import PodInvalidResources
-from provisioningserver.rpc.utils import (
-    commission_node,
-    create_node,
-)
-from provisioningserver.utils import (
-    shell,
-    typed,
-)
+from provisioningserver.rpc.utils import commission_node, create_node
+from provisioningserver.utils import shell, typed
 from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.shell import get_env_with_locale
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
+from provisioningserver.utils.twisted import asynchronous, synchronous
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("drivers.pod.virsh")
 
-ADD_DEFAULT_NETWORK = dedent("""
+ADD_DEFAULT_NETWORK = dedent(
+    """
     Please add a 'default' or 'maas' network whose bridge is
     on a MAAS DHCP enabled VLAN. Ensure that libvirt DHCP is
     not enabled.
-    """)
+    """
+)
 
 XPATH_ARCH = "/domain/os/type/@arch"
 XPATH_BOOT = "/domain/os/boot"
@@ -75,23 +65,28 @@ XPATH_POOL_CAPACITY = "/pool/capacity"
 XPATH_POOL_PATH = "/pool/target/path"
 XPATH_POOL_UUID = "/pool/uuid"
 
-DOM_TEMPLATE_MACVLAN_INTERFACE = dedent("""\
+DOM_TEMPLATE_MACVLAN_INTERFACE = dedent(
+    """\
     <interface type='direct'>
       <source dev='{attach_name}' mode='{attach_options}'/>
       <mac address='{mac_address}'/>
       <model type='virtio'/>
     </interface>
-    """)
+    """
+)
 
-DOM_TEMPLATE_BRIDGE_INTERFACE = dedent("""\
+DOM_TEMPLATE_BRIDGE_INTERFACE = dedent(
+    """\
     <interface type='bridge'>
       <source bridge='{attach_name}'/>
       <mac address='{mac_address}'/>
       <model type='virtio'/>
     </interface>
-    """)
+    """
+)
 
-DOM_TEMPLATE_AMD64 = dedent("""\
+DOM_TEMPLATE_AMD64 = dedent(
+    """\
     <domain type='{type}'>
       <name>{name}</name>
       <uuid>{uuid}</uuid>
@@ -137,9 +132,11 @@ DOM_TEMPLATE_AMD64 = dedent("""\
         <input type='keyboard' bus='ps2'/>
       </devices>
     </domain>
-    """)
+    """
+)
 
-DOM_TEMPLATE_ARM64 = dedent("""\
+DOM_TEMPLATE_ARM64 = dedent(
+    """\
     <domain type='{type}'>
       <name>{name}</name>
       <uuid>{uuid}</uuid>
@@ -175,10 +172,12 @@ DOM_TEMPLATE_ARM64 = dedent("""\
         <input type='keyboard' bus='ps2'/>
       </devices>
     </domain>
-    """)
+    """
+)
 
 
-DOM_TEMPLATE_PPC64 = dedent("""\
+DOM_TEMPLATE_PPC64 = dedent(
+    """\
     <domain type='{type}'>
       <name>{name}</name>
       <uuid>{uuid}</uuid>
@@ -206,9 +205,11 @@ DOM_TEMPLATE_PPC64 = dedent("""\
         <input type='keyboard' bus='ps2'/>
       </devices>
     </domain>
-    """)
+    """
+)
 
-DOM_TEMPLATE_S390X = dedent("""
+DOM_TEMPLATE_S390X = dedent(
+    """
     <domain type='{type}'>
       <name>{name}</name>
       <uuid>{uuid}</uuid>
@@ -230,35 +231,30 @@ DOM_TEMPLATE_S390X = dedent("""
         </console>
       </devices>
     </domain>
-    """)
+    """
+)
 
 
 # Virsh stores the architecture with a different
 # label then MAAS. This maps virsh architecture to
 # MAAS architecture.
 ARCH_FIX = {
-    'x86_64': 'amd64/generic',
-    'ppc64': 'ppc64el/generic',
-    'ppc64le': 'ppc64el/generic',
-    'i686': 'i386/generic',
-    'aarch64': 'arm64/generic',
-    's390x': 's390x/generic',
-    }
-ARCH_FIX_REVERSE = {
-    value: key
-    for key, value in ARCH_FIX.items()
+    "x86_64": "amd64/generic",
+    "ppc64": "ppc64el/generic",
+    "ppc64le": "ppc64el/generic",
+    "i686": "i386/generic",
+    "aarch64": "arm64/generic",
+    "s390x": "s390x/generic",
 }
+ARCH_FIX_REVERSE = {value: key for key, value in ARCH_FIX.items()}
 
-InterfaceInfo = namedtuple("InterfaceInfo", (
-    "type",
-    "source",
-    "model",
-    "mac",
-))
+InterfaceInfo = namedtuple("InterfaceInfo", ("type", "source", "model", "mac"))
 
 
-REQUIRED_PACKAGES = [["virsh", "libvirt-clients"],
-                     ["virt-login-shell", "libvirt-clients"]]
+REQUIRED_PACKAGES = [
+    ["virsh", "libvirt-clients"],
+    ["virt-login-shell", "libvirt-clients"],
+]
 
 
 class VirshVMState:
@@ -281,7 +277,7 @@ VM_STATE_TO_POWER_STATE = {
     VirshVMState.IN_SHUTDOWN: "on",
     VirshVMState.CRASHED: "off",
     VirshVMState.PM_SUSPENDED: "off",
-    }
+}
 
 
 class VirshError(Exception):
@@ -312,11 +308,11 @@ class VirshSSH(pexpect.spawn):
 
     def __init__(self, timeout=30, maxread=2000, dom_prefix=None):
         super(VirshSSH, self).__init__(
-            None, timeout=timeout, maxread=maxread,
-            env=get_env_with_locale())
-        self.name = '<virssh>'
+            None, timeout=timeout, maxread=maxread, env=get_env_with_locale()
+        )
+        self.name = "<virssh>"
         if dom_prefix is None:
-            self.dom_prefix = ''
+            self.dom_prefix = ""
         else:
             self.dom_prefix = dom_prefix
         # Store a mapping of { machine_name: xml }.
@@ -324,11 +320,11 @@ class VirshSSH(pexpect.spawn):
 
     def _execute(self, poweraddr):
         """Spawns the pexpect command."""
-        cmd = 'virsh --connect %s' % poweraddr
+        cmd = "virsh --connect %s" % poweraddr
         self._spawn(cmd)
 
     def get_network_xml(self, network):
-        output = self.run(['net-dumpxml', network]).strip()
+        output = self.run(["net-dumpxml", network]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get XML for network", network)
             return None
@@ -342,7 +338,7 @@ class VirshSSH(pexpect.spawn):
             return self.xml[machine]
 
         # Grab the XML from virsh if we don't have it already.
-        output = self.run(['dumpxml', machine]).strip()
+        output = self.run(["dumpxml", machine]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get XML for machine", machine)
             return None
@@ -359,14 +355,16 @@ class VirshSSH(pexpect.spawn):
         if parsed.query:
             raise VirshError(
                 "Supplying extra parameters to the Virsh address"
-                " is not supported.")
+                " is not supported."
+            )
 
         # Append unverified-ssh command if user has not
         # supplied their own extra parameters.  See,
         # https://bugs.launchpad.net/maas/+bug/1807231
         # for more details.
-        poweraddr = poweraddr + '?command=' + get_path(
-            '/usr/lib/maas/unverified-ssh')
+        poweraddr = (
+            poweraddr + "?command=" + get_path("/usr/lib/maas/unverified-ssh")
+        )
         self._execute(poweraddr)
         i = self.expect(self.PROMPTS, timeout=self.timeout)
         if i == self.I_PROMPT_SSHKEY:
@@ -403,11 +401,11 @@ class VirshSSH(pexpect.spawn):
         return True
 
     def run(self, args):
-        cmd = ' '.join(args)
+        cmd = " ".join(args)
         self.sendline(cmd)
         self.prompt()
         result = self.before.decode("utf-8").splitlines()
-        return '\n'.join(result[1:])
+        return "\n".join(result[1:])
 
     def get_column_values(self, data, keys):
         """Return tuple of column value tuples based off keys."""
@@ -417,8 +415,7 @@ class VirshSSH(pexpect.spawn):
         # Look for column headers matching keys.
         for k in keys:
             try:
-                indexes.append(
-                    cols.index(k))
+                indexes.append(cols.index(k))
             except Exception:
                 # key was not found, continue searching.
                 continue
@@ -438,8 +435,8 @@ class VirshSSH(pexpect.spawn):
         if data is not None:
             data = data.strip().splitlines()
             for d in data:
-                if key == d.split(':')[0].strip():
-                    return d.split(':')[1].strip()
+                if key == d.split(":")[0].strip():
+                    return d.split(":")[1].strip()
 
     def get_key_value_unitless(self, data, key):
         """Return value based off of key with unit (if any) stripped off."""
@@ -450,47 +447,53 @@ class VirshSSH(pexpect.spawn):
     def create_storage_pool(self):
         """Create a storage pool named `maas`."""
         commands = [
-            ['pool-define-as', 'maas', 'dir',
-             '- - - -', '/var/lib/libvirt/maas-images'],
-            ['pool-build', 'maas'],
-            ['pool-start', 'maas'],
-            ['pool-autostart', 'maas']]
+            [
+                "pool-define-as",
+                "maas",
+                "dir",
+                "- - - -",
+                "/var/lib/libvirt/maas-images",
+            ],
+            ["pool-build", "maas"],
+            ["pool-start", "maas"],
+            ["pool-autostart", "maas"],
+        ]
         for command in commands:
             output = self.run(command)
-            if output.startswith('error:'):
+            if output.startswith("error:"):
                 maaslog.error("Failed to create Pod storage pool: %s", output)
                 return None
 
     def list_machines(self):
         """Lists all VMs by name."""
-        machines = self.run(['list', '--all', '--name'])
+        machines = self.run(["list", "--all", "--name"])
         machines = machines.strip().splitlines()
         return [m for m in machines if m.startswith(self.dom_prefix)]
 
     def list_pools(self):
         """Lists all pools in the pod."""
-        keys = ['Name']
-        output = self.run(['pool-list'])
+        keys = ["Name"]
+        output = self.run(["pool-list"])
         pools = self.get_column_values(output, keys)
         return [p[0] for p in pools]
 
     def list_machine_block_devices(self, machine):
         """Lists all devices for VM."""
-        keys = ['Device', 'Target', 'Source']
-        output = self.run(['domblklist', machine, '--details'])
+        keys = ["Device", "Target", "Source"]
+        output = self.run(["domblklist", machine, "--details"])
         devices = self.get_column_values(output, keys)
-        return [(d[1], d[2]) for d in devices if d[0] == 'disk']
+        return [(d[1], d[2]) for d in devices if d[0] == "disk"]
 
     def get_machine_state(self, machine):
         """Gets the VM state."""
-        state = self.run(['domstate', machine]).strip()
-        if state.startswith('error:'):
+        state = self.run(["domstate", machine]).strip()
+        if state.startswith("error:"):
             return None
         return state
 
     def get_machine_interface_info(self, machine):
         """Gets list of mac addressess assigned to the VM."""
-        output = self.run(['domiflist', machine]).strip()
+        output = self.run(["domiflist", machine]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get node MAC addresses", machine)
             return None
@@ -518,7 +521,7 @@ class VirshSSH(pexpect.spawn):
 
     def get_machine_cpu_count(self, machine):
         """Gets the VM CPU count."""
-        output = self.run(['dominfo', machine]).strip()
+        output = self.run(["dominfo", machine]).strip()
         cpu_count = self.get_key_value(output, "CPU(s)")
         if cpu_count is None:
             maaslog.error("%s: Failed to get machine CPU count", machine)
@@ -544,7 +547,7 @@ class VirshSSH(pexpect.spawn):
 
     def get_machine_memory(self, machine):
         """Gets the VM memory."""
-        output = self.run(['dominfo', machine]).strip()
+        output = self.run(["dominfo", machine]).strip()
         KiB = self.get_key_value_unitless(output, "Max memory")
         if KiB is None:
             maaslog.error("%s: Failed to get machine memory", machine)
@@ -556,7 +559,7 @@ class VirshSSH(pexpect.spawn):
         """Get the storage pools information."""
         pools = []
         for pool in self.list_pools():
-            output = self.run(['pool-dumpxml', pool]).strip()
+            output = self.run(["pool-dumpxml", pool]).strip()
             if output is None:
                 # Skip if cannot get more information.
                 continue
@@ -568,8 +571,12 @@ class VirshSSH(pexpect.spawn):
             pool_type = evaluator(XPATH_POOL_TYPE)[0]
             pool_uuid = evaluator(XPATH_POOL_UUID)[0].text
             pool = DiscoveredPodStoragePool(
-                id=pool_uuid, name=pool, path=pool_path,
-                type=pool_type, storage=pool_capacity)
+                id=pool_uuid,
+                name=pool,
+                path=pool_path,
+                type=pool_type,
+                storage=pool_capacity,
+            )
 
             if with_available:
                 # Use `setattr` because `DiscoveredPodStoragePool` doesn't have
@@ -577,7 +584,7 @@ class VirshSSH(pexpect.spawn):
                 # to perform calculations. This prevents this information from
                 # being sent to the region, which isn't needed.
                 pool_available = int(evaluator(XPATH_POOL_AVAILABLE)[0].text)
-                setattr(pool, 'available', pool_available)
+                setattr(pool, "available", pool_available)
 
             pools.append(pool)
         return pools
@@ -587,10 +594,9 @@ class VirshSSH(pexpect.spawn):
         pools = self.list_pools()
         local_storage = 0
         for pool in pools:
-            output = self.run(['pool-dumpxml', pool]).strip()
+            output = self.run(["pool-dumpxml", pool]).strip()
             if output is None:
-                maaslog.error(
-                    "Failed to get available pod local storage")
+                maaslog.error("Failed to get available pod local storage")
                 return None
 
             doc = etree.XML(output)
@@ -602,10 +608,9 @@ class VirshSSH(pexpect.spawn):
 
     def get_machine_local_storage(self, machine, device):
         """Gets the VM local storage for device."""
-        output = self.run(['domblkinfo', machine, device]).strip()
+        output = self.run(["domblkinfo", machine, device]).strip()
         if output is None:
-            maaslog.error(
-                "Failed to get available pod local storage")
+            maaslog.error("Failed to get available pod local storage")
             return None
         try:
             return int(self.get_key_value(output, "Capacity"))
@@ -614,7 +619,7 @@ class VirshSSH(pexpect.spawn):
 
     def get_pod_nodeinfo(self):
         """Gets the general information of the node via 'nodeinfo'"""
-        return self.run(['nodeinfo']).strip()
+        return self.run(["nodeinfo"]).strip()
 
     def get_pod_arch(self, nodeinfo):
         """Gets architecture of the pod."""
@@ -622,7 +627,8 @@ class VirshSSH(pexpect.spawn):
         if arch is None:
             maaslog.error("Failed to get pod architecture")
             raise PodInvalidResources(
-                "Pod architecture is not supported: %s" % arch)
+                "Pod architecture is not supported: %s" % arch
+            )
         return ARCH_FIX.get(arch, arch)
 
     def get_machine_arch(self, machine):
@@ -649,9 +655,15 @@ class VirshSSH(pexpect.spawn):
     def get_pod_resources(self):
         """Get the pod resources."""
         discovered_pod = DiscoveredPod(
-            architectures=[], cores=0, cpu_speed=0, memory=0, local_storage=0,
+            architectures=[],
+            cores=0,
+            cpu_speed=0,
+            memory=0,
+            local_storage=0,
             hints=DiscoveredPodHints(
-                cores=0, cpu_speed=0, memory=0, local_storage=0))
+                cores=0, cpu_speed=0, memory=0, local_storage=0
+            ),
+        )
         discovered_pod.capabilities = [
             Capabilities.COMPOSABLE,
             Capabilities.DYNAMIC_LOCAL_STORAGE,
@@ -665,13 +677,15 @@ class VirshSSH(pexpect.spawn):
         discovered_pod.memory = self.get_pod_memory(nodeinfo)
         discovered_pod.storage_pools = self.get_pod_storage_pools()
         discovered_pod.local_storage = sum(
-            pool.storage for pool in discovered_pod.storage_pools)
+            pool.storage for pool in discovered_pod.storage_pools
+        )
         return discovered_pod
 
     def get_pod_hints(self):
         """Gets the discovered pod hints."""
         discovered_pod_hints = DiscoveredPodHints(
-            cores=0, cpu_speed=0, memory=0, local_storage=0)
+            cores=0, cpu_speed=0, memory=0, local_storage=0
+        )
         # You can always create a domain up to the size of total cores,
         # memory, and cpu_speed even if that amount is already in use.
         # Not a good idea, but possible.
@@ -680,25 +694,31 @@ class VirshSSH(pexpect.spawn):
         discovered_pod_hints.cpu_speed = self.get_pod_cpu_speed(nodeinfo)
         discovered_pod_hints.memory = self.get_pod_memory(nodeinfo)
         discovered_pod_hints.local_storage = (
-            self.get_pod_available_local_storage())
+            self.get_pod_available_local_storage()
+        )
         return discovered_pod_hints
 
     def get_discovered_machine(
-            self, machine, request=None, storage_pools=None):
+        self, machine, request=None, storage_pools=None
+    ):
         """Gets the discovered machine."""
         # Discovered machine.
         discovered_machine = DiscoveredMachine(
-            architecture="", cores=0, cpu_speed=0, memory=0,
-            interfaces=[], block_devices=[], tags=[])
+            architecture="",
+            cores=0,
+            cpu_speed=0,
+            memory=0,
+            interfaces=[],
+            block_devices=[],
+            tags=[],
+        )
         discovered_machine.hostname = machine
         discovered_machine.architecture = self.get_machine_arch(machine)
         discovered_machine.cores = self.get_machine_cpu_count(machine)
         discovered_machine.memory = self.get_machine_memory(machine)
         state = self.get_machine_state(machine)
         discovered_machine.power_state = VM_STATE_TO_POWER_STATE[state]
-        discovered_machine.power_parameters = {
-            'power_id': machine,
-        }
+        discovered_machine.power_parameters = {"power_id": machine}
 
         # Load storage pools if needed.
         if storage_pools is None:
@@ -723,8 +743,9 @@ class VirshSSH(pexpect.spawn):
                 # to MAAS.
                 maaslog.error(
                     "Unable to discover machine '%s' in virsh pod: storage "
-                    "device '%s' is missing its storage backing." % (
-                        machine, device))
+                    "device '%s' is missing its storage backing."
+                    % (machine, device)
+                )
                 return None
 
             # Find the storage pool for this block device if it belongs to
@@ -732,9 +753,14 @@ class VirshSSH(pexpect.spawn):
             storage_pool = self.find_storage_pool(source, storage_pools)
             block_devices.append(
                 DiscoveredMachineBlockDevice(
-                    model=None, serial=None, size=size,
-                    id_path="/dev/%s" % device, tags=tags,
-                    storage_pool=storage_pool.id if storage_pool else None))
+                    model=None,
+                    serial=None,
+                    size=size,
+                    id_path="/dev/%s" % device,
+                    tags=tags,
+                    storage_pool=storage_pool.id if storage_pool else None,
+                )
+            )
         discovered_machine.block_devices = block_devices
 
         # Discover interfaces.
@@ -744,9 +770,12 @@ class VirshSSH(pexpect.spawn):
         for interface_info in all_interface_info:
             interfaces.append(
                 DiscoveredMachineInterface(
-                    mac_address=interface_info.mac, boot=boot,
+                    mac_address=interface_info.mac,
+                    boot=boot,
                     attach_type=interface_info.type,
-                    attach_name=interface_info.source))
+                    attach_name=interface_info.source,
+                )
+            )
             boot = False
         discovered_machine.interfaces = interfaces
         return discovered_machine
@@ -759,7 +788,7 @@ class VirshSSH(pexpect.spawn):
         If no error is reported, destroy the domain to put it back into a
         'shut off' state.
         """
-        output = self.run(['start', '--paused', machine]).strip()
+        output = self.run(["start", "--paused", machine]).strip()
         if output.startswith("error:"):
             # Delete the domain.
             self.delete_domain(machine)
@@ -767,11 +796,11 @@ class VirshSSH(pexpect.spawn):
             raise VirshError("Unable to compose %s: %s" % (machine, output))
         else:
             # No errors, so set machine back to 'shut off' state.
-            self.run(['destroy', machine])
+            self.run(["destroy", machine])
 
     def set_machine_autostart(self, machine):
         """Set machine to autostart."""
-        output = self.run(['autostart', machine]).strip()
+        output = self.run(["autostart", machine]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to set autostart", machine)
             return False
@@ -793,9 +822,11 @@ class VirshSSH(pexpect.spawn):
         boot_elements = evaluator(XPATH_BOOT)
 
         # Skip this if the boot order is already set up how we want it to be.
-        if (len(boot_elements) == 2 and
-                boot_elements[0].attrib['dev'] == 'network' and
-                boot_elements[1].attrib['dev'] == 'hd'):
+        if (
+            len(boot_elements) == 2
+            and boot_elements[0].attrib["dev"] == "network"
+            and boot_elements[1].attrib["dev"] == "hd"
+        ):
             return True
 
         for element in boot_elements:
@@ -809,10 +840,10 @@ class VirshSSH(pexpect.spawn):
         # Rewrite the XML in a temporary file to use with 'virsh define'.
         with NamedTemporaryFile() as f:
             f.write(etree.tostring(doc))
-            f.write(b'\n')
+            f.write(b"\n")
             f.flush()
-            output = self.run(['define', f.name])
-            if output.startswith('error:'):
+            output = self.run(["define", f.name])
+            if output.startswith("error:"):
                 maaslog.error("%s: Failed to set network boot order", machine)
                 return False
             maaslog.info("%s: Successfully set network boot order", machine)
@@ -820,14 +851,14 @@ class VirshSSH(pexpect.spawn):
 
     def poweron(self, machine):
         """Poweron a VM."""
-        output = self.run(['start', machine]).strip()
+        output = self.run(["start", machine]).strip()
         if output.startswith("error:"):
             return False
         return True
 
     def poweroff(self, machine):
         """Poweroff a VM."""
-        output = self.run(['destroy', machine]).strip()
+        output = self.run(["destroy", machine]).strip()
         if output.startswith("error:"):
             return False
         return True
@@ -835,97 +866,120 @@ class VirshSSH(pexpect.spawn):
     def get_usable_pool(self, disk, default_pool=None):
         """Return the pool and type that has enough space for `disk.size`."""
         pools = self.get_pod_storage_pools(with_available=True)
-        filtered_pools = [
-            pool
-            for pool in pools
-            if pool.name in disk.tags
-        ]
+        filtered_pools = [pool for pool in pools if pool.name in disk.tags]
         if filtered_pools:
             for pool in filtered_pools:
                 if disk.size <= pool.available:
                     return pool.type, pool.name
             raise PodInvalidResources(
-                "Not enough storage space on storage pools: %s" % (
-                    ', '.join([pool.name for pool in filtered_pools])))
+                "Not enough storage space on storage pools: %s"
+                % (", ".join([pool.name for pool in filtered_pools]))
+            )
         if default_pool:
             filtered_pools = [
-                pool
-                for pool in pools
-                if pool.id == default_pool
+                pool for pool in pools if pool.id == default_pool
             ]
             if not filtered_pools:
                 filtered_pools = [
-                    pool
-                    for pool in pools
-                    if pool.name == default_pool
+                    pool for pool in pools if pool.name == default_pool
                 ]
             if filtered_pools:
                 default_pool = filtered_pools[0]
                 if disk.size <= default_pool.available:
                     return default_pool.type, default_pool.name
                 raise PodInvalidResources(
-                    "Not enough space in default storage pool: %s" % (
-                        default_pool.name))
+                    "Not enough space in default storage pool: %s"
+                    % (default_pool.name)
+                )
             raise VirshError(
-                "Default storage pool '%s' doesn't exist." % default_pool)
+                "Default storage pool '%s' doesn't exist." % default_pool
+            )
         for pool in pools:
             if disk.size <= pool.available:
                 return pool.type, pool.name
         raise PodInvalidResources(
-            "Not enough storage space on any storage pools: %s" % (
-                ', '.join([pool.name for pool in pools])))
+            "Not enough storage space on any storage pools: %s"
+            % (", ".join([pool.name for pool in pools]))
+        )
 
     def create_local_volume(self, disk, default_pool=None):
         """Create a local volume with `disk.size`."""
         usable_pool_type, usable_pool = self.get_usable_pool(
-            disk, default_pool)
+            disk, default_pool
+        )
         if usable_pool is None:
             return None
         volume = str(uuid4())
-        if usable_pool_type == 'logical':
-            self.run([
-                'vol-create-as', usable_pool, volume, str(disk.size),
-                '--format', 'raw'])
+        if usable_pool_type == "logical":
+            self.run(
+                [
+                    "vol-create-as",
+                    usable_pool,
+                    volume,
+                    str(disk.size),
+                    "--format",
+                    "raw",
+                ]
+            )
         else:
-            self.run([
-                'vol-create-as', usable_pool, volume, str(disk.size),
-                '--allocation', '0', '--format', 'raw'])
+            self.run(
+                [
+                    "vol-create-as",
+                    usable_pool,
+                    volume,
+                    str(disk.size),
+                    "--allocation",
+                    "0",
+                    "--format",
+                    "raw",
+                ]
+            )
         return usable_pool, volume
 
     def delete_local_volume(self, pool, volume):
         """Delete a local volume from `pool` with `volume`."""
-        self.run(['vol-delete', volume, '--pool', pool])
+        self.run(["vol-delete", volume, "--pool", pool])
 
     def get_volume_path(self, pool, volume):
         """Return the path to the file from `pool` and `volume`."""
-        output = self.run(['vol-path', volume, '--pool', pool])
+        output = self.run(["vol-path", volume, "--pool", pool])
         return output.strip()
 
     def attach_local_volume(self, domain, pool, volume, device):
         """Attach `volume` in `pool` to `domain` as `device`."""
         vol_path = self.get_volume_path(pool, volume)
         serial = os.path.basename(vol_path)
-        self.run([
-            'attach-disk', domain, vol_path, device,
-            '--targetbus', 'virtio', '--sourcetype',
-            'file', '--config', '--serial', serial])
+        self.run(
+            [
+                "attach-disk",
+                domain,
+                vol_path,
+                device,
+                "--targetbus",
+                "virtio",
+                "--sourcetype",
+                "file",
+                "--config",
+                "--serial",
+                serial,
+            ]
+        )
 
     def get_network_list(self):
         """Return the list of available networks."""
-        output = self.run(['net-list', '--name'])
+        output = self.run(["net-list", "--name"])
         return output.strip().splitlines()
 
-    def check_network_maas_dhcp_enabled(
-            self, network, host_interfaces):
+    def check_network_maas_dhcp_enabled(self, network, host_interfaces):
         xml = self.get_network_xml(network)
         tree = etree.fromstring(xml)
         # Check that libvirt DHCP is not enabled.
-        if not tree.xpath('//dhcp'):
+        if not tree.xpath("//dhcp"):
             # Validate that network is attached to a bridge
             # whose VLAN is enabled for MAAS DHCP.
-            bridge_element = tree.xpath('//bridge')[0]
-            ifname = bridge_element.get('name')
-            if (ifname in host_interfaces and host_interfaces[ifname]):
+            bridge_element = tree.xpath("//bridge")[0]
+            ifname = bridge_element.get("name")
+            if ifname in host_interfaces and host_interfaces[ifname]:
                 return ifname
 
     def get_default_interface_attachment(self, known_host_interfaces):
@@ -974,29 +1028,35 @@ class VirshSSH(pexpect.spawn):
         # Check the 'maas' network.
         if LIBVIRT_NETWORK.MAAS in networks:
             maas_network_ifname = self.check_network_maas_dhcp_enabled(
-                LIBVIRT_NETWORK.MAAS, host_interfaces)
+                LIBVIRT_NETWORK.MAAS, host_interfaces
+            )
             if maas_network_ifname is not None:
                 return LIBVIRT_NETWORK.MAAS, InterfaceAttachType.NETWORK
 
         # Check the 'default' network.
         if LIBVIRT_NETWORK.DEFAULT in networks:
             default_network_ifname = self.check_network_maas_dhcp_enabled(
-                LIBVIRT_NETWORK.DEFAULT, host_interfaces)
+                LIBVIRT_NETWORK.DEFAULT, host_interfaces
+            )
             if default_network_ifname is not None:
                 return LIBVIRT_NETWORK.DEFAULT, InterfaceAttachType.NETWORK
 
         # Check for a bridge interface on the pod host whose VLAN
         # is DHCP enabled.
         for host_interface in known_host_interfaces:
-            if (host_interface.attach_type == InterfaceAttachType.BRIDGE and
-                    host_interface.dhcp_enabled):
+            if (
+                host_interface.attach_type == InterfaceAttachType.BRIDGE
+                and host_interface.dhcp_enabled
+            ):
                 return host_interface.ifname, InterfaceAttachType.BRIDGE
 
         # Check for a macvlan interface on the pod host whose VLAN
         # is DHCP enabled.
         for host_interface in known_host_interfaces:
-            if (host_interface.attach_type == InterfaceAttachType.MACVLAN and
-                    host_interface.dhcp_enabled):
+            if (
+                host_interface.attach_type == InterfaceAttachType.MACVLAN
+                and host_interface.dhcp_enabled
+            ):
                 return host_interface.ifname, InterfaceAttachType.MACVLAN
 
         # If no interface attachments were found, raise an error.
@@ -1014,40 +1074,49 @@ class VirshSSH(pexpect.spawn):
             # trying to attach to a bridge or macvlan interface,
             # which is used below.
             attach_name, attach_type = self.get_default_interface_attachment(
-                request.known_host_interfaces)
+                request.known_host_interfaces
+            )
             if attach_type == InterfaceAttachType.NETWORK:
-                return self.run([
-                    'attach-interface', domain, 'network', attach_name,
-                    '--mac', mac, '--model', 'virtio', '--config'])
+                return self.run(
+                    [
+                        "attach-interface",
+                        domain,
+                        "network",
+                        attach_name,
+                        "--mac",
+                        mac,
+                        "--model",
+                        "virtio",
+                        "--config",
+                    ]
+                )
 
         # For macvlans and bridges, we need to pass an XML template to
         # virsh's attach-device command since the attach-interface
         # command doesn't have a flag for setting the macvlan's mode.
-        device_params = {
-            'mac_address': mac,
-            'attach_name': attach_name,
-        }
+        device_params = {"mac_address": mac, "attach_name": attach_name}
         if attach_type == InterfaceAttachType.BRIDGE:
             device_xml = DOM_TEMPLATE_BRIDGE_INTERFACE.format(**device_params)
         elif attach_type == InterfaceAttachType.MACVLAN:
-            device_params['attach_options'] = interface.attach_options
+            device_params["attach_options"] = interface.attach_options
             device_xml = DOM_TEMPLATE_MACVLAN_INTERFACE.format(**device_params)
 
         # Rewrite the XML in a temporary file to use with 'virsh define'.
         with NamedTemporaryFile() as f:
-            f.write(device_xml.encode('utf-8'))
-            f.write(b'\n')
+            f.write(device_xml.encode("utf-8"))
+            f.write(b"\n")
             f.flush()
-            output = self.run([
-                'attach-device', domain, f.name, '--config'])
-            if output.startswith('error:'):
+            output = self.run(["attach-device", domain, f.name, "--config"])
+            if output.startswith("error:"):
                 maaslog.error(
-                    "%s: Failed to attach network device %s" % (
-                        domain, interface.attach_name))
+                    "%s: Failed to attach network device %s"
+                    % (domain, interface.attach_name)
+                )
                 return False
             maaslog.info(
-                "%s: Successfully attached network device %s" % (
-                    domain, interface.attach_name))
+                "%s: Successfully attached network device %s"
+                % (domain, interface.attach_name)
+            )
             return True
 
     def get_domain_capabilities(self):
@@ -1056,30 +1125,28 @@ class VirshSSH(pexpect.spawn):
         Determines the type and emulator of the domain to use.
         """
         # Test for KVM support first.
-        xml = self.run(['domcapabilities', '--virttype', 'kvm'])
-        if xml.startswith('error'):
+        xml = self.run(["domcapabilities", "--virttype", "kvm"])
+        if xml.startswith("error"):
             # Fallback to qemu support. Fail if qemu not supported.
-            xml = self.run(['domcapabilities', '--virttype', 'qemu'])
-            emulator_type = 'qemu'
+            xml = self.run(["domcapabilities", "--virttype", "qemu"])
+            emulator_type = "qemu"
         else:
-            emulator_type = 'kvm'
+            emulator_type = "kvm"
 
         # XXX newell 2017-05-18 bug=1690781
         # Check to see if the XML output was an error.
         # See bug for details about why and how this can occur.
-        if xml.startswith('error'):
+        if xml.startswith("error"):
             raise VirshError(
                 "`virsh domcapabilities --virttype %s` errored.  Please "
                 "verify that package qemu-kvm is installed and restart "
-                "libvirt-bin service." % emulator_type)
+                "libvirt-bin service." % emulator_type
+            )
 
         doc = etree.XML(xml)
         evaluator = etree.XPathEvaluator(doc)
-        emulator = evaluator('/domainCapabilities/path')[0].text
-        return {
-            'type': emulator_type,
-            'emulator': emulator,
-        }
+        emulator = evaluator("/domainCapabilities/path")[0].text
+        return {"type": emulator_type, "emulator": emulator}
 
     def cleanup_disks(self, pool_vols):
         """Delete all volumes."""
@@ -1127,40 +1194,41 @@ class VirshSSH(pexpect.spawn):
             else:
                 if disk_info is None:
                     raise PodInvalidResources(
-                        "not enough space for disk %d." % idx)
+                        "not enough space for disk %d." % idx
+                    )
                 else:
                     created_disks.append(disk_info)
 
         # Construct the domain XML.
         domain_params = self.get_domain_capabilities()
-        domain_params['name'] = request.hostname
-        domain_params['uuid'] = str(uuid4())
-        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
-        domain_params['cores'] = str(request.cores)
-        domain_params['memory'] = str(request.memory)
+        domain_params["name"] = request.hostname
+        domain_params["uuid"] = str(uuid4())
+        domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params["cores"] = str(request.cores)
+        domain_params["memory"] = str(request.memory)
 
         # Set the template.
-        if domain_params['arch'] == 'aarch64':
+        if domain_params["arch"] == "aarch64":
             # LP: #1775728 - Changes in the template are required due to
             # libvirt validation issues on the XML template. However, this
             # causes lint issues. We work around these issue by using
             # template variables instead.
-            domain_params['loader'] = '/usr/share/AAVMF/AAVMF_CODE.fd'
-            domain_params['nvram_path'] = '/var/lib/libvirt/qemu/nvram'
+            domain_params["loader"] = "/usr/share/AAVMF/AAVMF_CODE.fd"
+            domain_params["nvram_path"] = "/var/lib/libvirt/qemu/nvram"
             domain_xml = DOM_TEMPLATE_ARM64.format(**domain_params)
-        elif domain_params['arch'] in ('ppc64', 'ppc64le'):
+        elif domain_params["arch"] in ("ppc64", "ppc64le"):
             domain_xml = DOM_TEMPLATE_PPC64.format(**domain_params)
-        elif domain_params['arch'] == 's390x':
+        elif domain_params["arch"] == "s390x":
             domain_xml = DOM_TEMPLATE_S390X.format(**domain_params)
         else:
             domain_xml = DOM_TEMPLATE_AMD64.format(**domain_params)
 
         # Define the domain in virsh.
         with NamedTemporaryFile() as f:
-            f.write(domain_xml.encode('utf-8'))
-            f.write(b'\n')
+            f.write(domain_xml.encode("utf-8"))
+            f.write(b"\n")
             f.flush()
-            self.run(['define', f.name])
+            self.run(["define", f.name])
 
         # Attach the requested interfaces.
         for interface in request.interfaces:
@@ -1168,8 +1236,8 @@ class VirshSSH(pexpect.spawn):
                 self.attach_interface(request, interface, request.hostname)
             except PodInvalidResources as error:
                 # Delete the defined domain in virsh.
-                self.run(['destroy', request.hostname])
-                self.run(['undefine', request.hostname])
+                self.run(["destroy", request.hostname])
+                self.run(["undefine", request.hostname])
                 # Re-raise the exception.
                 raise error
 
@@ -1177,7 +1245,8 @@ class VirshSSH(pexpect.spawn):
         for idx, (pool, volume) in enumerate(created_disks):
             block_name = self.get_block_name_from_idx(idx)
             self.attach_local_volume(
-                request.hostname, pool, volume, block_name)
+                request.hostname, pool, volume, block_name
+            )
 
         # Check machine for any startup errors.
         self.check_machine_can_startup(request.hostname)
@@ -1194,32 +1263,41 @@ class VirshSSH(pexpect.spawn):
     def delete_domain(self, domain):
         """Delete `domain` and its volumes."""
         # Ensure that its destroyed first.
-        self.run(['destroy', domain])
+        self.run(["destroy", domain])
         # Undefine the domains and remove all storage and snapshots.
         # XXX newell 2018-02-25 bug=1741165
         # Removed the --delete-snapshots flag to workaround the volumes not
         # being deleted.  See the bug for more details.
-        self.run([
-            'undefine', domain, '--remove-all-storage',
-            '--managed-save', '--nvram'])
+        self.run(
+            [
+                "undefine",
+                domain,
+                "--remove-all-storage",
+                "--managed-save",
+                "--nvram",
+            ]
+        )
 
 
 class VirshPodDriver(PodDriver):
 
-    name = 'virsh'
+    name = "virsh"
     description = "Virsh (virtual systems)"
     settings = [
+        make_setting_field("power_address", "Address", required=True),
         make_setting_field(
-            'power_address', "Address", required=True),
+            "power_pass",
+            "Password (optional)",
+            required=False,
+            field_type="password",
+        ),
         make_setting_field(
-            'power_pass', "Password (optional)",
-            required=False, field_type='password'),
-        make_setting_field(
-            'power_id', "Virsh VM ID", scope=SETTING_SCOPE.NODE,
-            required=True),
+            "power_id", "Virsh VM ID", scope=SETTING_SCOPE.NODE, required=True
+        ),
     ]
     ip_extractor = make_ip_extractor(
-        'power_address', IP_EXTRACTOR_PATTERNS.URL)
+        "power_address", IP_EXTRACTOR_PATTERNS.URL
+    )
 
     def detect_missing_packages(self):
         missing_packages = set()
@@ -1230,68 +1308,69 @@ class VirshPodDriver(PodDriver):
 
     @inlineCallbacks
     def power_control_virsh(
-            self, power_address, power_id, power_change,
-            power_pass=None, **kwargs):
+        self, power_address, power_id, power_change, power_pass=None, **kwargs
+    ):
         """Powers controls a VM using virsh."""
 
         # Force password to None if blank, as the power control
         # script will send a blank password if one is not set.
-        if power_pass == '':
+        if power_pass == "":
             power_pass = None
 
         conn = VirshSSH()
         logged_in = yield deferToThread(conn.login, power_address, power_pass)
         if not logged_in:
-            raise VirshError('Failed to login to virsh console.')
+            raise VirshError("Failed to login to virsh console.")
 
         state = yield deferToThread(conn.get_machine_state, power_id)
         if state is None:
-            raise VirshError('%s: Failed to get power state' % power_id)
+            raise VirshError("%s: Failed to get power state" % power_id)
 
         if state == VirshVMState.OFF:
-            if power_change == 'on':
+            if power_change == "on":
                 powered_on = yield deferToThread(conn.poweron, power_id)
                 if powered_on is False:
-                    raise VirshError('%s: Failed to power on VM' % power_id)
+                    raise VirshError("%s: Failed to power on VM" % power_id)
         elif state == VirshVMState.ON:
-            if power_change == 'off':
+            if power_change == "off":
                 powered_off = yield deferToThread(conn.poweroff, power_id)
                 if powered_off is False:
-                    raise VirshError('%s: Failed to power off VM' % power_id)
+                    raise VirshError("%s: Failed to power off VM" % power_id)
 
     @inlineCallbacks
     def power_state_virsh(
-            self, power_address, power_id, power_pass=None, **kwargs):
+        self, power_address, power_id, power_pass=None, **kwargs
+    ):
         """Return the power state for the VM using virsh."""
 
         # Force password to None if blank, as the power control
         # script will send a blank password if one is not set.
-        if power_pass == '':
+        if power_pass == "":
             power_pass = None
 
         conn = VirshSSH()
         logged_in = yield deferToThread(conn.login, power_address, power_pass)
         if not logged_in:
-            raise VirshError('Failed to login to virsh console.')
+            raise VirshError("Failed to login to virsh console.")
 
         state = yield deferToThread(conn.get_machine_state, power_id)
         if state is None:
-            raise VirshError('Failed to get domain: %s' % power_id)
+            raise VirshError("Failed to get domain: %s" % power_id)
 
         try:
             return VM_STATE_TO_POWER_STATE[state]
         except KeyError:
-            raise VirshError('Unknown state: %s' % state)
+            raise VirshError("Unknown state: %s" % state)
 
     @asynchronous
     def power_on(self, system_id, context):
         """Power on Virsh node."""
-        return self.power_control_virsh(power_change='on', **context)
+        return self.power_control_virsh(power_change="on", **context)
 
     @asynchronous
     def power_off(self, system_id, context):
         """Power off Virsh node."""
-        return self.power_control_virsh(power_change='off', **context)
+        return self.power_control_virsh(power_change="off", **context)
 
     @asynchronous
     def power_query(self, system_id, context):
@@ -1301,13 +1380,13 @@ class VirshPodDriver(PodDriver):
     @inlineCallbacks
     def get_virsh_connection(self, context):
         """Connect and return the virsh connection."""
-        power_address = context.get('power_address')
-        power_pass = context.get('power_pass')
+        power_address = context.get("power_address")
+        power_pass = context.get("power_pass")
         # Login to Virsh console.
         conn = VirshSSH()
         logged_in = yield deferToThread(conn.login, power_address, power_pass)
         if not logged_in:
-            raise VirshError('Failed to login to virsh console.')
+            raise VirshError("Failed to login to virsh console.")
         return conn
 
     @inlineCallbacks
@@ -1334,15 +1413,17 @@ class VirshPodDriver(PodDriver):
         virtual_machines = yield deferToThread(conn.list_machines)
         for vm in virtual_machines:
             discovered_machine = yield deferToThread(
-                conn.get_discovered_machine, vm,
-                storage_pools=discovered_pod.storage_pools)
+                conn.get_discovered_machine,
+                vm,
+                storage_pools=discovered_pod.storage_pools,
+            )
             if discovered_machine is not None:
                 discovered_machine.cpu_speed = discovered_pod.cpu_speed
                 machines.append(discovered_machine)
         discovered_pod.machines = machines
 
         # Set KVM Pod tags to 'virtual'.
-        discovered_pod.tags = ['virtual']
+        discovered_pod.tags = ["virtual"]
 
         # Return the DiscoveredPod
         return discovered_pod
@@ -1352,9 +1433,11 @@ class VirshPodDriver(PodDriver):
         """Compose machine."""
         conn = yield self.get_virsh_connection(context)
         default_pool = context.get(
-            'default_storage_pool_id', context.get('default_storage_pool'))
+            "default_storage_pool_id", context.get("default_storage_pool")
+        )
         created_machine = yield deferToThread(
-            conn.create_domain, request, default_pool)
+            conn.create_domain, request, default_pool
+        )
         hints = yield deferToThread(conn.get_pod_hints)
         return created_machine, hints
 
@@ -1362,7 +1445,7 @@ class VirshPodDriver(PodDriver):
     def decompose(self, system_id, context):
         """Decompose machine."""
         conn = yield self.get_virsh_connection(context)
-        yield deferToThread(conn.delete_domain, context['power_id'])
+        yield deferToThread(conn.delete_domain, context["power_id"])
         hints = yield deferToThread(conn.get_pod_hints)
         return hints
 
@@ -1370,9 +1453,13 @@ class VirshPodDriver(PodDriver):
 @synchronous
 @typed
 def probe_virsh_and_enlist(
-        user: str, poweraddr: str, password: str = None,
-        prefix_filter: str = None, accept_all: bool = False,
-        domain: str = None):
+    user: str,
+    poweraddr: str,
+    password: str = None,
+    prefix_filter: str = None,
+    accept_all: bool = False,
+    domain: str = None,
+):
     """Extracts all of the VMs from virsh and enlists them
     into MAAS.
 
@@ -1386,7 +1473,7 @@ def probe_virsh_and_enlist(
     conn = VirshSSH(dom_prefix=prefix_filter)
     logged_in = conn.login(poweraddr, password)
     if not logged_in:
-        raise VirshError('Failed to login to virsh console.')
+        raise VirshError("Failed to login to virsh console.")
 
     conn_list = conn.list_machines()
     for machine in conn_list:
@@ -1394,15 +1481,13 @@ def probe_virsh_and_enlist(
         state = conn.get_machine_state(machine)
         all_interface_info = conn.get_machine_interface_info(machine)
 
-        params = {
-            'power_address': poweraddr,
-            'power_id': machine,
-        }
+        params = {"power_address": poweraddr, "power_id": machine}
         if password is not None:
-            params['power_pass'] = password
+            params["power_pass"] = password
         macs = [ifinfo.mac for ifinfo in all_interface_info]
         system_id = create_node(
-            macs, arch, 'virsh', params, domain, hostname=machine).wait(30)
+            macs, arch, "virsh", params, domain, hostname=machine
+        ).wait(30)
 
         # If the system_id is None an error occured when creating the machine.
         # Most likely the error is the node already exists.

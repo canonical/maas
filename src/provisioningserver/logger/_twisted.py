@@ -27,10 +27,7 @@ from provisioningserver.logger._common import (
 )
 from provisioningserver.utils import typed
 from twisted import logger as twistedModern
-from twisted.python import (
-    log as twistedLegacy,
-    usage,
-)
+from twisted.python import log as twistedLegacy, usage
 
 # Map verbosity numbers to `twisted.logger` levels.
 DEFAULT_TWISTED_VERBOSITY_LEVELS = {
@@ -43,8 +40,8 @@ DEFAULT_TWISTED_VERBOSITY_LEVELS = {
 
 # Belt-n-braces.
 assert (
-    DEFAULT_TWISTED_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS), (
-        "Twisted verbosity map does not match expectations.")
+    DEFAULT_TWISTED_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS
+), "Twisted verbosity map does not match expectations."
 
 
 @typed
@@ -55,8 +52,7 @@ def set_twisted_verbosity(verbosity: int):
     # `LogLevel` is comparable, but this saves overall computation.
     global _filterByLevels
     _filterByLevels = {
-        ll for ll in twistedModern.LogLevel.iterconstants()
-        if ll >= level
+        ll for ll in twistedModern.LogLevel.iterconstants() if ll >= level
     }
 
 
@@ -72,8 +68,10 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     """
     set_twisted_verbosity(verbosity)
 
-    warn_unless(hasattr(twistedLegacy, "startLoggingWithObserver"), (
-        "No startLoggingWithObserver function found; please investigate!"))
+    warn_unless(
+        hasattr(twistedLegacy, "startLoggingWithObserver"),
+        "No startLoggingWithObserver function found; please investigate!",
+    )
     twistedLegacy.startLoggingWithObserver = _startLoggingWithObserver
 
     # Set the legacy `logfile` namespace according to the environment in which
@@ -83,8 +81,10 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
 
     # Customise warnings behaviour. Ensure that nothing else — neither the
     # standard library's `logging` module nor Django — clobbers this later.
-    warn_unless(warnings.showwarning.__module__ == warnings.__name__, (
-        "The warnings module has already been modified; please investigate!"))
+    warn_unless(
+        warnings.showwarning.__module__ == warnings.__name__,
+        "The warnings module has already been modified; please investigate!",
+    )
     if mode == LoggingMode.TWISTD:
         twistedModern.globalLogBeginner.showwarning = show_warning_via_twisted
         twistedLegacy.theLogPublisher.showwarning = show_warning_via_twisted
@@ -93,21 +93,29 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
         twistedLegacy.theLogPublisher.showwarning = warnings.showwarning
 
     # Prevent `crochet` from initialising Twisted's logging.
-    warn_unless(hasattr(crochet._main, "_startLoggingWithObserver"), (
-        "No _startLoggingWithObserver function found; please investigate!"))
+    warn_unless(
+        hasattr(crochet._main, "_startLoggingWithObserver"),
+        "No _startLoggingWithObserver function found; please investigate!",
+    )
     crochet._main._startLoggingWithObserver = None
 
     # Turn off some inadvisable defaults in Twisted and elsewhere.
     from twisted.internet.protocol import AbstractDatagramProtocol, Factory
-    warn_unless(hasattr(AbstractDatagramProtocol, "noisy"), (
-        "No AbstractDatagramProtocol.noisy attribute; please investigate!"))
+
+    warn_unless(
+        hasattr(AbstractDatagramProtocol, "noisy"),
+        "No AbstractDatagramProtocol.noisy attribute; please investigate!",
+    )
     AbstractDatagramProtocol.noisy = False
-    warn_unless(hasattr(Factory, "noisy"), (
-        "No Factory.noisy attribute; please investigate!"))
+    warn_unless(
+        hasattr(Factory, "noisy"),
+        "No Factory.noisy attribute; please investigate!",
+    )
     Factory.noisy = False
 
     # Install filters for other noisy parts of Twisted itself.
     from twisted.internet import tcp, udp, unix
+
     LegacyLogger.install(tcp, observer=observe_twisted_internet_tcp)
     LegacyLogger.install(udp, observer=observe_twisted_internet_udp)
     LegacyLogger.install(unix, observer=observe_twisted_internet_unix)
@@ -117,7 +125,8 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     # bypasses any wrapping or redirection that may have been done elsewhere.
     if mode == LoggingMode.COMMAND:
         twistedModern.globalLogBeginner.beginLoggingTo(
-            [EventLogger()], discardBuffer=False, redirectStandardIO=False)
+            [EventLogger()], discardBuffer=False, redirectStandardIO=False
+        )
 
 
 def EventLogger(outFile=sys.__stdout__):
@@ -129,7 +138,8 @@ def EventLogger(outFile=sys.__stdout__):
     """
     return twistedModern.FilteringLogObserver(
         twistedModern.FileLogObserver(outFile, _formatModernEvent),
-        (_filterByLevel, _filterByNoise))
+        (_filterByLevel, _filterByNoise),
+    )
 
 
 def _startLoggingWithObserver(observer, setStdout=1):
@@ -147,7 +157,8 @@ def _startLoggingWithObserver(observer, setStdout=1):
     if not twistedModern.ILogObserver.providedBy(observer):
         observer = twistedModern.LegacyLogObserverWrapper(observer)
     twistedModern.globalLogBeginner.beginLoggingTo(
-        [observer], discardBuffer=False, redirectStandardIO=bool(setStdout))
+        [observer], discardBuffer=False, redirectStandardIO=bool(setStdout)
+    )
 
 
 _timeFormat = DEFAULT_LOG_FORMAT_DATE
@@ -253,10 +264,14 @@ class LegacyLogger(twistedModern.Logger):
         :return: The newly created `LegacyLogger`.
         """
         replacing = getattr(module, attribute, "<not-found>")
-        warn_unless(replacing is twistedLegacy, (
-            "Legacy logger being installed to replace %r but expected a "
-            "reference to twisted.python.log module; please investigate!"
-            % (replacing,)))
+        warn_unless(
+            replacing is twistedLegacy,
+            (
+                "Legacy logger being installed to replace %r but expected a "
+                "reference to twisted.python.log module; please investigate!"
+                % (replacing,)
+            ),
+        )
         logger = cls(module.__name__, source=source, observer=observer)
         setattr(module, attribute, logger)
         return logger
@@ -293,15 +308,13 @@ class VerbosityOptions(usage.Options):
 
     def opt_verbose(self):
         """Increase logging verbosity."""
-        self["verbosity"] = min(
-            self._verbosity_max, self["verbosity"] + 1)
+        self["verbosity"] = min(self._verbosity_max, self["verbosity"] + 1)
 
     opt_v = opt_verbose
 
     def opt_quiet(self):
         """Decrease logging verbosity."""
-        self["verbosity"] = max(
-            self._verbosity_min, self["verbosity"] - 1)
+        self["verbosity"] = max(self._verbosity_min, self["verbosity"] - 1)
 
     opt_q = opt_quiet
 
@@ -328,23 +341,30 @@ def get_twisted_logging_level(verbosity: int):  # -> LogLevel
 
 
 def show_warning_via_twisted(
-        message, category, filename, lineno, file=None, line=None):
+    message, category, filename, lineno, file=None, line=None
+):
     """Replacement for `warnings.showwarning` that logs via Twisted."""
     if file is None:
         # Try to find a module name with which to log this warning.
         module = get_module_for_file(filename)
         logger = twistedModern.Logger(
-            "global" if module is None else module.__name__)
+            "global" if module is None else module.__name__
+        )
         # `message` is/can be an instance of `category`, so stringify.
         logger.warn(
-            "{category}: {message}", message=str(message),
-            category=category.__qualname__, filename=filename,
-            lineno=lineno, line=line)
+            "{category}: {message}",
+            message=str(message),
+            category=category.__qualname__,
+            filename=filename,
+            lineno=lineno,
+            line=line,
+        )
     else:
         # It's not clear why and when `file` will be specified, but try to
         # honour the intention.
         warning = warnings.formatwarning(
-            message, category, filename, lineno, line)
+            message, category, filename, lineno, line
+        )
         try:
             file.write(warning)
             file.flush()
@@ -363,6 +383,7 @@ def _filterByLevel(event):
     else:
         return twistedModern.PredicateResult.no
 
+
 # A list of markers for noise.
 _filterByNoises = (
     {"log_namespace": "log_legacy", "log_text": "Log opened."},
@@ -380,7 +401,8 @@ def _filterByNoise(event):
 
 
 _observe_twisted_internet_tcp_noise = re.compile(
-    r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)")
+    r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)"
+)
 
 
 def observe_twisted_internet_tcp(event):
@@ -391,7 +413,8 @@ def observe_twisted_internet_tcp(event):
 
 
 _observe_twisted_internet_udp_noise = re.compile(
-    r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)")
+    r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)"
+)
 
 
 def observe_twisted_internet_udp(event):
@@ -402,7 +425,8 @@ def observe_twisted_internet_udp(event):
 
 
 _observe_twisted_internet_unix_noise = re.compile(
-    r"^(?:[(].+ Port .+ Closed[)]|.+ starting on .+)")
+    r"^(?:[(].+ Port .+ Closed[)]|.+ starting on .+)"
+)
 
 
 def observe_twisted_internet_unix(event):

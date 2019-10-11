@@ -9,10 +9,7 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    IPRANGE_TYPE,
-)
+from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.models import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -23,195 +20,256 @@ from testtools import ExpectedException
 
 def make_plain_subnet():
     return factory.make_Subnet(
-        cidr='192.168.0.0/24',
-        gateway_ip='192.168.0.1',
-        dns_servers=[])
+        cidr="192.168.0.0/24", gateway_ip="192.168.0.1", dns_servers=[]
+    )
 
 
 def make_plain_ipv6_subnet():
     return factory.make_Subnet(
-        cidr='2001::/64',
-        gateway_ip='2001::1',
-        dns_servers=[])
+        cidr="2001::/64", gateway_ip="2001::1", dns_servers=[]
+    )
 
 
 class IPRangeTest(MAASServerTestCase):
-
     def test__create(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.2', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.254",
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
             comment="The quick brown fox jumps over the lazy dog.",
-            subnet=subnet)
+            subnet=subnet,
+        )
         iprange.save()
 
     def test__requires_valid_ip_addresses(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='x192.x168.x0.x1', end_ip='y192.y168.y0.y254',
-            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
+            start_ip="x192.x168.x0.x1",
+            end_ip="y192.y168.y0.y254",
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
             comment="The quick brown fox jumps over the lazy dog.",
-            subnet=subnet)
-        with ExpectedException(ValidationError, '.*Enter a valid.*'):
+            subnet=subnet,
+        )
+        with ExpectedException(ValidationError, ".*Enter a valid.*"):
             iprange.save()
 
     def test__requires_start_ip_address(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.1', type=IPRANGE_TYPE.RESERVED,
-            user=factory.make_User(), subnet=subnet,
-            comment="The quick brown fox jumps over the lazy dog.")
-        with ExpectedException(ValidationError, '.*both required.*'):
+            start_ip="192.168.0.1",
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
+            subnet=subnet,
+            comment="The quick brown fox jumps over the lazy dog.",
+        )
+        with ExpectedException(ValidationError, ".*both required.*"):
             iprange.save()
 
     def test__requires_end_ip_address(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            end_ip='192.168.0.1', type=IPRANGE_TYPE.RESERVED,
-            user=factory.make_User(), subnet=subnet,
-            comment="The quick brown fox jumps over the lazy dog.")
-        with ExpectedException(ValidationError, '.*both required.*'):
+            end_ip="192.168.0.1",
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
+            subnet=subnet,
+            comment="The quick brown fox jumps over the lazy dog.",
+        )
+        with ExpectedException(ValidationError, ".*both required.*"):
             iprange.save()
 
     def test__requires_matching_address_family(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.1', end_ip='2001:db8::1',
+            start_ip="192.168.0.1",
+            end_ip="2001:db8::1",
             type=IPRANGE_TYPE.RESERVED,
-            user=factory.make_User(), subnet=subnet,
-            comment="The quick brown fox jumps over the lazy dog.")
-        with ExpectedException(ValidationError, '.*same address family.*'):
+            user=factory.make_User(),
+            subnet=subnet,
+            comment="The quick brown fox jumps over the lazy dog.",
+        )
+        with ExpectedException(ValidationError, ".*same address family.*"):
             iprange.save()
 
     def test__requires_subnet(self):
         iprange = IPRange(
-            start_ip='192.168.0.1', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
-            comment="The quick brown weasel jumps over the lazy elephant.")
+            start_ip="192.168.0.1",
+            end_ip="192.168.0.254",
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
+            comment="The quick brown weasel jumps over the lazy elephant.",
+        )
         with ExpectedException(IntegrityError):
             iprange.save()
 
     def test__requires_start_ip_and_end_ip(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            subnet=subnet, type=IPRANGE_TYPE.RESERVED,
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
             user=factory.make_User(),
-            comment="The quick brown cow jumps over the lazy moon.")
-        with ExpectedException(ValidationError, '.*are both required.*'):
+            comment="The quick brown cow jumps over the lazy moon.",
+        )
+        with ExpectedException(ValidationError, ".*are both required.*"):
             iprange.save()
 
     def test__requires_start_ip_and_end_ip_to_be_within_subnet(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.1.1', end_ip='192.168.1.254', subnet=subnet,
-            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
-            comment="The quick brown cow jumps over the lazy moon.")
+            start_ip="192.168.1.1",
+            end_ip="192.168.1.254",
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
+            comment="The quick brown cow jumps over the lazy moon.",
+        )
         with ExpectedException(
-                ValidationError, '.*addresses must be within subnet.*'):
+            ValidationError, ".*addresses must be within subnet.*"
+        ):
             iprange.save()
 
     def test__requires_start_ip_to_be_within_subnet(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='19.168.0.1', end_ip='192.168.0.254', subnet=subnet,
-            type=IPRANGE_TYPE.DYNAMIC, user=factory.make_User(),
-            comment="The quick brown cow jumps over the lazy moon.")
+            start_ip="19.168.0.1",
+            end_ip="192.168.0.254",
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            user=factory.make_User(),
+            comment="The quick brown cow jumps over the lazy moon.",
+        )
         with ExpectedException(
-                ValidationError, '.*Start IP address must be within subnet.*'):
+            ValidationError, ".*Start IP address must be within subnet.*"
+        ):
             iprange.save()
 
     def test__requires_end_ip_to_be_within_subnet(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.1', end_ip='193.168.0.254',
-            subnet=subnet, type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.1",
+            end_ip="193.168.0.254",
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
             user=factory.make_User(),
-            comment="The quick brown cow jumps over the lazy moon.")
+            comment="The quick brown cow jumps over the lazy moon.",
+        )
         with ExpectedException(
-                ValidationError, '.*End IP address must be within subnet.*'):
+            ValidationError, ".*End IP address must be within subnet.*"
+        ):
             iprange.save()
 
     def test__requires_end_ip_to_be_greater_or_equal_to_start_ip(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.2', end_ip='192.168.0.1',
-            user=factory.make_User(), subnet=subnet,
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.1",
+            user=factory.make_User(),
+            subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
-            comment="The quick brown cow jumps over the lazy moon.")
+            comment="The quick brown cow jumps over the lazy moon.",
+        )
         with ExpectedException(
-                ValidationError, '.*End IP address must not be less than.*'):
+            ValidationError, ".*End IP address must not be less than.*"
+        ):
             iprange.save()
 
     def test__requires_end_ip_to_not_be_broadcast(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.254', end_ip='192.168.0.255',
-            user=factory.make_User(), subnet=subnet,
-            type=IPRANGE_TYPE.RESERVED)
+            start_ip="192.168.0.254",
+            end_ip="192.168.0.255",
+            user=factory.make_User(),
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
+        )
         with ExpectedException(
-                ValidationError,
-                '.*Broadcast address cannot be included in IP range.*'):
+            ValidationError,
+            ".*Broadcast address cannot be included in IP range.*",
+        ):
             iprange.save()
 
     def test__requires_start_ip_to_not_be_network(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.0', end_ip='192.168.0.5',
-            user=factory.make_User(), subnet=subnet,
-            type=IPRANGE_TYPE.RESERVED)
+            start_ip="192.168.0.0",
+            end_ip="192.168.0.5",
+            user=factory.make_User(),
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
+        )
         with ExpectedException(
-                ValidationError,
-                '.*Reserved network address cannot be included in IP range.*'):
+            ValidationError,
+            ".*Reserved network address cannot be included in IP range.*",
+        ):
             iprange.save()
 
     def test__requires_start_ip_to_not_be_ipv6_reserved_anycast(self):
         subnet = make_plain_ipv6_subnet()
         iprange = IPRange(
-            start_ip='2001::', end_ip='2001::1',
-            user=factory.make_User(), subnet=subnet,
-            type=IPRANGE_TYPE.RESERVED)
+            start_ip="2001::",
+            end_ip="2001::1",
+            user=factory.make_User(),
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
+        )
         with ExpectedException(
-                ValidationError,
-                '.*Reserved network address cannot be included in IP range.*'):
+            ValidationError,
+            ".*Reserved network address cannot be included in IP range.*",
+        ):
             iprange.save()
 
     def test__requires_256_addresses_for_ipv6_dynamic(self):
         subnet = factory.make_Subnet(
-            cidr='2001:db8::/64', gateway_ip='fe80::1', dns_servers=[])
+            cidr="2001:db8::/64", gateway_ip="fe80::1", dns_servers=[]
+        )
         iprange = IPRange(
-            start_ip='2001:db8::1', end_ip='2001:db8::ff',
-            user=factory.make_User(), subnet=subnet,
+            start_ip="2001:db8::1",
+            end_ip="2001:db8::ff",
+            user=factory.make_User(),
+            subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
-            comment="This is a comment.")
+            comment="This is a comment.",
+        )
         with ExpectedException(
-                ValidationError,
-                ".*IPv6 dynamic range must be "
-                "at least 256 addresses in size."):
+            ValidationError,
+            ".*IPv6 dynamic range must be " "at least 256 addresses in size.",
+        ):
             iprange.save()
 
     def test__requires_type(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.1', end_ip='192.168.0.254',
-            user=factory.make_User(), subnet=subnet,
-            comment="The quick brown mule jumps over the lazy cheetah.")
+            start_ip="192.168.0.1",
+            end_ip="192.168.0.254",
+            user=factory.make_User(),
+            subnet=subnet,
+            comment="The quick brown mule jumps over the lazy cheetah.",
+        )
         with ExpectedException(ValidationError):
             iprange.save()
 
     def test__user_optional(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.2', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.DYNAMIC, subnet=subnet,
-            comment="The quick brown owl jumps over the lazy alligator.")
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.254",
+            type=IPRANGE_TYPE.DYNAMIC,
+            subnet=subnet,
+            comment="The quick brown owl jumps over the lazy alligator.",
+        )
         iprange.save()
 
     def test__comment_optional(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
-            start_ip='192.168.0.2', end_ip='192.168.0.254', subnet=subnet,
-            type=IPRANGE_TYPE.RESERVED, user=factory.make_User())
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.254",
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
+        )
         iprange.save()
 
 
@@ -448,9 +506,10 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
 
     def test__reserved_range_cannot_overlap_dynamic_ranges(self):
         subnet = factory.make_Subnet(
-            cidr='192.168.0.0/24',
-            gateway_ip='192.168.0.1',
-            dns_servers=['192.168.0.50', '192.168.0.200'])
+            cidr="192.168.0.0/24",
+            gateway_ip="192.168.0.1",
+            dns_servers=["192.168.0.50", "192.168.0.200"],
+        )
         IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -468,9 +527,10 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
 
     def test__reserved_range_cannot_overlap_reserved_ranges(self):
         subnet = factory.make_Subnet(
-            cidr='192.168.0.0/24',
-            gateway_ip='192.168.0.1',
-            dns_servers=['192.168.0.50', '192.168.0.200'])
+            cidr="192.168.0.0/24",
+            gateway_ip="192.168.0.1",
+            dns_servers=["192.168.0.50", "192.168.0.200"],
+        )
         IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.RESERVED,
@@ -490,11 +550,15 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         subnet = make_plain_subnet()
         factory.make_StaticIPAddress(
             subnet=subnet,
-            alloc_type=random.choice((
-                IPADDRESS_TYPE.AUTO,
-                IPADDRESS_TYPE.STICKY,
-                IPADDRESS_TYPE.USER_RESERVED,
-                IPADDRESS_TYPE.DISCOVERED)))
+            alloc_type=random.choice(
+                (
+                    IPADDRESS_TYPE.AUTO,
+                    IPADDRESS_TYPE.STICKY,
+                    IPADDRESS_TYPE.USER_RESERVED,
+                    IPADDRESS_TYPE.DISCOVERED,
+                )
+            ),
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.RESERVED,
@@ -509,8 +573,9 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_network(
-                IPNetwork(subnet.cidr),
-                but_not=['192.168.0.1']))
+                IPNetwork(subnet.cidr), but_not=["192.168.0.1"]
+            ),
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -526,8 +591,9 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(
-                IPNetwork(subnet.cidr),
-                but_not=['192.168.0.1']))
+                IPNetwork(subnet.cidr), but_not=["192.168.0.1"]
+            ),
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -543,8 +609,9 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
             ip=factory.pick_ip_in_network(
-                IPNetwork(subnet.cidr),
-                but_not=['192.168.0.1']))
+                IPNetwork(subnet.cidr), but_not=["192.168.0.1"]
+            ),
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -560,7 +627,8 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         factory.make_StaticIPAddress(
             ip="192.168.0.3",
             alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            subnet=subnet)
+            subnet=subnet,
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -575,7 +643,8 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         factory.make_StaticIPAddress(
             ip="192.168.0.3",
             alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            subnet=subnet)
+            subnet=subnet,
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -586,9 +655,10 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
 
     def test__dynamic_range_cannot_overlap_dns_servers(self):
         subnet = factory.make_Subnet(
-            cidr='192.168.0.0/24',
-            gateway_ip='192.168.0.1',
-            dns_servers=['192.168.0.50', '192.168.0.200'])
+            cidr="192.168.0.0/24",
+            gateway_ip="192.168.0.1",
+            dns_servers=["192.168.0.50", "192.168.0.200"],
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -600,9 +670,10 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
 
     def test__reserved_range_can_overlap_dns_servers(self):
         subnet = factory.make_Subnet(
-            cidr='192.168.0.0/24',
-            gateway_ip='192.168.0.1',
-            dns_servers=['192.168.0.50', '192.168.0.200'])
+            cidr="192.168.0.0/24",
+            gateway_ip="192.168.0.1",
+            dns_servers=["192.168.0.50", "192.168.0.200"],
+        )
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.RESERVED,

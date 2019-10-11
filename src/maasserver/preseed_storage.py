@@ -3,16 +3,11 @@
 
 """Preseed generation for curtin storage."""
 
-__all__ = [
-    "compose_curtin_storage_config",
-]
+__all__ = ["compose_curtin_storage_config"]
 
 from operator import attrgetter
 
-from django.db.models import (
-    Q,
-    Sum,
-)
+from django.db.models import Q, Sum
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -81,12 +76,9 @@ class CurtinStorageGenerator:
         # Render the resulting YAML.
         storage_config = {
             "partitioning_commands": {
-                "builtin": ["curtin", "block-meta", "custom"],
+                "builtin": ["curtin", "block-meta", "custom"]
             },
-            "storage": {
-                "version": 1,
-                "config": self.storage_config,
-            },
+            "storage": {"version": 1, "config": self.storage_config},
         }
         return yaml.safe_dump(storage_config)
 
@@ -96,17 +88,19 @@ class CurtinStorageGenerator:
         These operations come from all of the physical block devices attached
         to the node.
         """
-        for block_device in self.node.blockdevice_set.order_by('id'):
+        for block_device in self.node.blockdevice_set.order_by("id"):
             block_device = block_device.actual_instance
             if isinstance(
-                    block_device, (ISCSIBlockDevice, PhysicalBlockDevice)):
+                block_device, (ISCSIBlockDevice, PhysicalBlockDevice)
+            ):
                 self.operations["disk"].append(block_device)
             elif isinstance(block_device, VirtualBlockDevice):
                 filesystem_group = block_device.filesystem_group
                 if filesystem_group.is_lvm():
                     if filesystem_group not in self.operations["lvm_volgroup"]:
                         self.operations["lvm_volgroup"].append(
-                            filesystem_group)
+                            filesystem_group
+                        )
                     self.operations["lvm_partition"].append(block_device)
                 elif filesystem_group.is_raid():
                     self.operations["raid"].append(filesystem_group)
@@ -116,11 +110,14 @@ class CurtinStorageGenerator:
                     self.operations["vmfs"].append(filesystem_group)
                 else:
                     raise ValueError(
-                        "Unknown filesystem group type: %s" % (
-                            filesystem_group.group_type))
+                        "Unknown filesystem group type: %s"
+                        % (filesystem_group.group_type)
+                    )
             else:
-                raise ValueError("Unknown block device instance: %s" % (
-                    block_device.__class__.__name__))
+                raise ValueError(
+                    "Unknown block device instance: %s"
+                    % (block_device.__class__.__name__)
+                )
 
     def _requires_prep_partition(self, block_device):
         """Return True if block device requires the prep partition."""
@@ -139,21 +136,23 @@ class CurtinStorageGenerator:
         These operations come from all the partitions on all block devices
         attached to the node.
         """
-        for block_device in self.node.blockdevice_set.order_by('id'):
+        for block_device in self.node.blockdevice_set.order_by("id"):
             requires_prep = self._requires_prep_partition(block_device)
             requires_bios_grub = self._requires_bios_grub_partition(
-                block_device)
+                block_device
+            )
             partition_table = block_device.get_partitiontable()
             if partition_table is not None:
-                partitions = list(partition_table.partitions.order_by('id'))
+                partitions = list(partition_table.partitions.order_by("id"))
                 for idx, partition in enumerate(partitions):
                     # If this is the first partition and prep or bios_grub
                     # partition is required then track this as a first
                     # partition for boot
                     is_boot_partition = (
-                        (requires_prep or requires_bios_grub) and
-                        block_device.id in self.grub_device_ids and
-                        idx == 0)
+                        (requires_prep or requires_bios_grub)
+                        and block_device.id in self.grub_device_ids
+                        and idx == 0
+                    )
                     if is_boot_partition:
                         self.boot_first_partitions.append(partition)
                     self.operations["partition"].append(partition)
@@ -164,7 +163,7 @@ class CurtinStorageGenerator:
         These operations come from all the block devices and partitions
         attached to the node.
         """
-        for block_device in self.node.blockdevice_set.order_by('id'):
+        for block_device in self.node.blockdevice_set.order_by("id"):
             filesystem = block_device.get_effective_filesystem()
             if self._requires_format_operation(filesystem):
                 self.operations["format"].append(filesystem)
@@ -173,16 +172,20 @@ class CurtinStorageGenerator:
             else:
                 partition_table = block_device.get_partitiontable()
                 if partition_table is not None:
-                    for partition in partition_table.partitions.order_by('id'):
+                    for partition in partition_table.partitions.order_by("id"):
                         partition_filesystem = (
-                            partition.get_effective_filesystem())
+                            partition.get_effective_filesystem()
+                        )
                         if self._requires_format_operation(
-                                partition_filesystem):
+                            partition_filesystem
+                        ):
                             self.operations["format"].append(
-                                partition_filesystem)
+                                partition_filesystem
+                            )
                             if partition_filesystem.is_mounted:
                                 self.operations["mount"].append(
-                                    partition_filesystem)
+                                    partition_filesystem
+                                )
 
         for filesystem in self.node.special_filesystems.filter(acquired=True):
             self.operations["mount"].append(filesystem)
@@ -190,23 +193,26 @@ class CurtinStorageGenerator:
     def _requires_format_operation(self, filesystem):
         """Return True if the filesystem requires a format operation."""
         return (
-            filesystem is not None and
-            filesystem.filesystem_group_id is None and
-            filesystem.cache_set is None)
+            filesystem is not None
+            and filesystem.filesystem_group_id is None
+            and filesystem.cache_set is None
+        )
 
     def _find_grub_devices(self):
         """Save which devices should have grub installed."""
         for raid in self.operations["raid"]:
             partition_ids, block_devices_ids = zip(
-                *raid.filesystems.values_list('partition', 'block_device'))
+                *raid.filesystems.values_list("partition", "block_device")
+            )
             partition_ids = set(partition_ids)
             partition_ids.discard(None)
             block_devices_ids = set(block_devices_ids)
             block_devices_ids.discard(None)
             devices = PhysicalBlockDevice.objects.filter(
-                Q(id__in=block_devices_ids) |
-                Q(partitiontable__partitions__in=partition_ids))
-            devices = list(devices.values_list('id', flat=True))
+                Q(id__in=block_devices_ids)
+                | Q(partitiontable__partitions__in=partition_ids)
+            )
+            devices = list(devices.values_list("id", flat=True))
             if self.boot_disk.id in devices:
                 self.grub_device_ids = devices
 
@@ -252,23 +258,27 @@ class CurtinStorageGenerator:
         should_install_grub = block_device.id in self.grub_device_ids
 
         if partition_table is not None:
-            disk_operation["ptable"] = self._get_ptable_type(
-                partition_table)
+            disk_operation["ptable"] = self._get_ptable_type(partition_table)
         elif should_install_grub:
-            gpt_table = (
-                bios_boot_method in ["uefi", "powernv", "powerkvm"] or
-                (bios_boot_method != "uefi" and node_arch == "amd64"))
+            gpt_table = bios_boot_method in [
+                "uefi",
+                "powernv",
+                "powerkvm",
+            ] or (bios_boot_method != "uefi" and node_arch == "amd64")
             disk_operation["ptable"] = "gpt" if gpt_table else "msdos"
             add_prep_partition = (
-                node_arch == "ppc64el" and
-                bios_boot_method in ("uefi", "powernv", "powerkvm"))
+                node_arch == "ppc64el"
+                and bios_boot_method in ("uefi", "powernv", "powerkvm")
+            )
 
         # always add a boot partition for GPT without UEFI. ESXi doesn't
         # need a partition added as one is already in the DD format.
         add_bios_grub_partition = (
-            disk_operation.get("ptable") == "gpt" and
-            node_arch == "amd64" and bios_boot_method != "uefi" and
-            self.node.osystem != "esxi")
+            disk_operation.get("ptable") == "gpt"
+            and node_arch == "amd64"
+            and bios_boot_method != "uefi"
+            and self.node.osystem != "esxi"
+        )
 
         # Set this disk to be the grub device if it's the boot disk and doesn't
         # require a prep partition. When a prep partition is required grub
@@ -298,12 +308,13 @@ class CurtinStorageGenerator:
             return "gpt"
         else:
             raise ValueError(
-                "Unknown partition table type: %s" % (
-                    partition_table.table_type))
+                "Unknown partition table type: %s"
+                % (partition_table.table_type)
+            )
 
     def _generate_prep_partition(self, device_name):
         """Generate the prep partition at the beginning of the block device."""
-        prep_part_name = "%s-part1" % (device_name)
+        prep_part_name = "%s-part1" % device_name
         partition_operation = {
             "id": prep_part_name,
             "name": prep_part_name,
@@ -321,7 +332,7 @@ class CurtinStorageGenerator:
     def _generate_bios_grub_partition(self, device_name):
         """Generate the bios_grub partition at the beginning of the device."""
         partition_operation = {
-            "id": "%s-part1" % (device_name),
+            "id": "%s-part1" % device_name,
             "type": "partition",
             "number": 1,
             "offset": "%dB" % INITIAL_PARTITION_OFFSET,
@@ -340,13 +351,16 @@ class CurtinStorageGenerator:
                 # partition at the beginning of the partition table.
                 device_name = partition.partition_table.block_device.get_name()
                 if self._requires_prep_partition(
-                        partition.partition_table.block_device):
+                    partition.partition_table.block_device
+                ):
                     self._generate_prep_partition(device_name)
                 self._generate_partition_operation(
-                    partition, include_initial=False)
+                    partition, include_initial=False
+                )
             else:
                 self._generate_partition_operation(
-                    partition, include_initial=True)
+                    partition, include_initial=True
+                )
 
     def _generate_partition_operation(self, partition, include_initial):
         """Generate partition operation for `partition` and place in
@@ -377,35 +391,42 @@ class CurtinStorageGenerator:
                 # extended partition.
                 extended_size = block_device.size - PARTITION_TABLE_EXTRA_SPACE
                 previous_partitions = Partition.objects.filter(
-                    id__lt=partition.id, partition_table=partition_table)
+                    id__lt=partition.id, partition_table=partition_table
+                )
                 extended_size = extended_size - (
-                    previous_partitions.aggregate(Sum('size'))['size__sum'])
+                    previous_partitions.aggregate(Sum("size"))["size__sum"]
+                )
                 # Curtin adds 1MiB between each logical partition inside the
                 # extended partition. It incorrectly adds onto the size
                 # automatically so we have to extract that size from the
                 # overall size of the extended partition.
                 following_partitions = Partition.objects.filter(
-                    id__gte=partition.id, partition_table=partition_table)
+                    id__gte=partition.id, partition_table=partition_table
+                )
                 logical_extra_space = following_partitions.count() * (1 << 20)
                 extended_size = extended_size - logical_extra_space
-                self.storage_config.append({
-                    "id": "%s-part4" % block_device.get_name(),
-                    "type": "partition",
-                    "number": 4,
-                    "device": block_device.get_name(),
-                    "flag": "extended",
-                    "size": "%sB" % extended_size,
-                })
+                self.storage_config.append(
+                    {
+                        "id": "%s-part4" % block_device.get_name(),
+                        "type": "partition",
+                        "number": 4,
+                        "device": block_device.get_name(),
+                        "flag": "extended",
+                        "size": "%sB" % extended_size,
+                    }
+                )
                 partition_operation["flag"] = "logical"
                 partition_operation["size"] = "%sB" % (
-                    partition.size - (1 << 20))
+                    partition.size - (1 << 20)
+                )
             elif partition_number > 5:
                 # Curtin adds 1MiB between each logical partition. We subtract
                 # the 1MiB from the size of the partition so all the partitions
                 # fit within the extended partition.
                 partition_operation["flag"] = "logical"
                 partition_operation["size"] = "%sB" % (
-                    partition.size - (1 << 20))
+                    partition.size - (1 << 20)
+                )
         self.storage_config.append(partition_operation)
 
     def _generate_format_operations(self):
@@ -417,14 +438,16 @@ class CurtinStorageGenerator:
         """Generate format operation for `filesystem` and place in
         `storage_config`."""
         device_or_partition = filesystem.get_parent()
-        self.storage_config.append({
-            "id": "%s_format" % device_or_partition.get_name(),
-            "type": "format",
-            "fstype": filesystem.fstype,
-            "uuid": filesystem.uuid,
-            "label": filesystem.label,
-            "volume": device_or_partition.get_name(),
-        })
+        self.storage_config.append(
+            {
+                "id": "%s_format" % device_or_partition.get_name(),
+                "type": "format",
+                "fstype": filesystem.fstype,
+                "uuid": filesystem.uuid,
+                "label": filesystem.label,
+                "volume": device_or_partition.get_name(),
+            }
+        )
 
     def _generate_volume_group_operations(self):
         """Generate all volume group operations."""
@@ -444,9 +467,11 @@ class CurtinStorageGenerator:
         for filesystem in filesystem_group.filesystems.all():
             block_or_partition = filesystem.get_parent()
             volume_group_operation["devices"].append(
-                block_or_partition.get_name())
+                block_or_partition.get_name()
+            )
         volume_group_operation["devices"] = sorted(
-            volume_group_operation["devices"])
+            volume_group_operation["devices"]
+        )
         self.storage_config.append(volume_group_operation)
 
     def _generate_logical_volume_operations(self):
@@ -457,13 +482,15 @@ class CurtinStorageGenerator:
     def _generate_logical_volume_operation(self, block_device):
         """Generate logical volume operation for `block_device` and place in
         `storage_config`."""
-        self.storage_config.append({
-            "id": block_device.get_name(),
-            "name": block_device.name,  # Use name of logical volume only.
-            "type": "lvm_partition",
-            "volgroup": block_device.filesystem_group.name,
-            "size": "%sB" % block_device.size,
-        })
+        self.storage_config.append(
+            {
+                "id": block_device.get_name(),
+                "name": block_device.name,  # Use name of logical volume only.
+                "type": "lvm_partition",
+                "volgroup": block_device.filesystem_group.name,
+                "size": "%sB" % block_device.size,
+            }
+        )
 
     def _generate_raid_operations(self):
         """Generate all raid operations."""
@@ -490,7 +517,8 @@ class CurtinStorageGenerator:
                 raid_operation["spare_devices"].append(name)
         raid_operation["devices"] = sorted(raid_operation["devices"])
         raid_operation["spare_devices"] = sorted(
-            raid_operation["spare_devices"])
+            raid_operation["spare_devices"]
+        )
         block_device = filesystem_group.virtual_device
         partition_table = block_device.get_partitiontable()
         if partition_table is not None:
@@ -520,8 +548,9 @@ class CurtinStorageGenerator:
             "id": filesystem_group.name,
             "name": filesystem_group.name,
             "type": "bcache",
-            "backing_device": filesystem_group.get_bcache_backing_filesystem(
-                ).get_parent().get_name(),
+            "backing_device": filesystem_group.get_bcache_backing_filesystem()
+            .get_parent()
+            .get_name(),
             "cache_device": filesystem_group.cache_set.get_device().get_name(),
             "cache_mode": filesystem_group.cache_mode,
         }
@@ -534,13 +563,16 @@ class CurtinStorageGenerator:
     def _generate_vmfs_operations(self):
         """Generate all vmfs operations."""
         for vmfs in self.operations["vmfs"]:
-            self.storage_config.append({
-                "id": vmfs.name,
-                "name": vmfs.name,
-                "type": "vmfs6",
-                "devices": sorted([
-                    fs.get_parent().name for fs in vmfs.filesystems.all()]),
-            })
+            self.storage_config.append(
+                {
+                    "id": vmfs.name,
+                    "name": vmfs.name,
+                    "type": "vmfs6",
+                    "devices": sorted(
+                        [fs.get_parent().name for fs in vmfs.filesystems.all()]
+                    ),
+                }
+            )
 
     def _reorder_devices(self, ids_above, operation):
         for device in operation["devices"]:
@@ -604,7 +636,8 @@ class CurtinStorageGenerator:
                         break
                 else:
                     raise ValueError(
-                        "Unknown operation type: %s" % operation_type)
+                        "Unknown operation type: %s" % operation_type
+                    )
                 ids_above.append(operation["id"])
 
             # If parsed the entire storage config without breaking out of the
@@ -622,7 +655,7 @@ class CurtinStorageGenerator:
         dependent_idx = [
             idx
             for idx, op in enumerate(self.storage_config)
-            if op['id'] == dependent_id
+            if op["id"] == dependent_id
         ][0]
         self.storage_config.insert(dependent_idx + 1, operation)
 
@@ -633,7 +666,8 @@ class CurtinStorageGenerator:
         # mount the filesystems out of order preventing installation from
         # working correctly.
         mount_operations = sorted(
-            self.operations["mount"], key=attrgetter("mount_point"))
+            self.operations["mount"], key=attrgetter("mount_point")
+        )
         for filesystem in mount_operations:
             self._generate_mount_operation(filesystem)
 
@@ -644,17 +678,22 @@ class CurtinStorageGenerator:
         stanza = {"type": "mount"}
         if device_or_partition == self.node:
             # this is a special filesystem
-            mount_id = filesystem.mount_point.lstrip('/').replace(
-                '/', '-')
-            mount_id += '_mount'
+            mount_id = filesystem.mount_point.lstrip("/").replace("/", "-")
+            mount_id += "_mount"
             stanza.update(
-                {"id": mount_id,
-                 "fstype": filesystem.fstype,
-                 "spec": filesystem.fstype})
+                {
+                    "id": mount_id,
+                    "fstype": filesystem.fstype,
+                    "spec": filesystem.fstype,
+                }
+            )
         else:
             stanza.update(
-                {"id": "%s_mount" % device_or_partition.get_name(),
-                 "device": "%s_format" % device_or_partition.get_name()})
+                {
+                    "id": "%s_mount" % device_or_partition.get_name(),
+                    "device": "%s_format" % device_or_partition.get_name(),
+                }
+            )
         if filesystem.uses_mount_point:
             stanza["path"] = filesystem.mount_point
         if filesystem.mount_options is not None:

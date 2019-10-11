@@ -52,12 +52,7 @@ you want to do.
 For example, to list all machines, you might GET "/MAAS/api/2.0/machines".
 """
 
-__all__ = [
-    'api_doc',
-    'api_doc_title',
-    'describe',
-    'render_api_docs',
-    ]
+__all__ = ["api_doc", "api_doc_title", "describe", "render_api_docs"]
 
 from functools import partial
 from inspect import getdoc
@@ -85,14 +80,18 @@ from maasserver.utils import build_absolute_uri
 # Title section for the API documentation.  Matches in style, format,
 # etc. whatever render_api_docs() produces, so that you can concatenate
 # the two.
-api_doc_title = dedent("""
+api_doc_title = dedent(
+    """
     :tocdepth: 3
     .. _region-controller-api:
 
     ========
     MAAS API
     ========
-    """.lstrip('\n'))
+    """.lstrip(
+        "\n"
+    )
+)
 
 
 def render_api_docs():
@@ -114,8 +113,8 @@ def render_api_docs():
     line(getdoc(module))
     line()
     line()
-    line('Operations')
-    line('``````````')
+    line("Operations")
+    line("``````````")
     line()
 
     def export_key(export):
@@ -139,7 +138,7 @@ def render_api_docs():
         # Derive a section title from the name of the handler class.
         section_name = doc.handler.api_doc_section_name
         line(section_name)
-        line('=' * len(section_name))
+        line("=" * len(section_name))
         # Note:
         # The following dedent is useless in the following situation:
         #
@@ -177,14 +176,19 @@ def render_api_docs():
                 if APIDocstringParser.is_annotated_docstring(docstring):
                     operation = "op=%s" % op if op is not None else ""
                     annotation_parser.parse(
-                        docstring, http_method, uri_template, operation)
-                    line(templates.apply_template(os.path.dirname(__file__) +
-                         "/tmpl-apidoc.rst", annotation_parser))
+                        docstring, http_method, uri_template, operation
+                    )
+                    line(
+                        templates.apply_template(
+                            os.path.dirname(__file__) + "/tmpl-apidoc.rst",
+                            annotation_parser,
+                        )
+                    )
                 else:
-                    line("%s\n%s\n" % (subsection, '#' * len(subsection)))
+                    line("%s\n%s\n" % (subsection, "#" * len(subsection)))
                     line()
                     for docline in dedent(docstring).splitlines():
-                        if docline.strip() == '':
+                        if docline.strip() == "":
                             # Blank line.  Don't indent.
                             line()
                         else:
@@ -192,7 +196,7 @@ def render_api_docs():
                             line(docline)
                 line()
             else:
-                line("%s\n%s\n" % (subsection, '#' * len(subsection)))
+                line("%s\n%s\n" % (subsection, "#" * len(subsection)))
                 line()
 
     line()
@@ -206,8 +210,8 @@ def render_api_docs():
 
 
 def reST_to_html_fragment(a_str):
-    parts = core.publish_parts(source=a_str, writer_name='html')
-    return parts['body_pre_docinfo'] + parts['fragment']
+    parts = core.publish_parts(source=a_str, writer_name="html")
+    return parts["body_pre_docinfo"] + parts["fragment"]
 
 
 def api_doc(request):
@@ -216,8 +220,10 @@ def api_doc(request):
     # that at the module level because the API doc generation needs Django
     # fully initialized.
     return render(
-        request, 'maasserver/api_doc.html',
-        {'doc': reST_to_html_fragment(render_api_docs())})
+        request,
+        "maasserver/api_doc.html",
+        {"doc": reST_to_html_fragment(render_api_docs())},
+    )
 
 
 def describe(request):
@@ -243,5 +249,5 @@ def describe(request):
                 handler["uri"] = absolute(handler["path"])
     # Return as a JSON document.
     return HttpResponse(
-        json.dumps(description),
-        content_type="application/json")
+        json.dumps(description), content_type="application/json"
+    )

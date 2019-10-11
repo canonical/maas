@@ -13,84 +13,88 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-)
+from testtools.matchers import ContainsDict, Equals
 
 
 def get_staticroutes_uri():
     """Return a static route's URI on the API."""
-    return reverse('staticroutes_handler', args=[])
+    return reverse("staticroutes_handler", args=[])
 
 
 def get_staticroute_uri(route):
     """Return a static route URI on the API."""
-    return reverse(
-        'staticroute_handler', args=[route.id])
+    return reverse("staticroute_handler", args=[route.id])
 
 
 class TestStaticRoutesAPI(APITestCase.ForUser):
-
     def test_handler_path(self):
         self.assertEqual(
-            '/MAAS/api/2.0/static-routes/', get_staticroutes_uri())
+            "/MAAS/api/2.0/static-routes/", get_staticroutes_uri()
+        )
 
     def test_read(self):
-        routes = [
-            factory.make_StaticRoute().id
-            for _ in range(3)
-        ]
+        routes = [factory.make_StaticRoute().id for _ in range(3)]
         uri = get_staticroutes_uri()
         response = self.client.get(uri)
 
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         result_ids = [
-            route["id"]
-            for route in json_load_bytes(response.content)
-            ]
+            route["id"] for route in json_load_bytes(response.content)
+        ]
         self.assertItemsEqual(routes, result_ids)
 
     def test_create(self):
         self.become_admin()
         source = factory.make_Subnet()
         destination = factory.make_Subnet(
-            version=source.get_ipnetwork().version)
+            version=source.get_ipnetwork().version
+        )
         gateway_ip = factory.pick_ip_in_Subnet(source)
         uri = get_staticroutes_uri()
-        response = self.client.post(uri, {
-            "source": source.id,
-            "destination": destination.id,
-            "gateway_ip": gateway_ip,
-        })
+        response = self.client.post(
+            uri,
+            {
+                "source": source.id,
+                "destination": destination.id,
+                "gateway_ip": gateway_ip,
+            },
+        )
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         self.assertEqual(
-            gateway_ip, json_load_bytes(response.content)['gateway_ip'])
+            gateway_ip, json_load_bytes(response.content)["gateway_ip"]
+        )
 
     def test_create_admin_only(self):
         source = factory.make_Subnet()
         destination = factory.make_Subnet(
-            version=source.get_ipnetwork().version)
+            version=source.get_ipnetwork().version
+        )
         gateway_ip = factory.pick_ip_in_Subnet(source)
         uri = get_staticroutes_uri()
-        response = self.client.post(uri, {
-            "source": source.id,
-            "destination": destination.id,
-            "gateway_ip": gateway_ip,
-        })
+        response = self.client.post(
+            uri,
+            {
+                "source": source.id,
+                "destination": destination.id,
+                "gateway_ip": gateway_ip,
+            },
+        )
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
 
 class TestStaticRouteAPI(APITestCase.ForUser):
-
     def test_handler_path(self):
         route = factory.make_StaticRoute()
         self.assertEqual(
-            '/MAAS/api/2.0/static-routes/%s/' % route.id,
-            get_staticroute_uri(route))
+            "/MAAS/api/2.0/static-routes/%s/" % route.id,
+            get_staticroute_uri(route),
+        )
 
     def test_read(self):
         route = factory.make_StaticRoute()
@@ -98,50 +102,55 @@ class TestStaticRouteAPI(APITestCase.ForUser):
         response = self.client.get(uri)
 
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         parsed_route = json_load_bytes(response.content)
-        self.assertThat(parsed_route, ContainsDict({
-            "id": Equals(route.id),
-            "source": ContainsDict({
-                "cidr": Equals(route.source.cidr)
-            }),
-            "destination": ContainsDict({
-                "cidr": Equals(route.destination.cidr)
-            }),
-            "gateway_ip": Equals(route.gateway_ip),
-            "metric": Equals(route.metric),
-            }))
+        self.assertThat(
+            parsed_route,
+            ContainsDict(
+                {
+                    "id": Equals(route.id),
+                    "source": ContainsDict(
+                        {"cidr": Equals(route.source.cidr)}
+                    ),
+                    "destination": ContainsDict(
+                        {"cidr": Equals(route.destination.cidr)}
+                    ),
+                    "gateway_ip": Equals(route.gateway_ip),
+                    "metric": Equals(route.metric),
+                }
+            ),
+        )
 
     def test_read_404_when_bad_id(self):
-        uri = reverse(
-            'staticroute_handler', args=[random.randint(100, 1000)])
+        uri = reverse("staticroute_handler", args=[random.randint(100, 1000)])
         response = self.client.get(uri)
         self.assertEqual(
-            http.client.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
 
     def test_update(self):
         self.become_admin()
         route = factory.make_StaticRoute()
         new_metric = random.randint(0, 100)
         uri = get_staticroute_uri(route)
-        response = self.client.put(uri, {
-            "metric": new_metric,
-        })
+        response = self.client.put(uri, {"metric": new_metric})
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content
+        )
         self.assertEqual(
-            new_metric, json_load_bytes(response.content)['metric'])
+            new_metric, json_load_bytes(response.content)["metric"]
+        )
         self.assertEqual(new_metric, reload_object(route).metric)
 
     def test_update_admin_only(self):
         route = factory.make_StaticRoute()
         new_metric = random.randint(0, 100)
         uri = get_staticroute_uri(route)
-        response = self.client.put(uri, {
-            "metric": new_metric,
-        })
+        response = self.client.put(uri, {"metric": new_metric})
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
 
     def test_delete_deletes_fabric(self):
         self.become_admin()
@@ -149,7 +158,8 @@ class TestStaticRouteAPI(APITestCase.ForUser):
         uri = get_staticroute_uri(route)
         response = self.client.delete(uri)
         self.assertEqual(
-            http.client.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
         self.assertIsNone(reload_object(route))
 
     def test_delete_403_when_not_admin(self):
@@ -157,13 +167,14 @@ class TestStaticRouteAPI(APITestCase.ForUser):
         uri = get_staticroute_uri(route)
         response = self.client.delete(uri)
         self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
         self.assertIsNotNone(reload_object(route))
 
     def test_delete_404_when_invalid_id(self):
         self.become_admin()
-        uri = reverse(
-            'staticroute_handler', args=[random.randint(100, 1000)])
+        uri = reverse("staticroute_handler", args=[random.randint(100, 1000)])
         response = self.client.delete(uri)
         self.assertEqual(
-            http.client.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content
+        )

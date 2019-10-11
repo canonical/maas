@@ -29,12 +29,10 @@ from testtools.matchers import (
 from twisted.internet.defer import inlineCallbacks
 
 
-is_valid_port = MatchesAll(
-    IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
+is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
 
 
 class RPCViewTest(MAASTransactionServerTestCase):
-
     def setUp(self):
         super(RPCViewTest, self).setUp()
         self.maas_id = None
@@ -52,7 +50,7 @@ class RPCViewTest(MAASTransactionServerTestCase):
         self.get_maas_id.side_effect = get_maas_id
 
     def test_rpc_info_empty(self):
-        response = self.client.get(reverse('rpc-info'))
+        response = self.client.get(reverse("rpc-info"))
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content.decode("unicode_escape"))
         self.assertThat(info, KeysEqual("eventloops"))
@@ -69,7 +67,9 @@ class RPCViewTest(MAASTransactionServerTestCase):
         # workers service because this test runs in all-in-one mode.
         self.useFixture(
             RegionEventLoopFixture(
-                "ipc-master", "ipc-worker", "rpc", "workers"))
+                "ipc-master", "ipc-worker", "rpc", "workers"
+            )
+        )
 
         eventloop.start(master=True, all_in_one=True).wait(5)
         self.addCleanup(lambda: eventloop.reset().wait(5))
@@ -87,19 +87,27 @@ class RPCViewTest(MAASTransactionServerTestCase):
             # Force an update, because it's very hard to track when the
             # first iteration of the ipc-master service has completed.
             yield ipcMaster.update()
+
         wait_for_startup()
 
-        response = self.client.get(reverse('rpc-info'))
+        response = self.client.get(reverse("rpc-info"))
 
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content.decode("unicode_escape"))
         self.assertThat(info, KeysEqual("eventloops"))
-        self.assertThat(info["eventloops"], MatchesDict({
-            # Each entry in the endpoints dict is a mapping from an
-            # event loop to a list of (host, port) tuples. Each tuple is
-            # a potential endpoint for connecting into that event loop.
-            eventloop.loop.name: MatchesSetwise(*(
-                MatchesListwise((Equals(addr), is_valid_port))
-                for addr, _ in ipcMaster._getListenAddresses(5240)
-            )),
-        }))
+        self.assertThat(
+            info["eventloops"],
+            MatchesDict(
+                {
+                    # Each entry in the endpoints dict is a mapping from an
+                    # event loop to a list of (host, port) tuples. Each tuple is
+                    # a potential endpoint for connecting into that event loop.
+                    eventloop.loop.name: MatchesSetwise(
+                        *(
+                            MatchesListwise((Equals(addr), is_valid_port))
+                            for addr, _ in ipcMaster._getListenAddresses(5240)
+                        )
+                    )
+                }
+            ),
+        )

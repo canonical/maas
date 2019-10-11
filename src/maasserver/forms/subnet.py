@@ -3,9 +3,7 @@
 
 """Subnet form."""
 
-__all__ = [
-    "SubnetForm",
-]
+__all__ = ["SubnetForm"]
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -17,78 +15,71 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import get_one
-from netaddr import (
-    AddrFormatError,
-    IPNetwork,
-)
+from netaddr import AddrFormatError, IPNetwork
 
 
 class SubnetForm(MAASModelForm):
     """Subnet creation/edition form."""
 
     fabric = forms.ModelChoiceField(
-        queryset=Fabric.objects.all(), required=False)
+        queryset=Fabric.objects.all(), required=False
+    )
 
-    vlan = forms.ModelChoiceField(
-        queryset=VLAN.objects.all(), required=False)
+    vlan = forms.ModelChoiceField(queryset=VLAN.objects.all(), required=False)
 
-    vid = forms.IntegerField(
-        min_value=0, max_value=4094, required=False)
+    vid = forms.IntegerField(min_value=0, max_value=4094, required=False)
 
-    rdns_mode = forms.ChoiceField(
-        choices=RDNS_MODE_CHOICES, required=False)
+    rdns_mode = forms.ChoiceField(choices=RDNS_MODE_CHOICES, required=False)
 
-    active_discovery = forms.BooleanField(
-        required=False)
+    active_discovery = forms.BooleanField(required=False)
 
-    allow_dns = forms.BooleanField(
-        required=False)
+    allow_dns = forms.BooleanField(required=False)
 
-    allow_proxy = forms.BooleanField(
-        required=False)
+    allow_proxy = forms.BooleanField(required=False)
 
-    managed = forms.BooleanField(
-        required=False)
+    managed = forms.BooleanField(required=False)
 
     class Meta:
         model = Subnet
         fields = (
-            'name',
-            'description',
-            'vlan',
-            'cidr',
-            'gateway_ip',
-            'dns_servers',
-            'rdns_mode',
-            'active_discovery',
-            'allow_dns',
-            'allow_proxy',
-            'managed',
-            )
+            "name",
+            "description",
+            "vlan",
+            "cidr",
+            "gateway_ip",
+            "dns_servers",
+            "rdns_mode",
+            "active_discovery",
+            "allow_dns",
+            "allow_proxy",
+            "managed",
+        )
 
     def __init__(self, *args, **kwargs):
         super(SubnetForm, self).__init__(*args, **kwargs)
-        self.fields['name'].required = False
+        self.fields["name"].required = False
 
     def clean(self):
         cleaned_data = super(SubnetForm, self).clean()
-        if 'space' in self.data:
+        if "space" in self.data:
             set_form_error(
-                self, "space",
+                self,
+                "space",
                 "Spaces may no longer be set on subnets. Set the space on the "
-                "underlying VLAN.")
+                "underlying VLAN.",
+            )
         # The default value for 'allow_dns' is True.
-        if 'allow_dns' not in self.data:
-            cleaned_data['allow_dns'] = True
+        if "allow_dns" not in self.data:
+            cleaned_data["allow_dns"] = True
         # The default value for 'allow_proxy' is True.
-        if 'allow_proxy' not in self.data:
-            cleaned_data['allow_proxy'] = True
+        if "allow_proxy" not in self.data:
+            cleaned_data["allow_proxy"] = True
         # The default value for 'managed' is True.
-        if 'managed' not in self.data:
-            cleaned_data['managed'] = True
+        if "managed" not in self.data:
+            cleaned_data["managed"] = True
         # The ArrayField form has a bug which leaves out the first entry.
-        if 'dns_servers' in self.data and self.data['dns_servers'] != '':
-            cleaned_data['dns_servers'] = self.data.getlist('dns_servers')
+        if "dns_servers" in self.data and self.data["dns_servers"] != "":
+            cleaned_data["dns_servers"] = self.data.getlist("dns_servers")
         cleaned_data = self._clean_name(cleaned_data)
         cleaned_data = self._clean_dns_servers(cleaned_data)
         if self.instance.id is None:
@@ -99,7 +90,7 @@ class SubnetForm(MAASModelForm):
         return cleaned_data
 
     def clean_cidr(self):
-        data = self.cleaned_data['cidr']
+        data = self.cleaned_data["cidr"]
         try:
             network = IPNetwork(data)
             if network.prefixlen == 0:
@@ -111,11 +102,11 @@ class SubnetForm(MAASModelForm):
     def _clean_name(self, cleaned_data):
         name = cleaned_data.get("name", None)
         instance_name_and_cidr_match = (
-            self.instance.id is not None and
-            name == self.instance.name and
-            name == self.instance.cidr)
-        if (not name and "cidr" not in self.errors and
-                self.instance.id is None):
+            self.instance.id is not None
+            and name == self.instance.name
+            and name == self.instance.cidr
+        )
+        if not name and "cidr" not in self.errors and self.instance.id is None:
             # New subnet without name so set it to cidr.
             cleaned_data["name"] = cleaned_data["cidr"]
         elif instance_name_and_cidr_match and "cidr" not in self.errors:
@@ -129,16 +120,21 @@ class SubnetForm(MAASModelForm):
         vid = cleaned_data.get("vid", None)
         if fabric is None and vlan is None:
             if not vid:
-                cleaned_data["vlan"] = (
-                    Fabric.objects.get_default_fabric().get_default_vlan())
+                cleaned_data[
+                    "vlan"
+                ] = Fabric.objects.get_default_fabric().get_default_vlan()
             else:
                 vlan = get_one(
                     VLAN.objects.filter(
-                        fabric=Fabric.objects.get_default_fabric(), vid=vid))
+                        fabric=Fabric.objects.get_default_fabric(), vid=vid
+                    )
+                )
                 if vlan is None:
                     set_form_error(
-                        self, "vid",
-                        "No VLAN with vid %s in default fabric." % vid)
+                        self,
+                        "vid",
+                        "No VLAN with vid %s in default fabric." % vid,
+                    )
                 else:
                     cleaned_data["vlan"] = vlan
         elif fabric is not None:
@@ -149,15 +145,19 @@ class SubnetForm(MAASModelForm):
                     vlan = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
                     if vlan is None:
                         set_form_error(
-                            self, "vid",
-                            "No VLAN with vid %s in fabric %s." % (
-                                vid, fabric))
+                            self,
+                            "vid",
+                            "No VLAN with vid %s in fabric %s."
+                            % (vid, fabric),
+                        )
                     else:
                         cleaned_data["vlan"] = vlan
             elif vlan.fabric_id != fabric.id:
                 set_form_error(
-                    self, "vlan",
-                    "VLAN %s is not in fabric %s." % (vlan, fabric))
+                    self,
+                    "vlan",
+                    "VLAN %s is not in fabric %s." % (vlan, fabric),
+                )
         return cleaned_data
 
     def _clean_dns_servers(self, cleaned_data):

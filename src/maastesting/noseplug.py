@@ -3,13 +3,7 @@
 
 """Nose plugins for MAAS."""
 
-__all__ = [
-    "Crochet",
-    "main",
-    "Scenarios",
-    "Select",
-    "Resources",
-]
+__all__ = ["Crochet", "main", "Scenarios", "Select", "Resources"]
 
 import inspect
 import io
@@ -46,7 +40,7 @@ class Crochet(Plugin):
 
     name = "crochet"
     option_no_setup = "%s_no_setup" % name
-    log = logging.getLogger('nose.plugins.%s' % name)
+    log = logging.getLogger("nose.plugins.%s" % name)
 
     def options(self, parser, env):
         """Add options to Nose's parser.
@@ -55,10 +49,11 @@ class Crochet(Plugin):
         """
         super(Crochet, self).options(parser, env)
         parser.add_option(
-            "--%s-no-setup" % self.name, dest=self.option_no_setup,
-            action="store_true", default=False, help=(
-                "Initialize the crochet library with no side effects."
-            ),
+            "--%s-no-setup" % self.name,
+            dest=self.option_no_setup,
+            action="store_true",
+            default=False,
+            help="Initialize the crochet library with no side effects.",
         )
 
     def configure(self, options, conf):
@@ -107,7 +102,7 @@ class Resources(Plugin):
     """Optimise the use of test resources."""
 
     name = "resources"
-    log = logging.getLogger('nose.plugins.%s' % name)
+    log = logging.getLogger("nose.plugins.%s" % name)
 
     def prepareTest(self, test):
         """Convert the test suite gathered by Nose.
@@ -141,7 +136,7 @@ class Scenarios(Plugin):
     """Expand test scenarios so that they're visible to Nose."""
 
     name = "scenarios"
-    log = logging.getLogger('nose.plugins.%s' % name)
+    log = logging.getLogger("nose.plugins.%s" % name)
 
     def makeTest(self, obj, parent):
         """Attempt to expand test scenarios in the given test or tests.
@@ -199,7 +194,7 @@ class Select(Plugin):
 
     name = "select"
     option_dirs = "%s_dirs" % name
-    log = logging.getLogger('nose.plugins.%s' % name)
+    log = logging.getLogger("nose.plugins.%s" % name)
 
     def __init__(self):
         super(Select, self).__init__()
@@ -212,8 +207,12 @@ class Select(Plugin):
         """
         super(Select, self).options(parser, env)
         parser.add_option(
-            "--%s-dir" % self.name, "--%s-directory" % self.name,
-            dest=self.option_dirs, action="append", default=[], help=(
+            "--%s-dir" % self.name,
+            "--%s-directory" % self.name,
+            dest=self.option_dirs,
+            action="append",
+            default=[],
+            help=(
                 "Allow test discovery in this directory. Explicitly named "
                 "tests outside of this directory may still be loaded. This "
                 "option can be given multiple times to allow discovery in "
@@ -235,7 +234,8 @@ class Select(Plugin):
             if self.log.isEnabledFor(logging.DEBUG):
                 self.log.debug(
                     "Limiting to the following directories "
-                    "(exact matches only):")
+                    "(exact matches only):"
+                )
                 for path in sorted(self.dirs):
                     self.log.debug("- %s", path)
 
@@ -286,7 +286,7 @@ class SelectBucket(Plugin):
 
     name = "select-bucket"
     option_selected_bucket = "%s_selected_bucket" % name
-    log = logging.getLogger('nose.plugins.%s' % name)
+    log = logging.getLogger("nose.plugins.%s" % name)
     score = 10001  # Run before nose-progressive.
 
     def options(self, parser, env):
@@ -307,9 +307,14 @@ class SelectBucket(Plugin):
 
         super(SelectBucket, self).options(parser, env)
         parser.add_option(
-            "--%s" % self.name, dest=self.option_selected_bucket,
-            action="callback", callback=self._ingestSelectedBucket,
-            type="str", metavar="BUCKET/BUCKETS", default=None, help=(
+            "--%s" % self.name,
+            dest=self.option_selected_bucket,
+            action="callback",
+            callback=self._ingestSelectedBucket,
+            type="str",
+            metavar="BUCKET/BUCKETS",
+            default=None,
+            help=(
                 "Select the number of buckets in which to split tests, and "
                 "which of these buckets to then run, e.g. 8/13 will split "
                 "tests into 13 buckets and will run those in the 8th bucket "
@@ -331,7 +336,8 @@ class SelectBucket(Plugin):
                 bucket, buckets = bucket_buckets
                 offset = bucket - 1  # Zero-based bucket number.
                 self._selectTest = lambda test: (
-                    sum(map(ord, test.id())) % buckets == offset)
+                    sum(map(ord, test.id())) % buckets == offset
+                )
 
     def _ingestSelectedBucket(self, option, option_string, value, parser):
         """Callback for the `--select-bucket` option.
@@ -343,8 +349,7 @@ class SelectBucket(Plugin):
         try:
             value = self._parseSelectedBucket(value)
         except ValueError as error:
-            raise optparse.OptionValueError(
-                "%s: %s" % (option_string, error))
+            raise optparse.OptionValueError("%s: %s" % (option_string, error))
         else:
             setattr(parser.values, option.dest, value)
 
@@ -402,8 +407,9 @@ class SelectiveTestRunner:
             test = type(test)(tests)
         else:
             raise TypeError(
-                "Expected test suite, got %s: %r" % (
-                    type(test).__class__.__name__, test))
+                "Expected test suite, got %s: %r"
+                % (type(test).__class__.__name__, test)
+            )
 
         return self._runner.run(test)
 
@@ -413,7 +419,7 @@ class Subunit(Plugin):
 
     name = "subunit"
     option_fd = "%s_fd" % name
-    log = logging.getLogger('nose.plugins.%s' % name)
+    log = logging.getLogger("nose.plugins.%s" % name)
     score = 2000  # Run really early, beating even xunit.
 
     def options(self, parser, env):
@@ -423,8 +429,12 @@ class Subunit(Plugin):
         """
         super(Subunit, self).options(parser, env)
         parser.add_option(
-            "--%s-fd" % self.name, type=int,
-            dest=self.option_fd, action="store", default=1, help=(
+            "--%s-fd" % self.name,
+            type=int,
+            dest=self.option_fd,
+            action="store",
+            default=1,
+            help=(
                 "Emit subunit via a specific numeric file descriptor, "
                 "stdout (1) by default."
             ),
@@ -444,6 +454,7 @@ class Subunit(Plugin):
 
     def prepareTestResult(self, result):
         from subunit import TestProtocolClient
+
         return TestProtocolClient(self.stream)
 
     def help(self):
@@ -460,6 +471,13 @@ def main():
     At the command-line it's still necessary to enable these with the flags
     ``--with-crochet``, ``--with-resources``, ``--with-scenarios``, and so on.
     """
-    return TestProgram(addplugins=(
-        Crochet(), Resources(), Scenarios(), Select(), SelectBucket(),
-        Subunit()))
+    return TestProgram(
+        addplugins=(
+            Crochet(),
+            Resources(),
+            Scenarios(),
+            Select(),
+            SelectBucket(),
+            Subunit(),
+        )
+    )

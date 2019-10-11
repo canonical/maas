@@ -18,7 +18,6 @@ from maasserver.utils.orm import reload_object
 
 
 class TestCreatePodHints(MAASServerTestCase):
-
     def test_creates_hints_for_pod(self):
         pod = factory.make_Pod()
         self.assertIsNotNone(pod.hints)
@@ -35,5 +34,5 @@ class TestCreatePodHints(MAASServerTestCase):
         pod.bmc_type = BMC_TYPE.BMC
         pod.save()
         self.assertRaises(
-            PodHints.DoesNotExist,
-            lambda: reload_object(pod).hints)
+            PodHints.DoesNotExist, lambda: reload_object(pod).hints
+        )

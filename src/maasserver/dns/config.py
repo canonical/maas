@@ -3,10 +3,7 @@
 
 """DNS management module."""
 
-__all__ = [
-    'dns_force_reload',
-    'dns_update_all_zones',
-    ]
+__all__ = ["dns_force_reload", "dns_update_all_zones"]
 
 from collections import defaultdict
 
@@ -17,10 +14,7 @@ from maasserver.dns.zonegenerator import (
     InternalDomainResourseRecord,
     ZoneGenerator,
 )
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    RDNS_MODE,
-)
+from maasserver.enum import IPADDRESS_TYPE, RDNS_MODE
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
@@ -41,7 +35,7 @@ maaslog = get_maas_logger("dns")
 
 
 def current_zone_serial():
-    return '%0.10d' % DNSPublication.objects.get_most_recent().serial
+    return "%0.10d" % DNSPublication.objects.get_most_recent().serial
 
 
 def is_dns_enabled():
@@ -69,11 +63,15 @@ def dns_update_all_zones(reload_retry=False, reload_timeout=2):
 
     domains = Domain.objects.filter(authoritative=True)
     subnets = Subnet.objects.exclude(rdns_mode=RDNS_MODE.DISABLED)
-    default_ttl = Config.objects.get_config('default_dns_ttl')
+    default_ttl = Config.objects.get_config("default_dns_ttl")
     serial = current_zone_serial()
     zones = ZoneGenerator(
-        domains, subnets, default_ttl,
-        serial, internal_domains=[get_internal_domain()]).as_list()
+        domains,
+        subnets,
+        default_ttl,
+        serial,
+        internal_domains=[get_internal_domain()],
+    ).as_list()
     bind_write_zones(zones)
 
     # We should not be calling bind_write_options() here; call-sites should be
@@ -83,7 +81,8 @@ def dns_update_all_zones(reload_retry=False, reload_timeout=2):
     # set the upstream DNS servers, nothing to do with serving zones at all!
     bind_write_options(
         upstream_dns=get_upstream_dns(),
-        dnssec_validation=get_dnssec_validation())
+        dnssec_validation=get_dnssec_validation(),
+    )
 
     # Nor should we be rewriting ACLs that are related only to allowing
     # recursive queries to the upstream DNS servers. Again, this is legacy,
@@ -101,10 +100,7 @@ def dns_update_all_zones(reload_retry=False, reload_timeout=2):
         reloaded = bind_reload(timeout=reload_timeout)
 
     # Return the current serial and list of domain names.
-    return serial, reloaded, [
-        domain.name
-        for domain in domains
-    ]
+    return serial, reloaded, [domain.name for domain in domains]
 
 
 def get_upstream_dns():
@@ -140,15 +136,14 @@ def get_trusted_networks():
     :return: A list of CIDR-format subnet specifications.
     """
     known_subnets = [
-        str(subnet.cidr)
-        for subnet in Subnet.objects.filter(allow_dns=True)
+        str(subnet.cidr) for subnet in Subnet.objects.filter(allow_dns=True)
     ]
     return list(set(known_subnets + get_trusted_acls()))
 
 
 def get_resource_name_for_subnet(subnet):
     """Convert the subnet CIDR to the resource name."""
-    return subnet.cidr.replace('/', '--').replace(':', '-').replace('.', '-')
+    return subnet.cidr.replace("/", "--").replace(":", "-").replace(".", "-")
 
 
 def _get_controller_ips_by_resource_name(controller):
@@ -157,12 +152,13 @@ def _get_controller_ips_by_resource_name(controller):
         found_static = False
         # Order by alloc_type here because DHCP and DISCOVERED IP addresses
         # are last in the numeric ordering.
-        for ip_address in interface.ip_addresses.all().order_by('alloc_type'):
+        for ip_address in interface.ip_addresses.all().order_by("alloc_type"):
             is_dhcp = False
             if ip_address.alloc_type in (
-                    IPADDRESS_TYPE.AUTO,
-                    IPADDRESS_TYPE.STICKY,
-                    IPADDRESS_TYPE.USER_RESERVED):
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED,
+            ):
                 # If we find a static IP address, take note of that fact,
                 # because that means we'll want to skip adding a DHCP IP
                 # address here if we find one on the same interface. DHCP
@@ -175,7 +171,8 @@ def _get_controller_ips_by_resource_name(controller):
             if ip_address.ip:
                 if not is_dhcp or (not found_static and is_dhcp):
                     resource_name = get_resource_name_for_subnet(
-                        ip_address.subnet)
+                        ip_address.subnet
+                    )
                     ips_by_resource[resource_name].add(ip_address.ip)
     return ips_by_resource
 
@@ -205,7 +202,8 @@ def get_internal_domain():
     # one connection are used in the calculation.
     controllers = RackController.objects.filter(connections__isnull=False)
     controllers = controllers.prefetch_related(
-        'interface_set__ip_addresses__subnet')
+        "interface_set__ip_addresses__subnet"
+    )
 
     ips_by_resource = _get_ips_by_resource_name(controllers)
 
@@ -215,21 +213,21 @@ def get_internal_domain():
         records = []
         for ip_address in ip_addresses:
             if IPAddress(ip_address).version == 4:
-                records.append(InternalDomainResourseRecord(
-                    rrtype='A',
-                    rrdata=ip_address
-                ))
+                records.append(
+                    InternalDomainResourseRecord(rrtype="A", rrdata=ip_address)
+                )
             else:
-                records.append(InternalDomainResourseRecord(
-                    rrtype='AAAA',
-                    rrdata=ip_address
-                ))
-        resources.append(InternalDomainResourse(
-            name=resource_name,
-            records=records,
-        ))
+                records.append(
+                    InternalDomainResourseRecord(
+                        rrtype="AAAA", rrdata=ip_address
+                    )
+                )
+        resources.append(
+            InternalDomainResourse(name=resource_name, records=records)
+        )
 
     return InternalDomain(
-        name=Config.objects.get_config('maas_internal_domain'),
+        name=Config.objects.get_config("maas_internal_domain"),
         ttl=15,
-        resources=resources)
+        resources=resources,
+    )

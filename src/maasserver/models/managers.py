@@ -3,9 +3,7 @@
 
 """Custom MAAS manager classes."""
 
-__all__ = [
-    'BulkManager',
-    ]
+__all__ = ["BulkManager"]
 
 
 from django.db.models import Manager

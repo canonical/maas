@@ -15,13 +15,9 @@ __all__ = [
     "PowerFatalError",
     "PowerSettingError",
     "PowerToolError",
-    ]
+]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractmethod, abstractproperty
 from datetime import timedelta
 import sys
 
@@ -30,63 +26,41 @@ from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
-from provisioningserver.utils.twisted import (
-    IAsynchronous,
-    pause,
-)
+from provisioningserver.utils.twisted import IAsynchronous, pause
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.threads import deferToThread
 
 # We specifically declare this here so that a node not knowing its own
 # powertype won't fail to enlist. However, we don't want it in the list
 # of power types since setting a node's power type to "I don't know"
 # from another type doens't make any sense.
-UNKNOWN_POWER_TYPE = ''
+UNKNOWN_POWER_TYPE = ""
 
 # A policy used when waiting between retries of power changes.
 DEFAULT_WAITING_POLICY = (1, 2, 2, 4, 6, 8, 12)
 
 # JSON schema for what a power driver definition should look like
 JSON_POWER_DRIVER_SCHEMA = {
-    'title': "Power driver setting set",
-    'type': 'object',
-    'properties': {
-        'driver_type': {
-            'type': 'string',
-        },
-        'name': {
-            'type': 'string',
-        },
-        'description': {
-            'type': 'string',
-        },
-        'fields': {
-            'type': 'array',
-            'items': SETTING_PARAMETER_FIELD_SCHEMA,
-        },
-        'ip_extractor': IP_EXTRACTOR_SCHEMA,
-        'queryable': {
-            'type': 'boolean',
-        },
-        'missing_packages': {
-            'type': 'array',
-            'items': {
-                'type': 'string',
-            },
-        },
+    "title": "Power driver setting set",
+    "type": "object",
+    "properties": {
+        "driver_type": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "fields": {"type": "array", "items": SETTING_PARAMETER_FIELD_SCHEMA},
+        "ip_extractor": IP_EXTRACTOR_SCHEMA,
+        "queryable": {"type": "boolean"},
+        "missing_packages": {"type": "array", "items": {"type": "string"}},
     },
-    'required': ['driver_type', 'name', 'description', 'fields'],
+    "required": ["driver_type", "name", "description", "fields"],
 }
 
 # JSON schema for multiple power drivers.
 JSON_POWER_DRIVERS_SCHEMA = {
-    'title': "Power drivers parameters set",
-    'type': 'array',
-    'items': JSON_POWER_DRIVER_SCHEMA,
+    "title": "Power drivers parameters set",
+    "type": "array",
+    "items": JSON_POWER_DRIVER_SCHEMA,
 }
 
 
@@ -156,7 +130,8 @@ class PowerDriverBase(metaclass=ABCMeta):
         super(PowerDriverBase, self).__init__()
         validate(
             self.get_schema(detect_missing_packages=False),
-            JSON_POWER_DRIVER_SCHEMA)
+            JSON_POWER_DRIVER_SCHEMA,
+        )
 
     @abstractproperty
     def name(self):
@@ -239,19 +214,25 @@ class PowerDriverBase(metaclass=ABCMeta):
         Calculates the missing packages on each invoke.
         """
         schema = dict(
-            driver_type='power', name=self.name, description=self.description,
-            fields=self.settings, queryable=self.queryable,
+            driver_type="power",
+            name=self.name,
+            description=self.description,
+            fields=self.settings,
+            queryable=self.queryable,
             missing_packages=(
                 self.detect_missing_packages()
-                if detect_missing_packages else []))
+                if detect_missing_packages
+                else []
+            ),
+        )
         if self.ip_extractor is not None:
-            schema['ip_extractor'] = self.ip_extractor
+            schema["ip_extractor"] = self.ip_extractor
         return schema
 
     def get_setting(self, name):
         """Return the setting field by its name."""
         for setting in self.settings:
-            if setting['name'] == name:
+            if setting["name"] == name:
                 return setting
         return None
 
@@ -325,7 +306,7 @@ class PowerDriver(PowerDriverBase):
         on how retries and error detection is handled.
         """
         state = yield self.query(system_id, context)
-        if state == 'on':
+        if state == "on":
             yield self.perform_power(self.power_off, "off", system_id, context)
         yield self.perform_power(self.power_on, "on", system_id, context)
 
@@ -343,7 +324,8 @@ class PowerDriver(PowerDriverBase):
                     state = yield self.power_query(system_id, context)
                 else:
                     state = yield deferToThread(
-                        self.power_query, system_id, context)
+                        self.power_query, system_id, context
+                    )
             except PowerFatalError:
                 raise  # Don't retry.
             except PowerError:
@@ -379,8 +361,7 @@ class PowerDriver(PowerDriverBase):
                     # The @asynchronous decorator will DTRT.
                     yield power_func(system_id, context)
                 else:
-                    yield deferToThread(
-                        power_func, system_id, context)
+                    yield deferToThread(power_func, system_id, context)
             except PowerFatalError:
                 raise  # Don't retry.
             except PowerError:
@@ -404,7 +385,8 @@ class PowerDriver(PowerDriverBase):
                         state = yield self.power_query(system_id, context)
                     else:
                         state = yield deferToThread(
-                            self.power_query, system_id, context)
+                            self.power_query, system_id, context
+                        )
                 except PowerFatalError:
                     raise  # Don't retry.
                 except PowerError:
@@ -420,7 +402,8 @@ class PowerDriver(PowerDriverBase):
             # should make it this far.
             raise PowerError(
                 "Failed to power %s. BMC never transitioned from %s to %s."
-                % (system_id, state, state_desired))
+                % (system_id, state, state_desired)
+            )
         else:
             # Report the last error.
             raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])

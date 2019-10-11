@@ -10,10 +10,9 @@ from twisted.web.server import Site
 def create_prometheus_exporter_service(reactor, port):
     """Return a service exposing prometheus metrics on the specified port."""
     root = Resource()
-    root.putChild(
-        b'metrics', PrometheusMetricsResource(PROMETHEUS_METRICS))
+    root.putChild(b"metrics", PrometheusMetricsResource(PROMETHEUS_METRICS))
     site = Site(root, logFormatter=reducedWebLogFormatter)
     endpoint = TCP6ServerEndpoint(reactor, port)
     service = StreamServerEndpointService(endpoint, site)
-    service.setName('prometheus-exporter')
+    service.setName("prometheus-exporter")
     return service

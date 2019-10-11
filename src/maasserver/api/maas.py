@@ -3,19 +3,13 @@
 
 """API handler: MAAS."""
 
-__all__ = [
-    'MaasHandler',
-    ]
+__all__ = ["MaasHandler"]
 
 import json
 
 from django.http import HttpResponse
 from formencode import validators
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -25,10 +19,7 @@ from maasserver.forms.settings import (
     get_config_form,
     validate_config_name,
 )
-from maasserver.models import (
-    Config,
-    PackageRepository,
-)
+from maasserver.models import Config, PackageRepository
 from piston3.utils import rc
 
 
@@ -36,22 +27,25 @@ class MigratedConfigValue:
     """ Some settings have been moved out of the Config system. To allow these
     values to continue to be accessed via this API, the Form and getter method
     are overridable here."""
+
     def __init__(self, form, getter):
         self.form = form
         self.getter = getter
 
 
 migrated_config_values = {
-    'main_archive': MigratedConfigValue(
-        UbuntuForm, PackageRepository.get_main_archive_url),
-    'ports_archive': MigratedConfigValue(
-        UbuntuForm, PackageRepository.get_ports_archive_url),
+    "main_archive": MigratedConfigValue(
+        UbuntuForm, PackageRepository.get_main_archive_url
+    ),
+    "ports_archive": MigratedConfigValue(
+        UbuntuForm, PackageRepository.get_ports_archive_url
+    ),
 }
 
 
 def rewrite_config_name(name):
     """Rewrite the config name for backwards compatibility."""
-    return 'ntp_servers' if name == 'ntp_server' else name
+    return "ntp_servers" if name == "ntp_server" else name
 
 
 def get_maas_form(name, value):
@@ -70,6 +64,7 @@ def get_maas_form(name, value):
 
 class MaasHandler(OperationsHandler):
     """Manage the MAAS server."""
+
     api_doc_section_name = "MAAS server"
     create = read = update = delete = None
 
@@ -93,9 +88,10 @@ class MaasHandler(OperationsHandler):
             OK
         """
         name = get_mandatory_param(
-            request.data, 'name', validators.String(min=1))
+            request.data, "name", validators.String(min=1)
+        )
         name = rewrite_config_name(name)
-        value = get_mandatory_param(request.data, 'value')
+        value = get_mandatory_param(request.data, "value")
         form = get_maas_form(name, value)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -122,14 +118,14 @@ class MaasHandler(OperationsHandler):
         @success-example "default_distro_series"
             "bionic"
         """
-        name = get_mandatory_param(request.GET, 'name')
+        name = get_mandatory_param(request.GET, "name")
         name = rewrite_config_name(name)
         if name in migrated_config_values:
             value = migrated_config_values[name].getter()
         else:
             validate_config_name(name)
             value = Config.objects.get_config(name)
-        return HttpResponse(json.dumps(value), content_type='application/json')
+        return HttpResponse(json.dumps(value), content_type="application/json")
 
     # Populate the docstring with the dynamically-generated documentation
     # about the available configuration items.
@@ -137,4 +133,4 @@ class MaasHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('maas_handler', [])
+        return ("maas_handler", [])

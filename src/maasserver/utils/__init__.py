@@ -4,34 +4,24 @@
 """Utilities."""
 
 __all__ = [
-    'absolute_reverse',
-    'build_absolute_uri',
-    'find_rack_controller',
-    'get_local_cluster_UUID',
-    'get_maas_user_agent',
-    'ignore_unused',
-    'strip_domain',
-    'synchronised',
-    ]
+    "absolute_reverse",
+    "build_absolute_uri",
+    "find_rack_controller",
+    "get_local_cluster_UUID",
+    "get_maas_user_agent",
+    "ignore_unused",
+    "strip_domain",
+    "synchronised",
+]
 
 from functools import wraps
-from urllib.parse import (
-    urlencode,
-    urljoin,
-    urlsplit,
-)
+from urllib.parse import urlencode, urljoin, urlsplit
 
 from django.conf import settings
 from maasserver.config import RegionConfiguration
 from maasserver.utils.django_urls import reverse
-from netaddr import (
-    valid_ipv4,
-    valid_ipv6,
-)
-from provisioningserver.config import (
-    ClusterConfiguration,
-    UUID_NOT_SET,
-)
+from netaddr import valid_ipv4, valid_ipv6
+from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.url import compose_URL
 from provisioningserver.utils.version import get_maas_version_user_agent
@@ -47,8 +37,13 @@ def ignore_unused(*args):
 
 
 def absolute_reverse(
-        view_name, default_region_ip=None, query=None, base_url=None,
-        *args, **kwargs):
+    view_name,
+    default_region_ip=None,
+    query=None,
+    base_url=None,
+    *args,
+    **kwargs
+):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
     calls Django's 'reverse' method and prefixes the result of that call with
@@ -74,22 +69,21 @@ def absolute_reverse(
             base_url = config.maas_url
         if default_region_ip is not None:
             base_url = compose_URL(base_url, default_region_ip)
-    if not base_url.endswith('/'):
+    if not base_url.endswith("/"):
         # Add trailing '/' to get urljoin to behave.
-        base_url = base_url + '/'
+        base_url = base_url + "/"
     reverse_link = reverse(view_name, *args, **kwargs)
-    if reverse_link.startswith('/'):
+    if reverse_link.startswith("/"):
         # Drop the leading '/'.
         reverse_link = reverse_link[1:]
-    script_name = settings.FORCE_SCRIPT_NAME.lstrip('/')
-    if (base_url.endswith(script_name) and
-            reverse_link.startswith(script_name)):
+    script_name = settings.FORCE_SCRIPT_NAME.lstrip("/")
+    if base_url.endswith(script_name) and reverse_link.startswith(script_name):
         # This would double up the SCRIPT_NAME we only need one so remove the
         # prefix from the reverse_link.
-        reverse_link = reverse_link[len(script_name):]
+        reverse_link = reverse_link[len(script_name) :]
     url = urljoin(base_url, reverse_link)
     if query is not None:
-        url += '?%s' % urlencode(query, doseq=True)
+        url += "?%s" % urlencode(query, doseq=True)
     return url
 
 
@@ -109,7 +103,7 @@ def build_absolute_uri(request, path):
 
 def strip_domain(hostname):
     """Return `hostname` with the domain part removed."""
-    return hostname.split('.', 1)[0]
+    return hostname.split(".", 1)[0]
 
 
 def get_local_cluster_UUID():
@@ -123,20 +117,21 @@ def get_local_cluster_UUID():
 
 def get_maas_user_agent():
     from maasserver.models import Config
+
     user_agent = get_maas_version_user_agent()
-    uuid = Config.objects.get_config('uuid')
+    uuid = Config.objects.get_config("uuid")
     if uuid:
         user_agent = "%s/%s" % (user_agent, uuid)
     return user_agent
 
 
 def get_host_without_port(http_host):
-    return urlsplit('http://%s/' % http_host).hostname
+    return urlsplit("http://%s/" % http_host).hostname
 
 
 def get_request_host(request):
     """Returns the Host header from the specified HTTP request."""
-    request_host = request.META.get('HTTP_HOST')
+    request_host = request.META.get("HTTP_HOST")
     if request_host is not None:
         request_host = get_host_without_port(request_host)
     return request_host
@@ -150,13 +145,13 @@ def is_valid_ip(ip):
 def get_remote_ip(request):
     """Returns the IP address of the host that initiated the request."""
     # Try to obtain IP Address from X-Forwarded-For first.
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
+        ip = x_forwarded_for.split(",")[0]
         if is_valid_ip(ip):
             return ip
 
-    ip = request.META.get('REMOTE_ADDR')
+    ip = request.META.get("REMOTE_ADDR")
     return ip if is_valid_ip(ip) else None
 
 
@@ -169,6 +164,7 @@ def find_rack_controller(request):
     """
     # Circular imports.
     from maasserver.models.subnet import Subnet
+
     ip_address = get_remote_ip(request)
     subnet = Subnet.objects.get_best_subnet_for_ip(ip_address)
     if subnet is None:
@@ -185,12 +181,15 @@ def synchronised(lock):
     *not* be held for the lifetime of the generator; to this decorator,
     it looks like the wrapped function has returned.
     """
+
     def synchronise(func):
         @wraps(func)
         def call_with_lock(*args, **kwargs):
             with lock:
                 return func(*args, **kwargs)
+
         return call_with_lock
+
     return synchronise
 
 

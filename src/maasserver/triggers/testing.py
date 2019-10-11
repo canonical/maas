@@ -8,16 +8,10 @@ __all__ = []
 
 from crochet import wait_for
 from django.contrib.auth.models import User
-from maasserver.enum import (
-    INTERFACE_TYPE,
-    NODE_TYPE,
-)
+from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.bmc import (
-    BMC,
-    Pod,
-)
+from maasserver.models.bmc import BMC, Pod
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.dhcpsnippet import DHCPSnippet
@@ -31,11 +25,7 @@ from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
 from maasserver.models.iprange import IPRange
-from maasserver.models.node import (
-    Node,
-    RackController,
-    RegionController,
-)
+from maasserver.models.node import Node, RackController, RegionController
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
@@ -58,28 +48,12 @@ from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
-from maasserver.testing.factory import (
-    factory,
-    RANDOM,
-)
-from maasserver.utils.orm import (
-    reload_object,
-    transactional,
-)
+from maasserver.testing.factory import factory, RANDOM
+from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.models import (
-    Script,
-    ScriptSet,
-)
-from testtools.matchers import (
-    GreaterThan,
-    Is,
-    Not,
-)
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
+from metadataserver.models import Script, ScriptSet
+from testtools.matchers import GreaterThan, Is, Not
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -99,7 +73,8 @@ def apply_update(record, params):
         if not hasattr(record, key):
             raise AttributeError(
                 "%r has no %r attribute to which to assign "
-                "the value %r" % (record, key, value))
+                "the value %r" % (record, key, value)
+            )
         setattr(record, key, value)
 
 
@@ -134,7 +109,7 @@ class TransactionalHelpersMixin:
     def create_node(self, params=None):
         if params is None:
             params = {}
-        params['with_boot_disk'] = False
+        params["with_boot_disk"] = False
         vlan = factory.make_VLAN(space=factory.make_Space())
         return factory.make_Node(vlan=vlan, **params)
 
@@ -268,7 +243,8 @@ class TransactionalHelpersMixin:
         subnet = factory.make_Subnet()
         machine = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
         ip = factory.make_StaticIPAddress(
-            subnet=subnet, interface=machine.boot_interface)
+            subnet=subnet, interface=machine.boot_interface
+        )
         pod = factory.make_Pod(ip_address=ip, **params)
         return pod, machine
 
@@ -370,7 +346,8 @@ class TransactionalHelpersMixin:
     @transactional
     def set_node_metadata(self, node, key, value):
         NodeMetadata.objects.update_or_create(
-            node=node, key=key, defaults={"value": value})
+            node=node, key=key, defaults={"value": value}
+        )
 
     @transactional
     def delete_node_metadata(self, node, key):
@@ -432,7 +409,7 @@ class TransactionalHelpersMixin:
         if params is None:
             params = {}
         if vlan is not None:
-            params['subnet'] = vlan.subnet_set.first()
+            params["subnet"] = vlan.subnet_set.first()
         return factory.make_StaticIPAddress(**params)
 
     @transactional
@@ -755,7 +732,8 @@ class TransactionalHelpersMixin:
     @transactional
     def update_region_controller_process(self, id, params, **kwargs):
         return apply_update_to_model(
-            RegionControllerProcess, id, params, **kwargs)
+            RegionControllerProcess, id, params, **kwargs
+        )
 
     @transactional
     def delete_region_controller_process(self, id):
@@ -771,7 +749,8 @@ class TransactionalHelpersMixin:
     @transactional
     def update_region_controller_process_endpoint(self, id, params, **kwargs):
         return apply_update_to_model(
-            RegionControllerProcessEndpoint, id, params, **kwargs)
+            RegionControllerProcessEndpoint, id, params, **kwargs
+        )
 
     @transactional
     def delete_region_controller_process_endpoint(self, id):
@@ -787,7 +766,8 @@ class TransactionalHelpersMixin:
     @transactional
     def update_region_rack_rpc_connection(self, id, params, **kwargs):
         return apply_update_to_model(
-            RegionRackRPCConnection, id, params, **kwargs)
+            RegionRackRPCConnection, id, params, **kwargs
+        )
 
     @transactional
     def delete_region_rack_rpc_connection(self, id):
@@ -816,7 +796,8 @@ class TransactionalHelpersMixin:
     @transactional
     def create_config(self, name, value):
         config, freshly_created = Config.objects.get_or_create(
-            name=name, defaults=dict(value=value))
+            name=name, defaults=dict(value=value)
+        )
         assert freshly_created, "Config already created."
         return config
 
@@ -851,7 +832,8 @@ class DNSHelpersMixin:
             self.fail(
                 "No reference publication has been captured; "
                 "use `capturePublication` before calling "
-                "`getCapturedPublication`.")
+                "`getCapturedPublication`."
+            )
 
     @inlineCallbacks
     def assertPublicationUpdated(self):
@@ -863,12 +845,14 @@ class DNSHelpersMixin:
         new = yield self.capturePublication()
         if old is None:
             self.assertThat(
-                new, Not(Is(None)),
-                "DNS has not been published at all.")
+                new, Not(Is(None)), "DNS has not been published at all."
+            )
         else:
             self.assertThat(
-                new.serial, GreaterThan(old.serial),
-                "DNS has not been published again.")
+                new.serial,
+                GreaterThan(old.serial),
+                "DNS has not been published again.",
+            )
 
 
 class RBACHelpersMixin:
@@ -877,7 +861,7 @@ class RBACHelpersMixin:
     @transactional
     def getSynced(self):
         try:
-            return RBACSync.objects.order_by('-id').first()
+            return RBACSync.objects.order_by("-id").first()
         except RBACSync.DoesNotExist:
             return None
 
@@ -895,7 +879,8 @@ class RBACHelpersMixin:
             self.fail(
                 "No reference modification has been captured; "
                 "use `captureSynced` before calling "
-                "`getCapturedSynced`.")
+                "`getCapturedSynced`."
+            )
 
     @inlineCallbacks
     def assertSynced(self):
@@ -907,9 +892,13 @@ class RBACHelpersMixin:
         new = yield self.captureSynced()
         if old is None:
             self.assertThat(
-                new, Not(Is(None)),
-                "RBAC sync tracking has not been modified at all.")
+                new,
+                Not(Is(None)),
+                "RBAC sync tracking has not been modified at all.",
+            )
         else:
             self.assertThat(
-                new.id, GreaterThan(old.id),
-                "RBAC sync tracking has not been modified again.")
+                new.id,
+                GreaterThan(old.id),
+                "RBAC sync tracking has not been modified again.",
+            )

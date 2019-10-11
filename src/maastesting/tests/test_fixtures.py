@@ -12,10 +12,7 @@ import sys
 from unittest.mock import call
 
 from fixtures import EnvironmentVariable
-from maastesting import (
-    fixtures as fixtures_module,
-    root,
-)
+from maastesting import fixtures as fixtures_module, root
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
@@ -25,19 +22,10 @@ from maastesting.fixtures import (
     TempDirectory,
     TempWDFixture,
 )
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCallsMatch,
-)
+from maastesting.matchers import DocTestMatches, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
-from testtools.matchers import (
-    Equals,
-    Is,
-    Not,
-    PathExists,
-    SamePath,
-)
+from testtools.matchers import Equals, Is, Not, PathExists, SamePath
 from testtools.testcase import ExpectedException
 
 
@@ -45,27 +33,29 @@ class TestImportErrorFixture(MAASTestCase):
     """Tests for :class:`TestImportErrorFixture`."""
 
     def test_import_non_targeted_module_successfull(self):
-        self.useFixture(ImportErrorFixture('maastesting', 'root'))
+        self.useFixture(ImportErrorFixture("maastesting", "root"))
         from maastesting import bindir  # noqa
 
     def test_import_targeted_module_unsuccessfull(self):
-        self.useFixture(ImportErrorFixture('maastesting', 'root'))
+        self.useFixture(ImportErrorFixture("maastesting", "root"))
         with ExpectedException(ImportError):
             from maastesting import root  # noqa
 
     def test_import_restores_original__import__(self):
         __real_import = builtins.__import__
-        with ImportErrorFixture('maastesting', 'root'):
+        with ImportErrorFixture("maastesting", "root"):
             self.assertNotEqual(
                 __real_import,
                 builtins.__import__,
-                'ImportErrorFixture did not properly '
-                'patch __builtin__.__import__')
+                "ImportErrorFixture did not properly "
+                "patch __builtin__.__import__",
+            )
         self.assertEqual(
             __real_import,
             builtins.__import__,
-            'ImportErrorFixture did not properly restore '
-            'the original __builtin__.__import__ upon cleanup')
+            "ImportErrorFixture did not properly restore "
+            "the original __builtin__.__import__ upon cleanup",
+        )
 
 
 class TestProxiedDisabledFixture(MAASTestCase):
@@ -93,7 +83,6 @@ class TestProxiedDisabledFixture(MAASTestCase):
 
 
 class TestTempDirectory(MAASTestCase):
-
     def test_path_is_unicode(self):
         with TempDirectory() as fixture:
             self.assertIsInstance(fixture.path, str)
@@ -106,7 +95,6 @@ class TestTempDirectory(MAASTestCase):
 
 
 class TestTempWDFixture(MAASTestCase):
-
     def test_changes_dir_and_cleans_up(self):
         orig_cwd = os.getcwd()
         with TempWDFixture() as temp_wd:
@@ -158,8 +146,9 @@ class TestCaptureStandardIO(MAASTestCase):
             stdio.addInput(text + "111")
             self.expectThat(sys.stdin.read(2), Equals(text[:2]))
             stdio.addInput(text + "222")
-            self.expectThat(sys.stdin.read(), Equals(
-                text[2:] + "111" + text + "222"))
+            self.expectThat(
+                sys.stdin.read(), Equals(text[2:] + "111" + text + "222")
+            )
 
     def test__getInput_returns_data_waiting_to_be_read(self):
         stdio = CaptureStandardIO()
@@ -170,11 +159,13 @@ class TestCaptureStandardIO(MAASTestCase):
 
     def test__getOutput_returns_data_written_to_stdout(self):
         self.assert_getter_returns_data_written_to_stream(
-            CaptureStandardIO.getOutput, "stdout")
+            CaptureStandardIO.getOutput, "stdout"
+        )
 
     def test__getError_returns_data_written_to_stderr(self):
         self.assert_getter_returns_data_written_to_stream(
-            CaptureStandardIO.getError, "stderr")
+            CaptureStandardIO.getError, "stderr"
+        )
 
     def assert_getter_returns_data_written_to_stream(self, getter, name):
         stream = self.patch(sys, name)
@@ -190,8 +181,10 @@ class TestCaptureStandardIO(MAASTestCase):
         print(after, file=getattr(sys, name), end=end)
 
         self.expectThat(getter(stdio), Equals(during + end))
-        self.expectThat(stream.write, MockCallsMatch(
-            call(before), call(end), call(after), call(end)))
+        self.expectThat(
+            stream.write,
+            MockCallsMatch(call(before), call(end), call(after), call(end)),
+        )
 
     def test__clearInput_clears_input(self):
         text = factory.make_name("text")
@@ -231,16 +224,20 @@ class TestCaptureStandardIO(MAASTestCase):
     def test__non_text_strings_are_rejected_on_stdout(self):
         with CaptureStandardIO():
             error = self.assertRaises(
-                TypeError, sys.stdout.write, sample_binary_data)
+                TypeError, sys.stdout.write, sample_binary_data
+            )
         self.assertDocTestMatches(
-            "write() argument must be str, not bytes", str(error))
+            "write() argument must be str, not bytes", str(error)
+        )
 
     def test__non_text_strings_are_rejected_on_stderr(self):
         with CaptureStandardIO():
             error = self.assertRaises(
-                TypeError, sys.stderr.write, sample_binary_data)
+                TypeError, sys.stderr.write, sample_binary_data
+            )
         self.assertDocTestMatches(
-            "write() argument must be str, not bytes", str(error))
+            "write() argument must be str, not bytes", str(error)
+        )
 
 
 def listdirs(start):
@@ -282,5 +279,7 @@ class TestMAASRootFixture(MAASTestCase):
         self.patch(fixtures_module, "root", self.make_file())
         fixture = MAASRootFixture()
         error = self.assertRaises(NotADirectoryError, fixture._setUp)
-        self.assertThat(str(error), DocTestMatches(
-            "Skeleton MAAS_ROOT (...) is not a directory."))
+        self.assertThat(
+            str(error),
+            DocTestMatches("Skeleton MAAS_ROOT (...) is not a directory."),
+        )

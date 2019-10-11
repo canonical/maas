@@ -8,7 +8,7 @@ __all__ = [
     "HandlerPKError",
     "HandlerValidationError",
     "Handler",
-    ]
+]
 
 from functools import wraps
 from operator import attrgetter
@@ -25,10 +25,7 @@ from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    IAsynchronous,
-)
+from provisioningserver.utils.twisted import asynchronous, IAsynchronous
 
 
 DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
@@ -37,7 +34,7 @@ DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
 def dehydrate_datetime(datetime):
     """Convert the `datetime` to string with `DATETIME_FORMAT`."""
     if datetime is None:
-        return ''
+        return ""
     else:
         return datetime.strftime(DATETIME_FORMAT)
 
@@ -75,20 +72,21 @@ class HandlerOptions(object):
     Provides the needed defaults to the internal `Meta` class used on
     the handler.
     """
+
     abstract = False
     allowed_methods = [
-        'list',
-        'get',
-        'create',
-        'update',
-        'delete',
-        'set_active',
-        ]
+        "list",
+        "get",
+        "create",
+        "update",
+        "delete",
+        "set_active",
+    ]
     handler_name = None
     object_class = None
     queryset = None
     list_queryset = None
-    pk = 'id'
+    pk = "id"
     pk_type = int
     fields = None
     exclude = None
@@ -98,7 +96,7 @@ class HandlerOptions(object):
     form = None
     form_requires_request = True
     listen_channels = []
-    batch_key = 'id'
+    batch_key = "id"
     create_permission = None
     view_permission = None
     edit_permission = None
@@ -112,12 +110,11 @@ class HandlerOptions(object):
         if meta:
             for override_name in dir(meta):
                 # Skip over internal field names.
-                if not override_name.startswith('_'):
+                if not override_name.startswith("_"):
                     overrides[override_name] = getattr(meta, override_name)
 
         # Construct the new object with the overrides from meta.
-        return object.__new__(
-            type('HandlerOptions', (cls,), overrides))
+        return object.__new__(type("HandlerOptions", (cls,), overrides))
 
 
 class HandlerMetaclass(type):
@@ -125,15 +122,16 @@ class HandlerMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
         # Construct the class with the _meta field.
-        new_class = super(
-            HandlerMetaclass, cls).__new__(cls, name, bases, attrs)
-        new_class._meta = HandlerOptions(getattr(new_class, 'Meta', None))
+        new_class = super(HandlerMetaclass, cls).__new__(
+            cls, name, bases, attrs
+        )
+        new_class._meta = HandlerOptions(getattr(new_class, "Meta", None))
 
         # Setup the handlers name based on the naming of the class.
-        if not getattr(new_class._meta, 'handler_name', None):
+        if not getattr(new_class._meta, "handler_name", None):
             class_name = new_class.__name__
-            name_bits = [bit for bit in class_name.split('Handler') if bit]
-            handler_name = ''.join(name_bits).lower()
+            name_bits = [bit for bit in class_name.split("Handler") if bit]
+            handler_name = "".join(name_bits).lower()
             new_class._meta.handler_name = handler_name
 
         # Setup the object_class if the queryset is provided.
@@ -204,8 +202,7 @@ class Handler(metaclass=HandlerMetaclass):
             # Get the value from the field and set it in data. The value
             # will pass through the dehydrate method if present.
             field_obj = getattr(obj, field_name)
-            dehydrate_method = getattr(
-                self, "dehydrate_%s" % field_name, None)
+            dehydrate_method = getattr(self, "dehydrate_%s" % field_name, None)
             if dehydrate_method is not None:
                 data[field_name] = dehydrate_method(field_obj)
             else:
@@ -239,7 +236,7 @@ class Handler(metaclass=HandlerMetaclass):
         """
         if isinstance(obj, Model):
             field_type = obj._meta.get_field(field_name).get_internal_type()
-            if field_type == 'ForeignKey' and not isinstance(value, Model):
+            if field_type == "ForeignKey" and not isinstance(value, Model):
                 return True
         return False
 
@@ -249,18 +246,21 @@ class Handler(metaclass=HandlerMetaclass):
         # then it will not call this method at all and create is a global
         # action that is not scoped to an object.
         has_permissions = (
-            self._meta.edit_permission is not None or
-            self._meta.delete_permission is not None)
+            self._meta.edit_permission is not None
+            or self._meta.delete_permission is not None
+        )
         if not has_permissions:
             return data
         permissions = []
-        if (self._meta.edit_permission is not None and
-                self.user.has_perm(self._meta.edit_permission, obj)):
-            permissions.append('edit')
-        if (self._meta.delete_permission is not None and
-                self.user.has_perm(self._meta.delete_permission, obj)):
-            permissions.append('delete')
-        data['permissions'] = permissions
+        if self._meta.edit_permission is not None and self.user.has_perm(
+            self._meta.edit_permission, obj
+        ):
+            permissions.append("edit")
+        if self._meta.delete_permission is not None and self.user.has_perm(
+            self._meta.delete_permission, obj
+        ):
+            permissions.append("delete")
+        data["permissions"] = permissions
         return data
 
     def full_hydrate(self, obj, data):
@@ -279,8 +279,10 @@ class Handler(metaclass=HandlerMetaclass):
                 continue
             if exclude_fields is not None and field_name in exclude_fields:
                 continue
-            if (non_changeable_fields is not None and
-                    field_name in non_changeable_fields):
+            if (
+                non_changeable_fields is not None
+                and field_name in non_changeable_fields
+            ):
                 continue
 
             # Update the field if its in the provided data. Passing the value
@@ -311,14 +313,12 @@ class Handler(metaclass=HandlerMetaclass):
     def get_object(self, params, permission=None):
         """Get object by using the `pk` in `params`."""
         if self._meta.pk not in params:
-            raise HandlerValidationError({
-                self._meta.pk: ['This field is required']
-            })
+            raise HandlerValidationError(
+                {self._meta.pk: ["This field is required"]}
+            )
         pk = params[self._meta.pk]
         try:
-            obj = self.get_queryset(for_list=False).get(**{
-                self._meta.pk: pk,
-                })
+            obj = self.get_queryset(for_list=False).get(**{self._meta.pk: pk})
         except self._meta.object_class.DoesNotExist:
             raise HandlerDoesNotExistError(pk)
         if permission is not None or self._meta.view_permission is not None:
@@ -353,13 +353,15 @@ class Handler(metaclass=HandlerMetaclass):
         return get_QueryDict(params)
 
     def _get_call_latency_metrics_label(self, method_name, params):
-        call_name = '{handler_name}.{method_name}'.format(
-            handler_name=self._meta.handler_name, method_name=method_name)
-        return {'call': call_name}
+        call_name = "{handler_name}.{method_name}".format(
+            handler_name=self._meta.handler_name, method_name=method_name
+        )
+        return {"call": call_name}
 
     @PROMETHEUS_METRICS.record_call_latency(
-        'maas_websocket_call_latency',
-        get_labels=_get_call_latency_metrics_label)
+        "maas_websocket_call_latency",
+        get_labels=_get_call_latency_metrics_label,
+    )
     @asynchronous
     def execute(self, method_name, params):
         """Execute the given method on the handler.
@@ -383,7 +385,8 @@ class Handler(metaclass=HandlerMetaclass):
                     # Reload the user from the database.
                     d = concurrency.webapp.run(
                         deferToDatabase,
-                        transactional(self.user.refresh_from_db))
+                        transactional(self.user.refresh_from_db),
+                    )
                     d.addCallback(lambda _: method(params))
                     return d
                 else:
@@ -399,17 +402,21 @@ class Handler(metaclass=HandlerMetaclass):
 
                         # Perform the work in the database.
                         return self._call_method_track_queries(
-                            method_name, method, params)
+                            method_name, method, params
+                        )
 
                     # Force the name of the function to include the handler
                     # name so the debug logging is useful.
-                    prep_user_execute.__name__ = '%s.%s' % (
-                        self.__class__.__name__, method_name)
+                    prep_user_execute.__name__ = "%s.%s" % (
+                        self.__class__.__name__,
+                        method_name,
+                    )
 
                     # This is going to block and hold a database connection so
                     # we limit its concurrency.
                     return concurrency.webapp.run(
-                        deferToDatabase, prep_user_execute, params)
+                        deferToDatabase, prep_user_execute, params
+                    )
         else:
             raise HandlerNoSuchMethodError(method_name)
 
@@ -420,15 +427,20 @@ class Handler(metaclass=HandlerMetaclass):
         with wrap_query_counter_cursor(latencies):
             result = method(params)
 
-        labels = self._get_call_latency_metrics_label(
-            method_name, [])
+        labels = self._get_call_latency_metrics_label(method_name, [])
         PROMETHEUS_METRICS.update(
-            'maas_websocket_call_query_count', 'observe',
-            value=len(latencies), labels=labels)
+            "maas_websocket_call_query_count",
+            "observe",
+            value=len(latencies),
+            labels=labels,
+        )
         for latency in latencies:
             PROMETHEUS_METRICS.update(
-                'maas_websocket_call_query_latency', 'observe',
-                value=latency, labels=labels)
+                "maas_websocket_call_query_latency",
+                "observe",
+                value=latency,
+                labels=labels,
+            )
 
         return result
 
@@ -449,17 +461,14 @@ class Handler(metaclass=HandlerMetaclass):
         queryset = self.get_queryset(for_list=True)
         queryset = queryset.order_by(self._meta.batch_key)
         if "start" in params:
-            queryset = queryset.filter(**{
-                "%s__gt" % self._meta.batch_key: params["start"]
-                })
+            queryset = queryset.filter(
+                **{"%s__gt" % self._meta.batch_key: params["start"]}
+            )
         if "limit" in params:
-            queryset = queryset[:params["limit"]]
+            queryset = queryset[: params["limit"]]
         objs = list(queryset)
         self._cache_pks(objs)
-        return [
-            self.full_dehydrate(obj, for_list=True)
-            for obj in objs
-            ]
+        return [self.full_dehydrate(obj, for_list=True) for obj in objs]
 
     def get(self, params):
         """Get object.
@@ -481,13 +490,14 @@ class Handler(metaclass=HandlerMetaclass):
                 form = form_class(request=self.request, data=data)
             else:
                 form = form_class(data=data)
-            if hasattr(form, 'use_perms') and form.use_perms():
+            if hasattr(form, "use_perms") and form.use_perms():
                 if not form.has_perm(self.user):
                     raise HandlerPermissionError()
             elif self._meta.create_permission is not None:
                 raise ValueError(
                     "`create_permission` defined on the handler, but the form "
-                    "is not using permission checks.")
+                    "is not using permission checks."
+                )
             if form.is_valid():
                 try:
                     obj = form.save()
@@ -498,8 +508,9 @@ class Handler(metaclass=HandlerMetaclass):
                         raise HandlerValidationError({"__all__": e.message})
                 # Refetch the object to get any annotations added to the
                 # queryset.
-                obj = self.get_object({
-                    self._meta.pk: getattr(obj, self._meta.pk)})
+                obj = self.get_object(
+                    {self._meta.pk: getattr(obj, self._meta.pk)}
+                )
                 return self.full_dehydrate(obj)
             else:
                 raise HandlerValidationError(form.errors)
@@ -525,13 +536,14 @@ class Handler(metaclass=HandlerMetaclass):
         if form_class is not None:
             data = self.preprocess_form("update", params)
             form = form_class(data=data, instance=obj)
-            if hasattr(form, 'use_perms') and form.use_perms():
+            if hasattr(form, "use_perms") and form.use_perms():
                 if not form.has_perm(self.user):
                     raise HandlerPermissionError()
             elif self._meta.edit_permission is not None:
                 raise ValueError(
                     "`edit_permission` defined on the handler, but the form "
-                    "is not using permission checks.")
+                    "is not using permission checks."
+                )
             if form.is_valid():
                 try:
                     obj = form.save()
@@ -564,13 +576,13 @@ class Handler(metaclass=HandlerMetaclass):
         # Calling this method without a primary key will clear the currently
         # active object.
         if self._meta.pk not in params:
-            if 'active_pk' in self.cache:
-                del self.cache['active_pk']
+            if "active_pk" in self.cache:
+                del self.cache["active_pk"]
             return
 
         # Get the object data and set it as active.
         obj_data = self.get(params)
-        self.cache['active_pk'] = obj_data[self._meta.pk]
+        self.cache["active_pk"] = obj_data[self._meta.pk]
         return obj_data
 
     def on_listen(self, channel, action, pk):
@@ -580,8 +592,8 @@ class Handler(metaclass=HandlerMetaclass):
         """
         pk = self._meta.pk_type(pk)
         if action == "delete":
-            if pk in self.cache['loaded_pks']:
-                self.cache['loaded_pks'].remove(pk)
+            if pk in self.cache["loaded_pks"]:
+                self.cache["loaded_pks"].remove(pk)
                 return (self._meta.handler_name, action, pk)
             else:
                 return None
@@ -592,19 +604,19 @@ class Handler(metaclass=HandlerMetaclass):
         except HandlerDoesNotExistError:
             obj = None
         if action == "create" and obj is not None:
-            if pk in self.cache['loaded_pks']:
+            if pk in self.cache["loaded_pks"]:
                 # The user already knows about this node, so its not a create
                 # to the user but an update.
                 return self.on_listen_for_active_pk("update", pk, obj)
             else:
-                self.cache['loaded_pks'].add(pk)
+                self.cache["loaded_pks"].add(pk)
                 return self.on_listen_for_active_pk(action, pk, obj)
         elif action == "update":
-            if pk in self.cache['loaded_pks']:
+            if pk in self.cache["loaded_pks"]:
                 if obj is None:
                     # The user no longer has access to this object. To the
                     # client this is a delete action.
-                    self.cache['loaded_pks'].remove(pk)
+                    self.cache["loaded_pks"].remove(pk)
                     return (self._meta.handler_name, "delete", pk)
                 else:
                     # Just a normal update to the client.
@@ -612,7 +624,7 @@ class Handler(metaclass=HandlerMetaclass):
             elif obj is not None:
                 # User just got access to this new object. Send the message to
                 # the client as a create action instead of an update.
-                self.cache['loaded_pks'].add(pk)
+                self.cache["loaded_pks"].add(pk)
                 return self.on_listen_for_active_pk("create", pk, obj)
             else:
                 # User doesn't have access to this object, so do nothing.
@@ -626,13 +638,13 @@ class Handler(metaclass=HandlerMetaclass):
     def on_listen_for_active_pk(self, action, pk, obj):
         """Return the correct data for `obj` depending on if its the
         active primary key."""
-        if 'active_pk' in self.cache and pk == self.cache['active_pk']:
+        if "active_pk" in self.cache and pk == self.cache["active_pk"]:
             # Active so send all the data for the object.
             return (
                 self._meta.handler_name,
                 action,
                 self.full_dehydrate(obj, for_list=False),
-                )
+            )
         else:
             # Not active so only send the data like it was comming from
             # the list call.
@@ -640,7 +652,7 @@ class Handler(metaclass=HandlerMetaclass):
                 self._meta.handler_name,
                 action,
                 self.full_dehydrate(obj, for_list=True),
-                )
+            )
 
     def listen(self, channel, action, pk):
         """Called when the handler listens for events on channels with
@@ -650,20 +662,18 @@ class Handler(metaclass=HandlerMetaclass):
         :param action: Action that caused this event.
         :param pk: Id of the object.
         """
-        return self.get_object({
-            self._meta.pk: pk
-            })
+        return self.get_object({self._meta.pk: pk})
 
 
 class AdminOnlyMixin(Handler):
-
     class Meta:
         abstract = True
 
     def create(self, parameters):
         """Only allow an administrator to create this object."""
         if not self.user.has_perm(
-                NodePermission.admin, self._meta.object_class):
+            NodePermission.admin, self._meta.object_class
+        ):
             raise HandlerPermissionError()
         return super().create(parameters)
 

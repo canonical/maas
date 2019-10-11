@@ -10,12 +10,9 @@ __all__ = [
     "find_api_resources",
     "generate_api_docs",
     "get_api_description_hash",
-    ]
+]
 
-from collections import (
-    Mapping,
-    Sequence,
-)
+from collections import Mapping, Sequence
 from functools import partial
 import hashlib
 from inspect import getdoc
@@ -49,21 +46,25 @@ def accumulate_api_resources(resolver, accumulator):
     :rtype: Generator, yielding handlers.
     """
     p_has_resource_uri = lambda resource: (
-        getattr(resource.handler, "resource_uri", None) is not None)
+        getattr(resource.handler, "resource_uri", None) is not None
+    )
     p_is_not_hidden = lambda resource: (
-        getattr(resource.handler, "hidden", False))
+        getattr(resource.handler, "hidden", False)
+    )
     for pattern in resolver.url_patterns:
         if isinstance(pattern, RegexURLResolver):
             accumulate_api_resources(pattern, accumulator)
         elif isinstance(pattern, RegexURLPattern):
             if isinstance(pattern.callback, Resource):
                 resource = pattern.callback
-                if p_has_resource_uri(resource) and \
-                        not p_is_not_hidden(resource):
+                if p_has_resource_uri(resource) and not p_is_not_hidden(
+                    resource
+                ):
                     accumulator.add(resource)
         else:
             raise AssertionError(
-                "Not a recognised pattern or resolver: %r" % (pattern,))
+                "Not a recognised pattern or resolver: %r" % (pattern,)
+            )
 
 
 def find_api_resources(urlconf=None):
@@ -84,37 +85,43 @@ def generate_power_types_doc():
     output = StringIO()
     line = partial(print, file=output)
 
-    line('Power types')
-    line('```````````')
+    line("Power types")
+    line("```````````")
     line()
-    line("This is the list of the supported power types and their "
-         "associated power parameters.  Note that the list of usable "
-         "power types for a particular rack controller might be a subset of "
-         "this list if the rack controller in question is from an older "
-         "version of MAAS.")
+    line(
+        "This is the list of the supported power types and their "
+        "associated power parameters.  Note that the list of usable "
+        "power types for a particular rack controller might be a subset of "
+        "this list if the rack controller in question is from an older "
+        "version of MAAS."
+    )
     line()
     for _, driver in PowerDriverRegistry:
         title = "%s (%s)" % (driver.name, driver.description)
         line(title)
-        line('=' * len(title))
-        line('')
+        line("=" * len(title))
+        line("")
         line("Power parameters:")
-        line('')
+        line("")
         for field in driver.settings:
             field_description = []
             field_description.append(
-                "* %s (%s)." % (field['name'], field['label']))
-            choices = field.get('choices', [])
+                "* %s (%s)." % (field["name"], field["label"])
+            )
+            choices = field.get("choices", [])
             if len(choices) > 0:
                 field_description.append(
-                    " Choices: %s" % ', '.join(
+                    " Choices: %s"
+                    % ", ".join(
                         "'%s' (%s)" % (choice[0], choice[1])
-                        for choice in choices))
-            default = field.get('default', '')
-            if default != '':
+                        for choice in choices
+                    )
+                )
+            default = field.get("default", "")
+            if default != "":
                 field_description.append("  Default: '%s'." % default)
-            line(''.join(field_description))
-        line('')
+            line("".join(field_description))
+        line("")
     return output.getvalue()
 
 
@@ -126,37 +133,43 @@ def generate_pod_types_doc():
     output = StringIO()
     line = partial(print, file=output)
 
-    line('Pod types')
-    line('`````````')
+    line("Pod types")
+    line("`````````")
     line()
-    line("This is the list of the supported pod types and their "
-         "associated parameters.  Note that the list of usable pod types "
-         "for a particular rack controller might be a subset of this "
-         "list if the rack controller in question is from an older version of "
-         "MAAS.")
+    line(
+        "This is the list of the supported pod types and their "
+        "associated parameters.  Note that the list of usable pod types "
+        "for a particular rack controller might be a subset of this "
+        "list if the rack controller in question is from an older version of "
+        "MAAS."
+    )
     line()
     for _, driver in PodDriverRegistry:
         title = "%s (%s)" % (driver.name, driver.description)
         line(title)
-        line('=' * len(title))
-        line('')
+        line("=" * len(title))
+        line("")
         line("Parameters:")
-        line('')
+        line("")
         for field in driver.settings:
             field_description = []
             field_description.append(
-                "* %s (%s)." % (field['name'], field['label']))
-            choices = field.get('choices', [])
+                "* %s (%s)." % (field["name"], field["label"])
+            )
+            choices = field.get("choices", [])
             if len(choices) > 0:
                 field_description.append(
-                    " Choices: %s" % ', '.join(
+                    " Choices: %s"
+                    % ", ".join(
                         "'%s' (%s)" % (choice[0], choice[1])
-                        for choice in choices))
-            default = field.get('default', '')
-            if default != '':
+                        for choice in choices
+                    )
+                )
+            default = field.get("default", "")
+            if default != "":
                 field_description.append("  Default: '%s'." % default)
-            line(''.join(field_description))
-        line('')
+            line("".join(field_description))
+        line("")
     return output.getvalue()
 
 
@@ -171,13 +184,13 @@ def generate_api_docs(resources):
     :return: Generates :class:`piston.doc.HandlerDocumentation` instances.
     """
     sentinel = object()
-    resource_key = (
-        lambda resource: resource.handler.__class__.__name__)
+    resource_key = lambda resource: resource.handler.__class__.__name__
     for resource in sorted(resources, key=resource_key):
         handler = type(resource.handler)
         if getattr(handler, "resource_uri", sentinel) is sentinel:
             raise AssertionError(
-                "Missing resource_uri in %s" % handler.__name__)
+                "Missing resource_uri in %s" % handler.__name__
+            )
         yield generate_doc(handler)
 
 
@@ -214,6 +227,7 @@ def describe_actions(handler):
 
     """
     from maasserver.api import support  # Circular import.
+
     getname = support.OperationsResource.crudmap.get
     for signature, function in handler.exports.items():
         http_method, operation = signature
@@ -230,8 +244,8 @@ def describe_actions(handler):
                 # non-annotated docstrings in the CLI.
                 ap.parse(doc)
                 ap_dict = ap.get_dict()
-                description = ap_dict['description'].rstrip()
-                description_title = ap_dict['description_title'].rstrip()
+                description = ap_dict["description"].rstrip()
+                description_title = ap_dict["description_title"].rstrip()
                 if description_title != "":
                     doc = description_title + "\n\n"
                     doc += description + "\n\n"
@@ -244,22 +258,29 @@ def describe_actions(handler):
                 # the URI (e.g. /zone/{name}/). I.e. positional
                 # arguments. These already appear in the CLI
                 # help command output so we don't want duplicates.
-                for param in ap_dict['params']:
-                    pname = param['name']
+                for param in ap_dict["params"]:
+                    pname = param["name"]
                     if pname.find("{") == -1 and pname.find("}") == -1:
                         required = "Required. "
-                        if param['options']['required'] == "false":
+                        if param["options"]["required"] == "false":
                             required = "Optional. "
 
-                        param_description = param['description'].rstrip()
+                        param_description = param["description"].rstrip()
 
-                        doc += (":param %s: %s%s\n" %
-                                (pname, required, param_description))
-                        doc += (":type %s: %s\n\n " % (pname, param['type']))
+                        doc += ":param %s: %s%s\n" % (
+                            pname,
+                            required,
+                            param_description,
+                        )
+                        doc += ":type %s: %s\n\n " % (pname, param["type"])
 
         yield dict(
-            method=http_method, name=name, doc=doc,
-            op=operation, restful=(operation is None))
+            method=http_method,
+            name=name,
+            doc=doc,
+            op=operation,
+            restful=(operation is None),
+        )
 
 
 def describe_handler(handler):
@@ -279,7 +300,8 @@ def describe_handler(handler):
     view_name, uri_params, uri_kw = merge(resource_uri(), (None, (), {}))
     assert uri_kw == {}, (
         "Resource URI specifications with keyword parameters are not yet "
-        "supported: handler=%r; view_name=%r" % (handler, view_name))
+        "supported: handler=%r; view_name=%r" % (handler, view_name)
+    )
 
     return {
         "actions": list(describe_actions(handler)),
@@ -287,7 +309,7 @@ def describe_handler(handler):
         "name": handler.__name__,
         "params": tuple(uri_params),
         "path": path,
-        }
+    }
 
 
 def describe_resource(resource):
@@ -296,8 +318,8 @@ def describe_resource(resource):
     :type resource: :class:`OperationsResource` instance.
     """
     authenticate = not any(
-        isinstance(auth, NoAuthentication)
-        for auth in resource.authentication)
+        isinstance(auth, NoAuthentication) for auth in resource.authentication
+    )
     if authenticate:
         if resource.anonymous is None:
             anon = None
@@ -334,11 +356,15 @@ def describe_api():
     # not-None anon and auth handlers in "resources".
     description["handlers"] = []
     description["handlers"].extend(
-        resource["anon"] for resource in description["resources"]
-        if resource["anon"] is not None)
+        resource["anon"]
+        for resource in description["resources"]
+        if resource["anon"] is not None
+    )
     description["handlers"].extend(
-        resource["auth"] for resource in description["resources"]
-        if resource["auth"] is not None)
+        resource["auth"]
+        for resource in description["resources"]
+        if resource["auth"] is not None
+    )
 
     return description
 
@@ -443,12 +469,11 @@ def key_canonical(value):
     elif isinstance(value, str):
         return KeyCanonicalString(value)
     elif isinstance(value, tuple):
-        return KeyCanonicalTuple(
-            tuple(key_canonical(v) for v in value))
+        return KeyCanonicalTuple(tuple(key_canonical(v) for v in value))
     else:
         raise TypeError(
-            "Cannot compare %r (%s)" % (
-                value, type(value).__qualname__))
+            "Cannot compare %r (%s)" % (value, type(value).__qualname__)
+        )
 
 
 def describe_canonical(description):
@@ -480,19 +505,26 @@ def describe_canonical(description):
     elif isinstance(description, str):
         return description
     elif isinstance(description, Sequence):
-        return tuple(sorted(
-            (describe_canonical(element)
-             for element in description),
-            key=key_canonical))
+        return tuple(
+            sorted(
+                (describe_canonical(element) for element in description),
+                key=key_canonical,
+            )
+        )
     elif isinstance(description, Mapping):
-        return tuple(sorted(
-            ((describe_canonical(key), describe_canonical(value))
-             for (key, value) in sorted(description.items())),
-            key=key_canonical))
+        return tuple(
+            sorted(
+                (
+                    (describe_canonical(key), describe_canonical(value))
+                    for (key, value) in sorted(description.items())
+                ),
+                key=key_canonical,
+            )
+        )
     else:
         raise TypeError(
-            "Cannot produce canonical representation for %r."
-            % (description,))
+            "Cannot produce canonical representation for %r." % (description,)
+        )
 
 
 def hash_canonical(description):

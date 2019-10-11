@@ -18,7 +18,6 @@ from testtools.matchers import Equals
 
 
 class TestVMwarePowerDriver(MAASTestCase):
-
     def test_missing_packages(self):
         mock = self.patch(try_pyvmomi_import)
         mock.return_value = False
@@ -34,84 +33,161 @@ class TestVMwarePowerDriver(MAASTestCase):
         self.assertItemsEqual([], missing)
 
     def make_parameters(self, has_optional=True):
-        system_id = factory.make_name('system_id')
-        host = factory.make_name('power_address')
-        username = factory.make_name('power_user')
-        password = factory.make_name('power_pass')
-        vm_name = factory.make_name('power_vm_name')
-        uuid = factory.make_name('power_uuid')
+        system_id = factory.make_name("system_id")
+        host = factory.make_name("power_address")
+        username = factory.make_name("power_user")
+        password = factory.make_name("power_pass")
+        vm_name = factory.make_name("power_vm_name")
+        uuid = factory.make_name("power_uuid")
         port = protocol = None
         context = {
-            'system_id': system_id,
-            'power_address': host,
-            'power_user': username,
-            'power_pass': password,
-            'power_vm_name': vm_name,
-            'power_uuid': uuid,
-            'power_port': port,
-            'power_protocol': protocol,
+            "system_id": system_id,
+            "power_address": host,
+            "power_user": username,
+            "power_pass": password,
+            "power_vm_name": vm_name,
+            "power_uuid": uuid,
+            "power_port": port,
+            "power_protocol": protocol,
         }
         if not has_optional:
-            context['power_port'] = ""
-            context['power_protocol'] = ""
-        return (system_id, host, username, password,
-                vm_name, uuid, port, protocol, context)
+            context["power_port"] = ""
+            context["power_protocol"] = ""
+        return (
+            system_id,
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            port,
+            protocol,
+            context,
+        )
 
     def test_extract_vmware_parameters_extracts_parameters(self):
-        (system_id, host, username, password,
-         vm_name, uuid, port, protocol, context) = self.make_parameters()
+        (
+            system_id,
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            port,
+            protocol,
+            context,
+        ) = self.make_parameters()
 
         self.assertItemsEqual(
             (host, username, password, vm_name, uuid, None, None),
-            extract_vmware_parameters(context))
+            extract_vmware_parameters(context),
+        )
 
     def test_extract_vmware_parameters_treats_optional_params_as_none(self):
-        (system_id, host, username, password,
-         vm_name, uuid, port, protocol, context) = self.make_parameters(
-            has_optional=False)
+        (
+            system_id,
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            port,
+            protocol,
+            context,
+        ) = self.make_parameters(has_optional=False)
 
         self.assertItemsEqual(
             (host, username, password, vm_name, uuid, port, protocol),
-            extract_vmware_parameters(context))
+            extract_vmware_parameters(context),
+        )
 
     def test_power_on_calls_power_control_vmware(self):
-        power_change = 'on'
-        (system_id, host, username, password,
-         vm_name, uuid, port, protocol, context) = self.make_parameters()
+        power_change = "on"
+        (
+            system_id,
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            port,
+            protocol,
+            context,
+        ) = self.make_parameters()
         vmware_power_driver = VMwarePowerDriver()
         power_control_vmware = self.patch(
-            vmware_module, 'power_control_vmware')
+            vmware_module, "power_control_vmware"
+        )
         vmware_power_driver.power_on(system_id, context)
 
         self.assertThat(
-            power_control_vmware, MockCalledOnceWith(
-                host, username, password, vm_name,
-                uuid, power_change, port, protocol))
+            power_control_vmware,
+            MockCalledOnceWith(
+                host,
+                username,
+                password,
+                vm_name,
+                uuid,
+                power_change,
+                port,
+                protocol,
+            ),
+        )
 
     def test_power_off_calls_power_control_vmware(self):
-        power_change = 'off'
-        (system_id, host, username, password,
-         vm_name, uuid, port, protocol, context) = self.make_parameters()
+        power_change = "off"
+        (
+            system_id,
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            port,
+            protocol,
+            context,
+        ) = self.make_parameters()
         vmware_power_driver = VMwarePowerDriver()
         power_control_vmware = self.patch(
-            vmware_module, 'power_control_vmware')
+            vmware_module, "power_control_vmware"
+        )
         vmware_power_driver.power_off(system_id, context)
 
         self.assertThat(
-            power_control_vmware, MockCalledOnceWith(
-                host, username, password, vm_name,
-                uuid, power_change, port, protocol))
+            power_control_vmware,
+            MockCalledOnceWith(
+                host,
+                username,
+                password,
+                vm_name,
+                uuid,
+                power_change,
+                port,
+                protocol,
+            ),
+        )
 
     def test_power_query_calls_power_query_vmware(self):
-        (system_id, host, username, password,
-         vm_name, uuid, port, protocol, context) = self.make_parameters()
+        (
+            system_id,
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            port,
+            protocol,
+            context,
+        ) = self.make_parameters()
         vmware_power_driver = VMwarePowerDriver()
-        power_query_vmware = self.patch(
-            vmware_module, 'power_query_vmware')
-        power_query_vmware.return_value = 'off'
+        power_query_vmware = self.patch(vmware_module, "power_query_vmware")
+        power_query_vmware.return_value = "off"
         expected_result = vmware_power_driver.power_query(system_id, context)
 
         self.expectThat(
-            power_query_vmware, MockCalledOnceWith(
-                host, username, password, vm_name, uuid, port, protocol))
-        self.expectThat(expected_result, Equals('off'))
+            power_query_vmware,
+            MockCalledOnceWith(
+                host, username, password, vm_name, uuid, port, protocol
+            ),
+        )
+        self.expectThat(expected_result, Equals("off"))

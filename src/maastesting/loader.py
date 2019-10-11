@@ -3,9 +3,7 @@
 
 """Test loader for MAAS and its applications."""
 
-__all__ = [
-    "MAASTestLoader",
-]
+__all__ = ["MAASTestLoader"]
 
 import unittest
 
@@ -26,5 +24,6 @@ class MAASTestLoader(unittest.TestLoader):
             "in to actually be a filesystem path from which to start test "
             "discovery. It doesn't know what to do when a module object is "
             "passed in too. Sorry, either this is not the class you're "
-            "looking for, or you're doing it wrong." % (module,))
+            "looking for, or you're doing it wrong." % (module,)
+        )
         return self.discover(name)

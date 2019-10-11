@@ -14,17 +14,18 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDNSDataForm(MAASServerTestCase):
-
     def test__creates_dnsdata(self):
         name = factory.make_name("dnsdata")
         (rrtype, rrdata) = factory.pick_rrset()
         dnsrr = factory.make_DNSResource(no_ip_addresses=True)
-        form = DNSDataForm({
-            "name": name,
-            "dnsresource": dnsrr.id,
-            "rrtype": rrtype,
-            "rrdata": rrdata,
-        })
+        form = DNSDataForm(
+            {
+                "name": name,
+                "dnsresource": dnsrr.id,
+                "rrtype": rrtype,
+                "rrdata": rrdata,
+            }
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsdata = form.save()
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
@@ -36,13 +37,15 @@ class TestDNSDataForm(MAASServerTestCase):
         (rrtype, rrdata) = factory.pick_rrset()
         dnsrr = factory.make_DNSResource(no_ip_addresses=True)
         ttl = random.randint(1, 10000)
-        form = DNSDataForm({
-            "name": name,
-            "dnsresource": dnsrr.id,
-            "ttl": ttl,
-            "rrtype": rrtype,
-            "rrdata": rrdata,
-        })
+        form = DNSDataForm(
+            {
+                "name": name,
+                "dnsresource": dnsrr.id,
+                "ttl": ttl,
+                "rrtype": rrtype,
+                "rrdata": rrdata,
+            }
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsdata = form.save()
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
@@ -55,13 +58,15 @@ class TestDNSDataForm(MAASServerTestCase):
         (rrtype, rrdata) = factory.pick_rrset()
         dnsrr = factory.make_DNSResource(no_ip_addresses=True)
         ttl = random.randint(1, 10000)
-        form = DNSDataForm({
-            "name": name,
-            "dnsresource": dnsrr.id,
-            "ttl": ttl,
-            "rrtype": rrtype,
-            "rrdata": rrdata,
-        })
+        form = DNSDataForm(
+            {
+                "name": name,
+                "dnsresource": dnsrr.id,
+                "ttl": ttl,
+                "rrtype": rrtype,
+                "rrdata": rrdata,
+            }
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsdata = form.save()
         form = DNSDataForm(instance=dnsdata, data={"ttl": None})
@@ -81,11 +86,10 @@ class TestDNSDataForm(MAASServerTestCase):
         dnsdata = factory.make_DNSData()
         (rrtype, rrdata) = factory.pick_rrset()
         new_ttl = random.randint(1, 1000)
-        form = DNSDataForm(instance=dnsdata, data={
-            "rrtype": rrtype,
-            "rrdata": rrdata,
-            "ttl": new_ttl,
-        })
+        form = DNSDataForm(
+            instance=dnsdata,
+            data={"rrtype": rrtype, "rrdata": rrdata, "ttl": new_ttl},
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         dnsdata = reload_object(dnsdata)

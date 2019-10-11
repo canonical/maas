@@ -7,10 +7,7 @@ __all__ = []
 
 from unittest.mock import sentinel
 
-from apiclient.creds import (
-    convert_string_to_tuple,
-    convert_tuple_to_string,
-)
+from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from maasserver import models
@@ -22,38 +19,38 @@ from maasserver.models.user import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from piston3.models import (
-    KEY_SIZE,
-    SECRET_SIZE,
-)
+from piston3.models import KEY_SIZE, SECRET_SIZE
 
 
 class UserTest(MAASServerTestCase):
-
     def test_user_email_null(self):
         user = User.objects.create_user(username=factory.make_string())
         self.assertIsNone(user.email)
 
     def test_user_email_blank(self):
         user = User.objects.create_user(
-            username=factory.make_string(), email='')
+            username=factory.make_string(), email=""
+        )
         self.assertIsNone(user.email)
 
     def test_user_email_unique(self):
         email = factory.make_email()
-        User.objects.create_user(
-            username=factory.make_string(), email=email)
+        User.objects.create_user(username=factory.make_string(), email=email)
         self.assertRaises(
-            IntegrityError, User.objects.create_user,
-            username=factory.make_string(), email=email)
+            IntegrityError,
+            User.objects.create_user,
+            username=factory.make_string(),
+            email=email,
+        )
 
     def test_has_perm_is_patched(self):
-        mock_has_perm = self.patch(models, '_user_has_perm')
+        mock_has_perm = self.patch(models, "_user_has_perm")
         user = factory.make_User()
         user.has_perm(sentinel.perm, sentinel.obj)
         self.assertThat(
             mock_has_perm,
-            MockCalledOnceWith(user, sentinel.perm, sentinel.obj))
+            MockCalledOnceWith(user, sentinel.perm, sentinel.obj),
+        )
 
 
 class AuthTokensTest(MAASServerTestCase):
@@ -68,7 +65,7 @@ class AuthTokensTest(MAASServerTestCase):
     def assertConsumerValid(self, consumer):
         self.assertIsInstance(consumer.key, str)
         self.assertEqual(KEY_SIZE, len(consumer.key))
-        self.assertEqual('', consumer.secret)
+        self.assertEqual("", consumer.secret)
 
     def test_create_auth_token(self):
         user = factory.make_User()
@@ -100,10 +97,12 @@ class AuthTokensTest(MAASServerTestCase):
         token = create_auth_token(factory.make_User())
         self.assertEqual(
             (token.consumer.key, token.key, token.secret),
-            get_creds_tuple(token))
+            get_creds_tuple(token),
+        )
 
     def test_get_creds_tuple_integrates_with_api_client(self):
         creds_tuple = get_creds_tuple(create_auth_token(factory.make_User()))
         self.assertEqual(
             creds_tuple,
-            convert_string_to_tuple(convert_tuple_to_string(creds_tuple)))
+            convert_string_to_tuple(convert_tuple_to_string(creds_tuple)),
+        )

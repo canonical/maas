@@ -13,10 +13,7 @@ __all__ = [
     "startup",
 ]
 
-from maasserver.utils.dblocks import (
-    DatabaseLock,
-    DatabaseXactLock,
-)
+from maasserver.utils.dblocks import DatabaseLock, DatabaseXactLock
 
 # Lock around starting-up a MAAS region and connection of rack controllers.
 # This can be a problem where a region controller and a rack controller try

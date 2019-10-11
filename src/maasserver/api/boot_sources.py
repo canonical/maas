@@ -3,10 +3,7 @@
 
 """API handlers: `BootSource`."""
 
-__all__ = [
-    'BootSourceHandler',
-    'BootSourcesHandler',
-    ]
+__all__ = ["BootSourceHandler", "BootSourcesHandler"]
 
 from base64 import b64encode
 import http.client
@@ -23,17 +20,18 @@ from piston3.utils import rc
 
 
 DISPLAYED_BOOTSOURCE_FIELDS = (
-    'id',
-    'url',
-    'keyring_filename',
-    'keyring_data',
-    'created',
-    'updated',
+    "id",
+    "url",
+    "keyring_filename",
+    "keyring_data",
+    "created",
+    "updated",
 )
 
 
 class BootSourceHandler(OperationsHandler):
     """Manage a boot source."""
+
     api_doc_section_name = "Boot source"
     create = None
 
@@ -84,10 +82,10 @@ class BootSourceHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=id)
+        boot_source = get_object_or_404(BootSource, id=id)
         form = BootSourceForm(
-            data=request.data, files=request.FILES, instance=boot_source)
+            data=request.data, files=request.FILES, instance=boot_source
+        )
         if form.is_valid():
             return form.save()
         else:
@@ -106,8 +104,7 @@ class BootSourceHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        boot_source = get_object_or_404(
-            BootSource, id=id)
+        boot_source = get_object_or_404(BootSource, id=id)
         boot_source.delete()
         return rc.DELETED
 
@@ -118,20 +115,21 @@ class BootSourceHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, bootsource=None):
         if bootsource is None:
-            id = 'id'
+            id = "id"
         else:
             id = bootsource.id
-        return ('boot_source_handler', (id, ))
+        return ("boot_source_handler", (id,))
 
 
 class BootSourcesHandler(OperationsHandler):
     """Manage the collection of boot sources."""
+
     api_doc_section_name = "Boot sources"
     update = delete = None
 
     @classmethod
     def resource_uri(cls):
-        return ('boot_sources_handler', [])
+        return ("boot_sources_handler", [])
 
     def read(self, request):
         """@description-title List boot sources
@@ -165,16 +163,17 @@ class BootSourcesHandler(OperationsHandler):
         @success-example "success-json" [exkey=boot-sources-create] placeholder
         text
         """
-        form = BootSourceForm(
-            data=request.data, files=request.FILES)
+        form = BootSourceForm(data=request.data, files=request.FILES)
         if form.is_valid():
             boot_source = form.save()
             handler = BootSourceHandler()
             emitter = JSONEmitter(
-                boot_source, typemapper, handler, handler.fields, False)
+                boot_source, typemapper, handler, handler.fields, False
+            )
             return HttpResponse(
                 emitter.render(request),
                 content_type="application/json; charset=utf-8",
-                status=int(http.client.CREATED))
+                status=int(http.client.CREATED),
+            )
         else:
             raise MAASAPIValidationError(form.errors)

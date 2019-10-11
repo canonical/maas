@@ -11,11 +11,7 @@ __all__ = []
 
 from socket import error as SOCKETError
 
-from paramiko import (
-    AutoAddPolicy,
-    SSHClient,
-    SSHException,
-)
+from paramiko import AutoAddPolicy, SSHClient, SSHException
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -30,47 +26,62 @@ from provisioningserver.drivers.power import (
 
 
 class HMCState:
-    OFF = ('Shutting Down', 'Not Activated')
-    ON = ('Starting', 'Running', 'Open Firmware')
+    OFF = ("Shutting Down", "Not Activated")
+    ON = ("Starting", "Running", "Open Firmware")
 
 
 class HMCPowerDriver(PowerDriver):
 
-    name = 'hmc'
+    name = "hmc"
     chassis = True
     description = "IBM Hardware Management Console (HMC)"
     settings = [
-        make_setting_field('power_address', "IP for HMC", required=True),
-        make_setting_field('power_user', "HMC username"),
+        make_setting_field("power_address", "IP for HMC", required=True),
+        make_setting_field("power_user", "HMC username"),
         make_setting_field(
-            'power_pass', "HMC password", field_type='password'),
+            "power_pass", "HMC password", field_type="password"
+        ),
         make_setting_field(
-            'server_name', "HMC Managed System server name",
-            scope=SETTING_SCOPE.NODE, required=True),
+            "server_name",
+            "HMC Managed System server name",
+            scope=SETTING_SCOPE.NODE,
+            required=True,
+        ),
         make_setting_field(
-            'lpar', "HMC logical partition",
-            scope=SETTING_SCOPE.NODE, required=True),
+            "lpar",
+            "HMC logical partition",
+            scope=SETTING_SCOPE.NODE,
+            required=True,
+        ),
     ]
-    ip_extractor = make_ip_extractor('power_address')
+    ip_extractor = make_ip_extractor("power_address")
 
     def detect_missing_packages(self):
         # uses pure-python paramiko ssh client - nothing to look for!
         return []
 
-    def run_hmc_command(self, command, power_address=None, power_user=None,
-                        power_pass=None, **extra):
+    def run_hmc_command(
+        self,
+        command,
+        power_address=None,
+        power_user=None,
+        power_pass=None,
+        **extra
+    ):
         """Run a single command on HMC via SSH and return output."""
         try:
             ssh_client = SSHClient()
             ssh_client.set_missing_host_key_policy(AutoAddPolicy())
             ssh_client.connect(
-                power_address, username=power_user, password=power_pass)
+                power_address, username=power_user, password=power_pass
+            )
             _, stdout, _ = ssh_client.exec_command(command)
-            output = stdout.read().decode('utf-8').strip()
+            output = stdout.read().decode("utf-8").strip()
         except (SSHException, EOFError, SOCKETError) as e:
             raise PowerConnError(
                 "Could not make SSH connection to HMC for "
-                "%s on %s - %s" % (power_user, power_address, e))
+                "%s on %s - %s" % (power_user, power_address, e)
+            )
         finally:
             ssh_client.close()
 
@@ -84,11 +95,14 @@ class HMCPowerDriver(PowerDriver):
             # Power lpar on
             self.run_hmc_command(
                 "chsysstate -r lpar -m %s -o on -n %s --bootstring network-all"
-                % (context['server_name'], context['lpar']), **context)
+                % (context["server_name"], context["lpar"]),
+                **context
+            )
         except PowerConnError as e:
             raise PowerActionError(
                 "HMC Power Driver unable to power on lpar %s: %s"
-                % (context['lpar'], e))
+                % (context["lpar"], e)
+            )
 
     def power_off(self, system_id, context):
         """Power off HMC lpar."""
@@ -96,11 +110,14 @@ class HMCPowerDriver(PowerDriver):
             # Power lpar off
             self.run_hmc_command(
                 "chsysstate -r lpar -m %s -o shutdown -n %s --immed"
-                % (context['server_name'], context['lpar']), **context)
+                % (context["server_name"], context["lpar"]),
+                **context
+            )
         except PowerConnError as e:
             raise PowerActionError(
                 "HMC Power Driver unable to power off lpar %s: %s"
-                % (context['lpar'], e))
+                % (context["lpar"], e)
+            )
 
     def power_query(self, system_id, context):
         """Power query HMC lpar."""
@@ -108,17 +125,21 @@ class HMCPowerDriver(PowerDriver):
             # Power query lpar
             power_state = self.run_hmc_command(
                 "lssyscfg -m %s -r lpar -F state --filter lpar_names=%s"
-                % (context['server_name'], context['lpar']), **context)
+                % (context["server_name"], context["lpar"]),
+                **context
+            )
         except PowerConnError as e:
             raise PowerActionError(
                 "HMC Power Driver unable to power query lpar %s: %s"
-                % (context['lpar'], e))
+                % (context["lpar"], e)
+            )
         else:
             if power_state in HMCState.OFF:
-                return 'off'
+                return "off"
             elif power_state in HMCState.ON:
-                return 'on'
+                return "on"
             else:
                 raise PowerFatalError(
                     "HMC Power Driver retrieved unknown power state %s"
-                    " for lpar %s" % (power_state, context['lpar']))
+                    " for lpar %s" % (power_state, context["lpar"])
+                )

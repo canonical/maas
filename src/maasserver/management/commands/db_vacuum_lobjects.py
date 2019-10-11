@@ -3,15 +3,12 @@
 
 """Django command: db_vacuum_lobjects (vacuums the large objects in the DB)."""
 
-__all__ = ['Command']
+__all__ = ["Command"]
 
 import subprocess
 from textwrap import dedent
 
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import BaseCommand, CommandError
 
 
 def _make_vacuum_command(database):
@@ -21,14 +18,15 @@ def _make_vacuum_command(database):
     :return: a command in list format, suitable to pass to a subprocess
     """
     command = [
-        'sudo',
+        "sudo",
         # Note: we had intended to use the 'maas' user for this, but this
         # doesn't end up reducing the size of the database. Also, the console
         # outputs dozens of warnings. I assume this is the key warning:
         # WARNING:  skipping "pg_largeobject" ---
         #     only superuser or database owner can vacuum it
-        '-u', 'postgres',
-        'vacuumdb',
+        "-u",
+        "postgres",
+        "vacuumdb",
         # Note: we had intended to restrict this to only the
         # 'maasserver_largefile' table, which contains the references to our
         # large files, but this doesn't end up reducing the size of the
@@ -38,9 +36,11 @@ def _make_vacuum_command(database):
         # behavior. On the other hand, the locking implications are less scary,
         # and the vacuum takes considerably less time if we restrict it to
         # this single table.
-        '-t', 'pg_largeobject',
-        '--full',
-        '-d', database,
+        "-t",
+        "pg_largeobject",
+        "--full",
+        "-d",
+        database,
     ]
     return command
 
@@ -49,24 +49,28 @@ class Command(BaseCommand):
     """Vacuums the table of large objects, which can grow very large over time
     (especially if the user is using boot images from the "daily" stream).
     """
+
     help = dedent(
         "Vacuums large objects from the database. (This is occasionally "
         "needed if repeated updates of MAAS boot images have caused the "
-        "database to grow in size.)")
+        "database to grow in size.)"
+    )
 
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
 
         parser.add_argument(
-            '--database', default=None,
+            "--database",
+            default=None,
             help="Database to connect to. (default: the database found in "
-                 "the options file, or 'maasdb' if not found.)")
+            "the options file, or 'maasdb' if not found.)",
+        )
 
     def handle(self, **options):
         # Access the global system-installed MAAS database.
-        database = options.get('database')
+        database = options.get("database")
         if database is None:
-            database = 'maasdb'
+            database = "maasdb"
         try:
             command = _make_vacuum_command(database)
             subprocess.check_call(command)

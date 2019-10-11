@@ -3,11 +3,7 @@
 
 """Utilities for working with ARP packets."""
 
-__all__ = [
-    "ARP",
-    "add_arguments",
-    "run"
-]
+__all__ = ["ARP", "add_arguments", "run"]
 
 from collections import namedtuple
 from datetime import datetime
@@ -19,24 +15,12 @@ import subprocess
 import sys
 from textwrap import dedent
 
-from netaddr import (
-    EUI,
-    IPAddress,
-)
+from netaddr import EUI, IPAddress
 from provisioningserver.path import get_path
 from provisioningserver.utils import sudo
-from provisioningserver.utils.ethernet import (
-    Ethernet,
-    ETHERTYPE,
-)
-from provisioningserver.utils.network import (
-    bytes_to_int,
-    format_eui,
-)
-from provisioningserver.utils.pcap import (
-    PCAP,
-    PCAPError,
-)
+from provisioningserver.utils.ethernet import Ethernet, ETHERTYPE
+from provisioningserver.utils.network import bytes_to_int, format_eui
+from provisioningserver.utils.pcap import PCAP, PCAPError
 from provisioningserver.utils.script import ActionScriptError
 
 # The SEEN_AGAIN_THRESHOLD is a time (in seconds) that determines how often
@@ -47,24 +31,28 @@ from provisioningserver.utils.script import ActionScriptError
 SEEN_AGAIN_THRESHOLD = 600
 
 # Definitions for ARP packet used with `struct`.
-ARP_PACKET = '!hhBBh6sL6sL'
-ARPPacket = namedtuple('ARPPacket', (
-    'hardware_type',
-    'protocol',
-    'hardware_length',
-    'protocol_length',
-    'operation',
-    'sender_mac',
-    'sender_ip',
-    'target_mac',
-    'target_ip',
-))
+ARP_PACKET = "!hhBBh6sL6sL"
+ARPPacket = namedtuple(
+    "ARPPacket",
+    (
+        "hardware_type",
+        "protocol",
+        "hardware_length",
+        "protocol_length",
+        "operation",
+        "sender_mac",
+        "sender_ip",
+        "target_mac",
+        "target_ip",
+    ),
+)
 
 SIZEOF_ARP_PACKET = 28
 
 
 class ARP_OPERATION:
     """Enumeration to represent ARP operation types."""
+
     REQUEST = 1
     REPLY = 2
 
@@ -95,14 +83,16 @@ class ARP_OPERATION:
             return other + bytes(self)
         else:
             raise NotImplementedError(
-                'ARP_OPERATION may only be added to `bytes`.')
+                "ARP_OPERATION may only be added to `bytes`."
+            )
 
 
 class ARP:
     """Representation of an ARP packet."""
 
     def __init__(
-            self, pkt_bytes, time=None, src_mac=None, dst_mac=None, vid=None):
+        self, pkt_bytes, time=None, src_mac=None, dst_mac=None, vid=None
+    ):
         """
         :param pkt_bytes: The input bytes of the ARP packet.
         :type pkt_bytes: bytes
@@ -117,7 +107,8 @@ class ARP:
         :return:
         """
         packet = ARPPacket._make(
-            struct.unpack(ARP_PACKET, pkt_bytes[0:SIZEOF_ARP_PACKET]))
+            struct.unpack(ARP_PACKET, pkt_bytes[0:SIZEOF_ARP_PACKET])
+        )
         self.packet = packet
         self.time = time
         if src_mac is not None:
@@ -207,28 +198,35 @@ class ARP:
         :param out: An object with a `write(str)` method.
         """
         if self.time is not None:
-            out.write("ARP observed at %s:\n" % (
-                datetime.fromtimestamp(self.time)))
+            out.write(
+                "ARP observed at %s:\n" % (datetime.fromtimestamp(self.time))
+            )
         if self.vid is not None:
-            out.write("   802.1q VLAN ID (VID): %s (0x%03x)\n" % (
-                self.vid, self.vid))
+            out.write(
+                "   802.1q VLAN ID (VID): %s (0x%03x)\n" % (self.vid, self.vid)
+            )
         if self.src_mac is not None:
-            out.write("        Ethernet source: %s\n" % format_eui(
-                self.src_mac))
+            out.write(
+                "        Ethernet source: %s\n" % format_eui(self.src_mac)
+            )
         if self.dst_mac is not None:
-            out.write("   Ethernet destination: %s\n" % format_eui(
-                self.dst_mac))
+            out.write(
+                "   Ethernet destination: %s\n" % format_eui(self.dst_mac)
+            )
         out.write("          Hardware type: 0x%04x\n" % self.hardware_type)
         out.write("          Protocol type: 0x%04x\n" % self.protocol_type)
         out.write("Hardware address length: %d\n" % self.hardware_length)
         out.write("Protocol address length: %d\n" % self.protocol_length)
-        out.write("              Operation: %s\n" % (
-            ARP_OPERATION(self.operation)))
-        out.write("Sender hardware address: %s\n" % (
-            format_eui(self.source_eui)))
+        out.write(
+            "              Operation: %s\n" % (ARP_OPERATION(self.operation))
+        )
+        out.write(
+            "Sender hardware address: %s\n" % (format_eui(self.source_eui))
+        )
         out.write("Sender protocol address: %s\n" % self.source_ip)
-        out.write("Target hardware address: %s\n" % (
-            format_eui(self.target_eui)))
+        out.write(
+            "Target hardware address: %s\n" % (format_eui(self.target_eui))
+        )
         out.write("Target protocol address: %s\n" % self.target_ip)
         out.write("\n")
 
@@ -249,20 +247,29 @@ def update_bindings_and_get_event(bindings, vid, ip, mac, time):
     """
     if (vid, ip) in bindings:
         binding = bindings[(vid, ip)]
-        if binding['mac'] != mac:
+        if binding["mac"] != mac:
             # Another MAC claimed ownership of this IP address. Update the
             # MAC and emit a "MOVED" event.
-            previous_mac = binding['mac']
-            binding['mac'] = mac
-            binding['time'] = time
-            return (dict(
-                ip=str(ip), mac=format_eui(mac), time=time, event="MOVED",
-                previous_mac=format_eui(previous_mac), vid=vid))
-        elif time - binding['time'] >= SEEN_AGAIN_THRESHOLD:
-            binding['time'] = time
+            previous_mac = binding["mac"]
+            binding["mac"] = mac
+            binding["time"] = time
             return dict(
-                ip=str(ip), mac=format_eui(mac), time=time,
-                event="REFRESHED", vid=vid)
+                ip=str(ip),
+                mac=format_eui(mac),
+                time=time,
+                event="MOVED",
+                previous_mac=format_eui(previous_mac),
+                vid=vid,
+            )
+        elif time - binding["time"] >= SEEN_AGAIN_THRESHOLD:
+            binding["time"] = time
+            return dict(
+                ip=str(ip),
+                mac=format_eui(mac),
+                time=time,
+                event="REFRESHED",
+                vid=vid,
+            )
         else:
             # The IP was found in the bindings dict, but within the
             # SEEN_AGAIN_THRESHOLD. Don't update the record; the time field
@@ -271,10 +278,10 @@ def update_bindings_and_get_event(bindings, vid, ip, mac, time):
     else:
         # We haven't seen this IP before, so add a binding for it and
         # emit a "NEW" event.
-        bindings[(vid, ip)] = {'mac': mac, 'time': time}
+        bindings[(vid, ip)] = {"mac": mac, "time": time}
         return dict(
-            ip=str(ip), mac=format_eui(mac), time=time,
-            event="NEW", vid=vid)
+            ip=str(ip), mac=format_eui(mac), time=time, event="NEW", vid=vid
+        )
 
 
 def update_and_print_bindings(bindings, arp, out=sys.stdout):
@@ -285,15 +292,16 @@ def update_and_print_bindings(bindings, arp, out=sys.stdout):
     """
     for ip, mac in arp.bindings():
         event = update_bindings_and_get_event(
-            bindings, arp.vid, ip, mac, arp.time)
+            bindings, arp.vid, ip, mac, arp.time
+        )
         if event is not None:
             out.write("%s\n" % json.dumps(event))
             out.flush()
 
 
 def observe_arp_packets(
-        verbose=False, bindings=False, input=sys.stdin.buffer,
-        output=sys.stdout):
+    verbose=False, bindings=False, input=sys.stdin.buffer, output=sys.stdout
+):
     """Read stdin and look for tcpdump binary ARP output.
     :param verbose: Output text-based ARP packet details.
     :type verbose: bool
@@ -326,9 +334,12 @@ def observe_arp_packets(
                 # Ignore non-ARP packets.
                 continue
             arp = ARP(
-                ethernet.payload, src_mac=ethernet.src_mac,
-                dst_mac=ethernet.dst_mac, vid=ethernet.vid,
-                time=ethernet.time)
+                ethernet.payload,
+                src_mac=ethernet.src_mac,
+                dst_mac=ethernet.dst_mac,
+                vid=ethernet.vid,
+                time=ethernet.time,
+            )
             if bindings is not None:
                 update_and_print_bindings(bindings, arp, output)
             if verbose:
@@ -349,28 +360,42 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Observes the traffic on the specified interface, looking for ARP
         traffic. Outputs JSON objects (one per line) for each NEW, REFRESHED,
         or MOVED binding.
 
         Reports on REFRESHED bindings at most once every ten minutes.
-        """)
+        """
+    )
     parser.add_argument(
-        '-v', '--verbose', action='store_true', required=False,
-        help='Print verbose packet information.')
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Print verbose packet information.",
+    )
     parser.add_argument(
-        'interface', type=str, nargs='?',
+        "interface",
+        type=str,
+        nargs="?",
         help="Ethernet interface from which to capture traffic. Optional if "
-             "an input file is specified.")
+        "an input file is specified.",
+    )
     parser.add_argument(
-        '-i', '--input-file', type=str, required=False,
+        "-i",
+        "--input-file",
+        type=str,
+        required=False,
         help="File to read PCAP output from. Use - for stdin. Default is to "
-             "call `sudo /usr/lib/maas/network-monitor` to get input.")
+        "call `sudo /usr/lib/maas/network-monitor` to get input.",
+    )
 
 
-def run(args, output=sys.stdout, stdin=sys.stdin,
-        stdin_buffer=sys.stdin.buffer):
+def run(
+    args, output=sys.stdout, stdin=sys.stdin, stdin_buffer=sys.stdin.buffer
+):
     """Observe an Ethernet interface and print ARP bindings."""
 
     # First, become a progress group leader, so that signals can be directed
@@ -384,10 +409,11 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
         cmd = [get_path("/usr/lib/maas/network-monitor"), args.interface]
         cmd = sudo(cmd)
         network_monitor = subprocess.Popen(
-            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
+            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE
+        )
         infile = network_monitor.stdout
     else:
-        if args.input_file == '-':
+        if args.input_file == "-":
             mode = os.fstat(stdin.fileno()).st_mode
             if not stat.S_ISFIFO(mode):
                 raise ActionScriptError("Expected stdin to be a pipe.")
@@ -395,7 +421,8 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
         else:
             infile = open(args.input_file, "rb")
     return_code = observe_arp_packets(
-        bindings=True, verbose=args.verbose, input=infile, output=output)
+        bindings=True, verbose=args.verbose, input=infile, output=output
+    )
     if return_code is not None:
         raise SystemExit(return_code)
     if network_monitor is not None:

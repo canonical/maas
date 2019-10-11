@@ -13,26 +13,30 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestStaticRouteForm(MAASServerTestCase):
-
     def test__requires_source_destination_gateway_ip(self):
         form = StaticRouteForm({})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEqual({
-            "source": ["This field is required."],
-            "destination": ["This field is required."],
-            "gateway_ip": ["This field is required."],
-        }, form.errors)
+        self.assertEqual(
+            {
+                "source": ["This field is required."],
+                "destination": ["This field is required."],
+                "gateway_ip": ["This field is required."],
+            },
+            form.errors,
+        )
 
     def test__creates_staticroute(self):
         source = factory.make_Subnet()
         version = source.get_ipnetwork().version
         dest = factory.make_Subnet(version=version)
         gateway_ip = factory.pick_ip_in_Subnet(source)
-        form = StaticRouteForm({
-            "source": source.id,
-            "destination": dest.id,
-            "gateway_ip": gateway_ip,
-        })
+        form = StaticRouteForm(
+            {
+                "source": source.id,
+                "destination": dest.id,
+                "gateway_ip": gateway_ip,
+            }
+        )
         self.assertTrue(form.is_valid(), form.errors)
         staticroute = form.save()
         self.assertEqual(source, staticroute.source)
@@ -52,12 +56,15 @@ class TestStaticRouteForm(MAASServerTestCase):
         new_dest = factory.make_Subnet(version=version)
         new_gateway_ip = factory.pick_ip_in_Subnet(new_source)
         new_metric = random.randint(0, 500)
-        form = StaticRouteForm(instance=static_route, data={
-            "source": new_source.id,
-            "destination": new_dest.id,
-            "gateway_ip": new_gateway_ip,
-            "metric": new_metric,
-        })
+        form = StaticRouteForm(
+            instance=static_route,
+            data={
+                "source": new_source.id,
+                "destination": new_dest.id,
+                "gateway_ip": new_gateway_ip,
+                "metric": new_metric,
+            },
+        )
         self.assertTrue(form.is_valid(), form.errors)
         staticroute = form.save()
         self.assertEqual(new_source, staticroute.source)

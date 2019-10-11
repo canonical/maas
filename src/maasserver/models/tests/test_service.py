@@ -7,11 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.enum import (
-    NODE_TYPE,
-    SERVICE_STATUS,
-    SERVICE_STATUS_CHOICES,
-)
+from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
 from maasserver.models.service import (
     DEAD_STATUSES,
     RACK_SERVICES,
@@ -21,15 +17,10 @@ from maasserver.models.service import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    MatchesStructure,
-)
+from testtools.matchers import Equals, HasLength, MatchesStructure
 
 
 class TestServiceManager(MAASServerTestCase):
-
     def test_create_services_for_machine(self):
         machine = factory.make_Node()
         Service.objects.create_services_for(machine)
@@ -45,14 +36,16 @@ class TestServiceManager(MAASServerTestCase):
         Service.objects.create_services_for(controller)
         self.assertThat(
             Service.objects.filter(node=controller),
-            HasLength(len(RACK_SERVICES)))
+            HasLength(len(RACK_SERVICES)),
+        )
 
     def test_create_services_for_region_controller(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
         self.assertThat(
             Service.objects.filter(node=controller),
-            HasLength(len(REGION_SERVICES)))
+            HasLength(len(REGION_SERVICES)),
+        )
 
     def test_create_services_for_region_rack_controller(self):
         controller = factory.make_RegionController()
@@ -62,39 +55,38 @@ class TestServiceManager(MAASServerTestCase):
         services = Service.objects.filter(node=controller)
         self.assertThat(
             {service.name for service in services},
-            Equals(REGION_SERVICES | RACK_SERVICES))
+            Equals(REGION_SERVICES | RACK_SERVICES),
+        )
 
     def test_create_services_removes_services(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
         self.assertThat(
-            {service.name for service in services},
-            Equals(REGION_SERVICES))
+            {service.name for service in services}, Equals(REGION_SERVICES)
+        )
 
         controller.node_type = NODE_TYPE.MACHINE
         controller.save()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
-        self.assertThat(
-            {service.name for service in services},
-            HasLength(0))
+        self.assertThat({service.name for service in services}, HasLength(0))
 
     def test_create_services_replaces_services(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
         self.assertThat(
-            {service.name for service in services},
-            Equals(REGION_SERVICES))
+            {service.name for service in services}, Equals(REGION_SERVICES)
+        )
 
         controller.node_type = NODE_TYPE.RACK_CONTROLLER
         controller.save()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
         self.assertThat(
-            {service.name for service in services},
-            Equals(RACK_SERVICES))
+            {service.name for service in services}, Equals(RACK_SERVICES)
+        )
 
     def test_update_service_for_updates_service_status_and_info(self):
         controller = factory.make_RegionController()
@@ -103,12 +95,14 @@ class TestServiceManager(MAASServerTestCase):
         status = factory.pick_choice(SERVICE_STATUS_CHOICES)
         info = factory.make_name("info")
         observed = Service.objects.update_service_for(
-            controller, service, status, info)
+            controller, service, status, info
+        )
         self.assertThat(
             reload_object(observed),
             MatchesStructure.byEquality(
-                node=controller, name=service,
-                status=status, status_info=info))
+                node=controller, name=service, status=status, status_info=info
+            ),
+        )
 
     def test_mark_dead_for_region_controller(self):
         controller = factory.make_RegionController()
@@ -117,7 +111,8 @@ class TestServiceManager(MAASServerTestCase):
         for service in Service.objects.filter(node=controller):
             self.expectThat(
                 (service.status, service.status_info),
-                Equals((DEAD_STATUSES[service.name], "")))
+                Equals((DEAD_STATUSES[service.name], "")),
+            )
 
     def test_mark_dead_for_rack_controller(self):
         controller = factory.make_RackController()
@@ -126,7 +121,8 @@ class TestServiceManager(MAASServerTestCase):
         for service in Service.objects.filter(node=controller):
             self.expectThat(
                 (service.status, service.status_info),
-                Equals((DEAD_STATUSES[service.name], "")))
+                Equals((DEAD_STATUSES[service.name], "")),
+            )
 
     def test_mark_dead_for_region_rack_controller_dead_rack_only(self):
         controller = factory.make_RegionController()
@@ -138,11 +134,13 @@ class TestServiceManager(MAASServerTestCase):
             if service.name in RACK_SERVICES:
                 self.expectThat(
                     (service.status, service.status_info),
-                    Equals((DEAD_STATUSES[service.name], "")))
+                    Equals((DEAD_STATUSES[service.name], "")),
+                )
             else:
                 self.expectThat(
                     (service.status, service.status_info),
-                    Equals((SERVICE_STATUS.UNKNOWN, "")))
+                    Equals((SERVICE_STATUS.UNKNOWN, "")),
+                )
 
     def test_mark_dead_for_region_rack_controller_dead_region_only(self):
         controller = factory.make_RegionController()
@@ -154,11 +152,13 @@ class TestServiceManager(MAASServerTestCase):
             if service.name in REGION_SERVICES:
                 self.expectThat(
                     (service.status, service.status_info),
-                    Equals((DEAD_STATUSES[service.name], "")))
+                    Equals((DEAD_STATUSES[service.name], "")),
+                )
             else:
                 self.expectThat(
                     (service.status, service.status_info),
-                    Equals((SERVICE_STATUS.UNKNOWN, "")))
+                    Equals((SERVICE_STATUS.UNKNOWN, "")),
+                )
 
     def test_mark_dead_for_region_rack_controller_region_and_rack_dead(self):
         controller = factory.make_RegionController()
@@ -169,4 +169,5 @@ class TestServiceManager(MAASServerTestCase):
         for service in Service.objects.filter(node=controller):
             self.expectThat(
                 (service.status, service.status_info),
-                Equals((DEAD_STATUSES[service.name], "")))
+                Equals((DEAD_STATUSES[service.name], "")),
+            )

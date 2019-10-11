@@ -3,19 +3,10 @@
 
 """Testing infrastructure for MAAS."""
 
-__all__ = [
-    "bindir",
-    "root",
-    ]
+__all__ = ["bindir", "root"]
 
 import copy
-from os.path import (
-    abspath,
-    dirname,
-    join,
-    pardir,
-    realpath,
-)
+from os.path import abspath, dirname, join, pardir, realpath
 import re
 from unittest import mock
 from warnings import filterwarnings
@@ -38,15 +29,16 @@ packages = {
     "provisioningserver",
 }
 packages_expr = r"^(?:%s)\b" % "|".join(
-    re.escape(package) for package in packages)
+    re.escape(package) for package in packages
+)
 
 # Enable some warnings that we ought to pay heed to.
-filterwarnings('error', category=BytesWarning, module=packages_expr)
-filterwarnings('default', category=DeprecationWarning, module=packages_expr)
-filterwarnings('default', category=ImportWarning, module=packages_expr)
+filterwarnings("error", category=BytesWarning, module=packages_expr)
+filterwarnings("default", category=DeprecationWarning, module=packages_expr)
+filterwarnings("default", category=ImportWarning, module=packages_expr)
 
 # Ignore noisy deprecation warnings inside Twisted.
-filterwarnings('ignore', category=DeprecationWarning, module=r"^twisted\b")
+filterwarnings("ignore", category=DeprecationWarning, module=r"^twisted\b")
 
 # Make sure that sentinel objects are not copied.
 sentinel_type = type(mock.sentinel.foo)
@@ -55,5 +47,6 @@ copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
 
 # Monkey-patch test dependencies here.
 from maastesting.twisted import maybe_fix_bug_230_in_CaptureTwistedLogs
+
 maybe_fix_bug_230_in_CaptureTwistedLogs()
 del maybe_fix_bug_230_in_CaptureTwistedLogs

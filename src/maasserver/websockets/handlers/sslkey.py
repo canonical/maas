@@ -3,9 +3,7 @@
 
 """The SSLKey handler for the WebSocket connection."""
 
-__all__ = [
-    "SSLKeyHandler",
-    ]
+__all__ = ["SSLKeyHandler"]
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
@@ -22,18 +20,10 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class SSLKeyHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = SSLKey.objects.all()
-        allowed_methods = [
-            'list',
-            'get',
-            'create',
-            'delete',
-        ]
-        listen_channels = [
-            "sslkey",
-        ]
+        allowed_methods = ["list", "get", "create", "delete"]
+        listen_channels = ["sslkey"]
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for SSL keys owned by `user`."""
@@ -42,7 +32,8 @@ class SSLKeyHandler(TimestampedModelHandler):
     def get_object(self, params, permission=None):
         """Only allow getting keys owned by the user."""
         obj = super(SSLKeyHandler, self).get_object(
-            params, permission=permission)
+            params, permission=permission
+        )
         if obj.user != self.user:
             raise HandlerDoesNotExistError(params[self._meta.pk])
         else:

@@ -3,9 +3,7 @@
 
 """RPC helpers relating to services."""
 
-__all__ = [
-    "update_services",
-]
+__all__ = ["update_services"]
 
 from logging import getLogger
 
@@ -41,12 +39,19 @@ def update_services(system_id, services):
     for service in services:
         try:
             Service.objects.update_service_for(
-                rack, service['name'], service['status'],
-                service['status_info'])
+                rack,
+                service["name"],
+                service["status"],
+                service["status_info"],
+            )
         except Service.DoesNotExist:
             log.error(
                 "Rack %s reported status for %r but this is not a recognised "
-                "service (status=%r, info=%r).", rack.system_id,
-                service['name'], service['status'], service['status_info'])
+                "service (status=%r, info=%r).",
+                rack.system_id,
+                service["name"],
+                service["status"],
+                service["status_info"],
+            )
 
     return {}

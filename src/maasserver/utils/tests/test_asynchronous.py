@@ -9,11 +9,7 @@ from functools import partial
 from textwrap import dedent
 import threading
 from time import time
-from unittest.mock import (
-    call,
-    Mock,
-    sentinel,
-)
+from unittest.mock import call, Mock, sentinel
 
 from crochet import wait_for
 from maasserver.exceptions import IteratorReusedError
@@ -27,10 +23,7 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import (
-    extract_result,
-    TwistedLoggerFixture,
-)
+from maastesting.twisted import extract_result, TwistedLoggerFixture
 from testtools.matchers import (
     Contains,
     Equals,
@@ -48,7 +41,6 @@ from twisted.python.threadable import isInIOThread
 
 
 class TestGather(MAASTestCase):
-
     def test_gather_nothing(self):
         time_before = time()
         results = list(asynchronous.gather([], timeout=10))
@@ -62,25 +54,25 @@ class TestGather(MAASTestCase):
 class TestGatherScenarios(MAASTestCase):
 
     scenarios = (
-        ("synchronous", {
-            # Return the call as-is.
-            "wrap": lambda call: call,
-        }),
-        ("asynchronous", {
-            # Defer the call to a later reactor iteration.
-            "wrap": lambda call: partial(deferLater, reactor, 0, call),
-        }),
+        (
+            "synchronous",
+            {
+                # Return the call as-is.
+                "wrap": lambda call: call
+            },
+        ),
+        (
+            "asynchronous",
+            {
+                # Defer the call to a later reactor iteration.
+                "wrap": lambda call: partial(deferLater, reactor, 0, call)
+            },
+        ),
     )
 
     def test_gather_from_calls_without_errors(self):
-        values = [
-            self.getUniqueInteger(),
-            self.getUniqueString(),
-        ]
-        calls = [
-            self.wrap(lambda v=value: v)
-            for value in values
-        ]
+        values = [self.getUniqueInteger(), self.getUniqueString()]
+        calls = [self.wrap(lambda v=value: v) for value in values]
         results = list(asynchronous.gather(calls))
         self.assertItemsEqual(values, results)
 
@@ -90,10 +82,7 @@ class TestGatherScenarios(MAASTestCase):
         self.assertIsInstance(results, asynchronous.UseOnceIterator)
 
     def test_gather_from_calls_with_errors(self):
-        calls = [
-            (lambda: sentinel.okay),
-            (lambda: 1 / 0),  # ZeroDivisionError
-        ]
+        calls = [(lambda: sentinel.okay), (lambda: 1 / 0)]  # ZeroDivisionError
         calls = [self.wrap(call) for call in calls]
         results = list(asynchronous.gather(calls))
 
@@ -105,23 +94,14 @@ class TestGatherScenarios(MAASTestCase):
         self.assertThat(failure.type, Is(ZeroDivisionError))
 
     def test_gatherCallResults_yields_call_result_tuples(self):
-        values = [
-            self.getUniqueInteger(),
-            self.getUniqueString(),
-        ]
-        calls = [
-            self.wrap(lambda v=value: v)
-            for value in values
-            ]
+        values = [self.getUniqueInteger(), self.getUniqueString()]
+        calls = [self.wrap(lambda v=value: v) for value in values]
         results = list(asynchronous.gatherCallResults(calls))
-        expected_results = [
-            (calls[0], values[0]), (calls[1], values[1])
-        ]
+        expected_results = [(calls[0], values[0]), (calls[1], values[1])]
         self.assertItemsEqual(expected_results, results)
 
 
 class TestUseOnceIterator(MAASTestCase):
-
     def test_returns_correct_items_for_list(self):
         expected_values = list(range(10))
         iterator = asynchronous.UseOnceIterator(expected_values)
@@ -141,13 +121,13 @@ class TestUseOnceIterator(MAASTestCase):
 
 
 class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
-
     def test__is_thread_local(self):
         dhooks = DeferredHooks()
         queues = []
         for _ in range(3):
             thread = threading.Thread(
-                target=lambda: queues.append(dhooks.hooks))
+                target=lambda: queues.append(dhooks.hooks)
+            )
             thread.start()
             thread.join()
         self.assertThat(queues, HasLength(3))
@@ -175,7 +155,6 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
             self.assertIsNone(extract_result(d))
 
     def test__fire_calls_hooks_in_reactor(self):
-
         def validate_in_reactor(_):
             self.assertTrue(isInIOThread())
 
@@ -216,7 +195,6 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(canceller, MockCallsMatch(call(d1), call(d2)))
 
     def test__reset_cancels_in_reactor(self):
-
         def validate_in_reactor(_):
             self.assertTrue(isInIOThread())
 
@@ -256,13 +234,16 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         # prepared for, so it is left as-is.
         self.assertThat(d, IsUnfiredDeferred())
         self.assertDocTestMatches(
-            dedent("""\
+            dedent(
+                """\
             Failure when cancelling hook.
             Traceback (most recent call last):
             ...
             maastesting.factory.TestException#...
-            """),
-            logger.output)
+            """
+            ),
+            logger.output,
+        )
 
     def test__logs_failures_from_cancellers_when_hook_already_fired(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -278,13 +259,16 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(dhooks.hooks, HasLength(0))
         self.assertThat(d, IsFiredDeferred())
         self.assertDocTestMatches(
-            dedent("""\
+            dedent(
+                """\
             Failure when cancelling hook.
             Traceback (most recent call last):
             ...
             maastesting.factory.TestException#...
-            """),
-            logger.output)
+            """
+            ),
+            logger.output,
+        )
 
     def test__logs_failures_from_cancelled_hooks(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -298,13 +282,16 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(dhooks.hooks, HasLength(0))
         self.assertThat(d, IsFiredDeferred())
         self.assertDocTestMatches(
-            dedent("""\
+            dedent(
+                """\
             Failure when cancelling hook.
             Traceback (most recent call last):
             ...
             maastesting.factory.TestException#...
-            """),
-            logger.output)
+            """
+            ),
+            logger.output,
+        )
 
     def test__savepoint_saves_and_restores_hooks(self):
         d = Deferred()

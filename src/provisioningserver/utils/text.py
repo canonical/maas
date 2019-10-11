@@ -4,11 +4,11 @@
 """Text-processing utilities."""
 
 __all__ = [
-    'make_gecos_field',
-    'normalise_to_comma_list',
-    'normalise_whitespace',
-    'quote',
-    'split_string_list',
+    "make_gecos_field",
+    "normalise_to_comma_list",
+    "normalise_whitespace",
+    "quote",
+    "split_string_list",
 ]
 
 import re
@@ -21,7 +21,7 @@ def quote(string):
 
 def normalise_whitespace(text):
     """Replace any whitespace sequence in `text` with just a single space."""
-    return ' '.join(text.split())
+    return " ".join(text.split())
 
 
 def normalise_to_comma_list(string, quoted=False):
@@ -38,11 +38,12 @@ def normalise_to_comma_list(string, quoted=False):
 
 def split_string_list(string):
     """Take a space- or comma-separated list and generate the parts."""
-    return (part for part in re.split(r'[,\s]+', string) if len(part) != 0)
+    return (part for part in re.split(r"[,\s]+", string) if len(part) != 0)
 
 
 def make_gecos_field(
-        fullname=None, room=None, worktel=None, hometel=None, other=None):
+    fullname=None, room=None, worktel=None, hometel=None, other=None
+):
     """Construct a GECOS field.
 
     Based on a reading of chfn(1).
@@ -66,8 +67,10 @@ def make_gecos_field(
             return ""
         else:
             return (
-                string.replace(",", "_").replace(":", "_")
-                .encode("ascii", "replace").decode("ascii")
+                string.replace(",", "_")
+                .replace(":", "_")
+                .encode("ascii", "replace")
+                .decode("ascii")
                 .strip()
             )
 

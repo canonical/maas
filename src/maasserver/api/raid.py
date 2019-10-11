@@ -4,43 +4,32 @@
 """API handlers: `RAID`."""
 
 from maasserver.api.support import OperationsHandler
-from maasserver.enum import (
-    FILESYSTEM_TYPE,
-    NODE_STATUS,
-)
-from maasserver.exceptions import (
-    MAASAPIValidationError,
-    NodeStateViolation,
-)
-from maasserver.forms import (
-    CreateRaidForm,
-    UpdateRaidForm,
-)
-from maasserver.models import (
-    Machine,
-    RAID,
-)
+from maasserver.enum import FILESYSTEM_TYPE, NODE_STATUS
+from maasserver.exceptions import MAASAPIValidationError, NodeStateViolation
+from maasserver.forms import CreateRaidForm, UpdateRaidForm
+from maasserver.models import Machine, RAID
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
 
 
 DISPLAYED_RAID_FIELDS = (
-    'system_id',
-    'id',
-    'uuid',
-    'name',
-    'level',
-    'devices',
-    'spare_devices',
-    'size',
-    'human_size',
-    'virtual_device',
+    "system_id",
+    "id",
+    "uuid",
+    "name",
+    "level",
+    "devices",
+    "spare_devices",
+    "size",
+    "human_size",
+    "virtual_device",
 )
 
 
 class RaidsHandler(OperationsHandler):
     """Manage all RAIDs (Redundant Array of Independent Disks) on a machine."""
+
     api_doc_section_name = "RAID Devices"
     update = delete = None
     fields = DISPLAYED_RAID_FIELDS
@@ -48,7 +37,7 @@ class RaidsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('raid_devices_handler', ["system_id"])
+        return ("raid_devices_handler", ["system_id"])
 
     def create(self, request, system_id):
         """@description-title Set up a RAID
@@ -92,10 +81,12 @@ class RaidsHandler(OperationsHandler):
             Cannot create RAID because the machine is not Ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create RAID because the machine is not Ready.")
+                "Cannot create RAID because the machine is not Ready."
+            )
         form = CreateRaidForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
@@ -122,7 +113,8 @@ class RaidsHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         return RAID.objects.filter_by_node(machine)
 
 
@@ -131,6 +123,7 @@ class RaidHandler(OperationsHandler):
     Manage a specific RAID (Redundant Array of Independent Disks) on a
     machine.
     """
+
     api_doc_section_name = "RAID Device"
     create = None
     model = RAID
@@ -146,7 +139,7 @@ class RaidHandler(OperationsHandler):
             node = raid.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('raid_device_handler', (system_id, raid_id))
+        return ("raid_device_handler", (system_id, raid_id))
 
     @classmethod
     def system_id(cls, raid):
@@ -179,7 +172,8 @@ class RaidHandler(OperationsHandler):
         return [
             filesystem.get_parent()
             for filesystem in raid.filesystems.filter(
-                fstype=FILESYSTEM_TYPE.RAID)
+                fstype=FILESYSTEM_TYPE.RAID
+            )
         ]
 
     @classmethod
@@ -188,7 +182,8 @@ class RaidHandler(OperationsHandler):
         return [
             filesystem.get_parent()
             for filesystem in raid.filesystems.filter(
-                fstype=FILESYSTEM_TYPE.RAID_SPARE)
+                fstype=FILESYSTEM_TYPE.RAID_SPARE
+            )
         ]
 
     def read(self, request, system_id, id):
@@ -213,7 +208,8 @@ class RaidHandler(OperationsHandler):
             Not Found
         """
         return RAID.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def update(self, request, system_id, id):
         """@description-title Update a RAID
@@ -268,11 +264,13 @@ class RaidHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         raid = RAID.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = raid.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update RAID because the machine is not Ready.")
+                "Cannot update RAID because the machine is not Ready."
+            )
         form = UpdateRaidForm(raid, data=request.data)
         if form.is_valid():
             return form.save()
@@ -300,10 +298,12 @@ class RaidHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         raid = RAID.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = raid.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete RAID because the machine is not Ready.")
+                "Cannot delete RAID because the machine is not Ready."
+            )
         raid.delete()
         return rc.DELETED

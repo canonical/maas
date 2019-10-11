@@ -3,9 +3,7 @@
 
 """Notification form."""
 
-__all__ = [
-    "NotificationForm",
-]
+__all__ = ["NotificationForm"]
 
 from maasserver.forms import MAASModelForm
 from maasserver.models.notification import Notification
@@ -17,13 +15,13 @@ class NotificationForm(MAASModelForm):
     class Meta:
         model = Notification
         fields = (
-            'ident',
-            'user',
-            'users',
-            'admins',
-            'message',
-            'context',
-            'category',
+            "ident",
+            "user",
+            "users",
+            "admins",
+            "message",
+            "context",
+            "category",
         )
 
     def clean_context(self):

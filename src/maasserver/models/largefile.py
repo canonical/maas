@@ -3,34 +3,19 @@
 
 """Large file storage."""
 
-__all__ = [
-    'LargeFile',
-]
+__all__ = ["LargeFile"]
 
 import hashlib
 
-from django.db.models import (
-    BigIntegerField,
-    CharField,
-    Manager,
-)
+from django.db.models import BigIntegerField, CharField, Manager
 from maasserver import DefaultMeta
-from maasserver.fields import (
-    LargeObjectField,
-    LargeObjectFile,
-)
+from maasserver.fields import LargeObjectField, LargeObjectFile
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import (
-    get_one,
-    transactional,
-)
+from maasserver.utils.orm import get_one, transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-)
+from provisioningserver.utils.twisted import asynchronous, FOREVER
 from twisted.internet import reactor
 
 
@@ -69,12 +54,13 @@ class FileStorageManager(Manager):
         length = 0
         content.seek(0)
         objfile = LargeObjectFile()
-        with objfile.open('wb') as objstream:
+        with objfile.open("wb") as objstream:
             for data in content:
                 objstream.write(data)
                 length += len(data)
         return self.create(
-            sha256=hexdigest, size=length, total_size=length, content=objfile)
+            sha256=hexdigest, size=length, total_size=length, content=objfile
+        )
 
 
 class LargeFile(CleanSave, TimestampedModel):
@@ -123,7 +109,7 @@ class LargeFile(CleanSave, TimestampedModel):
     @property
     def complete(self):
         """`content` has been completely saved."""
-        return (self.total_size == self.size)
+        return self.total_size == self.size
 
     @property
     def valid(self):
@@ -135,7 +121,7 @@ class LargeFile(CleanSave, TimestampedModel):
         if not self.complete:
             return False
         sha256 = hashlib.sha256()
-        with self.content.open('rb') as stream:
+        with self.content.open("rb") as stream:
             for data in stream:
                 sha256.update(data)
         hexdigest = sha256.hexdigest()
@@ -149,9 +135,13 @@ class LargeFile(CleanSave, TimestampedModel):
         referencing this object.
         """
         links = [
-            f.get_accessor_name() for f in self._meta.get_fields()
-            if ((f.one_to_many or f.one_to_one) and
-                f.auto_created and not f.concrete)
+            f.get_accessor_name()
+            for f in self._meta.get_fields()
+            if (
+                (f.one_to_many or f.one_to_one)
+                and f.auto_created
+                and not f.concrete
+            )
         ]
         for link in links:
             if getattr(self, link).exists():
@@ -167,10 +157,12 @@ def delete_large_object_content_later(content):
     finish. This can cause blocking and thread starvation inside the reactor
     threadpool.
     """
+
     def unlink(content):
         d = deferToDatabase(transactional(content.unlink))
         d.addErrback(
-            log.err, "Failure deleting large object (oid=%d)." % content.oid)
+            log.err, "Failure deleting large object (oid=%d)." % content.oid
+        )
         return d
 
     return reactor.callLater(0, unlink, content)

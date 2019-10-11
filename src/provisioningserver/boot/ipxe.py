@@ -3,25 +3,20 @@
 
 """IPXE Boot Method"""
 
-__all__ = [
-    'IPXEBootMethod',
-    ]
+__all__ = ["IPXEBootMethod"]
 
 from itertools import repeat
 import os
 import re
 from textwrap import dedent
 
-from provisioningserver.boot import (
-    BootMethod,
-    BytesReader,
-    get_parameters,
-)
+from provisioningserver.boot import BootMethod, BytesReader, get_parameters
 from provisioningserver.utils import typed
 import tempita
 
 
-CONFIG_FILE = dedent("""\
+CONFIG_FILE = dedent(
+    """\
     #!ipxe
     # MAAS iPXE pre-loader configuration file
 
@@ -30,15 +25,15 @@ CONFIG_FILE = dedent("""\
 
     # Failed to load based on MAC address.
     chain http://${next-server}:5248/ipxe.cfg-default-amd64
-    """)
+    """
+)
 
 # iPXE represents a MAC address in IEEE 802 colon-seperated format.
-re_mac_address_octet = r'[0-9a-f]{2}'
-re_mac_address = re.compile(
-    ':'.join(repeat(re_mac_address_octet, 6)))
+re_mac_address_octet = r"[0-9a-f]{2}"
+re_mac_address = re.compile(":".join(repeat(re_mac_address_octet, 6)))
 
 # Match the grub/grub.cfg-* request for UEFI (aka. GRUB2)
-re_config_file = r'''
+re_config_file = r"""
     # Optional leading slash(es).
     ^/*
     ipxe[.]cfg   # UEFI (aka. GRUB2) expects this.
@@ -53,10 +48,9 @@ re_config_file = r'''
           )?
     )
     $
-'''
+"""
 
-re_config_file = re_config_file.format(
-    re_mac_address=re_mac_address)
+re_config_file = re_config_file.format(re_mac_address=re_mac_address)
 re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
@@ -64,12 +58,12 @@ re_config_file = re.compile(re_config_file, re.VERBOSE)
 class IPXEBootMethod(BootMethod):
     """Boot method for iPXE boot loader."""
 
-    name = 'ipxe'
-    bios_boot_method = 'pxe'
-    template_subdir = 'ipxe'
-    bootloader_path = 'ipxe.cfg'
-    arch_octet = '00:00'
-    user_class = 'iPXE'
+    name = "ipxe"
+    bios_boot_method = "pxe"
+    template_subdir = "ipxe"
+    bootloader_path = "ipxe.cfg"
+    arch_octet = "00:00"
+    user_class = "iPXE"
     path_prefix_http = True
     absolute_url_as_filename = True
 
@@ -89,7 +83,7 @@ class IPXEBootMethod(BootMethod):
         # MAC address is in the wrong format, fix it
         mac = params.get("mac")
         if mac is not None:
-            params["mac"] = mac.replace(':', '-')
+            params["mac"] = mac.replace(":", "-")
 
         return params
 
@@ -103,9 +97,9 @@ class IPXEBootMethod(BootMethod):
             `TFTPBackend.get_boot_method_reader`) won't cause this to break.
         """
         template = self.get_template(
-            kernel_params.purpose, kernel_params.arch,
-            kernel_params.subarch)
-        kernel_params.mac = extra.get('mac', '')
+            kernel_params.purpose, kernel_params.arch, kernel_params.subarch
+        )
+        kernel_params.mac = extra.get("mac", "")
         namespace = self.compose_template_namespace(kernel_params)
 
         # We are going to do 2 passes of tempita substitution because there
@@ -116,12 +110,13 @@ class IPXEBootMethod(BootMethod):
         # the simplestream.
         step1 = template.substitute(namespace)
         return BytesReader(
-            tempita.Template(step1).substitute(namespace).encode("utf-8"))
+            tempita.Template(step1).substitute(namespace).encode("utf-8")
+        )
 
     @typed
     def link_bootloader(self, destination: str):
         """Install the ipxe.cfg to chainload with append MAC address."""
         super().link_bootloader(destination)
-        config_dst = os.path.join(destination, 'ipxe.cfg')
-        with open(config_dst, 'wb') as stream:
+        config_dst = os.path.join(destination, "ipxe.cfg")
+        with open(config_dst, "wb") as stream:
             stream.write(CONFIG_FILE.encode("utf-8"))

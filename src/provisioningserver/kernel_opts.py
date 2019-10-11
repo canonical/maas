@@ -3,10 +3,7 @@
 
 """Generate kernel command-line options for inclusion in PXE configs."""
 
-__all__ = [
-    'compose_kernel_command_line',
-    'KernelParameters',
-    ]
+__all__ = ["compose_kernel_command_line", "KernelParameters"]
 
 from collections import namedtuple
 import os
@@ -14,10 +11,7 @@ import os
 import curtin
 from netaddr import IPAddress
 from provisioningserver.drivers import ArchitectureRegistry
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 
 
 log = LegacyLogger()
@@ -29,27 +23,29 @@ class EphemeralImagesDirectoryNotFound(Exception):
 
 
 KernelParametersBase = namedtuple(
-    "KernelParametersBase", (
-        "osystem",      # Operating system, e.g. "ubuntu"
-        "arch",         # Machine architecture, e.g. "i386"
-        "subarch",      # Machine subarchitecture, e.g. "generic"
-        "release",      # OS release, e.g. "precise"
-        "kernel",       # The kernel filename
-        "initrd",       # The initrd filename
-        "boot_dtb",     # The boot_dtb filename
-        "label",        # Image label, e.g. "release"
-        "purpose",      # Boot purpose, e.g. "commissioning"
-        "hostname",     # Machine hostname, e.g. "coleman"
-        "domain",       # Machine domain name, e.g. "example.com"
+    "KernelParametersBase",
+    (
+        "osystem",  # Operating system, e.g. "ubuntu"
+        "arch",  # Machine architecture, e.g. "i386"
+        "subarch",  # Machine subarchitecture, e.g. "generic"
+        "release",  # OS release, e.g. "precise"
+        "kernel",  # The kernel filename
+        "initrd",  # The initrd filename
+        "boot_dtb",  # The boot_dtb filename
+        "label",  # Image label, e.g. "release"
+        "purpose",  # Boot purpose, e.g. "commissioning"
+        "hostname",  # Machine hostname, e.g. "coleman"
+        "domain",  # Machine domain name, e.g. "example.com"
         "preseed_url",  # URL from which a preseed can be obtained.
-        "log_host",     # Host/IP to which syslog can be streamed.
-        "log_port",     # Port to which syslog can be streamed.
-        "fs_host",      # Host/IP on which ephemeral filesystems are hosted.
-        "extra_opts",   # String of extra options to supply, will be appended
-                        # verbatim to the kernel command line
-        "http_boot",    # Used to make sure a MAAS 2.3 rack controller uses
-                        # http_boot.
-        ))
+        "log_host",  # Host/IP to which syslog can be streamed.
+        "log_port",  # Port to which syslog can be streamed.
+        "fs_host",  # Host/IP on which ephemeral filesystems are hosted.
+        "extra_opts",  # String of extra options to supply, will be appended
+        # verbatim to the kernel command line
+        "http_boot",  # Used to make sure a MAAS 2.3 rack controller uses
+        # http_boot.
+    ),
+)
 
 
 class KernelParameters(KernelParametersBase):
@@ -58,18 +54,15 @@ class KernelParameters(KernelParametersBase):
     __call__ = KernelParametersBase._replace
 
     def __new__(cls, *args, **kwargs):
-        if 'log_port' not in kwargs or not kwargs['log_port']:
+        if "log_port" not in kwargs or not kwargs["log_port"]:
             # Fallback to the default log_port, when an older region
             # controller doesn't provide that value.
-            kwargs['log_port'] = 5247
+            kwargs["log_port"] = 5247
         return super().__new__(cls, *args, **kwargs)
 
 
 def compose_logging_opts(params):
-    return [
-        'log_host=%s' % params.log_host,
-        'log_port=%d' % params.log_port,
-        ]
+    return ["log_host=%s" % params.log_host, "log_port=%d" % params.log_port]
 
 
 def get_last_directory(root):
@@ -89,26 +82,29 @@ def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
     kernel_params = [
         "ro",
-        "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs" % (
+        "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs"
+        % (
             (
-                '[%s]' % params.fs_host
+                "[%s]" % params.fs_host
                 if IPAddress(params.fs_host).version == 6
                 else params.fs_host
             ),
-            params.osystem, params.arch, params.subarch, params.release,
-            params.label),
+            params.osystem,
+            params.arch,
+            params.subarch,
+            params.release,
+            params.label,
+        ),
         # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
         # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
         # family of fs_host.  If BOOTIF is set, IPv6 config uses that
         # exclusively.
         (
             "ip=::::%s:BOOTIF" % params.hostname
-            if IPAddress(params.fs_host).version == 4 else "ip=off"
+            if IPAddress(params.fs_host).version == 4
+            else "ip=off"
         ),
-        (
-            "ip6=dhcp"
-            if IPAddress(params.fs_host).version == 6 else "ip6=off"
-        ),
+        ("ip6=dhcp" if IPAddress(params.fs_host).version == 6 else "ip6=off"),
         # Read by overlayroot package.
         "overlayroot=tmpfs",
         # LP:1533822 - Disable reading overlay data from disk.
@@ -120,13 +116,13 @@ def compose_purpose_opts(params):
         # Disable apparmor in the ephemeral environment. This addresses
         # MAAS bug LP: #1677336 due to LP: #1408106
         "apparmor=0",
-        ]
+    ]
     return kernel_params
 
 
 def compose_arch_opts(params):
     """Return any architecture-specific options required"""
-    arch_subarch = '%s/%s' % (params.arch, params.subarch)
+    arch_subarch = "%s/%s" % (params.arch, params.subarch)
     resource = ArchitectureRegistry.get_item(arch_subarch)
     if resource is not None and resource.kernel_options is not None:
         return resource.kernel_options
@@ -134,13 +130,12 @@ def compose_arch_opts(params):
         return []
 
 
-CURTIN_KERNEL_CMDLINE_NAME = 'KERNEL_CMDLINE_COPY_TO_INSTALL_SEP'
+CURTIN_KERNEL_CMDLINE_NAME = "KERNEL_CMDLINE_COPY_TO_INSTALL_SEP"
 
 
 def get_curtin_kernel_cmdline_sep():
     """Return the separator for passing extra parameters to the kernel."""
-    return getattr(
-        curtin, CURTIN_KERNEL_CMDLINE_NAME, '--')
+    return getattr(curtin, CURTIN_KERNEL_CMDLINE_NAME, "--")
 
 
 def compose_kernel_command_line(params):
@@ -165,8 +160,11 @@ def compose_kernel_command_line(params):
         # see LP: #1402042 for info on '---' versus '--'
         options.append(cmdline_sep)
         options.append(params.extra_opts)
-    kernel_opts = ' '.join(options)
+    kernel_opts = " ".join(options)
     log.debug(
         '{hostname}: kernel parameters {cmdline} "{opts}"',
-        hostname=params.hostname, cmdline=cmdline_sep, opts=kernel_opts)
+        hostname=params.hostname,
+        cmdline=cmdline_sep,
+        opts=kernel_opts,
+    )
     return kernel_opts

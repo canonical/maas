@@ -15,7 +15,6 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestSwitch(MAASServerTestCase):
-
     def test_str(self):
         # A Switch object string representation references the parent node
         # hostname.
@@ -45,7 +44,8 @@ class TestSwitch(MAASServerTestCase):
         # and nos_driver.
         switch1 = factory.make_Switch()
         self.assertRaises(
-            IntegrityError, factory.make_Switch, node=switch1.node)
+            IntegrityError, factory.make_Switch, node=switch1.node
+        )
 
     def test_nos_parameters(self):
         # A Switch object can have nos_parameters set to an object

@@ -18,12 +18,10 @@ UPDATE maasserver_config
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0070_allow_null_vlan_on_interface'),
-    ]
+    dependencies = [("maasserver", "0070_allow_null_vlan_on_interface")]
 
     operations = [
         migrations.RunSQL(
-            sql_ntp_server_to_ntp_servers,
-            sql_ntp_servers_to_ntp_server),
+            sql_ntp_server_to_ntp_servers, sql_ntp_servers_to_ntp_server
+        )
     ]

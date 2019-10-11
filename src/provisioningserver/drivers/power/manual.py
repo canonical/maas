@@ -15,7 +15,7 @@ maaslog = get_maas_logger("drivers.power.manual")
 
 class ManualPowerDriver(PowerDriver):
 
-    name = 'manual'
+    name = "manual"
     chassis = False
     description = "Manual"
     settings = []
@@ -40,16 +40,15 @@ class ManualPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on machine manually."""
-        maaslog.info(
-            "You need to power on %s manually." % system_id)
+        maaslog.info("You need to power on %s manually." % system_id)
 
     def power_off(self, system_id, context):
         """Power off machine manually."""
-        maaslog.info(
-            "You need to power off %s manually." % system_id)
+        maaslog.info("You need to power off %s manually." % system_id)
 
     def power_query(self, system_id, context):
         """Power query machine manually."""
         maaslog.info(
-            "You need to check power state of %s manually." % system_id)
-        return 'unknown'
+            "You need to check power state of %s manually." % system_id
+        )
+        return "unknown"

@@ -3,9 +3,7 @@
 
 """Service that periodically checks that system services are running."""
 
-__all__ = [
-    "ServiceMonitorService"
-]
+__all__ = ["ServiceMonitorService"]
 
 from datetime import timedelta
 
@@ -32,7 +30,8 @@ class ServiceMonitorService(TimerService, object):
     def __init__(self, clock=reactor):
         # Call self.monitorServices() every self.check_interval.
         super(ServiceMonitorService, self).__init__(
-            self.check_interval, self.monitorServices)
+            self.check_interval, self.monitorServices
+        )
         self.clock = clock
 
     def monitorServices(self):
@@ -42,20 +41,21 @@ class ServiceMonitorService(TimerService, object):
         if is_dev_environment():
             log.msg(
                 "Skipping check of services; they're not running under "
-                "the supervision of systemd.")
+                "the supervision of systemd."
+            )
         else:
             d = service_monitor.ensureServices()
             d.addCallback(self._updateDatabase)
             d.addErrback(
-                log.err, "Failed to monitor services and update database.")
+                log.err, "Failed to monitor services and update database."
+            )
             return d
 
     @inlineCallbacks
     def _updateDatabase(self, services):
         """Update database about services status."""
         services = yield self._buildServices(services)
-        yield deferToDatabase(
-            self._saveIntoDatabase, services)
+        yield deferToDatabase(self._saveIntoDatabase, services)
 
     @transactional
     def _saveIntoDatabase(self, services):
@@ -64,8 +64,11 @@ class ServiceMonitorService(TimerService, object):
         region_obj = RegionController.objects.get_running_controller()
         for service in services:
             ServiceModel.objects.update_service_for(
-                region_obj, service["name"],
-                service["status"], service["status_info"])
+                region_obj,
+                service["name"],
+                service["status"],
+                service["status_info"],
+            )
 
     @inlineCallbacks
     def _buildServices(self, services):
@@ -75,9 +78,7 @@ class ServiceMonitorService(TimerService, object):
         for name, state in services.items():
             service = service_monitor.getServiceByName(name)
             status, status_info = yield state.getStatusInfo(service)
-            msg_services.append({
-                "name": name,
-                "status": status,
-                "status_info": status_info,
-            })
+            msg_services.append(
+                {"name": name, "status": status, "status_info": status_info}
+            )
         return msg_services

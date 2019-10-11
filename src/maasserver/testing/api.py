@@ -4,10 +4,10 @@
 """Helpers for API testing."""
 
 __all__ = [
-    'APITestCase',
-    'APITransactionTestCase',
-    'explain_unexpected_response',
-    'make_worker_client',
+    "APITestCase",
+    "APITransactionTestCase",
+    "explain_unexpected_response",
+    "make_worker_client",
 ]
 
 import functools
@@ -26,17 +26,15 @@ from maasserver.testing.testclient import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTestType,
-)
+from maastesting.testcase import MAASTestCase, MAASTestType
 from testscenarios import multiply_scenarios
 
 
 def merge_scenarios(*scenario_lists):
     """Multiply `scenarios` together but ignoring empty or undefined ones."""
     scenario_lists = [
-        scenarios for scenarios in scenario_lists
+        scenarios
+        for scenarios in scenario_lists
         if scenarios is not None and len(scenarios) != 0
     ]
     if len(scenario_lists) == 0:
@@ -88,8 +86,10 @@ class APITestType(MAASTestType):
     def ForAnonymousAndUserAndAdmin(cls):
         """API test for anonymous, normal, and administrative users."""
         return cls.forUsers(
-            anonymous=AnonymousUser, user=factory.make_User,
-            admin=factory.make_admin)
+            anonymous=AnonymousUser,
+            user=factory.make_User,
+            admin=factory.make_admin,
+        )
 
 
 class APITestCaseBase(MAASTestCase, metaclass=APITestType):
@@ -139,31 +139,38 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         # Create scenarios for userfactories and clientfactories.
         scenarios_users = tuple(
             ("user=%s" % name, {"userfactory": self.userfactories[name]})
-            for name in sorted(self.userfactories))
+            for name in sorted(self.userfactories)
+        )
         self.userfactories = ()
         scenarios_clients = tuple(
             ("client=%s" % name, {"clientfactory": self.clientfactories[name]})
-            for name in sorted(self.clientfactories))
+            for name in sorted(self.clientfactories)
+        )
         self.clientfactories = ()
         # Merge them into preexisting scenarios.
         self.scenarios = merge_scenarios(
-            scenarios_users, scenarios_clients, self.scenarios)
+            scenarios_users, scenarios_clients, self.scenarios
+        )
 
     def setUp(self):
         if not callable(self.userfactory):
             raise AssertionError(
                 "No user factory; set userfactory or userfactories, or "
-                "inherit from a pre-canned subclass like ForUser.")
+                "inherit from a pre-canned subclass like ForUser."
+            )
         if self.user is not None:
             raise AssertionError(
                 "Do not set user; set userfactory or inherit from a "
-                "pre-canned subclass like ForUser instead.")
+                "pre-canned subclass like ForUser instead."
+            )
         if not callable(self.clientfactory):
             raise AssertionError(
-                "No client factory; set clientfactory or clientfactories.")
+                "No client factory; set clientfactory or clientfactories."
+            )
         if self.client is not None:
             raise AssertionError(
-                "Do not set client; set clientfactory instead.")
+                "Do not set client; set clientfactory instead."
+            )
         super(APITestCaseBase, self).setUp()
         self.user = self.userfactory()
         self.client = self.clientfactory()
@@ -172,10 +179,12 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     @transactional
     def become_admin(self):
         """Promote `self.user` to admin."""
-        self.assertFalse(self.user.is_anonymous, (
-            "Cannot promote anonymous user to admin."))
-        if (Config.objects.get_config('external_auth_url') or
-                Config.objects.get_config('rbac_url')):
+        self.assertFalse(
+            self.user.is_anonymous, "Cannot promote anonymous user to admin."
+        )
+        if Config.objects.get_config(
+            "external_auth_url"
+        ) or Config.objects.get_config("rbac_url"):
             # if external auth is enabled, mark the user as remote, otherwise
             # he wouldn't be able to authenticate
             self.user.userprofile.is_local = False
@@ -186,8 +195,9 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     @transactional
     def become_non_local(self):
         """Promote `self.user` to admin."""
-        if (Config.objects.get_config('external_auth_url') or
-                Config.objects.get_config('rbac_url')):
+        if Config.objects.get_config(
+            "external_auth_url"
+        ) or Config.objects.get_config("rbac_url"):
             # if external auth is enabled, mark the user as remote, otherwise
             # he wouldn't be able to authenticate
             self.user.userprofile.is_local = False
@@ -206,8 +216,9 @@ class APITransactionTestCase(APITestCaseBase, MAASTransactionServerTestCase):
 
 def make_worker_client(rack_controller):
     """Create a test client logged in as if it were `rack_controller`."""
-    assert get_worker_user() == rack_controller.owner, (
-        "Rack controller owner should be the MAAS worker user.")
+    assert (
+        get_worker_user() == rack_controller.owner
+    ), "Rack controller owner should be the MAAS worker user."
     token = create_auth_token(rack_controller.owner)
     return MAASSensibleOAuthClient(rack_controller.owner, token=token)
 
@@ -218,4 +229,4 @@ def explain_unexpected_response(expected_status, response):
         expected_status,
         response.status_code,
         response.content,
-        )
+    )

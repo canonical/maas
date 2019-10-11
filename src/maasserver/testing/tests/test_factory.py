@@ -10,15 +10,10 @@ import random
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    Contains,
-    ContainsDict,
-    Equals,
-)
+from testtools.matchers import Contains, ContainsDict, Equals
 
 
 class TestFactory(MAASServerTestCase):
-
     def test_pick_enum_returns_enum_value(self):
         random_value = random.randint(0, 99999)
 
@@ -39,19 +34,20 @@ class TestFactory(MAASServerTestCase):
         self.assertEqual(
             Enum.FIRST_VALUE,
             factory.pick_enum(
-                Enum, but_not=(Enum.SECOND_VALUE, Enum.THIRD_VALUE)))
+                Enum, but_not=(Enum.SECOND_VALUE, Enum.THIRD_VALUE)
+            ),
+        )
 
     def test_pick_choice_chooses_from_django_options(self):
-        options = [(2, 'b'), (10, 'j')]
+        options = [(2, "b"), (10, "j")]
         self.assertIn(
-            factory.pick_choice(options),
-            [option[0] for option in options])
+            factory.pick_choice(options), [option[0] for option in options]
+        )
 
     def test_pick_choice_can_exclude_choices(self):
-        options = [(2, 'b'), (10, 'j')]
+        options = [(2, "b"), (10, "j")]
         but_not = [2]
-        self.assertEqual(
-            10, factory.pick_choice(options, but_not=but_not))
+        self.assertEqual(10, factory.pick_choice(options, but_not=but_not))
 
     def test_make_Zone_returns_physical_zone(self):
         self.assertIsNotNone(factory.make_Zone())
@@ -90,7 +86,8 @@ class TestFactory(MAASServerTestCase):
         self.assertThat(sip.subnet.vlan, Equals(iface.vlan))
         self.assertThat(
             {iface.vlan for iface in sip.interface_set.all()},
-            Contains(iface.vlan))
+            Contains(iface.vlan),
+        )
 
     def test_make_StaticIPAddress_uses_vlan_for_subnet_with_cidr(self):
         iface = factory.make_Interface()  # Specifies a VLAN.
@@ -99,11 +96,11 @@ class TestFactory(MAASServerTestCase):
         self.assertThat(sip.subnet.vlan, Equals(iface.vlan))
         self.assertThat(
             {iface.vlan for iface in sip.interface_set.all()},
-            Contains(iface.vlan))
+            Contains(iface.vlan),
+        )
 
 
 class TestFactoryForNodes(MAASServerTestCase):
-
     def test_make_Node_uses_power_parameters_when_connecting_to_BMC(self):
         p_key = factory.make_name("key")
         p_value = factory.make_name("value")

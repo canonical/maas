@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 import maasserver.fields
 
 # IPs must be unique across the entire table, except DISCOVERED addresses
@@ -16,21 +13,25 @@ staticipaddress_unique_index_create = (
     "    WHERE alloc_type != 6"
 )
 
+
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0120_bootsourcecache_extra'),
-    ]
+    dependencies = [("maasserver", "0120_bootsourcecache_extra")]
 
     operations = [
         migrations.AlterField(
-            model_name='staticipaddress',
-            name='ip',
-            field=maasserver.fields.MAASIPAddressField(editable=False, verbose_name='IP', blank=True, null=True, default=None),
+            model_name="staticipaddress",
+            name="ip",
+            field=maasserver.fields.MAASIPAddressField(
+                editable=False,
+                verbose_name="IP",
+                blank=True,
+                null=True,
+                default=None,
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='staticipaddress',
-            unique_together=set([('alloc_type', 'ip')]),
+            name="staticipaddress", unique_together=set([("alloc_type", "ip")])
         ),
         migrations.RunSQL(staticipaddress_unique_index_create),
     ]

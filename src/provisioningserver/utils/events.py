@@ -3,10 +3,7 @@
 
 """Event-related utilities."""
 
-__all__ = [
-    "Event",
-    "EventGroup",
-    ]
+__all__ = ["Event", "EventGroup"]
 
 
 class Event:

@@ -4,37 +4,34 @@
 """testtools custom matchers"""
 
 __all__ = [
-    'ContainedBy',
-    'DocTestMatches',
-    'FileContains',
-    'GreaterThanOrEqual',
-    'HasAttribute',
-    'IsCallable',
-    'IsCallableMock',
-    'IsFiredDeferred',
-    'IsNonEmptyString',
-    'IsUnfiredDeferred',
-    'LessThanOrEqual',
-    'Matches',
-    'MockAnyCall',
-    'MockCalledOnce',
-    'MockCalledOnceWith',
-    'MockCalledWith',
-    'MockCallsMatch',
-    'MockNotCalled',
-    'Provides',
-    'TextEquals',
-    ]
+    "ContainedBy",
+    "DocTestMatches",
+    "FileContains",
+    "GreaterThanOrEqual",
+    "HasAttribute",
+    "IsCallable",
+    "IsCallableMock",
+    "IsFiredDeferred",
+    "IsNonEmptyString",
+    "IsUnfiredDeferred",
+    "LessThanOrEqual",
+    "Matches",
+    "MockAnyCall",
+    "MockCalledOnce",
+    "MockCalledOnceWith",
+    "MockCalledWith",
+    "MockCallsMatch",
+    "MockNotCalled",
+    "Provides",
+    "TextEquals",
+]
 
 from difflib import ndiff
 import doctest
 from functools import partial
 
 from testtools import matchers
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
+from testtools.content import Content, UTF8_TEXT
 from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
@@ -92,10 +89,10 @@ class Matches:
         return self.matcher.match(other) is None
 
     def __str__(self):
-        return "Matches %s" % (self.matcher, )
+        return "Matches %s" % (self.matcher,)
 
     def __repr__(self):
-        return "<Matches %s>" % (self.matcher, )
+        return "<Matches %s>" % (self.matcher,)
 
 
 class IsCallable(Matcher):
@@ -114,7 +111,8 @@ class Provides(MatchesPredicate):
 
     def __init__(self, iface):
         super(Provides, self).__init__(
-            iface.providedBy, "%%r does not provide %s" % iface.getName())
+            iface.providedBy, "%%r does not provide %s" % iface.getName()
+        )
 
 
 class HasAttribute(Matcher):
@@ -129,8 +127,8 @@ class HasAttribute(Matcher):
             getattr(something, self.attribute)
         except AttributeError:
             return Mismatch(
-                "%r does not have a %r attribute" % (
-                    something, self.attribute))
+                "%r does not have a %r attribute" % (something, self.attribute)
+            )
 
     def __str__(self):
         return "%s(%r)" % (self.__class__.__name__, self.attribute)
@@ -178,7 +176,10 @@ class MockCalledWith(Matcher):
 
     def __str__(self):
         return "%s(args=%r, kwargs=%r)" % (
-            self.__class__.__name__, self.args, self.kwargs)
+            self.__class__.__name__,
+            self.args,
+            self.kwargs,
+        )
 
     def match(self, mock):
         try:
@@ -227,7 +228,8 @@ class MockCalledOnce(Matcher):
         else:
             return Mismatch(
                 "Expected to be called once. Called %d times."
-                % mock.call_count)
+                % mock.call_count
+            )
 
 
 class MockAnyCall(MockCalledWith):
@@ -262,8 +264,7 @@ class MockCallsMatch(Matcher):
         self.calls = list(calls)
 
     def __str__(self):
-        return "%s(%r)" % (
-            self.__class__.__name__, self.calls)
+        return "%s(%r)" % (self.__class__.__name__, self.calls)
 
     def match(self, mock):
 
@@ -271,9 +272,7 @@ class MockCallsMatch(Matcher):
             IsCallableMock(),
             Annotate(
                 "calls do not match",
-                AfterPreprocessing(
-                    get_mock_calls,
-                    Equals(self.calls)),
+                AfterPreprocessing(get_mock_calls, Equals(self.calls)),
             ),
             first_only=True,
         )
@@ -294,9 +293,7 @@ class MockNotCalled(Matcher):
             IsCallableMock(),
             Annotate(
                 "mock has been called",
-                AfterPreprocessing(
-                    get_mock_calls,
-                    HasLength(0)),
+                AfterPreprocessing(get_mock_calls, HasLength(0)),
             ),
             first_only=True,
         )
@@ -328,12 +325,12 @@ class IsUnfiredDeferred(Matcher):
             return Mismatch("%r is not a Deferred" % (thing,))
         if thing.called:
             return Mismatch(
-                "%r has been called (result=%r)" % (thing, thing.result))
+                "%r has been called (result=%r)" % (thing, thing.result)
+            )
         return None
 
 
 class MatchesPartialCall(Matcher):
-
     def __init__(self, func, *args, **keywords):
         super(MatchesPartialCall, self).__init__()
         if len(keywords) > 0:
@@ -345,7 +342,8 @@ class MatchesPartialCall(Matcher):
         matcher = MatchesAll(
             IsInstance(partial),
             MatchesStructure.fromExample(
-                self.expected, "func", "args", "keywords"),
+                self.expected, "func", "args", "keywords"
+            ),
             first_only=True,
         )
         return matcher.match(observed)
@@ -400,10 +398,12 @@ class FileContains(Matcher):
         """
         if contents is None and matcher is None:
             raise AssertionError(
-                "Must provide one of `contents` or `matcher`.")
+                "Must provide one of `contents` or `matcher`."
+            )
         if contents is not None and matcher is not None:
             raise AssertionError(
-                "Must provide either `contents` or `matcher`, not both.")
+                "Must provide either `contents` or `matcher`, not both."
+            )
         if matcher is None:
             self.matcher = Equals(contents)
         else:
@@ -428,7 +428,7 @@ class FileContains(Matcher):
         if self.encoding is None:
             return (
                 "File at path exists and its contents (unencoded; raw) "
-                "match %s" % (self.matcher, )
+                "match %s" % (self.matcher,)
             )
         else:
             return (
@@ -454,7 +454,8 @@ class TextEquals(Matcher):
             diff = self._diff(self.expected, observed)
             return Mismatch(
                 "Observed text does not match expectations; see diff.",
-                {"diff": Content(UTF8_TEXT, lambda: map(str.encode, diff))})
+                {"diff": Content(UTF8_TEXT, lambda: map(str.encode, diff))},
+            )
 
     @staticmethod
     def _diff(expected, observed):
@@ -473,15 +474,14 @@ class TextEquals(Matcher):
 # whitespace will not match.
 IsNonEmptyString = MatchesAll(
     MatchesPredicate(
-        (lambda observed: isinstance(observed, str)),
-        "%r is not a string"),
+        (lambda observed: isinstance(observed, str)), "%r is not a string"
+    ),
+    MatchesPredicate((lambda observed: len(observed) != 0), "%r is empty"),
     MatchesPredicate(
-        (lambda observed: len(observed) != 0),
-        "%r is empty"),
-    MatchesPredicate(
-        (lambda observed: not observed.isspace()),
-        "%r is whitespace"),
-    first_only=True)
+        (lambda observed: not observed.isspace()), "%r is whitespace"
+    ),
+    first_only=True,
+)
 
 
 class ContainedBy(Matcher):
@@ -492,10 +492,8 @@ class ContainedBy(Matcher):
         self.haystack = haystack
 
     def __str__(self):
-        return "%s(%r)" % (
-            self.__class__.__name__, self.haystack)
+        return "%s(%r)" % (self.__class__.__name__, self.haystack)
 
     def match(self, needle):
         if needle not in self.haystack:
-            return Mismatch(
-                "%r not in %r" % (needle, self.haystack))
+            return Mismatch("%r not in %r" % (needle, self.haystack))

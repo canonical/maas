@@ -18,7 +18,6 @@ from testtools.matchers import MatchesStructure
 
 
 class TestStaticRouteHandler(MAASServerTestCase):
-
     def dehydrate_staticroute(self, staticroute, for_list=False):
         data = {
             "id": staticroute.id,
@@ -37,7 +36,8 @@ class TestStaticRouteHandler(MAASServerTestCase):
         staticroute = factory.make_StaticRoute()
         self.assertEqual(
             self.dehydrate_staticroute(staticroute),
-            handler.get({"id": staticroute.id}))
+            handler.get({"id": staticroute.id}),
+        )
 
     def test_list(self):
         user = factory.make_User()
@@ -47,45 +47,55 @@ class TestStaticRouteHandler(MAASServerTestCase):
         expected_staticroutes = [
             self.dehydrate_staticroute(staticroute, for_list=True)
             for staticroute in StaticRoute.objects.all()
-            ]
-        self.assertItemsEqual(
-            expected_staticroutes,
-            handler.list({}))
+        ]
+        self.assertItemsEqual(expected_staticroutes, handler.list({}))
 
     def test_create(self):
         user = factory.make_admin()
         source = factory.make_Subnet()
         destination = factory.make_Subnet(
-            version=source.get_ipnetwork().version)
+            version=source.get_ipnetwork().version
+        )
         gateway_ip = factory.pick_ip_in_Subnet(source)
         metric = random.randint(0, 500)
         handler = StaticRouteHandler(user, {}, None)
-        staticroute = handler.create({
-            "source": source.id,
-            "destination": destination.id,
-            "gateway_ip": gateway_ip,
-            "metric": metric,
-        })
+        staticroute = handler.create(
+            {
+                "source": source.id,
+                "destination": destination.id,
+                "gateway_ip": gateway_ip,
+                "metric": metric,
+            }
+        )
         self.assertThat(
-            StaticRoute.objects.get(id=staticroute['id']),
+            StaticRoute.objects.get(id=staticroute["id"]),
             MatchesStructure.byEquality(
-                source=source, destination=destination, gateway_ip=gateway_ip,
-                metric=metric))
+                source=source,
+                destination=destination,
+                gateway_ip=gateway_ip,
+                metric=metric,
+            ),
+        )
 
     def test_create_admin_only(self):
         user = factory.make_User()
         source = factory.make_Subnet()
         destination = factory.make_Subnet(
-            version=source.get_ipnetwork().version)
+            version=source.get_ipnetwork().version
+        )
         gateway_ip = factory.pick_ip_in_Subnet(source)
         metric = random.randint(0, 500)
         handler = StaticRouteHandler(user, {}, None)
-        self.assertRaises(PermissionDenied, handler.create, {
-            "source": source.id,
-            "destination": destination.id,
-            "gateway_ip": gateway_ip,
-            "metric": metric,
-        })
+        self.assertRaises(
+            PermissionDenied,
+            handler.create,
+            {
+                "source": source.id,
+                "destination": destination.id,
+                "gateway_ip": gateway_ip,
+                "metric": metric,
+            },
+        )
 
     def test_update(self):
         user = factory.make_admin()
@@ -95,10 +105,14 @@ class TestStaticRouteHandler(MAASServerTestCase):
         data["metric"] = random.randint(0, 500)
         handler.update(data)
         self.assertThat(
-            StaticRoute.objects.get(id=data['id']),
+            StaticRoute.objects.get(id=data["id"]),
             MatchesStructure.byEquality(
-                source=staticroute.source, destination=staticroute.destination,
-                gateway_ip=staticroute.gateway_ip, metric=data["metric"]))
+                source=staticroute.source,
+                destination=staticroute.destination,
+                gateway_ip=staticroute.gateway_ip,
+                metric=data["metric"],
+            ),
+        )
 
     def test_update_admin_only(self):
         user = factory.make_User()
@@ -114,11 +128,13 @@ class TestStaticRouteHandler(MAASServerTestCase):
         handler = StaticRouteHandler(user, {}, None)
         handler.delete({"id": staticroute.id})
         self.assertIsNone(
-            get_one(StaticRoute.objects.filter(id=staticroute.id)))
+            get_one(StaticRoute.objects.filter(id=staticroute.id))
+        )
 
     def test_delete_admin_only(self):
         user = factory.make_User()
         staticroute = factory.make_StaticRoute()
         handler = StaticRouteHandler(user, {}, None)
         self.assertRaises(
-            PermissionDenied, handler.delete, {"id": staticroute.id})
+            PermissionDenied, handler.delete, {"id": staticroute.id}
+        )

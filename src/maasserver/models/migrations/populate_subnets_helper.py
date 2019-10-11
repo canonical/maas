@@ -38,17 +38,20 @@ def _get_cidr(ip, subnet_mask):
     else:
         return None
 
+
 def _get_cidr_for_nodegroupinterface(ngi):
     """Returns a unicode CIDR for the specified NodeGroupInterface."""
     return _get_cidr(ngi.ip, ngi.subnet_mask)
+
 
 def _get_cidr_for_network(network):
     """Returns a unicode CIDR for the specified Network."""
     return _get_cidr(network.ip, network.netmask)
 
+
 def _migrate_networks_forward(
-        now, Network, Subnet, VLAN, default_fabric, default_space,
-        default_vlan):
+    now, Network, Subnet, VLAN, default_fabric, default_space, default_vlan
+):
     """Creates Subnets and VLANs matching the specified input Network
     objects.
     """
@@ -68,10 +71,10 @@ def _migrate_networks_forward(
         if network.vlan_tag is not None and network.vlan_tag > 0:
             try:
                 vlan = VLAN.objects.get(
-                    vid=network.vlan_tag, fabric=default_fabric)
+                    vid=network.vlan_tag, fabric=default_fabric
+                )
             except VLAN.DoesNotExist:
-                vlan = VLAN(
-                    vid=network.vlan_tag, fabric=default_fabric)
+                vlan = VLAN(vid=network.vlan_tag, fabric=default_fabric)
                 vlan.name = "vlan%d" % network.vlan_tag
                 vlan.created = now
                 vlan.updated = now
@@ -89,8 +92,10 @@ def _migrate_networks_forward(
         subnet.updated = now
         subnet.save()
 
+
 def _migrate_nodegroupinterfaces_forward(
-        now, NodeGroupInterface, Subnet, default_space, default_vlan):
+    now, NodeGroupInterface, Subnet, default_space, default_vlan
+):
     """Creates Subnet objects based on the given NodeGroupInterfaces.
 
     Requires _migrate_networks_forward() to have already been called.
@@ -108,10 +113,13 @@ def _migrate_nodegroupinterfaces_forward(
     for management in management_types_priority:
         for ngi in NodeGroupInterface.objects.filter(management=management):
             _create_subnet_from_nodegroupinterface(
-                now, ngi, Subnet, default_space, default_vlan)
+                now, ngi, Subnet, default_space, default_vlan
+            )
 
-def _create_subnet_from_nodegroupinterface(now, ngi, Subnet, default_space,
-                                           default_vlan):
+
+def _create_subnet_from_nodegroupinterface(
+    now, ngi, Subnet, default_space, default_vlan
+):
     cidr = _get_cidr_for_nodegroupinterface(ngi)
     if cidr is not None:
         try:

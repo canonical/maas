@@ -3,9 +3,7 @@
 
 """Fan Network form."""
 
-__all__ = [
-    "FanNetworkForm",
-]
+__all__ = ["FanNetworkForm"]
 
 from maasserver.forms import MAASModelForm
 from maasserver.models.fannetwork import FanNetwork
@@ -17,11 +15,11 @@ class FanNetworkForm(MAASModelForm):
     class Meta:
         model = FanNetwork
         fields = (
-            'name',
-            'underlay',
-            'overlay',
-            'dhcp',
-            'host_reserve',
-            'bridge',
-            'off',
-            )
+            "name",
+            "underlay",
+            "overlay",
+            "dhcp",
+            "host_reserve",
+            "bridge",
+            "off",
+        )

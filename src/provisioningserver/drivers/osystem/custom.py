@@ -3,9 +3,7 @@
 
 """Operating System class used for custom images."""
 
-__all__ = [
-    "CustomOS",
-    ]
+__all__ = ["CustomOS"]
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
@@ -46,4 +44,5 @@ class CustomOS(OperatingSystem):
         :return: tuple with name of root image and image type
         """
         return self._find_image(
-            arch, subarch, release, label, tgz=True, dd=True)
+            arch, subarch, release, label, tgz=True, dd=True
+        )

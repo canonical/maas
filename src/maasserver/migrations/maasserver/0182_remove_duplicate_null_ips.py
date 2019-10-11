@@ -67,15 +67,13 @@ USING deletions
 WHERE id = deletions.staticipaddress_id;
 
 """
-REMOVE_NULL_IPS_MIN = REMOVE_NULL_IPS_TEMPLATE.format('min')
-REMOVE_NULL_IPS_MAX = REMOVE_NULL_IPS_TEMPLATE.format('max')
+REMOVE_NULL_IPS_MIN = REMOVE_NULL_IPS_TEMPLATE.format("min")
+REMOVE_NULL_IPS_MAX = REMOVE_NULL_IPS_TEMPLATE.format("max")
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0181_packagerepository_disable_sources'),
-    ]
+    dependencies = [("maasserver", "0181_packagerepository_disable_sources")]
 
     # We run the query first using max() and then min(). The reason for
     # this is that if multiple interfaces link to the same

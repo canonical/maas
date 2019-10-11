@@ -8,24 +8,21 @@ from maasserver.models.resourcepool import (
 
 
 def forwards(apps, schema_editor):
-    ResourcePool = apps.get_model('maasserver', 'ResourcePool')
+    ResourcePool = apps.get_model("maasserver", "ResourcePool")
     now = datetime.now()
     ResourcePool.objects.get_or_create(
         id=0,
         defaults={
-            'name': DEFAULT_RESOURCEPOOL_NAME,
-            'description': DEFAULT_RESOURCEPOOL_DESCRIPTION,
-            'created': now,
-            'updated': now,
-        })
+            "name": DEFAULT_RESOURCEPOOL_NAME,
+            "description": DEFAULT_RESOURCEPOOL_DESCRIPTION,
+            "created": now,
+            "updated": now,
+        },
+    )
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0133_add_resourcepool_model'),
-    ]
+    dependencies = [("maasserver", "0133_add_resourcepool_model")]
 
-    operations = [
-        migrations.RunPython(forwards),
-    ]
+    operations = [migrations.RunPython(forwards)]

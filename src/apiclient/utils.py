@@ -3,16 +3,10 @@
 
 """Remote API library."""
 
-__all__ = [
-    "ascii_url",
-    "urlencode",
-    ]
+__all__ = ["ascii_url", "urlencode"]
 
 
-from urllib.parse import (
-    quote_plus,
-    urlparse,
-)
+from urllib.parse import quote_plus, urlparse
 
 
 def ascii_url(url):
@@ -21,7 +15,8 @@ def ascii_url(url):
         urlparts = urlparse(url)
         urlparts = urlparts._replace(
             # Encode IDNA and decode back to bytes-in-unicode string.
-            netloc=urlparts.netloc.encode("idna").decode("ascii"))
+            netloc=urlparts.netloc.encode("idna").decode("ascii")
+        )
         return urlparts.geturl().encode("ascii")
     else:
         # Round-trip via ASCII so we at least crash if it's not.
@@ -38,5 +33,5 @@ def urlencode(data):
     `smart_text` in the Django documentation.
     """
     return "&".join(
-        "%s=%s" % (quote_plus(name), quote_plus(value))
-        for name, value in data)
+        "%s=%s" % (quote_plus(name), quote_plus(value)) for name, value in data
+    )

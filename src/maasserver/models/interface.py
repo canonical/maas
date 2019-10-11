@@ -4,23 +4,20 @@
 """Model for interfaces."""
 
 __all__ = [
-    'BondInterface',
-    'build_vlan_interface_name',
-    'PhysicalInterface',
-    'Interface',
-    'VLANInterface',
-    'UnknownInterface',
-    ]
+    "BondInterface",
+    "build_vlan_interface_name",
+    "PhysicalInterface",
+    "Interface",
+    "VLANInterface",
+    "UnknownInterface",
+]
 
 from collections import OrderedDict
 from datetime import datetime
 from zlib import crc32
 
 from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import (
     BooleanField,
     CASCADE,
@@ -56,16 +53,8 @@ from maasserver.fields import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import (
-    get_one,
-    MAASQueriesMixin,
-)
-from netaddr import (
-    AddrFormatError,
-    EUI,
-    IPAddress,
-    IPNetwork,
-)
+from maasserver.utils.orm import get_one, MAASQueriesMixin
+from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import parse_integer
 
@@ -74,7 +63,7 @@ maaslog = get_maas_logger("interface")
 
 # This is only last-resort validation, more specialized validation
 # will happen at the form level based on the interface type.
-INTERFACE_NAME_REGEXP = r'^[\w\-_.:]+$'
+INTERFACE_NAME_REGEXP = r"^[\w\-_.:]+$"
 
 # Default value for bridge_fd.
 DEFAULT_BRIDGE_FD = 15
@@ -89,43 +78,41 @@ def get_subnet_family(subnet):
 
 
 class InterfaceQueriesMixin(MAASQueriesMixin):
-
-    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+    def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         """Returns a Q object for objects matching the given specifiers.
 
         :return:django.db.models.Q
         """
         # Circular imports.
-        from maasserver.models import (
-            Fabric,
-            Subnet,
-            VLAN,
-        )
+        from maasserver.models import Fabric, Subnet, VLAN
 
         # This dict is used by the constraints code to identify objects
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
             None: self._add_default_query,
-            'id': self._add_interface_id_query,
-            'fabric': (Fabric.objects, 'vlan__interface'),
-            'fabric_class': 'vlan__fabric__class_type',
-            'ip': 'ip_addresses__ip',
-            'mode': self._add_mode_query,
-            'name': '__name',
-            'hostname': 'node__hostname',
-            'subnet': (Subnet.objects, 'staticipaddress__interface'),
-            'space': self._add_space_query,
-            'subnet_cidr': 'subnet{s}cidr'.format(s=separator),
-            'type': '__type',
-            'vlan': (VLAN.objects, 'interface'),
-            'vid': self._add_vlan_vid_query,
-            'tag': self._add_tag_query,
-            'link_speed': '__link_speed__gte',
+            "id": self._add_interface_id_query,
+            "fabric": (Fabric.objects, "vlan__interface"),
+            "fabric_class": "vlan__fabric__class_type",
+            "ip": "ip_addresses__ip",
+            "mode": self._add_mode_query,
+            "name": "__name",
+            "hostname": "node__hostname",
+            "subnet": (Subnet.objects, "staticipaddress__interface"),
+            "space": self._add_space_query,
+            "subnet_cidr": "subnet{s}cidr".format(s=separator),
+            "type": "__type",
+            "vlan": (VLAN.objects, "interface"),
+            "vid": self._add_vlan_vid_query,
+            "tag": self._add_tag_query,
+            "link_speed": "__link_speed__gte",
         }
         return super(InterfaceQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=specifier_types, separator=separator,
-            **kwargs)
+            specifiers,
+            specifier_types=specifier_types,
+            separator=separator,
+            **kwargs
+        )
 
     def _add_interface_id_query(self, current_q, op, item):
         try:
@@ -139,6 +126,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         """Query for a related VLAN or subnet with the specified space."""
         # Circular imports.
         from maasserver.models import Space
+
         if space == Space.UNDEFINED:
             current_q = op(current_q, Q(vlan__space__isnull=True))
         else:
@@ -155,7 +143,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         else:
             return op(current_q, Q(id=object_id))
 
-        if '/' in item:
+        if "/" in item:
             # The user may have tried to pass in a CIDR.
             # That means we need to check both the IP address and the subnet's
             # CIDR.
@@ -166,8 +154,10 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             else:
                 cidr = str(ip_cidr.cidr)
                 ip = str(ip_cidr.ip)
-                return op(current_q, Q(
-                    ip_addresses__ip=ip, ip_addresses__subnet__cidr=cidr))
+                return op(
+                    current_q,
+                    Q(ip_addresses__ip=ip, ip_addresses__subnet__cidr=cidr),
+                )
         else:
             # Check if the user passed in an IP address.
             try:
@@ -181,12 +171,14 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         return op(current_q, Q(name=item))
 
     def _add_mode_query(self, current_q, op, item):
-        if item.strip().lower() != 'unconfigured':
+        if item.strip().lower() != "unconfigured":
             raise ValidationError(
-                "The only valid value for 'mode' is 'unconfigured'.")
+                "The only valid value for 'mode' is 'unconfigured'."
+            )
         return op(
             current_q,
-            Q(ip_addresses__ip__isnull=True) | Q(ip_addresses__ip=''))
+            Q(ip_addresses__ip__isnull=True) | Q(ip_addresses__ip=""),
+        )
 
     def _add_tag_query(self, current_q, op, item):
         # Allow item to instruct AND in the filter. eg: tag:e1000&&sriov.
@@ -211,11 +203,13 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
 
         """
         return super(InterfaceQueriesMixin, self).get_matching_object_map(
-            specifiers, 'node__id', include_filter=include_filter)
+            specifiers, "node__id", include_filter=include_filter
+        )
 
     @staticmethod
     def _resolve_interfaces_for_root(
-            root, resolved: set, unresolved: OrderedDict):
+        root, resolved: set, unresolved: OrderedDict
+    ):
         """Yields interfaces whose parents are known to the caller.
 
         :param resolved: A list of interface IDs that have already been yielded
@@ -262,9 +256,8 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         visited).
         """
         query = self.filter(node=node)
-        query = query.annotate(
-            parent_count=Count('parent_relationships'))
-        query = query.prefetch_related('parent_relationships')
+        query = query.annotate(parent_count=Count("parent_relationships"))
+        query = query.prefetch_related("parent_relationships")
         query = query.order_by("name")
         root_interfaces = []
         child_interfaces = OrderedDict()
@@ -282,7 +275,8 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         resolved = set()
         for iface in root_interfaces:
             yield from self._resolve_interfaces_for_root(
-                iface, resolved, child_interfaces)
+                iface, resolved, child_interfaces
+            )
 
 
 class InterfaceQuerySet(InterfaceQueriesMixin, QuerySet):
@@ -317,7 +311,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         return list(self.filter(node=node, name__in=interface_names))
 
     def get_interface_dict_for_node(
-            self, node, names=None, fetch_fabric_vlan=False, by_id=False):
+        self, node, names=None, fetch_fabric_vlan=False, by_id=False
+    ):
         """Returns a list of Inteface objects on the specified node whose
         names match the specified list of interface names.
 
@@ -328,7 +323,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         else:
             query = self.filter(node=node, name__in=names)
         if fetch_fabric_vlan:
-            query = query.select_related('vlan__fabric')
+            query = query.select_related("vlan__fabric")
         return {
             interface.id if by_id else interface.name: interface
             for interface in query
@@ -340,7 +335,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         """
         if isinstance(static_ip_address, str):
             static_ip_address = StaticIPAddress.objects.get(
-                ip=static_ip_address)
+                ip=static_ip_address
+            )
         return self.filter(ip_addresses=static_ip_address)
 
     def get_all_interfaces_definition_for_node(self, node):
@@ -369,7 +365,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         return result
 
     def get_interface_or_404(
-            self, system_id, specifiers, user, perm, device_perm=None):
+        self, system_id, specifiers, user, perm, device_perm=None
+    ):
         """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
         exceptions if no `Interface` with this id exist, if the `Node` with
         system_id doesn't exist, if the `Interface` doesn't exist on the
@@ -395,7 +392,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
            #the-http404-exception
         """
         interface = self.get_object_by_specifiers_or_raise(
-            specifiers, node__system_id=system_id)
+            specifiers, node__system_id=system_id
+        )
         node = interface.get_node()
         if node.is_device and device_perm is not None:
             perm = device_perm
@@ -431,7 +429,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                     return rel.child, False
 
         interface, created = super(InterfaceManager, self).get_or_create(
-            *args, **kwargs)
+            *args, **kwargs
+        )
         if created:
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
@@ -457,28 +456,34 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         if self.model.get_type() == INTERFACE_TYPE.PHYSICAL:
             # Physical interfaces have a MAC uniqueness restriction.
             interfaces = self.get_queryset().filter(
-                Q(mac_address=mac_address) | Q(name=name) & Q(node=node))
+                Q(mac_address=mac_address) | Q(name=name) & Q(node=node)
+            )
             interface = interfaces.first()
         else:
             interfaces = self.get_queryset().filter(
-                Q(name=name) & Q(node=node) & Q(type=self.model.get_type()))
+                Q(name=name) & Q(node=node) & Q(type=self.model.get_type())
+            )
             interface = interfaces.first()
         if interface is not None:
-            if (interface.type != self.model.get_type() and
-                    interface.node.id == node.id):
+            if (
+                interface.type != self.model.get_type()
+                and interface.node.id == node.id
+            ):
                 # This means we found the interface on this node, but the type
                 # didn't match what we expected. This should not happen unless
                 # we changed the modeling of this interface type, or the admin
                 # intentionally changed the interface type.
                 interface.delete()
                 return self.get_or_create_on_node(
-                    node, name, mac_address, parent_nics)
+                    node, name, mac_address, parent_nics
+                )
             interface.mac_address = mac_address
             interface.name = name
             interface.parents.clear()
             for parent_nic in parent_nics:
                 InterfaceRelationship(
-                    child=interface, parent=parent_nic).save()
+                    child=interface, parent=parent_nic
+                ).save()
             if interface.node.id != node.id:
                 # Bond with MAC address was on a different node. We need to
                 # move it to its new owner. In the process we delete all of its
@@ -487,43 +492,57 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 interface.node = node
         else:
             interface = self.create(
-                name=name, mac_address=mac_address, node=node)
+                name=name, mac_address=mac_address, node=node
+            )
             for parent_nic in parent_nics:
                 InterfaceRelationship(
-                    child=interface, parent=parent_nic).save()
+                    child=interface, parent=parent_nic
+                ).save()
         return interface
 
 
 class Interface(CleanSave, TimestampedModel):
-
     class Meta(DefaultMeta):
         verbose_name = "Interface"
         verbose_name_plural = "Interfaces"
-        ordering = ('created', )
+        ordering = ("created",)
 
     objects = InterfaceManager()
 
     node = ForeignKey(
-        'Node', editable=False, null=True, blank=True, on_delete=CASCADE)
+        "Node", editable=False, null=True, blank=True, on_delete=CASCADE
+    )
 
     name = CharField(
-        blank=False, editable=True, max_length=255,
+        blank=False,
+        editable=True,
+        max_length=255,
         validators=[VerboseRegexValidator(INTERFACE_NAME_REGEXP)],
-        help_text="Interface name.")
+        help_text="Interface name.",
+    )
 
     type = CharField(
-        max_length=20, editable=False, choices=INTERFACE_TYPE_CHOICES,
-        blank=False)
+        max_length=20,
+        editable=False,
+        choices=INTERFACE_TYPE_CHOICES,
+        blank=False,
+    )
 
     parents = ManyToManyField(
-        'self', blank=True, editable=True,
-        through='InterfaceRelationship', symmetrical=False)
+        "self",
+        blank=True,
+        editable=True,
+        through="InterfaceRelationship",
+        symmetrical=False,
+    )
 
     vlan = ForeignKey(
-        'VLAN', editable=True, blank=True, null=True, on_delete=PROTECT)
+        "VLAN", editable=True, blank=True, null=True, on_delete=PROTECT
+    )
 
     ip_addresses = ManyToManyField(
-        'StaticIPAddress', editable=True, blank=True)
+        "StaticIPAddress", editable=True, blank=True
+    )
 
     mac_address = MACAddressField(unique=False, null=True, blank=True)
 
@@ -533,8 +552,7 @@ class Interface(CleanSave, TimestampedModel):
 
     params = JSONObjectField(blank=True, default="")
 
-    tags = ArrayField(
-        TextField(), blank=True, null=True, default=list)
+    tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
     # Indicates if this interface should be configured or not. For child
     # interfaces, one must check the status of all parent interfaces to
@@ -564,16 +582,25 @@ class Interface(CleanSave, TimestampedModel):
     acquired = BooleanField(default=False, editable=False)
 
     vendor = CharField(
-        max_length=255, blank=True, null=True,
-        help_text="Vendor name of interface.")
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Vendor name of interface.",
+    )
 
     product = CharField(
-        max_length=255, blank=True, null=True,
-        help_text="Product name of the interface.")
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Product name of the interface.",
+    )
 
     firmware_version = CharField(
-        max_length=255, blank=True, null=True,
-        help_text="Firmware version of the interface.")
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Firmware version of the interface.",
+    )
 
     # Whether or not the Interface is physically connected to an uplink.
     link_connected = BooleanField(default=True)
@@ -588,15 +615,16 @@ class Interface(CleanSave, TimestampedModel):
     # a physical one, but those are also used for devices, which don't have
     # NUMA nodes. So for now, we have to use null=True
     numa_node = ForeignKey(
-        'NUMANode', null=True, related_name='interfaces', on_delete=CASCADE)
+        "NUMANode", null=True, related_name="interfaces", on_delete=CASCADE
+    )
 
     # max number of SRIOV VFs supported by the device. 0 means SRIOV is not
     # supported.
     sriov_max_vf = PositiveIntegerField(default=0)
 
     def __init__(self, *args, **kwargs):
-        type = kwargs.get('type', self.get_type())
-        kwargs['type'] = type
+        type = kwargs.get("type", self.get_type())
+        kwargs["type"] = type
         # Derive the concrete class from the interface's type.
         super(Interface, self).__init__(*args, **kwargs)
         klass = INTERFACE_TYPE_MAPPING.get(self.type)
@@ -615,7 +643,11 @@ class Interface(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "name=%s, type=%s, mac=%s, id=%s" % (
-            self.name, self.type, self.mac_address, self.id)
+            self.name,
+            self.type,
+            self.mac_address,
+            self.id,
+        )
 
     def get_node(self):
         return self.node
@@ -647,13 +679,14 @@ class Interface(CleanSave, TimestampedModel):
         """Return the effective MTU value for this interface."""
         mtu = None
         if self.params:
-            mtu = self.params.get('mtu', None)
+            mtu = self.params.get("mtu", None)
         if mtu is None and self.vlan is not None:
             mtu = self.vlan.mtu
         if mtu is None:
             # Use default MTU for the interface when the interface has no
             # MTU set and it is disconnected.
             from maasserver.models.vlan import DEFAULT_MTU
+
             mtu = DEFAULT_MTU
         children = self.get_successors()
         # Check if any child interface has a greater MTU. It is an invalid
@@ -683,10 +716,7 @@ class Interface(CleanSave, TimestampedModel):
         for ip_address in self.ip_addresses.all():
             if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
                 link_type = ip_address.get_interface_link_type()
-                link = {
-                    "id": ip_address.id,
-                    "mode": link_type,
-                }
+                link = {"id": ip_address.id, "mode": link_type}
                 ip, subnet = ip_address.get_ip_and_subnet()
                 if ip and ip_address.temp_expires_on is None:
                     link["ip_address"] = "%s" % ip
@@ -715,10 +745,12 @@ class Interface(CleanSave, TimestampedModel):
             discovered = []
             for discovered_ip in discovered_ips:
                 if discovered_ip.ip is not None and discovered_ip.ip != "":
-                    discovered.append({
-                        "subnet": discovered_ip.subnet,
-                        "ip_address": "%s" % discovered_ip.ip,
-                        })
+                    discovered.append(
+                        {
+                            "subnet": discovered_ip.subnet,
+                            "ip_address": "%s" % discovered_ip.ip,
+                        }
+                    )
             return discovered
         else:
             return None
@@ -726,11 +758,9 @@ class Interface(CleanSave, TimestampedModel):
     def only_has_link_up(self):
         """Return True if this interface is only set to LINK_UP."""
         ip_addresses = self.ip_addresses.exclude(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED)
-        link_modes = set(
-            ip.get_interface_link_type()
-            for ip in ip_addresses
+            alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
+        link_modes = set(ip.get_interface_link_type() for ip in ip_addresses)
         return link_modes == set([INTERFACE_LINK_TYPE.LINK_UP])
 
     def is_configured(self):
@@ -745,9 +775,9 @@ class Interface(CleanSave, TimestampedModel):
             for ip in self.ip_addresses.all()
             if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED
         )
-        return (
-            len(link_modes) != 0 and
-            link_modes != set([INTERFACE_LINK_TYPE.LINK_UP]))
+        return len(link_modes) != 0 and link_modes != set(
+            [INTERFACE_LINK_TYPE.LINK_UP]
+        )
 
     def update_ip_addresses(self, cidr_list):
         """Update the IP addresses linked to this interface.
@@ -765,14 +795,15 @@ class Interface(CleanSave, TimestampedModel):
         # Delete all current DISCOVERED IP address on this interface. As new
         # ones are about to be added.
         StaticIPAddress.objects.filter(
-            interface=self, alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
+            interface=self, alloc_type=IPADDRESS_TYPE.DISCOVERED
+        ).delete()
 
         # Keep track of which subnets were found, in order to avoid linking
         # duplicates.
         created_on_subnets = set()
 
         # Sort the cidr list by prefixlen.
-        for ip in sorted(cidr_list, key=lambda x: int(x.split('/')[1])):
+        for ip in sorted(cidr_list, key=lambda x: int(x.split("/")[1])):
             network = IPNetwork(ip)
             cidr = str(network.cidr)
             address = str(network.ip)
@@ -784,8 +815,10 @@ class Interface(CleanSave, TimestampedModel):
                 # Update VLAN based on the VLAN this Subnet belongs to.
                 if subnet.vlan != self.vlan:
                     vlan = subnet.vlan
-                    maaslog.info("%s: Observed connected to %s via %s." % (
-                        self.get_log_string(), vlan.fabric.get_name(), cidr))
+                    maaslog.info(
+                        "%s: Observed connected to %s via %s."
+                        % (self.get_log_string(), vlan.fabric.get_name(), cidr)
+                    )
                     self.vlan = vlan
                     self.save()
             except Subnet.DoesNotExist:
@@ -822,11 +855,14 @@ class Interface(CleanSave, TimestampedModel):
                     subnet = Subnet.objects.create_from_cidr(cidr)
                     maaslog.info(
                         "Creating subnet %s connected to interface %s "
-                        "of node %s.", cidr, self, self.get_node())
+                        "of node %s.",
+                        cidr,
+                        self,
+                        self.get_node(),
+                    )
 
             # First check if this IP address exists in the database (at all).
-            prev_address = get_one(
-                StaticIPAddress.objects.filter(ip=address))
+            prev_address = get_one(StaticIPAddress.objects.filter(ip=address))
             if prev_address is not None:
                 if prev_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
                     # Previous address was a discovered address so we can
@@ -850,8 +886,10 @@ class Interface(CleanSave, TimestampedModel):
                             "%s IP address (%s)%s was deleted because "
                             "it was handed out by the MAAS DHCP server "
                             "from the dynamic range.",
-                            alloc_name, prev_address.ip,
-                            " on " + node.fqdn if node is not None else '')
+                            alloc_name,
+                            prev_address.ip,
+                            " on " + node.fqdn if node is not None else "",
+                        )
                         prev_address.delete()
                     else:
                         # This is an external DHCP server where the subnet is
@@ -865,8 +903,10 @@ class Interface(CleanSave, TimestampedModel):
                             "%s IP address (%s)%s was deleted because "
                             "it was handed out by an external DHCP "
                             "server.",
-                            alloc_name, prev_address.ip,
-                            " on " + node.fqdn if node is not None else '')
+                            alloc_name,
+                            prev_address.ip,
+                            " on " + node.fqdn if node is not None else "",
+                        )
                         prev_address.delete()
 
             # At the moment, IPv6 autoconf (SLAAC) is required so that we get
@@ -880,7 +920,8 @@ class Interface(CleanSave, TimestampedModel):
                     "IP address (%s)%s was skipped because "
                     "it is an EUI-64 (SLAAC) address.",
                     address,
-                    " on " + self.node.fqdn if self.node is not None else '')
+                    " on " + self.node.fqdn if self.node is not None else "",
+                )
                 continue
 
             # Remember which subnets we created addresses on; we don't want to
@@ -893,14 +934,15 @@ class Interface(CleanSave, TimestampedModel):
                     "IP address (%s)%s was skipped because it was found on "
                     "the same subnet as a previous address: %s.",
                     address,
-                    " on " + self.node.fqdn if self.node is not None else '',
-                    network)
+                    " on " + self.node.fqdn if self.node is not None else "",
+                    network,
+                )
                 continue
 
             # Create the newly discovered IP address.
             new_address = StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address,
-                subnet=subnet)
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address, subnet=subnet
+            )
             new_address.save()
             self.ip_addresses.add(new_address)
             created_on_subnets.add(subnet)
@@ -916,25 +958,31 @@ class Interface(CleanSave, TimestampedModel):
     def remove_link_dhcp(self, subnet_family=None):
         """Removes the DHCP links if they have no subnet or if the linked
         subnet is in the same `subnet_family`."""
-        for ip in self.ip_addresses.all().select_related('subnet'):
-            if (ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and
-                    ip.get_interface_link_type() == INTERFACE_LINK_TYPE.DHCP):
-                if (subnet_family is None or ip.subnet is None or
-                        ip.subnet.get_ipnetwork().version == subnet_family):
+        for ip in self.ip_addresses.all().select_related("subnet"):
+            if (
+                ip.alloc_type != IPADDRESS_TYPE.DISCOVERED
+                and ip.get_interface_link_type() == INTERFACE_LINK_TYPE.DHCP
+            ):
+                if (
+                    subnet_family is None
+                    or ip.subnet is None
+                    or ip.subnet.get_ipnetwork().version == subnet_family
+                ):
                     ip.delete()
 
     def remove_link_up(self):
         """Removes the LINK_UP link if it exists."""
         for ip in self.ip_addresses.all():
-            if (ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and
-                    ip.get_interface_link_type() == (
-                        INTERFACE_LINK_TYPE.LINK_UP)):
+            if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and ip.get_interface_link_type() == (
+                INTERFACE_LINK_TYPE.LINK_UP
+            ):
                 ip.delete()
 
     def _link_subnet_auto(self, subnet):
         """Link interface to subnet using AUTO."""
         ip_address = StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip=None, subnet=subnet)
+            alloc_type=IPADDRESS_TYPE.AUTO, ip=None, subnet=subnet
+        )
         ip_address.save()
         self.ip_addresses.add(ip_address)
         self.remove_link_dhcp(get_subnet_family(subnet))
@@ -945,15 +993,21 @@ class Interface(CleanSave, TimestampedModel):
         """Link interface to subnet using DHCP."""
         self.remove_link_dhcp(get_subnet_family(subnet))
         ip_address = StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DHCP, ip=None, subnet=subnet)
+            alloc_type=IPADDRESS_TYPE.DHCP, ip=None, subnet=subnet
+        )
         ip_address.save()
         self.ip_addresses.add(ip_address)
         self.remove_link_up()
         return ip_address
 
     def _link_subnet_static(
-            self, subnet, ip_address=None, alloc_type=None, user=None,
-            swap_static_ip=None):
+        self,
+        subnet,
+        ip_address=None,
+        alloc_type=None,
+        user=None,
+        swap_static_ip=None,
+    ):
         """Link interface to subnet using STATIC."""
         valid_alloc_types = [
             IPADDRESS_TYPE.STICKY,
@@ -961,7 +1015,8 @@ class Interface(CleanSave, TimestampedModel):
         ]
         if alloc_type is not None and alloc_type not in valid_alloc_types:
             raise ValueError(
-                "Invalid alloc_type for STATIC mode: %s" % alloc_type)
+                "Invalid alloc_type for STATIC mode: %s" % alloc_type
+            )
         elif alloc_type is None:
             alloc_type = IPADDRESS_TYPE.STICKY
         if alloc_type == IPADDRESS_TYPE.STICKY:
@@ -973,30 +1028,35 @@ class Interface(CleanSave, TimestampedModel):
             if subnet is not None:
                 if ip_address not in subnet.get_ipnetwork():
                     raise StaticIPAddressOutOfRange(
-                        "IP address is not in the given subnet '%s'." % subnet)
+                        "IP address is not in the given subnet '%s'." % subnet
+                    )
                 ip_range = subnet.get_dynamic_range_for_ip(ip_address)
                 if ip_range is not None:
                     raise StaticIPAddressOutOfRange(
-                        "IP address is inside a dynamic range %s-%s." % (
-                            ip_range.start_ip, ip_range.end_ip))
+                        "IP address is inside a dynamic range %s-%s."
+                        % (ip_range.start_ip, ip_range.end_ip)
+                    )
 
             # Try to get the requested IP address.
             static_ip, created = StaticIPAddress.objects.get_or_create(
                 ip="%s" % ip_address,
                 defaults={
-                    'alloc_type': alloc_type,
-                    'user': user,
-                    'subnet': subnet,
-                })
+                    "alloc_type": alloc_type,
+                    "user": user,
+                    "subnet": subnet,
+                },
+            )
             if not created:
                 raise StaticIPAddressUnavailable(
-                    "IP address is already in use.")
+                    "IP address is already in use."
+                )
             else:
                 self.ip_addresses.add(static_ip)
                 self.save()
         else:
             static_ip = StaticIPAddress.objects.allocate_new(
-                subnet, alloc_type=alloc_type, user=user)
+                subnet, alloc_type=alloc_type, user=user
+            )
             self.ip_addresses.add(static_ip)
 
         # Swap the ID's that way it keeps the same ID as the swap object.
@@ -1015,7 +1075,8 @@ class Interface(CleanSave, TimestampedModel):
         """Link interface to subnet using LINK_UP."""
         self.remove_link_up()
         ip_address = StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=subnet)
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=subnet
+        )
         ip_address.save()
         self.ip_addresses.add(ip_address)
         self.save()
@@ -1023,7 +1084,8 @@ class Interface(CleanSave, TimestampedModel):
         return ip_address
 
     def link_subnet(
-            self, mode, subnet, ip_address=None, alloc_type=None, user=None):
+        self, mode, subnet, ip_address=None, alloc_type=None, user=None
+    ):
         """Link interface to subnet using the provided mode.
 
         :param mode: Mode of the link. See `INTERFACE_LINK_TYPE`
@@ -1042,15 +1104,15 @@ class Interface(CleanSave, TimestampedModel):
         # a VLAN assigned yet.
         if self.vlan is None and subnet is not None:
             self.vlan = subnet.vlan
-            self.save(update_fields=['vlan', 'updated'])
+            self.save(update_fields=["vlan", "updated"])
         if mode == INTERFACE_LINK_TYPE.AUTO:
             result = self._link_subnet_auto(subnet)
         elif mode == INTERFACE_LINK_TYPE.DHCP:
             result = self._link_subnet_dhcp(subnet)
         elif mode == INTERFACE_LINK_TYPE.STATIC:
             result = self._link_subnet_static(
-                subnet, ip_address=ip_address,
-                alloc_type=alloc_type, user=user)
+                subnet, ip_address=ip_address, alloc_type=alloc_type, user=user
+            )
         elif mode == INTERFACE_LINK_TYPE.LINK_UP:
             result = self._link_subnet_link_up(subnet)
         else:
@@ -1073,14 +1135,16 @@ class Interface(CleanSave, TimestampedModel):
         """Ensure that if no subnet links exists that at least a LINK_UP
         exists."""
         links = list(
-            self.ip_addresses.exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED))
+            self.ip_addresses.exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        )
         if len(links) > 0:
             # Ensure that LINK_UP only exists if no other links already exists.
             link_ups = []
             others = []
             for link in links:
                 if link.alloc_type == IPADDRESS_TYPE.STICKY and (
-                        link.ip is None or link.ip == ""):
+                    link.ip is None or link.ip == ""
+                ):
                     link_ups.append(link)
                 else:
                     others.append(link)
@@ -1092,8 +1156,8 @@ class Interface(CleanSave, TimestampedModel):
             # the interface is currently connected, else it will just be a
             # LINK_UP without a subnet.
             discovered_address = self.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                subnet__vlan=self.vlan).first()
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet__vlan=self.vlan
+            ).first()
             if discovered_address is not None:
                 subnet = discovered_address.subnet
             else:
@@ -1112,8 +1176,7 @@ class Interface(CleanSave, TimestampedModel):
             static_ip.delete()
         return static_ip
 
-    def unlink_ip_address(
-            self, ip_address, clearing_config=False):
+    def unlink_ip_address(self, ip_address, clearing_config=False):
         """Remove the `IPAddress` link on interface.
 
         :param clearing_config: Set to True when the entire network
@@ -1140,17 +1203,19 @@ class Interface(CleanSave, TimestampedModel):
         # Check that requested `ip_address` is available.
         if ip_address is not None:
             already_used = get_one(
-                StaticIPAddress.objects.filter(ip=ip_address))
+                StaticIPAddress.objects.filter(ip=ip_address)
+            )
             if already_used is not None:
                 raise StaticIPAddressUnavailable(
-                    "IP address is already in use.")
+                    "IP address is already in use."
+                )
 
         # Link to the new subnet.
         return self._link_subnet_static(
-            subnet, ip_address=ip_address, swap_static_ip=static_ip)
+            subnet, ip_address=ip_address, swap_static_ip=static_ip
+        )
 
-    def update_ip_address(
-            self, static_ip, mode, subnet, ip_address=None):
+    def update_ip_address(self, static_ip, mode, subnet, ip_address=None):
         """Update an already existing link on interface to be the new data."""
         if mode == INTERFACE_LINK_TYPE.AUTO:
             new_alloc_type = IPADDRESS_TYPE.AUTO
@@ -1162,24 +1227,27 @@ class Interface(CleanSave, TimestampedModel):
         current_mode = static_ip.get_interface_link_type()
         if current_mode == INTERFACE_LINK_TYPE.STATIC:
             if mode == INTERFACE_LINK_TYPE.STATIC:
-                if (static_ip.subnet == subnet and (
-                        ip_address is None or static_ip.ip == ip_address)):
+                if static_ip.subnet == subnet and (
+                    ip_address is None or static_ip.ip == ip_address
+                ):
                     # Same subnet and IP address nothing to do.
                     return static_ip
                 # Update the subnet and IP address for the static assignment.
                 return self._swap_subnet(
-                    static_ip, subnet, ip_address=ip_address)
+                    static_ip, subnet, ip_address=ip_address
+                )
             else:
                 # Not staying in the same mode so we can just remove the
                 # static IP and change its alloc_type from STICKY.
                 static_ip = self._unlink_static_ip(
-                    static_ip, swap_alloc_type=new_alloc_type)
+                    static_ip, swap_alloc_type=new_alloc_type
+                )
         elif mode == INTERFACE_LINK_TYPE.STATIC:
             # Linking to the subnet statically were the original was not a
             # static link. Swap the objects so the object keeps the same ID.
             return self._link_subnet_static(
-                subnet, ip_address=ip_address,
-                swap_static_ip=static_ip)
+                subnet, ip_address=ip_address, swap_static_ip=static_ip
+            )
         static_ip.alloc_type = new_alloc_type
         static_ip.ip = None
         static_ip.subnet = subnet
@@ -1190,14 +1258,18 @@ class Interface(CleanSave, TimestampedModel):
         """Update the `IPAddress` link on interface by its ID."""
         static_ip = self.ip_addresses.get(id=link_id)
         return self.update_ip_address(
-            static_ip, mode, subnet, ip_address=ip_address)
+            static_ip, mode, subnet, ip_address=ip_address
+        )
 
     def clear_all_links(self, clearing_config=False):
         """Remove all the `IPAddress` link on the interface."""
         for ip_address in self.ip_addresses.exclude(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED):
-            maaslog.info("%s: IP address automatically unlinked: %s" % (
-                self.get_log_string(), ip_address))
+            alloc_type=IPADDRESS_TYPE.DISCOVERED
+        ):
+            maaslog.info(
+                "%s: IP address automatically unlinked: %s"
+                % (self.get_log_string(), ip_address)
+            )
             self.unlink_ip_address(ip_address, clearing_config=clearing_config)
 
     def claim_auto_ips(self, temp_expires_after=None, exclude_addresses=None):
@@ -1218,34 +1290,41 @@ class Interface(CleanSave, TimestampedModel):
             exclude_addresses = set(exclude_addresses)
         assigned_addresses = []
         for auto_ip in self.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.AUTO):
+            alloc_type=IPADDRESS_TYPE.AUTO
+        ):
             if not auto_ip.ip:
                 assigned_ip = self._claim_auto_ip(
                     auto_ip,
                     temp_expires_after=temp_expires_after,
-                    exclude_addresses=exclude_addresses)
+                    exclude_addresses=exclude_addresses,
+                )
                 if assigned_ip is not None:
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
         return assigned_addresses
 
     def _claim_auto_ip(
-            self, auto_ip, temp_expires_after=None, exclude_addresses=None):
+        self, auto_ip, temp_expires_after=None, exclude_addresses=None
+    ):
         """Claim an IP address for the `auto_ip`."""
         subnet = auto_ip.subnet
         if subnet is None:
             maaslog.error(
-                "Could not find subnet for interface %s." %
-                (self.get_log_string()))
+                "Could not find subnet for interface %s."
+                % (self.get_log_string())
+            )
             raise StaticIPAddressUnavailable(
                 "Automatic IP address cannot be configured on interface %s "
-                "without an associated subnet." % self.get_name())
+                "without an associated subnet." % self.get_name()
+            )
 
         # Allocate a new IP address from the entire subnet, excluding already
         # allocated addresses and ranges.
         new_ip = StaticIPAddress.objects.allocate_new(
-            subnet=subnet, alloc_type=IPADDRESS_TYPE.AUTO,
-            exclude_addresses=exclude_addresses)
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            exclude_addresses=exclude_addresses,
+        )
         auto_ip.ip = new_ip.ip
         # Throw away the newly-allocated address and assign it to the old AUTO
         # address, so that the interface link IDs remain consistent.
@@ -1255,17 +1334,17 @@ class Interface(CleanSave, TimestampedModel):
         # IP assignment is only temporary until the IP address can be
         # validated as free.
         if temp_expires_after is not None:
-            auto_ip.temp_expires_on = (
-                datetime.utcnow() + temp_expires_after)
+            auto_ip.temp_expires_on = datetime.utcnow() + temp_expires_after
         auto_ip.save()
 
         # Only log the allocation when the assignment is not temporary. Its
         # the callers responsibility to log this information after the check
         # is performed.
         if temp_expires_after is None:
-            maaslog.info("Allocated automatic IP address %s for %s." % (
-                auto_ip.ip,
-                self.get_log_string()))
+            maaslog.info(
+                "Allocated automatic IP address %s for %s."
+                % (auto_ip.ip, self.get_log_string())
+            )
         return auto_ip
 
     def release_auto_ips(self):
@@ -1274,7 +1353,8 @@ class Interface(CleanSave, TimestampedModel):
         affected_subnets = set()
         released_addresses = []
         for auto_ip in self.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.AUTO):
+            alloc_type=IPADDRESS_TYPE.AUTO
+        ):
             if auto_ip.ip:
                 subnet, released_ip = self._release_auto_ip(auto_ip)
                 if subnet is not None:
@@ -1293,19 +1373,20 @@ class Interface(CleanSave, TimestampedModel):
         """Returns the default name for a bridge created on this interface."""
         # This is a fix for bug #1672327, consistent with Juju's idea of what
         # the bridge name should be.
-        ifname = self.get_name().encode('utf-8')
+        ifname = self.get_name().encode("utf-8")
         name = b"br-%s" % ifname
         if len(name) > 15:
             name = b"b-%s" % ifname
-            if ifname[:2] == b'en':
+            if ifname[:2] == b"en":
                 name = b"b-%s" % ifname[2:]
             if len(name) > 15:
-                ifname_hash = (b"%06x" % (crc32(ifname) & 0xffffffff))[-6:]
-                name = b"b-%s-%s" % (ifname_hash, ifname[len(ifname) - 6:])
-        return name.decode('utf-8')
+                ifname_hash = (b"%06x" % (crc32(ifname) & 0xFFFFFFFF))[-6:]
+                name = b"b-%s-%s" % (ifname_hash, ifname[len(ifname) - 6 :])
+        return name.decode("utf-8")
 
     def create_acquired_bridge(
-            self, bridge_type=None, bridge_stp=None, bridge_fd=None):
+        self, bridge_type=None, bridge_stp=None, bridge_fd=None
+    ):
         """Create an acquired bridge on top of this interface.
 
         Cannot be called on a `BridgeInterface`.
@@ -1318,18 +1399,25 @@ class Interface(CleanSave, TimestampedModel):
             bridge_fd = DEFAULT_BRIDGE_FD
         if self.type == INTERFACE_TYPE.BRIDGE:
             raise ValueError(
-                "Cannot create an acquired bridge on a bridge interface.")
+                "Cannot create an acquired bridge on a bridge interface."
+            )
         params = {
-            'bridge_type': bridge_type,
-            'bridge_stp': bridge_stp,
-            'bridge_fd': bridge_fd,
+            "bridge_type": bridge_type,
+            "bridge_stp": bridge_stp,
+            "bridge_fd": bridge_fd,
         }
-        if 'mtu' in self.params:
-            params['mtu'] = self.params['mtu']
+        if "mtu" in self.params:
+            params["mtu"] = self.params["mtu"]
         name = self.get_default_bridge_name()
         bridge = BridgeInterface(
-            name=name, node=self.node, mac_address=self.mac_address,
-            vlan=self.vlan, enabled=True, acquired=True, params=params)
+            name=name,
+            node=self.node,
+            mac_address=self.mac_address,
+            vlan=self.vlan,
+            enabled=True,
+            acquired=True,
+            params=params,
+        )
         bridge.save()
         # The order in which the creating and linkage between child and parent
         # is important. The IP addresses must first be moved from this
@@ -1383,7 +1471,8 @@ class Interface(CleanSave, TimestampedModel):
         # must be in an allocated state.
         if self.acquired and self.type != INTERFACE_TYPE.BRIDGE:
             raise ValueError(
-                "acquired cannot be True on interface type '%s'" % self.type)
+                "acquired cannot be True on interface type '%s'" % self.type
+            )
 
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to
@@ -1417,16 +1506,20 @@ class Interface(CleanSave, TimestampedModel):
             fabric = self.vlan.fabric
             # Circular imports
             from maasserver.models.vlan import VLAN
+
             vlan, created = VLAN.objects.get_or_create(
-                fabric=fabric, vid=vid, defaults={
-                    'description':
-                        "Automatically created VLAN (observed by %s)."
-                        % (self.get_log_string())
-                })
+                fabric=fabric,
+                vid=vid,
+                defaults={
+                    "description": "Automatically created VLAN (observed by %s)."
+                    % (self.get_log_string())
+                },
+            )
             if created:
                 maaslog.info(
-                    "%s: Automatically created VLAN %d (observed on %s)" % (
-                        self.get_log_string(), vid, vlan.fabric.get_name()))
+                    "%s: Automatically created VLAN %d (observed on %s)"
+                    % (self.get_log_string(), vid, vlan.fabric.get_name())
+                )
 
     def update_neighbour(self, neighbour_json: dict):
         """Updates the neighbour table for this interface.
@@ -1435,29 +1528,39 @@ class Interface(CleanSave, TimestampedModel):
         """
         # Circular imports
         from maasserver.models.neighbour import Neighbour
+
         if self.neighbour_discovery_state is False:
             return None
-        ip = neighbour_json['ip']
-        mac = neighbour_json['mac']
-        time = neighbour_json['time']
-        vid = neighbour_json.get('vid', None)
+        ip = neighbour_json["ip"]
+        mac = neighbour_json["mac"]
+        time = neighbour_json["time"]
+        vid = neighbour_json.get("vid", None)
         deleted = Neighbour.objects.delete_and_log_obsolete_neighbours(
-            ip, mac, interface=self, vid=vid)
+            ip, mac, interface=self, vid=vid
+        )
         neighbour = Neighbour.objects.get_current_binding(
-            ip, mac, interface=self, vid=vid)
+            ip, mac, interface=self, vid=vid
+        )
         if neighbour is None:
             neighbour = Neighbour.objects.create(
-                interface=self, ip=ip, vid=vid, mac_address=mac, time=time)
+                interface=self, ip=ip, vid=vid, mac_address=mac, time=time
+            )
             # If we deleted a previous neighbour, then we have already
             # generated a log statement about this neighbour.
             if not deleted:
-                maaslog.info("%s: New MAC, IP binding observed%s: %s, %s" % (
-                    self.get_log_string(),
-                    Neighbour.objects.get_vid_log_snippet(vid), mac, ip))
+                maaslog.info(
+                    "%s: New MAC, IP binding observed%s: %s, %s"
+                    % (
+                        self.get_log_string(),
+                        Neighbour.objects.get_vid_log_snippet(vid),
+                        mac,
+                        ip,
+                    )
+                )
         else:
             neighbour.time = time
             neighbour.count += 1
-            neighbour.save(update_fields=['time', 'count', 'updated'])
+            neighbour.save(update_fields=["time", "count", "updated"])
         return neighbour
 
     def update_mdns_entry(self, avahi_json: dict):
@@ -1467,25 +1570,29 @@ class Interface(CleanSave, TimestampedModel):
         """
         # Circular imports
         from maasserver.models.mdns import MDNS
+
         if self.mdns_discovery_state is False:
             return None
-        ip = avahi_json['address']
-        hostname = avahi_json['hostname']
+        ip = avahi_json["address"]
+        hostname = avahi_json["hostname"]
         deleted = MDNS.objects.delete_and_log_obsolete_mdns_entries(
-            hostname, ip, interface=self)
-        binding = MDNS.objects.get_current_entry(
-            hostname, ip, interface=self)
+            hostname, ip, interface=self
+        )
+        binding = MDNS.objects.get_current_entry(hostname, ip, interface=self)
         if binding is None:
             binding = MDNS.objects.create(
-                interface=self, ip=ip, hostname=hostname)
+                interface=self, ip=ip, hostname=hostname
+            )
             # If we deleted a previous mDNS entry, then we have already
             # generated a log statement about this mDNS entry.
             if not deleted:
-                maaslog.info("%s: New mDNS entry resolved: '%s' on %s." % (
-                    self.get_log_string(), hostname, ip))
+                maaslog.info(
+                    "%s: New mDNS entry resolved: '%s' on %s."
+                    % (self.get_log_string(), hostname, ip)
+                )
         else:
             binding.count += 1
-            binding.save(update_fields=['count', 'updated'])
+            binding.save(update_fields=["count", "updated"])
         return binding
 
     def update_discovery_state(self, discovery_mode, settings: dict):
@@ -1500,7 +1607,7 @@ class Interface(CleanSave, TimestampedModel):
         Upon completion, .save() will be called to update the discovery state
         fields.
         """
-        monitored = settings.get('monitored', False)
+        monitored = settings.get("monitored", False)
         if monitored:
             self.neighbour_discovery_state = discovery_mode.passive
         else:
@@ -1509,8 +1616,8 @@ class Interface(CleanSave, TimestampedModel):
             self.neighbour_discovery_state = False
         self.mdns_discovery_state = discovery_mode.passive
         self.save(
-            update_fields=[
-                'neighbour_discovery_state', 'mdns_discovery_state'])
+            update_fields=["neighbour_discovery_state", "mdns_discovery_state"]
+        )
 
     def get_discovery_state(self):
         """Returns the interface monitoring state for this `Interface`.
@@ -1520,14 +1627,16 @@ class Interface(CleanSave, TimestampedModel):
         """
         # If the text field is empty, treat it the same as 'null'.
         return {
-            'neighbour': self.neighbour_discovery_state,
-            'mdns': self.mdns_discovery_state,
+            "neighbour": self.neighbour_discovery_state,
+            "mdns": self.mdns_discovery_state,
         }
 
     def save(self, *args, **kwargs):
-        if (self.link_speed > self.interface_speed and
-                self.interface_speed != 0):
-            raise ValidationError('link_speed may not exceed interface_speed')
+        if (
+            self.link_speed > self.interface_speed
+            and self.interface_speed != 0
+        ):
+            raise ValidationError("link_speed may not exceed interface_speed")
         if not self.link_connected:
             self.link_speed = 0
         return super().save(*args, **kwargs)
@@ -1535,13 +1644,14 @@ class Interface(CleanSave, TimestampedModel):
 
 class InterfaceRelationship(CleanSave, TimestampedModel):
     child = ForeignKey(
-        Interface, related_name="parent_relationships", on_delete=CASCADE)
+        Interface, related_name="parent_relationships", on_delete=CASCADE
+    )
     parent = ForeignKey(
-        Interface, related_name="children_relationships", on_delete=CASCADE)
+        Interface, related_name="children_relationships", on_delete=CASCADE
+    )
 
 
 class PhysicalInterface(Interface):
-
     class Meta(Interface.Meta):
         proxy = True
         verbose_name = "Physical interface"
@@ -1564,24 +1674,28 @@ class PhysicalInterface(Interface):
 
         # MAC address must be unique amongst every PhysicalInterface.
         other_interfaces = PhysicalInterface.objects.filter(
-            mac_address=self.mac_address)
+            mac_address=self.mac_address
+        )
         if self.id is not None:
             other_interfaces = other_interfaces.exclude(id=self.id)
         other_interfaces = other_interfaces.all()
         if len(other_interfaces) > 0:
-            raise ValidationError({
-                "mac_address": [
-                    "This MAC address is already in use by %s." % (
-                        other_interfaces[0].get_log_string())]
-            })
+            raise ValidationError(
+                {
+                    "mac_address": [
+                        "This MAC address is already in use by %s."
+                        % (other_interfaces[0].get_log_string())
+                    ]
+                }
+            )
 
         # No parents are allow for a physical interface.
         if self.id is not None:
             # Use the precache so less queries are made.
             if len(self.parents.all()) > 0:
-                raise ValidationError({
-                    "parents": ["A physical interface cannot have parents."]
-                })
+                raise ValidationError(
+                    {"parents": ["A physical interface cannot have parents."]}
+                )
 
 
 class ChildInterface(Interface):
@@ -1642,19 +1756,16 @@ class ChildInterface(Interface):
         # Parent interfaces on this bond must be from the same node and can
         # only be physical interfaces.
         if self.id is not None:
-            nodes = {
-                parent.node
-                for parent in self.parents.all()
-            }
+            nodes = {parent.node for parent in self.parents.all()}
             if len(nodes) > 1:
-                raise ValidationError({
-                    "parents": [
-                        "Parent interfaces do not belong to the same node."]
-                })
-            parent_types = {
-                parent.get_type()
-                for parent in self.parents.all()
-            }
+                raise ValidationError(
+                    {
+                        "parents": [
+                            "Parent interfaces do not belong to the same node."
+                        ]
+                    }
+                )
+            parent_types = {parent.get_type() for parent in self.parents.all()}
             self._validate_acceptable_parent_types(parent_types)
 
     def _validate_unique_or_parent_mac(self):
@@ -1666,8 +1777,7 @@ class ChildInterface(Interface):
         if self.id is not None:
             interfaces = Interface.objects.filter(mac_address=self.mac_address)
             related_ids = [
-                parent.id
-                for parent in self.get_all_related_interfaces()
+                parent.id for parent in self.get_all_related_interfaces()
             ]
             bad_interfaces = []
             for interface in interfaces:
@@ -1685,13 +1795,15 @@ class ChildInterface(Interface):
             if len(bad_interfaces) > 0:
                 maaslog.warning(
                     "While adding %s: "
-                    "found a MAC address already in use by %s." % (
+                    "found a MAC address already in use by %s."
+                    % (
                         self.get_log_string(),
-                        bad_interfaces[0].get_log_string()))
+                        bad_interfaces[0].get_log_string(),
+                    )
+                )
 
 
 class BridgeInterface(ChildInterface):
-
     class Meta(Interface.Meta):
         proxy = True
         verbose_name = "Bridge"
@@ -1704,17 +1816,17 @@ class BridgeInterface(ChildInterface):
     def _validate_acceptable_parent_types(self, parent_types):
         """Validates that bridges cannot contain other bridges."""
         if INTERFACE_TYPE.BRIDGE in parent_types:
-            raise ValidationError({
-                "parents": ["Bridges cannot contain other bridges."]
-            })
+            raise ValidationError(
+                {"parents": ["Bridges cannot contain other bridges."]}
+            )
 
     def clean(self):
         super().clean()
         # Validate that the MAC address is not None.
         if not self.mac_address:
-            raise ValidationError({
-                "mac_address": ["This field cannot be blank."]
-            })
+            raise ValidationError(
+                {"mac_address": ["This field cannot be blank."]}
+            )
         self._validate_parent_interfaces()
         self._validate_unique_or_parent_mac()
 
@@ -1727,7 +1839,6 @@ class BridgeInterface(ChildInterface):
 
 
 class BondInterface(ChildInterface):
-
     class Meta(Interface.Meta):
         proxy = True
         verbose_name = "Bond"
@@ -1741,9 +1852,9 @@ class BondInterface(ChildInterface):
         super(BondInterface, self).clean()
         # Validate that the MAC address is not None.
         if not self.mac_address:
-            raise ValidationError({
-                "mac_address": ["This field cannot be blank."]
-            })
+            raise ValidationError(
+                {"mac_address": ["This field cannot be blank."]}
+            )
 
         self._validate_parent_interfaces()
         self._validate_unique_or_parent_mac()
@@ -1751,9 +1862,9 @@ class BondInterface(ChildInterface):
     def _validate_acceptable_parent_types(self, parent_types):
         """Validates that bonds only include physical interfaces."""
         if parent_types != {INTERFACE_TYPE.PHYSICAL}:
-            raise ValidationError({
-                "parents": ["Only physical interfaces can be bonded."]
-            })
+            raise ValidationError(
+                {"parents": ["Only physical interfaces can be bonded."]}
+            )
 
     def save(self, *args, **kwargs):
         # Set the node of this bond to the same as its parents.
@@ -1771,7 +1882,6 @@ def build_vlan_interface_name(parent, vlan):
 
 
 class VLANInterface(ChildInterface):
-
     class Meta(Interface.Meta):
         proxy = True
         verbose_name = "VLAN interface"
@@ -1817,8 +1927,8 @@ class VLANInterface(ChildInterface):
         # This should never happen in production. (We raise a ValidationError.)
         assert self.vlan is not None, (
             "Interface %d on %s (%s): Could not generate VLAN interface name; "
-            "related VLAN not found.") % (
-                self.id, self.node.hostname, self.node.system_id)
+            "related VLAN not found."
+        ) % (self.id, self.node.hostname, self.node.system_id)
         vid = self.vlan.vid
         if self.id is not None:
             parent = self.parents.first()
@@ -1833,35 +1943,39 @@ class VLANInterface(ChildInterface):
             parents = self.parents.all()
             parent_count = len(parents)
             if parent_count == 0 or parent_count > 1:
-                raise ValidationError({
-                    "parents": ["VLAN interface must have exactly one parent."]
-                    })
+                raise ValidationError(
+                    {
+                        "parents": [
+                            "VLAN interface must have exactly one parent."
+                        ]
+                    }
+                )
             parent = parents[0]
             # We do not allow a bridge interface to be a parent for a VLAN
             # interface.
             allowed_vlan_parent_types = (
                 INTERFACE_TYPE.PHYSICAL,
                 INTERFACE_TYPE.BOND,
-                INTERFACE_TYPE.BRIDGE
+                INTERFACE_TYPE.BRIDGE,
             )
             if parent.get_type() not in allowed_vlan_parent_types:
                 # XXX blake_r 2016-07-18: we won't mention bridges in this
                 # error message, since users can't configure VLAN interfaces
                 # on bridges.
-                raise ValidationError({
-                    "parents": [
-                        "VLAN interface can only be created on a physical "
-                        "or bond interface."
-                    ]
-                })
+                raise ValidationError(
+                    {
+                        "parents": [
+                            "VLAN interface can only be created on a physical "
+                            "or bond interface."
+                        ]
+                    }
+                )
             # VLAN interface must be connected to a VLAN, it cannot be
             # disconnected like physical and bond interfaces.
             if self.vlan is None:
-                raise ValidationError({
-                    "vlan": [
-                        "VLAN interface requires connection to a VLAN."
-                    ]
-                })
+                raise ValidationError(
+                    {"vlan": ["VLAN interface requires connection to a VLAN."]}
+                )
 
     def _is_related_node_a_controller(self):
         """Returns True if the related Node is a Controller."""
@@ -1896,7 +2010,6 @@ class VLANInterface(ChildInterface):
 
 
 class UnknownInterface(Interface):
-
     class Meta(Interface.Meta):
         proxy = True
         verbose_name = "Unknown interface"
@@ -1912,37 +2025,35 @@ class UnknownInterface(Interface):
     def clean(self):
         super(UnknownInterface, self).clean()
         if self.node is not None:
-            raise ValidationError({
-                "node": ["This field must be blank."]
-            })
+            raise ValidationError({"node": ["This field must be blank."]})
 
         # No other interfaces can have this MAC address.
         other_interfaces = Interface.objects.filter(
-            mac_address=self.mac_address)
+            mac_address=self.mac_address
+        )
         if self.id is not None:
             other_interfaces = other_interfaces.exclude(id=self.id)
         other_interfaces = other_interfaces.all()
         if len(other_interfaces) > 0:
             maaslog.warning(
                 "While adding %s: "
-                "found a MAC address already in use by %s." % (
-                    self.get_log_string(),
-                    other_interfaces[0].get_log_string()))
+                "found a MAC address already in use by %s."
+                % (self.get_log_string(), other_interfaces[0].get_log_string())
+            )
 
         # Cannot have any parents.
         if self.id is not None:
             # Use the precache here instead of the count() method.
             parents = self.parents.all()
             if len(parents) > 0:
-                raise ValidationError({
-                    "parents": ["A unknown interface cannot have parents."]
-                })
+                raise ValidationError(
+                    {"parents": ["A unknown interface cannot have parents."]}
+                )
 
 
 INTERFACE_TYPE_MAPPING = {
     klass.get_type(): klass
-    for klass in
-    [
+    for klass in [
         PhysicalInterface,
         BondInterface,
         BridgeInterface,

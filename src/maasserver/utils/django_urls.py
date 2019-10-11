@@ -4,13 +4,13 @@
 """Django 1.8 compatible imports for URL resolver functions."""
 
 __all__ = [
-    'get_callable',
-    'get_resolver',
-    'get_script_prefix',
-    'reverse',
-    'set_script_prefix',
-    'RegexURLPattern',
-    'RegexURLResolver',
+    "get_callable",
+    "get_resolver",
+    "get_script_prefix",
+    "reverse",
+    "set_script_prefix",
+    "RegexURLPattern",
+    "RegexURLResolver",
 ]
 
 try:
@@ -31,12 +31,6 @@ except ImportError:
     )
 
 try:
-    from django.urls.resolvers import (
-        RegexURLPattern,
-        RegexURLResolver,
-    )
+    from django.urls.resolvers import RegexURLPattern, RegexURLResolver
 except ImportError:
-    from django.core.urlresolvers import (
-        RegexURLPattern,
-        RegexURLResolver,
-    )
+    from django.core.urlresolvers import RegexURLPattern, RegexURLResolver

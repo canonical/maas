@@ -48,10 +48,7 @@ from provisioningserver.rpc.arguments import (
     ParsedURL,
     StructureAsJSON,
 )
-from provisioningserver.rpc.common import (
-    Authenticate,
-    Identify,
-)
+from provisioningserver.rpc.common import Authenticate, Identify
 from twisted.protocols import amp
 
 
@@ -63,15 +60,21 @@ class ListBootImages(amp.Command):
 
     arguments = []
     response = [
-        (b"images", AmpList(
-            [(b"osystem", amp.Unicode()),
-             (b"architecture", amp.Unicode()),
-             (b"subarchitecture", amp.Unicode()),
-             (b"release", amp.Unicode()),
-             (b"label", amp.Unicode()),
-             (b"purpose", amp.Unicode()),
-             (b"xinstall_type", amp.Unicode()),
-             (b"xinstall_path", amp.Unicode())]))
+        (
+            b"images",
+            AmpList(
+                [
+                    (b"osystem", amp.Unicode()),
+                    (b"architecture", amp.Unicode()),
+                    (b"subarchitecture", amp.Unicode()),
+                    (b"release", amp.Unicode()),
+                    (b"label", amp.Unicode()),
+                    (b"purpose", amp.Unicode()),
+                    (b"xinstall_type", amp.Unicode()),
+                    (b"xinstall_path", amp.Unicode()),
+                ]
+            ),
+        )
     ]
     errors = []
 
@@ -87,15 +90,21 @@ class ListBootImagesV2(amp.Command):
 
     arguments = []
     response = [
-        (b"images", CompressedAmpList(
-            [(b"osystem", amp.Unicode()),
-             (b"architecture", amp.Unicode()),
-             (b"subarchitecture", amp.Unicode()),
-             (b"release", amp.Unicode()),
-             (b"label", amp.Unicode()),
-             (b"purpose", amp.Unicode()),
-             (b"xinstall_type", amp.Unicode()),
-             (b"xinstall_path", amp.Unicode())]))
+        (
+            b"images",
+            CompressedAmpList(
+                [
+                    (b"osystem", amp.Unicode()),
+                    (b"architecture", amp.Unicode()),
+                    (b"subarchitecture", amp.Unicode()),
+                    (b"release", amp.Unicode()),
+                    (b"label", amp.Unicode()),
+                    (b"purpose", amp.Unicode()),
+                    (b"xinstall_type", amp.Unicode()),
+                    (b"xinstall_path", amp.Unicode()),
+                ]
+            ),
+        )
     ]
     errors = []
 
@@ -107,9 +116,7 @@ class DescribePowerTypes(amp.Command):
     """
 
     arguments = []
-    response = [
-        (b"power_types", StructureAsJSON()),
-    ]
+    response = [(b"power_types", StructureAsJSON())]
     errors = []
 
 
@@ -120,9 +127,7 @@ class DescribeNOSTypes(amp.Command):
     """
 
     arguments = []
-    response = [
-        (b"nos_types", StructureAsJSON()),
-    ]
+    response = [(b"nos_types", StructureAsJSON())]
     errors = []
 
 
@@ -134,10 +139,12 @@ class ListSupportedArchitectures(amp.Command):
 
     arguments = []
     response = [
-        (b"architectures", AmpList([
-            (b"name", amp.Unicode()),
-            (b"description", amp.Unicode()),
-            ])),
+        (
+            b"architectures",
+            AmpList(
+                [(b"name", amp.Unicode()), (b"description", amp.Unicode())]
+            ),
+        )
     ]
     errors = []
 
@@ -150,18 +157,31 @@ class ListOperatingSystems(amp.Command):
 
     arguments = []
     response = [
-        (b"osystems", AmpList([
-            (b"name", amp.Unicode()),
-            (b"title", amp.Unicode()),
-            (b"releases", AmpList([
-                (b"name", amp.Unicode()),
-                (b"title", amp.Unicode()),
-                (b"requires_license_key", amp.Boolean()),
-                (b"can_commission", amp.Boolean()),
-            ])),
-            (b"default_release", amp.Unicode(optional=True)),
-            (b"default_commissioning_release", amp.Unicode(optional=True)),
-        ])),
+        (
+            b"osystems",
+            AmpList(
+                [
+                    (b"name", amp.Unicode()),
+                    (b"title", amp.Unicode()),
+                    (
+                        b"releases",
+                        AmpList(
+                            [
+                                (b"name", amp.Unicode()),
+                                (b"title", amp.Unicode()),
+                                (b"requires_license_key", amp.Boolean()),
+                                (b"can_commission", amp.Boolean()),
+                            ]
+                        ),
+                    ),
+                    (b"default_release", amp.Unicode(optional=True)),
+                    (
+                        b"default_commissioning_release",
+                        amp.Unicode(optional=True),
+                    ),
+                ]
+            ),
+        )
     ]
     errors = []
 
@@ -172,17 +192,9 @@ class GetOSReleaseTitle(amp.Command):
     :since: 1.7
     """
 
-    arguments = [
-        (b"osystem", amp.Unicode()),
-        (b"release", amp.Unicode()),
-    ]
-    response = [
-        (b"title", amp.Unicode()),
-    ]
-    errors = {
-        exceptions.NoSuchOperatingSystem: (
-            b"NoSuchOperatingSystem"),
-    }
+    arguments = [(b"osystem", amp.Unicode()), (b"release", amp.Unicode())]
+    response = [(b"title", amp.Unicode())]
+    errors = {exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem"}
 
 
 class ValidateLicenseKey(amp.Command):
@@ -196,13 +208,8 @@ class ValidateLicenseKey(amp.Command):
         (b"release", amp.Unicode()),
         (b"key", amp.Unicode()),
     ]
-    response = [
-        (b"is_valid", amp.Boolean()),
-    ]
-    errors = {
-        exceptions.NoSuchOperatingSystem: (
-            b"NoSuchOperatingSystem"),
-    }
+    response = [(b"is_valid", amp.Boolean())]
+    errors = {exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem"}
 
 
 class PowerDriverCheck(amp.Command):
@@ -211,17 +218,11 @@ class PowerDriverCheck(amp.Command):
     :since: 1.9
     """
 
-    arguments = [
-        (b"power_type", amp.Unicode()),
-    ]
-    response = [
-        (b"missing_packages", amp.ListOf(amp.Unicode())),
-    ]
+    arguments = [(b"power_type", amp.Unicode())]
+    response = [(b"missing_packages", amp.ListOf(amp.Unicode()))]
     errors = {
-        exceptions.UnknownPowerType: (
-            b"UnknownPowerType"),
-        NotImplementedError: (
-            b"NotImplementedError"),
+        exceptions.UnknownPowerType: b"UnknownPowerType",
+        NotImplementedError: b"NotImplementedError",
     }
 
 
@@ -241,14 +242,10 @@ class GetPreseedData(amp.Command):
         (b"token_secret", amp.Unicode()),
         (b"metadata_url", ParsedURL()),
     ]
-    response = [
-        (b"data", StructureAsJSON()),
-    ]
+    response = [(b"data", StructureAsJSON())]
     errors = {
-        exceptions.NoSuchOperatingSystem: (
-            b"NoSuchOperatingSystem"),
-        NotImplementedError: (
-            b"NotImplementedError"),
+        exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem",
+        NotImplementedError: b"NotImplementedError",
     }
 
 
@@ -268,14 +265,12 @@ class _Power(amp.Command):
     ]
     response = []
     errors = {
-        exceptions.UnknownPowerType: (
-            b"UnknownPowerType"),
-        NotImplementedError: (
-            b"NotImplementedError"),
-        exceptions.PowerActionFail: (
-            b"PowerActionFail"),
+        exceptions.UnknownPowerType: b"UnknownPowerType",
+        NotImplementedError: b"NotImplementedError",
+        exceptions.PowerActionFail: b"PowerActionFail",
         exceptions.PowerActionAlreadyInProgress: (
-            b"PowerActionAlreadyInProgress"),
+            b"PowerActionAlreadyInProgress"
+        ),
     }
 
 
@@ -298,6 +293,7 @@ class PowerQuery(_Power):
 
     :since: 1.7
     """
+
     response = [
         (b"state", amp.Unicode()),
         (b"error_msg", amp.Unicode(optional=True)),
@@ -317,64 +313,115 @@ class _ConfigureDHCP(amp.Command):
 
     :since: 2.0
     """
+
     arguments = [
         (b"omapi_key", amp.Unicode()),
-        (b"failover_peers", AmpList([
-            (b"name", amp.Unicode()),
-            (b"mode", amp.Unicode()),
-            (b"address", amp.Unicode()),
-            (b"peer_address", amp.Unicode()),
-            ])),
-        (b"shared_networks", CompressedAmpList([
-            (b"name", amp.Unicode()),
-            (b"subnets", AmpList([
-                (b"subnet", amp.Unicode()),
-                (b"subnet_mask", amp.Unicode()),
-                (b"subnet_cidr", amp.Unicode()),
-                (b"broadcast_ip", amp.Unicode()),
-                (b"router_ip", amp.Unicode()),
-                # dns_servers is a space- or comma-separated list (it's not
-                # clear which) of IP addresses. In _ConfigureDHCP_V2 is it a
-                # list proper.
-                (b"dns_servers", amp.Unicode()),
-                # ntp_server (note: singular) is a space- or comma-separated
-                # list (it's not clear which) of IP addresses and/or
-                # hostnames. In _ConfigureDHCP_V2 is it a list proper.
-                (b"ntp_server", amp.Unicode()),
-                (b"domain_name", amp.Unicode()),
-                (b"search_list", amp.ListOf(amp.Unicode(), optional=True)),
-                (b"pools", AmpList([
-                    (b"ip_range_low", amp.Unicode()),
-                    (b"ip_range_high", amp.Unicode()),
-                    (b"failover_peer", amp.Unicode(optional=True)),
-                    ])),
-                (b"dhcp_snippets", AmpList([
+        (
+            b"failover_peers",
+            AmpList(
+                [
+                    (b"name", amp.Unicode()),
+                    (b"mode", amp.Unicode()),
+                    (b"address", amp.Unicode()),
+                    (b"peer_address", amp.Unicode()),
+                ]
+            ),
+        ),
+        (
+            b"shared_networks",
+            CompressedAmpList(
+                [
+                    (b"name", amp.Unicode()),
+                    (
+                        b"subnets",
+                        AmpList(
+                            [
+                                (b"subnet", amp.Unicode()),
+                                (b"subnet_mask", amp.Unicode()),
+                                (b"subnet_cidr", amp.Unicode()),
+                                (b"broadcast_ip", amp.Unicode()),
+                                (b"router_ip", amp.Unicode()),
+                                # dns_servers is a space- or comma-separated list (it's not
+                                # clear which) of IP addresses. In _ConfigureDHCP_V2 is it a
+                                # list proper.
+                                (b"dns_servers", amp.Unicode()),
+                                # ntp_server (note: singular) is a space- or comma-separated
+                                # list (it's not clear which) of IP addresses and/or
+                                # hostnames. In _ConfigureDHCP_V2 is it a list proper.
+                                (b"ntp_server", amp.Unicode()),
+                                (b"domain_name", amp.Unicode()),
+                                (
+                                    b"search_list",
+                                    amp.ListOf(amp.Unicode(), optional=True),
+                                ),
+                                (
+                                    b"pools",
+                                    AmpList(
+                                        [
+                                            (b"ip_range_low", amp.Unicode()),
+                                            (b"ip_range_high", amp.Unicode()),
+                                            (
+                                                b"failover_peer",
+                                                amp.Unicode(optional=True),
+                                            ),
+                                        ]
+                                    ),
+                                ),
+                                (
+                                    b"dhcp_snippets",
+                                    AmpList(
+                                        [
+                                            (b"name", amp.Unicode()),
+                                            (
+                                                b"description",
+                                                amp.Unicode(optional=True),
+                                            ),
+                                            (b"value", amp.Unicode()),
+                                        ],
+                                        optional=True,
+                                    ),
+                                ),
+                            ]
+                        ),
+                    ),
+                    (b"mtu", amp.Integer(optional=True)),
+                ]
+            ),
+        ),
+        (
+            b"hosts",
+            CompressedAmpList(
+                [
+                    (b"host", amp.Unicode()),
+                    (b"mac", amp.Unicode()),
+                    (b"ip", amp.Unicode()),
+                    (
+                        b"dhcp_snippets",
+                        AmpList(
+                            [
+                                (b"name", amp.Unicode()),
+                                (b"description", amp.Unicode(optional=True)),
+                                (b"value", amp.Unicode()),
+                            ],
+                            optional=True,
+                        ),
+                    ),
+                ]
+            ),
+        ),
+        (b"interfaces", AmpList([(b"name", amp.Unicode())])),
+        (
+            b"global_dhcp_snippets",
+            CompressedAmpList(
+                [
                     (b"name", amp.Unicode()),
                     (b"description", amp.Unicode(optional=True)),
                     (b"value", amp.Unicode()),
-                    ], optional=True)),
-                ])),
-            (b"mtu", amp.Integer(optional=True)),
-        ])),
-        (b"hosts", CompressedAmpList([
-            (b"host", amp.Unicode()),
-            (b"mac", amp.Unicode()),
-            (b"ip", amp.Unicode()),
-            (b"dhcp_snippets", AmpList([
-                (b"name", amp.Unicode()),
-                (b"description", amp.Unicode(optional=True)),
-                (b"value", amp.Unicode()),
-                ], optional=True)),
-            ])),
-        (b"interfaces", AmpList([
-            (b"name", amp.Unicode()),
-            ])),
-        (b"global_dhcp_snippets", CompressedAmpList([
-            (b"name", amp.Unicode()),
-            (b"description", amp.Unicode(optional=True)),
-            (b"value", amp.Unicode()),
-            ], optional=True)),
-        ]
+                ],
+                optional=True,
+            ),
+        ),
+    ]
     response = []
     errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
 
@@ -384,59 +431,110 @@ class _ConfigureDHCP_V2(amp.Command):
 
     :since: 2.1
     """
+
     arguments = [
         (b"omapi_key", amp.Unicode()),
-        (b"failover_peers", AmpList([
-            (b"name", amp.Unicode()),
-            (b"mode", amp.Unicode()),
-            (b"address", amp.Unicode()),
-            (b"peer_address", amp.Unicode()),
-            ])),
-        (b"shared_networks", CompressedAmpList([
-            (b"name", amp.Unicode()),
-            (b"subnets", AmpList([
-                (b"subnet", amp.Unicode()),
-                (b"subnet_mask", amp.Unicode()),
-                (b"subnet_cidr", amp.Unicode()),
-                (b"broadcast_ip", amp.Unicode()),
-                (b"router_ip", amp.Unicode()),
-                (b"dns_servers", amp.ListOf(IPAddress())),
-                (b"ntp_servers", amp.ListOf(amp.Unicode())),
-                (b"domain_name", amp.Unicode()),
-                (b"search_list", amp.ListOf(amp.Unicode(), optional=True)),
-                (b"pools", AmpList([
-                    (b"ip_range_low", amp.Unicode()),
-                    (b"ip_range_high", amp.Unicode()),
-                    (b"failover_peer", amp.Unicode(optional=True)),
-                    ])),
-                (b"dhcp_snippets", AmpList([
+        (
+            b"failover_peers",
+            AmpList(
+                [
+                    (b"name", amp.Unicode()),
+                    (b"mode", amp.Unicode()),
+                    (b"address", amp.Unicode()),
+                    (b"peer_address", amp.Unicode()),
+                ]
+            ),
+        ),
+        (
+            b"shared_networks",
+            CompressedAmpList(
+                [
+                    (b"name", amp.Unicode()),
+                    (
+                        b"subnets",
+                        AmpList(
+                            [
+                                (b"subnet", amp.Unicode()),
+                                (b"subnet_mask", amp.Unicode()),
+                                (b"subnet_cidr", amp.Unicode()),
+                                (b"broadcast_ip", amp.Unicode()),
+                                (b"router_ip", amp.Unicode()),
+                                (b"dns_servers", amp.ListOf(IPAddress())),
+                                (b"ntp_servers", amp.ListOf(amp.Unicode())),
+                                (b"domain_name", amp.Unicode()),
+                                (
+                                    b"search_list",
+                                    amp.ListOf(amp.Unicode(), optional=True),
+                                ),
+                                (
+                                    b"pools",
+                                    AmpList(
+                                        [
+                                            (b"ip_range_low", amp.Unicode()),
+                                            (b"ip_range_high", amp.Unicode()),
+                                            (
+                                                b"failover_peer",
+                                                amp.Unicode(optional=True),
+                                            ),
+                                        ]
+                                    ),
+                                ),
+                                (
+                                    b"dhcp_snippets",
+                                    AmpList(
+                                        [
+                                            (b"name", amp.Unicode()),
+                                            (
+                                                b"description",
+                                                amp.Unicode(optional=True),
+                                            ),
+                                            (b"value", amp.Unicode()),
+                                        ],
+                                        optional=True,
+                                    ),
+                                ),
+                            ]
+                        ),
+                    ),
+                    (b"mtu", amp.Integer(optional=True)),
+                    (b"interface", amp.Unicode(optional=True)),
+                ]
+            ),
+        ),
+        (
+            b"hosts",
+            CompressedAmpList(
+                [
+                    (b"host", amp.Unicode()),
+                    (b"mac", amp.Unicode()),
+                    (b"ip", amp.Unicode()),
+                    (
+                        b"dhcp_snippets",
+                        AmpList(
+                            [
+                                (b"name", amp.Unicode()),
+                                (b"description", amp.Unicode(optional=True)),
+                                (b"value", amp.Unicode()),
+                            ],
+                            optional=True,
+                        ),
+                    ),
+                ]
+            ),
+        ),
+        (b"interfaces", AmpList([(b"name", amp.Unicode())])),
+        (
+            b"global_dhcp_snippets",
+            CompressedAmpList(
+                [
                     (b"name", amp.Unicode()),
                     (b"description", amp.Unicode(optional=True)),
                     (b"value", amp.Unicode()),
-                    ], optional=True)),
-                ])),
-            (b"mtu", amp.Integer(optional=True)),
-            (b"interface", amp.Unicode(optional=True)),
-        ])),
-        (b"hosts", CompressedAmpList([
-            (b"host", amp.Unicode()),
-            (b"mac", amp.Unicode()),
-            (b"ip", amp.Unicode()),
-            (b"dhcp_snippets", AmpList([
-                (b"name", amp.Unicode()),
-                (b"description", amp.Unicode(optional=True)),
-                (b"value", amp.Unicode()),
-                ], optional=True)),
-            ])),
-        (b"interfaces", AmpList([
-            (b"name", amp.Unicode()),
-            ])),
-        (b"global_dhcp_snippets", CompressedAmpList([
-            (b"name", amp.Unicode()),
-            (b"description", amp.Unicode(optional=True)),
-            (b"value", amp.Unicode()),
-            ], optional=True)),
-        ]
+                ],
+                optional=True,
+            ),
+        ),
+    ]
     response = []
     errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
 
@@ -446,13 +544,20 @@ class _ValidateDHCPConfig(_ConfigureDHCP):
 
     :since: 2.0
     """
+
     response = [
-        (b"errors", CompressedAmpList([
-            (b"error", amp.Unicode()),
-            (b"line_num", amp.Integer()),
-            (b"line", amp.Unicode()),
-            (b"position", amp.Unicode()),
-            ], optional=True)),
+        (
+            b"errors",
+            CompressedAmpList(
+                [
+                    (b"error", amp.Unicode()),
+                    (b"line_num", amp.Integer()),
+                    (b"line", amp.Unicode()),
+                    (b"position", amp.Unicode()),
+                ],
+                optional=True,
+            ),
+        )
     ]
 
 
@@ -461,13 +566,20 @@ class _ValidateDHCPConfig_V2(_ConfigureDHCP_V2):
 
     :since: 2.1
     """
+
     response = [
-        (b"errors", CompressedAmpList([
-            (b"error", amp.Unicode()),
-            (b"line_num", amp.Integer()),
-            (b"line", amp.Unicode()),
-            (b"position", amp.Unicode()),
-            ], optional=True)),
+        (
+            b"errors",
+            CompressedAmpList(
+                [
+                    (b"error", amp.Unicode()),
+                    (b"line_num", amp.Integer()),
+                    (b"line", amp.Unicode()),
+                    (b"position", amp.Unicode()),
+                ],
+                optional=True,
+            ),
+        )
     ]
 
 
@@ -535,15 +647,27 @@ class ImportBootImages(amp.Command):
     """
 
     arguments = [
-        (b"sources", AmpList(
-            [(b"url", amp.Unicode()),
-             (b"keyring_data", Bytes()),
-             (b"selections", AmpList(
-                 [(b"os", amp.Unicode()),
-                  (b"release", amp.Unicode()),
-                  (b"arches", amp.ListOf(amp.Unicode())),
-                  (b"subarches", amp.ListOf(amp.Unicode())),
-                  (b"labels", amp.ListOf(amp.Unicode()))]))])),
+        (
+            b"sources",
+            AmpList(
+                [
+                    (b"url", amp.Unicode()),
+                    (b"keyring_data", Bytes()),
+                    (
+                        b"selections",
+                        AmpList(
+                            [
+                                (b"os", amp.Unicode()),
+                                (b"release", amp.Unicode()),
+                                (b"arches", amp.ListOf(amp.Unicode())),
+                                (b"subarches", amp.ListOf(amp.Unicode())),
+                                (b"labels", amp.ListOf(amp.Unicode())),
+                            ]
+                        ),
+                    ),
+                ]
+            ),
+        ),
         (b"http_proxy", ParsedURL(optional=True)),
         (b"https_proxy", ParsedURL(optional=True)),
     ]
@@ -562,16 +686,14 @@ class EvaluateTag(amp.Command):
         (b"system_id", amp.Unicode()),
         (b"tag_name", amp.Unicode()),
         (b"tag_definition", amp.Unicode()),
-        (b"tag_nsmap", AmpList([
-            (b"prefix", amp.Unicode()),
-            (b"uri", amp.Unicode()),
-        ])),
+        (
+            b"tag_nsmap",
+            AmpList([(b"prefix", amp.Unicode()), (b"uri", amp.Unicode())]),
+        ),
         # A 3-part credential string for the web API.
         (b"credentials", amp.Unicode()),
         # List of nodes the rack controller should evaluate.
-        (b"nodes", AmpList([
-            (b"system_id", amp.Unicode()),
-        ])),
+        (b"nodes", AmpList([(b"system_id", amp.Unicode())])),
     ]
     response = []
     errors = []
@@ -582,10 +704,9 @@ class IsImportBootImagesRunning(amp.Command):
 
     :since: 1.7
     """
+
     arguments = []
-    response = [
-        (b"running", amp.Boolean()),
-    ]
+    response = [(b"running", amp.Boolean())]
     errors = {}
 
 
@@ -594,6 +715,7 @@ class RefreshRackControllerInfo(amp.Command):
 
     :since: 2.0
     """
+
     arguments = [
         (b"system_id", amp.Unicode()),
         (b"consumer_key", amp.Unicode()),
@@ -608,10 +730,7 @@ class RefreshRackControllerInfo(amp.Command):
         (b"interfaces", StructureAsJSON()),
         (b"maas_version", amp.Unicode(optional=True)),
     ]
-    errors = {
-        exceptions.RefreshAlreadyInProgress: (
-            b"RefreshAlreadyInProgress"),
-    }
+    errors = {exceptions.RefreshAlreadyInProgress: b"RefreshAlreadyInProgress"}
 
 
 class AddChassis(amp.Command):
@@ -619,6 +738,7 @@ class AddChassis(amp.Command):
 
     :since: 2.0
     """
+
     arguments = [
         (b"user", amp.Unicode()),
         (b"chassis_type", amp.Unicode()),
@@ -640,6 +760,7 @@ class DiscoverPod(amp.Command):
 
     :since: 2.2
     """
+
     arguments = [
         (b"pod_id", amp.Integer(optional=True)),
         (b"name", amp.Unicode(optional=True)),
@@ -648,16 +769,11 @@ class DiscoverPod(amp.Command):
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
     ]
-    response = [
-        (b"pod", AmpDiscoveredPod()),
-    ]
+    response = [(b"pod", AmpDiscoveredPod())]
     errors = {
-        exceptions.UnknownPodType: (
-            b"UnknownPodType"),
-        NotImplementedError: (
-            b"NotImplementedError"),
-        exceptions.PodActionFail: (
-            b"PodActionFail"),
+        exceptions.UnknownPodType: b"UnknownPodType",
+        NotImplementedError: b"NotImplementedError",
+        exceptions.PodActionFail: b"PodActionFail",
     }
 
 
@@ -666,6 +782,7 @@ class ComposeMachine(amp.Command):
 
     :since: 2.2
     """
+
     arguments = [
         (b"pod_id", amp.Integer()),
         (b"name", amp.Unicode()),
@@ -680,14 +797,10 @@ class ComposeMachine(amp.Command):
         (b"hints", AmpDiscoveredPodHints()),
     ]
     errors = {
-        exceptions.UnknownPodType: (
-            b"UnknownPodType"),
-        NotImplementedError: (
-            b"NotImplementedError"),
-        exceptions.PodActionFail: (
-            b"PodActionFail"),
-        exceptions.PodInvalidResources: (
-            b"PodInvalidResources"),
+        exceptions.UnknownPodType: b"UnknownPodType",
+        NotImplementedError: b"NotImplementedError",
+        exceptions.PodActionFail: b"PodActionFail",
+        exceptions.PodInvalidResources: b"PodInvalidResources",
     }
 
 
@@ -696,6 +809,7 @@ class DecomposeMachine(amp.Command):
 
     :since: 2.2
     """
+
     arguments = [
         (b"pod_id", amp.Integer()),
         (b"name", amp.Unicode()),
@@ -704,16 +818,11 @@ class DecomposeMachine(amp.Command):
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
     ]
-    response = [
-        (b"hints", AmpDiscoveredPodHints()),
-    ]
+    response = [(b"hints", AmpDiscoveredPodHints())]
     errors = {
-        exceptions.UnknownPodType: (
-            b"UnknownPodType"),
-        NotImplementedError: (
-            b"NotImplementedError"),
-        exceptions.PodActionFail: (
-            b"PodActionFail"),
+        exceptions.UnknownPodType: b"UnknownPodType",
+        NotImplementedError: b"NotImplementedError",
+        exceptions.PodActionFail: b"PodActionFail",
     }
 
 
@@ -744,6 +853,7 @@ class ScanNetworks(amp.Command):
 
     :since: 2.1
     """
+
     arguments = [
         (b"scan_all", amp.Boolean(optional=True)),
         (b"force_ping", amp.Boolean(optional=True)),
@@ -764,10 +874,12 @@ class DisableAndShutoffRackd(amp.Command):
 
     :since: 2.0
     """
+
     arguments = []
     errors = {
         exceptions.CannotDisableAndShutoffRackd: (
-            b"CannotDisableAndShutoffRackd"),
+            b"CannotDisableAndShutoffRackd"
+        )
     }
 
 
@@ -776,18 +888,29 @@ class CheckIPs(amp.Command):
 
     :since: 2.7
     """
+
     arguments = [
-        (b"ip_addresses", AmpList([
-            (b"ip_address", amp.Unicode()),
-            (b"interface", amp.Unicode(optional=True)),
-        ])),
+        (
+            b"ip_addresses",
+            AmpList(
+                [
+                    (b"ip_address", amp.Unicode()),
+                    (b"interface", amp.Unicode(optional=True)),
+                ]
+            ),
+        )
     ]
     response = [
-        (b"ip_addresses", AmpList([
-            (b"ip_address", amp.Unicode()),
-            (b"interface", amp.Unicode(optional=True)),
-            (b"used", amp.Boolean()),
-            (b"mac_address", amp.Unicode(optional=True)),
-        ])),
+        (
+            b"ip_addresses",
+            AmpList(
+                [
+                    (b"ip_address", amp.Unicode()),
+                    (b"interface", amp.Unicode(optional=True)),
+                    (b"used", amp.Boolean()),
+                    (b"mac_address", amp.Unicode(optional=True)),
+                ]
+            ),
+        )
     ]
     errors = {}

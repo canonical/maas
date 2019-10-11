@@ -3,9 +3,7 @@
 
 """Django client with sensible handling of data."""
 
-__all__ = [
-    'SensibleClient',
-    ]
+__all__ = ["SensibleClient"]
 
 from functools import wraps
 
@@ -27,21 +25,29 @@ def transparent_encode_multipart(func):
     byte string. The application (that's us) needs to take care of MIME
     encoding.
     """
+
     @wraps(func)
     def maybe_encode_multipart(
-            self, path, data=b"", content_type=None, secure=False, query=None,
-            **extra):
+        self,
+        path,
+        data=b"",
+        content_type=None,
+        secure=False,
+        query=None,
+        **extra
+    ):
 
         if isinstance(data, bytes):
             if content_type is None:
-                content_type = 'application/octet-stream'
+                content_type = "application/octet-stream"
         elif content_type is None:
             content_type = client.MULTIPART_CONTENT
             data = client.encode_multipart(client.BOUNDARY, data)
         else:
             raise TypeError(
                 "Cannot combine data (%r) with content-type (%r)."
-                % (data, content_type))
+                % (data, content_type)
+            )
 
         if query is not None:
             query = urlencode(query, doseq=True)

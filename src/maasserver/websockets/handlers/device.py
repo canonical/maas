@@ -3,9 +3,7 @@
 
 """The device handler for the WebSocket connection."""
 
-__all__ = [
-    "DeviceHandler",
-    ]
+__all__ = ["DeviceHandler"]
 
 from operator import attrgetter
 
@@ -16,14 +14,8 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.forms import (
-    DeviceForm,
-    DeviceWithMACsForm,
-)
-from maasserver.forms.interface import (
-    InterfaceForm,
-    PhysicalInterfaceForm,
-)
+from maasserver.forms import DeviceForm, DeviceWithMACsForm
+from maasserver.forms.interface import InterfaceForm, PhysicalInterfaceForm
 from maasserver.models.interface import Interface
 from maasserver.models.node import Device
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -31,10 +23,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import (
-    HandlerError,
-    HandlerValidationError,
-)
+from maasserver.websockets.base import HandlerError, HandlerValidationError
 from maasserver.websockets.handlers.node import NodeHandler
 from netaddr import EUI
 from provisioningserver.logger import get_maas_logger
@@ -57,32 +46,34 @@ def get_Interface_from_list(interfaces, mac):
 
 
 class DeviceHandler(NodeHandler):
-
     class Meta(NodeHandler.Meta):
         abstract = False
         queryset = (
-            Device.objects.filter(parent=None).select_related(
-                'boot_interface', 'owner', 'zone', 'domain', 'bmc')
+            Device.objects.filter(parent=None)
+            .select_related("boot_interface", "owner", "zone", "domain", "bmc")
             .prefetch_related(
-                'interface_set__ip_addresses__subnet__vlan__space')
+                "interface_set__ip_addresses__subnet__vlan__space"
+            )
             .prefetch_related(
-                'interface_set__ip_addresses__subnet__vlan__fabric')
-            .prefetch_related('interface_set__vlan__fabric')
-            .prefetch_related('tags')
+                "interface_set__ip_addresses__subnet__vlan__fabric"
+            )
+            .prefetch_related("interface_set__vlan__fabric")
+            .prefetch_related("tags")
         )
         allowed_methods = [
-            'list',
-            'get',
-            'set_active',
-            'create',
-            'create_interface',
-            'create_physical',
-            'update_interface',
-            'delete_interface',
-            'link_subnet',
-            'unlink_subnet',
-            'update',
-            'action']
+            "list",
+            "get",
+            "set_active",
+            "create",
+            "create_interface",
+            "create_physical",
+            "update_interface",
+            "delete_interface",
+            "link_subnet",
+            "unlink_subnet",
+            "update",
+            "action",
+        ]
         exclude = [
             "bmc",
             "creation_type",
@@ -132,7 +123,7 @@ class DeviceHandler(NodeHandler):
             "install_rackd",
             "install_kvm",
             "hardware_uuid",
-            ]
+        ]
         list_fields = [
             "id",
             "system_id",
@@ -142,10 +133,8 @@ class DeviceHandler(NodeHandler):
             "zone",
             "parent",
             "pxe_mac",
-            ]
-        listen_channels = [
-            "device",
-            ]
+        ]
+        listen_channels = ["device"]
         view_permission = NodePermission.view
         edit_permission = NodePermission.edit
         delete_permission = NodePermission.edit
@@ -159,8 +148,10 @@ class DeviceHandler(NodeHandler):
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Device.objects.get_nodes(
-            self.user, self._meta.view_permission,
-            from_nodes=super().get_queryset(for_list=for_list))
+            self.user,
+            self._meta.view_permission,
+            from_nodes=super().get_queryset(for_list=for_list),
+        )
 
     def dehydrate_parent(self, parent):
         if parent is None:
@@ -176,17 +167,20 @@ class DeviceHandler(NodeHandler):
         boot_interface = obj.get_boot_interface()
         data["primary_mac"] = (
             "%s" % boot_interface.mac_address
-            if boot_interface is not None else "")
+            if boot_interface is not None
+            else ""
+        )
 
         if for_list:
             # Put the boot interface ip assignment/address in the device data.
             data["ip_assignment"] = self.dehydrate_ip_assignment(
-                obj, boot_interface)
+                obj, boot_interface
+            )
             data["ip_address"] = self.dehydrate_ip_address(obj, boot_interface)
         else:
             data["interfaces"] = [
                 self.dehydrate_interface(interface, obj)
-                for interface in obj.interface_set.all().order_by('name')
+                for interface in obj.interface_set.all().order_by("name")
             ]
             # Propogate the boot interface ip assignment/address to the device.
             for iface_data in data["interfaces"]:
@@ -250,7 +244,7 @@ class DeviceHandler(NodeHandler):
             "hostname": params.get("hostname"),
             "description": params.get("description"),
             "parent": params.get("parent"),
-            }
+        }
 
         if "zone" in params:
             new_params["zone"] = params["zone"]["name"]
@@ -270,14 +264,19 @@ class DeviceHandler(NodeHandler):
         ip_assignment = params["ip_assignment"]
         interface.ip_addresses.all().delete()
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
-            if 'ip_address' not in params:
+            if "ip_address" not in params:
                 raise ValidationError(
-                    {'ip_address': ['IP address must be specified']})
+                    {"ip_address": ["IP address must be specified"]}
+                )
             subnet = Subnet.objects.get_best_subnet_for_ip(
-                params["ip_address"])
+                params["ip_address"]
+            )
             sticky_ip = StaticIPAddress.objects.create(
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-                ip=params["ip_address"], subnet=subnet, user=self.user)
+                ip=params["ip_address"],
+                subnet=subnet,
+                user=self.user,
+            )
             interface.ip_addresses.add(sticky_ip)
         elif ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
             interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
@@ -290,7 +289,8 @@ class DeviceHandler(NodeHandler):
             # Link to the subnet statically.
             subnet = Subnet.objects.get(id=params["subnet"])
             interface.link_subnet(
-                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_address)
+                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_address
+            )
 
     def create(self, params):
         """Create the object from params."""
@@ -300,7 +300,7 @@ class DeviceHandler(NodeHandler):
         # Create the object with the form and then create all of the interfaces
         # based on the users choices.
         data = super(DeviceHandler, self).create(params)
-        device_obj = Device.objects.get(system_id=data['system_id'])
+        device_obj = Device.objects.get(system_id=data["system_id"])
         interfaces = list(device_obj.interface_set.all())
 
         # Acquire all of the needed ip address based on the user selection.
@@ -328,7 +328,8 @@ class DeviceHandler(NodeHandler):
         """Update the interface."""
         device = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(
-            node=device, id=params["interface_id"])
+            node=device, id=params["interface_id"]
+        )
         interface_form = InterfaceForm.get_interface_form(interface.type)
         form = interface_form(instance=interface, data=params)
         if form.is_valid():
@@ -348,28 +349,34 @@ class DeviceHandler(NodeHandler):
         """Create or update the link."""
         node = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
-        if params['ip_assignment'] == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
+        if params["ip_assignment"] == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             mode = INTERFACE_LINK_TYPE.STATIC
-        elif params['ip_assignment'] == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
+        elif params["ip_assignment"] == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
             mode = INTERFACE_LINK_TYPE.DHCP
         else:
             mode = INTERFACE_LINK_TYPE.LINK_UP
         subnet = None
         if "subnet" in params:
             subnet = Subnet.objects.get(id=params["subnet"])
-        if ("link_id" in params and
-                interface.ip_addresses.filter(
-                    id=params["link_id"]).exists()):
+        if (
+            "link_id" in params
+            and interface.ip_addresses.filter(id=params["link_id"]).exists()
+        ):
             # We are updating an already existing link, which may have been
             # removed earlier in this transaction (via update_interface.)
             interface.update_link_by_id(
-                params["link_id"], mode, subnet,
-                ip_address=params.get("ip_address", None))
-        elif params['ip_assignment'] == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
+                params["link_id"],
+                mode,
+                subnet,
+                ip_address=params.get("ip_address", None),
+            )
+        elif params["ip_assignment"] == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             # We are creating a new link.
             interface.link_subnet(
-                INTERFACE_LINK_TYPE.STATIC, subnet,
-                ip_address=params.get("ip_address", None))
+                INTERFACE_LINK_TYPE.STATIC,
+                subnet,
+                ip_address=params.get("ip_address", None),
+            )
 
     def unlink_subnet(self, params):
         """Delete the link."""
@@ -385,16 +392,17 @@ class DeviceHandler(NodeHandler):
         action = actions.get(action_name)
         if action is None:
             raise NodeActionError(
-                "%s action is not available for this device." % action_name)
+                "%s action is not available for this device." % action_name
+            )
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
 
     def update(self, params):
         """Update the object from params."""
         data = super().update(params)
-        if 'tags' in params:
-            device_obj = Device.objects.get(system_id=data['system_id'])
-            self.update_tags(device_obj, params['tags'])
+        if "tags" in params:
+            device_obj = Device.objects.get(system_id=data["system_id"])
+            self.update_tags(device_obj, params["tags"])
             device_obj.save()
             return self.full_dehydrate(device_obj)
         else:

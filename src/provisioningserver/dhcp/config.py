@@ -3,35 +3,18 @@
 
 """Write config output for ISC DHCPD."""
 
-__all__ = [
-    "DHCPConfigError",
-    "get_config",
-]
+__all__ = ["DHCPConfigError", "get_config"]
 
-from itertools import (
-    chain,
-    repeat,
-)
+from itertools import chain, repeat
 import logging
 from platform import linux_distribution
 import socket
 from typing import Sequence
 
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    IPRange,
-)
+from netaddr import IPAddress, IPNetwork, IPRange
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.path import (
-    get_data_path,
-    get_path,
-)
-from provisioningserver.utils import (
-    load_template,
-    snappy,
-    typed,
-)
+from provisioningserver.path import get_data_path, get_path
+from provisioningserver.utils import load_template, snappy, typed
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
@@ -46,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 # Used to generate the conditional bootloader behaviour
-CONDITIONAL_BOOTLOADER = tempita.Template("""
+CONDITIONAL_BOOTLOADER = tempita.Template(
+    """
 {{if ipv6}}
 {{if user_class}}
 {{behaviour}} exists dhcp6.client-arch-type and
@@ -121,10 +105,12 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
 }
 {{endif}}
 {{endif}}
-""")
+"""
+)
 
 # Used to generate the PXEBootLoader special case
-DEFAULT_BOOTLOADER = tempita.Template("""
+DEFAULT_BOOTLOADER = tempita.Template(
+    """
 {{if ipv6}}
 else {
     # {{name}}
@@ -152,7 +138,8 @@ else {
     {{endif}}
 }
 {{endif}}
-""")
+"""
+)
 
 
 class DHCPConfigError(Exception):
@@ -165,10 +152,13 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
     for name, method in BootMethodRegistry:
         if method.arch_octet is not None:
             use_http = method.path_prefix_http or method.http_url
-            schema = 'http' if use_http else 'tftp'
-            port = ':5248' if use_http else ''
-            url = ('%s://[%s]%s/' if ipv6 else '%s://%s%s/') % (
-                schema, rack_ip, port)
+            schema = "http" if use_http else "tftp"
+            port = ":5248" if use_http else ""
+            url = ("%s://[%s]%s/" if ipv6 else "%s://%s%s/") % (
+                schema,
+                rack_ip,
+                port,
+            )
             path_prefix = method.path_prefix
             if path_prefix:
                 url += path_prefix
@@ -185,43 +175,53 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
                 # absolute url is provided as the bootloader.
                 path_prefix = None
             for arch_octet in method.arch_octet:
-                output += CONDITIONAL_BOOTLOADER.substitute(
-                    ipv6=ipv6, rack_ip=rack_ip, url=url,
-                    behaviour=next(behaviour),
-                    arch_octet=arch_octet,
-                    user_class=method.user_class,
-                    bootloader=bootloader,
-                    path_prefix=path_prefix,
-                    path_prefix_force=method.path_prefix_force,
-                    http_client=method.http_url,
-                    name=method.name,
-                    ).strip() + ' '
+                output += (
+                    CONDITIONAL_BOOTLOADER.substitute(
+                        ipv6=ipv6,
+                        rack_ip=rack_ip,
+                        url=url,
+                        behaviour=next(behaviour),
+                        arch_octet=arch_octet,
+                        user_class=method.user_class,
+                        bootloader=bootloader,
+                        path_prefix=path_prefix,
+                        path_prefix_force=method.path_prefix_force,
+                        http_client=method.http_url,
+                        name=method.name,
+                    ).strip()
+                    + " "
+                )
 
     # The PXEBootMethod is used in an else statement for the generated
     # dhcpd config. This ensures that a booting node that does not
     # provide an architecture octet, or architectures that emulate
     # uefi_amd64 or pxelinux can still boot.
-    method = BootMethodRegistry.get_item('uefi_amd64' if ipv6 else 'pxe')
+    method = BootMethodRegistry.get_item("uefi_amd64" if ipv6 else "pxe")
     if method is not None:
         use_http = method.path_prefix_http or method.http_url
-        schema = 'http' if use_http else 'tftp'
-        port = ':5248' if use_http else ''
-        url = ('%s://[%s]%s/' if ipv6 else '%s://%s%s/') % (
-            schema, rack_ip, port)
+        schema = "http" if use_http else "tftp"
+        port = ":5248" if use_http else ""
+        url = ("%s://[%s]%s/" if ipv6 else "%s://%s%s/") % (
+            schema,
+            rack_ip,
+            port,
+        )
         path_prefix = method.path_prefix
         if path_prefix:
             url += path_prefix
         if method.path_prefix_http:
             # Force an absolute URL as the path prefix.
             path_prefix = url
-        url += '/%s' % method.bootloader_path
+        url += "/%s" % method.bootloader_path
         output += DEFAULT_BOOTLOADER.substitute(
-            ipv6=ipv6, rack_ip=rack_ip, url=url,
+            ipv6=ipv6,
+            rack_ip=rack_ip,
+            url=url,
             bootloader=method.bootloader_path,
             path_prefix=path_prefix,
             path_prefix_force=method.path_prefix_force,
             name=method.name,
-            ).strip()
+        ).strip()
     return output.strip()
 
 
@@ -235,7 +235,8 @@ def _gen_addresses(hostname):
     datagram sockets.
     """
     for family, _, _, _, addr in socket.getaddrinfo(
-            hostname, 0, 0, socket.SOCK_DGRAM, socket.IPPROTO_UDP):
+        hostname, 0, 0, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+    ):
         if family == socket.AF_INET:
             ipaddr, _ = addr
             yield 4, ipaddr
@@ -245,9 +246,15 @@ def _gen_addresses(hostname):
 
 
 # See `_gen_addresses_where_possible`.
-_gen_addresses_where_possible_suppress = frozenset((
-    socket.EAI_ADDRFAMILY, socket.EAI_AGAIN, socket.EAI_FAIL,
-    socket.EAI_NODATA, socket.EAI_NONAME))
+_gen_addresses_where_possible_suppress = frozenset(
+    (
+        socket.EAI_ADDRFAMILY,
+        socket.EAI_AGAIN,
+        socket.EAI_FAIL,
+        socket.EAI_NODATA,
+        socket.EAI_NONAME,
+    )
+)
 
 
 def _gen_addresses_where_possible(hostname):
@@ -308,15 +315,21 @@ def _get_addresses(*hostnames):
             else:
                 raise AssertionError(
                     "IP version %r for address %r is not recognised."
-                    % (ipver, addr))
+                    % (ipver, addr)
+                )
     return ipv4, ipv6
 
 
 @typed
 def get_config(
-        template_name: str, global_dhcp_snippets: Sequence[dict],
-        failover_peers: Sequence[dict], shared_networks: Sequence[dict],
-        hosts: Sequence[dict], omapi_key: str, ipv6: bool) -> str:
+    template_name: str,
+    global_dhcp_snippets: Sequence[dict],
+    failover_peers: Sequence[dict],
+    shared_networks: Sequence[dict],
+    hosts: Sequence[dict],
+    omapi_key: str,
+    ipv6: bool,
+) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
     :param template_name: Template file name: `dhcpd.conf.template` for the
@@ -326,12 +339,22 @@ def get_config(
     """
     if ipv6:
         return get_config_v6(
-            template_name, global_dhcp_snippets, failover_peers,
-            shared_networks, hosts, omapi_key)
+            template_name,
+            global_dhcp_snippets,
+            failover_peers,
+            shared_networks,
+            hosts,
+            omapi_key,
+        )
     else:
         return get_config_v4(
-            template_name, global_dhcp_snippets, failover_peers,
-            shared_networks, hosts, omapi_key)
+            template_name,
+            global_dhcp_snippets,
+            failover_peers,
+            shared_networks,
+            hosts,
+            omapi_key,
+        )
 
 
 def normalise_any_iterable_to_comma_list(iterable):
@@ -362,11 +385,12 @@ def get_rack_ip_for_subnet(version, cidr, interface):
     if interface:
         ip_addresses = [
             IPAddress(addr)
-            for addr in net_utils.get_all_addresses_for_interface(interface)]
+            for addr in net_utils.get_all_addresses_for_interface(interface)
+        ]
     else:
         ip_addresses = [
-            IPAddress(addr)
-            for addr in net_utils.get_all_interface_addresses()]
+            IPAddress(addr) for addr in net_utils.get_all_interface_addresses()
+        ]
     for ip_addr in ip_addresses:
         if ip_addr in cidr:
             return ip_addr
@@ -378,9 +402,13 @@ def get_rack_ip_for_subnet(version, cidr, interface):
 
 @typed
 def get_config_v4(
-        template_name: str, global_dhcp_snippets: Sequence[dict],
-        failover_peers: Sequence[dict], shared_networks: Sequence[dict],
-        hosts: Sequence[dict], omapi_key: str) -> str:
+    template_name: str,
+    global_dhcp_snippets: Sequence[dict],
+    failover_peers: Sequence[dict],
+    shared_networks: Sequence[dict],
+    hosts: Sequence[dict],
+    omapi_key: str,
+) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
     :param template_name: Template file name: `dhcpd.conf.template` for the
@@ -388,8 +416,8 @@ def get_config_v4(
     :return: A full configuration, as a string.
     """
     platform_codename = linux_distribution()[2]
-    template = load_template('dhcp', template_name)
-    dhcp_socket = get_data_path('/var/lib/maas/dhcpd.sock')
+    template = load_template("dhcp", template_name)
+    dhcp_socket = get_data_path("/var/lib/maas/dhcpd.sock")
 
     # Helper functions to stuff into the template namespace.
     helpers = {
@@ -403,11 +431,13 @@ def get_config_v4(
         interface = shared_network.get("interface", None)
         for subnet in shared_network["subnets"]:
             rack_ip = get_rack_ip_for_subnet(
-                4, subnet['subnet_cidr'], interface)
+                4, subnet["subnet_cidr"], interface
+            )
             if rack_ip is not None:
                 subnet["next_server"] = rack_ip
                 subnet["bootloader"] = compose_conditional_bootloader(
-                    False, rack_ip)
+                    False, rack_ip
+                )
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
@@ -415,22 +445,31 @@ def get_config_v4(
 
     try:
         return template.substitute(
-            global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
-            failover_peers=failover_peers, shared_networks=shared_networks,
+            global_dhcp_snippets=global_dhcp_snippets,
+            hosts=hosts,
+            failover_peers=failover_peers,
+            shared_networks=shared_networks,
             platform_codename=platform_codename,
-            omapi_key=omapi_key, dhcp_helper=(
-                get_path('/usr/sbin/maas-dhcp-helper')),
-            dhcp_socket=dhcp_socket, **helpers)
+            omapi_key=omapi_key,
+            dhcp_helper=(get_path("/usr/sbin/maas-dhcp-helper")),
+            dhcp_socket=dhcp_socket,
+            **helpers
+        )
     except (KeyError, NameError) as error:
         raise DHCPConfigError(
-            "Failed to render DHCP configuration.") from error
+            "Failed to render DHCP configuration."
+        ) from error
 
 
 @typed
 def get_config_v6(
-        template_name: str, global_dhcp_snippets: Sequence[dict],
-        failover_peers: Sequence[dict], shared_networks: Sequence[dict],
-        hosts: Sequence[dict], omapi_key: str) -> str:
+    template_name: str,
+    global_dhcp_snippets: Sequence[dict],
+    failover_peers: Sequence[dict],
+    shared_networks: Sequence[dict],
+    hosts: Sequence[dict],
+    omapi_key: str,
+) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
     :param template_name: Template file name: `dhcpd6.conf.template` for the
@@ -438,7 +477,7 @@ def get_config_v6(
     :return: A full configuration, as a string.
     """
     platform_codename = linux_distribution()[2]
-    template = load_template('dhcp', template_name)
+    template = load_template("dhcp", template_name)
     # Helper functions to stuff into the template namespace.
     helpers = {
         "oneline": normalise_whitespace,
@@ -448,17 +487,23 @@ def get_config_v6(
     }
 
     shared_networks = _process_network_parameters_v6(
-        failover_peers, shared_networks)
+        failover_peers, shared_networks
+    )
 
     try:
         return template.substitute(
-            global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
-            failover_peers=failover_peers, shared_networks=shared_networks,
+            global_dhcp_snippets=global_dhcp_snippets,
+            hosts=hosts,
+            failover_peers=failover_peers,
+            shared_networks=shared_networks,
             platform_codename=platform_codename,
-            omapi_key=omapi_key, **helpers)
+            omapi_key=omapi_key,
+            **helpers
+        )
     except (KeyError, NameError) as error:
         raise DHCPConfigError(
-            "Failed to render DHCP configuration.") from error
+            "Failed to render DHCP configuration."
+        ) from error
 
 
 def _process_network_parameters_v6(failover_peers, shared_networks):
@@ -477,10 +522,12 @@ def _process_network_parameters_v6(failover_peers, shared_networks):
         interface = shared_network.get("interface", None)
         for subnet in shared_network["subnets"]:
             rack_ip = get_rack_ip_for_subnet(
-                6, subnet['subnet_cidr'], interface)
+                6, subnet["subnet_cidr"], interface
+            )
             if rack_ip is not None:
                 subnet["bootloader"] = compose_conditional_bootloader(
-                    True, rack_ip)
+                    True, rack_ip
+                )
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
@@ -489,14 +536,16 @@ def _process_network_parameters_v6(failover_peers, shared_networks):
                 peer = pool.get("failover_peer", None)
                 if peer is not None:
                     ip_range = IPRange(
-                        pool["ip_range_low"],
-                        pool["ip_range_high"])
+                        pool["ip_range_low"], pool["ip_range_high"]
+                    )
                     if peers[peer]["mode"] == "primary":
                         pool["ip_range_high"] = str(
                             IPAddress(
-                                ip_range.first + int(ip_range.size / 2) - 1))
+                                ip_range.first + int(ip_range.size / 2) - 1
+                            )
+                        )
                     else:
                         pool["ip_range_low"] = str(
-                            IPAddress(
-                                ip_range.first + int(ip_range.size / 2)))
+                            IPAddress(ip_range.first + int(ip_range.size / 2))
+                        )
     return shared_networks

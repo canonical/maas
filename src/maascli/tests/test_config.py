@@ -28,8 +28,10 @@ class TestProfileConfig(MAASTestCase):
                 cursor.execute(
                     "SELECT COUNT(*) FROM sqlite_master"
                     " WHERE type = 'table'"
-                    "   AND name = 'profiles'").fetchone(),
-                (1,))
+                    "   AND name = 'profiles'"
+                ).fetchone(),
+                (1,),
+            )
 
     def test_profiles_pristine(self):
         # A pristine configuration has no profiles.
@@ -56,7 +58,7 @@ class TestProfileConfig(MAASTestCase):
         database = sqlite3.connect(":memory:")
         config = api.ProfileConfig(database)
         config["alice"] = {"abc": 123}
-        with patch.object(config, 'cursor') as cursor:
+        with patch.object(config, "cursor") as cursor:
             self.assertEqual({"abc": 123}, config["alice"])
             cursor.assert_not_called()
 
@@ -93,8 +95,7 @@ class TestProfileConfig(MAASTestCase):
         with config as config:
             self.assertIsInstance(config, api.ProfileConfig)
             with config.cursor() as cursor:
-                self.assertEqual(
-                    (1,), cursor.execute("SELECT 1").fetchone())
+                self.assertEqual((1,), cursor.execute("SELECT 1").fetchone())
         self.assertRaises(sqlite3.ProgrammingError, config.cursor)
 
     def test_open_permissions_new_database(self):

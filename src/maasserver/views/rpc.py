@@ -7,9 +7,7 @@ Each region controller process starts its own RPC endpoint, and this
 provides the means for clusters to discover what they are.
 """
 
-__all__ = [
-    "info",
-]
+__all__ = ["info"]
 
 import json
 
@@ -43,11 +41,14 @@ def get_endpoints():
     for region_obj in regions:
         for process in region_obj.processes.all():
             for endpoint in process.endpoints.all():
-                if _unique_to_region(
-                        endpoint.address, region_obj, regions):
-                    all_endpoints.append((
-                        "%s:pid=%d" % (region_obj.hostname, process.pid),
-                        endpoint.address, endpoint.port))
+                if _unique_to_region(endpoint.address, region_obj, regions):
+                    all_endpoints.append(
+                        (
+                            "%s:pid=%d" % (region_obj.hostname, process.pid),
+                            endpoint.address,
+                            endpoint.port,
+                        )
+                    )
     return all_endpoints
 
 

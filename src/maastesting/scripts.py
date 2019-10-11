@@ -3,18 +3,11 @@ import os
 import sys
 
 from maasserver import execute_from_command_line
-from maasserver.utils import (
-    orm,
-    threads,
-)
+from maasserver.utils import orm, threads
 from maastesting.noseplug import main as test_main
 from maastesting.parallel import main as test_parallel_main
 from provisioningserver import logger
-from twisted.internet import (
-    asyncioreactor,
-    error,
-    reactor,
-)
+from twisted.internet import asyncioreactor, error, reactor
 import uvloop
 
 
@@ -34,10 +27,12 @@ def inject_test_options(options):
 
 
 def update_environ(env=None):
-    os.environ.update({
-        'MAAS_ROOT': os.path.join(os.getcwd(), '.run'),
-        "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.development",
-    })
+    os.environ.update(
+        {
+            "MAAS_ROOT": os.path.join(os.getcwd(), ".run"),
+            "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.development",
+        }
+    )
     if env:
         os.environ.update(env)
 
@@ -60,7 +55,8 @@ def run_region():
         "--logging-level=INFO",
         "--logging-clear-handlers",
         # Do not run tests tagged "legacy".
-        "-a", "!legacy",
+        "-a",
+        "!legacy",
     ]
     inject_test_options(options)
     update_environ()
@@ -77,6 +73,7 @@ def run_region():
 
     # Configure Django
     import django
+
     django.setup()
     test_main()
 
@@ -99,7 +96,8 @@ def run_region_legacy():
         "--logging-level=INFO",
         "--logging-clear-handlers",
         # Run only tests tagged "legacy".
-        "-a", "legacy",
+        "-a",
+        "legacy",
     ]
     inject_test_options(options)
     update_environ(env={"MAAS_PREVENT_MIGRATIONS": "1"})

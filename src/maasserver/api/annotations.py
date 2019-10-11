@@ -172,9 +172,7 @@ NOTES:
     change if a speed improvement is needed.
 """
 
-__all__ = [
-    'APIDocstringParser',
-]
+__all__ = ["APIDocstringParser"]
 
 import json
 import os
@@ -191,7 +189,7 @@ class APIDocstringParser:
         "success",
         "success-example",
         "error",
-        "error-example"
+        "error-example",
     ]
 
     allowed_types = [
@@ -202,7 +200,7 @@ class APIDocstringParser:
         "http-status-code",
         "json",
         "boolean",
-        "float"
+        "float",
     ]
 
     @staticmethod
@@ -240,8 +238,9 @@ class APIDocstringParser:
 
         if not self.is_valid_type(ttype):
             self._warn(
-                "%s is not a valid type for %s in '%s' tag" %
-                (ttype, tname, tag))
+                "%s is not a valid type for %s in '%s' tag"
+                % (ttype, tname, tag)
+            )
 
     def _warn(self, msg, context=""):
         """Collects a given warning for later use."""
@@ -249,9 +248,10 @@ class APIDocstringParser:
         if context != "":
             context = indent("in:\n%s" % context, "    ")
 
-        self.warnings = (
-            self.warnings + "API_WARNING: %s\n\n%s" %
-            (msg, context))
+        self.warnings = self.warnings + "API_WARNING: %s\n\n%s" % (
+            msg,
+            context,
+        )
 
     def _syntax_error(self, msg, context=""):
         """Collects a given syntax error for later use."""
@@ -259,9 +259,10 @@ class APIDocstringParser:
         if context != "":
             context = indent("in:\n%s" % context, "    ")
 
-        self.warnings = (
-            self.warnings + "API_SYNTAX_ERROR: %s\n\n%s" %
-            (msg, context))
+        self.warnings = self.warnings + "API_SYNTAX_ERROR: %s\n\n%s" % (
+            msg,
+            context,
+        )
 
     def _is_name_in_tags(self, name, tags):
         """Tries to find the given name value in the tags.
@@ -270,7 +271,7 @@ class APIDocstringParser:
         key 'name' and value name.
         """
         for tag in tags:
-            if tag['name'] == name:
+            if tag["name"] == name:
                 return True
 
         return False
@@ -288,13 +289,13 @@ class APIDocstringParser:
         every example should have a tag.
         """
         for example in examples:
-            if not self._is_name_in_tags(example['name'], tags):
+            if not self._is_name_in_tags(example["name"], tags):
                 self._warn(
                     "Couldn't find matching tag named '%s' in "
-                    "%s tags." % (example['name'], tag_cat))
+                    "%s tags." % (example["name"], tag_cat)
+                )
 
-    def _get_named_example_for_named_tag(
-            self, tag_cat, tag_name, examples):
+    def _get_named_example_for_named_tag(self, tag_cat, tag_name, examples):
         """Maps examples to associated named tags.
 
         Given a tag's name -- "tag_name" -- this function searches
@@ -313,12 +314,13 @@ class APIDocstringParser:
         """
 
         for example in examples:
-            if example['name'] == tag_name:
+            if example["name"] == tag_name:
                 if tag_name == "":
                     self._warn(
                         "Mapped empty name to an empty name. Did you "
                         "forget to name your example to match a '%s'?\nThis "
-                        "can result in double examples." % tag_cat)
+                        "can result in double examples." % tag_cat
+                    )
                 return example
 
         return {}
@@ -340,8 +342,9 @@ class APIDocstringParser:
                 key, val = opt.split("=")
                 if key in d:
                     self._warn(
-                        "Found duplicate key '%s' in options '%s'" %
-                        (key, options_string))
+                        "Found duplicate key '%s' in options '%s'"
+                        % (key, options_string)
+                    )
                 d[key] = val
 
         return d
@@ -359,45 +362,49 @@ class APIDocstringParser:
         return_list = []
         for tag in tags:
             example = self._get_named_example_for_named_tag(
-                tag_cat, tag['name'], examples)
+                tag_cat, tag["name"], examples
+            )
             if example:
                 # We default to the description for this example given in the
                 # docstring.
-                example_desc = example['description']
+                example_desc = example["description"]
 
                 # If the user has given options, check for the presence of
                 # 'exkey'.
-                example_options = example['options']
-                if example_options is not None and 'exkey' in example_options:
-                    example_options_exkey = example_options['exkey']
+                example_options = example["options"]
+                if example_options is not None and "exkey" in example_options:
+                    example_options_exkey = example_options["exkey"]
                     # If the examples db is empty, since we have an exkey,
                     # we need to warn.
                     if self.examples_db is None:
                         self._warn(
                             "Found 'exkey'='%s' in example named '%s', but "
-                            "the examples database is empty." %
-                            (example_options_exkey, example['name']))
+                            "the examples database is empty."
+                            % (example_options_exkey, example["name"])
+                        )
                     elif example_options_exkey in self.examples_db:
                         # Use indent=4 in order to tell json to format
                         # the outgoing string as opposed to keeping it on
                         # one line.
                         example_desc = json.dumps(
-                            self.examples_db[example['options']['exkey']],
-                            indent=4)
+                            self.examples_db[example["options"]["exkey"]],
+                            indent=4,
+                        )
                     else:
                         self._warn(
                             "Found 'exkey'='%s' in example named '%s', "
                             "but found no corresponding entry in the the "
-                            "examples database." %
-                            (example['options']['exkey'], example['name']))
+                            "examples database."
+                            % (example["options"]["exkey"], example["name"])
+                        )
 
                 # example will contain either the description provided in the
                 # docstring as is, or it will have been replaced with an
                 # entry from the examples_db
-                tag['example'] = example_desc
+                tag["example"] = example_desc
 
             else:
-                tag['example'] = ""
+                tag["example"] = ""
 
             return_list.append(tag)
 
@@ -432,8 +439,8 @@ class APIDocstringParser:
     # Strips multiple inline spaces, all newlines, and
     # leading and trailing spaces
     def _strip_spaces_and_newlines(self, s):
-        s_stripped = re.sub(r'\s{2,}', ' ', s)
-        s_stripped = re.sub(r'\n', ' ', s_stripped)
+        s_stripped = re.sub(r"\s{2,}", " ", s)
+        s_stripped = re.sub(r"\n", " ", s_stripped)
 
         return s_stripped.rstrip().lstrip()
 
@@ -446,13 +453,13 @@ class APIDocstringParser:
             "description": desc,
             "description_stripped": desc_stripped,
             "options": self._get_options_dict(opts),
-            "example": ""
+            "example": "",
         }
         return d
 
     def _val_is_true_or_false(self, val):
         """Return False if lowercased val is not true or false"""
-        return val.lower() in ('true', 'false')
+        return val.lower() in ("true", "false")
 
     def _check_param_tag(self, tag_dict, tag_name):
         """Checks param tag dict for syntax problems.
@@ -465,23 +472,25 @@ class APIDocstringParser:
         problems.
         """
         warns = []
-        options = tag_dict['options']
+        options = tag_dict["options"]
 
         # Check required option first
-        if 'required' not in options:
+        if "required" not in options:
             warns.append("Option key 'required' not found in %s." % tag_name)
         else:
-            if not self._val_is_true_or_false(options['required']):
+            if not self._val_is_true_or_false(options["required"]):
                 warns.append(
-                    "Option key 'required' must be 'true' or 'false' in %s." %
-                    tag_name)
+                    "Option key 'required' must be 'true' or 'false' in %s."
+                    % tag_name
+                )
 
         # Now check for formatting option
-        if 'formatting' in options:
-            if not self._val_is_true_or_false(options['formatting']):
+        if "formatting" in options:
+            if not self._val_is_true_or_false(options["formatting"]):
                 warns.append(
                     "Option key 'formatting' must be 'true' or 'false' in"
-                    "%s." % tag_name)
+                    "%s." % tag_name
+                )
 
         return None if len(warns) == 0 else warns
 
@@ -501,12 +510,16 @@ class APIDocstringParser:
             if self.description_title != "":
                 self._warn(
                     "Found another description-title field. Will "
-                    "overwrite the original.", docstring)
+                    "overwrite the original.",
+                    docstring,
+                )
 
             if ttype != "" or tname != "" or opts != "":
                 self._warn(
                     "type, name, and options are not "
-                    "available for the description-title tag.", docstring)
+                    "available for the description-title tag.",
+                    docstring,
+                )
 
             self.description_title = self._strip_spaces_and_newlines(desc)
         #
@@ -516,12 +529,16 @@ class APIDocstringParser:
             if self.description != "":
                 self._warn(
                     "Found another description field. "
-                    "Will overwrite the original.", docstring)
+                    "Will overwrite the original.",
+                    docstring,
+                )
 
             if ttype != "" or tname != "" or opts != "":
                 self._warn(
                     "type, name, and options are not "
-                    "available for the description tag.", docstring)
+                    "available for the description tag.",
+                    docstring,
+                )
 
             self.description = desc
         #
@@ -535,7 +552,7 @@ class APIDocstringParser:
                 for warn_str in warns:
                     self._warn(warn_str, docstring)
 
-            self._warn_on_invalid_type(ttype, tname, 'param')
+            self._warn_on_invalid_type(ttype, tname, "param")
 
             self.params.append(tag_dict)
         #
@@ -543,35 +560,38 @@ class APIDocstringParser:
         #
         elif tag == "param-example":
             self.examples.append(
-                self._create_tag_dict(tname, ttype, opts, desc))
+                self._create_tag_dict(tname, ttype, opts, desc)
+            )
         #
         # @success
         #
         elif tag == "success":
             self.successes.append(
-                self._create_tag_dict(tname, ttype, opts, desc))
+                self._create_tag_dict(tname, ttype, opts, desc)
+            )
 
-            self._warn_on_invalid_type(ttype, tname, 'success')
+            self._warn_on_invalid_type(ttype, tname, "success")
         #
         # @success-example
         #
         elif tag == "success-example":
             self.success_examples.append(
-                self._create_tag_dict(tname, ttype, opts, desc))
+                self._create_tag_dict(tname, ttype, opts, desc)
+            )
         #
         # @error
         #
         elif tag == "error":
-            self.errors.append(
-                self._create_tag_dict(tname, ttype, opts, desc))
+            self.errors.append(self._create_tag_dict(tname, ttype, opts, desc))
 
-            self._warn_on_invalid_type(ttype, tname, 'error')
+            self._warn_on_invalid_type(ttype, tname, "error")
         #
         # @error-example
         #
         elif tag == "error-example":
             self.error_examples.append(
-                self._create_tag_dict(tname, ttype, opts, desc))
+                self._create_tag_dict(tname, ttype, opts, desc)
+            )
         #
         # Fall through to warning message
         #
@@ -639,7 +659,7 @@ class APIDocstringParser:
         """
         nodes_examples = {}
 
-        json_file = ("%s/examples/nodes.json" % os.path.dirname(__file__))
+        json_file = "%s/examples/nodes.json" % os.path.dirname(__file__)
 
         if not os.path.isfile(json_file):
             self._warn("examples/nodes.json not found.")
@@ -669,13 +689,17 @@ class APIDocstringParser:
             return examples
 
         # First, try the operation string as is:
-        json_file = ("%s/examples/%s.json" %
-                     (os.path.dirname(__file__), operation))
+        json_file = "%s/examples/%s.json" % (
+            os.path.dirname(__file__),
+            operation,
+        )
 
         if not os.path.isfile(json_file):
             # Not available, so try adding an 's' to make it plural
-            json_file = ("%s/examples/%ss.json" %
-                         (os.path.dirname(__file__), operation))
+            json_file = "%s/examples/%ss.json" % (
+                os.path.dirname(__file__),
+                operation,
+            )
 
             if not os.path.isfile(json_file):
                 # No examples found so return base set
@@ -687,7 +711,7 @@ class APIDocstringParser:
 
         return examples
 
-    def parse(self, docstring, http_method='', uri='', operation=''):
+    def parse(self, docstring, http_method="", uri="", operation=""):
         """State machine that parses annotated API docstrings.
 
         This function parses a docstring by looking for a series of
@@ -743,7 +767,7 @@ class APIDocstringParser:
         # Use an indexed array so we can simulate a "put back" operation for
         # a one-word lookahead. Split on space (or repeated space) as well as
         # newlines and keep the split chars so indentation will be kept intact.
-        words = re.split(r'(\s+|\n)', docstring)
+        words = re.split(r"(\s+|\n)", docstring)
         max_idx = len(words)
         idx = 0
 
@@ -760,7 +784,9 @@ class APIDocstringParser:
                 else:
                     self._syntax_error(
                         "expecting annotation tag. Found '%s' "
-                        "' instead." % word, docstring)
+                        "' instead." % word,
+                        docstring,
+                    )
 
             # Looking for a type -- (type)
             elif ps == ParseState.TYPE:
@@ -805,11 +831,13 @@ class APIDocstringParser:
                     ps = ParseState.TAG
 
                     warn = self._sanity_check_tag_and_get_warning(
-                        tag, tname, ttype, opts, desc)
+                        tag, tname, ttype, opts, desc
+                    )
                     if warn != "":
                         self._warn(warn, docstring)
                     self._process_docstring_tag(
-                        tag, tname, ttype, opts, desc, docstring)
+                        tag, tname, ttype, opts, desc, docstring
+                    )
 
                     tname = ""
                     ttype = ""
@@ -824,7 +852,8 @@ class APIDocstringParser:
                 done = True
 
         warn = self._sanity_check_tag_and_get_warning(
-            tag, tname, ttype, opts, desc)
+            tag, tname, ttype, opts, desc
+        )
         if warn != "":
             self._warn(warn, docstring)
         self._process_docstring_tag(tag, tname, ttype, opts, desc, docstring)
@@ -834,28 +863,33 @@ class APIDocstringParser:
 
         d = {}
 
-        d['http_method'] = self.http_method
-        d['uri'] = self.uri
-        d['operation'] = self.operation
-        d['description_title'] = self.description_title
-        d['description'] = self.description
-        d['params'] = self._map_named_tags_to_named_examples(
-            'param', self.params, self.examples)
-        d['successes'] = self._map_named_tags_to_named_examples(
-            'success', self.successes, self.success_examples)
-        d['errors'] = self._map_named_tags_to_named_examples(
-            'error', self.errors, self.error_examples)
+        d["http_method"] = self.http_method
+        d["uri"] = self.uri
+        d["operation"] = self.operation
+        d["description_title"] = self.description_title
+        d["description"] = self.description
+        d["params"] = self._map_named_tags_to_named_examples(
+            "param", self.params, self.examples
+        )
+        d["successes"] = self._map_named_tags_to_named_examples(
+            "success", self.successes, self.success_examples
+        )
+        d["errors"] = self._map_named_tags_to_named_examples(
+            "error", self.errors, self.error_examples
+        )
 
         # The user might have examples that do not have corresponding
         # tags.
-        self._warn_on_orphaned_examples('params', self.params, self.examples)
+        self._warn_on_orphaned_examples("params", self.params, self.examples)
         self._warn_on_orphaned_examples(
-            'successes', self.successes, self.success_examples)
+            "successes", self.successes, self.success_examples
+        )
         self._warn_on_orphaned_examples(
-            'errors', self.errors, self.error_examples)
+            "errors", self.errors, self.error_examples
+        )
 
         # We must add warnings last because they are populated
         # in _map_list_to_examples
-        d['warnings'] = self.warnings
+        d["warnings"] = self.warnings
 
         return d

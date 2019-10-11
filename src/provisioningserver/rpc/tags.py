@@ -3,23 +3,23 @@
 
 """RPC helpers for dealing with tags."""
 
-__all__ = [
-    "evaluate_tag",
-]
+__all__ = ["evaluate_tag"]
 
-from apiclient.maas_client import (
-    MAASClient,
-    MAASDispatcher,
-    MAASOAuth,
-)
+from apiclient.maas_client import MAASClient, MAASDispatcher, MAASOAuth
 from provisioningserver.tags import process_node_tags
 from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous
 def evaluate_tag(
-        system_id, nodes, tag_name, tag_definition, tag_nsmap,
-        credentials, maas_url):
+    system_id,
+    nodes,
+    tag_name,
+    tag_definition,
+    tag_nsmap,
+    credentials,
+    maas_url,
+):
     """Evaluate `tag_definition` against this cluster's nodes' details.
 
     :param system_id: System ID for the rack controller.
@@ -31,9 +31,15 @@ def evaluate_tag(
     :param maas_url: URL of the MAAS API.
     """
     client = MAASClient(
-        auth=MAASOAuth(*credentials), dispatcher=MAASDispatcher(),
-        base_url=maas_url)
+        auth=MAASOAuth(*credentials),
+        dispatcher=MAASDispatcher(),
+        base_url=maas_url,
+    )
     process_node_tags(
-        rack_id=system_id, nodes=nodes,
-        tag_name=tag_name, tag_definition=tag_definition,
-        tag_nsmap=tag_nsmap, client=client)
+        rack_id=system_id,
+        nodes=nodes,
+        tag_name=tag_name,
+        tag_definition=tag_definition,
+        tag_nsmap=tag_nsmap,
+        client=client,
+    )

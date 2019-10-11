@@ -6,24 +6,18 @@
 __all__ = []
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.enum import (
-    map_enum,
-    map_enum_reverse,
-)
+from provisioningserver.utils.enum import map_enum, map_enum_reverse
 
 
 class TestEnum(MAASTestCase):
-
     def test_map_enum_includes_all_enum_keys(self):
-
         class Enum:
             ONE = 1
             TWO = 2
 
-        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum).keys())
+        self.assertItemsEqual(["ONE", "TWO"], map_enum(Enum).keys())
 
     def test_map_enum_omits_private_or_special_methods(self):
-
         class Enum:
             def __init__(self):
                 pass
@@ -36,33 +30,28 @@ class TestEnum(MAASTestCase):
 
             VALUE = 9
 
-        self.assertItemsEqual(['VALUE'], map_enum(Enum).keys())
+        self.assertItemsEqual(["VALUE"], map_enum(Enum).keys())
 
     def test_map_enum_maps_values(self):
-
         class Enum:
             ONE = 1
             THREE = 3
 
-        self.assertEqual({'ONE': 1, 'THREE': 3}, map_enum(Enum))
+        self.assertEqual({"ONE": 1, "THREE": 3}, map_enum(Enum))
 
     def test_map_enum_reverse_maps_values(self):
-
         class Enum:
             ONE = 1
             NINE = 9
 
-        self.assertEqual(
-            {1: 'ONE', 9: 'NINE'},
-            map_enum_reverse(Enum))
+        self.assertEqual({1: "ONE", 9: "NINE"}, map_enum_reverse(Enum))
 
     def test_map_enum_reverse_ignores_unwanted_keys(self):
-
         class Enum:
             ZERO = 0
             ONE = 1
 
-        self.assertEqual({0: 'ZERO'}, map_enum_reverse(Enum, ignore=['ONE']))
+        self.assertEqual({0: "ZERO"}, map_enum_reverse(Enum, ignore=["ONE"]))
 
     def test_map_enum_reverse_ignores_keys_for_clashing_values(self):
         # This enum has two keys for each of its values.  We'll make the
@@ -84,12 +73,8 @@ class TestEnum(MAASTestCase):
             FIVE_2 = 5
 
         self.assertEqual(
-            {1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE'},
+            {1: "ONE", 2: "TWO", 3: "THREE", 4: "FOUR", 5: "FIVE"},
             map_enum_reverse(
-                Enum, ignore=[
-                    'ONE_2',
-                    'TWO_2',
-                    'THREE_2',
-                    'FOUR_2',
-                    'FIVE_2',
-                    ]))
+                Enum, ignore=["ONE_2", "TWO_2", "THREE_2", "FOUR_2", "FIVE_2"]
+            ),
+        )

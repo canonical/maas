@@ -5,17 +5,11 @@
 
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime, timedelta
 from random import randint
 
 from django.db import connection
-from maasserver.models.dnspublication import (
-    DNSPublication,
-    zone_serial,
-)
+from maasserver.models.dnspublication import DNSPublication, zone_serial
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
@@ -33,16 +27,19 @@ class TestZoneSerial(MAASServerTestCase):
 
     def test_parameters(self):
         self.assertThat(
-            zone_serial, MatchesStructure.byEquality(
-                maxvalue=2 ** 32 - 1, minvalue=1, increment=1, cycle=True,
+            zone_serial,
+            MatchesStructure.byEquality(
+                maxvalue=2 ** 32 - 1,
+                minvalue=1,
+                increment=1,
+                cycle=True,
                 owner="maasserver_dnspublication.serial",
-            ))
+            ),
+        )
 
     def test_parameters_in_database(self):
         zone_serial.create_if_not_exists()
-        query = (
-            "SELECT last_value, is_called FROM %s" % zone_serial.name
-        )
+        query = "SELECT last_value, is_called FROM %s" % zone_serial.name
         with connection.cursor() as cursor:
             cursor.execute(query)
             last_value1, is_called1 = cursor.fetchone()
@@ -61,11 +58,13 @@ class TestDNSPublication(MAASServerTestCase):
         pub = DNSPublication()
         pub.save()
         self.assertThat(
-            pub, MatchesStructure(
+            pub,
+            MatchesStructure(
                 serial=IsInstance(int),
                 created=IsInstance(datetime),
                 source=Equals(""),
-            ))
+            ),
+        )
 
     def test_create_with_values(self):
         serial = randint(1, 5000)
@@ -74,7 +73,8 @@ class TestDNSPublication(MAASServerTestCase):
         pub = DNSPublication(serial=serial, created=created, source=source)
         pub.save()
         self.assertThat(
-            pub, MatchesStructure(
+            pub,
+            MatchesStructure(
                 serial=Equals(serial),
                 created=MatchesAll(
                     IsInstance(datetime),
@@ -83,7 +83,8 @@ class TestDNSPublication(MAASServerTestCase):
                     first_only=True,
                 ),
                 source=Equals(source),
-            ))
+            ),
+        )
 
 
 class TestDNSPublicationManager(MAASServerTestCase):
@@ -100,7 +101,8 @@ class TestDNSPublicationManager(MAASServerTestCase):
         DNSPublication(serial=10).save()
         self.assertThat(
             DNSPublication.objects.get_most_recent(),
-            MatchesStructure(serial=Equals(10)))
+            MatchesStructure(serial=Equals(10)),
+        )
 
     def test_get_most_recent_crashes_when_no_publications(self):
         # This is okay because we ensure (using a migration) that there is
@@ -109,8 +111,8 @@ class TestDNSPublicationManager(MAASServerTestCase):
         # in tests, so it is important to have a deterministic outcome when
         # there are no publications.
         self.assertRaises(
-            DNSPublication.DoesNotExist,
-            DNSPublication.objects.get_most_recent)
+            DNSPublication.DoesNotExist, DNSPublication.objects.get_most_recent
+        )
 
     def test_collect_garbage_removes_all_but_most_recent_record(self):
         for serial in range(10):
@@ -120,7 +122,8 @@ class TestDNSPublicationManager(MAASServerTestCase):
         self.assertThat(DNSPublication.objects.all(), HasLength(1))
         self.assertThat(
             DNSPublication.objects.get_most_recent(),
-            MatchesStructure(serial=Equals(serial)))
+            MatchesStructure(serial=Equals(serial)),
+        )
 
     def test_collect_garbage_does_nothing_when_no_publications(self):
         self.assertThat(DNSPublication.objects.all(), HasLength(0))
@@ -147,7 +150,9 @@ class TestDNSPublicationManager(MAASServerTestCase):
             with connection.cursor() as cursor:
                 cursor.execute(
                     "UPDATE maasserver_dnspublication SET created = %s"
-                    " WHERE id = %s", [now - delta, publication.id])
+                    " WHERE id = %s",
+                    [now - delta, publication.id],
+                )
 
         def get_ages():
             pubs = DNSPublication.objects.all()

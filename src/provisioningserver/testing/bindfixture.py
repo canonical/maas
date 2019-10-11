@@ -3,9 +3,7 @@
 
 """Server fixture for BIND."""
 
-__all__ = [
-    'BINDServer',
-    ]
+__all__ = ["BINDServer"]
 
 import argparse
 import os
@@ -95,13 +93,15 @@ class BINDServerResources(fixtures.Fixture):
     # Note that it will be copied over to a temporary
     # location in order to by-pass the limitations imposed by
     # apparmor if the executable is in /usr/sbin/named.
-    NAMED_PATH = '/usr/sbin/named'
+    NAMED_PATH = "/usr/sbin/named"
 
     # The configuration template for the BIND server.  The goal here
     # is to override the defaults (default configuration files location,
     # default port) to avoid clashing with the system's BIND (if
     # running).
-    NAMED_CONF_TEMPLATE = tempita.Template(dedent("""
+    NAMED_CONF_TEMPLATE = tempita.Template(
+        dedent(
+            """
       options {
         directory "{{homedir}}";
         listen-on port {{port}} {127.0.0.1;};
@@ -126,10 +126,18 @@ class BINDServerResources(fixtures.Fixture):
       };
 
       {{extra}}
-    """))
+    """
+        )
+    )
 
-    def __init__(self, port=None, rndc_port=None, homedir=None,
-                 log_file=None, include_in_options=None):
+    def __init__(
+        self,
+        port=None,
+        rndc_port=None,
+        homedir=None,
+        log_file=None,
+        include_in_options=None,
+    ):
         super(BINDServerResources, self).__init__()
         self._defaults = dict(
             port=port,
@@ -137,7 +145,7 @@ class BINDServerResources(fixtures.Fixture):
             homedir=homedir,
             log_file=log_file,
             include_in_options=include_in_options,
-            )
+        )
 
     def setUp(self, overwrite_config=False):
         super(BINDServerResources, self).setUp()
@@ -156,24 +164,28 @@ class BINDServerResources(fixtures.Fixture):
         # Disable remote administration for init scripts by suppressing the
         # "controls" statement.
         rndcconf, namedrndcconf = generate_rndc(
-            port=self.rndc_port, key_name='dnsfixture-rndc-key',
-            include_default_controls=False)
+            port=self.rndc_port,
+            key_name="dnsfixture-rndc-key",
+            include_default_controls=False,
+        )
         # Write main BIND config file.
         if should_write(self.conf_file, overwrite_config):
-            named_conf = (
-                self.NAMED_CONF_TEMPLATE.substitute(
-                    homedir=self.homedir, port=self.port,
-                    log_file=self.log_file,
-                    include_in_options=self.include_in_options,
-                    extra=namedrndcconf))
+            named_conf = self.NAMED_CONF_TEMPLATE.substitute(
+                homedir=self.homedir,
+                port=self.port,
+                log_file=self.log_file,
+                include_in_options=self.include_in_options,
+                extra=namedrndcconf,
+            )
             atomic_write(
-                (GENERATED_HEADER + named_conf).encode("ascii"),
-                self.conf_file)
+                (GENERATED_HEADER + named_conf).encode("ascii"), self.conf_file
+            )
         # Write rndc config file.
         if should_write(self.rndcconf_file, overwrite_config):
             atomic_write(
                 (GENERATED_HEADER + rndcconf).encode("ascii"),
-                self.rndcconf_file)
+                self.rndcconf_file,
+            )
 
         # Copy named executable to home dir.  This is done to avoid
         # the limitations imposed by apparmor if the executable
@@ -187,7 +199,8 @@ class BINDServerResources(fixtures.Fixture):
                 "'%s' executable not found.  Install the package "
                 "'bind9' or define an environment variable named "
                 "NAMED_PATH with the path where the 'named' "
-                "executable can be found." % named_path)
+                "executable can be found." % named_path
+            )
             copy(named_path, self.named_file)
 
     def set_up_config(self):
@@ -198,11 +211,12 @@ class BINDServerResources(fixtures.Fixture):
         if self.homedir is None:
             self.homedir = self.useFixture(TempDirectory()).path
         if self.log_file is None:
-            self.log_file = os.path.join(self.homedir, 'named.log')
+            self.log_file = os.path.join(self.homedir, "named.log")
         self.named_file = os.path.join(
-            self.homedir, os.path.basename(self.NAMED_PATH))
-        self.conf_file = os.path.join(self.homedir, 'named.conf')
-        self.rndcconf_file = os.path.join(self.homedir, 'rndc.conf')
+            self.homedir, os.path.basename(self.NAMED_PATH)
+        )
+        self.conf_file = os.path.join(self.homedir, "named.conf")
+        self.rndcconf_file = os.path.join(self.homedir, "rndc.conf")
 
 
 class BINDServerRunner(fixtures.Fixture):
@@ -239,19 +253,28 @@ class BINDServerRunner(fixtures.Fixture):
         with open(self.config.log_file, "wb") as log_file:
             with open(os.devnull, "rb") as devnull:
                 self.process = subprocess.Popen(
-                    [self.config.named_file, "-f", "-c",
-                     self.config.conf_file],
+                    [
+                        self.config.named_file,
+                        "-f",
+                        "-c",
+                        self.config.conf_file,
+                    ],
                     stdin=devnull,
-                    stdout=log_file, stderr=log_file,
-                    close_fds=True, cwd=self.config.homedir,
-                    env=env, preexec_fn=preexec_fn)
+                    stdout=log_file,
+                    stderr=log_file,
+                    close_fds=True,
+                    cwd=self.config.homedir,
+                    env=env,
+                    preexec_fn=preexec_fn,
+                )
         self.addCleanup(self._stop)
         # Keep the log_file open for reading so that we can still get the log
         # even if the log is deleted.
         open_log_file = open(self.config.log_file, "rb")
         self.addDetail(
             os.path.basename(self.config.log_file),
-            Content(UTF8_TEXT, lambda: open_log_file))
+            Content(UTF8_TEXT, lambda: open_log_file),
+        )
 
     def rndc(self, command):
         """Executes a ``rndc`` command and returns status."""
@@ -259,8 +282,10 @@ class BINDServerRunner(fixtures.Fixture):
             command = (command,)
         ctl = subprocess.Popen(
             (self.RNDC_PATH, "-c", self.config.rndcconf_file) + command,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            preexec_fn=preexec_fn)
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            preexec_fn=preexec_fn,
+        )
         outstr, errstr = ctl.communicate()
         return outstr, errstr
 
@@ -281,15 +306,16 @@ class BINDServerRunner(fixtures.Fixture):
             time.sleep(0.3)
         else:
             raise Exception(
-                "Timeout waiting for BIND server to start: log in %r." %
-                (self.config.log_file,))
+                "Timeout waiting for BIND server to start: log in %r."
+                % (self.config.log_file,)
+            )
 
     def _request_stop(self):
         outstr, errstr = self.rndc("stop")
         if outstr:
-            self.addDetail('stop-out', Content(UTF8_TEXT, lambda: [outstr]))
+            self.addDetail("stop-out", Content(UTF8_TEXT, lambda: [outstr]))
         if errstr:
-            self.addDetail('stop-err', Content(UTF8_TEXT, lambda: [errstr]))
+            self.addDetail("stop-err", Content(UTF8_TEXT, lambda: [errstr]))
 
     def _stop(self):
         """Stop the running server. Normally called by cleanups."""
@@ -319,42 +345,55 @@ class BINDServer(fixtures.Fixture):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run a BIND server.')
+    parser = argparse.ArgumentParser(description="Run a BIND server.")
     parser.add_argument(
-        '--homedir',
+        "--homedir",
         help=(
             "A directory where to put all the files the BIND"
             "server needs (configuration files and executable)"
-        ))
+        ),
+    )
     parser.add_argument(
-        '--log-file',
-        help="The log file allocated for the server")
+        "--log-file", help="The log file allocated for the server"
+    )
     parser.add_argument(
-        '--port', type=int,
-        help="The port that will be used by BIND")
+        "--port", type=int, help="The port that will be used by BIND"
+    )
     parser.add_argument(
-        '--rndc-port', type=int,
-        help="The rndc port that will be used by BIND")
+        "--rndc-port", type=int, help="The rndc port that will be used by BIND"
+    )
     parser.add_argument(
-        '--overwrite-config', action='store_true',
+        "--overwrite-config",
+        action="store_true",
         help="Whether or not to overwrite the configuration files "
-             "if they already exist", default=False)
+        "if they already exist",
+        default=False,
+    )
     parser.add_argument(
-        '--create-config-only', action='store_true',
+        "--create-config-only",
+        action="store_true",
         help="If set, only create the config files instead of "
-             "also running the service [default: %(default)s].",
-        default=False)
+        "also running the service [default: %(default)s].",
+        default=False,
+    )
     arguments = parser.parse_args()
 
     os.makedirs(arguments.homedir, exist_ok=True)
 
     # Create BINDServerResources with the provided options.
     resources = BINDServerResources(
-        homedir=arguments.homedir, log_file=arguments.log_file,
-        port=arguments.port, rndc_port=arguments.rndc_port)
+        homedir=arguments.homedir,
+        log_file=arguments.log_file,
+        port=arguments.port,
+        rndc_port=arguments.rndc_port,
+    )
     resources.setUp(overwrite_config=arguments.overwrite_config)
     # exec named.
     if not arguments.create_config_only:
         os.execlp(
-            resources.named_file, resources.named_file, "-g", "-c",
-            resources.conf_file)
+            resources.named_file,
+            resources.named_file,
+            "-g",
+            "-c",
+            resources.conf_file,
+        )

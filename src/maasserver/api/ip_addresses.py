@@ -3,39 +3,21 @@
 
 """API handler: `StaticIPAddress`."""
 
-__all__ = [
-    'IPAddressesHandler',
-    ]
+__all__ = ["IPAddressesHandler"]
 
 from django.http import Http404
-from django.http.response import (
-    HttpResponseBadRequest,
-    HttpResponseForbidden,
-)
+from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
 from formencode.validators import StringBool
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
-from maasserver.api.utils import (
-    get_mandatory_param,
-    get_optional_param,
-)
-from maasserver.enum import (
-    INTERFACE_LINK_TYPE,
-    INTERFACE_TYPE,
-    IPADDRESS_TYPE,
-)
+from maasserver.api.support import operation, OperationsHandler
+from maasserver.api.utils import get_mandatory_param, get_optional_param
+from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIForbidden,
     MAASAPIValidationError,
 )
-from maasserver.forms import (
-    ClaimIPForMACForm,
-    ReleaseIPForm,
-)
+from maasserver.forms import ClaimIPForMACForm, ReleaseIPForm
 from maasserver.models import (
     DNSResource,
     Domain,
@@ -56,16 +38,17 @@ maaslog = get_maas_logger("ip_addresses")
 
 class IPAddressesHandler(OperationsHandler):
     """Manage IP addresses allocated by MAAS."""
+
     api_doc_section_name = "IP Addresses"
     model = StaticIPAddress
     fields = (
-        'alloc_type',
-        'alloc_type_name',
-        'created',
-        'ip',
-        'owner',
-        ('interface_set', DISPLAYED_INTERFACE_FIELDS),
-        'subnet'
+        "alloc_type",
+        "alloc_type_name",
+        "created",
+        "ip",
+        "owner",
+        ("interface_set", DISPLAYED_INTERFACE_FIELDS),
+        "subnet",
     )
     create = update = delete = None
 
@@ -75,11 +58,10 @@ class IPAddressesHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('ipaddresses_handler', [])
+        return ("ipaddresses_handler", [])
 
     @transactional
-    def _claim_ip(
-            self, user, subnet, ip_address, mac=None, hostname=None):
+    def _claim_ip(self, user, subnet, ip_address, mac=None, hostname=None):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user`.
 
         :param subnet: Subnet to use use for claiming the IP.
@@ -99,11 +81,13 @@ class IPAddressesHandler(OperationsHandler):
             raise MAASAPIForbidden(
                 "IP address %s belongs to an existing dynamic range. To "
                 "reserve this IP address, a MAC address is required. (Create "
-                "a device instead.)" % ip_address)
-        if hostname is not None and hostname.find('.') > 0:
-            hostname, domain = hostname.split('.', 1)
+                "a device instead.)" % ip_address
+            )
+        if hostname is not None and hostname.find(".") > 0:
+            hostname, domain = hostname.split(".", 1)
             domain = Domain.objects.get_domain_or_404(
-                "name:%s" % domain, user, NodePermission.view)
+                "name:%s" % domain, user, NodePermission.view
+            )
         else:
             domain = Domain.objects.get_default_domain()
         if mac is None:
@@ -111,10 +95,12 @@ class IPAddressesHandler(OperationsHandler):
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 requested_address=ip_address,
                 subnet=subnet,
-                user=user)
-            if hostname is not None and hostname != '':
+                user=user,
+            )
+            if hostname is not None and hostname != "":
                 dnsrr, _ = DNSResource.objects.get_or_create(
-                    name=hostname, domain=domain)
+                    name=hostname, domain=domain
+                )
                 dnsrr.ip_addresses.add(sip)
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
@@ -122,18 +108,16 @@ class IPAddressesHandler(OperationsHandler):
             # set that up via the Interface model. If the MAC address is part
             # of a node, then this operation is not allowed. The 'link_subnet'
             # API should be used on that interface.
-            nic, created = (
-                Interface.objects.get_or_create(
-                    mac_address=mac,
-                    defaults={
-                        'type': INTERFACE_TYPE.UNKNOWN,
-                        'name': 'eth0',
-                    }))
+            nic, created = Interface.objects.get_or_create(
+                mac_address=mac,
+                defaults={"type": INTERFACE_TYPE.UNKNOWN, "name": "eth0"},
+            )
             if nic.type != INTERFACE_TYPE.UNKNOWN:
                 raise MAASAPIBadRequest(
                     "MAC address %s already belongs to %s. Use of the "
                     "interface API is required, for an interface that belongs "
-                    "to a node." % (nic.mac_address, nic.node.hostname))
+                    "to a node." % (nic.mac_address, nic.node.hostname)
+                )
 
             # Link the new interface on the same subnet as the
             # ip_address.
@@ -142,14 +126,19 @@ class IPAddressesHandler(OperationsHandler):
                 subnet,
                 ip_address=ip_address,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-                user=user)
-            if hostname is not None and hostname != '':
+                user=user,
+            )
+            if hostname is not None and hostname != "":
                 dnsrr, _ = DNSResource.objects.get_or_create(
-                    name=hostname, domain=domain)
+                    name=hostname, domain=domain
+                )
                 dnsrr.ip_addresses.add(sip)
             maaslog.info(
                 "User %s was allocated IP %s for MAC address %s",
-                user.username, sip.ip, nic.mac_address)
+                user.username,
+                sip.ip,
+                nic.mac_address,
+            )
         return sip
 
     @operation(idempotent=False)
@@ -205,12 +194,14 @@ class IPAddressesHandler(OperationsHandler):
         if ip is None and ip_address is not None:
             ip = ip_address
 
-        form = ClaimIPForMACForm(data={
-            'subnet': subnet,
-            'ip_address': ip,
-            'hostname': hostname,
-            'mac': mac_address,
-        })
+        form = ClaimIPForMACForm(
+            data={
+                "subnet": subnet,
+                "ip_address": ip,
+                "hostname": hostname,
+                "mac": mac_address,
+            }
+        )
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
@@ -218,21 +209,25 @@ class IPAddressesHandler(OperationsHandler):
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)
             if subnet is None:
                 raise MAASAPIBadRequest(
-                    "No known subnet for IP address: %s." % ip)
+                    "No known subnet for IP address: %s." % ip
+                )
         elif subnet is not None:
             try:
                 subnet = Subnet.objects.get_object_by_specifiers_or_raise(
-                    subnet)
+                    subnet
+                )
             except Http404:
                 raise MAASAPIBadRequest(
-                    "Unable to identify subnet: %s." % subnet) from None
+                    "Unable to identify subnet: %s." % subnet
+                ) from None
         else:
             raise MAASAPIBadRequest(
-                "Must supply either the 'subnet' or the 'ip' parameter.")
+                "Must supply either the 'subnet' or the 'ip' parameter."
+            )
 
         return self._claim_ip(
-            request.user, subnet, ip, mac_address,
-            hostname=hostname)
+            request.user, subnet, ip, mac_address, hostname=hostname
+        )
 
     @operation(idempotent=False)
     def release(self, request):
@@ -261,15 +256,18 @@ class IPAddressesHandler(OperationsHandler):
         """
         ip = get_mandatory_param(request.POST, "ip")
         force = get_optional_param(
-            request.POST, 'force', default=False, validator=StringBool)
+            request.POST, "force", default=False, validator=StringBool
+        )
         discovered = get_optional_param(
-            request.POST, 'discovered', default=False, validator=StringBool)
+            request.POST, "discovered", default=False, validator=StringBool
+        )
 
         if force is True and not request.user.is_superuser:
             return HttpResponseForbidden(
-                content_type='text/plain',
+                content_type="text/plain",
                 content="Force-releasing an IP address requires admin "
-                        "privileges.")
+                "privileges.",
+            )
 
         form = ReleaseIPForm(request.POST)
         if not form.is_valid():
@@ -283,8 +281,10 @@ class IPAddressesHandler(OperationsHandler):
                 query = query.exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED)
         else:
             query = StaticIPAddress.objects.filter(
-                ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-                user=request.user)
+                ip=ip,
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                user=request.user,
+            )
 
         # Get the reserved IP address, or raise bad request.
         ip_address = query.first()
@@ -296,7 +296,8 @@ class IPAddressesHandler(OperationsHandler):
                     "IP address %s does not exist, is not the correct type of "
                     "address, or does not belong to the requesting user.\n"
                     "If you are sure you want to release this address, use "
-                    "force=true as a MAAS administrator.")
+                    "force=true as a MAAS administrator."
+                )
             raise MAASAPIBadRequest(error % ip) from None
 
         # Unlink the IP address from the interfaces it is connected.
@@ -314,9 +315,12 @@ class IPAddressesHandler(OperationsHandler):
                 interface.delete()
 
         maaslog.info(
-            "User %s%s released IP address: %s (%s).", request.user.username,
-            " forcibly" if force else "", ip,
-            ip_address.alloc_type_name)
+            "User %s%s released IP address: %s (%s).",
+            request.user.username,
+            " forcibly" if force else "",
+            ip,
+            ip_address.alloc_type_name,
+        )
 
         return rc.DELETED
 
@@ -346,9 +350,10 @@ class IPAddressesHandler(OperationsHandler):
         text
         """
         _all = get_optional_param(
-            request.GET, 'all', default=False, validator=StringBool)
-        ip = get_optional_param(request.GET, 'ip', default=None)
-        owner = get_optional_param(request.GET, 'owner', default=None)
+            request.GET, "all", default=False, validator=StringBool
+        )
+        ip = get_optional_param(request.GET, "ip", default=None)
+        owner = get_optional_param(request.GET, "owner", default=None)
         # If an IP address was specified, validate that it is indeed a valid
         # IP address before trying to hit the database with it.
         if ip is not None:
@@ -356,8 +361,9 @@ class IPAddressesHandler(OperationsHandler):
                 IPAddress(ip)
             except AddrFormatError:
                 return HttpResponseBadRequest(
-                    content_type='text/plain',
-                    content="Parameter 'ip' must contain an IP address.")
+                    content_type="text/plain",
+                    content="Parameter 'ip' must contain an IP address.",
+                )
         # It doesn't make sense for this API to display NULL IP addresses.
         # These indicate things like "do DHCP on <interface>", "we observed a
         # commissioned node connected to <subnet>", and "we would assign an
@@ -366,14 +372,16 @@ class IPAddressesHandler(OperationsHandler):
         query = StaticIPAddress.objects.exclude(ip__isnull=True)
         if _all and not request.user.is_superuser:
             return HttpResponseForbidden(
-                content_type='text/plain',
+                content_type="text/plain",
                 content="Listing all IP addresses requires admin "
-                        "privileges.")
+                "privileges.",
+            )
         if owner is not None and not request.user.is_superuser:
             return HttpResponseForbidden(
-                content_type='text/plain',
+                content_type="text/plain",
                 content="Listing another user's IP addresses requires admin "
-                        "privileges.")
+                "privileges.",
+            )
         # Add additional filters based on permissions, and based on the
         # request parameters.
         if not request.user.is_superuser:
@@ -394,5 +402,5 @@ class IPAddressesHandler(OperationsHandler):
             query = query.filter(alloc_type=IPADDRESS_TYPE.USER_RESERVED)
         if ip is not None:
             query = query.filter(ip=ip)
-        query = query.order_by('id')
+        query = query.order_by("id")
         return query

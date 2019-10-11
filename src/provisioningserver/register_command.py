@@ -16,15 +16,9 @@
   controller URL.
   """
 
-__all__ = [
-    'add_arguments',
-    'run',
-]
+__all__ = ["add_arguments", "run"]
 
-from sys import (
-    stderr,
-    stdin,
-)
+from sys import stderr, stdin
 from textwrap import dedent
 
 from provisioningserver.config import ClusterConfiguration
@@ -34,16 +28,10 @@ from provisioningserver.security import (
     to_bin,
 )
 from provisioningserver.utils.env import set_maas_id
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-)
+from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
 
-all_arguments = (
-    '--url',
-    '--secret',
-)
+all_arguments = ("--url", "--secret")
 
 
 def add_arguments(parser):
@@ -51,7 +39,8 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Examples of command usage (with interactive input):
 
         - Supplying both URL and shared secret (not prompted for either):
@@ -89,18 +78,27 @@ def add_arguments(parser):
 
         # echo <shared-secret> | maas-rack register --url <your-url>
         Secret installed to /var/lib/maas/secret.
-    """)
+    """
+    )
     parser.add_argument(
-        '--url', action='append', required=False,
+        "--url",
+        action="append",
+        required=False,
         help=(
-            'URL of the region controller where to connect this '
-            'rack controller.'))
+            "URL of the region controller where to connect this "
+            "rack controller."
+        ),
+    )
     parser.add_argument(
-        '--secret', action='store', required=False,
+        "--secret",
+        action="store",
+        required=False,
         help=(
-            'The shared secret required to connect to the region controller.  '
-            'You can find it on /var/lib/maas/secret on the region.  '
-            'The secret must be hex/base16 encoded.'))
+            "The shared secret required to connect to the region controller.  "
+            "You can find it on /var/lib/maas/secret on the region.  "
+            "The secret must be hex/base16 encoded."
+        ),
+    )
 
 
 def run(args):
@@ -109,10 +107,11 @@ def run(args):
     if not stdin.isatty() and args.url is None:
         print(
             "MAAS region controller URL must be given when supplying the "
-            "shared secret via stdin with a non-interactive shell.")
+            "shared secret via stdin with a non-interactive shell."
+        )
         raise SystemExit(1)
     try:
-        call_and_check(['systemctl', 'stop', 'maas-rackd'])
+        call_and_check(["systemctl", "stop", "maas-rackd"])
     except ExternalProcessError as e:
         print("Unable to stop maas-rackd service.", file=stderr)
         print("Failed with error: %s." % e.output_as_unicode, file=stderr)
@@ -139,10 +138,11 @@ def run(args):
     else:
         InstallSharedSecretScript.run(args)
     try:
-        call_and_check(['systemctl', 'enable', 'maas-rackd'])
-        call_and_check(['systemctl', 'start', 'maas-rackd'])
+        call_and_check(["systemctl", "enable", "maas-rackd"])
+        call_and_check(["systemctl", "start", "maas-rackd"])
     except ExternalProcessError as e:
         print(
-            "Unable to enable and start the maas-rackd service.", file=stderr)
+            "Unable to enable and start the maas-rackd service.", file=stderr
+        )
         print("Failed with error: %s." % e.output_as_unicode, file=stderr)
         raise SystemExit(1)

@@ -3,8 +3,7 @@
 
 """Testing helpers for ORM models and their supporting code."""
 
-__all__ = [
-]
+__all__ = []
 
 import fixtures
 
@@ -16,8 +15,8 @@ class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
     """
 
     def __init__(
-            self, signal, receiver, sender=None, weak=True,
-            dispatch_uid=None):
+        self, signal, receiver, sender=None, weak=True, dispatch_uid=None
+    ):
         super(SignalDisconnected, self).__init__()
         self.signal = signal
         self.receiver = receiver
@@ -28,11 +27,17 @@ class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
     def setUp(self):
         super(SignalDisconnected, self).setUp()
         self.addCleanup(
-            self.signal.connect, receiver=self.receiver, sender=self.sender,
-            weak=self.weak, dispatch_uid=self.dispatch_uid)
+            self.signal.connect,
+            receiver=self.receiver,
+            sender=self.sender,
+            weak=self.weak,
+            dispatch_uid=self.dispatch_uid,
+        )
         self.signal.disconnect(
-            receiver=self.receiver, sender=self.sender,
-            dispatch_uid=self.dispatch_uid)
+            receiver=self.receiver,
+            sender=self.sender,
+            dispatch_uid=self.dispatch_uid,
+        )
 
 
 class SignalsDisconnected(fixtures.Fixture):  # DEPRECATED

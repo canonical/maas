@@ -3,11 +3,7 @@
 
 """Config forms utilities."""
 
-__all__ = [
-    'DictCharField',
-    'DictCharWidget',
-    'SKIP_CHECK_NAME',
-    ]
+__all__ = ["DictCharField", "DictCharWidget", "SKIP_CHECK_NAME"]
 
 from collections import OrderedDict
 
@@ -19,7 +15,7 @@ from django.forms.utils import ErrorList
 from django.utils.safestring import mark_safe
 
 
-SKIP_CHECK_NAME = 'skip_check'
+SKIP_CHECK_NAME = "skip_check"
 
 
 class DictCharField(forms.MultiValueField):
@@ -48,8 +44,7 @@ class DictCharField(forms.MultiValueField):
 
     """
 
-    def __init__(self, field_items, skip_check=False, *args,
-                 **kwargs):
+    def __init__(self, field_items, skip_check=False, *args, **kwargs):
         self.field_dict = OrderedDict(field_items)
         self.skip_check = skip_check
         # Make sure no subfield is named 'SKIP_CHECK_NAME'. If
@@ -61,13 +56,15 @@ class DictCharField(forms.MultiValueField):
         if SKIP_CHECK_NAME in self.field_dict:
             raise RuntimeError(
                 "'%s' is a reserved name "
-                "(it can't be used to name a subfield)." % SKIP_CHECK_NAME)
+                "(it can't be used to name a subfield)." % SKIP_CHECK_NAME
+            )
         # if skip_check: add a BooleanField to the list of fields, this will
         # be used to skip the validation of the fields and accept arbitrary
         # data.
         if skip_check:
             self.field_dict[SKIP_CHECK_NAME] = forms.BooleanField(
-                required=False)
+                required=False
+            )
         self.names = [name for name in self.field_dict]
         # Create the DictCharWidget with init values from the list of fields.
         self.fields = list(self.field_dict.values())
@@ -77,7 +74,7 @@ class DictCharField(forms.MultiValueField):
             [field.initial for field in self.fields],
             [field.label for field in self.fields],
             skip_check=skip_check,
-            )
+        )
         # Upcall to Field and not MultiValueField to avoid setting all the
         # subfields' 'required' attributes to False.
         Field.__init__(self, *args, **kwargs)
@@ -124,10 +121,9 @@ class DictCharField(forms.MultiValueField):
         .. _MultiValueField: http://code.djangoproject.com/
             svn/django/tags/releases/1.3.1/django/forms/fields.py
         """
-        skip_check = (
-            self.skip_check and
-            self.widget.widgets[-1].value_from_datadict(
-                value, files=None, name=SKIP_CHECK_NAME))
+        skip_check = self.skip_check and self.widget.widgets[
+            -1
+        ].value_from_datadict(value, files=None, name=SKIP_CHECK_NAME)
         # Remove the 'skip_check' value from the list of values.
         try:
             value.pop(SKIP_CHECK_NAME)
@@ -151,7 +147,8 @@ class DictCharField(forms.MultiValueField):
         unknown_params = set(value.keys()).difference(self.get_names())
         if len(unknown_params) != 0:
             raise ValidationError(
-                "Unknown parameter(s): %s." % ', '.join(unknown_params))
+                "Unknown parameter(s): %s." % ", ".join(unknown_params)
+            )
 
     def clean_global_empty(self, value):
         """Make sure the value is not empty and is thus suitable to be
@@ -160,18 +157,18 @@ class DictCharField(forms.MultiValueField):
             # value is considered empty if it is in
             # validators.EMPTY_VALUES, or if each of the subvalues is
             # None.
-            is_empty = (
-                value in validators.EMPTY_VALUES or
-                all(v is None for v in value))
+            is_empty = value in validators.EMPTY_VALUES or all(
+                v is None for v in value
+            )
             if is_empty:
                 if self.required:
-                    raise ValidationError(self.error_messages['required'])
+                    raise ValidationError(self.error_messages["required"])
                 else:
                     return None
             else:
                 return True
         else:
-            raise ValidationError(self.error_messages['invalid'])
+            raise ValidationError(self.error_messages["invalid"])
 
     def clean_sub_fields(self, value):
         """'value' being the list of the values of the subfields, validate
@@ -187,13 +184,14 @@ class DictCharField(forms.MultiValueField):
             except IndexError:
                 field_value = None
             # Set the field_value to the default value if not set.
-            if field_value is None and field.initial not in (None, ''):
+            if field_value is None and field.initial not in (None, ""):
                 field_value = field.initial
             # Check the field's 'required' field instead of the global
             # 'required' field to allow subfields to be required or not.
             if field.required and field_value in validators.EMPTY_VALUES:
                 errors.append(
-                    '%s: %s' % (field.label, self.error_messages['required']))
+                    "%s: %s" % (field.label, self.error_messages["required"])
+                )
                 continue
             try:
                 clean_data.append(field.clean(field_value))
@@ -202,8 +200,8 @@ class DictCharField(forms.MultiValueField):
                 # raise at the end of clean(), rather than raising a single
                 # exception for the first error we encounter.
                 errors.extend(
-                    '%s: %s' % (field.label, message)
-                    for message in e.messages)
+                    "%s: %s" % (field.label, message) for message in e.messages
+                )
         if errors:
             raise ValidationError(errors)
 
@@ -225,7 +223,7 @@ def get_all_prefixed_values(data, name):
     result = {}
     for key, value in data.items():
         if key.startswith(name):
-            new_key = key[len(name):]
+            new_key = key[len(name) :]
             result[new_key] = value
     return result
 
@@ -271,8 +269,9 @@ class DictCharWidget(forms.widgets.MultiWidget):
     attrs -- see Widget.attrs
     """
 
-    def __init__(self, widgets, names,
-                 initials, labels, skip_check=False, attrs=None):
+    def __init__(
+        self, widgets, names, initials, labels, skip_check=False, attrs=None
+    ):
         self.names = names
         self.initials = initials
         self.labels = labels
@@ -290,15 +289,15 @@ class DictCharWidget(forms.widgets.MultiWidget):
         if not isinstance(value, list):
             value = self.decompress(value)
         if len(widgets) == 0:
-            return mark_safe('')
+            return mark_safe("")
 
-        output = ['<fieldset>']
+        output = ["<fieldset>"]
         if attrs is None:
             final_attrs = {}
         else:
             final_attrs = self.build_attrs(attrs)
 
-        id_ = final_attrs.get('id', None)
+        id_ = final_attrs.get("id", None)
 
         for index, widget in enumerate(widgets):
             try:
@@ -310,21 +309,25 @@ class DictCharWidget(forms.widgets.MultiWidget):
                     widget_value = None
             if id_:
                 final_attrs = dict(
-                    final_attrs, id='%s_%s' % (id_, self.names[index]))
+                    final_attrs, id="%s_%s" % (id_, self.names[index])
+                )
             # Add label to each sub-field.
             if id_:
-                label_for = ' for="%s"' % final_attrs['id']
+                label_for = ' for="%s"' % final_attrs["id"]
             else:
-                label_for = ''
+                label_for = ""
             output.append(
-                '<label%s>%s</label>' % (
-                    label_for, self.labels[index]))
+                "<label%s>%s</label>" % (label_for, self.labels[index])
+            )
             output.append(
                 widget.render(
-                    '%s_%s' % (name, self.names[index]), widget_value,
-                    final_attrs))
-        output.append('</fieldset>')
-        return mark_safe(''.join(output))
+                    "%s_%s" % (name, self.names[index]),
+                    widget_value,
+                    final_attrs,
+                )
+            )
+        output.append("</fieldset>")
+        return mark_safe("".join(output))
 
     def id_for_label(self, id_):
         """Returns the HTML ID attribute of this Widget.  Since this is a
@@ -332,7 +335,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
         corresponding to the first ID in the widget's tags."""
         # See the comment for RadioSelect.id_for_label()
         if id_:
-            id_ += '_%s' % self.names[0]
+            id_ += "_%s" % self.names[0]
         return id_
 
     def value_from_datadict(self, data, files, name):
@@ -348,7 +351,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
         :return: The extracted values as a dictionary.
         :rtype: dict or list
         """
-        return get_all_prefixed_values(data, name + '_')
+        return get_all_prefixed_values(data, name + "_")
 
     def decompress(self, value):
         """Returns a list of decompressed values for the given compressed

@@ -33,36 +33,47 @@ class TestTryMatchXPathScenarios(MAASTestCase):
         not, and the expected log output.
         """
         doc = etree.fromstring(doc).getroottree()
-        return name, dict(
-            xpath=xpath, doc=doc, expected_result=expected_result,
-            expected_log=dedent(expected_log))
+        return (
+            name,
+            dict(
+                xpath=xpath,
+                doc=doc,
+                expected_result=expected_result,
+                expected_log=dedent(expected_log),
+            ),
+        )
 
     # Exercise try_match_xpath with a variety of different inputs.
     scenarios_inputs = (
+        scenario("expression matches", "/foo", "<foo/>", True),
+        scenario("expression does not match", "/foo", "<bar/>", False),
         scenario(
-            "expression matches",
-            "/foo", "<foo/>", True),
-        scenario(
-            "expression does not match",
-            "/foo", "<bar/>", False),
-        scenario(
-            "text expression matches",
-            "/foo/text()", '<foo>bar</foo>', True),
+            "text expression matches", "/foo/text()", "<foo>bar</foo>", True
+        ),
         scenario(
             "text expression does not match",
-            "/foo/text()", '<foo></foo>', False),
+            "/foo/text()",
+            "<foo></foo>",
+            False,
+        ),
         scenario(
-            "string expression matches",
-            "string()", '<foo>bar</foo>', True),
+            "string expression matches", "string()", "<foo>bar</foo>", True
+        ),
         scenario(
             "string expression does not match",
-            "string()", '<foo></foo>', False),
+            "string()",
+            "<foo></foo>",
+            False,
+        ),
         scenario(
             "unrecognised namespace",
-            "/foo:bar", '<foo/>', False,
+            "/foo:bar",
+            "<foo/>",
+            False,
             expected_log="""\
             Invalid expression '/foo:bar': Undefined namespace prefix
-            """),
+            """,
+        ),
     )
 
     # Exercise try_match_xpath with and without compiled XPath
@@ -75,14 +86,16 @@ class TestTryMatchXPathScenarios(MAASTestCase):
     # Exercise try_match_xpath with and without documents wrapped in
     # an XPathDocumentEvaluator.
     scenarios_doc_compiler = (
-        ("doc-compiler=XPathDocumentEvaluator", dict(
-            doc_compile=etree.XPathDocumentEvaluator)),
+        (
+            "doc-compiler=XPathDocumentEvaluator",
+            dict(doc_compile=etree.XPathDocumentEvaluator),
+        ),
         ("doc-compiler=None", dict(doc_compile=lambda doc: doc)),
     )
 
     scenarios = multiply_scenarios(
-        scenarios_inputs, scenarios_xpath_compiler,
-        scenarios_doc_compiler)
+        scenarios_inputs, scenarios_xpath_compiler, scenarios_doc_compiler
+    )
 
     def setUp(self):
         super(TestTryMatchXPathScenarios, self).setUp()
@@ -93,12 +106,12 @@ class TestTryMatchXPathScenarios(MAASTestCase):
         doc = self.doc_compile(self.doc)
         self.assertIs(self.expected_result, try_match_xpath(xpath, doc))
         self.assertThat(
-            self.logger.output, DocTestMatches(
-                self.expected_log, self.doctest_flags))
+            self.logger.output,
+            DocTestMatches(self.expected_log, self.doctest_flags),
+        )
 
 
 class TestTryMatchXPath(MAASTestCase):
-
     def test_logs_to_specified_logger(self):
         xpath = etree.XPath("/foo:bar")
         doc = etree.XML("<foo/>")
@@ -110,4 +123,7 @@ class TestTryMatchXPath(MAASTestCase):
             callers_logger.warning,
             MockCalledOnceWith(
                 "Invalid expression '%s': %s",
-                '/foo:bar', 'Undefined namespace prefix'))
+                "/foo:bar",
+                "Undefined namespace prefix",
+            ),
+        )

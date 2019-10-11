@@ -5,18 +5,10 @@
 
 __all__ = []
 
-from random import (
-    choice,
-    randint,
-)
+from random import choice, randint
 
 from django.core.exceptions import ValidationError
-from maasserver.models import (
-    DNSData,
-    DNSResource,
-    Domain,
-    StaticIPAddress,
-)
+from maasserver.models import DNSData, DNSResource, Domain, StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -28,16 +20,10 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.domain import DomainHandler
 from netaddr import IPAddress
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-    Not,
-)
+from testtools.matchers import Equals, HasLength, Is, Not
 
 
 class TestDomainHandler(MAASServerTestCase):
-
     def dehydrate_domain(self, domain, for_list=False):
         if domain.id == 0:
             displayname = "%s (default)" % domain.name
@@ -52,49 +38,49 @@ class TestDomainHandler(MAASServerTestCase):
             "updated": dehydrate_datetime(domain.updated),
             "created": dehydrate_datetime(domain.created),
             "is_default": domain.is_default(),
-            }
+        }
         ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
-            domain, raw_ttl=True)
+            domain, raw_ttl=True
+        )
         rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
-            domain, raw_ttl=True, with_ids=True)
+            domain, raw_ttl=True, with_ids=True
+        )
         domainname_len = len(domain.name)
         for name, info in ip_map.items():
-            name = name[:-domainname_len - 1]
+            name = name[: -domainname_len - 1]
             if info.system_id is not None:
                 rr_map[name].system_id = info.system_id
             if info.user_id is not None:
                 rr_map[name].user_id = info.user_id
             for ip in info.ips:
                 if IPAddress(ip).version == 4:
-                    rr_map[name].rrset.add((info.ttl, 'A', ip, None))
+                    rr_map[name].rrset.add((info.ttl, "A", ip, None))
                 else:
-                    rr_map[name].rrset.add((info.ttl, 'AAAA', ip, None))
+                    rr_map[name].rrset.add((info.ttl, "AAAA", ip, None))
             rr_map[name].dnsresource_id = info.dnsresource_id
         rrsets = [
             {
-                'name': hostname,
-                'system_id': info.system_id,
-                'node_type': info.node_type,
-                'user_id': info.user_id,
-                'dnsresource_id': info.dnsresource_id,
-                'ttl': ttl,
-                'rrtype': rrtype,
-                'rrdata': rrdata,
-                'dnsdata_id': dnsdata_id,
+                "name": hostname,
+                "system_id": info.system_id,
+                "node_type": info.node_type,
+                "user_id": info.user_id,
+                "dnsresource_id": info.dnsresource_id,
+                "ttl": ttl,
+                "rrtype": rrtype,
+                "rrdata": rrdata,
+                "dnsdata_id": dnsdata_id,
             }
             for hostname, info in rr_map.items()
             for ttl, rrtype, rrdata, dnsdata_id in info.rrset
         ]
-        data['resource_count'] = len(rrsets)
+        data["resource_count"] = len(rrsets)
         hosts = set()
         for record in rrsets:
-            if record['system_id'] is not None:
-                hosts.add(record['system_id'])
-        data['hosts'] = len(hosts)
+            if record["system_id"] is not None:
+                hosts.add(record["system_id"])
+        data["hosts"] = len(hosts)
         if not for_list:
-            data.update({
-                "rrsets": rrsets,
-            })
+            data.update({"rrsets": rrsets})
         return data
 
     def test_get(self):
@@ -105,8 +91,8 @@ class TestDomainHandler(MAASServerTestCase):
         factory.make_DNSResource(domain=domain)
         factory.make_DNSResource(domain=domain, address_ttl=randint(0, 300))
         self.assertEqual(
-            self.dehydrate_domain(domain),
-            handler.get({"id": domain.id}))
+            self.dehydrate_domain(domain), handler.get({"id": domain.id})
+        )
 
     def test_get_normal_user_only_owned_entries(self):
         user = factory.make_User()
@@ -115,17 +101,19 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain()
         hostname1 = factory.make_name("node")
         factory.make_Node_with_Interface_on_Subnet(
-            hostname=hostname1, domain=domain, owner=user)
+            hostname=hostname1, domain=domain, owner=user
+        )
         dnsrr1 = factory.make_DNSResource(domain=domain, name=hostname1)
         factory.make_DNSData(dnsresource=dnsrr1, ip_addresses=True)
         hostname2 = factory.make_name("node")
         factory.make_Node_with_Interface_on_Subnet(
-            hostname=hostname2, domain=domain, owner=other_user)
+            hostname=hostname2, domain=domain, owner=other_user
+        )
         dnsrr2 = factory.make_DNSResource(domain=domain, name=hostname2)
         factory.make_DNSData(dnsresource=dnsrr2, ip_addresses=True)
         details = handler.get({"id": domain.id})
-        for entry in details['rrsets']:
-            self.assertEqual(entry['user_id'], user.id)
+        for entry in details["rrsets"]:
+            self.assertEqual(entry["user_id"], user.id)
 
     def test_list(self):
         user = factory.make_User()
@@ -135,10 +123,8 @@ class TestDomainHandler(MAASServerTestCase):
         expected_domains = [
             self.dehydrate_domain(domain, for_list=True)
             for domain in Domain.objects.all()
-            ]
-        self.assertItemsEqual(
-            expected_domains,
-            handler.list({}))
+        ]
+        self.assertItemsEqual(expected_domains, handler.list({}))
 
     def test_prevents_unauthorized_creation(self):
         user = factory.make_User()
@@ -161,8 +147,7 @@ class TestDomainHandler(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         returned_domain = handler.update({"id": domain.id, "name": new_name})
         domain = reload_object(domain)
-        self.assertThat(
-            self.dehydrate_domain(domain), Equals(returned_domain))
+        self.assertThat(self.dehydrate_domain(domain), Equals(returned_domain))
 
     def test_update_allows_domain_name_change(self):
         user = factory.make_admin()
@@ -187,10 +172,7 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain(authoritative=choice([True, False]))
         handler = DomainHandler(user, {}, None)
         new_authoritative = not domain.authoritative
-        handler.update({
-            "id": domain.id,
-            "authoritative": new_authoritative
-        })
+        handler.update({"id": domain.id, "authoritative": new_authoritative})
         domain = reload_object(domain)
         self.assertThat(domain.authoritative, Equals(new_authoritative))
 
@@ -199,32 +181,26 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain(authoritative=choice([True, False]))
         handler = DomainHandler(user, {}, None)
         with ExpectedException(HandlerValidationError):
-            handler.update({
-                "id": domain.id,
-                "name": "",
-            })
+            handler.update({"id": domain.id, "name": ""})
 
     def test_create_raises_validation_error_for_missing_name(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
-        params = {
-            "name": ""
-            }
+        params = {"name": ""}
         error = self.assertRaises(
-            HandlerValidationError, handler.create, params)
-        self.assertThat(error.message_dict, Equals(
-            {'name': ['This field is required.']}))
+            HandlerValidationError, handler.create, params
+        )
+        self.assertThat(
+            error.message_dict, Equals({"name": ["This field is required."]})
+        )
 
 
 class TestDomainHandlerDelete(MAASServerTestCase):
-
     def test__delete_as_admin_success(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
-        handler.delete({
-            "id": domain.id,
-        })
+        handler.delete({"id": domain.id})
         domain = reload_object(domain)
         self.assertThat(domain, Equals(None))
 
@@ -233,39 +209,37 @@ class TestDomainHandlerDelete(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         with ExpectedException(HandlerPermissionError):
-            handler.delete({
-                "id": domain.id,
-            })
+            handler.delete({"id": domain.id})
 
     def test__delete_default_domain_fails(self):
         domain = Domain.objects.get_default_domain()
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         with ExpectedException(ValidationError):
-            handler.delete({
-                "id": domain.id,
-            })
+            handler.delete({"id": domain.id})
 
 
 class TestDomainHandlerDNSResources(MAASServerTestCase):
-
     def test__add_resource(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_dnsresource({
-            'domain': domain.id,
-            'name': name,
-            'address_ttl': ttl,
-            'ip_addresses': ['127.0.0.1']
-        })
+        handler.create_dnsresource(
+            {
+                "domain": domain.id,
+                "name": name,
+                "address_ttl": ttl,
+                "ip_addresses": ["127.0.0.1"],
+            }
+        )
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertThat(resource.address_ttl, Equals(ttl))
         self.assertThat(resource.name, Equals(name))
         self.assertThat(
-            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1"))
+            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1")
+        )
 
     def test__update_resource(self):
         user = factory.make_admin()
@@ -274,28 +248,30 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         resource = factory.make_DNSResource(domain=domain)
         new_name = factory.make_hostname()
         new_ttl = randint(1, 3600)
-        handler.update_dnsresource({
-            'domain': domain.id,
-            'dnsresource_id': resource.id,
-            'name': new_name,
-            'address_ttl': new_ttl,
-            'ip_addresses': ['127.0.0.1']
-        })
+        handler.update_dnsresource(
+            {
+                "domain": domain.id,
+                "dnsresource_id": resource.id,
+                "name": new_name,
+                "address_ttl": new_ttl,
+                "ip_addresses": ["127.0.0.1"],
+            }
+        )
         resource = reload_object(resource)
         self.assertThat(resource.address_ttl, Equals(new_ttl))
         self.assertThat(resource.name, Equals(new_name))
         self.assertThat(
-            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1"))
+            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1")
+        )
 
     def test__delete_resource(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
-        handler.delete_dnsresource({
-            'domain': domain.id,
-            'dnsresource_id': resource.id,
-        })
+        handler.delete_dnsresource(
+            {"domain": domain.id, "dnsresource_id": resource.id}
+        )
         self.assertThat(reload_object(resource), Is(None))
 
     def test__add_resource_as_non_admin_fails(self):
@@ -305,12 +281,14 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         name = factory.make_hostname()
         ttl = randint(1, 3600)
         with ExpectedException(HandlerPermissionError):
-            handler.create_dnsresource({
-                'domain': domain.id,
-                'name': name,
-                'address_ttl': ttl,
-                'ip_addresses': ['127.0.0.1']
-            })
+            handler.create_dnsresource(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "address_ttl": ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
 
     def test__update_resource_as_non_admin_fails(self):
         user = factory.make_User()
@@ -320,13 +298,15 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         new_name = factory.make_hostname()
         new_ttl = randint(1, 3600)
         with ExpectedException(HandlerPermissionError):
-            handler.update_dnsresource({
-                'domain': domain.id,
-                'dnsresource': resource.id,
-                'name': new_name,
-                'address_ttl': new_ttl,
-                'ip_addresses': ['127.0.0.1'],
-            })
+            handler.update_dnsresource(
+                {
+                    "domain": domain.id,
+                    "dnsresource": resource.id,
+                    "name": new_name,
+                    "address_ttl": new_ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
 
     def test__delete_resource_as_non_admin_fails(self):
         user = factory.make_User()
@@ -334,33 +314,33 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         with ExpectedException(HandlerPermissionError):
-            handler.delete_dnsresource({
-                'domain': domain.id,
-                'dnsresource': resource.id,
-            })
+            handler.delete_dnsresource(
+                {"domain": domain.id, "dnsresource": resource.id}
+            )
 
 
 class TestDomainHandlerDNSData(MAASServerTestCase):
-
     def test__add_data_for_new_resource_name(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_dnsdata({
-            'domain': domain.id,
-            'name': name,
-            'ttl': ttl,
-            'rrtype': 'TXT',
-            'rrdata': 'turtles all the way down',
-        })
+        handler.create_dnsdata(
+            {
+                "domain": domain.id,
+                "name": name,
+                "ttl": ttl,
+                "rrtype": "TXT",
+                "rrdata": "turtles all the way down",
+            }
+        )
         dnsresource = DNSResource.objects.get(domain=domain, name=name)
         # Expect that a single DNSData object is associated with the resource.
         [dnsdata] = dnsresource.dnsdata_set.all()
         self.expectThat(dnsresource.name, Equals(name))
-        self.expectThat(dnsdata.rrtype, Equals('TXT'))
-        self.expectThat(dnsdata.rrdata, Equals('turtles all the way down'))
+        self.expectThat(dnsdata.rrtype, Equals("TXT"))
+        self.expectThat(dnsdata.rrdata, Equals("turtles all the way down"))
         self.expectThat(dnsdata.ttl, Equals(ttl))
 
     def test__add_data_for_new_resource_name_fails_for_non_admin(self):
@@ -370,13 +350,15 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         name = factory.make_hostname()
         ttl = randint(1, 3600)
         with ExpectedException(HandlerPermissionError):
-            handler.create_dnsdata({
-                'domain': domain.id,
-                'name': name,
-                'ttl': ttl,
-                'rrtype': 'TXT',
-                'rrdata': 'turtles all the way down',
-            })
+            handler.create_dnsdata(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "ttl": ttl,
+                    "rrtype": "TXT",
+                    "rrdata": "turtles all the way down",
+                }
+            )
         with ExpectedException(DNSResource.DoesNotExist):
             DNSResource.objects.get(domain=domain, name=name)
 
@@ -387,18 +369,20 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         name = factory.make_hostname()
         dnsresource = factory.make_DNSResource(domain=domain, name=name)
         ttl = randint(1, 3600)
-        handler.create_dnsdata({
-            'domain': domain.id,
-            'name': name,
-            'ttl': ttl,
-            'rrtype': 'TXT',
-            'rrdata': 'turtles all the way down',
-        })
+        handler.create_dnsdata(
+            {
+                "domain": domain.id,
+                "name": name,
+                "ttl": ttl,
+                "rrtype": "TXT",
+                "rrdata": "turtles all the way down",
+            }
+        )
         # Expect that a single DNSData object is associated with the resource.
         [dnsdata] = dnsresource.dnsdata_set.all()
         self.expectThat(dnsresource.name, Equals(name))
-        self.expectThat(dnsdata.rrtype, Equals('TXT'))
-        self.expectThat(dnsdata.rrdata, Equals('turtles all the way down'))
+        self.expectThat(dnsdata.rrtype, Equals("TXT"))
+        self.expectThat(dnsdata.rrdata, Equals("turtles all the way down"))
         self.expectThat(dnsdata.ttl, Equals(ttl))
 
     def test__add_data_for_existing_resource_name_fails_for_non_admin(self):
@@ -409,13 +393,15 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         dnsresource = factory.make_DNSResource(domain=domain, name=name)
         ttl = randint(1, 3600)
         with ExpectedException(HandlerPermissionError):
-            handler.create_dnsdata({
-                'domain': domain.id,
-                'name': name,
-                'ttl': ttl,
-                'rrtype': 'TXT',
-                'rrdata': 'turtles all the way down',
-            })
+            handler.create_dnsdata(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "ttl": ttl,
+                    "rrtype": "TXT",
+                    "rrdata": "turtles all the way down",
+                }
+            )
         self.expectThat(dnsresource.dnsdata_set.all(), HasLength(0))
 
     def test__update_dnsdata(self):
@@ -424,13 +410,16 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(
-            dnsresource, rrtype="TXT", rrdata="original")
-        handler.update_dnsdata({
-            'domain': domain.id,
-            'dnsresource_id': dnsresource.id,
-            'dnsdata_id': dnsdata.id,
-            'rrdata': 'updated',
-        })
+            dnsresource, rrtype="TXT", rrdata="original"
+        )
+        handler.update_dnsdata(
+            {
+                "domain": domain.id,
+                "dnsresource_id": dnsresource.id,
+                "dnsdata_id": dnsdata.id,
+                "rrdata": "updated",
+            }
+        )
         dnsdata = reload_object(dnsdata)
         self.assertThat(dnsdata.rrdata, Equals("updated"))
 
@@ -440,14 +429,17 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(
-            dnsresource, rrtype="TXT", rrdata="original")
+            dnsresource, rrtype="TXT", rrdata="original"
+        )
         with ExpectedException(HandlerPermissionError):
-            handler.update_dnsdata({
-                'domain': domain.id,
-                'dnsresource_id': dnsresource.id,
-                'dnsdata_id': dnsdata.id,
-                'rrdata': 'updated',
-            })
+            handler.update_dnsdata(
+                {
+                    "domain": domain.id,
+                    "dnsresource_id": dnsresource.id,
+                    "dnsdata_id": dnsdata.id,
+                    "rrdata": "updated",
+                }
+            )
         dnsdata = reload_object(dnsdata)
         self.assertThat(dnsdata.rrdata, Equals("original"))
 
@@ -457,10 +449,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(dnsresource)
-        handler.delete_dnsdata({
-            'domain': domain.id,
-            'dnsdata_id': dnsdata.id,
-        })
+        handler.delete_dnsdata({"domain": domain.id, "dnsdata_id": dnsdata.id})
         dnsdata = reload_object(dnsdata)
         self.assertThat(dnsdata, Is(None))
 
@@ -471,33 +460,34 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(dnsresource)
         with ExpectedException(HandlerPermissionError):
-            handler.delete_dnsdata({
-                'domain': domain.id,
-                'dnsdata_id': dnsdata.id,
-            })
+            handler.delete_dnsdata(
+                {"domain": domain.id, "dnsdata_id": dnsdata.id}
+            )
         dnsdata = reload_object(dnsdata)
         self.assertThat(dnsdata, Not(Is(None)))
 
 
 class TestDomainHandlerAddressRecords(MAASServerTestCase):
-
     def test__add_address_record(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_address_record({
-            'domain': domain.id,
-            'name': name,
-            'address_ttl': ttl,
-            'ip_addresses': ['127.0.0.1']
-        })
+        handler.create_address_record(
+            {
+                "domain": domain.id,
+                "name": name,
+                "address_ttl": ttl,
+                "ip_addresses": ["127.0.0.1"],
+            }
+        )
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertThat(resource.address_ttl, Equals(ttl))
         self.assertThat(resource.name, Equals(name))
         self.assertThat(
-            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1"))
+            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1")
+        )
 
     def test__add_two_addresses_in_succession(self):
         user = factory.make_admin()
@@ -505,23 +495,28 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_address_record({
-            'domain': domain.id,
-            'name': name,
-            'address_ttl': ttl,
-            'ip_addresses': ['127.0.0.1']
-        })
-        handler.create_address_record({
-            'domain': domain.id,
-            'name': name,
-            'address_ttl': ttl,
-            'ip_addresses': ['127.0.0.2']
-        })
+        handler.create_address_record(
+            {
+                "domain": domain.id,
+                "name": name,
+                "address_ttl": ttl,
+                "ip_addresses": ["127.0.0.1"],
+            }
+        )
+        handler.create_address_record(
+            {
+                "domain": domain.id,
+                "name": name,
+                "address_ttl": ttl,
+                "ip_addresses": ["127.0.0.2"],
+            }
+        )
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertThat(resource.address_ttl, Equals(ttl))
         self.assertThat(resource.name, Equals(name))
         self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.1", "127.0.0.2"]))
+            resource.get_addresses(), Equals(["127.0.0.1", "127.0.0.2"])
+        )
 
     def test__update_address__updates_single_address(self):
         user = factory.make_admin()
@@ -529,39 +524,44 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         resource = factory.make_DNSResource(
-            domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"])
-        handler.update_address_record({
-            'domain': domain.id,
-            'dnsresource_id': resource.id,
-            'previous_name': resource.name,
-            'previous_rrdata': "127.0.0.1",
-            'name': name,
-            'ip_addresses': ['127.0.0.3']
-        })
+            domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"]
+        )
+        handler.update_address_record(
+            {
+                "domain": domain.id,
+                "dnsresource_id": resource.id,
+                "previous_name": resource.name,
+                "previous_rrdata": "127.0.0.1",
+                "name": name,
+                "ip_addresses": ["127.0.0.3"],
+            }
+        )
         resource = reload_object(resource)
         self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.2", "127.0.0.3"]))
+            resource.get_addresses(), Equals(["127.0.0.2", "127.0.0.3"])
+        )
 
     def test__update_address__creates_second_dnsrecord_if_name_changed(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(
-            domain=domain, name="foo", ip_addresses=["127.0.0.1", "127.0.0.2"])
-        handler.update_address_record({
-            'domain': domain.id,
-            'dnsresource_id': resource.id,
-            'previous_name': resource.name,
-            'previous_rrdata': "127.0.0.1",
-            'name': "bar",
-            'ip_addresses': ['127.0.0.3']
-        })
+            domain=domain, name="foo", ip_addresses=["127.0.0.1", "127.0.0.2"]
+        )
+        handler.update_address_record(
+            {
+                "domain": domain.id,
+                "dnsresource_id": resource.id,
+                "previous_name": resource.name,
+                "previous_rrdata": "127.0.0.1",
+                "name": "bar",
+                "ip_addresses": ["127.0.0.3"],
+            }
+        )
         resource = reload_object(resource)
-        self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.2"]))
+        self.assertThat(resource.get_addresses(), Equals(["127.0.0.2"]))
         resource = DNSResource.objects.get(domain=domain, name="bar")
-        self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.3"]))
+        self.assertThat(resource.get_addresses(), Equals(["127.0.0.3"]))
 
     def test__delete_address_deletes_single_address(self):
         user = factory.make_admin()
@@ -569,14 +569,16 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         resource = factory.make_DNSResource(
-            domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"])
-        handler.delete_address_record({
-            'domain': domain.id,
-            'dnsresource_id': resource.id,
-            'rrdata': "127.0.0.1"
-        })
-        self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.2"]))
+            domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"]
+        )
+        handler.delete_address_record(
+            {
+                "domain": domain.id,
+                "dnsresource_id": resource.id,
+                "rrdata": "127.0.0.1",
+            }
+        )
+        self.assertThat(resource.get_addresses(), Equals(["127.0.0.2"]))
 
     def test__add_address_as_non_admin_fails(self):
         user = factory.make_User()
@@ -585,12 +587,14 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         name = factory.make_hostname()
         ttl = randint(1, 3600)
         with ExpectedException(HandlerPermissionError):
-            handler.create_address_record({
-                'domain': domain.id,
-                'name': name,
-                'address_ttl': ttl,
-                'ip_addresses': ['127.0.0.1']
-            })
+            handler.create_address_record(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "address_ttl": ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
 
     def test__add_address_without_ip_addresses_fails(self):
         user = factory.make_admin()
@@ -598,12 +602,14 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         with ExpectedException(ValidationError):
-            handler.create_address_record({
-                'domain': domain.id,
-                'name': name,
-                'rrtype': choice(['A', 'AAAA']),
-                'ip_addresses': ['']
-            })
+            handler.create_address_record(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "rrtype": choice(["A", "AAAA"]),
+                    "ip_addresses": [""],
+                }
+            )
 
     def test__update_address_as_non_admin_fails(self):
         user = factory.make_User()
@@ -613,13 +619,15 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         new_name = factory.make_hostname()
         new_ttl = randint(1, 3600)
         with ExpectedException(HandlerPermissionError):
-            handler.update_address_record({
-                'domain': domain.id,
-                'dnsresource': resource.id,
-                'name': new_name,
-                'address_ttl': new_ttl,
-                'ip_addresses': ['127.0.0.1'],
-            })
+            handler.update_address_record(
+                {
+                    "domain": domain.id,
+                    "dnsresource": resource.id,
+                    "name": new_name,
+                    "address_ttl": new_ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
 
     def test__delete_resource_as_non_admin_fails(self):
         user = factory.make_User()
@@ -627,10 +635,9 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         with ExpectedException(HandlerPermissionError):
-            handler.delete_address_record({
-                'domain': domain.id,
-                'dnsresource': resource.id,
-            })
+            handler.delete_address_record(
+                {"domain": domain.id, "dnsresource": resource.id}
+            )
 
     def test__set_default_sets_default(self):
         user = factory.make_admin()
@@ -638,9 +645,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         factory.make_Domain()
         domain2 = factory.make_Domain()
         self.assertThat(domain2.is_default(), Equals(False))
-        handler.set_default({
-            'domain': domain2.id,
-        })
+        handler.set_default({"domain": domain2.id})
         domain2 = reload_object(domain2)
         self.assertThat(domain2.is_default(), Equals(True))
 
@@ -649,6 +654,4 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         with ExpectedException(HandlerPermissionError):
-            handler.set_default({
-                'domain': domain.id,
-            })
+            handler.set_default({"domain": domain.id})

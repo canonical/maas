@@ -3,9 +3,7 @@
 
 """The Script handler for the WebSocket connection."""
 
-__all__ = [
-    "ScriptHandler",
-    ]
+__all__ = ["ScriptHandler"]
 
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -14,11 +12,8 @@ from metadataserver.models import Script
 
 
 class ScriptHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = Script.objects.all()
-        pk = 'id'
-        allowed_methods = [
-            'list',
-        ]
-        listen_channels = ['script']
+        pk = "id"
+        allowed_methods = ["list"]
+        listen_channels = ["script"]

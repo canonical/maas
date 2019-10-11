@@ -4,9 +4,7 @@
 
 """Test loader for the Django parts of MAAS."""
 
-__all__ = [
-    "MAASDjangoTestRunner",
-]
+__all__ = ["MAASDjangoTestRunner"]
 
 from django.conf import settings
 from django_nose import NoseTestSuiteRunner

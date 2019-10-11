@@ -19,33 +19,39 @@ from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.utils import shell
 
 
-REQUIRED_PACKAGES = [["virsh", "libvirt-clients"],
-                     ["virt-login-shell", "libvirt-clients"]]
+REQUIRED_PACKAGES = [
+    ["virsh", "libvirt-clients"],
+    ["virt-login-shell", "libvirt-clients"],
+]
 
 
 def extract_virsh_parameters(context):
-    poweraddr = context.get('power_address')
-    machine = context.get('power_id')
-    password = context.get('power_pass')
+    poweraddr = context.get("power_address")
+    machine = context.get("power_id")
+    password = context.get("power_pass")
     return poweraddr, machine, password
 
 
 class VirshPowerDriver(PowerDriver):
 
-    name = 'virsh'
+    name = "virsh"
     chassis = True
     description = "Virsh (virtual systems)"
     settings = [
-        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field("power_address", "Power address", required=True),
         make_setting_field(
-            'power_id', "Power ID", scope=SETTING_SCOPE.NODE,
-            required=True),
+            "power_id", "Power ID", scope=SETTING_SCOPE.NODE, required=True
+        ),
         make_setting_field(
-            'power_pass', "Power password (optional)",
-            required=False, field_type='password'),
+            "power_pass",
+            "Power password (optional)",
+            required=False,
+            field_type="password",
+        ),
     ]
     ip_extractor = make_ip_extractor(
-        'power_address', IP_EXTRACTOR_PATTERNS.URL)
+        "power_address", IP_EXTRACTOR_PATTERNS.URL
+    )
 
     def detect_missing_packages(self):
         missing_packages = set()
@@ -56,17 +62,15 @@ class VirshPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on Virsh node."""
-        power_change = 'on'
+        power_change = "on"
         poweraddr, machine, password = extract_virsh_parameters(context)
-        power_control_virsh(
-            poweraddr, machine, power_change, password)
+        power_control_virsh(poweraddr, machine, power_change, password)
 
     def power_off(self, system_id, context):
         """Power off Virsh node."""
-        power_change = 'off'
+        power_change = "off"
         poweraddr, machine, password = extract_virsh_parameters(context)
-        power_control_virsh(
-            poweraddr, machine, power_change, password)
+        power_control_virsh(poweraddr, machine, power_change, password)
 
     def power_query(self, system_id, context):
         """Power query Virsh node."""

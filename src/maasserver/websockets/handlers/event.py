@@ -3,19 +3,14 @@
 
 """The event handler for the WebSocket connection."""
 
-__all__ = [
-    "EventHandler",
-    ]
+__all__ = ["EventHandler"]
 
 import datetime
 
 from maasserver.models.event import Event
 from maasserver.models.eventtype import LOGGING_LEVELS
 from maasserver.models.node import Node
-from maasserver.websockets.base import (
-    HandlerDoesNotExistError,
-    HandlerPKError,
-)
+from maasserver.websockets.base import HandlerDoesNotExistError, HandlerPKError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -27,15 +22,12 @@ def dehydrate_event_type_level(level):
 
 
 class EventHandler(TimestampedModelHandler):
-
     class Meta:
         queryset = Event.objects.all().select_related("type")
-        pk = 'id'
-        allowed_methods = ['list', 'clear']
+        pk = "id"
+        allowed_methods = ["list", "clear"]
         exclude = ["node"]
-        listen_channels = [
-            "event",
-            ]
+        listen_channels = ["event"]
 
     def __init__(self, *args, **kwargs):
         super(EventHandler, self).__init__(*args, **kwargs)
@@ -52,7 +44,7 @@ class EventHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        data['node_id'] = obj.node_id
+        data["node_id"] = obj.node_id
         return data
 
     def get_node(self, params):
@@ -74,10 +66,10 @@ class EventHandler(TimestampedModelHandler):
         :param limit: Maximum number of objects to return.
         """
         node = self.get_node(params)
-        self.cache['node_ids'].append(node.id)
+        self.cache["node_ids"].append(node.id)
         queryset = self.get_queryset(for_list=True)
         queryset = queryset.filter(node=node)
-        queryset = queryset.order_by('-id')
+        queryset = queryset.order_by("-id")
 
         # List events that where created in the past maximum number of days.
         max_days = params.get("max_days", 30)
@@ -87,11 +79,8 @@ class EventHandler(TimestampedModelHandler):
         if "start" in params:
             queryset = queryset.filter(id__lt=params["start"])
         if "limit" in params:
-            queryset = queryset[:params["limit"]]
-        return [
-            self.full_dehydrate(obj, for_list=True)
-            for obj in queryset
-            ]
+            queryset = queryset[: params["limit"]]
+        return [self.full_dehydrate(obj, for_list=True) for obj in queryset]
 
     def clear(self, params):
         """Clears the current node for events.
@@ -124,4 +113,4 @@ class EventHandler(TimestampedModelHandler):
             self._meta.handler_name,
             action,
             self.full_dehydrate(obj, for_list=True),
-            )
+        )

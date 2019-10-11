@@ -3,66 +3,35 @@
 
 """Twisted Application Plugin for the MAAS TFTP server."""
 
-__all__ = [
-    "TFTPBackend",
-    "TFTPService",
-    ]
+__all__ = ["TFTPBackend", "TFTPService"]
 
 from functools import partial
-from socket import (
-    AF_INET,
-    AF_INET6,
-)
+from socket import AF_INET, AF_INET6
 from time import time
 
 from netaddr import IPAddress
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
-from provisioningserver.events import (
-    EVENT_TYPES,
-    send_node_event_ip_address,
-)
+from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
-from provisioningserver.rpc.region import (
-    GetBootConfig,
-    MarkNodeFailed,
-)
-from provisioningserver.utils import (
-    network,
-    tftp,
-    typed,
-)
+from provisioningserver.rpc.region import GetBootConfig, MarkNodeFailed
+from provisioningserver.utils import network, tftp, typed
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.tftp import TFTPPath
-from provisioningserver.utils.twisted import (
-    deferred,
-    RPCFetcher,
-)
+from provisioningserver.utils.twisted import deferred, RPCFetcher
 from tftp.backend import FilesystemSynchronousBackend
-from tftp.errors import (
-    BackendError,
-    FileNotFound,
-)
+from tftp.errors import BackendError, FileNotFound
 from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
-from twisted.internet import (
-    reactor,
-    udp,
-)
+from twisted.internet import reactor, udp
 from twisted.internet.abstract import isIPv6Address
-from twisted.internet.address import (
-    IPv4Address,
-    IPv6Address,
-)
+from twisted.internet.address import IPv4Address, IPv6Address
 from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
@@ -89,10 +58,12 @@ def get_boot_image(params):
     boot_images = [
         image
         for image in boot_images
-        if (image['osystem'] == params['osystem'] and
-            image['release'] == params['release'] and
-            image['architecture'] == params['arch'] and
-            image['purpose'] == purpose)
+        if (
+            image["osystem"] == params["osystem"]
+            and image["release"] == params["release"]
+            and image["architecture"] == params["arch"]
+            and image["purpose"] == purpose
+        )
     ]
 
     # See if exact subarchitecture match.
@@ -127,12 +98,18 @@ def log_request(file_name, clock=reactor):
     remote_host, _ = tftp.get_remote_address()
     log.info(
         "{file_name} requested by {remote_host}",
-        file_name=file_name, remote_host=remote_host)
+        file_name=file_name,
+        remote_host=remote_host,
+    )
     # Log to the node event log.
     d = deferLater(
-        clock, 0, send_node_event_ip_address,
+        clock,
+        0,
+        send_node_event_ip_address,
         event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
-        ip_address=remote_host, description=file_name)
+        ip_address=remote_host,
+        description=file_name,
+    )
     d.addErrback(log.err, "Logging TFTP request failed.")
 
 
@@ -165,7 +142,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
         if not isinstance(base_path, FilePath):
             base_path = FilePath(base_path)
         super(TFTPBackend, self).__init__(
-            base_path, can_read=True, can_write=False)
+            base_path, can_read=True, can_write=False
+        )
         self.client_to_remote = {}
         self.client_service = client_service
         self.fetcher = RPCFetcher()
@@ -175,6 +153,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
         Don't use directly called from `get_client_for`.
         """
+
         def store_client(client):
             self.client_to_remote[remote_ip] = client
             return client
@@ -191,7 +170,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         and arguments, so if the client is not the same the duplicate effort
         is not consolidated.
         """
-        remote_ip = params.get('remote_ip')
+        remote_ip = params.get("remote_ip")
         if remote_ip:
             client = self.client_to_remote.get(remote_ip, None)
             if client is None:
@@ -226,12 +205,15 @@ class TFTPBackend(FilesystemSynchronousBackend):
         """
         is_ephemeral = False
         try:
-            osystem_obj = OperatingSystemRegistry.get_item(params['osystem'],
-                                                           default=None)
-            purposes = osystem_obj \
-                .get_boot_image_purposes(params["arch"], params["subarch"],
-                                         params.get("release", ""),
-                                         params.get("label", ""))
+            osystem_obj = OperatingSystemRegistry.get_item(
+                params["osystem"], default=None
+            )
+            purposes = osystem_obj.get_boot_image_purposes(
+                params["arch"],
+                params["subarch"],
+                params.get("release", ""),
+                params.get("label", ""),
+            )
             if "ephemeral" in purposes:
                 is_ephemeral = True
         except Exception:
@@ -242,8 +224,9 @@ class TFTPBackend(FilesystemSynchronousBackend):
             mac = network.find_mac_via_arp(remote_ip)
             log.info(
                 "Device %s with MAC address %s is PXE booting; "
-                "instructing the device to boot locally." % (
-                    params["hostname"], mac))
+                "instructing the device to boot locally."
+                % (params["hostname"], mac)
+            )
             # Set purpose back to local now that we have the message logged.
             params["purpose"] = "local"
 
@@ -260,24 +243,34 @@ class TFTPBackend(FilesystemSynchronousBackend):
             if boot_image is None:
                 # No matching boot image.
                 description = "Missing boot image %s/%s/%s/%s." % (
-                    params['osystem'], params["arch"],
-                    params["subarch"], params["release"])
+                    params["osystem"],
+                    params["arch"],
+                    params["subarch"],
+                    params["release"],
+                )
                 # Call MarkNodeFailed if this was a known machine.
                 if system_id is not None:
                     d = client(
                         MarkNodeFailed,
                         system_id=system_id,
-                        error_description=description)
+                        error_description=description,
+                    )
                     d.addErrback(
                         log.err,
-                        "Failed to mark machine failed: %s" % description)
+                        "Failed to mark machine failed: %s" % description,
+                    )
                 else:
                     maaslog.error(
                         "Enlistment failed to boot %s; missing required boot "
-                        "image %s/%s/%s/%s." % (
+                        "image %s/%s/%s/%s."
+                        % (
                             remote_ip,
-                            params['osystem'], params["arch"],
-                            params["subarch"], params["release"]))
+                            params["osystem"],
+                            params["arch"],
+                            params["subarch"],
+                            params["release"],
+                        )
+                    )
                 params["label"] = "no-such-image"
             else:
                 params["label"] = boot_image["label"]
@@ -295,18 +288,14 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # about; params is a context-like object and other stuff (too much?)
         # gets in there.
         arguments = (
-            name.decode("ascii")
-            for name, _ in GetBootConfig.arguments
+            name.decode("ascii") for name, _ in GetBootConfig.arguments
         )
-        params = {
-            name: params[name] for name in arguments
-            if name in params
-        }
+        params = {name: params[name] for name in arguments if name in params}
 
         def fetch(client, params):
             params["system_id"] = client.localIdent
             d = self.fetcher(client, GetBootConfig, **params)
-            d.addCallback(self.get_boot_image, client, params['remote_ip'])
+            d.addCallback(self.get_boot_image, client, params["remote_ip"])
             d.addCallback(lambda data: KernelParameters(**data))
             return d
 
@@ -322,9 +311,11 @@ class TFTPBackend(FilesystemSynchronousBackend):
         :param params: Parameters so far obtained, typically from the file
             path requested.
         """
+
         def generate(kernel_params):
             return boot_method.get_reader(
-                self, kernel_params=kernel_params, **params)
+                self, kernel_params=kernel_params, **params
+            )
 
         return self.get_kernel_params(params).addCallback(generate)
 
@@ -380,7 +371,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # It is possible for a client to request the file with '\' instead
         # of '/', example being 'bootx64.efi'. Convert all '\' to '/' to be
         # unix compatiable.
-        file_name = file_name.replace(b'\\', b'/')
+        file_name = file_name.replace(b"\\", b"/")
         if not skip_logging:
             # HTTP handler will call with `skip_logging` set to True so that
             # 2 log messages are not created.
@@ -402,7 +393,7 @@ class Port(udp.Port):
         """See :py:meth:`twisted.internet.udp.Port.getHost`."""
         host, port = self.socket.getsockname()[:2]
         addr_type = IPv6Address if isIPv6Address(host) else IPv4Address
-        return addr_type('UDP', host, port)
+        return addr_type("UDP", host, port)
 
 
 class UDPServer(internet.UDPServer):
@@ -417,7 +408,7 @@ class UDPServer(internet.UDPServer):
         """See :py:meth:`twisted.application.internet.UDPServer._getPort`."""
         return self._listenUDP(*self.args, **self.kwargs)
 
-    def _listenUDP(self, port, protocol, interface='', maxPacketSize=8192):
+    def _listenUDP(self, port, protocol, interface="", maxPacketSize=8192):
         """See :py:meth:`twisted.internet.reactor.listenUDP`."""
         p = Port(port, protocol, interface, maxPacketSize)
         p.addressFamily = AF_INET6 if isIPv6Address(interface) else AF_INET
@@ -426,45 +417,52 @@ class UDPServer(internet.UDPServer):
 
 
 def track_tftp_latency(
-        func, start_time, filename, prometheus_metrics=PROMETHEUS_METRICS):
+    func, start_time, filename, prometheus_metrics=PROMETHEUS_METRICS
+):
     """Wraps a function and tracks TFTP transfer latency."""
+
     def wrapped():
         result = func()
         latency = time() - start_time
         prometheus_metrics.update(
-            'maas_tftp_file_transfer_latency', 'observe',
-            labels={'filename': filename},
-            value=latency)
+            "maas_tftp_file_transfer_latency",
+            "observe",
+            labels={"filename": filename},
+            value=latency,
+        )
         return result
 
     return wrapped
 
 
 class TransferTimeTrackingTFTP(TFTP):
-
     @inlineCallbacks
     def _startSession(
-            self, datagram, addr, mode, prometheus_metrics=PROMETHEUS_METRICS):
+        self, datagram, addr, mode, prometheus_metrics=PROMETHEUS_METRICS
+    ):
         session = yield super()._startSession(datagram, addr, mode)
-        stream_session = getattr(session, 'session', None)
+        stream_session = getattr(session, "session", None)
         # replace the standard cancel() method with one that tracks
         # transfer time
         if stream_session is not None:
             filename = self._clean_filename(datagram)
             start_time = time()
             stream_session.cancel = track_tftp_latency(
-                stream_session.cancel, start_time, filename,
-                prometheus_metrics=prometheus_metrics)
+                stream_session.cancel,
+                start_time,
+                filename,
+                prometheus_metrics=prometheus_metrics,
+            )
         returnValue(session)
 
     def _clean_filename(self, datagram):
-        filename = datagram.filename.decode('ascii')
-        filename = filename.replace('\\', '/')  # normalize Windows paths
-        filename = filename.lstrip('/')
-        if 'pxelinux.cfg/' in filename:
-            return 'pxelinux.cfg'
-        if filename.startswith('grub/grub.cfg-'):
-            return 'grub/grub.cfg'
+        filename = datagram.filename.decode("ascii")
+        filename = filename.replace("\\", "/")  # normalize Windows paths
+        filename = filename.lstrip("/")
+        if "pxelinux.cfg/" in filename:
+            return "pxelinux.cfg"
+        if filename.startswith("grub/grub.cfg-"):
+            return "grub/grub.cfg"
 
         return filename
 
@@ -512,10 +510,7 @@ class TFTPService(MultiService, object):
 
         :rtype: :class:`set` of :class:`internet.UDPServer`
         """
-        return {
-            service for service in self
-            if service is not self.refresher
-        }
+        return {service for service in self if service is not self.refresher}
 
     def updateServers(self):
         """Run a server on every interface.
@@ -531,8 +526,10 @@ class TFTPService(MultiService, object):
         for address in addrs_desired - addrs_established:
             if not IPAddress(address).is_link_local():
                 tftp_service = UDPServer(
-                    self.port, TransferTimeTrackingTFTP(self.backend),
-                    interface=address)
+                    self.port,
+                    TransferTimeTrackingTFTP(self.backend),
+                    interface=address,
+                )
                 tftp_service.setName(address)
                 tftp_service.setServiceParent(self)
 

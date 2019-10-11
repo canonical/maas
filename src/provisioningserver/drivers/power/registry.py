@@ -3,9 +3,7 @@
 
 """Load all power drivers."""
 
-__all__ = [
-    "PowerDriverRegistry",
-    ]
+__all__ = ["PowerDriverRegistry"]
 
 from jsonschema import validate
 from provisioningserver.drivers.pod.registry import PodDriverRegistry

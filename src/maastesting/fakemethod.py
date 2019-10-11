@@ -5,10 +5,7 @@
 
 """Test helper, copied from the Launchpad source tree."""
 
-__all__ = [
-    'FakeMethod',
-    'MultiFakeMethod',
-    ]
+__all__ = ["FakeMethod", "MultiFakeMethod"]
 
 
 class FakeMethod:
@@ -94,5 +91,6 @@ class MultiFakeMethod:
         else:
             raise ValueError(
                 "No more method to call.  This MultiFakeMethod has been "
-                "called %d times and it only contains %d method(s)." % (
-                    self._call_count + 1, len(self.methods)))
+                "called %d times and it only contains %d method(s)."
+                % (self._call_count + 1, len(self.methods))
+            )

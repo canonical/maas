@@ -3,49 +3,40 @@
 
 """API handlers: `VolumeGroups`."""
 
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_STATUS
-from maasserver.exceptions import (
-    MAASAPIValidationError,
-    NodeStateViolation,
-)
+from maasserver.exceptions import MAASAPIValidationError, NodeStateViolation
 from maasserver.forms import (
     CreateLogicalVolumeForm,
     CreateVolumeGroupForm,
     UpdateVolumeGroupForm,
 )
-from maasserver.models import (
-    Machine,
-    VirtualBlockDevice,
-    VolumeGroup,
-)
+from maasserver.models import Machine, VirtualBlockDevice, VolumeGroup
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
 
 
 DISPLAYED_VOLUME_GROUP_FIELDS = (
-    'system_id',
-    'id',
-    'uuid',
-    'name',
-    'devices',
-    'size',
-    'human_size',
-    'available_size',
-    'human_available_size',
-    'used_size',
-    'human_used_size',
-    'logical_volumes',
+    "system_id",
+    "id",
+    "uuid",
+    "name",
+    "devices",
+    "size",
+    "human_size",
+    "available_size",
+    "human_available_size",
+    "used_size",
+    "human_used_size",
+    "logical_volumes",
 )
 
 
 class VolumeGroupsHandler(OperationsHandler):
     """Manage volume groups on a machine."""
+
     api_doc_section_name = "Volume groups"
     update = delete = None
     fields = DISPLAYED_VOLUME_GROUP_FIELDS
@@ -53,7 +44,7 @@ class VolumeGroupsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('volume_groups_handler', ["system_id"])
+        return ("volume_groups_handler", ["system_id"])
 
     def read(self, request, system_id):
         """@description-title List all volume groups
@@ -75,7 +66,8 @@ class VolumeGroupsHandler(OperationsHandler):
             Not Found
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.view)
+            system_id, request.user, NodePermission.view
+        )
         return VolumeGroup.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
@@ -114,10 +106,12 @@ class VolumeGroupsHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin)
+            system_id, request.user, NodePermission.admin
+        )
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create volume group because the machine is not Ready.")
+                "Cannot create volume group because the machine is not Ready."
+            )
         form = CreateVolumeGroupForm(machine, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -127,6 +121,7 @@ class VolumeGroupsHandler(OperationsHandler):
 
 class VolumeGroupHandler(OperationsHandler):
     """Manage volume group on a machine."""
+
     api_doc_section_name = "Volume group"
     create = None
     model = VolumeGroup
@@ -142,7 +137,7 @@ class VolumeGroupHandler(OperationsHandler):
             node = volume_group.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('volume_group_handler', (system_id, volume_group_id))
+        return ("volume_group_handler", (system_id, volume_group_id))
 
     @classmethod
     def system_id(cls, volume_group):
@@ -208,7 +203,8 @@ class VolumeGroupHandler(OperationsHandler):
             Not Found
         """
         return VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.view)
+            system_id, id, request.user, NodePermission.view
+        )
 
     def update(self, request, system_id, id):
         """@description-title Update a volume group
@@ -250,11 +246,13 @@ class VolumeGroupHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update volume group because the machine is not Ready.")
+                "Cannot update volume group because the machine is not Ready."
+            )
         form = UpdateVolumeGroupForm(volume_group, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -281,11 +279,13 @@ class VolumeGroupHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete volume group because the machine is not Ready.")
+                "Cannot delete volume group because the machine is not Ready."
+            )
         volume_group.delete()
         return rc.DELETED
 
@@ -322,12 +322,14 @@ class VolumeGroupHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create logical volume because the machine is not "
-                "Ready.")
+                "Ready."
+            )
         form = CreateLogicalVolumeForm(volume_group, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -360,13 +362,15 @@ class VolumeGroupHandler(OperationsHandler):
         @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NodePermission.admin)
+            system_id, id, request.user, NodePermission.admin
+        )
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot delete logical volume because the machine is not "
-                "Ready.")
-        volume_id = get_mandatory_param(request.data, 'id')
+                "Ready."
+            )
+        volume_id = get_mandatory_param(request.data, "id")
         try:
             logical_volume = volume_group.virtual_devices.get(id=volume_id)
         except VirtualBlockDevice.DoesNotExist:

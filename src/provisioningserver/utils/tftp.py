@@ -3,11 +3,7 @@
 
 """Utilities for working with TFTP and ``python-tx-tftp``."""
 
-__all__ = [
-    "get_local_address",
-    "get_remote_address",
-    "TFTPPath",
-]
+__all__ = ["get_local_address", "get_remote_address", "TFTPPath"]
 
 from twisted.python.context import get
 
@@ -55,4 +51,5 @@ def extract_address(addr):
     else:
         raise AssertionError(
             "The address tuple must contain at least 2 "
-            "elements, got: %r" % (addr,))
+            "elements, got: %r" % (addr,)
+        )

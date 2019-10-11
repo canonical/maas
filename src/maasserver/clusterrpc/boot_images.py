@@ -14,19 +14,10 @@ __all__ = [
 
 from collections import Sequence
 from functools import partial
-from urllib.parse import (
-    ParseResult,
-    urlparse,
-)
+from urllib.parse import ParseResult, urlparse
 
-from maasserver.models import (
-    BootResource,
-    RackController,
-)
-from maasserver.rpc import (
-    getAllClients,
-    getClientFor,
-)
+from maasserver.models import BootResource, RackController
+from maasserver.rpc import getAllClients, getClientFor
 from maasserver.utils.asynchronous import gather
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -39,15 +30,9 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import flatten
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
+from provisioningserver.utils.twisted import asynchronous, synchronous
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    DeferredList,
-    DeferredSemaphore,
-)
+from twisted.internet.defer import DeferredList, DeferredSemaphore
 from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
@@ -70,7 +55,8 @@ def is_import_boot_images_running():
     """Return True if any rack controller is currently import boot images."""
     responses = gather(
         partial(client, IsImportBootImagesRunning)
-        for client in getAllClients())
+        for client in getAllClients()
+    )
 
     # Only one rack controller needs to say its importing image, for this
     # method to return True. Must go through all responses so they are all
@@ -110,21 +96,21 @@ def _get_available_boot_images():
     responses_v2 = gather(map(listimages_v2, clients_v2))
     clients_v1 = []
     for i, response in enumerate(responses_v2):
-        if (isinstance(response, Failure) and
-                response.check(UnhandledCommand) is not None):
+        if (
+            isinstance(response, Failure)
+            and response.check(UnhandledCommand) is not None
+        ):
             clients_v1.append(clients_v2[i])
         elif not isinstance(response, Failure):
             # Convert each image to a frozenset of its items.
             yield frozenset(
-                frozenset(image.items())
-                for image in response["images"]
+                frozenset(image.items()) for image in response["images"]
             )
     responses_v1 = gather(map(listimages_v1, clients_v1))
     for response in suppress_failures(responses_v1):
         # Convert each image to a frozenset of its items.
         yield frozenset(
-            frozenset(image.items())
-            for image in response["images"]
+            frozenset(image.items()) for image in response["images"]
         )
 
 
@@ -154,7 +140,8 @@ def get_all_available_boot_images():
 
 @synchronous
 def get_boot_images_for(
-        rack_controller, osystem, architecture, subarchitecture, series):
+    rack_controller, osystem, architecture, subarchitecture, series
+):
     """Obtain the available boot images of this rack controller for the given
     osystem, architecture, subarchitecute, and series.
 
@@ -173,21 +160,22 @@ def get_boot_images_for(
     images = [
         image
         for image in images
-        if image['osystem'] == osystem and
-        image['release'] == series and
-        image['architecture'] == architecture
-        ]
+        if image["osystem"] == osystem
+        and image["release"] == series
+        and image["architecture"] == architecture
+    ]
 
     # Subarchitecture can be different than what the rack controller sends
     # back. This is because of hwe kernels. If the image matches this far, then
     # we check its matching BootResource for all supported subarchitectures.
     matching_images = []
     for image in images:
-        if image['subarchitecture'] == subarchitecture:
+        if image["subarchitecture"] == subarchitecture:
             matching_images.append(image)
         else:
             resource = BootResource.objects.get_resource_for(
-                osystem, architecture, subarchitecture, series)
+                osystem, architecture, subarchitecture, series
+            )
             if resource is not None:
                 matching_images.append(image)
     return matching_images
@@ -218,6 +206,7 @@ class RackControllersImporter:
     def _get_proxy():
         # Avoid circular import.
         from maasserver.models.config import Config
+
         if Config.objects.get_config("enable_http_proxy"):
             return Config.objects.get_config("http_proxy")
         else:
@@ -241,13 +230,20 @@ class RackControllersImporter:
 
     @classmethod
     def schedule(
-            cls, system_ids=undefined, sources=undefined, proxy=undefined,
-            concurrency=1, delay=0, clock=reactor):
+        cls,
+        system_ids=undefined,
+        sources=undefined,
+        proxy=undefined,
+        concurrency=1,
+        delay=0,
+        clock=reactor,
+    ):
         """Schedule rack controller imports to happen."""
 
         def do_import():
             d = deferToDatabase(
-                RackControllersImporter.new, system_ids, sources, proxy)
+                RackControllersImporter.new, system_ids, sources, proxy
+            )
             d.addCallback(lambda importer: importer.run(concurrency))
             return d
 
@@ -279,17 +275,26 @@ class RackControllersImporter:
         :param lock: A concurrency primitive to limit the number of rack
             controllers importing at one time.
         """
+
         def sync_rack(system_id, sources, proxy):
             d = getClientFor(system_id, timeout=1)
-            d.addCallback(lambda client: client(
-                ImportBootImages, sources=sources,
-                http_proxy=proxy, https_proxy=proxy))
+            d.addCallback(
+                lambda client: client(
+                    ImportBootImages,
+                    sources=sources,
+                    http_proxy=proxy,
+                    https_proxy=proxy,
+                )
+            )
             return d
 
         return DeferredList(
-            (lock.run(sync_rack, system_id, self.sources, self.proxy)
-             for system_id in self.system_ids),
-            consumeErrors=True)
+            (
+                lock.run(sync_rack, system_id, self.sources, self.proxy)
+                for system_id in self.system_ids
+            ),
+            consumeErrors=True,
+        )
 
     @asynchronous
     def run(self, concurrency=1):
@@ -304,9 +309,11 @@ class RackControllersImporter:
 
         def report(results):
             message_success = (
-                "Rack controller (%s) has imported boot resources.")
+                "Rack controller (%s) has imported boot resources."
+            )
             message_failure = (
-                "Rack controller (%s) failed to import boot resources.")
+                "Rack controller (%s) failed to import boot resources."
+            )
             message_disconn = (
                 "Rack controller (%s) did not import boot resources; it is "
                 "not connected to the region at this time."
@@ -319,5 +326,8 @@ class RackControllersImporter:
                 else:
                     log.err(result, message_failure % system_id)
 
-        return self(lock).addCallback(report).addErrback(
-            log.err, "General failure syncing boot resources.")
+        return (
+            self(lock)
+            .addCallback(report)
+            .addErrback(log.err, "General failure syncing boot resources.")
+        )

@@ -4,9 +4,9 @@
 """Utilities related to network and cluster interfaces."""
 
 __all__ = [
-    'get_name_and_vlan_from_cluster_interface',
-    'make_name_from_interface',
-    ]
+    "get_name_and_vlan_from_cluster_interface",
+    "make_name_from_interface",
+]
 
 from random import randint
 import re
@@ -23,11 +23,11 @@ def make_name_from_interface(interface, alias=None):
     """
     if alias:
         interface = "%s:%s" % (interface, alias)
-    if interface is None or interface == '':
-        base_name = 'unnamed-%d' % randint(1000000, 9999999)
+    if interface is None or interface == "":
+        base_name = "unnamed-%d" % randint(1000000, 9999999)
     else:
         base_name = interface
-    return re.sub(r'[^\w:.-]', '--', base_name)
+    return re.sub(r"[^\w:.-]", "--", base_name)
 
 
 def get_name_and_vlan_from_cluster_interface(cluster_name, interface):
@@ -40,12 +40,12 @@ def get_name_and_vlan_from_cluster_interface(cluster_name, interface):
     """
     name = interface
     vlan_tag = None
-    if '.' in name:
-        _, vlan_tag = name.split('.', 1)
-        if ':' in vlan_tag:
+    if "." in name:
+        _, vlan_tag = name.split(".", 1)
+        if ":" in vlan_tag:
             # Nasty: there's an alias after the VLAN tag.
-            vlan_tag, _ = vlan_tag.split(':', 1)
-        name = name.replace('.', '-')
-    name = name.replace(':', '-')
+            vlan_tag, _ = vlan_tag.split(":", 1)
+        name = name.replace(".", "-")
+    name = name.replace(":", "-")
     network_name = "-".join((cluster_name, name))
     return network_name, vlan_tag

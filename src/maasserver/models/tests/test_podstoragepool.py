@@ -10,7 +10,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestPodStoragePool(MAASServerTestCase):
-
     def test_get_used_storage(self):
         pool = factory.make_PodStoragePool()
         size = 0

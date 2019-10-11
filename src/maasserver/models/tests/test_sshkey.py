@@ -10,10 +10,7 @@ import random
 from django.core.exceptions import ValidationError
 from django.utils.safestring import SafeString
 from maasserver.enum import KEYS_PROTOCOL_TYPE
-from maasserver.models import (
-    sshkey,
-    SSHKey,
-)
+from maasserver.models import sshkey, SSHKey
 from maasserver.models.sshkey import (
     get_html_display_for_key,
     HELLIPSIS,
@@ -26,73 +23,72 @@ from testtools.matchers import EndsWith
 
 
 class SSHKeyValidatorTest(MAASServerTestCase):
-
     def test_validates_rsa_public_key(self):
-        key_string = get_data('data/test_rsa0.pub')
+        key_string = get_data("data/test_rsa0.pub")
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
     def test_validates_dsa_public_key(self):
-        key_string = get_data('data/test_dsa.pub')
+        key_string = get_data("data/test_dsa.pub")
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
     def test_validates_ecdsa_curve256_public_key(self):
-        key_string = get_data('data/test_ecdsa256.pub')
+        key_string = get_data("data/test_ecdsa256.pub")
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
     def test_validates_ecdsa_curve384_public_key(self):
-        key_string = get_data('data/test_ecdsa384.pub')
+        key_string = get_data("data/test_ecdsa384.pub")
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
     def test_validates_ecdsa_curve521_public_key(self):
-        key_string = get_data('data/test_ecdsa521.pub')
+        key_string = get_data("data/test_ecdsa521.pub")
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
     def test_validates_ed25519_public_key(self):
-        key_string = get_data('data/test_ed25519.pub')
+        key_string = get_data("data/test_ed25519.pub")
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
     def test_does_not_validate_random_data(self):
         key_string = factory.make_string()
-        self.assertRaises(
-            ValidationError, validate_ssh_public_key, key_string)
+        self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_wrongly_padded_data(self):
-        key_string = 'ssh-dss %s %s@%s' % (
-            factory.make_string(), factory.make_string(),
-            factory.make_string())
-        self.assertRaises(
-            ValidationError, validate_ssh_public_key, key_string)
+        key_string = "ssh-dss %s %s@%s" % (
+            factory.make_string(),
+            factory.make_string(),
+            factory.make_string(),
+        )
+        self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_non_ascii_key(self):
-        non_ascii_key = 'AAB3NzaC' + '\u2502' + 'mN6Lo2I9w=='
-        key_string = 'ssh-rsa %s %s@%s' % (
-            non_ascii_key, factory.make_string(),
-            factory.make_string())
-        self.assertRaises(
-            ValidationError, validate_ssh_public_key, key_string)
+        non_ascii_key = "AAB3NzaC" + "\u2502" + "mN6Lo2I9w=="
+        key_string = "ssh-rsa %s %s@%s" % (
+            non_ascii_key,
+            factory.make_string(),
+            factory.make_string(),
+        )
+        self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_wrong_key(self):
         # Validation fails if normalise_openssh_public_key crashes.
         norm = self.patch(sshkey, "normalise_openssh_public_key")
         norm.side_effect = factory.make_exception_type()
         self.assertRaises(
-            ValidationError, validate_ssh_public_key, factory.make_name('key'))
+            ValidationError, validate_ssh_public_key, factory.make_name("key")
+        )
 
     def test_does_not_validate_rsa_private_key(self):
-        key_string = get_data('data/test_rsa')
-        self.assertRaises(
-            ValidationError, validate_ssh_public_key, key_string)
+        key_string = get_data("data/test_rsa")
+        self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_dsa_private_key(self):
-        key_string = get_data('data/test_dsa')
-        self.assertRaises(
-            ValidationError, validate_ssh_public_key, key_string)
+        key_string = get_data("data/test_dsa")
+        self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
 
 class GetHTMLDisplayForKeyTest(MAASServerTestCase):
@@ -104,11 +100,13 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         The comment may contain spaces, but not begin or end in them.  It
         will be of the desired length both before and after stripping.
         """
-        return ''.join([
-            factory.make_string(1),
-            factory.make_string(max([length - 2, 0]), spaces=True),
-            factory.make_string(1),
-            ])[:length]
+        return "".join(
+            [
+                factory.make_string(1),
+                factory.make_string(max([length - 2, 0]), spaces=True),
+                factory.make_string(1),
+            ]
+        )[:length]
 
     def make_key(self, type_len=7, key_len=360, comment_len=None):
         """Produce a fake ssh public key containing arbitrary data.
@@ -121,10 +119,7 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
             contain spaces.  Leave it None to omit the comment.
         :return: A string representing the combined key-file contents.
         """
-        fields = [
-            factory.make_string(type_len),
-            factory.make_string(key_len),
-            ]
+        fields = [factory.make_string(type_len), factory.make_string(key_len)]
         if comment_len is not None:
             fields.append(self.make_comment(comment_len))
         return " ".join(fields)
@@ -148,7 +143,8 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         display = get_html_display_for_key(key, size)
         self.assertEqual(size, len(display))
         self.assertEqual(
-            '%.*s%s' % (size - len(HELLIPSIS), key, HELLIPSIS), display)
+            "%.*s%s" % (size - len(HELLIPSIS), key, HELLIPSIS), display
+        )
 
     def test_display_escapes_commentless_key_for_html(self):
         # The key's comment may contain characters that are not safe for
@@ -159,7 +155,8 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         # brief enough to fit into the allotted space.
         self.assertEqual(
             "&lt;type&gt; &lt;text&gt;",
-            get_html_display_for_key("<type> <text>", 100))
+            get_html_display_for_key("<type> <text>", 100),
+        )
 
     def test_display_escapes_short_key_for_html(self):
         # The key's comment may contain characters that are not safe for
@@ -204,7 +201,8 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         display = get_html_display_for_key(key, 50)
         self.assertEqual(50, len(display))
         self.assertEqual(
-            '%.*s%s' % (50 - len(HELLIPSIS), key, HELLIPSIS), display)
+            "%.*s%s" % (50 - len(HELLIPSIS), key, HELLIPSIS), display
+        )
 
     def test_display_limits_size_with_large_key_type(self):
         # If the key has a large 'key_type' part, the key is simply
@@ -213,7 +211,8 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         display = get_html_display_for_key(key, 50)
         self.assertEqual(50, len(display))
         self.assertEqual(
-            '%.*s%s' % (50 - len(HELLIPSIS), key, HELLIPSIS), display)
+            "%.*s%s" % (50 - len(HELLIPSIS), key, HELLIPSIS), display
+        )
 
     def test_display_cropped_key(self):
         # If the key has a small key_type, a small comment and a large
@@ -222,22 +221,27 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         type_len = 10
         comment_len = 10
         key = self.make_key(type_len, 100, comment_len)
-        key_type, key_string, comment = key.split(' ', 2)
+        key_type, key_string, comment = key.split(" ", 2)
         display = get_html_display_for_key(key, 50)
         self.assertEqual(50, len(display))
         self.assertEqual(
-            '%s %.*s%s %s' % (
+            "%s %.*s%s %s"
+            % (
                 key_type,
                 50 - (type_len + len(HELLIPSIS) + comment_len + 2),
-                key_string, HELLIPSIS, comment),
-            display)
+                key_string,
+                HELLIPSIS,
+                comment,
+            ),
+            display,
+        )
 
 
 class SSHKeyTest(MAASServerTestCase):
     """Testing for the :class:`SSHKey`."""
 
     def test_sshkey_validation_with_valid_key(self):
-        key_string = get_data('data/test_rsa0.pub')
+        key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
         key.full_clean()
@@ -247,20 +251,20 @@ class SSHKeyTest(MAASServerTestCase):
         key_string = factory.make_string()
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
-        self.assertRaises(
-            ValidationError, key.full_clean)
+        self.assertRaises(ValidationError, key.full_clean)
 
     def test_sshkey_display_with_real_life_key(self):
         # With a real-life ssh-rsa key, the key_string part is cropped.
-        key_string = get_data('data/test_rsa0.pub')
+        key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
         display = key.display_html()
         self.assertEqual(
-            'ssh-rsa AAAAB3NzaC1yc&hellip; ubuntu@test_rsa0.pub', display)
+            "ssh-rsa AAAAB3NzaC1yc&hellip; ubuntu@test_rsa0.pub", display
+        )
 
     def test_sshkey_display_is_marked_as_HTML_safe(self):
-        key_string = get_data('data/test_rsa0.pub')
+        key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
         display = key.display_html()
@@ -268,40 +272,42 @@ class SSHKeyTest(MAASServerTestCase):
 
     def test_sshkey_user_and_key_unique_together_create(self):
         protocol = random.choice(
-            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
-        auth_id = factory.make_name('auth_id')
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
         keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
-        key_string = get_data('data/test_rsa0.pub')
+        key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user, keysource=keysource)
         key.save()
         key2 = SSHKey(key=key_string, user=user, keysource=keysource)
-        self.assertRaises(
-            ValidationError, key2.full_clean)
+        self.assertRaises(ValidationError, key2.full_clean)
 
     def test_sshkey_user_and_key_unique_together_change_key(self):
         protocol = random.choice(
-            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
-        auth_id = factory.make_name('auth_id')
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
         keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
-        key_string1 = get_data('data/test_rsa1.pub')
-        key_string2 = get_data('data/test_rsa2.pub')
+        key_string1 = get_data("data/test_rsa1.pub")
+        key_string2 = get_data("data/test_rsa2.pub")
         user = factory.make_User()
         key1 = SSHKey(key=key_string1, user=user, keysource=keysource)
         key1.save()
         key2 = SSHKey(key=key_string2, user=user, keysource=keysource)
         key2.save()
         key2.key = key1.key
-        self.assertRaises(
-            ValidationError, key2.full_clean)
+        self.assertRaises(ValidationError, key2.full_clean)
 
     def test_sshkey_same_key_can_be_used_by_different_sources(self):
-        auth_id = factory.make_name('auth_id')
+        auth_id = factory.make_name("auth_id")
         keysource1 = factory.make_KeySource(
-            protocol=KEYS_PROTOCOL_TYPE.LP, auth_id=auth_id)
+            protocol=KEYS_PROTOCOL_TYPE.LP, auth_id=auth_id
+        )
         keysource2 = factory.make_KeySource(
-            protocol=KEYS_PROTOCOL_TYPE.GH, auth_id=auth_id)
-        key_string = get_data('data/test_rsa0.pub')
+            protocol=KEYS_PROTOCOL_TYPE.GH, auth_id=auth_id
+        )
+        key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
         key1 = SSHKey(key=key_string, user=user, keysource=keysource1)
         key1.save()
@@ -310,7 +316,7 @@ class SSHKeyTest(MAASServerTestCase):
         self.assertIsNone(key2.full_clean())
 
     def test_sshkey_same_key_can_be_used_by_different_users(self):
-        key_string = get_data('data/test_rsa0.pub')
+        key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
         key.save()
@@ -330,7 +336,8 @@ class SSHKeyManagerTest(MAASServerTestCase):
 
     def test_get_keys_for_user_with_keys(self):
         user1, created_keys = factory.make_user_with_keys(
-            n_keys=3, username='user1')
+            n_keys=3, username="user1"
+        )
         # user2
         factory.make_user_with_keys(n_keys=2)
         keys = SSHKey.objects.get_keys_for_user(user1)

@@ -3,11 +3,7 @@
 
 """Utilities for working with DHCP packets."""
 
-__all__ = [
-    "DHCP",
-    "add_arguments",
-    "run"
-]
+__all__ = ["DHCP", "add_arguments", "run"]
 
 from collections import namedtuple
 from datetime import datetime
@@ -23,14 +19,8 @@ from textwrap import dedent
 from netaddr import IPAddress
 from provisioningserver.path import get_path
 from provisioningserver.utils import sudo
-from provisioningserver.utils.network import (
-    bytes_to_ipaddress,
-    format_eui,
-)
-from provisioningserver.utils.pcap import (
-    PCAP,
-    PCAPError,
-)
+from provisioningserver.utils.network import bytes_to_ipaddress, format_eui
+from provisioningserver.utils.pcap import PCAP, PCAPError
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.tcpip import (
     decode_ethernet_udp_packet,
@@ -46,27 +36,30 @@ SEEN_AGAIN_THRESHOLD = 600
 
 # Definitions for DHCP packet used with `struct`.
 # See https://tools.ietf.org/html/rfc2131#section-2 for packet format.
-DHCP_PACKET = '!BBBBLHHLLLL16s64s128sBBBB'
-DHCPPacket = namedtuple('DHCPPacket', (
-    'op',
-    'htype',
-    'len',
-    'hops',
-    'xid',
-    'secs',
-    'flags',
-    'ciaddr',
-    'yiaddr',
-    'siaddr',
-    'giaddr',
-    'chaddr',
-    'sname',
-    'file',
-    'cookie1',
-    'cookie2',
-    'cookie3',
-    'cookie4',
-))
+DHCP_PACKET = "!BBBBLHHLLLL16s64s128sBBBB"
+DHCPPacket = namedtuple(
+    "DHCPPacket",
+    (
+        "op",
+        "htype",
+        "len",
+        "hops",
+        "xid",
+        "secs",
+        "flags",
+        "ciaddr",
+        "yiaddr",
+        "siaddr",
+        "giaddr",
+        "chaddr",
+        "sname",
+        "file",
+        "cookie1",
+        "cookie2",
+        "cookie3",
+        "cookie4",
+    ),
+)
 
 # This is the size of the struct; DHCP options are not included here.
 SIZEOF_DHCP_PACKET = 240
@@ -95,11 +88,16 @@ class DHCP:
             self.invalid_reason = "Truncated DHCP packet."
             return
         packet = DHCPPacket._make(
-            struct.unpack(DHCP_PACKET, pkt_bytes[0:SIZEOF_DHCP_PACKET]))
+            struct.unpack(DHCP_PACKET, pkt_bytes[0:SIZEOF_DHCP_PACKET])
+        )
         # https://tools.ietf.org/html/rfc2131#section-3
         expected_cookie = (99, 130, 83, 99)
         actual_cookie = (
-            packet.cookie1, packet.cookie2, packet.cookie3, packet.cookie4)
+            packet.cookie1,
+            packet.cookie2,
+            packet.cookie3,
+            packet.cookie4,
+        )
         if expected_cookie != actual_cookie:
             self.valid = False
             self.invalid_reason = "Invalid DHCP cookie."
@@ -141,12 +139,12 @@ class DHCP:
             length_bytes = stream.read(1)
             if len(length_bytes) != 1:
                 raise InvalidDHCPPacket(
-                    "Truncated length field in DHCP option.")
+                    "Truncated length field in DHCP option."
+                )
             option_length = length_bytes[0]
             option_value = stream.read(option_length)
             if len(option_value) != option_length:
-                raise InvalidDHCPPacket(
-                    "Truncated DHCP option value.")
+                raise InvalidDHCPPacket("Truncated DHCP option value.")
             yield option_code, option_value
 
     def is_valid(self):
@@ -173,7 +171,7 @@ class DHCP:
         """
         packet = pformat(self.packet)
         out.write(packet)
-        out.write('\n')
+        out.write("\n")
         options = pformat(self.options)
         out.write(options)
         out.write("\nServer identifier: %s\n\n" % self.server_identifier)
@@ -203,11 +201,13 @@ def observe_dhcp_packets(input=sys.stdin.buffer, out=sys.stdout):
                 if not dhcp.is_valid():
                     out.write(dhcp.invalid_reason)
                 out.write(
-                    "     Source MAC address: %s\n" % format_eui(
-                        packet.l2.src_eui))
+                    "     Source MAC address: %s\n"
+                    % format_eui(packet.l2.src_eui)
+                )
                 out.write(
-                    "Destination MAC address: %s\n" % format_eui(
-                        packet.l2.dst_eui))
+                    "Destination MAC address: %s\n"
+                    % format_eui(packet.l2.dst_eui)
+                )
                 if packet.l2.vid is not None:
                     out.write("     Seen on 802.1Q VID: %s\n" % packet.l2.vid)
                 out.write("      Source IP address: %s\n" % packet.l3.src_ip)
@@ -234,35 +234,46 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Observes DHCP traffic specified interface.
-        """)
+        """
+    )
     parser.add_argument(
-        'interface', type=str, nargs='?',
+        "interface",
+        type=str,
+        nargs="?",
         help="Ethernet interface from which to capture traffic. Optional if "
-             "an input file is specified.")
+        "an input file is specified.",
+    )
     parser.add_argument(
-        '-i', '--input-file', type=str, required=False,
+        "-i",
+        "--input-file",
+        type=str,
+        required=False,
         help="File to read PCAP output from. Use - for stdin. Default is to "
-             "call `sudo /usr/lib/maas/dhcp-monitor` to get input.")
+        "call `sudo /usr/lib/maas/dhcp-monitor` to get input.",
+    )
 
 
-def run(args, output=sys.stdout, stdin=sys.stdin,
-        stdin_buffer=sys.stdin.buffer):
+def run(
+    args, output=sys.stdout, stdin=sys.stdin, stdin_buffer=sys.stdin.buffer
+):
     """Observe an Ethernet interface and print DHCP packets."""
     network_monitor = None
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
-        cmd = sudo(
-            [get_path("/usr/lib/maas/dhcp-monitor"), args.interface])
+        cmd = sudo([get_path("/usr/lib/maas/dhcp-monitor"), args.interface])
         network_monitor = subprocess.Popen(
-            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
         infile = network_monitor.stdout
     else:
-        if args.input_file == '-':
+        if args.input_file == "-":
             mode = os.fstat(stdin.fileno()).st_mode
             if not stat.S_ISFIFO(mode):
                 raise ActionScriptError("Expected stdin to be a pipe.")

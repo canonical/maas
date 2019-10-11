@@ -5,32 +5,17 @@
 inside the DHCP server.
 """
 
-__all__ = [
-    "generate_omapi_key",
-    "Omshell",
-    ]
+__all__ = ["generate_omapi_key", "Omshell"]
 
 import os
 import re
-from subprocess import (
-    PIPE,
-    Popen,
-)
+from subprocess import PIPE, Popen
 from textwrap import dedent
 
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
-from provisioningserver.utils import (
-    parse_key_value_file,
-    typed,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.utils import parse_key_value_file, typed
 from provisioningserver.utils.fs import tempdir
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-)
+from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
 
 log = LegacyLogger()
@@ -45,9 +30,23 @@ def call_dnssec_keygen(tmpdir):
     path.append("/usr/sbin")
     env = dict(os.environ, PATH=os.pathsep.join(path))
     return call_and_check(
-        ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
-         '-b', '512', '-n', 'HOST', '-K', tmpdir, '-q', 'omapi_key'],
-        env=env)
+        [
+            "dnssec-keygen",
+            "-r",
+            "/dev/urandom",
+            "-a",
+            "HMAC-MD5",
+            "-b",
+            "512",
+            "-n",
+            "HOST",
+            "-K",
+            tmpdir,
+            "-q",
+            "omapi_key",
+        ],
+        env=env,
+    )
 
 
 def run_repeated_keygen(tmpdir):
@@ -65,17 +64,18 @@ def run_repeated_keygen(tmpdir):
         if not key_id:
             raise AssertionError("dnssec-keygen didn't generate anything")
         key_id = key_id.decode("ascii").strip()  # Remove trailing newline.
-        key_file_name = os.path.join(tmpdir, key_id + '.private')
+        key_file_name = os.path.join(tmpdir, key_id + ".private")
         parsing_error = False
         try:
             config = parse_key_value_file(key_file_name)
         except ValueError:
             parsing_error = True
-        if parsing_error or 'Key' not in config:
+        if parsing_error or "Key" not in config:
             raise AssertionError(
-                "Key field not found in output from dnssec-keygen")
+                "Key field not found in output from dnssec-keygen"
+            )
 
-        key = config['Key']
+        key = config["Key"]
         if bad_key_pattern.search(key) is not None:
             # Force a retry.
             os.remove(key_file_name)  # Stop dnssec_keygen complaints.
@@ -141,11 +141,13 @@ class Omshell:
 
     def try_connection(self):
         # Don't pass the omapi_key as its not needed to just try to connect.
-        stdin = dedent("""\
+        stdin = dedent(
+            """\
             server {self.server_address}
             port {self.server_port}
             connect
-            """)
+            """
+        )
         stdin = stdin.format(self=self)
 
         returncode, output = self._run(stdin.encode("utf-8"))
@@ -153,7 +155,7 @@ class Omshell:
         # If the omshell worked, the last line should reference a null
         # object.  We need to strip blanks, newlines and '>' characters
         # for this to work.
-        lines = output.strip(b'\n >').splitlines()
+        lines = output.strip(b"\n >").splitlines()
         try:
             last_line = lines[-1]
         except IndexError:
@@ -173,10 +175,11 @@ class Omshell:
         # class has to be able to deal with legacy host mappings (using IP as
         # the key) and new host mappings (using the MAC as the key).
         log.debug(
-            "Creating host mapping {mac}->{ip}",
-            mac=mac_address, ip=ip_address)
-        name = mac_address.replace(':', '-')
-        stdin = dedent("""\
+            "Creating host mapping {mac}->{ip}", mac=mac_address, ip=ip_address
+        )
+        name = mac_address.replace(":", "-")
+        stdin = dedent(
+            """\
             server {self.server_address}
             port {self.server_port}
             key omapi_key {self.shared_key}
@@ -187,10 +190,14 @@ class Omshell:
             set hardware-type = 1
             set name = "{name}"
             create
-            """)
+            """
+        )
         stdin = stdin.format(
-            self=self, ip_address=ip_address, mac_address=mac_address,
-            name=name)
+            self=self,
+            ip_address=ip_address,
+            mac_address=mac_address,
+            name=name,
+        )
 
         returncode, output = self._run(stdin.encode("utf-8"))
         # If the call to omshell doesn't result in output containing the
@@ -217,10 +224,11 @@ class Omshell:
         # class has to be able to deal with legacy host mappings (using IP as
         # the key) and new host mappings (using the MAC as the key).
         log.debug(
-            "Modifing host mapping {mac}->{ip}",
-            mac=mac_address, ip=ip_address)
-        name = mac_address.replace(':', '-')
-        stdin = dedent("""\
+            "Modifing host mapping {mac}->{ip}", mac=mac_address, ip=ip_address
+        )
+        name = mac_address.replace(":", "-")
+        stdin = dedent(
+            """\
             server {self.server_address}
             key omapi_key {self.shared_key}
             connect
@@ -231,10 +239,14 @@ class Omshell:
             set hardware-address = {mac_address}
             set hardware-type = 1
             update
-            """)
+            """
+        )
         stdin = stdin.format(
-            self=self, ip_address=ip_address, mac_address=mac_address,
-            name=name)
+            self=self,
+            ip_address=ip_address,
+            mac_address=mac_address,
+            name=name,
+        )
 
         returncode, output = self._run(stdin.encode("utf-8"))
         # If the call to omshell doesn't result in output containing the
@@ -261,8 +273,9 @@ class Omshell:
         # be the key for the mapping (it will be the IP if the record was
         # created with by an old version of MAAS and the MAC otherwise).
         log.debug("Removing host mapping key={mac}", mac=mac_address)
-        mac_address = mac_address.replace(':', '-')
-        stdin = dedent("""\
+        mac_address = mac_address.replace(":", "-")
+        stdin = dedent(
+            """\
             server {self.server_address}
             port {self.server_port}
             key omapi_key {self.shared_key}
@@ -271,16 +284,16 @@ class Omshell:
             set name = "{mac_address}"
             open
             remove
-            """)
-        stdin = stdin.format(
-            self=self, mac_address=mac_address)
+            """
+        )
+        stdin = stdin.format(self=self, mac_address=mac_address)
 
         returncode, output = self._run(stdin.encode("utf-8"))
 
         # If the omshell worked, the last line should reference a null
         # object.  We need to strip blanks, newlines and '>' characters
         # for this to work.
-        lines = output.strip(b'\n >').splitlines()
+        lines = output.strip(b"\n >").splitlines()
         try:
             last_line = lines[-1]
         except IndexError:
@@ -301,7 +314,8 @@ class Omshell:
         You can't delete leases with omshell, so we're setting the expiry
         timestamp to the epoch instead.
         """
-        stdin = dedent("""\
+        stdin = dedent(
+            """\
             server {self.server_address}
             port {self.server_port}
             key omapi_key {self.shared_key}
@@ -311,9 +325,9 @@ class Omshell:
             open
             set ends = 00:00:00:00
             update
-            """)
-        stdin = stdin.format(
-            self=self, ip_address=ip_address)
+            """
+        )
+        stdin = stdin.format(self=self, ip_address=ip_address)
 
         returncode, output = self._run(stdin.encode("utf-8"))
 

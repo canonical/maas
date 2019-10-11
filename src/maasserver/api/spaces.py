@@ -4,31 +4,15 @@
 """API handlers: `Space`."""
 
 from django.db.models.query import QuerySet
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
-)
-from maasserver.exceptions import (
-    MAASAPIBadRequest,
-    MAASAPIValidationError,
-)
+from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms.space import SpaceForm
-from maasserver.models import (
-    Space,
-    Subnet,
-    VLAN,
-)
+from maasserver.models import Space, Subnet, VLAN
 from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
-DISPLAYED_SPACE_FIELDS = (
-    'resource_uri',
-    'id',
-    'name',
-    'vlans',
-    'subnets',
-)
+DISPLAYED_SPACE_FIELDS = ("resource_uri", "id", "name", "vlans", "subnets")
 
 
 def _has_undefined_space():
@@ -38,15 +22,16 @@ def _has_undefined_space():
 
 # Placeholder Space-like object for backward compatibility.
 UNDEFINED_SPACE = Space(
-    id=-1, name=Space.UNDEFINED,
+    id=-1,
+    name=Space.UNDEFINED,
     description="Backward compatibility object to ensure objects not "
-                "associated with a space can be found.")
+    "associated with a space can be found.",
+)
 
 UNDEFINED_SPACE.save = None
 
 
 class SpacesQuerySet(QuerySet):
-
     def __iter__(self):
         """Custom iterator which also includes a dummy "undefined" space."""
         yield from super().__iter__()
@@ -58,6 +43,7 @@ class SpacesQuerySet(QuerySet):
 
 class SpacesHandler(OperationsHandler):
     """Manage spaces."""
+
     api_doc_section_name = "Spaces"
     update = delete = None
     fields = DISPLAYED_SPACE_FIELDS
@@ -65,7 +51,7 @@ class SpacesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('spaces_handler', [])
+        return ("spaces_handler", [])
 
     def read(self, request):
         """@description-title List all spaces
@@ -109,6 +95,7 @@ class SpacesHandler(OperationsHandler):
 
 class SpaceHandler(OperationsHandler):
     """Manage space."""
+
     api_doc_section_name = "Space"
     create = None
     model = Space
@@ -123,7 +110,7 @@ class SpaceHandler(OperationsHandler):
                 space_id = Space.UNDEFINED
             else:
                 space_id = space.id
-        return ('space_handler', (space_id,))
+        return ("space_handler", (space_id,))
 
     @classmethod
     def name(cls, space):
@@ -167,7 +154,8 @@ class SpaceHandler(OperationsHandler):
         if id == "-1" or id == Space.UNDEFINED and _has_undefined_space():
             return UNDEFINED_SPACE
         return Space.objects.get_space_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update space
@@ -190,9 +178,11 @@ class SpaceHandler(OperationsHandler):
         """
         if id == "-1" or id == Space.UNDEFINED:
             raise MAASAPIBadRequest(
-                "Space cannot be modified: %s" % Space.UNDEFINED)
+                "Space cannot be modified: %s" % Space.UNDEFINED
+            )
         space = Space.objects.get_space_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         form = SpaceForm(instance=space, data=request.data)
         if form.is_valid():
             return form.save()
@@ -214,8 +204,10 @@ class SpaceHandler(OperationsHandler):
         """
         if id == "-1" or id == Space.UNDEFINED:
             raise MAASAPIBadRequest(
-                "Space cannot be deleted: %s" % Space.UNDEFINED)
+                "Space cannot be deleted: %s" % Space.UNDEFINED
+            )
         space = Space.objects.get_space_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         space.delete()
         return rc.DELETED

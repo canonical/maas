@@ -16,10 +16,7 @@ from maasserver.workers import (
     WorkerProcess,
     WorkersService,
 )
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import DeferredValue
 from twisted.internet import reactor
@@ -30,54 +27,52 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestWorkersCount(MAASTestCase):
-
     def test_MAX_WORKERS_COUNT_default_cpucount(self):
         from maasserver.workers import MAX_WORKERS_COUNT
+
         self.assertEquals(os.cpu_count(), MAX_WORKERS_COUNT)
 
     def test_set_max_workers_count(self):
         worker_count = random.randint(1, 8)
         set_max_workers_count(worker_count)
         from maasserver.workers import MAX_WORKERS_COUNT
+
         self.assertEquals(worker_count, MAX_WORKERS_COUNT)
 
 
 class TestWorkersService(MAASTestCase):
-
     def test_defaults_to_max_workers_and_argv_zero(self):
         worker_count = random.randint(1, 8)
         set_max_workers_count(worker_count)
         service = WorkersService(reactor)
 
         from maasserver.workers import MAX_WORKERS_COUNT
+
         self.assertEquals(MAX_WORKERS_COUNT, service.worker_count)
         self.assertEquals(sys.argv[0], service.worker_cmd)
 
     def test_calls_spawnWorkers_on_start(self):
         service = WorkersService(reactor)
-        self.patch(service, 'spawnWorkers')
+        self.patch(service, "spawnWorkers")
         service.startService()
         self.assertThat(service.spawnWorkers, MockCalledOnceWith())
 
     def test_spawnWorkers_calls__spawnWorker_for_missing_workers(self):
         worker_count = random.randint(2, 16)
         service = WorkersService(reactor, worker_count=worker_count)
-        self.patch(service, '_spawnWorker')
+        self.patch(service, "_spawnWorker")
         pid = random.randint(1, 500)
         service.workers[pid] = WorkerProcess(service)
         service.spawnWorkers()
-        calls = [
-            call(runningImport=True)
-        ] + [
-            call()
-            for _ in range(worker_count - 2)
+        calls = [call(runningImport=True)] + [
+            call() for _ in range(worker_count - 2)
         ]
         self.assertThat(service._spawnWorker, MockCallsMatch(*calls))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_killWorker_spawns_another(self):
-        service = WorkersService(reactor, worker_count=1, worker_cmd='cat')
+        service = WorkersService(reactor, worker_count=1, worker_cmd="cat")
 
         dv = DeferredValue()
         original_unregisterWorker = service.unregisterWorker
@@ -85,8 +80,10 @@ class TestWorkersService(MAASTestCase):
         def mock_unregisterWorker(*args, **kwargs):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
-        self.patch(service, 'unregisterWorker').side_effect = (
-            mock_unregisterWorker)
+
+        self.patch(
+            service, "unregisterWorker"
+        ).side_effect = mock_unregisterWorker
 
         try:
             service.startService()
@@ -103,7 +100,7 @@ class TestWorkersService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_termWorker_spawns_another(self):
-        service = WorkersService(reactor, worker_count=1, worker_cmd='cat')
+        service = WorkersService(reactor, worker_count=1, worker_cmd="cat")
 
         dv = DeferredValue()
         original_unregisterWorker = service.unregisterWorker
@@ -111,8 +108,10 @@ class TestWorkersService(MAASTestCase):
         def mock_unregisterWorker(*args, **kwargs):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
-        self.patch(service, 'unregisterWorker').side_effect = (
-            mock_unregisterWorker)
+
+        self.patch(
+            service, "unregisterWorker"
+        ).side_effect = mock_unregisterWorker
 
         try:
             service.startService()
@@ -129,7 +128,7 @@ class TestWorkersService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_doesnt(self):
-        service = WorkersService(reactor, worker_count=1, worker_cmd='cat')
+        service = WorkersService(reactor, worker_count=1, worker_cmd="cat")
 
         dv = DeferredValue()
         original_unregisterWorker = service.unregisterWorker
@@ -137,8 +136,10 @@ class TestWorkersService(MAASTestCase):
         def mock_unregisterWorker(*args, **kwargs):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
-        self.patch(service, 'unregisterWorker').side_effect = (
-            mock_unregisterWorker)
+
+        self.patch(
+            service, "unregisterWorker"
+        ).side_effect = mock_unregisterWorker
 
         try:
             service.startService()

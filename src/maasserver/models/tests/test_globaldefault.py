@@ -8,10 +8,7 @@ __all__ = []
 import random
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import (
-    Domain,
-    GlobalDefault,
-)
+from maasserver.models import Domain, GlobalDefault
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -32,21 +29,24 @@ class TestGlobalDefault(MAASServerTestCase):
 
     def test_returns_default_domain(self):
         instance = GlobalDefault.objects.instance()
-        self.assertThat(instance.domain, Equals(
-            Domain.objects.get_default_domain()))
+        self.assertThat(
+            instance.domain, Equals(Domain.objects.get_default_domain())
+        )
 
     def test_default_domain_changes_take_effect(self):
         instance = GlobalDefault.objects.instance()
         instance.domain = factory.make_Domain()
         instance.save()
-        self.assertThat(instance.domain, Equals(
-            Domain.objects.get_default_domain()))
+        self.assertThat(
+            instance.domain, Equals(Domain.objects.get_default_domain())
+        )
 
     def test_nodes_with_previous_default_domain_switch_to_new_default(self):
         global_defaults = GlobalDefault.objects.instance()
         node = factory.make_Node(status=NODE_STATUS.READY)
         self.assertThat(
-            node.domain, Equals(Domain.objects.get_default_domain()))
+            node.domain, Equals(Domain.objects.get_default_domain())
+        )
         global_defaults.domain = factory.make_Domain()
         global_defaults.save()
         node = reload_object(node)
@@ -56,8 +56,7 @@ class TestGlobalDefault(MAASServerTestCase):
         global_defaults = GlobalDefault.objects.instance()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         old_default = Domain.objects.get_default_domain()
-        self.assertThat(
-            node.domain, Equals(old_default))
+        self.assertThat(node.domain, Equals(old_default))
         global_defaults.domain = factory.make_Domain()
         global_defaults.save()
         node = reload_object(node)
@@ -65,13 +64,17 @@ class TestGlobalDefault(MAASServerTestCase):
 
     def test_nodes_with_previous_default_domain_keep_domain_if_ephemeral(self):
         global_defaults = GlobalDefault.objects.instance()
-        node = factory.make_Node(status=random.choice([
-            NODE_STATUS.COMMISSIONING,
-            NODE_STATUS.TESTING,
-            NODE_STATUS.RESCUE_MODE]))
+        node = factory.make_Node(
+            status=random.choice(
+                [
+                    NODE_STATUS.COMMISSIONING,
+                    NODE_STATUS.TESTING,
+                    NODE_STATUS.RESCUE_MODE,
+                ]
+            )
+        )
         old_default = Domain.objects.get_default_domain()
-        self.assertThat(
-            node.domain, Equals(old_default))
+        self.assertThat(node.domain, Equals(old_default))
         global_defaults.domain = factory.make_Domain()
         global_defaults.save()
         node = reload_object(node)

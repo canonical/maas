@@ -3,29 +3,23 @@
 
 """Monitored service driver."""
 
-__all__ = [
-    "DHCPv4Server",
-    "DHCPv6Server",
-    ]
+__all__ = ["DHCPv4Server", "DHCPv6Server"]
 
-from abc import (
-    ABCMeta,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractproperty
 
 from provisioningserver.path import get_tentative_data_path
 
 # Location of the DHCPv4 configuration file.
-DHCPv4_CONFIG_FILE = '/var/lib/maas/dhcpd.conf'
+DHCPv4_CONFIG_FILE = "/var/lib/maas/dhcpd.conf"
 
 # Location of the DHCPv4 interfaces file.
-DHCPv4_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
+DHCPv4_INTERFACES_FILE = "/var/lib/maas/dhcpd-interfaces"
 
 # Location of the DHCPv6 configuration file.
-DHCPv6_CONFIG_FILE = '/var/lib/maas/dhcpd6.conf'
+DHCPv6_CONFIG_FILE = "/var/lib/maas/dhcpd6.conf"
 
 # Location of the DHCPv6 interfaces file.
-DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
+DHCPv6_INTERFACES_FILE = "/var/lib/maas/dhcpd6-interfaces"
 
 # Message to put in the DHCP config file when the DHCP server gets stopped.
 DISABLED_DHCP_SERVER = "# DHCP server stopped and disabled."
@@ -64,7 +58,7 @@ class DHCPv4Server(DHCPServer):
     """
 
     descriptive_name = "DHCPv4"
-    template_basename = 'dhcpd.conf.template'
+    template_basename = "dhcpd.conf.template"
     interfaces_filename = get_tentative_data_path(DHCPv4_INTERFACES_FILE)
     config_filename = get_tentative_data_path(DHCPv4_CONFIG_FILE)
     dhcp_service = "dhcpd"
@@ -78,7 +72,7 @@ class DHCPv6Server(DHCPServer):
     """
 
     descriptive_name = "DHCPv6"
-    template_basename = 'dhcpd6.conf.template'
+    template_basename = "dhcpd6.conf.template"
     interfaces_filename = get_tentative_data_path(DHCPv6_INTERFACES_FILE)
     config_filename = get_tentative_data_path(DHCPv6_CONFIG_FILE)
     dhcp_service = "dhcpd6"

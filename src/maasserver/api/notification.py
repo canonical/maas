@@ -1,36 +1,28 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    "NotificationHandler",
-    "NotificationsHandler",
-]
+__all__ = ["NotificationHandler", "NotificationsHandler"]
 
 from django.shortcuts import get_object_or_404
-from maasserver.api.support import (
-    admin_method,
-    operation,
-    OperationsHandler,
-)
-from maasserver.exceptions import (
-    MAASAPIForbidden,
-    MAASAPIValidationError,
-)
+from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.exceptions import MAASAPIForbidden, MAASAPIValidationError
 from maasserver.forms.notification import NotificationForm
 from maasserver.models.notification import Notification
 from piston3.utils import rc
 
 # Notification fields exposed on the API.
-DISPLAYED_NOTIFICATION_FIELDS = frozenset((
-    'id',
-    'ident',
-    'user',
-    'users',
-    'admins',
-    'message',
-    'context',
-    'category',
-))
+DISPLAYED_NOTIFICATION_FIELDS = frozenset(
+    (
+        "id",
+        "ident",
+        "user",
+        "users",
+        "admins",
+        "message",
+        "context",
+        "category",
+    )
+)
 
 
 class NotificationsHandler(OperationsHandler):
@@ -41,7 +33,7 @@ class NotificationsHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('notifications_handler', [])
+        return ("notifications_handler", [])
 
     def read(self, request):
         """@description-title List notifications
@@ -55,7 +47,7 @@ class NotificationsHandler(OperationsHandler):
         @success-example "success-json" [exkey=notifications-read] placeholder
         text
         """
-        return Notification.objects.find_for_user(request.user).order_by('id')
+        return Notification.objects.find_for_user(request.user).order_by("id")
 
     @admin_method
     def create(self, request):
@@ -186,8 +178,7 @@ class NotificationHandler(OperationsHandler):
             Not Found
         """
         notification = get_object_or_404(Notification, id=id)
-        form = NotificationForm(
-            data=request.data, instance=notification)
+        form = NotificationForm(data=request.data, instance=notification)
         if form.is_valid():
             return form.save()
         else:
@@ -242,4 +233,4 @@ class NotificationHandler(OperationsHandler):
         notification_id = "id"
         if notification is not None:
             notification_id = notification.id
-        return ('notification_handler', (notification_id,))
+        return ("notification_handler", (notification_id,))

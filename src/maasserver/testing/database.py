@@ -3,19 +3,13 @@
 
 """MAAS database cluster fixture."""
 
-__all__ = [
-    "MAASClusterFixture",
-    ]
+__all__ = ["MAASClusterFixture"]
 
-from django.db import (
-    connections,
-    DEFAULT_DB_ALIAS,
-)
+from django.db import connections, DEFAULT_DB_ALIAS
 from postgresfixture import ClusterFixture
 
 
 class MAASClusterFixture(ClusterFixture):
-
     def __init__(self, database=None):
         """
         @param database: The name of the database to use. Must correspond to a
@@ -23,10 +17,11 @@ class MAASClusterFixture(ClusterFixture):
             `DEFAULT_DB_ALIAS` is used.
         """
         self.connection = connections[
-            DEFAULT_DB_ALIAS if database is None else database]
+            DEFAULT_DB_ALIAS if database is None else database
+        ]
         super(MAASClusterFixture, self).__init__(
-            datadir=self.connection.settings_dict["HOST"],
-            preserve=True)
+            datadir=self.connection.settings_dict["HOST"], preserve=True
+        )
 
     @property
     def dbname(self):

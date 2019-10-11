@@ -17,23 +17,20 @@ __all__ = [
 
 from email.message import Message
 from functools import partial
-from inspect import (
-    cleandoc,
-    getdoc,
-)
+from inspect import cleandoc, getdoc
 import io
 import re
 import sys
 from urllib.parse import urlparse
 
 
-re_paragraph_splitter = re.compile(
-    r"(?:\r\n){2,}|\r{2,}|\n{2,}", re.MULTILINE)
+re_paragraph_splitter = re.compile(r"(?:\r\n){2,}|\r{2,}|\n{2,}", re.MULTILINE)
 
 paragraph_split = re_paragraph_splitter.split
 docstring_split = partial(paragraph_split, maxsplit=1)
 remove_line_breaks = lambda string: (
-    " ".join(line.strip() for line in string.splitlines()))
+    " ".join(line.strip() for line in string.splitlines())
+)
 
 newline = "\n"
 empty = ""
@@ -63,8 +60,7 @@ def parse_docstring(thing):
     return title, body
 
 
-re_camelcase = re.compile(
-    r"([A-Z]*[a-z0-9]+|[A-Z]+)(?:(?=[^a-z0-9])|\Z)")
+re_camelcase = re.compile(r"([A-Z]*[a-z0-9]+|[A-Z]+)(?:(?=[^a-z0-9])|\Z)")
 
 
 def safe_name(string):
@@ -144,9 +140,7 @@ def get_response_content_type(response):
 def is_response_textual(response):
     """Is the response body text?"""
     content_type = get_response_content_type(response)
-    return (
-        content_type.endswith("/json") or
-        content_type.startswith("text/"))
+    return content_type.endswith("/json") or content_type.startswith("text/")
 
 
 def print_response_headers(headers, file=None):
@@ -158,10 +152,10 @@ def print_response_headers(headers, file=None):
     # Function to change headers like "transfer-encoding" into
     # "Transfer-Encoding".
     cap = lambda header: "-".join(
-        part.capitalize() for part in header.split("-"))
+        part.capitalize() for part in header.split("-")
+    )
     # Format string to prettify reporting of response headers.
-    form = "%%%ds: %%s" % (
-        max(len(header) for header in headers) + 2)
+    form = "%%%ds: %%s" % (max(len(header) for header in headers) + 2)
     # Print the response.
     for header in sorted(headers):
         print(form % (cap(header), headers[header]), file=file)

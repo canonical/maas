@@ -3,21 +3,15 @@
 
 """RootKey model."""
 
-__all__ = [
-    'RootKey',
-]
+__all__ = ["RootKey"]
 
-from django.db.models import (
-    BigAutoField,
-    BinaryField,
-    DateTimeField,
-)
+from django.db.models import BigAutoField, BinaryField, DateTimeField
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
 class RootKey(TimestampedModel):
     """A root key for signing macaroons."""
 
-    id = BigAutoField(primary_key=True, verbose_name='ID')
+    id = BigAutoField(primary_key=True, verbose_name="ID")
     material = BinaryField()
     expiration = DateTimeField()

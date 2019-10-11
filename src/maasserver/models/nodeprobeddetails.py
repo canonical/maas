@@ -25,10 +25,7 @@ from provisioningserver.refresh.node_info_scripts import (
 # namespaces. These namespaces are used in the return values from
 # get_single_probed_details() and get_probed_details(), and in the
 # composite XML document that's used when evaluating tag expressions.
-script_output_nsmap = {
-    LLDP_OUTPUT_NAME: "lldp",
-    LSHW_OUTPUT_NAME: "lshw",
-}
+script_output_nsmap = {LLDP_OUTPUT_NAME: "lldp", LSHW_OUTPUT_NAME: "lshw"}
 
 
 def get_single_probed_details(node):
@@ -47,10 +44,10 @@ def get_single_probed_details(node):
         # ScriptName only works here because LLDP and LSHW are builtin scripts
         # which are not stored in the Script table.
         for script_result in script_set.scriptresult_set.filter(
-                status=SCRIPT_STATUS.PASSED,
-                script_name__in=script_output_nsmap).only(
-                    'status', 'script_name', 'stdout',
-                    'script_id', 'script_set_id'):
+            status=SCRIPT_STATUS.PASSED, script_name__in=script_output_nsmap
+        ).only(
+            "status", "script_name", "stdout", "script_id", "script_set_id"
+        ):
             namespace = script_output_nsmap[script_result.name]
             details_template[namespace] = script_result.stdout
     return details_template
@@ -86,10 +83,14 @@ def get_probed_details(nodes):
               script_result.script_name IN %s AND
               script_set.id = node.current_commissioning_script_set_id;
         """
-        cursor.execute(sql_query, [
-            tuple(node_ids), SCRIPT_STATUS.PASSED,
-            tuple(script_output_nsmap)
-        ])
+        cursor.execute(
+            sql_query,
+            [
+                tuple(node_ids),
+                SCRIPT_STATUS.PASSED,
+                tuple(script_output_nsmap),
+            ],
+        )
         for node_id, script_name, stdout in cursor.fetchall():
             system_id = node_ids[node_id].system_id
             namespace = script_output_nsmap[script_name]

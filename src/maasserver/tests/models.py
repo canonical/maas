@@ -4,19 +4,19 @@
 """Test related classes and functions for maas and its applications."""
 
 __all__ = [
-    'BulkManagerParentTestModel',
-    'BulkManagerTestModel',
-    'CIDRTestModel',
-    'FieldChangeTestModel',
-    'GenericTestModel',
-    'IPv4CIDRTestModel',
-    'JSONFieldModel',
-    'LargeObjectFieldModel',
-    'MAASIPAddressFieldModel',
-    'MessagesTestModel',
-    'TimestampedModelTestModel',
-    'XMLFieldModel',
-    ]
+    "BulkManagerParentTestModel",
+    "BulkManagerTestModel",
+    "CIDRTestModel",
+    "FieldChangeTestModel",
+    "GenericTestModel",
+    "IPv4CIDRTestModel",
+    "JSONFieldModel",
+    "LargeObjectFieldModel",
+    "MAASIPAddressFieldModel",
+    "MessagesTestModel",
+    "TimestampedModelTestModel",
+    "XMLFieldModel",
+]
 
 from django.db.models import (
     CASCADE,
@@ -40,6 +40,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 class GenericTestModel(Model):
     """A multi-purpose test model with one field, named `field`."""
+
     field = CharField(max_length=20, blank=True)
 
 
@@ -49,7 +50,6 @@ class JSONFieldModel(Model):
 
 
 class XMLFieldModel(Model):
-
     class Meta:
         db_table = "docs"
 
@@ -71,8 +71,12 @@ class TimestampedOneToOneTestModel(TimestampedModel):
     # This model inherits from TimestampedModel so it will have a 'created'
     # field and an 'updated' field.
     generic = OneToOneField(
-        GenericTestModel, null=False, blank=False, on_delete=CASCADE,
-        primary_key=True)
+        GenericTestModel,
+        null=False,
+        blank=False,
+        on_delete=CASCADE,
+        primary_key=True,
+    )
 
 
 class FieldChangeTestModel(Model):
@@ -86,7 +90,8 @@ class BulkManagerParentTestModel(Model):
 
 class BulkManagerTestModel(Model):
     parent = ForeignKey(
-        'BulkManagerParentTestModel', editable=False, on_delete=CASCADE)
+        "BulkManagerParentTestModel", editable=False, on_delete=CASCADE
+    )
 
     objects = BulkManager()
 
@@ -111,7 +116,8 @@ class IPv4CIDRTestModel(Model):
 class CleanSaveTestModel(CleanSave, Model):
     field = CharField(max_length=20, null=True, blank=True)
     related = ForeignKey(
-        GenericTestModel, null=True, blank=True, on_delete=CASCADE)
+        GenericTestModel, null=True, blank=True, on_delete=CASCADE
+    )
 
     def __test_prop_get(self):
         return self.__inner

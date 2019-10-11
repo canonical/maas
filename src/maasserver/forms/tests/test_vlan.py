@@ -16,24 +16,23 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Not,
-)
+from testtools.matchers import Equals, Not
 
 
 class TestVLANForm(MAASServerTestCase):
-
     def test__requires_vid(self):
         fabric = factory.make_Fabric()
         form = VLANForm(fabric=fabric, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEqual({
-            "vid": [
-                "This field is required.",
-                "VID must be between 0 and 4094.",
-                ],
-            }, form.errors)
+        self.assertEqual(
+            {
+                "vid": [
+                    "This field is required.",
+                    "VID must be between 0 and 4094.",
+                ]
+            },
+            form.errors,
+        )
 
     def test__vlans_already_using_relay_vlan_not_shown(self):
         fabric = Fabric.objects.get_default_fabric()
@@ -42,19 +41,20 @@ class TestVLANForm(MAASServerTestCase):
         form = VLANForm(fabric=fabric, data={})
         self.assertItemsEqual(
             [fabric.get_default_vlan(), relay_vlan],
-            form.fields['relay_vlan'].queryset)
+            form.fields["relay_vlan"].queryset,
+        )
 
     def test__self_vlan_not_used_in_relay_vlan_field(self):
         fabric = Fabric.objects.get_default_fabric()
         relay_vlan = fabric.get_default_vlan()
         form = VLANForm(instance=relay_vlan, data={})
-        self.assertItemsEqual([], form.fields['relay_vlan'].queryset)
+        self.assertItemsEqual([], form.fields["relay_vlan"].queryset)
 
     def test__no_relay_vlans_allowed_when_dhcp_on(self):
         vlan = factory.make_VLAN(dhcp_on=True)
         factory.make_VLAN()
         form = VLANForm(instance=vlan, data={})
-        self.assertItemsEqual([], form.fields['relay_vlan'].queryset)
+        self.assertItemsEqual([], form.fields["relay_vlan"].queryset)
 
     def test__creates_vlan(self):
         fabric = factory.make_Fabric()
@@ -62,12 +62,15 @@ class TestVLANForm(MAASServerTestCase):
         vlan_description = factory.make_name("description")
         vid = random.randint(1, 1000)
         mtu = random.randint(552, 4096)
-        form = VLANForm(fabric=fabric, data={
-            "name": vlan_name,
-            "description": vlan_description,
-            "vid": vid,
-            "mtu": mtu,
-        })
+        form = VLANForm(
+            fabric=fabric,
+            data={
+                "name": vlan_name,
+                "description": vlan_description,
+                "vid": vid,
+                "mtu": mtu,
+            },
+        )
         self.assertTrue(form.is_valid(), form.errors)
         vlan = form.save()
         self.assertEqual(vlan_name, vlan.name)
@@ -80,10 +83,7 @@ class TestVLANForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("vlan")
         vid = random.randint(1, 1000)
-        form = VLANForm(fabric=fabric, data={
-            "name": vlan_name,
-            "vid": vid,
-        })
+        form = VLANForm(fabric=fabric, data={"name": vlan_name, "vid": vid})
         self.assertTrue(form.is_valid(), form.errors)
         vlan = form.save()
         self.assertEqual(vlan_name, vlan.name)
@@ -102,12 +102,15 @@ class TestVLANForm(MAASServerTestCase):
         new_description = factory.make_name("description")
         new_vid = random.randint(1, 1000)
         new_mtu = random.randint(552, 4096)
-        form = VLANForm(instance=vlan, data={
-            "name": new_name,
-            "description": new_description,
-            "vid": new_vid,
-            "mtu": new_mtu,
-        })
+        form = VLANForm(
+            instance=vlan,
+            data={
+                "name": new_name,
+                "description": new_description,
+                "vid": new_vid,
+                "mtu": new_mtu,
+            },
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(vlan).name)
@@ -118,17 +121,13 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_verfies_primary_rack_is_on_vlan(self):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
-        form = VLANForm(instance=vlan, data={
-            "primary_rack": rack.system_id,
-        })
+        form = VLANForm(instance=vlan, data={"primary_rack": rack.system_id})
         self.assertFalse(form.is_valid(), form.errors)
 
     def test_update_sets_primary_rack(self):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
-        form = VLANForm(instance=vlan, data={
-            "primary_rack": rack.system_id,
-        })
+        form = VLANForm(instance=vlan, data={"primary_rack": rack.system_id})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(rack, reload_object(vlan).primary_rack)
@@ -138,9 +137,7 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        form = VLANForm(instance=vlan, data={
-            "primary_rack": "",
-        })
+        form = VLANForm(instance=vlan, data={"primary_rack": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(None, reload_object(vlan).primary_rack)
@@ -148,17 +145,13 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_verfies_secondary_rack_is_on_vlan(self):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
-        form = VLANForm(instance=vlan, data={
-            "secondary_rack": rack.system_id
-        })
+        form = VLANForm(instance=vlan, data={"secondary_rack": rack.system_id})
         self.assertFalse(form.is_valid(), form.errors)
 
     def test_update_sets_secondary_rack(self):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
-        form = VLANForm(instance=vlan, data={
-            "secondary_rack": rack.system_id
-        })
+        form = VLANForm(instance=vlan, data={"secondary_rack": rack.system_id})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(rack, reload_object(vlan).secondary_rack)
@@ -168,9 +161,7 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.secondary_rack = rack
         vlan.save()
-        form = VLANForm(instance=vlan, data={
-            "secondary_rack": "",
-        })
+        form = VLANForm(instance=vlan, data={"secondary_rack": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(None, reload_object(vlan).secondary_rack)
@@ -182,9 +173,9 @@ class TestVLANForm(MAASServerTestCase):
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "primary_rack": "",
-        })
+        form = VLANForm(
+            instance=reload_object(vlan), data={"primary_rack": ""}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -198,9 +189,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "primary_rack": secondary_rack.system_id,
-        })
+        form = VLANForm(
+            instance=reload_object(vlan),
+            data={"primary_rack": secondary_rack.system_id},
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -212,18 +204,22 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "secondary_rack": rack.system_id,
-        })
+        form = VLANForm(
+            instance=reload_object(vlan),
+            data={"secondary_rack": rack.system_id},
+        )
         self.assertFalse(form.is_valid())
 
     def test_update_setting_both_racks_to_same_fails(self):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
-        form = VLANForm(instance=vlan, data={
-            "primary_rack": rack.system_id,
-            "secondary_rack": rack.system_id,
-        })
+        form = VLANForm(
+            instance=vlan,
+            data={
+                "primary_rack": rack.system_id,
+                "secondary_rack": rack.system_id,
+            },
+        )
         self.assertFalse(form.is_valid())
 
     def test_update_setting_secondary_fails_when_primary_dead(self):
@@ -231,13 +227,13 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        service = Service.objects.get(node=rack, name='rackd')
+        service = Service.objects.get(node=rack, name="rackd")
         service.status = SERVICE_STATUS.DEAD
         service.save()
         second_rack = factory.make_RackController(vlan=vlan)
-        form = VLANForm(instance=vlan, data={
-            "secondary_rack": second_rack.system_id,
-        })
+        form = VLANForm(
+            instance=vlan, data={"secondary_rack": second_rack.system_id}
+        )
         self.assertFalse(form.is_valid())
 
     def test_update_setting_secondary_allowed_when_primary_on(self):
@@ -245,13 +241,13 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        service = Service.objects.get(node=rack, name='rackd')
+        service = Service.objects.get(node=rack, name="rackd")
         service.status = SERVICE_STATUS.RUNNING
         service.save()
         second_rack = factory.make_RackController(vlan=vlan)
-        form = VLANForm(instance=vlan, data={
-            "secondary_rack": second_rack.system_id,
-        })
+        form = VLANForm(
+            instance=vlan, data={"secondary_rack": second_rack.system_id}
+        )
         self.assertTrue(form.is_valid())
         form.save()
         vlan = reload_object(vlan)
@@ -263,9 +259,7 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "dhcp_on": "true",
-        })
+        form = VLANForm(instance=reload_object(vlan), data={"dhcp_on": "true"})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -274,9 +268,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_sets_relay_vlan(self):
         vlan = factory.make_VLAN()
         relay_vlan = factory.make_VLAN()
-        form = VLANForm(instance=vlan, data={
-            "relay_vlan": relay_vlan.id,
-        })
+        form = VLANForm(instance=vlan, data={"relay_vlan": relay_vlan.id})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -285,9 +277,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_clears_relay_vlan_when_None(self):
         relay_vlan = factory.make_VLAN()
         vlan = factory.make_VLAN(relay_vlan=relay_vlan)
-        form = VLANForm(instance=vlan, data={
-            "relay_vlan": None,
-        })
+        form = VLANForm(instance=vlan, data={"relay_vlan": None})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -296,9 +286,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_clears_relay_vlan_when_empty(self):
         relay_vlan = factory.make_VLAN()
         vlan = factory.make_VLAN(relay_vlan=relay_vlan)
-        form = VLANForm(instance=vlan, data={
-            "relay_vlan": "",
-        })
+        form = VLANForm(instance=vlan, data={"relay_vlan": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -307,9 +295,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_sets_space(self):
         vlan = factory.make_VLAN()
         space = factory.make_Space()
-        form = VLANForm(instance=vlan, data={
-            "space": space.id,
-        })
+        form = VLANForm(instance=vlan, data={"space": space.id})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -318,9 +304,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_sets_space_by_specifier(self):
         vlan = factory.make_VLAN()
         space = factory.make_Space()
-        form = VLANForm(instance=vlan, data={
-            "space": "name:" + space.name,
-        })
+        form = VLANForm(instance=vlan, data={"space": "name:" + space.name})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -329,9 +313,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_clears_space_when_None(self):
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
-        form = VLANForm(instance=vlan, data={
-            "space": None,
-        })
+        form = VLANForm(instance=vlan, data={"space": None})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -340,9 +322,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_clears_space_when_empty(self):
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
-        form = VLANForm(instance=vlan, data={
-            "space": '',
-        })
+        form = VLANForm(instance=vlan, data={"space": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -351,9 +331,7 @@ class TestVLANForm(MAASServerTestCase):
     def test_update_clears_space_vlan_when_empty(self):
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
-        form = VLANForm(instance=vlan, data={
-            "space": "",
-        })
+        form = VLANForm(instance=vlan, data={"space": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -366,9 +344,7 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "dhcp_on": "true",
-        })
+        form = VLANForm(instance=reload_object(vlan), data={"dhcp_on": "true"})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -376,9 +352,7 @@ class TestVLANForm(MAASServerTestCase):
 
     def test_update_validates_primary_rack_with_dhcp_on(self):
         vlan = factory.make_VLAN()
-        form = VLANForm(instance=vlan, data={
-            "dhcp_on": "true",
-        })
+        form = VLANForm(instance=vlan, data={"dhcp_on": "true"})
         self.assertFalse(form.is_valid())
 
     def test_update_validates_subnet_with_dhcp_on(self):
@@ -386,9 +360,7 @@ class TestVLANForm(MAASServerTestCase):
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "dhcp_on": "true",
-        })
+        form = VLANForm(instance=reload_object(vlan), data={"dhcp_on": "true"})
         self.assertFalse(form.is_valid())
 
     def test_update_can_delete_primary_and_set_dhcp_on_with_secondary(self):
@@ -399,10 +371,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
         vlan.save()
-        form = VLANForm(instance=reload_object(vlan), data={
-            "primary_rack": "",
-            "dhcp_on": "true",
-        })
+        form = VLANForm(
+            instance=reload_object(vlan),
+            data={"primary_rack": "", "dhcp_on": "true"},
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
@@ -412,22 +384,24 @@ class TestVLANForm(MAASServerTestCase):
 
 
 class TestVLANFormFabricModification(MAASServerTestCase):
-
     def test__cannot_move_vlan_with_overlapping_vid(self):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         fabric1_untagged = fabric1.get_default_vlan()
-        form = VLANForm(instance=fabric1_untagged, data={
-            "fabric": fabric0.id
-        })
+        form = VLANForm(instance=fabric1_untagged, data={"fabric": fabric0.id})
         is_valid = form.is_valid()
         self.assertThat(is_valid, Equals(False))
-        self.assertThat(dict(form.errors), Equals(
-            {'__all__': [
-                'A VLAN with the specified VID already '
-                'exists in the destination fabric.'
-            ]}
-        ))
+        self.assertThat(
+            dict(form.errors),
+            Equals(
+                {
+                    "__all__": [
+                        "A VLAN with the specified VID already "
+                        "exists in the destination fabric."
+                    ]
+                }
+            ),
+        )
         with ExpectedException(ValueError):
             form.save()
 
@@ -435,10 +409,9 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         fabric1_untagged = fabric1.get_default_vlan()
-        form = VLANForm(instance=fabric1_untagged, data={
-            "fabric": fabric0.id,
-            "vid": 10
-        })
+        form = VLANForm(
+            instance=fabric1_untagged, data={"fabric": fabric0.id, "vid": 10}
+        )
         is_valid = form.is_valid()
         self.assertThat(is_valid, Equals(True))
         form.save()
@@ -447,10 +420,9 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         fabric1_untagged = fabric1.get_default_vlan()
-        form = VLANForm(instance=fabric1_untagged, data={
-            "fabric": fabric0.id,
-            "vid": 10
-        })
+        form = VLANForm(
+            instance=fabric1_untagged, data={"fabric": fabric0.id, "vid": 10}
+        )
         is_valid = form.is_valid()
         self.assertThat(is_valid, Equals(True))
         form.save()
@@ -461,10 +433,9 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         fabric1 = factory.make_Fabric()
         factory.make_VLAN(fabric=fabric1)
         fabric1_untagged = fabric1.get_default_vlan()
-        form = VLANForm(instance=fabric1_untagged, data={
-            "fabric": fabric0.id,
-            "vid": 10
-        })
+        form = VLANForm(
+            instance=fabric1_untagged, data={"fabric": fabric0.id, "vid": 10}
+        )
         is_valid = form.is_valid()
         form.save()
         self.assertThat(is_valid, Equals(True))

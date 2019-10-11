@@ -3,15 +3,9 @@
 
 """:class:`KeySource` and friends."""
 
-__all__ = [
-    'KeySource',
-    ]
+__all__ = ["KeySource"]
 
-from django.db.models import (
-    BooleanField,
-    CharField,
-    Manager,
-)
+from django.db.models import BooleanField, CharField, Manager
 from maasserver import DefaultMeta
 from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
@@ -49,8 +43,11 @@ class KeySource(CleanSave, TimestampedModel):
     objects = KeySourceManager()
 
     protocol = CharField(
-        max_length=64, null=False, editable=True,
-        choices=KEYS_PROTOCOL_TYPE_CHOICES)
+        max_length=64,
+        null=False,
+        editable=True,
+        choices=KEYS_PROTOCOL_TYPE_CHOICES,
+    )
 
     auth_id = CharField(max_length=255, null=False, editable=True)
 
@@ -72,4 +69,5 @@ class KeySource(CleanSave, TimestampedModel):
         keys = get_protocol_keys(self.protocol, self.auth_id)
         return [
             SSHKey.objects.get_or_create(key=key, user=user, keysource=self)[0]
-            for key in keys]
+            for key in keys
+        ]

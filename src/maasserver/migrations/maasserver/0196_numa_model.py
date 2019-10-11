@@ -5,75 +5,114 @@ from __future__ import unicode_literals
 from datetime import datetime
 
 import django.contrib.postgres.fields
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 import django.db.models.deletion
 import maasserver.models.cleansave
 
 
 def create_and_link_numa_nodes(apps, schema_editor):
-    Node = apps.get_model('maasserver', 'Node')
-    NUMANode = apps.get_model('maasserver', 'NUMANode')
-    PhysicalBlockDevice = apps.get_model('maasserver', 'PhysicalBlockDevice')
-    Interface = apps.get_model('maasserver', 'Interface')
+    Node = apps.get_model("maasserver", "Node")
+    NUMANode = apps.get_model("maasserver", "NUMANode")
+    PhysicalBlockDevice = apps.get_model("maasserver", "PhysicalBlockDevice")
+    Interface = apps.get_model("maasserver", "Interface")
 
     now = datetime.utcnow()
     numa_nodes = NUMANode.objects.bulk_create(
         NUMANode(
-            created=now, updated=now,
-            node=node, memory=node.memory,
-            cores=list(range(node.cpu_count)))
-        for node in Node.objects.all())
+            created=now,
+            updated=now,
+            node=node,
+            memory=node.memory,
+            cores=list(range(node.cpu_count)),
+        )
+        for node in Node.objects.all()
+    )
     for numa_node in numa_nodes:
-        PhysicalBlockDevice.objects.filter(
-            node_id=numa_node.node_id).update(numa_node_id=numa_node.id)
+        PhysicalBlockDevice.objects.filter(node_id=numa_node.node_id).update(
+            numa_node_id=numa_node.id
+        )
         Interface.objects.filter(
-            node_id=numa_node.node_id, type='physical').update(
-                numa_node_id=numa_node.id)
+            node_id=numa_node.node_id, type="physical"
+        ).update(numa_node_id=numa_node.id)
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0195_merge_20190902_1357'),
-    ]
+    dependencies = [("maasserver", "0195_merge_20190902_1357")]
 
     operations = [
         migrations.CreateModel(
-            name='NUMANode',
+            name="NUMANode",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created', models.DateTimeField(editable=False)),
-                ('updated', models.DateTimeField(editable=False)),
-                ('index', models.IntegerField(default=0)),
-                ('memory', models.IntegerField()),
-                ('cores', django.contrib.postgres.fields.ArrayField(base_field=models.IntegerField(), blank=True, size=None)),
-                ('node', models.ForeignKey(editable=False, on_delete=django.db.models.deletion.CASCADE, to='maasserver.Node')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created", models.DateTimeField(editable=False)),
+                ("updated", models.DateTimeField(editable=False)),
+                ("index", models.IntegerField(default=0)),
+                ("memory", models.IntegerField()),
+                (
+                    "cores",
+                    django.contrib.postgres.fields.ArrayField(
+                        base_field=models.IntegerField(), blank=True, size=None
+                    ),
+                ),
+                (
+                    "node",
+                    models.ForeignKey(
+                        editable=False,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="maasserver.Node",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
-                'unique_together': set([('node', 'index')]),
+                "abstract": False,
+                "unique_together": set([("node", "index")]),
             },
-            bases=(maasserver.models.cleansave.CleanSave, models.Model, object),
+            bases=(
+                maasserver.models.cleansave.CleanSave,
+                models.Model,
+                object,
+            ),
         ),
         migrations.AddField(
-            model_name='interface',
-            name='numa_node',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='interfaces', to='maasserver.NUMANode'),
+            model_name="interface",
+            name="numa_node",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="interfaces",
+                to="maasserver.NUMANode",
+            ),
         ),
         migrations.AddField(
-            model_name='physicalblockdevice',
-            name='numa_node',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='blockdevices', to='maasserver.NUMANode'),
+            model_name="physicalblockdevice",
+            name="numa_node",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="blockdevices",
+                to="maasserver.NUMANode",
+            ),
         ),
         # custom migration code
         migrations.RunPython(create_and_link_numa_nodes),
         # add the NOT NULL constraint at the end, after linking all existing
         # block devices to default NUMA nodes
         migrations.AlterField(
-            model_name='physicalblockdevice',
-            name='numa_node',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='blockdevices', to='maasserver.NUMANode')),
+            model_name="physicalblockdevice",
+            name="numa_node",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="blockdevices",
+                to="maasserver.NUMANode",
+            ),
+        ),
     ]

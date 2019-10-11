@@ -16,9 +16,7 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-__all__ = [
-    "create_physical_interfaces",
-]
+__all__ = ["create_physical_interfaces"]
 
 import datetime
 from textwrap import dedent
@@ -29,14 +27,17 @@ from maasserver.enum import INTERFACE_TYPE
 def find_macs_having_no_interfaces(MACAddress):
     """Find all MAC addresses without a linked interface."""
     return MACAddress.objects.raw(
-        dedent("""\
+        dedent(
+            """\
             SELECT DISTINCT macaddress.*
                 FROM maasserver_macaddress AS macaddress
                 LEFT OUTER JOIN maasserver_interface AS iface
                     ON macaddress.id = iface.mac_id
                 WHERE iface.id IS NULL
                 ORDER BY macaddress.node_id, macaddress.mac_address
-            """))
+            """
+        )
+    )
 
 
 def update_interface_with_subnet_vlan(iface, subnet):
@@ -53,12 +54,7 @@ def get_or_create_default_fabric(Fabric):
     now = datetime.datetime.now()
     return Fabric.objects.get_or_create(
         id=0,
-        defaults={
-            'id': 0,
-            'name': 'fabric-0',
-            'created': now,
-            'updated': now,
-        }
+        defaults={"id": 0, "name": "fabric-0", "created": now, "updated": now},
     )
 
 
@@ -67,9 +63,10 @@ def get_or_create_default_vlan(Fabric, VLAN):
     default_fabric, created = get_or_create_default_fabric(Fabric)
     if created:
         return VLAN.objects.create(
-            name='Default VLAN', vid=0, fabric=default_fabric)
+            name="Default VLAN", vid=0, fabric=default_fabric
+        )
     else:
-        return default_fabric.vlan_set.all().order_by('id').first()
+        return default_fabric.vlan_set.all().order_by("id").first()
 
 
 def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
@@ -89,10 +86,12 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
         # Create a "dummy" interface. (this is a 'legacy' MACAddress)
         now = datetime.datetime.now()
         iface = Interface.objects.create(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL,
-            name='eth' + str(index),
+            mac=mac,
+            type=INTERFACE_TYPE.PHYSICAL,
+            name="eth" + str(index),
             vlan=get_or_create_default_vlan(Fabric, VLAN),
-            created=now, updated=now,
+            created=now,
+            updated=now,
         )
         previous_node = current_node
 

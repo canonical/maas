@@ -13,10 +13,7 @@ import json
 import re
 
 from django.conf import settings
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-)
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import (
     HttpResponse,
@@ -24,10 +21,7 @@ from django.http import (
     HttpResponseNotFound,
 )
 from formencode import validators
-from formencode.validators import (
-    Int,
-    StringBool,
-)
+from formencode.validators import Int, StringBool
 from maasserver import locks
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
@@ -40,10 +34,7 @@ from maasserver.api.nodes import (
     PowerMixin,
     PowersMixin,
 )
-from maasserver.api.support import (
-    admin_method,
-    operation,
-)
+from maasserver.api.support import admin_method, operation
 from maasserver.api.utils import (
     get_mandatory_param,
     get_oauth_token,
@@ -100,10 +91,7 @@ from maasserver.node_constraint_filter_forms import (
     nodes_by_storage,
 )
 from maasserver.node_status import NODE_TRANSITIONS
-from maasserver.permissions import (
-    NodePermission,
-    PodPermission,
-)
+from maasserver.permissions import NodePermission, PodPermission
 from maasserver.preseed import get_curtin_merged_config
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -112,123 +100,117 @@ from maasserver.storage_layouts import (
 )
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.forms import compose_invalid_choice_text
-from maasserver.utils.orm import (
-    get_first,
-    reload_object,
-)
+from maasserver.utils.orm import get_first, reload_object
 from piston3.utils import rc
 import yaml
 
 # NUMANode fields exposed in the API.
-DISPLAYED_NUMANODE_FIELDS = (
-    'index',
-    'cores',
-    'memory',
-)
+DISPLAYED_NUMANODE_FIELDS = ("index", "cores", "memory")
 
 # Machine's fields exposed on the API.
 DISPLAYED_MACHINE_FIELDS = (
-    'system_id',
-    'hostname',
-    'description',
-    'hardware_uuid',
-    'domain',
-    'fqdn',
-    'owner',
-    'owner_data',
-    'locked',
-    'cache_sets',
-    'bcaches',
-    'bios_boot_method',
-    'boot_interface',
-    'architecture',
-    'min_hwe_kernel',
-    'hwe_kernel',
-    'cpu_count',
-    'cpu_speed',
-    'memory',
-    'swap_size',
-    'storage',
-    'status',
-    'osystem',
-    'distro_series',
-    'netboot',
-    'power_type',
-    'power_state',
-    'tag_names',
-    'address_ttl',
-    'ip_addresses',
-    ('interface_set', DISPLAYED_INTERFACE_FIELDS),
-    'zone',
-    'pool',
-    'disable_ipv4',
-    'constraints_by_type',
-    'boot_disk',
-    'blockdevice_set',
-    'iscsiblockdevice_set',
-    'physicalblockdevice_set',
-    'virtualblockdevice_set',
-    'volume_groups',
-    'raids',
-    'status_action',
-    'status_message',
-    'status_name',
-    'node_type',
-    'node_type_name',
-    'special_filesystems',
-    'pod',
-    'default_gateways',
-    'current_commissioning_result_id',
-    'current_testing_result_id',
-    'current_installation_result_id',
-    'commissioning_status',
-    'commissioning_status_name',
-    'testing_status',
-    'testing_status_name',
-    'cpu_test_status',
-    'cpu_test_status_name',
-    'memory_test_status',
-    'memory_test_status_name',
-    'storage_test_status',
-    'storage_test_status_name',
-    'other_test_status',
-    'other_test_status_name',
-    'hardware_info',
-    'interface_test_status',
-    'interface_test_status_name',
-    ('numanode_set', DISPLAYED_NUMANODE_FIELDS),
+    "system_id",
+    "hostname",
+    "description",
+    "hardware_uuid",
+    "domain",
+    "fqdn",
+    "owner",
+    "owner_data",
+    "locked",
+    "cache_sets",
+    "bcaches",
+    "bios_boot_method",
+    "boot_interface",
+    "architecture",
+    "min_hwe_kernel",
+    "hwe_kernel",
+    "cpu_count",
+    "cpu_speed",
+    "memory",
+    "swap_size",
+    "storage",
+    "status",
+    "osystem",
+    "distro_series",
+    "netboot",
+    "power_type",
+    "power_state",
+    "tag_names",
+    "address_ttl",
+    "ip_addresses",
+    ("interface_set", DISPLAYED_INTERFACE_FIELDS),
+    "zone",
+    "pool",
+    "disable_ipv4",
+    "constraints_by_type",
+    "boot_disk",
+    "blockdevice_set",
+    "iscsiblockdevice_set",
+    "physicalblockdevice_set",
+    "virtualblockdevice_set",
+    "volume_groups",
+    "raids",
+    "status_action",
+    "status_message",
+    "status_name",
+    "node_type",
+    "node_type_name",
+    "special_filesystems",
+    "pod",
+    "default_gateways",
+    "current_commissioning_result_id",
+    "current_testing_result_id",
+    "current_installation_result_id",
+    "commissioning_status",
+    "commissioning_status_name",
+    "testing_status",
+    "testing_status_name",
+    "cpu_test_status",
+    "cpu_test_status_name",
+    "memory_test_status",
+    "memory_test_status_name",
+    "storage_test_status",
+    "storage_test_status_name",
+    "other_test_status",
+    "other_test_status_name",
+    "hardware_info",
+    "interface_test_status",
+    "interface_test_status_name",
+    ("numanode_set", DISPLAYED_NUMANODE_FIELDS),
 )
 
 # Limited set of machine fields exposed on the anonymous API.
 DISPLAYED_ANON_MACHINE_FIELDS = (
-    'system_id',
-    'hostname',
-    'domain',
-    'fqdn',
-    'architecture',
-    'status',
-    'power_type',
-    'power_state',
-    'zone',
-    'status_action',
-    'status_message',
-    'status_name',
-    'node_type',
+    "system_id",
+    "hostname",
+    "domain",
+    "fqdn",
+    "architecture",
+    "status",
+    "power_type",
+    "power_state",
+    "zone",
+    "status_action",
+    "status_message",
+    "status_name",
+    "node_type",
 )
 
 
 AllocationOptions = namedtuple(
-    'AllocationOptions', (
-        'agent_name',
-        'bridge_all',
-        'bridge_type',
-        'bridge_fd',
-        'bridge_stp',
-        'comment',
-        'install_rackd',
-        'install_kvm',
-        'ephemeral_deploy',
-    )
+    "AllocationOptions",
+    (
+        "agent_name",
+        "bridge_all",
+        "bridge_type",
+        "bridge_fd",
+        "bridge_stp",
+        "comment",
+        "install_rackd",
+        "install_kvm",
+        "ephemeral_deploy",
+    ),
 )
 
 
@@ -240,7 +222,7 @@ def get_storage_layout_params(request, required=False, extract_params=False):
     # The request data needs to be mutable so replace the immutable QueryDict
     # with a mutable one.
     request.data = request.data.copy()
-    storage_layout = request.data.pop('storage_layout', None)
+    storage_layout = request.data.pop("storage_layout", None)
     if not storage_layout:
         storage_layout = None
     else:
@@ -259,32 +241,43 @@ def get_storage_layout_params(request, required=False, extract_params=False):
 
 def get_allocation_options(request) -> AllocationOptions:
     """Parses optional parameters for allocation and deployment."""
-    comment = get_optional_param(request.POST, 'comment')
+    comment = get_optional_param(request.POST, "comment")
     default_bridge_all = False
     install_rackd = get_optional_param(
-        request.POST, 'install_rackd', default=False, validator=StringBool)
+        request.POST, "install_rackd", default=False, validator=StringBool
+    )
     install_kvm = get_optional_param(
-        request.POST, 'install_kvm', default=False, validator=StringBool)
+        request.POST, "install_kvm", default=False, validator=StringBool
+    )
     ephemeral_deploy = get_optional_param(
-        request.POST, 'ephemeral_deploy', default=False, validator=StringBool)
+        request.POST, "ephemeral_deploy", default=False, validator=StringBool
+    )
     if install_kvm and not ephemeral_deploy:
         default_bridge_all = True
     bridge_all = get_optional_param(
-        request.POST, 'bridge_all', default=default_bridge_all,
-        validator=StringBool)
+        request.POST,
+        "bridge_all",
+        default=default_bridge_all,
+        validator=StringBool,
+    )
     bridge_type = get_optional_param(
-        request.POST, 'bridge_type', default=BRIDGE_TYPE.STANDARD)
+        request.POST, "bridge_type", default=BRIDGE_TYPE.STANDARD
+    )
     if bridge_type not in BRIDGE_TYPE_CHOICES_DICT:
-        raise MAASAPIValidationError({
-            'bridge_type': compose_invalid_choice_text(
-                'bridge_type', BRIDGE_TYPE_CHOICES)
-        })
+        raise MAASAPIValidationError(
+            {
+                "bridge_type": compose_invalid_choice_text(
+                    "bridge_type", BRIDGE_TYPE_CHOICES
+                )
+            }
+        )
     bridge_stp = get_optional_param(
-        request.POST, 'bridge_stp', default=False,
-        validator=StringBool)
+        request.POST, "bridge_stp", default=False, validator=StringBool
+    )
     bridge_fd = get_optional_param(
-        request.POST, 'bridge_fd', default=0, validator=Int)
-    agent_name = request.data.get('agent_name', '')
+        request.POST, "bridge_fd", default=0, validator=Int
+    )
+    agent_name = request.data.get("agent_name", "")
     return AllocationOptions(
         agent_name,
         bridge_all,
@@ -294,52 +287,51 @@ def get_allocation_options(request) -> AllocationOptions:
         comment,
         install_rackd,
         install_kvm,
-        ephemeral_deploy
+        ephemeral_deploy,
     )
 
 
 def get_allocated_composed_machine(
-        request, data, storage, interfaces, pods, form, input_constraints):
+    request, data, storage, interfaces, pods, form, input_constraints
+):
     """Return composed machine if input constraints are matched."""
     machine = None
     # Gather tags and not_tags.
     tags = None
     not_tags = None
     for name, value in input_constraints:
-        if name == 'tags':
+        if name == "tags":
             tags = value
-        elif name == 'not_tags':
+        elif name == "not_tags":
             not_tags = value
 
     if tags:
         pods = pods.filter(tags__contains=tags)
     if not_tags:
         pods = pods.exclude(tags__contains=not_tags)
-    if form.cleaned_data.get('pod'):
-        pods = pods.filter(name=form.cleaned_data.get('pod'))
-    if form.cleaned_data.get('pod_type'):
-        pods = pods.filter(
-            power_type=form.cleaned_data.get('pod_type'))
-    if form.cleaned_data.get('not_pod'):
-        pods = pods.exclude(
-            name=form.cleaned_data.get('not_pod'))
-    if form.cleaned_data.get('not_pod_type'):
-        pods = pods.exclude(
-            power_type=form.cleaned_data.get('not_pod_type'))
+    if form.cleaned_data.get("pod"):
+        pods = pods.filter(name=form.cleaned_data.get("pod"))
+    if form.cleaned_data.get("pod_type"):
+        pods = pods.filter(power_type=form.cleaned_data.get("pod_type"))
+    if form.cleaned_data.get("not_pod"):
+        pods = pods.exclude(name=form.cleaned_data.get("not_pod"))
+    if form.cleaned_data.get("not_pod_type"):
+        pods = pods.exclude(power_type=form.cleaned_data.get("not_pod_type"))
     compose_form = ComposeMachineForPodsForm(
-        request=request, data=data, pods=pods)
+        request=request, data=data, pods=pods
+    )
     if compose_form.is_valid():
         machine = compose_form.compose()
         if machine is not None:
             # Set the storage variable so the constraint_map is
             # set correct for the composed machine.
-            storage = nodes_by_storage(
-                storage, node_ids=[machine.id])
+            storage = nodes_by_storage(storage, node_ids=[machine.id])
             if storage is None:
                 storage = {}
             if interfaces:
-                result = nodes_by_interface(interfaces, include_filter=dict(
-                    node__id=machine.id))
+                result = nodes_by_interface(
+                    interfaces, include_filter=dict(node__id=machine.id)
+                )
                 interfaces = result.label_map
             else:
                 interfaces = {}
@@ -352,6 +344,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     A machine is identified by its system_id.
     """
+
     api_doc_section_name = "Machine"
 
     model = Machine
@@ -382,9 +375,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         node.as_self().delete(
-            force=get_optional_param(request.GET, 'force', False, StringBool))
+            force=get_optional_param(request.GET, "force", False, StringBool)
+        )
         return rc.DELETED
 
     @classmethod
@@ -405,9 +400,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             return None
         elif bmc.bmc_type == BMC_TYPE.POD:
             return {
-                'id': bmc.id,
-                'name': bmc.name,
-                'resource_uri': reverse('pod_handler', kwargs={'id': bmc.id}),
+                "id": bmc.id,
+                "name": bmc.name,
+                "resource_uri": reverse("pod_handler", kwargs={"id": bmc.id}),
             }
         else:
             return None
@@ -446,14 +441,16 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         for block_device in machine.blockdevice_set.all():
             for filesystem in block_device.filesystem_set.all():
                 if filesystem.filesystem_group is not None:
-                    fsgroup[filesystem.filesystem_group.id] = (
-                        filesystem.filesystem_group)
+                    fsgroup[
+                        filesystem.filesystem_group.id
+                    ] = filesystem.filesystem_group
             for ptable in block_device.partitiontable_set.all():
                 for partition in ptable.partitions.all():
                     for filesystem in partition.filesystem_set.all():
                         if filesystem.filesystem_group is not None:
-                            fsgroup[filesystem.filesystem_group.id] = (
-                                filesystem.filesystem_group)
+                            fsgroup[
+                                filesystem.filesystem_group.id
+                            ] = filesystem.filesystem_group
         return fsgroup.values()
 
     @classmethod
@@ -461,9 +458,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """Return the volume groups on this machine."""
         return [
             {
-                'system_id': machine.system_id,
-                'id': fsgroup.id,
-                '__incomplete__': True,
+                "system_id": machine.system_id,
+                "id": fsgroup.id,
+                "__incomplete__": True,
             }
             for fsgroup in handler._filesystem_groups(machine)
             if fsgroup.is_lvm()
@@ -474,9 +471,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """Return the raids on this machine."""
         return [
             {
-                'system_id': machine.system_id,
-                'id': fsgroup.id,
-                '__incomplete__': True,
+                "system_id": machine.system_id,
+                "id": fsgroup.id,
+                "__incomplete__": True,
             }
             for fsgroup in handler._filesystem_groups(machine)
             if fsgroup.is_raid()
@@ -489,19 +486,19 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         for block_device in machine.blockdevice_set.all():
             for filesystem in block_device.filesystem_set.all():
                 if filesystem.cache_set is not None:
-                    sets[filesystem.cache_set.id] = (
-                        filesystem.cache_set)
+                    sets[filesystem.cache_set.id] = filesystem.cache_set
             for ptable in block_device.partitiontable_set.all():
                 for partition in ptable.partitions.all():
                     for filesystem in partition.filesystem_set.all():
                         if filesystem.cache_set is not None:
-                            sets[filesystem.cache_set.id] = (
-                                filesystem.cache_set)
+                            sets[
+                                filesystem.cache_set.id
+                            ] = filesystem.cache_set
         return [
             {
-                'system_id': machine.system_id,
-                'id': cacheset_id,
-                '__incomplete__': True,
+                "system_id": machine.system_id,
+                "id": cacheset_id,
+                "__incomplete__": True,
             }
             for cacheset_id in sets.keys()
         ]
@@ -511,9 +508,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """Return the bcaches on this machine."""
         return [
             {
-                'system_id': machine.system_id,
-                'id': fsgroup.id,
-                '__incomplete__': True,
+                "system_id": machine.system_id,
+                "id": fsgroup.id,
+                "__incomplete__": True,
             }
             for fsgroup in handler._filesystem_groups(machine)
             if fsgroup.is_bcache()
@@ -533,7 +530,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             "ipv6": {
                 "gateway_ip": ipv6,
                 "link_id": machine.gateway_link_ipv6_id,
-            }
+            },
         }
 
     def update(self, request, system_id):
@@ -611,7 +608,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         this machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
 
         Form = get_machine_edit_form(request.user)
         form = Form(data=request.data, instance=machine)
@@ -631,7 +629,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine_system_id = "system_id"
         if machine is not None:
             machine_system_id = machine.system_id
-        return ('machine_handler', (machine_system_id, ))
+        return ("machine_handler", (machine_system_id,))
 
     @operation(idempotent=False)
     def deploy(self, request, system_id):
@@ -703,49 +701,63 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @error (content) "no-ips" MAAS attempted to allocate an IP address, and
         there were no IP addresses available on the relevant cluster interface.
         """
-        series = request.POST.get('distro_series', None)
-        license_key = request.POST.get('license_key', None)
-        hwe_kernel = request.POST.get('hwe_kernel', None)
+        series = request.POST.get("distro_series", None)
+        license_key = request.POST.get("license_key", None)
+        hwe_kernel = request.POST.get("hwe_kernel", None)
         # Acquiring a node requires EDIT permissions.
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         options = get_allocation_options(request)
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
         # Deploying with 'install_rackd' requires ADMIN permissions.
-        if (options.install_rackd and not
-                request.user.has_perm(NodePermission.admin, machine)):
+        if options.install_rackd and not request.user.has_perm(
+            NodePermission.admin, machine
+        ):
             raise PermissionDenied()
         # Deploying with 'install_kvm' requires ADMIN permissions.
-        if (options.install_kvm and not
-                request.user.has_perm(NodePermission.admin, machine)):
+        if options.install_kvm and not request.user.has_perm(
+            NodePermission.admin, machine
+        ):
             raise PermissionDenied()
         if options.install_kvm and (
-                machine.ephemeral_deployment or options.ephemeral_deploy):
+            machine.ephemeral_deployment or options.ephemeral_deploy
+        ):
             raise MAASAPIBadRequest(
-                "Cannot install KVM host for ephemeral deployments.")
+                "Cannot install KVM host for ephemeral deployments."
+            )
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
                 if machine.owner is not None and machine.owner != request.user:
                     raise NodeStateViolation(
-                        "Can't allocate a machine belonging to another user.")
+                        "Can't allocate a machine belonging to another user."
+                    )
                 maaslog.info(
                     "Request from user %s to acquire machine: %s (%s)",
-                    request.user.username, machine.fqdn, machine.system_id)
+                    request.user.username,
+                    machine.fqdn,
+                    machine.system_id,
+                )
                 machine.acquire(
-                    request.user, get_oauth_token(request),
-                    agent_name=options.agent_name, comment=options.comment,
+                    request.user,
+                    get_oauth_token(request),
+                    agent_name=options.agent_name,
+                    comment=options.comment,
                     bridge_all=options.bridge_all,
                     bridge_type=options.bridge_type,
-                    bridge_stp=options.bridge_stp, bridge_fd=options.bridge_fd)
+                    bridge_stp=options.bridge_stp,
+                    bridge_fd=options.bridge_fd,
+                )
         if NODE_STATUS.DEPLOYING not in NODE_TRANSITIONS[machine.status]:
             raise NodeStateViolation(
                 "Can't deploy a machine that is in the '{}' state".format(
-                    NODE_STATUS_CHOICES_DICT[machine.status]))
+                    NODE_STATUS_CHOICES_DICT[machine.status]
+                )
+            )
         if not machine.distro_series and not series:
-            series = Config.objects.get_config('default_distro_series')
+            series = Config.objects.get_config("default_distro_series")
         Form = get_machine_edit_form(request.user)
         form = Form(instance=machine, data={})
         if series is not None:
@@ -758,32 +770,38 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             form.set_install_rackd(install_rackd=options.install_rackd)
         if options.ephemeral_deploy:
             form.set_ephemeral_deploy(
-                ephemeral_deploy=options.ephemeral_deploy)
+                ephemeral_deploy=options.ephemeral_deploy
+            )
         if form.is_valid():
             form.save()
         else:
             raise MAASAPIValidationError(form.errors)
         # Check that the curtin preseeds renders correctly
         # if not an ephemeral deployment.
-        if (not machine.ephemeral_deployment and
-                not options.ephemeral_deploy):
+        if not machine.ephemeral_deployment and not options.ephemeral_deploy:
             try:
                 get_curtin_merged_config(request, machine)
             except Exception as e:
-                raise MAASAPIBadRequest(
-                    "Failed to render preseed: %s" % e)
+                raise MAASAPIBadRequest("Failed to render preseed: %s" % e)
 
-        if machine.osystem == 'esxi' and request.user.has_perm(
-                NodePermission.admin, machine):
+        if machine.osystem == "esxi" and request.user.has_perm(
+            NodePermission.admin, machine
+        ):
             if get_optional_param(
-                    request.POST, 'vcenter_registration', default=True,
-                    validator=StringBool):
+                request.POST,
+                "vcenter_registration",
+                default=True,
+                validator=StringBool,
+            ):
                 NodeMetadata.objects.update_or_create(
-                    node=machine, key='vcenter_registration',
-                    defaults={'value': 'True'})
+                    node=machine,
+                    key="vcenter_registration",
+                    defaults={"value": "True"},
+                )
             else:
                 NodeMetadata.objects.filter(
-                    node=machine, key='vcenter_registration').delete()
+                    node=machine, key="vcenter_registration"
+                ).delete()
 
         return self.power_on(request, system_id)
 
@@ -847,17 +865,22 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @error (content) "no-release" The machine is in a state that prevents
         it from being released.
         """
-        comment = get_optional_param(request.POST, 'comment')
+        comment = get_optional_param(request.POST, "comment")
         erase = get_optional_param(
-            request.POST, 'erase', default=False, validator=StringBool)
+            request.POST, "erase", default=False, validator=StringBool
+        )
         secure_erase = get_optional_param(
-            request.POST, 'secure_erase', default=None, validator=StringBool)
+            request.POST, "secure_erase", default=None, validator=StringBool
+        )
         quick_erase = get_optional_param(
-            request.POST, 'quick_erase', default=None, validator=StringBool)
+            request.POST, "quick_erase", default=None, validator=StringBool
+        )
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         force = get_optional_param(
-            request.POST, 'force', default=None, validator=StringBool)
+            request.POST, "force", default=None, validator=StringBool
+        )
         if machine.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
             # Nothing to do if this machine is already releasing, otherwise
             # this may be a redundant retry, and the
@@ -865,14 +888,18 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             pass
         elif machine.status in RELEASABLE_STATUSES:
             machine.release_or_erase(
-                request.user, comment,
-                erase=erase, secure_erase=secure_erase,
+                request.user,
+                comment,
+                erase=erase,
+                secure_erase=secure_erase,
                 quick_erase=quick_erase,
-                force=force)
+                force=force,
+            )
         else:
             raise NodeStateViolation(
                 "Machine cannot be released in its current state ('%s')."
-                % machine.display_status())
+                % machine.display_status()
+            )
         return machine
 
     @operation(idempotent=False)
@@ -934,9 +961,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         form = CommissionForm(
-            instance=machine, user=request.user, data=request.data)
+            instance=machine, user=request.user, data=request.data
+        )
         if form.is_valid():
             return form.save()
         else:
@@ -1009,23 +1038,28 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         the storage layout of this machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot change the storage layout on a machine "
-                "that is not Ready.")
+                "that is not Ready."
+            )
         storage_layout, _ = get_storage_layout_params(request, required=True)
         try:
             machine.set_storage_layout(
-                storage_layout, params=request.data, allow_fallback=False)
+                storage_layout, params=request.data, allow_fallback=False
+            )
         except StorageLayoutMissingBootDiskError:
             raise MAASAPIBadRequest(
                 "Machine is missing a boot disk; no storage layout can be "
-                "applied.")
+                "applied."
+            )
         except StorageLayoutError as e:
             raise MAASAPIBadRequest(
-                "Failed to configure storage layout '%s': %s" % (
-                    storage_layout, str(e)))
+                "Failed to configure storage layout '%s': %s"
+                % (storage_layout, str(e))
+            )
         return machine
 
     @classmethod
@@ -1033,11 +1067,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """Render special-purpose filesystems, like tmpfs."""
         return [
             {
-                'fstype': filesystem.fstype,
-                'label': filesystem.label,
-                'uuid': filesystem.uuid,
-                'mount_point': filesystem.mount_point,
-                'mount_options': filesystem.mount_options,
+                "fstype": filesystem.fstype,
+                "label": filesystem.label,
+                "uuid": filesystem.uuid,
+                "mount_point": filesystem.mount_point,
+                "mount_options": filesystem.mount_options,
             }
             for filesystem in machine.get_effective_special_filesystems()
         ]
@@ -1075,11 +1109,13 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         if machine.status not in {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}:
             raise NodeStateViolation(
                 "Cannot mount the filesystem because the machine is not "
-                "Ready or Allocated.")
+                "Ready or Allocated."
+            )
         form = MountNonStorageFilesystemForm(machine, data=request.data)
         if form.is_valid():
             # Filesystem is not a first-class object in the Web API, so save
@@ -1116,11 +1152,13 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.edit
+        )
         if machine.status not in {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}:
             raise NodeStateViolation(
                 "Cannot unmount the filesystem because the machine is not "
-                "Ready or Allocated.")
+                "Ready or Allocated."
+            )
         form = UnmountNonStorageFilesystemForm(machine, data=request.data)
         if form.is_valid():
             form.save()  # Returns nothing.
@@ -1167,7 +1205,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         machine.gateway_link_ipv4 = None
         machine.gateway_link_ipv6 = None
         machine.save()
@@ -1196,18 +1235,23 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.view)
+            system_id=system_id, user=request.user, perm=NodePermission.view
+        )
         if machine.status not in [
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.FAILED_DEPLOYMENT]:
+            NODE_STATUS.DEPLOYING,
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.FAILED_DEPLOYMENT,
+        ]:
             raise MAASAPIBadRequest(
-                "Machine %s is not in a deployment state." % machine.hostname)
+                "Machine %s is not in a deployment state." % machine.hostname
+            )
         return HttpResponse(
             yaml.safe_dump(
                 get_curtin_merged_config(request, machine),
-                default_flow_style=False),
-            content_type='text/plain')
+                default_flow_style=False,
+            ),
+            content_type="text/plain",
+        )
 
     @operation(idempotent=False)
     def restore_networking_configuration(self, request, system_id):
@@ -1233,13 +1277,16 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         if machine.status not in {
-                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}:
+            NODE_STATUS.READY,
+            NODE_STATUS.FAILED_TESTING,
+        }:
             raise NodeStateViolation(
                 "Machine must be in a ready or failed testing state to "
-                "restore networking configuration")
+                "restore networking configuration"
+            )
         machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()
         return reload_object(machine)
@@ -1268,13 +1315,16 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         if machine.status not in {
-                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}:
+            NODE_STATUS.READY,
+            NODE_STATUS.FAILED_TESTING,
+        }:
             raise NodeStateViolation(
                 "Machine must be in a ready or failed testing state to "
-                "restore storage configuration.")
+                "restore storage configuration."
+            )
         machine.set_default_storage_layout()
         return reload_object(machine)
 
@@ -1302,13 +1352,16 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         if machine.status not in {
-                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}:
+            NODE_STATUS.READY,
+            NODE_STATUS.FAILED_TESTING,
+        }:
             raise NodeStateViolation(
                 "Machine must be in a ready or failed testing state to "
-                "restore default networking and storage configuration.")
+                "restore default networking and storage configuration."
+            )
         machine.set_default_storage_layout()
         machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()
@@ -1343,13 +1396,14 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NodePermission.edit)
+            user=request.user, system_id=system_id, perm=NodePermission.edit
+        )
         if node.owner_id != request.user.id:
             raise MAASAPIForbidden()
-        comment = get_optional_param(request.POST, 'comment')
+        comment = get_optional_param(request.POST, "comment")
         if not comment:
             # read old error_description to for backward compatibility
-            comment = get_optional_param(request.POST, 'error_description')
+            comment = get_optional_param(request.POST, "error_description")
         node.mark_broken(request.user, comment)
         return node
 
@@ -1378,13 +1432,16 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @error-example "not-found"
             Not Found
         """
-        comment = get_optional_param(request.POST, 'comment')
+        comment = get_optional_param(request.POST, "comment")
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NodePermission.admin)
+            user=request.user, system_id=system_id, perm=NodePermission.admin
+        )
         node.mark_fixed(request.user, comment)
         maaslog.info(
-            "%s: User %s marked node as fixed", node.hostname,
-            request.user.username)
+            "%s: User %s marked node as fixed",
+            node.hostname,
+            request.user.username,
+        )
         return node
 
     @operation(idempotent=False)
@@ -1414,11 +1471,14 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         machine.start_rescue_mode(request.user)
         maaslog.info(
-            "%s: User %s started rescue mode.", machine.hostname,
-            request.user.username)
+            "%s: User %s started rescue mode.",
+            machine.hostname,
+            request.user.username,
+        )
         return machine
 
     @operation(idempotent=False)
@@ -1448,11 +1508,14 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin)
+            system_id=system_id, user=request.user, perm=NodePermission.admin
+        )
         machine.stop_rescue_mode(request.user)
         maaslog.info(
-            "%s: User %s stopped rescue mode.", machine.hostname,
-            request.user.username)
+            "%s: User %s stopped rescue mode.",
+            machine.hostname,
+            request.user.username,
+        )
         return machine
 
     @operation(idempotent=False)
@@ -1482,10 +1545,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.lock)
+            system_id=system_id, user=request.user, perm=NodePermission.lock
+        )
         if machine.locked:
-            raise NodeStateViolation('Machine is already locked')
-        comment = get_optional_param(request.POST, 'comment')
+            raise NodeStateViolation("Machine is already locked")
+        comment = get_optional_param(request.POST, "comment")
         machine.lock(request.user, comment=comment)
         return machine
 
@@ -1516,10 +1580,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Not Found
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.lock)
+            system_id=system_id, user=request.user, perm=NodePermission.lock
+        )
         if not machine.locked:
-            raise NodeStateViolation('Machine is not locked')
-        comment = get_optional_param(request.POST, 'comment')
+            raise NodeStateViolation("Machine is not locked")
+        comment = get_optional_param(request.POST, "comment")
         machine.unlock(request.user, comment=comment)
         return machine
 
@@ -1530,23 +1595,24 @@ def fix_architecture(data):
     #     architecture without a '/' and no subarchitecture: assume 'generic'
     #     architecture without a '/' and a subarchitecture: use as specified
     #     architecture with a '/' and a subarchitecture: error
-    architecture = data.get('architecture', None)
-    subarchitecture = data.get('subarchitecture', None)
-    if architecture and '/' in architecture:
+    architecture = data.get("architecture", None)
+    subarchitecture = data.get("subarchitecture", None)
+    if architecture and "/" in architecture:
         if subarchitecture:
             # Architecture with a '/' and a subarchitecture: error.
             raise MAASAPIValidationError(
-                'Subarchitecture cannot be specified twice.')
+                "Subarchitecture cannot be specified twice."
+            )
     elif architecture:
         if subarchitecture:
             # Architecture without a '/' and a subarchitecture:
             # use as specified.
-            data['architecture'] = '/'.join([architecture, subarchitecture])
-            del data['subarchitecture']
+            data["architecture"] = "/".join([architecture, subarchitecture])
+            del data["subarchitecture"]
         else:
             # Architecture without a '/' and no subarchitecture:
             # assume 'generic'.
-            data['architecture'] += '/generic'
+            data["architecture"] += "/generic"
 
 
 def create_machine(request, requires_arch=False):
@@ -1559,29 +1625,32 @@ def create_machine(request, requires_arch=False):
     :rtype: :class:`maasserver.models.Machine`.
     :raises: ValidationError
     """
-    given_arch = request.data.get('architecture', None)
-    given_subarch = request.data.get('subarchitecture', None)
-    given_min_hwe_kernel = request.data.get('min_hwe_kernel', None)
+    given_arch = request.data.get("architecture", None)
+    given_subarch = request.data.get("subarchitecture", None)
+    given_min_hwe_kernel = request.data.get("min_hwe_kernel", None)
     altered_query_data = request.data.copy()
     fix_architecture(altered_query_data)
 
-    hwe_regex = re.compile('(hwe|ga)-.+')
-    has_arch_with_hwe = (
-        given_arch and hwe_regex.search(given_arch) is not None)
+    hwe_regex = re.compile("(hwe|ga)-.+")
+    has_arch_with_hwe = given_arch and hwe_regex.search(given_arch) is not None
     has_subarch_with_hwe = (
-        given_subarch and hwe_regex.search(given_subarch) is not None)
+        given_subarch and hwe_regex.search(given_subarch) is not None
+    )
     if has_arch_with_hwe or has_subarch_with_hwe:
         raise MAASAPIValidationError(
-            'hwe kernel must be specified using the min_hwe_kernel argument.')
+            "hwe kernel must be specified using the min_hwe_kernel argument."
+        )
 
     if given_min_hwe_kernel:
         if hwe_regex.search(given_min_hwe_kernel) is None:
             raise MAASAPIValidationError(
-                'min_hwe_kernel must start with "hwe-" or "ga-"')
+                'min_hwe_kernel must start with "hwe-" or "ga-"'
+            )
 
     Form = get_machine_create_form(request.user)
     form = Form(
-        data=altered_query_data, request=request, requires_arch=requires_arch)
+        data=altered_query_data, request=request, requires_arch=requires_arch
+    )
     if form.is_valid():
         machine = form.save()
         maaslog.info("%s: Enlisted new machine", machine.hostname)
@@ -1595,6 +1664,7 @@ class AnonMachineHandler(AnonNodeHandler):
 
     Only outputs machine model for anonymous results.
     """
+
     read = create = update = delete = None
     model = Machine
     fields = DISPLAYED_ANON_MACHINE_FIELDS
@@ -1602,16 +1672,18 @@ class AnonMachineHandler(AnonNodeHandler):
     @classmethod
     def resource_uri(cls, machine=None):
         system_id = "system_id" if machine is None else machine.system_id
-        return ('machine_handler', (system_id, ))
+        return ("machine_handler", (system_id,))
 
 
 class AnonMachinesHandler(AnonNodesHandler):
     """Anonymous access to Machines."""
+
     read = update = delete = None
     base_model = Machine
 
     def _update_new_node(
-            self, machine, architecture, power_type, power_parameters):
+        self, machine, architecture, power_type, power_parameters
+    ):
         """Update a new machine's editable fields.
 
         Update the power parameters with the new MAAS password and
@@ -1619,17 +1691,15 @@ class AnonMachinesHandler(AnonNodesHandler):
         """
         if not power_type and not power_parameters:
             Form = MachineForm
-            data = {
-                'architecture': architecture,
-            }
+            data = {"architecture": architecture}
         else:
             # AdminMachineForm must be used so the power parameters can be
             # validated and updated.
             Form = AdminMachineForm
             data = {
-                'architecture': architecture,
-                'power_type': power_type,
-                'power_parameters': power_parameters,
+                "architecture": architecture,
+                "power_type": power_type,
+                "power_parameters": power_parameters,
             }
         fix_architecture(data)
 
@@ -1637,11 +1707,13 @@ class AnonMachinesHandler(AnonNodesHandler):
         if form.is_valid():
             if machine.status == NODE_STATUS.NEW:
                 maaslog.info(
-                    "%s: Found existing machine, enlisting", machine.hostname)
+                    "%s: Found existing machine, enlisting", machine.hostname
+                )
             else:
                 maaslog.info(
                     "%s: Found existing machine, commissioning",
-                    machine.hostname)
+                    machine.hostname,
+                )
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -1705,26 +1777,30 @@ class AnonMachinesHandler(AnonNodesHandler):
         @success-example "success-json" [exkey=machines-create]
         placeholder text
         """
-        architecture = request.data.get('architecture')
-        power_type = request.data.get('power_type')
-        power_parameters = request.data.get('power_parameters')
-        mac_addresses = request.data.getlist('mac_addresses')
+        architecture = request.data.get("architecture")
+        power_type = request.data.get("power_type")
+        power_parameters = request.data.get("power_parameters")
+        mac_addresses = request.data.getlist("mac_addresses")
         commission = get_optional_param(
-            request.data, 'commission', default=False, validator=StringBool)
+            request.data, "commission", default=False, validator=StringBool
+        )
         machine = None
 
         # BMC enlistment - Check if there is a pre-existing machine within MAAS
         # that has the same BMC as a known node. Currently only IPMI is
         # supported.
-        if power_type == 'ipmi' and power_parameters:
+        if power_type == "ipmi" and power_parameters:
             params = json.loads(power_parameters)
             machine = Machine.objects.filter(
                 status__in=[NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING],
                 bmc__power_parameters__power_address=(
-                    params.get('power_address', ''))).first()
+                    params.get("power_address", "")
+                ),
+            ).first()
             if machine is not None:
                 machine = self._update_new_node(
-                    machine, architecture, power_type, power_parameters)
+                    machine, architecture, power_type, power_parameters
+                )
 
         # MAC enlistment - Check if there is a pre-existing machine within MAAS
         # that has an Interface with one of the given MAC addresses.
@@ -1745,12 +1821,17 @@ class AnonMachinesHandler(AnonNodesHandler):
                     mac_address__in=mac_addresses,
                     node__node_type=NODE_TYPE.MACHINE,
                     node__status__in=[
-                        NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING],
+                        NODE_STATUS.NEW,
+                        NODE_STATUS.COMMISSIONING,
+                    ],
                 ).first()
             if interface is not None:
                 machine = self._update_new_node(
-                    interface.node.as_self(), architecture, power_type,
-                    power_parameters)
+                    interface.node.as_self(),
+                    architecture,
+                    power_type,
+                    power_parameters,
+                )
 
         # If the machine isn't being enlisted by BMC or MAC create a new
         # machine object.
@@ -1762,7 +1843,8 @@ class AnonMachinesHandler(AnonNodesHandler):
                 # machine is NEW. When commissioning finishes this is how
                 # MAAS knows to set the status to NEW instead of READY.
                 NodeMetadata.objects.update_or_create(
-                    node=machine, key='enlisting', defaults={'value': 'True'})
+                    node=machine, key="enlisting", defaults={"value": "True"}
+                )
 
         return machine
 
@@ -1776,11 +1858,12 @@ class AnonMachinesHandler(AnonNodesHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('machines_handler', [])
+        return ("machines_handler", [])
 
 
 class MachinesHandler(NodesHandler, PowersMixin):
     """Manage the collection of all the machines in the MAAS."""
+
     api_doc_section_name = "Machines"
     anonymous = AnonMachinesHandler
     base_model = Machine
@@ -1877,7 +1960,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
         machine = create_machine(request)
         if request.user.is_superuser:
             form = CommissionForm(
-                instance=machine, user=request.user, data=request.data)
+                instance=machine, user=request.user, data=request.data
+            )
             # Silently ignore errors to prevent 500 errors. The commissioning
             # callbacks have their own logging. This fixes LP1600328.
             if form.is_valid():
@@ -1894,13 +1978,16 @@ class MachinesHandler(NodesHandler, PowersMixin):
         if not system_ids:
             return
         existing_machines = self.base_model.objects.filter(
-            system_id__in=system_ids)
+            system_id__in=system_ids
+        )
         existing_ids = set(
-            existing_machines.values_list('system_id', flat=True))
+            existing_machines.values_list("system_id", flat=True)
+        )
         unknown_ids = system_ids - existing_ids
         if len(unknown_ids) > 0:
             raise MAASAPIBadRequest(
-                "Unknown machine(s): %s." % ', '.join(unknown_ids))
+                "Unknown machine(s): %s." % ", ".join(unknown_ids)
+            )
 
     @operation(idempotent=False)
     def accept(self, request):
@@ -1934,20 +2021,23 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @error (content) "no-perms" The user does not have permission to accept
         machines.
         """
-        system_ids = set(request.POST.getlist('machines'))
+        system_ids = set(request.POST.getlist("machines"))
         # Check the existence of these machines first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         machines = self.base_model.objects.get_nodes(
-            request.user, perm=NodePermission.admin, ids=system_ids)
+            request.user, perm=NodePermission.admin, ids=system_ids
+        )
         if len(machines) < len(system_ids):
             permitted_ids = set(machine.system_id for machine in machines)
             raise PermissionDenied(
                 "You don't have the required permission to accept the "
-                "following machine(s): %s." % (
-                    ', '.join(system_ids - permitted_ids)))
-        machines = (machine.accept_enlistment(request.user)
-                    for machine in machines)
+                "following machine(s): %s."
+                % (", ".join(system_ids - permitted_ids))
+            )
+        machines = (
+            machine.accept_enlistment(request.user) for machine in machines
+        )
         return [machine for machine in machines if machine is not None]
 
     @operation(idempotent=False)
@@ -1967,10 +2057,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         placeholder text
         """
         machines = self.base_model.objects.get_nodes(
-            request.user, perm=NodePermission.admin)
+            request.user, perm=NodePermission.admin
+        )
         machines = machines.filter(status=NODE_STATUS.NEW)
-        machines = (machine.accept_enlistment(request.user)
-                    for machine in machines)
+        machines = (
+            machine.accept_enlistment(request.user) for machine in machines
+        )
         return [machine for machine in machines if machine is not None]
 
     @operation(idempotent=False)
@@ -2003,19 +2095,21 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @error (content) "no-release" The current state of the machine prevents
         it from being released.
         """
-        system_ids = set(request.POST.getlist('machines'))
-        comment = get_optional_param(request.POST, 'comment')
+        system_ids = set(request.POST.getlist("machines"))
+        comment = get_optional_param(request.POST, "comment")
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         machines = self.base_model.objects.get_nodes(
-            request.user, perm=NodePermission.edit, ids=system_ids)
+            request.user, perm=NodePermission.edit, ids=system_ids
+        )
         if len(machines) < len(system_ids):
             permitted_ids = set(machine.system_id for machine in machines)
             raise PermissionDenied(
                 "You don't have the required permission to release the "
-                "following machine(s): %s." % (
-                    ', '.join(system_ids - permitted_ids)))
+                "following machine(s): %s."
+                % (", ".join(system_ids - permitted_ids))
+            )
 
         released_ids = []
         failed = []
@@ -2028,13 +2122,14 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 released_ids.append(machine.system_id)
             else:
                 failed.append(
-                    "%s ('%s')"
-                    % (machine.system_id, machine.display_status()))
+                    "%s ('%s')" % (machine.system_id, machine.display_status())
+                )
 
         if any(failed):
             raise NodeStateViolation(
                 "Machine(s) cannot be released in their current state: %s."
-                % ', '.join(failed))
+                % ", ".join(failed)
+            )
         return released_ids
 
     @operation(idempotent=True)
@@ -2051,10 +2146,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # limit to machines that the user can view
         machines = Machine.objects.get_nodes(request.user, NodePermission.view)
         machines = machines.filter(token=get_oauth_token(request))
-        system_ids = get_optional_list(request.GET, 'id')
+        system_ids = get_optional_list(request.GET, "id")
         if system_ids:
             machines = machines.filter(system_id__in=system_ids)
-        return machines.order_by('id')
+        return machines.order_by("id")
 
     @operation(idempotent=False)
     def allocate(self, request):
@@ -2288,16 +2383,21 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # constraints, these need to be added to IGNORED_FIELDS in
         # src/maasserver/node_constraint_filter_forms.py.
         input_constraints = [
-            param for param in request.data.lists() if param[0] != 'op']
+            param for param in request.data.lists() if param[0] != "op"
+        ]
         maaslog.info(
             "Request from user %s to acquire a machine with constraints: %s",
-            request.user.username, str(input_constraints))
+            request.user.username,
+            str(input_constraints),
+        )
         options = get_allocation_options(request)
         verbose = get_optional_param(
-            request.POST, 'verbose', default=False, validator=StringBool)
+            request.POST, "verbose", default=False, validator=StringBool
+        )
         dry_run = get_optional_param(
-            request.POST, 'dry_run', default=False, validator=StringBool)
-        zone = get_optional_param(request.POST, 'zone', default=None)
+            request.POST, "dry_run", default=False, validator=StringBool
+        )
+        zone = get_optional_param(request.POST, "zone", default=None)
 
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -2305,27 +2405,26 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # This lock prevents a machine we've picked as available from
         # becoming unavailable before our transaction commits.
         with locks.node_acquire:
-            machines = (
-                self.base_model.objects.get_available_machines_for_acquisition(
-                    request.user)
-                )
+            machines = self.base_model.objects.get_available_machines_for_acquisition(
+                request.user
+            )
             machines, storage, interfaces = form.filter_nodes(machines)
             machine = get_first(machines)
             if machine is None:
-                cores = form.cleaned_data.get('cpu_count')
+                cores = form.cleaned_data.get("cpu_count")
                 if cores is not None:
                     cores = int(cores)
-                memory = form.cleaned_data.get('mem')
+                memory = form.cleaned_data.get("mem")
                 if memory is not None:
                     memory = int(memory)
                 architecture = None
-                architectures = form.cleaned_data.get('arch')
+                architectures = form.cleaned_data.get("arch")
                 if architectures is not None:
                     architecture = (
-                        None if len(architectures) == 0
-                        else min(architectures))
-                storage = form.cleaned_data.get('storage')
-                interfaces = form.cleaned_data.get('interfaces')
+                        None if len(architectures) == 0 else min(architectures)
+                    )
+                storage = form.cleaned_data.get("storage")
+                interfaces = form.cleaned_data.get("interfaces")
                 data = {
                     "cores": cores,
                     "memory": memory,
@@ -2334,35 +2433,49 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "interfaces": interfaces,
                 }
                 pods = Pod.objects.get_pods(
-                    request.user, PodPermission.dynamic_compose)
+                    request.user, PodPermission.dynamic_compose
+                )
                 if zone is not None:
                     pods = pods.filter(zone__name=zone)
                 if pods:
-                    machine, storage, interfaces = (
-                        get_allocated_composed_machine(
-                            request, data, storage, interfaces, pods, form,
-                            input_constraints)
+                    (
+                        machine,
+                        storage,
+                        interfaces,
+                    ) = get_allocated_composed_machine(
+                        request,
+                        data,
+                        storage,
+                        interfaces,
+                        pods,
+                        form,
+                        input_constraints,
                     )
 
             if machine is None:
                 constraints = form.describe_constraints()
-                if constraints == '':
+                if constraints == "":
                     # No constraints. That means no machines at all were
                     # available.
                     message = "No machine available."
                 else:
                     message = (
-                        'No available machine matches constraints: %s '
-                        '(resolved to "%s")' % (
-                            str(input_constraints), constraints))
+                        "No available machine matches constraints: %s "
+                        '(resolved to "%s")'
+                        % (str(input_constraints), constraints)
+                    )
                 raise NodesNotAvailable(message)
             if not dry_run:
                 machine.acquire(
-                    request.user, get_oauth_token(request),
-                    agent_name=options.agent_name, comment=options.comment,
+                    request.user,
+                    get_oauth_token(request),
+                    agent_name=options.agent_name,
+                    comment=options.comment,
                     bridge_all=options.bridge_all,
                     bridge_type=options.bridge_type,
-                    bridge_stp=options.bridge_stp, bridge_fd=options.bridge_fd)
+                    bridge_stp=options.bridge_stp,
+                    bridge_fd=options.bridge_fd,
+                )
             machine.constraint_map = storage.get(machine.id, {})
             machine.constraints_by_type = {}
             # Need to get the interface constraints map into the proper format
@@ -2370,8 +2483,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
             # Backward compatibility: provide the storage constraints in both
             # formats.
             if len(machine.constraint_map) > 0:
-                machine.constraints_by_type['storage'] = {}
-                new_storage = machine.constraints_by_type['storage']
+                machine.constraints_by_type["storage"] = {}
+                new_storage = machine.constraints_by_type["storage"]
                 # Convert this to the "new style" constraints map format.
                 for storage_key in machine.constraint_map:
                     # Each key in the storage map is actually a value which
@@ -2383,13 +2496,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     matches.append(storage_key)
                     new_storage[new_key] = matches
             if len(interfaces) > 0:
-                machine.constraints_by_type['interfaces'] = {
+                machine.constraints_by_type["interfaces"] = {
                     label: interfaces.get(label, {}).get(machine.id)
                     for label in interfaces
                 }
             if verbose:
-                machine.constraints_by_type['verbose_storage'] = storage
-                machine.constraints_by_type['verbose_interfaces'] = interfaces
+                machine.constraints_by_type["verbose_storage"] = storage
+                machine.constraints_by_type["verbose_interfaces"] = interfaces
             return machine
 
     @admin_method
@@ -2470,71 +2583,110 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @error (content) "bad-params" Required parameters are missing.
         """
         chassis_type = get_mandatory_param(
-            request.POST, 'chassis_type',
-            validator=validators.OneOf([
-                'mscm', 'msftocs', 'powerkvm', 'recs_box', 'seamicro15k',
-                'ucsm', 'virsh', 'vmware']))
-        hostname = get_mandatory_param(request.POST, 'hostname')
+            request.POST,
+            "chassis_type",
+            validator=validators.OneOf(
+                [
+                    "mscm",
+                    "msftocs",
+                    "powerkvm",
+                    "recs_box",
+                    "seamicro15k",
+                    "ucsm",
+                    "virsh",
+                    "vmware",
+                ]
+            ),
+        )
+        hostname = get_mandatory_param(request.POST, "hostname")
 
         if chassis_type in (
-                'mscm', 'msftocs', 'recs_box', 'seamicro15k', 'ucsm',
-                'vmware'):
-            username = get_mandatory_param(request.POST, 'username')
-            password = get_mandatory_param(request.POST, 'password')
+            "mscm",
+            "msftocs",
+            "recs_box",
+            "seamicro15k",
+            "ucsm",
+            "vmware",
+        ):
+            username = get_mandatory_param(request.POST, "username")
+            password = get_mandatory_param(request.POST, "password")
         else:
-            username = get_optional_param(request.POST, 'username')
-            password = get_optional_param(request.POST, 'password')
-            if username is not None and chassis_type in ('powerkvm', 'virsh'):
+            username = get_optional_param(request.POST, "username")
+            password = get_optional_param(request.POST, "password")
+            if username is not None and chassis_type in ("powerkvm", "virsh"):
                 return HttpResponseBadRequest(
                     "username can not be specified when using the %s chassis."
-                    % chassis_type, content_type=(
-                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+                    % chassis_type,
+                    content_type=(
+                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                    ),
+                )
 
-        accept_all = get_optional_param(request.POST, 'accept_all')
+        accept_all = get_optional_param(request.POST, "accept_all")
         if isinstance(accept_all, str):
-            accept_all = accept_all.lower() == 'true'
+            accept_all = accept_all.lower() == "true"
         else:
             accept_all = False
 
         # Only available with virsh, vmware, and powerkvm
-        prefix_filter = get_optional_param(request.POST, 'prefix_filter')
-        if (prefix_filter is not None and
-                chassis_type not in ('powerkvm', 'virsh', 'vmware')):
+        prefix_filter = get_optional_param(request.POST, "prefix_filter")
+        if prefix_filter is not None and chassis_type not in (
+            "powerkvm",
+            "virsh",
+            "vmware",
+        ):
             return HttpResponseBadRequest(
-                "prefix_filter is unavailable with the %s chassis type" %
-                chassis_type, content_type=(
-                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+                "prefix_filter is unavailable with the %s chassis type"
+                % chassis_type,
+                content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                ),
+            )
 
         # Only available with seamicro15k
         power_control = get_optional_param(
-            request.POST, 'power_control',
-            validator=validators.OneOf(['ipmi', 'restapi', 'restapi2']))
-        if power_control is not None and chassis_type != 'seamicro15k':
+            request.POST,
+            "power_control",
+            validator=validators.OneOf(["ipmi", "restapi", "restapi2"]),
+        )
+        if power_control is not None and chassis_type != "seamicro15k":
             return HttpResponseBadRequest(
-                "power_control is unavailable with the %s chassis type" %
-                chassis_type, content_type=(
-                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+                "power_control is unavailable with the %s chassis type"
+                % chassis_type,
+                content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                ),
+            )
 
         # Only available with vmware, recs_box or msftocs
-        port = get_optional_param(request.POST, 'port',
-                                  validator=validators.Int(min=1, max=65535))
-        if port is not None and chassis_type not in ('msftocs', 'recs_box',
-                                                     'vmware'):
+        port = get_optional_param(
+            request.POST, "port", validator=validators.Int(min=1, max=65535)
+        )
+        if port is not None and chassis_type not in (
+            "msftocs",
+            "recs_box",
+            "vmware",
+        ):
             return HttpResponseBadRequest(
-                "port is unavailable with the %s chassis type" %
-                chassis_type, content_type=(
-                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+                "port is unavailable with the %s chassis type" % chassis_type,
+                content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                ),
+            )
 
         # Only available with vmware
-        protocol = get_optional_param(request.POST, 'protocol')
-        if protocol is not None and chassis_type != 'vmware':
+        protocol = get_optional_param(request.POST, "protocol")
+        if protocol is not None and chassis_type != "vmware":
             return HttpResponseBadRequest(
-                "protocol is unavailable with the %s chassis type" %
-                chassis_type, content_type=(
-                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+                "protocol is unavailable with the %s chassis type"
+                % chassis_type,
+                content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                ),
+            )
 
         # If given a domain make sure it exists first
-        domain_name = get_optional_param(request.POST, 'domain')
+        domain_name = get_optional_param(request.POST, "domain")
         if domain_name is not None:
             try:
                 domain = Domain.objects.get(id=int(domain_name))
@@ -2543,10 +2695,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     domain = Domain.objects.get(name=domain_name)
                 except Domain.DoesNotExist:
                     return HttpResponseNotFound(
-                        "Unable to find specified domain %s" % domain_name)
+                        "Unable to find specified domain %s" % domain_name
+                    )
             domain_name = domain.name
 
-        rack_controller = get_optional_param(request.POST, 'rack_controller')
+        rack_controller = get_optional_param(request.POST, "rack_controller")
         if rack_controller is None:
             rack = RackController.objects.get_accessible_by_url(hostname)
             if rack:
@@ -2555,14 +2708,19 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 racks = RackController.objects.all()
         else:
             try:
-                racks = [RackController.objects.get(
-                    Q(system_id=rack_controller) | Q(hostname=rack_controller))
+                racks = [
+                    RackController.objects.get(
+                        Q(system_id=rack_controller)
+                        | Q(hostname=rack_controller)
+                    )
                 ]
             except RackController.DoesNotExist:
                 return HttpResponseNotFound(
                     "Unable to find specified rack %s" % rack_controller,
                     content_type=(
-                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET
+                    ),
+                )
 
         # Ask all racks to add the chassis. add_chassis() is kind of
         # idempotent, so nodes won't be added multiple times by
@@ -2572,14 +2730,24 @@ class MachinesHandler(NodesHandler, PowersMixin):
             # add the chassis. But currently add_chassis() doesn't
             # return whether it succeeds.
             rack.add_chassis(
-                request.user.username, chassis_type, hostname, username,
-                password, accept_all, domain_name, prefix_filter,
-                power_control, port, protocol)
+                request.user.username,
+                chassis_type,
+                hostname,
+                username,
+                password,
+                accept_all,
+                domain_name,
+                prefix_filter,
+                power_control,
+                port,
+                protocol,
+            )
 
         return HttpResponse(
-            "Asking %s to add machines from chassis %s" % (
-                ", ".join(rack.hostname for rack in racks), hostname),
-            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+            "Asking %s to add machines from chassis %s"
+            % (", ".join(rack.hostname for rack in racks), hostname),
+            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET),
+        )
 
     @operation(idempotent=False)
     def clone(self, request):
@@ -2628,4 +2796,4 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('machines_handler', [])
+        return ("machines_handler", [])

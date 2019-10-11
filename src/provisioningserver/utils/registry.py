@@ -3,14 +3,9 @@
 
 """Registry base class for registry singletons."""
 
-__all__ = [
-    "Registry",
-]
+__all__ = ["Registry"]
 
-from collections import (
-    defaultdict,
-    OrderedDict,
-)
+from collections import defaultdict, OrderedDict
 
 # Uses `OrderedDict` so iterating registry occurs in the order of addition.
 _registry = defaultdict(OrderedDict)

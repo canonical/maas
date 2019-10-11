@@ -4,20 +4,17 @@
 """MAAS-specific helpers for :class:`User`."""
 
 __all__ = [
-    'create_auth_token',
-    'create_user',
-    'get_auth_tokens',
-    'get_creds_tuple',
-    'SYSTEM_USERS',
-    ]
+    "create_auth_token",
+    "create_user",
+    "get_auth_tokens",
+    "get_creds_tuple",
+    "SYSTEM_USERS",
+]
 
 from maasserver import worker_user
 from maasserver.models import Config
 from metadataserver import nodeinituser
-from piston3.models import (
-    Consumer,
-    Token,
-)
+from piston3.models import Consumer, Token
 
 # Special users internal to MAAS.
 SYSTEM_USERS = [
@@ -25,9 +22,9 @@ SYSTEM_USERS = [
     nodeinituser.user_name,
     # For node-group's workers to the MAAS API:
     worker_user.user_name,
-    ]
+]
 
-GENERIC_CONSUMER = 'MAAS consumer'
+GENERIC_CONSUMER = "MAAS consumer"
 
 
 def create_auth_token(user, consumer_name=None):
@@ -44,15 +41,16 @@ def create_auth_token(user, consumer_name=None):
     if consumer_name is None:
         consumer_name = GENERIC_CONSUMER
     consumer = Consumer.objects.create(
-        user=user, name=consumer_name, status='accepted')
+        user=user, name=consumer_name, status="accepted"
+    )
     consumer.generate_random_codes()
     # This is a 'generic' consumer aimed to service many clients, hence
     # we don't authenticate the consumer with key/secret key.
-    consumer.secret = ''
+    consumer.secret = ""
     consumer.save()
     token = Token.objects.create(
-        user=user, token_type=Token.ACCESS, consumer=consumer,
-        is_approved=True)
+        user=user, token_type=Token.ACCESS, consumer=consumer, is_approved=True
+    )
     token.generate_random_codes()
     return token
 
@@ -67,8 +65,11 @@ def get_auth_tokens(user):
        en/dev/ref/models/querysets/
 
     """
-    return Token.objects.select_related().filter(
-        user=user, token_type=Token.ACCESS, is_approved=True).order_by('id')
+    return (
+        Token.objects.select_related()
+        .filter(user=user, token_type=Token.ACCESS, is_approved=True)
+        .order_by("id")
+    )
 
 
 # When a user is created: create the related profile, and the default
@@ -81,8 +82,7 @@ def create_user(sender, instance, created, **kwargs):
     if created and instance.username not in SYSTEM_USERS:
         is_local = not Config.objects.is_external_auth_enabled()
         # Create related UserProfile.
-        profile = UserProfile.objects.create(
-            user=instance, is_local=is_local)
+        profile = UserProfile.objects.create(user=instance, is_local=is_local)
 
         # Create initial authorisation token.
         profile.create_authorisation_token()
@@ -94,8 +94,4 @@ def get_creds_tuple(token):
     Returns a tuple of (consumer key, resource token, resource secret).
     The consumer secret is hard-wired to the empty string.
     """
-    return (
-        token.consumer.key,
-        token.key,
-        token.secret,
-        )
+    return (token.consumer.key, token.key, token.secret)

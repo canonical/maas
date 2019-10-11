@@ -7,12 +7,7 @@ __all__ = []
 
 import os
 import random
-from unittest.mock import (
-    ANY,
-    call,
-    MagicMock,
-    sentinel,
-)
+from unittest.mock import ANY, call, MagicMock, sentinel
 from urllib.parse import urlparse
 
 from maasserver.bootresources import get_simplestream_endpoint
@@ -71,12 +66,7 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
 )
-from twisted.internet.defer import (
-    DeferredLock,
-    fail,
-    maybeDeferred,
-    succeed,
-)
+from twisted.internet.defer import DeferredLock, fail, maybeDeferred, succeed
 from twisted.internet.task import Clock
 from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
@@ -87,14 +77,16 @@ def make_image_dir(image_params, tftp_root):
     image_dir = os.path.join(
         tftp_root,
         compose_image_path(
-            osystem=image_params['osystem'],
-            arch=image_params['architecture'],
-            subarch=image_params['subarchitecture'],
-            release=image_params['release'],
-            label=image_params['label']))
+            osystem=image_params["osystem"],
+            arch=image_params["architecture"],
+            subarch=image_params["subarchitecture"],
+            release=image_params["release"],
+            label=image_params["label"],
+        ),
+    )
     os.makedirs(image_dir)
-    factory.make_file(image_dir, 'linux')
-    factory.make_file(image_dir, 'initrd.gz')
+    factory.make_file(image_dir, "linux")
+    factory.make_file(image_dir, "initrd.gz")
 
 
 class TestIsImportBootImagesRunning(MAASTransactionServerTestCase):
@@ -111,10 +103,10 @@ class TestIsImportBootImagesRunning(MAASTransactionServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             if index == 0:
                 # The first client returns all False.
-                callRemote.return_value = succeed({'running': False})
+                callRemote.return_value = succeed({"running": False})
             else:
                 # All clients but the first return True.
-                callRemote.return_value = succeed({'running': True})
+                callRemote.return_value = succeed({"running": True})
 
         self.assertTrue(is_import_boot_images_running())
 
@@ -127,7 +119,7 @@ class TestIsImportBootImagesRunning(MAASTransactionServerTestCase):
         clients = getAllClients()
         for index, client in enumerate(clients):
             callRemote = self.patch(client._conn, "callRemote")
-            callRemote.return_value = succeed({'running': False})
+            callRemote.return_value = succeed({"running": False})
 
         self.assertFalse(is_import_boot_images_running())
 
@@ -142,7 +134,7 @@ class TestIsImportBootImagesRunning(MAASTransactionServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             if index == 0:
                 # The first client returns True.
-                callRemote.return_value = succeed({'running': True})
+                callRemote.return_value = succeed({"running": True})
             else:
                 # All clients but the first raise an exception.
                 callRemote.side_effect = ZeroDivisionError()
@@ -152,9 +144,9 @@ class TestIsImportBootImagesRunning(MAASTransactionServerTestCase):
 
 def prepare_tftp_root(test):
     """Create a `current` directory and configure its use."""
-    test.tftp_root = os.path.join(test.make_dir(), 'current')
+    test.tftp_root = os.path.join(test.make_dir(), "current")
     os.mkdir(test.tftp_root)
-    test.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
+    test.patch(boot_images, "CACHED_BOOT_IMAGES", None)
     config = ClusterConfigurationFixture(tftp_root=test.tftp_root)
     test.useFixture(config)
 
@@ -170,7 +162,8 @@ class TestGetBootImages(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         mock_client = MagicMock()
         self.patch_autospec(
-            boot_images_module, "getClientFor").return_value = mock_client
+            boot_images_module, "getClientFor"
+        ).return_value = mock_client
         get_boot_images(rack_controller)
         self.assertThat(mock_client, MockCalledOnceWith(ListBootImagesV2))
 
@@ -178,15 +171,17 @@ class TestGetBootImages(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         mock_client = MagicMock()
         self.patch_autospec(
-            boot_images_module, "getClientFor").return_value = mock_client
+            boot_images_module, "getClientFor"
+        ).return_value = mock_client
         mock_client.return_value.wait.side_effect = [
             UnhandledCommand(),
             {"images": []},
-            ]
+        ]
         get_boot_images(rack_controller)
-        self.assertThat(mock_client, MockCallsMatch(
-            call(ListBootImagesV2),
-            call(ListBootImages)))
+        self.assertThat(
+            mock_client,
+            MockCallsMatch(call(ListBootImagesV2), call(ListBootImages)),
+        )
 
 
 class TestGetBootImagesTxn(MAASTransactionServerTestCase):
@@ -200,18 +195,19 @@ class TestGetBootImagesTxn(MAASTransactionServerTestCase):
         rack_controller = factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
-        purposes = ['install', 'commissioning', 'xinstall']
+        purposes = ["install", "commissioning", "xinstall"]
         params = [make_boot_image_storage_params() for _ in range(3)]
         for param in params:
             make_image_dir(param, self.tftp_root)
-            test_tftppath.make_osystem(self, param['osystem'], purposes)
+            test_tftppath.make_osystem(self, param["osystem"], purposes)
         self.assertItemsEqual(
             [
                 make_image(param, purpose)
                 for param in params
                 for purpose in purposes
             ],
-            get_boot_images(rack_controller))
+            get_boot_images(rack_controller),
+        )
 
 
 class TestGetAvailableBootImages(MAASTransactionServerTestCase):
@@ -219,14 +215,14 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
     `get_all_available_boot_images`."""
 
     scenarios = (
-        ("get_common_available_boot_images", {
-            "get": get_common_available_boot_images,
-            "all": False,
-        }),
-        ("get_all_available_boot_images", {
-            "get": get_all_available_boot_images,
-            "all": True,
-        }),
+        (
+            "get_common_available_boot_images",
+            {"get": get_common_available_boot_images, "all": False},
+        ),
+        (
+            "get_all_available_boot_images",
+            {"get": get_all_available_boot_images, "all": True},
+        ),
     )
 
     def setUp(self):
@@ -237,18 +233,19 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
         factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
-        purposes = ['install', 'commissioning', 'xinstall']
+        purposes = ["install", "commissioning", "xinstall"]
         params = [make_boot_image_storage_params() for _ in range(3)]
         for param in params:
             make_image_dir(param, self.tftp_root)
-            test_tftppath.make_osystem(self, param['osystem'], purposes)
+            test_tftppath.make_osystem(self, param["osystem"], purposes)
         self.assertItemsEqual(
             [
                 make_image(param, purpose)
                 for param in params
                 for purpose in purposes
             ],
-            self.get())
+            self.get(),
+        )
 
     def test_returns_boot_images_on_all_clusters(self):
         factory.make_RackController()
@@ -265,10 +262,10 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             if index == 0:
                 # The first client returns all images.
-                callRemote.return_value = succeed({'images': images})
+                callRemote.return_value = succeed({"images": images})
             else:
                 # All clients but the first return only available images.
-                callRemote.return_value = succeed({'images': available_images})
+                callRemote.return_value = succeed({"images": available_images})
 
         expected_images = images if self.all else available_images
         self.assertItemsEqual(expected_images, self.get())
@@ -286,7 +283,7 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             if index == 0:
                 # The first client returns correct image information.
-                callRemote.return_value = succeed({'images': images})
+                callRemote.return_value = succeed({"images": images})
             else:
                 # All clients but the first raise an exception.
                 callRemote.side_effect = ZeroDivisionError()
@@ -309,11 +306,11 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
 
         # This simulates an older cluster, one without ListBootImagesV2.
         rack_1 = rpc.makeCluster(rack_1, ListBootImages)
-        rack_1.ListBootImages.return_value = succeed({'images': images})
+        rack_1.ListBootImages.return_value = succeed({"images": images})
 
         # This simulates a newer cluster, one with ListBootImagesV2.
         rack_2 = rpc.makeCluster(rack_2, ListBootImagesV2)
-        rack_2.ListBootImagesV2.return_value = succeed({'images': images})
+        rack_2.ListBootImagesV2.return_value = succeed({"images": images})
 
         # This simulates a broken cluster.
         rack_3 = rpc.makeCluster(rack_3, ListBootImagesV2)
@@ -343,19 +340,16 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def make_boot_images(self):
-        purposes = ['install', 'commissioning', 'xinstall']
+        purposes = ["install", "commissioning", "xinstall"]
         params = [make_boot_image_storage_params() for _ in range(3)]
         for param in params:
             make_image_dir(param, self.tftp_root)
-            test_tftppath.make_osystem(self, param['osystem'], purposes)
+            test_tftppath.make_osystem(self, param["osystem"], purposes)
         return params
 
     def make_rpc_boot_images(self, param):
-        purposes = ['install', 'commissioning', 'xinstall']
-        return [
-            make_image(param, purpose)
-            for purpose in purposes
-            ]
+        purposes = ["install", "commissioning", "xinstall"]
+        return [make_image(param, purpose) for purpose in purposes]
 
     def test_returns_boot_images_matching_subarchitecture(self):
         rack = factory.make_RackController()
@@ -367,10 +361,12 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
             self.make_rpc_boot_images(param),
             get_boot_images_for(
                 rack,
-                param['osystem'],
-                param['architecture'],
-                param['subarchitecture'],
-                param['release']))
+                param["osystem"],
+                param["architecture"],
+                param["subarchitecture"],
+                param["release"],
+            ),
+        )
 
     def test_returns_boot_images_matching_subarches_in_boot_resources(self):
         rack = factory.make_RackController()
@@ -378,16 +374,20 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         params = self.make_boot_images()
         param = params.pop()
 
-        subarches = [factory.make_name('subarch') for _ in range(3)]
-        resource_name = '%s/%s' % (param['osystem'], param['release'])
-        resource_arch = '%s/%s' % (
-            param['architecture'], param['subarchitecture'])
+        subarches = [factory.make_name("subarch") for _ in range(3)]
+        resource_name = "%s/%s" % (param["osystem"], param["release"])
+        resource_arch = "%s/%s" % (
+            param["architecture"],
+            param["subarchitecture"],
+        )
 
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=resource_name, architecture=resource_arch)
+            name=resource_name,
+            architecture=resource_arch,
+        )
         extra = resource.extra.copy()
-        extra['subarches'] = ','.join(subarches)
+        extra["subarches"] = ",".join(subarches)
         resource.extra = extra
         resource.save()
 
@@ -396,10 +396,12 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
             self.make_rpc_boot_images(param),
             get_boot_images_for(
                 rack,
-                param['osystem'],
-                param['architecture'],
+                param["osystem"],
+                param["architecture"],
                 subarch,
-                param['release']))
+                param["release"],
+            ),
+        )
 
 
 class TestRackControllersImporter(MAASServerTestCase):
@@ -412,10 +414,14 @@ class TestRackControllersImporter(MAASServerTestCase):
 
         importer = RackControllersImporter(system_id, sources, proxy)
 
-        self.assertThat(importer, MatchesStructure(
-            system_ids=Equals((system_id, )), sources=Is(sources),
-            proxy=Equals(urlparse(proxy)),
-        ))
+        self.assertThat(
+            importer,
+            MatchesStructure(
+                system_ids=Equals((system_id,)),
+                sources=Is(sources),
+                proxy=Equals(urlparse(proxy)),
+            ),
+        )
 
     def test__init_with_multiple_ssytem_ids(self):
         system_ids = [factory.make_name("system_id") for _ in range(3)]
@@ -424,20 +430,26 @@ class TestRackControllersImporter(MAASServerTestCase):
 
         importer = RackControllersImporter(system_ids, sources, proxy)
 
-        self.assertThat(importer, MatchesStructure(
-            system_ids=Equals(tuple(system_ids)), sources=Is(sources),
-            proxy=Equals(urlparse(proxy)),
-        ))
+        self.assertThat(
+            importer,
+            MatchesStructure(
+                system_ids=Equals(tuple(system_ids)),
+                sources=Is(sources),
+                proxy=Equals(urlparse(proxy)),
+            ),
+        )
 
     def test__init_also_accepts_already_parsed_proxy(self):
         proxy = urlparse(factory.make_simple_http_url())
         importer = RackControllersImporter(
-            sentinel.system_id, [sentinel.source], proxy)
+            sentinel.system_id, [sentinel.source], proxy
+        )
         self.assertThat(importer, MatchesStructure(proxy=Is(proxy)))
 
     def test__init_also_accepts_no_proxy(self):
         importer = RackControllersImporter(
-            sentinel.system_id, [sentinel.source])
+            sentinel.system_id, [sentinel.source]
+        )
         self.assertThat(importer, MatchesStructure(proxy=Is(None)))
 
     def test__schedule_arranges_for_later_run(self):
@@ -455,22 +467,32 @@ class TestRackControllersImporter(MAASServerTestCase):
 
         clock = Clock()
         delayed_call = RackControllersImporter.schedule(
-            system_ids=system_ids, sources=sources, proxy=proxy, delay=delay,
-            concurrency=conc, clock=clock)
+            system_ids=system_ids,
+            sources=sources,
+            proxy=proxy,
+            delay=delay,
+            concurrency=conc,
+            clock=clock,
+        )
 
         # The call is scheduled for `delay` seconds from now.
         self.assertThat(delayed_call, MatchesStructure(time=Equals(delay)))
         self.assertThat(RackControllersImporter.run, MockNotCalled())
         clock.advance(delay)
         self.assertThat(
-            RackControllersImporter.run, MockCalledOnceWith(ANY, conc))
+            RackControllersImporter.run, MockCalledOnceWith(ANY, conc)
+        )
 
         # The system_ids, sources, and proxy were all passed through.
         [importer, _] = RackControllersImporter.run.call_args[0]
-        self.assertThat(importer, MatchesStructure(
-            system_ids=Equals(tuple(system_ids)), sources=Is(sources),
-            proxy=Equals(urlparse(proxy)),
-        ))
+        self.assertThat(
+            importer,
+            MatchesStructure(
+                system_ids=Equals(tuple(system_ids)),
+                sources=Is(sources),
+                proxy=Equals(urlparse(proxy)),
+            ),
+        )
 
     def test__run_will_not_error_instead_it_logs(self):
         call = self.patch(RackControllersImporter, "__call__")
@@ -486,7 +508,8 @@ class TestRackControllersImporter(MAASServerTestCase):
             Traceback (most recent call last):
             ...
             """,
-            logger.output)
+            logger.output,
+        )
 
 
 class TestRackControllersImporterNew(MAASServerTestCase):
@@ -501,13 +524,16 @@ class TestRackControllersImporterNew(MAASServerTestCase):
 
         importer = RackControllersImporter.new(sources=[], proxy=None)
 
-        self.assertThat(importer, MatchesStructure(
-            system_ids=Equals((rack.system_id, ))))
+        self.assertThat(
+            importer, MatchesStructure(system_ids=Equals((rack.system_id,)))
+        )
 
     def test__new_obtains_sources_if_not_given(self):
         importer = RackControllersImporter.new(system_ids=[], proxy=None)
-        self.assertThat(importer, MatchesStructure(
-            sources=Equals([get_simplestream_endpoint()])))
+        self.assertThat(
+            importer,
+            MatchesStructure(sources=Equals([get_simplestream_endpoint()])),
+        )
 
     def test__new_obtains_proxy_if_not_given(self):
         # Disable boot source cache signals.
@@ -517,8 +543,9 @@ class TestRackControllersImporterNew(MAASServerTestCase):
         proxy = factory.make_simple_http_url()
         Config.objects.set_config("http_proxy", proxy)
         importer = RackControllersImporter.new(system_ids=[], sources=[])
-        self.assertThat(importer, MatchesStructure(
-            proxy=Equals(urlparse(proxy))))
+        self.assertThat(
+            importer, MatchesStructure(proxy=Equals(urlparse(proxy)))
+        )
 
     def test__new_obtains_None_proxy_if_disabled(self):
         # Disable boot source cache signals.
@@ -529,8 +556,7 @@ class TestRackControllersImporterNew(MAASServerTestCase):
         Config.objects.set_config("http_proxy", proxy)
         Config.objects.set_config("enable_http_proxy", False)
         importer = RackControllersImporter.new(system_ids=[], sources=[])
-        self.assertThat(importer, MatchesStructure(
-            proxy=Equals(None)))
+        self.assertThat(importer, MatchesStructure(proxy=Equals(None)))
 
 
 class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
@@ -556,21 +582,32 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
 
         # Do the import.
         importer = RackControllersImporter.new(
-            [rack_1.system_id, rack_2.system_id])
+            [rack_1.system_id, rack_2.system_id]
+        )
         results = importer(lock=DeferredLock()).wait(5)
 
         # The results are a list (it's from a DeferredList).
-        self.assertThat(results, MatchesListwise((
-            # Success when calling rack_1.
-            Equals((True, {})),
-            # Failure when calling rack_1: no connection.
-            MatchesListwise((
-                Is(False), MatchesAll(
-                    IsInstance(Failure), MatchesStructure(
-                        value=IsInstance(NoConnectionsAvailable)),
-                ),
-            )),
-        )))
+        self.assertThat(
+            results,
+            MatchesListwise(
+                (
+                    # Success when calling rack_1.
+                    Equals((True, {})),
+                    # Failure when calling rack_1: no connection.
+                    MatchesListwise(
+                        (
+                            Is(False),
+                            MatchesAll(
+                                IsInstance(Failure),
+                                MatchesStructure(
+                                    value=IsInstance(NoConnectionsAvailable)
+                                ),
+                            ),
+                        )
+                    ),
+                )
+            ),
+        )
 
     def test__run_calls_importer_and_reports_results(self):
         # Some clusters that we'll ask to import resources.
@@ -589,11 +626,9 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
         # Cluster #3 is not connected.
 
         # Do the import with reporting.
-        importer = RackControllersImporter.new([
-            rack_1.system_id,
-            rack_2.system_id,
-            rack_3.system_id,
-        ])
+        importer = RackControllersImporter.new(
+            [rack_1.system_id, rack_2.system_id, rack_3.system_id]
+        )
 
         with TwistedLoggerFixture() as logger:
             importer.run().wait(5)
@@ -610,5 +645,7 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
             ---
             Rack controller (%s) did not import boot resources; it is not
             connected to the region at this time.
-            """ % (rack_1.system_id, rack_2.system_id, rack_3.system_id),
-            logger.output)
+            """
+            % (rack_1.system_id, rack_2.system_id, rack_3.system_id),
+            logger.output,
+        )

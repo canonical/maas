@@ -3,11 +3,9 @@
 
 """API logger."""
 
-__all__ = [
-    'maaslog',
-    ]
+__all__ = ["maaslog"]
 
 from provisioningserver.logger import get_maas_logger
 
 
-maaslog = get_maas_logger('api')
+maaslog = get_maas_logger("api")

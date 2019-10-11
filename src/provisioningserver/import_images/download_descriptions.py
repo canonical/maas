@@ -8,10 +8,7 @@ resources themselves.  The two are handled in separate Simplestreams
 synchronisation stages.
 """
 
-__all__ = [
-    'download_all_image_descriptions',
-    'validate_product',
-    ]
+__all__ = ["download_all_image_descriptions", "validate_product"]
 
 import re
 
@@ -25,48 +22,50 @@ from provisioningserver.import_images.helpers import (
     maaslog,
 )
 from simplestreams import util as sutil
-from simplestreams.mirrors import (
-    BasicMirrorWriter,
-    UrlMirrorReader,
-)
-from simplestreams.util import (
-    path_from_mirror_url,
-    products_exdata,
-)
+from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
+from simplestreams.util import path_from_mirror_url, products_exdata
 
 # Compile a regex to validate Ubuntu product names. This only allows V2 and V3
 # Ubuntu images.
-UBUNTU_REGEX = re.compile('.*:v[23]:.*', re.IGNORECASE)
+UBUNTU_REGEX = re.compile(".*:v[23]:.*", re.IGNORECASE)
 # Compile a regex to validate Ubuntu Core. By having 'v4' in the
 # product name it is prevented from being shown in older versions of
 # MAAS which do not support Ubuntu Core.
-UBUNTU_CORE_REGEX = re.compile('.*:v4:.*', re.IGNORECASE)
+UBUNTU_CORE_REGEX = re.compile(".*:v4:.*", re.IGNORECASE)
 # Compile a regex to validate bootloader product names. This only allows V1
 # bootloaders.
-BOOTLOADER_REGEX = re.compile('.*:1:.*', re.IGNORECASE)
+BOOTLOADER_REGEX = re.compile(".*:1:.*", re.IGNORECASE)
 
 
 def clean_up_repo_item(item):
     """Return a subset of dict `item` for storing in a boot images dict."""
     keys_to_keep = [
-        'content_id', 'product_name', 'version_name', 'path', 'subarches',
-        'release_codename', 'release_title', 'support_eol', 'kflavor',
-        'bootloader-type', 'os_title', 'gadget_title']
-    compact_item = {
-        key: item[key]
-        for key in keys_to_keep
-        if key in item
-    }
+        "content_id",
+        "product_name",
+        "version_name",
+        "path",
+        "subarches",
+        "release_codename",
+        "release_title",
+        "support_eol",
+        "kflavor",
+        "bootloader-type",
+        "os_title",
+        "gadget_title",
+    ]
+    compact_item = {key: item[key] for key in keys_to_keep if key in item}
     return compact_item
 
 
 def validate_ubuntu(data, product_name):
-    osystem = data.get('os', '')
-    if 'ubuntu' not in osystem.lower():
+    osystem = data.get("os", "")
+    if "ubuntu" not in osystem.lower():
         # It's not an Ubuntu product, nothing to validate.
         return True
-    elif (osystem == 'ubuntu-core' and
-          UBUNTU_CORE_REGEX.search(product_name) is not None):
+    elif (
+        osystem == "ubuntu-core"
+        and UBUNTU_CORE_REGEX.search(product_name) is not None
+    ):
         return True
     elif UBUNTU_REGEX.search(product_name) is None:
         # Only insert v2 or v3 Ubuntu products.
@@ -76,7 +75,7 @@ def validate_ubuntu(data, product_name):
 
 
 def validate_bootloader(data, product_name):
-    bootloader_type = data.get('bootloader-type')
+    bootloader_type = data.get("bootloader-type")
     if bootloader_type is None:
         # It's not a bootloader, nothing to validate
         return True
@@ -86,33 +85,18 @@ def validate_bootloader(data, product_name):
     # Validate MAAS supports the specific bootloader_type, os, arch
     # combination.
     SUPPORTED_BOOTLOADERS = {
-        'pxe': [
-            {
-                'os': 'pxelinux',
-                'arch': 'i386',
-            }
+        "pxe": [{"os": "pxelinux", "arch": "i386"}],
+        "uefi": [
+            {"os": "grub-efi-signed", "arch": "amd64"},
+            {"os": "grub-efi", "arch": "arm64"},
         ],
-        'uefi': [
-            {
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-            },
-            {
-                'os': 'grub-efi',
-                'arch': 'arm64',
-            }
-        ],
-        'open-firmware': [
-            {
-                'os': 'grub-ieee1275',
-                'arch': 'ppc64el',
-            }
-        ],
+        "open-firmware": [{"os": "grub-ieee1275", "arch": "ppc64el"}],
     }
     for bootloader in SUPPORTED_BOOTLOADERS.get(bootloader_type, []):
         if (
-                data.get('os') == bootloader['os'] and
-                data.get('arch') == bootloader['arch']):
+            data.get("os") == bootloader["os"]
+            and data.get("arch") == bootloader["arch"]
+        ):
             return True
 
     # Bootloader not supported, ignore
@@ -120,8 +104,9 @@ def validate_bootloader(data, product_name):
 
 
 def validate_product(data, product_name):
-    return (validate_ubuntu(data, product_name) and
-            validate_bootloader(data, product_name))
+    return validate_ubuntu(data, product_name) and validate_bootloader(
+        data, product_name
+    )
 
 
 class RepoDumper(BasicMirrorWriter):
@@ -140,11 +125,13 @@ class RepoDumper(BasicMirrorWriter):
     """
 
     def __init__(self, boot_images_dict, validate_products=True):
-        super(RepoDumper, self).__init__(config={
-            # Only download the latest version. Without this all versions
-            # will be read, causing miss matches in versions.
-            'max_items': 1,
-            })
+        super(RepoDumper, self).__init__(
+            config={
+                # Only download the latest version. Without this all versions
+                # will be read, causing miss matches in versions.
+                "max_items": 1
+            }
+        )
         self.boot_images_dict = boot_images_dict
         self.validate_products = validate_products
 
@@ -159,50 +146,55 @@ class RepoDumper(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
         if self.validate_products and not validate_product(item, pedigree[0]):
-            maaslog.warning('Ignoring unsupported product %s' % pedigree[0])
+            maaslog.warning("Ignoring unsupported product %s" % pedigree[0])
             return
         os = get_os_from_product(item)
-        arch = item['arch']
-        subarches = item.get('subarches', 'generic')
-        if item.get('bootloader-type') is None:
-            release = item['release']
-            kflavor = item.get('kflavor', 'generic')
+        arch = item["arch"]
+        subarches = item.get("subarches", "generic")
+        if item.get("bootloader-type") is None:
+            release = item["release"]
+            kflavor = item.get("kflavor", "generic")
         else:
-            release = item['bootloader-type']
-            kflavor = 'bootloader'
-        label = item['label']
+            release = item["bootloader-type"]
+            kflavor = "bootloader"
+        label = item["label"]
         base_image = ImageSpec(os, arch, None, kflavor, release, label)
         compact_item = clean_up_repo_item(item)
 
-        if os == 'ubuntu-core':
+        if os == "ubuntu-core":
             # For Ubuntu Core we only want one entry per release/arch/gadget
-            gadget = item.get('gadget_snap', 'generic')
-            kflavor = item.get('kernel_snap', 'generic')
+            gadget = item.get("gadget_snap", "generic")
+            kflavor = item.get("kernel_snap", "generic")
             release = "%s-%s" % (release, gadget)
             self.boot_images_dict.setdefault(
                 base_image._replace(
-                    subarch='generic', kflavor=kflavor, release=release),
-                compact_item)
+                    subarch="generic", kflavor=kflavor, release=release
+                ),
+                compact_item,
+            )
         else:
-            for subarch in subarches.split(','):
+            for subarch in subarches.split(","):
                 self.boot_images_dict.setdefault(
-                    base_image._replace(subarch=subarch), compact_item)
+                    base_image._replace(subarch=subarch), compact_item
+                )
 
             # HWE resources need to map to a specfic resource, and not just to
             # any of the supported subarchitectures for that resource.
-            subarch = item.get('subarch', 'generic')
+            subarch = item.get("subarch", "generic")
             self.boot_images_dict.set(
-                base_image._replace(subarch=subarch), compact_item)
+                base_image._replace(subarch=subarch), compact_item
+            )
 
-            if os == 'ubuntu' and item.get('version') is not None:
+            if os == "ubuntu" and item.get("version") is not None:
                 # HWE resources with generic, should map to the HWE that ships
                 # with that release. Starting with Xenial kernels changed from
                 # using the naming format hwe-<letter> to ga-<version>. Look
                 # for both.
-                hwe_archs = ["ga-%s" % item['version'], "hwe-%s" % release[0]]
-                if subarch in hwe_archs and 'generic' in subarches:
+                hwe_archs = ["ga-%s" % item["version"], "hwe-%s" % release[0]]
+                if subarch in hwe_archs and "generic" in subarches:
                     self.boot_images_dict.set(
-                        base_image._replace(subarch='generic'), compact_item)
+                        base_image._replace(subarch="generic"), compact_item
+                    )
 
     def sync(self, reader, path):
         try:
@@ -210,7 +202,8 @@ class RepoDumper(BasicMirrorWriter):
         except IOError:
             maaslog.warning(
                 "I/O error while syncing boot images. If this problem "
-                "persists, verify network connectivity and disk usage.")
+                "persists, verify network connectivity and disk usage."
+            )
             # This MUST NOT suppress the I/O error because callers use
             # self.boot_images_dict as the "return" value. Suppressing
             # exceptions here gives the caller no reason to doubt that
@@ -223,7 +216,8 @@ class RepoDumper(BasicMirrorWriter):
             # have been unable to use simplestreams.
             maaslog.error(
                 "Failed to download image descriptions with Simplestreams "
-                "(%s). Verify network connectivity." % error)
+                "(%s). Verify network connectivity." % error
+            )
             raise
 
 
@@ -233,7 +227,7 @@ def value_passes_filter_list(filter_list, property_value):
     The value passes if either it matches one of the entries in the list of
     filter values, or one of the filter values is an asterisk (`*`).
     """
-    return '*' in filter_list or property_value in filter_list
+    return "*" in filter_list or property_value in filter_list
 
 
 def value_passes_filter(filter_value, property_value):
@@ -242,7 +236,7 @@ def value_passes_filter(filter_value, property_value):
     The value passes the filter if either the filter value is an asterisk
     (`*`) or the value is equal to the filter value.
     """
-    return filter_value in ('*', property_value)
+    return filter_value in ("*", property_value)
 
 
 def image_passes_filter(filters, os, arch, subarch, release, label):
@@ -263,11 +257,11 @@ def image_passes_filter(filters, os, arch, subarch, release, label):
         return True
     for filter_dict in filters:
         item_matches = (
-            value_passes_filter(filter_dict['os'], os) and
-            value_passes_filter(filter_dict['release'], release) and
-            value_passes_filter_list(filter_dict['arches'], arch) and
-            value_passes_filter_list(filter_dict['subarches'], subarch) and
-            value_passes_filter_list(filter_dict['labels'], label)
+            value_passes_filter(filter_dict["os"], os)
+            and value_passes_filter(filter_dict["release"], release)
+            and value_passes_filter_list(filter_dict["arches"], arch)
+            and value_passes_filter_list(filter_dict["subarches"], subarch)
+            and value_passes_filter_list(filter_dict["labels"], label)
         )
         if item_matches:
             return True
@@ -295,8 +289,7 @@ def boot_merge(destination, additions, filters=None):
     for image, resource in additions.items():
         # Cannot filter by kflavor so it is excluded in the filtering.
         os, arch, subarch, _, release, label = image
-        if image_passes_filter(
-                filters, os, arch, subarch, release, label):
+        if image_passes_filter(filters, os, arch, subarch, release, label):
             # Do not override an existing entry with the same
             # os/arch/subarch/release/label: the first entry found takes
             # precedence.
@@ -304,7 +297,8 @@ def boot_merge(destination, additions, filters=None):
 
 
 def download_image_descriptions(
-        path, keyring=None, user_agent=None, validate_products=True):
+    path, keyring=None, user_agent=None, validate_products=True
+):
     """Download image metadata from upstream Simplestreams repo.
 
     :param path: The path to a Simplestreams repo.
@@ -327,7 +321,8 @@ def download_image_descriptions(
         maaslog.info("Region downloading image descriptions from '%s'.", path)
         try:
             reader = UrlMirrorReader(
-                mirror, policy=policy, user_agent=user_agent)
+                mirror, policy=policy, user_agent=user_agent
+            )
         except TypeError:
             # UrlMirrorReader doesn't support the user_agent argument.
             # simplestream >=bzr429 is required for this feature.
@@ -340,12 +335,16 @@ def download_image_descriptions(
 
 
 def download_all_image_descriptions(
-        sources, user_agent=None, validate_products=True):
+    sources, user_agent=None, validate_products=True
+):
     """Download image metadata for all sources in `config`."""
     boot = BootImageMapping()
     for source in sources:
         repo_boot = download_image_descriptions(
-            source['url'], keyring=source.get('keyring', None),
-            user_agent=user_agent, validate_products=validate_products)
-        boot_merge(boot, repo_boot, source['selections'])
+            source["url"],
+            keyring=source.get("keyring", None),
+            user_agent=user_agent,
+            validate_products=validate_products,
+        )
+        boot_merge(boot, repo_boot, source["selections"])
     return boot

@@ -3,10 +3,7 @@
 
 """API handlers: `Fabric`."""
 
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
-)
+from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fabric import FabricForm
 from maasserver.models import Fabric
@@ -15,27 +12,23 @@ from maasserver.utils.orm import prefetch_queryset
 from piston3.utils import rc
 
 
-DISPLAYED_FABRIC_FIELDS = (
-    'id',
-    'name',
-    'class_type',
-    'vlans',
-)
+DISPLAYED_FABRIC_FIELDS = ("id", "name", "class_type", "vlans")
 
 
 FABRIC_PREFETCH = [
-    'vlan_set__primary_rack',
-    'vlan_set__secondary_rack',
-    'vlan_set__space',
-    'vlan_set__relay_vlan__fabric__vlan_set',
-    'vlan_set__relay_vlan__primary_rack',
-    'vlan_set__relay_vlan__secondary_rack',
-    'vlan_set__relay_vlan__space',
+    "vlan_set__primary_rack",
+    "vlan_set__secondary_rack",
+    "vlan_set__space",
+    "vlan_set__relay_vlan__fabric__vlan_set",
+    "vlan_set__relay_vlan__primary_rack",
+    "vlan_set__relay_vlan__secondary_rack",
+    "vlan_set__relay_vlan__space",
 ]
 
 
 class FabricsHandler(OperationsHandler):
     """Manage fabrics."""
+
     api_doc_section_name = "Fabrics"
     update = delete = None
     fields = DISPLAYED_FABRIC_FIELDS
@@ -43,7 +36,7 @@ class FabricsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('fabrics_handler', [])
+        return ("fabrics_handler", [])
 
     def read(self, request):
         """@description-title List fabrics
@@ -88,6 +81,7 @@ class FabricsHandler(OperationsHandler):
 
 class FabricHandler(OperationsHandler):
     """Manage fabric."""
+
     api_doc_section_name = "Fabric"
     create = None
     model = Fabric
@@ -99,7 +93,7 @@ class FabricHandler(OperationsHandler):
         fabric_id = "id"
         if fabric is not None:
             fabric_id = fabric.id
-        return ('fabric_handler', (fabric_id,))
+        return ("fabric_handler", (fabric_id,))
 
     @classmethod
     def name(cls, fabric):
@@ -129,7 +123,8 @@ class FabricHandler(OperationsHandler):
             Not Found
         """
         return Fabric.objects.get_fabric_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update fabric
@@ -156,7 +151,8 @@ class FabricHandler(OperationsHandler):
             Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         form = FabricForm(instance=fabric, data=request.data)
         if form.is_valid():
             return form.save()
@@ -177,6 +173,7 @@ class FabricHandler(OperationsHandler):
             Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         fabric.delete()
         return rc.DELETED

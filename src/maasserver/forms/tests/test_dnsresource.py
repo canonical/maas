@@ -15,18 +15,16 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDNSResourceForm(MAASServerTestCase):
-
     def test__creates_dnsresource(self):
         name = factory.make_name("dnsresource")
         sip = factory.make_StaticIPAddress()
         domain = factory.make_Domain()
         request = Mock()
         request.user = factory.make_User()
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-            "ip_addresses": [sip.id],
-        }, request=request)
+        form = DNSResourceForm(
+            {"name": name, "domain": domain.id, "ip_addresses": [sip.id]},
+            request=request,
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -37,11 +35,9 @@ class TestDNSResourceForm(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         sip = factory.make_StaticIPAddress()
         domain = factory.make_Domain()
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-            "ip_addresses": str(sip.id),
-        })
+        form = DNSResourceForm(
+            {"name": name, "domain": domain.id, "ip_addresses": str(sip.id)}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -54,11 +50,10 @@ class TestDNSResourceForm(MAASServerTestCase):
         ips = [factory.make_ip_address() for _ in range(3)]
         request = Mock()
         request.user = factory.make_User()
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-            "ip_addresses": " ".join(ips),
-        }, request=request)
+        form = DNSResourceForm(
+            {"name": name, "domain": domain.id, "ip_addresses": " ".join(ips)},
+            request=request,
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -74,13 +69,15 @@ class TestDNSResourceForm(MAASServerTestCase):
         domain = factory.make_Domain()
         ips = [factory.make_StaticIPAddress() for _ in range(6)]
         in_vals = [
-            str(ip.id) if factory.pick_bool() else str(ip.ip)
-            for ip in ips]
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-            "ip_addresses": " ".join(in_vals),
-        })
+            str(ip.id) if factory.pick_bool() else str(ip.ip) for ip in ips
+        ]
+        form = DNSResourceForm(
+            {
+                "name": name,
+                "domain": domain.id,
+                "ip_addresses": " ".join(in_vals),
+            }
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -91,10 +88,7 @@ class TestDNSResourceForm(MAASServerTestCase):
     def test_does_not_require_ip_addresses(self):
         name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-        })
+        form = DNSResourceForm({"name": name, "domain": domain.id})
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -104,11 +98,9 @@ class TestDNSResourceForm(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         ttl = random.randint(1, 1000)
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-            "address_ttl": ttl,
-        })
+        form = DNSResourceForm(
+            {"name": name, "domain": domain.id, "address_ttl": ttl}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -119,16 +111,14 @@ class TestDNSResourceForm(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         ttl = random.randint(1, 1000)
-        form = DNSResourceForm({
-            "name": name,
-            "domain": domain.id,
-            "address_ttl": ttl,
-        })
+        form = DNSResourceForm(
+            {"name": name, "domain": domain.id, "address_ttl": ttl}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
-        form = DNSResourceForm(instance=dnsresource, data={
-            "address_ttl": None,
-        })
+        form = DNSResourceForm(
+            instance=dnsresource, data={"address_ttl": None}
+        )
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -145,33 +135,38 @@ class TestDNSResourceForm(MAASServerTestCase):
         new_name = factory.make_name("new")
         new_sip_ids = [factory.make_StaticIPAddress().id]
         new_ttl = random.randint(1, 1000)
-        form = DNSResourceForm(instance=dnsresource, data={
-            "name": new_name,
-            "ip_addresses": new_sip_ids,
-            "address_ttl": new_ttl,
-        })
+        form = DNSResourceForm(
+            instance=dnsresource,
+            data={
+                "name": new_name,
+                "ip_addresses": new_sip_ids,
+                "address_ttl": new_ttl,
+            },
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
         self.assertEqual(new_ttl, reload_object(dnsresource).address_ttl)
         self.assertItemsEqual(
-            new_sip_ids, [
-                ip.id for ip in
-                reload_object(dnsresource).ip_addresses.all()])
+            new_sip_ids,
+            [ip.id for ip in reload_object(dnsresource).ip_addresses.all()],
+        )
 
     def test__update_allows_multiple_ips(self):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("new")
-        new_sip_ids = [
-            factory.make_StaticIPAddress().id for _ in range(3)]
-        form = DNSResourceForm(instance=dnsresource, data={
-            "name": new_name,
-            "ip_addresses": " ".join(str(id) for id in new_sip_ids),
-        })
+        new_sip_ids = [factory.make_StaticIPAddress().id for _ in range(3)]
+        form = DNSResourceForm(
+            instance=dnsresource,
+            data={
+                "name": new_name,
+                "ip_addresses": " ".join(str(id) for id in new_sip_ids),
+            },
+        )
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
         self.assertItemsEqual(
-            new_sip_ids, [
-                ip.id for ip in
-                reload_object(dnsresource).ip_addresses.all()])
+            new_sip_ids,
+            [ip.id for ip in reload_object(dnsresource).ip_addresses.all()],
+        )

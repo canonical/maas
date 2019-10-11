@@ -3,15 +3,10 @@
 
 """Respond to IP range changes."""
 
-__all__ = [
-    "signals",
-]
+__all__ = ["signals"]
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models.signals import (
-    post_delete,
-    post_save,
-)
+from django.db.models.signals import post_delete, post_save
 from maasserver.models import IPRange
 from maasserver.utils.signals import SignalsManager
 
@@ -47,10 +42,8 @@ def post_delete_check_range_utilization(sender, instance, **kwargs):
     instance.subnet.update_allocation_notification()
 
 
-signals.watch(
-    post_save, post_save_check_range_utilization, sender=IPRange)
-signals.watch(
-    post_delete, post_delete_check_range_utilization, sender=IPRange)
+signals.watch(post_save, post_save_check_range_utilization, sender=IPRange)
+signals.watch(post_delete, post_delete_check_range_utilization, sender=IPRange)
 
 
 # Enable all signals by default.

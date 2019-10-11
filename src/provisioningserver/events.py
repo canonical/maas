@@ -4,31 +4,20 @@
 """Event catalog."""
 
 __all__ = [
-    'EVENT_DETAILS',
-    'EVENT_STATUS_MESSAGES',
-    'EVENT_TYPES',
-    'send_node_event',
-    'send_node_event_mac_address',
-    'send_rack_event',
-    ]
+    "EVENT_DETAILS",
+    "EVENT_STATUS_MESSAGES",
+    "EVENT_TYPES",
+    "send_node_event",
+    "send_node_event_mac_address",
+    "send_rack_event",
+]
 
 from collections import namedtuple
-from logging import (
-    DEBUG,
-    ERROR,
-    INFO,
-    WARN,
-)
+from logging import DEBUG, ERROR, INFO, WARN
 
-from provisioningserver.logger import (
-    get_maas_logger,
-    LegacyLogger,
-)
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import (
-    NoSuchEventType,
-    NoSuchNode,
-)
+from provisioningserver.rpc.exceptions import NoSuchEventType, NoSuchNode
 from provisioningserver.rpc.region import (
     RegisterEventType,
     SendEvent,
@@ -43,10 +32,7 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     suppress,
 )
-from twisted.internet.defer import (
-    maybeDeferred,
-    succeed,
-)
+from twisted.internet.defer import maybeDeferred, succeed
 
 
 maaslog = get_maas_logger("events")
@@ -58,23 +44,23 @@ AUDIT = 0
 
 class EVENT_TYPES:
     # Power-related events.
-    NODE_POWER_ON_STARTING = 'NODE_POWER_ON_STARTING'
-    NODE_POWER_OFF_STARTING = 'NODE_POWER_OFF_STARTING'
-    NODE_POWER_CYCLE_STARTING = 'NODE_POWER_CYCLE_STARTING'
-    NODE_POWERED_ON = 'NODE_POWERED_ON'
-    NODE_POWERED_OFF = 'NODE_POWERED_OFF'
-    NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
-    NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
-    NODE_POWER_CYCLE_FAILED = 'NODE_POWER_CYCLE_FAILED'
-    NODE_POWER_QUERIED = 'NODE_POWER_QUERIED'
-    NODE_POWER_QUERIED_DEBUG = 'NODE_POWER_QUERIED_DEBUG'
-    NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
+    NODE_POWER_ON_STARTING = "NODE_POWER_ON_STARTING"
+    NODE_POWER_OFF_STARTING = "NODE_POWER_OFF_STARTING"
+    NODE_POWER_CYCLE_STARTING = "NODE_POWER_CYCLE_STARTING"
+    NODE_POWERED_ON = "NODE_POWERED_ON"
+    NODE_POWERED_OFF = "NODE_POWERED_OFF"
+    NODE_POWER_ON_FAILED = "NODE_POWER_ON_FAILED"
+    NODE_POWER_OFF_FAILED = "NODE_POWER_OFF_FAILED"
+    NODE_POWER_CYCLE_FAILED = "NODE_POWER_CYCLE_FAILED"
+    NODE_POWER_QUERIED = "NODE_POWER_QUERIED"
+    NODE_POWER_QUERIED_DEBUG = "NODE_POWER_QUERIED_DEBUG"
+    NODE_POWER_QUERY_FAILED = "NODE_POWER_QUERY_FAILED"
     # PXE request event.
-    NODE_PXE_REQUEST = 'NODE_PXE_REQUEST'
+    NODE_PXE_REQUEST = "NODE_PXE_REQUEST"
     # TFTP request event.
-    NODE_TFTP_REQUEST = 'NODE_TFTP_REQUEST'
+    NODE_TFTP_REQUEST = "NODE_TFTP_REQUEST"
     # HTTP request event.
-    NODE_HTTP_REQUEST = 'NODE_HTTP_REQUEST'
+    NODE_HTTP_REQUEST = "NODE_HTTP_REQUEST"
     # Other installation-related event types.
     NODE_INSTALLATION_FINISHED = "NODE_INSTALLATION_FINISHED"
     # Node status transition event.
@@ -88,17 +74,20 @@ class EVENT_TYPES:
     NODE_POST_INSTALL_EVENT_FAILED = "NODE_POST_INSTALL_EVENT_FAILED"
     NODE_ENTERING_RESCUE_MODE_EVENT = "NODE_ENTERING_RESCUE_MODE_EVENT"
     NODE_ENTERING_RESCUE_MODE_EVENT_FAILED = (
-        "NODE_ENTERING_RESCUE_MODE_EVENT_FAILED")
+        "NODE_ENTERING_RESCUE_MODE_EVENT_FAILED"
+    )
     NODE_EXITING_RESCUE_MODE_EVENT = "NODE_EXITING_RESCUE_MODE_EVENT"
     NODE_EXITING_RESCUE_MODE_EVENT_FAILED = (
-        "NODE_EXITING_RESCUE_MODE_EVENT_FAILED")
+        "NODE_EXITING_RESCUE_MODE_EVENT_FAILED"
+    )
     # Node user request events
     REQUEST_NODE_START_COMMISSIONING = "REQUEST_NODE_START_COMMISSIONING"
     REQUEST_NODE_ABORT_COMMISSIONING = "REQUEST_NODE_ABORT_COMMISSIONING"
     REQUEST_NODE_START_TESTING = "REQUEST_NODE_START_TESTING"
     REQUEST_NODE_ABORT_TESTING = "REQUEST_NODE_ABORT_TESTING"
     REQUEST_NODE_OVERRIDE_FAILED_TESTING = (
-        "REQUEST_NODE_OVERRIDE_FAILED_TESTING")
+        "REQUEST_NODE_OVERRIDE_FAILED_TESTING"
+    )
     REQUEST_NODE_ABORT_DEPLOYMENT = "REQUEST_NODE_ABORT_DEPLOYMENT"
     REQUEST_NODE_ACQUIRE = "REQUEST_NODE_ACQUIRE"
     REQUEST_NODE_ERASE_DISK = "REQUEST_NODE_ERASE_DISK"
@@ -177,9 +166,9 @@ class EVENT_TYPES:
 # The keys are the messages sent from cloud-init and curtin
 # to the metadataserver.
 EVENT_STATUS_MESSAGES = {
-    'cmd-install/stage-partitioning': EVENT_TYPES.CONFIGURING_STORAGE,
-    'cmd-install/stage-extract': EVENT_TYPES.INSTALLING_OS,
-    'cmd-install/stage-curthooks': EVENT_TYPES.CONFIGURING_OS,
+    "cmd-install/stage-partitioning": EVENT_TYPES.CONFIGURING_STORAGE,
+    "cmd-install/stage-extract": EVENT_TYPES.INSTALLING_OS,
+    "cmd-install/stage-curthooks": EVENT_TYPES.CONFIGURING_OS,
 }
 
 
@@ -189,369 +178,253 @@ EventDetail = namedtuple("EventDetail", ("description", "level"))
 EVENT_DETAILS = {
     # Event type -> EventDetail mapping.
     EVENT_TYPES.NODE_POWER_ON_STARTING: EventDetail(
-        description="Powering on",
-        level=INFO,
+        description="Powering on", level=INFO
     ),
     EVENT_TYPES.NODE_POWER_OFF_STARTING: EventDetail(
-        description="Powering off",
-        level=INFO,
+        description="Powering off", level=INFO
     ),
     EVENT_TYPES.NODE_POWER_CYCLE_STARTING: EventDetail(
-        description="Power cycling",
-        level=INFO,
+        description="Power cycling", level=INFO
     ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
-        description="Node powered on",
-        level=DEBUG,
+        description="Node powered on", level=DEBUG
     ),
     EVENT_TYPES.NODE_POWERED_OFF: EventDetail(
-        description="Node powered off",
-        level=DEBUG,
+        description="Node powered off", level=DEBUG
     ),
     EVENT_TYPES.NODE_POWER_ON_FAILED: EventDetail(
-        description="Failed to power on node",
-        level=ERROR,
+        description="Failed to power on node", level=ERROR
     ),
     EVENT_TYPES.NODE_POWER_OFF_FAILED: EventDetail(
-        description="Failed to power off node",
-        level=ERROR,
+        description="Failed to power off node", level=ERROR
     ),
     EVENT_TYPES.NODE_POWER_CYCLE_FAILED: EventDetail(
-        description="Failed to power cycle node",
-        level=ERROR,
+        description="Failed to power cycle node", level=ERROR
     ),
     EVENT_TYPES.NODE_POWER_QUERIED: EventDetail(
-        description="Queried node's BMC",
-        level=DEBUG,
+        description="Queried node's BMC", level=DEBUG
     ),
     EVENT_TYPES.NODE_POWER_QUERIED_DEBUG: EventDetail(
-        description="Queried node's BMC",
-        level=DEBUG,
+        description="Queried node's BMC", level=DEBUG
     ),
     EVENT_TYPES.NODE_POWER_QUERY_FAILED: EventDetail(
-        description="Failed to query node's BMC",
-        level=WARN,
+        description="Failed to query node's BMC", level=WARN
     ),
     EVENT_TYPES.NODE_TFTP_REQUEST: EventDetail(
-        description="TFTP Request",
-        level=DEBUG,
+        description="TFTP Request", level=DEBUG
     ),
     EVENT_TYPES.NODE_HTTP_REQUEST: EventDetail(
-        description="HTTP Request",
-        level=DEBUG,
+        description="HTTP Request", level=DEBUG
     ),
     EVENT_TYPES.NODE_PXE_REQUEST: EventDetail(
-        description="PXE Request",
-        level=DEBUG,
+        description="PXE Request", level=DEBUG
     ),
     EVENT_TYPES.NODE_INSTALLATION_FINISHED: EventDetail(
-        description="Installation complete",
-        level=DEBUG,
+        description="Installation complete", level=DEBUG
     ),
     EVENT_TYPES.NODE_CHANGED_STATUS: EventDetail(
-        description="Node changed status",
-        level=DEBUG,
+        description="Node changed status", level=DEBUG
     ),
     EVENT_TYPES.NODE_STATUS_EVENT: EventDetail(
-        description="Node status event",
-        level=DEBUG,
+        description="Node status event", level=DEBUG
     ),
     EVENT_TYPES.NODE_COMMISSIONING_EVENT: EventDetail(
-        description="Node commissioning",
-        level=DEBUG,
+        description="Node commissioning", level=DEBUG
     ),
     EVENT_TYPES.NODE_COMMISSIONING_EVENT_FAILED: EventDetail(
-        description="Node commissioning failure",
-        level=ERROR,
+        description="Node commissioning failure", level=ERROR
     ),
     EVENT_TYPES.NODE_INSTALL_EVENT: EventDetail(
-        description="Node installation",
-        level=DEBUG,
+        description="Node installation", level=DEBUG
     ),
     EVENT_TYPES.NODE_INSTALL_EVENT_FAILED: EventDetail(
-        description="Node installation failure",
-        level=ERROR,
+        description="Node installation failure", level=ERROR
     ),
     EVENT_TYPES.NODE_POST_INSTALL_EVENT_FAILED: EventDetail(
-        description="Node post-installation failure",
-        level=ERROR,
+        description="Node post-installation failure", level=ERROR
     ),
     EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT: EventDetail(
-        description="Node entering rescue mode",
-        level=DEBUG,
+        description="Node entering rescue mode", level=DEBUG
     ),
     EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT_FAILED: EventDetail(
-        description="Node entering rescue mode failure",
-        level=ERROR,
+        description="Node entering rescue mode failure", level=ERROR
     ),
     EVENT_TYPES.NODE_EXITING_RESCUE_MODE_EVENT: EventDetail(
-        description="Node exiting rescue mode",
-        level=DEBUG,
+        description="Node exiting rescue mode", level=DEBUG
     ),
     EVENT_TYPES.NODE_EXITING_RESCUE_MODE_EVENT_FAILED: EventDetail(
-        description="Node exiting rescue mode failure",
-        level=ERROR,
+        description="Node exiting rescue mode failure", level=ERROR
     ),
     EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING: EventDetail(
-        description="User starting node commissioning",
-        level=DEBUG,
+        description="User starting node commissioning", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING: EventDetail(
-        description="User aborting node commissioning",
-        level=DEBUG,
+        description="User aborting node commissioning", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_START_TESTING: EventDetail(
-        description="User starting node testing",
-        level=DEBUG,
+        description="User starting node testing", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_TESTING: EventDetail(
-        description="User aborting node testing",
-        level=DEBUG,
+        description="User aborting node testing", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_OVERRIDE_FAILED_TESTING: EventDetail(
-        description="User overrode 'Failed testing' status",
-        level=DEBUG,
+        description="User overrode 'Failed testing' status", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT: EventDetail(
-        description="User aborting deployment",
-        level=DEBUG,
+        description="User aborting deployment", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_ACQUIRE: EventDetail(
-        description="User acquiring node",
-        level=DEBUG,
+        description="User acquiring node", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_ERASE_DISK: EventDetail(
-        description="User erasing disk",
-        level=DEBUG,
+        description="User erasing disk", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK: EventDetail(
-        description="User aborting disk erase",
-        level=DEBUG,
+        description="User aborting disk erase", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_RELEASE: EventDetail(
-        description="User releasing node",
-        level=DEBUG,
+        description="User releasing node", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_FAILED: EventDetail(
-        description="User marking node failed",
-        level=DEBUG,
+        description="User marking node failed", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_FAILED_SYSTEM: EventDetail(
-        description="Marking node failed",
-        level=ERROR,
+        description="Marking node failed", level=ERROR
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_BROKEN: EventDetail(
-        description="User marking node broken",
-        level=DEBUG,
+        description="User marking node broken", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_FIXED: EventDetail(
-        description="User marking node fixed",
-        level=DEBUG,
+        description="User marking node fixed", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_LOCK: EventDetail(
-        description="User locking node",
-        level=DEBUG,
+        description="User locking node", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_UNLOCK: EventDetail(
-        description="User unlocking node",
-        level=DEBUG,
+        description="User unlocking node", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT: EventDetail(
-        description="User starting deployment",
-        level=DEBUG,
+        description="User starting deployment", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_START: EventDetail(
-        description="User powering up node",
-        level=DEBUG,
+        description="User powering up node", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_STOP: EventDetail(
-        description="User powering down node",
-        level=DEBUG,
+        description="User powering down node", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_START_RESCUE_MODE: EventDetail(
-        description="User starting rescue mode",
-        level=DEBUG,
+        description="User starting rescue mode", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_NODE_STOP_RESCUE_MODE: EventDetail(
-        description="User stopping rescue mode",
-        level=DEBUG,
+        description="User stopping rescue mode", level=DEBUG
     ),
     EVENT_TYPES.REQUEST_CONTROLLER_REFRESH: EventDetail(
-        description=("Starting refresh of controller hardware and networking "
-                     "information"),
+        description=(
+            "Starting refresh of controller hardware and networking "
+            "information"
+        ),
         level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS: EventDetail(
-        description=("Querying chassis and enlisting all machines"),
-        level=DEBUG,
+        description="Querying chassis and enlisting all machines", level=DEBUG
     ),
     EVENT_TYPES.RACK_IMPORT_WARNING: EventDetail(
-        description=("Rack import warning"),
-        level=WARN,
+        description="Rack import warning", level=WARN
     ),
     EVENT_TYPES.RACK_IMPORT_ERROR: EventDetail(
-        description=("Rack import error"),
-        level=ERROR,
+        description="Rack import error", level=ERROR
     ),
     EVENT_TYPES.RACK_IMPORT_INFO: EventDetail(
-        description=("Rack import info"),
-        level=DEBUG,
+        description="Rack import info", level=DEBUG
     ),
     EVENT_TYPES.REGION_IMPORT_WARNING: EventDetail(
-        description=("Region import warning"),
-        level=WARN,
+        description="Region import warning", level=WARN
     ),
     EVENT_TYPES.REGION_IMPORT_ERROR: EventDetail(
-        description=("Region import error"),
-        level=ERROR,
+        description="Region import error", level=ERROR
     ),
     EVENT_TYPES.REGION_IMPORT_INFO: EventDetail(
-        description=("Region import info"),
-        level=DEBUG,
+        description="Region import info", level=DEBUG
     ),
     EVENT_TYPES.SCRIPT_RESULT_ERROR: EventDetail(
-        description=("Script result lookup or storage error"),
-        level=ERROR,
+        description="Script result lookup or storage error", level=ERROR
     ),
     EVENT_TYPES.AUTHORISATION: EventDetail(
-        description=("Authorisation"),
-        level=AUDIT,
+        description="Authorisation", level=AUDIT
     ),
-    EVENT_TYPES.SETTINGS: EventDetail(
-        description=("Settings"),
-        level=AUDIT,
-    ),
-    EVENT_TYPES.NODE: EventDetail(
-        description=("Node"),
-        level=AUDIT,
-    ),
-    EVENT_TYPES.IMAGES: EventDetail(
-        description=("Images"),
-        level=AUDIT,
-    ),
-    EVENT_TYPES.POD: EventDetail(
-        description=("Pod"),
-        level=AUDIT,
-    ),
-    EVENT_TYPES.NETWORKING: EventDetail(
-        description=("Networking"),
-        level=AUDIT,
-    ),
-    EVENT_TYPES.ZONES: EventDetail(
-        description=("Zones"),
-        level=AUDIT,
-    ),
+    EVENT_TYPES.SETTINGS: EventDetail(description="Settings", level=AUDIT),
+    EVENT_TYPES.NODE: EventDetail(description="Node", level=AUDIT),
+    EVENT_TYPES.IMAGES: EventDetail(description="Images", level=AUDIT),
+    EVENT_TYPES.POD: EventDetail(description="Pod", level=AUDIT),
+    EVENT_TYPES.NETWORKING: EventDetail(description="Networking", level=AUDIT),
+    EVENT_TYPES.ZONES: EventDetail(description="Zones", level=AUDIT),
     EVENT_TYPES.CONFIGURING_STORAGE: EventDetail(
-        description=("Configuring storage"),
-        level=INFO,
+        description="Configuring storage", level=INFO
     ),
     EVENT_TYPES.INSTALLING_OS: EventDetail(
-        description=("Installing OS"),
-        level=INFO,
+        description="Installing OS", level=INFO
     ),
     EVENT_TYPES.CONFIGURING_OS: EventDetail(
-        description=("Configuring OS"),
-        level=INFO,
+        description="Configuring OS", level=INFO
     ),
-    EVENT_TYPES.REBOOTING: EventDetail(
-        description=("Rebooting"),
-        level=INFO,
-    ),
+    EVENT_TYPES.REBOOTING: EventDetail(description="Rebooting", level=INFO),
     EVENT_TYPES.PERFORMING_PXE_BOOT: EventDetail(
-        description="Performing PXE boot",
-        level=INFO,
+        description="Performing PXE boot", level=INFO
     ),
     EVENT_TYPES.LOADING_EPHEMERAL: EventDetail(
-        description="Loading ephemeral",
-        level=INFO,
+        description="Loading ephemeral", level=INFO
     ),
-    EVENT_TYPES.NEW: EventDetail(
-        description="New",
-        level=INFO,
-    ),
+    EVENT_TYPES.NEW: EventDetail(description="New", level=INFO),
     EVENT_TYPES.COMMISSIONING: EventDetail(
-        description="Commissioning",
-        level=INFO,
+        description="Commissioning", level=INFO
     ),
     EVENT_TYPES.FAILED_COMMISSIONING: EventDetail(
-        description="Failed commissioning",
-        level=INFO,
+        description="Failed commissioning", level=INFO
     ),
-    EVENT_TYPES.TESTING: EventDetail(
-        description="Testing",
-        level=INFO,
-    ),
+    EVENT_TYPES.TESTING: EventDetail(description="Testing", level=INFO),
     EVENT_TYPES.FAILED_TESTING: EventDetail(
-        description="Failed testing",
-        level=INFO,
+        description="Failed testing", level=INFO
     ),
-    EVENT_TYPES.READY: EventDetail(
-        description="Ready",
-        level=INFO,
-    ),
-    EVENT_TYPES.DEPLOYING: EventDetail(
-        description="Deploying",
-        level=INFO,
-    ),
-    EVENT_TYPES.DEPLOYED: EventDetail(
-        description="Deployed",
-        level=INFO,
-    ),
-    EVENT_TYPES.RELEASING: EventDetail(
-        description="Releasing",
-        level=INFO,
-    ),
-    EVENT_TYPES.RELEASED: EventDetail(
-        description="Released",
-        level=INFO,
-    ),
+    EVENT_TYPES.READY: EventDetail(description="Ready", level=INFO),
+    EVENT_TYPES.DEPLOYING: EventDetail(description="Deploying", level=INFO),
+    EVENT_TYPES.DEPLOYED: EventDetail(description="Deployed", level=INFO),
+    EVENT_TYPES.RELEASING: EventDetail(description="Releasing", level=INFO),
+    EVENT_TYPES.RELEASED: EventDetail(description="Released", level=INFO),
     EVENT_TYPES.ENTERING_RESCUE_MODE: EventDetail(
-        description="Entering rescue mode",
-        level=INFO,
+        description="Entering rescue mode", level=INFO
     ),
     EVENT_TYPES.RESCUE_MODE: EventDetail(
-        description="Rescue mode",
-        level=INFO,
+        description="Rescue mode", level=INFO
     ),
     EVENT_TYPES.FAILED_EXITING_RESCUE_MODE: EventDetail(
-        description="Failed exiting rescue mode",
-        level=INFO,
+        description="Failed exiting rescue mode", level=INFO
     ),
     EVENT_TYPES.EXITED_RESCUE_MODE: EventDetail(
-        description="Exited rescue mode",
-        level=INFO,
+        description="Exited rescue mode", level=INFO
     ),
     EVENT_TYPES.GATHERING_INFO: EventDetail(
-        description="Gathering information",
-        level=INFO,
+        description="Gathering information", level=INFO
     ),
     EVENT_TYPES.RUNNING_TEST: EventDetail(
-        description="Running test",
-        level=INFO,
+        description="Running test", level=INFO
     ),
     EVENT_TYPES.SCRIPT_DID_NOT_COMPLETE: EventDetail(
-        description="Script",
-        level=INFO,
+        description="Script", level=INFO
     ),
     EVENT_TYPES.SCRIPT_RESULT_CHANGED_STATUS: EventDetail(
-        description="Script result",
-        level=DEBUG,
+        description="Script result", level=DEBUG
     ),
     EVENT_TYPES.ABORTED_DISK_ERASING: EventDetail(
-        description="Aborted disk erasing",
-        level=INFO,
+        description="Aborted disk erasing", level=INFO
     ),
     EVENT_TYPES.ABORTED_COMMISSIONING: EventDetail(
-        description="Aborted commissioning",
-        level=INFO,
+        description="Aborted commissioning", level=INFO
     ),
     EVENT_TYPES.ABORTED_DEPLOYMENT: EventDetail(
-        description="Aborted deployment",
-        level=INFO,
+        description="Aborted deployment", level=INFO
     ),
     EVENT_TYPES.ABORTED_TESTING: EventDetail(
-        description="Aborted testing",
-        level=INFO,
+        description="Aborted testing", level=INFO
     ),
 }
 
@@ -581,8 +454,11 @@ class NodeEventHub:
 
         def register(client):
             return client(
-                RegisterEventType, name=event_type, level=details.level,
-                description=details.description)
+                RegisterEventType,
+                name=event_type,
+                level=details.level,
+                description=details.description,
+            )
 
         d = maybeDeferred(getRegionClient).addCallback(register)
         # Whatever happens, we are now done registering.
@@ -591,10 +467,11 @@ class NodeEventHub:
         # failure, ensure that the set of registered event types does NOT
         # contain the event type.
         d.addCallbacks(
-            callback=callOut, callbackArgs=(
-                self._types_registered.add, event_type),
-            errback=callOut, errbackArgs=(
-                self._types_registered.discard, event_type))
+            callback=callOut,
+            callbackArgs=(self._types_registered.add, event_type),
+            errback=callOut,
+            errbackArgs=(self._types_registered.discard, event_type),
+        )
         # Capture the result into a DeferredValue.
         result = DeferredValue()
         result.capture(d)
@@ -652,11 +529,15 @@ class NodeEventHub:
         :param description: An optional description of the event.
         :type description: unicode
         """
+
         def send(_):
             client = getRegionClient()
             return client(
-                SendEvent, system_id=system_id, type_name=event_type,
-                description=description)
+                SendEvent,
+                system_id=system_id,
+                type_name=event_type,
+                description=description,
+            )
 
         d = self.ensureEventTypeRegistered(event_type).addCallback(send)
         d.addErrback(self._checkEventTypeRegistered, event_type)
@@ -675,11 +556,15 @@ class NodeEventHub:
         :param description: An optional description of the event.
         :type description: unicode
         """
+
         def send(_):
             client = getRegionClient()
             return client(
-                SendEventMACAddress, mac_address=mac_address,
-                type_name=event_type, description=description)
+                SendEventMACAddress,
+                mac_address=mac_address,
+                type_name=event_type,
+                description=description,
+            )
 
         d = self.ensureEventTypeRegistered(event_type).addCallback(send)
         d.addErrback(self._checkEventTypeRegistered, event_type)
@@ -706,11 +591,15 @@ class NodeEventHub:
         :param description: An optional description of the event.
         :type description: unicode
         """
+
         def send(_):
             client = getRegionClient()
             return client(
-                SendEventIPAddress, ip_address=ip_address,
-                type_name=event_type, description=description)
+                SendEventIPAddress,
+                ip_address=ip_address,
+                type_name=event_type,
+                description=description,
+            )
 
         d = self.ensureEventTypeRegistered(event_type).addCallback(send)
         d.addErrback(self._checkEventTypeRegistered, event_type)
@@ -730,7 +619,7 @@ nodeEventHub = NodeEventHub()
 
 
 @asynchronous
-def send_node_event(event_type, system_id, hostname, description=''):
+def send_node_event(event_type, system_id, hostname, description=""):
     """Send the given node event to the region.
 
     :param event_type: The type of the event.
@@ -745,7 +634,7 @@ def send_node_event(event_type, system_id, hostname, description=''):
 
 
 @asynchronous
-def send_node_event_mac_address(event_type, mac_address, description=''):
+def send_node_event_mac_address(event_type, mac_address, description=""):
     """Send the given node event to the region for the given mac address.
 
     :param event_type: The type of the event.
@@ -759,7 +648,7 @@ def send_node_event_mac_address(event_type, mac_address, description=''):
 
 
 @asynchronous
-def send_node_event_ip_address(event_type, ip_address, description=''):
+def send_node_event_ip_address(event_type, ip_address, description=""):
     """Send the given node event to the region for the given IP address.
 
     :param event_type: The type of the event.
@@ -773,7 +662,7 @@ def send_node_event_ip_address(event_type, ip_address, description=''):
 
 
 @asynchronous
-def send_rack_event(event_type, description=''):
+def send_rack_event(event_type, description=""):
     """Send an event about the running rack to the region.
 
     :param event_type: The type of the event.
@@ -785,7 +674,7 @@ def send_rack_event(event_type, description=''):
 
 
 @asynchronous(timeout=FOREVER)
-def try_send_rack_event(event_type, description=''):
+def try_send_rack_event(event_type, description=""):
     """Try to send a rack event to the region.
 
     Log something locally if this fails but otherwise supress all
@@ -793,6 +682,8 @@ def try_send_rack_event(event_type, description=''):
     """
     d = send_rack_event(event_type, description)
     d.addErrback(
-        log.err, "Failure sending rack event to region: %s - %s" %
-        (event_type, description))
+        log.err,
+        "Failure sending rack event to region: %s - %s"
+        % (event_type, description),
+    )
     return d

@@ -12,12 +12,12 @@ from testtools.matchers import Equals
 
 
 class TemplateTest(MAASServerTestCase):
-
     def test_creates_template(self):
         default_version = VersionedTextFile(data="foo")
         default_version.save()
         template = Template(
-            default_version=default_version, filename="foo/bar")
+            default_version=default_version, filename="foo/bar"
+        )
         template.save()
         from_db = Template.objects.get(id=template.id)
         self.assertThat(from_db.default_version.data, Equals("foo"))

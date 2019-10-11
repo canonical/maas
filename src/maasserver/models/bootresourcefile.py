@@ -3,15 +3,9 @@
 
 """Boot Resource File."""
 
-__all__ = [
-    'BootResourceFile',
-    ]
+__all__ = ["BootResourceFile"]
 
-from django.db.models import (
-    CASCADE,
-    CharField,
-    ForeignKey,
-)
+from django.db.models import CASCADE, CharField, ForeignKey
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -43,21 +37,25 @@ class BootResourceFile(CleanSave, TimestampedModel):
     """
 
     class Meta(DefaultMeta):
-        unique_together = (
-            ('resource_set', 'filename'),
-            )
+        unique_together = (("resource_set", "filename"),)
 
     resource_set = ForeignKey(
-        BootResourceSet, related_name='files', editable=False,
-        on_delete=CASCADE)
+        BootResourceSet,
+        related_name="files",
+        editable=False,
+        on_delete=CASCADE,
+    )
 
     largefile = ForeignKey(LargeFile, editable=False, on_delete=CASCADE)
 
     filename = CharField(max_length=255, editable=False)
 
     filetype = CharField(
-        max_length=20, choices=BOOT_RESOURCE_FILE_TYPE_CHOICES,
-        default=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, editable=False)
+        max_length=20,
+        choices=BOOT_RESOURCE_FILE_TYPE_CHOICES,
+        default=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+        editable=False,
+    )
 
     extra = JSONObjectField(blank=True, default="", editable=False)
 

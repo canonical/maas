@@ -3,44 +3,29 @@
 
 """API handlers: `DNSData`."""
 
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
-)
-from maasserver.exceptions import (
-    MAASAPIBadRequest,
-    MAASAPIValidationError,
-)
+from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms.dnsdata import DNSDataForm
 from maasserver.forms.dnsresource import DNSResourceForm
-from maasserver.models import (
-    DNSData,
-    DNSResource,
-    Domain,
-)
+from maasserver.models import DNSData, DNSResource, Domain
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
-DISPLAYED_DNSDATA_FIELDS = (
-    'id',
-    'fqdn',
-    'ttl',
-    'rrtype',
-    'rrdata'
-)
+DISPLAYED_DNSDATA_FIELDS = ("id", "fqdn", "ttl", "rrtype", "rrdata")
 
 
 class DNSResourceRecordsHandler(OperationsHandler):
     """Manage DNS resource records (e.g. CNAME, MX, NS, SRV, TXT)"""
+
     api_doc_section_name = "DNSResourceRecords"
     update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('dnsresourcerecords_handler', [])
+        return ("dnsresourcerecords_handler", [])
 
     def read(self, request):
         """@description-title List all DNS resource records
@@ -62,10 +47,10 @@ class DNSResourceRecordsHandler(OperationsHandler):
         placeholder text
         """
         data = request.GET
-        fqdn = data.get('fqdn', None)
-        name = data.get('name', None)
-        domainname = data.get('domain', None)
-        rrtype = data.get('rrtype', None)
+        fqdn = data.get("fqdn", None)
+        name = data.get("name", None)
+        domainname = data.get("domain", None)
+        rrtype = data.get("rrtype", None)
         if domainname is None and name is None and fqdn is not None:
             # We need a type for resource separation.  If the user didn't give
             # us a rrtype, then assume it's an address of some sort.
@@ -74,17 +59,21 @@ class DNSResourceRecordsHandler(OperationsHandler):
         if domainname is not None:
             if domainname.isdigit():
                 domain = Domain.objects.get_domain_or_404(
-                    domainname, user=request.user, perm=NodePermission.view)
+                    domainname, user=request.user, perm=NodePermission.view
+                )
             else:
                 domain = Domain.objects.get_domain_or_404(
-                    "name:%s" % domainname, user=request.user,
-                    perm=NodePermission.view)
+                    "name:%s" % domainname,
+                    user=request.user,
+                    perm=NodePermission.view,
+                )
             query = DNSData.objects.filter(
-                dnsresource__domain_id=domain.id).order_by(
-                'dnsresource__name')
+                dnsresource__domain_id=domain.id
+            ).order_by("dnsresource__name")
         else:
             query = DNSData.objects.all().order_by(
-                'dnsresource__domain_id', 'dnsresource__name')
+                "dnsresource__domain_id", "dnsresource__name"
+            )
         if name is not None:
             query = query.filter(dnsresource__name=name)
         if rrtype is not None:
@@ -121,11 +110,11 @@ class DNSResourceRecordsHandler(OperationsHandler):
         """
         data = request.data.copy()
         domain = None
-        fqdn = data.get('fqdn', None)
-        name = data.get('name', None)
-        domainname = data.get('domain', None)
-        rrtype = data.get('rrtype', None)
-        rrdata = data.get('rrdata', None)
+        fqdn = data.get("fqdn", None)
+        name = data.get("name", None)
+        domainname = data.get("domain", None)
+        rrtype = data.get("rrtype", None)
+        rrdata = data.get("rrdata", None)
         if rrtype is None:
             raise MAASAPIBadRequest("rrtype must be provided.")
         if rrdata is None:
@@ -135,23 +124,27 @@ class DNSResourceRecordsHandler(OperationsHandler):
         if domainname is None and name is None and fqdn is not None:
             # We need a type for resource separation.  If the user didn't give
             # us a rrtype, then assume it's an address of some sort.
-            rrtype = data.get('rrtype', None)
+            rrtype = data.get("rrtype", None)
             (name, domainname) = separate_fqdn(fqdn, rrtype)
-            data['domain'] = domainname
-            data['name'] = name
+            data["domain"] = domainname
+            data["name"] = name
         # If the domain is a name, make it an id.
         if domainname is not None:
             if domainname.isdigit():
                 domain = Domain.objects.get_domain_or_404(
-                    domainname, user=request.user, perm=NodePermission.view)
+                    domainname, user=request.user, perm=NodePermission.view
+                )
             else:
                 domain = Domain.objects.get_domain_or_404(
-                    "name:%s" % domainname, user=request.user,
-                    perm=NodePermission.view)
-            data['domain'] = domain.id
+                    "name:%s" % domainname,
+                    user=request.user,
+                    perm=NodePermission.view,
+                )
+            data["domain"] = domain.id
         if domain is None or name is None:
             raise MAASAPIValidationError(
-                "Either name and domain (or fqdn) must be specified")
+                "Either name and domain (or fqdn) must be specified"
+            )
         # Do we already have a DNSResource for this fqdn?
         dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
         if not dnsrr.exists():
@@ -161,7 +154,7 @@ class DNSResourceRecordsHandler(OperationsHandler):
             else:
                 raise MAASAPIValidationError(form.errors)
             dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
-        data['dnsresource'] = dnsrr
+        data["dnsresource"] = dnsrr
         form = DNSDataForm(data=data)
         if form.is_valid():
             return form.save()
@@ -171,6 +164,7 @@ class DNSResourceRecordsHandler(OperationsHandler):
 
 class DNSResourceRecordHandler(OperationsHandler):
     """Manage dnsresourcerecord."""
+
     api_doc_section_name = "DNSResourceRecord"
     create = None
     model = DNSData
@@ -182,7 +176,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         dnsresourcerecord_id = "id"
         if dnsresourcerecord is not None:
             dnsresourcerecord_id = dnsresourcerecord.id
-        return ('dnsresourcerecord_handler', (dnsresourcerecord_id,))
+        return ("dnsresourcerecord_handler", (dnsresourcerecord_id,))
 
     @classmethod
     def name(cls, dnsresourcerecord):
@@ -208,7 +202,8 @@ class DNSResourceRecordHandler(OperationsHandler):
             Not Found
         """
         return DNSData.objects.get_dnsdata_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, NodePermission.view
+        )
 
     def update(self, request, id):
         """@description-title Update a DNS resource record
@@ -238,9 +233,10 @@ class DNSResourceRecordHandler(OperationsHandler):
             Not Found
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         data = request.data.copy()
-        data['dnsresource'] = dnsdata.dnsresource.id
+        data["dnsresource"] = dnsdata.dnsresource.id
         form = DNSDataForm(instance=dnsdata, data=data)
         if form.is_valid():
             return form.save()
@@ -266,7 +262,8 @@ class DNSResourceRecordHandler(OperationsHandler):
             Not Found
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
-            id, request.user, NodePermission.admin)
+            id, request.user, NodePermission.admin
+        )
         dnsrr = dnsdata.dnsresource
         dnsdata.delete()
         if dnsrr.dnsdata_set.count() == 0 and dnsrr.ip_addresses.count() == 0:

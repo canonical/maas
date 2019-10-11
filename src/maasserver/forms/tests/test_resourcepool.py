@@ -16,10 +16,11 @@ class TestResourcePost(MAASServerTestCase):
     """Tests for `ResourcePoolForm`."""
 
     def test_creates_pool(self):
-        name = factory.make_name('pool')
+        name = factory.make_name("pool")
         description = factory.make_string()
         form = ResourcePoolForm(
-            data={'name': name, 'description': description})
+            data={"name": name, "description": description}
+        )
         form.save()
         pool = ResourcePool.objects.get(name=name)
         self.assertIsNotNone(pool)
@@ -29,15 +30,16 @@ class TestResourcePost(MAASServerTestCase):
         pool = factory.make_ResourcePool()
         new_description = factory.make_string()
         form = ResourcePoolForm(
-            data={'description': new_description}, instance=pool)
+            data={"description": new_description}, instance=pool
+        )
         form.save()
         pool = reload_object(pool)
         self.assertEqual(pool.description, new_description)
 
     def test_renames_pool(self):
         pool = factory.make_ResourcePool()
-        new_name = factory.make_name('pool')
-        form = ResourcePoolForm(data={'name': new_name}, instance=pool)
+        new_name = factory.make_name("pool")
+        form = ResourcePoolForm(data={"name": new_name}, instance=pool)
         form.save()
         pool = reload_object(pool)
         self.assertEqual(pool.name, new_name)

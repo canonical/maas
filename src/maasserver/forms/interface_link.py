@@ -3,9 +3,7 @@
 
 """Interface link form."""
 
-__all__ = [
-    "InterfaceLinkForm",
-]
+__all__ = ["InterfaceLinkForm"]
 
 from collections import Counter
 
@@ -21,24 +19,13 @@ from maasserver.fields import (
     CaseInsensitiveChoiceField,
     SpecifierOrModelChoiceField,
 )
-from maasserver.models import (
-    BondInterface,
-    Interface,
-    StaticIPAddress,
-    Subnet,
-)
-from maasserver.utils.forms import (
-    compose_invalid_choice_text,
-    set_form_error,
-)
+from maasserver.models import BondInterface, Interface, StaticIPAddress, Subnet
+from maasserver.utils.forms import compose_invalid_choice_text, set_form_error
 from maasserver.utils.orm import get_one
 from netaddr import IPAddress
 
 # Link modes that support the default_gateway option.
-GATEWAY_OPTION_MODES = [
-    INTERFACE_LINK_TYPE.AUTO,
-    INTERFACE_LINK_TYPE.STATIC,
-]
+GATEWAY_OPTION_MODES = [INTERFACE_LINK_TYPE.AUTO, INTERFACE_LINK_TYPE.STATIC]
 
 
 class InterfaceLinkForm(forms.Form):
@@ -52,12 +39,15 @@ class InterfaceLinkForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         # Get list of allowed modes for this interface.
-        allowed_modes = kwargs.pop("allowed_modes", [
-            INTERFACE_LINK_TYPE.AUTO,
-            INTERFACE_LINK_TYPE.DHCP,
-            INTERFACE_LINK_TYPE.STATIC,
-            INTERFACE_LINK_TYPE.LINK_UP,
-        ])
+        allowed_modes = kwargs.pop(
+            "allowed_modes",
+            [
+                INTERFACE_LINK_TYPE.AUTO,
+                INTERFACE_LINK_TYPE.DHCP,
+                INTERFACE_LINK_TYPE.STATIC,
+                INTERFACE_LINK_TYPE.LINK_UP,
+            ],
+        )
         self.force = kwargs.pop("force", False)
         mode_choices = [
             (key, value)
@@ -69,25 +59,33 @@ class InterfaceLinkForm(forms.Form):
         super(InterfaceLinkForm, self).__init__(*args, **kwargs)
 
         # Create the mode field and setup the queryset on the subnet.
-        self.fields['mode'] = CaseInsensitiveChoiceField(
-            choices=mode_choices, required=True,
+        self.fields["mode"] = CaseInsensitiveChoiceField(
+            choices=mode_choices,
+            required=True,
             error_messages={
-                'invalid_choice': compose_invalid_choice_text(
-                    'mode', mode_choices),
-            })
+                "invalid_choice": compose_invalid_choice_text(
+                    "mode", mode_choices
+                )
+            },
+        )
         if self.instance.vlan is None or self.force is True:
-            self.fields['subnet'].queryset = Subnet.objects.all()
+            self.fields["subnet"].queryset = Subnet.objects.all()
         else:
-            self.fields['subnet'].queryset = (
-                self.instance.vlan.subnet_set.all())
+            self.fields[
+                "subnet"
+            ].queryset = self.instance.vlan.subnet_set.all()
 
     def clean(self):
         for interface_set in self.instance.interface_set.all():
             if isinstance(interface_set, BondInterface):
                 set_form_error(
-                    self, "bond",
-                    ("Cannot link interface(%s) when interface is in a "
-                     "bond(%s)." % (self.instance.name, interface_set.name)))
+                    self,
+                    "bond",
+                    (
+                        "Cannot link interface(%s) when interface is in a "
+                        "bond(%s)." % (self.instance.name, interface_set.name)
+                    ),
+                )
         cleaned_data = super(InterfaceLinkForm, self).clean()
         mode = cleaned_data.get("mode", None)
         if mode is None:
@@ -111,17 +109,20 @@ class InterfaceLinkForm(forms.Form):
     def _clean_mode_dhcp(self):
         # Can only have one DHCP link on an interface.
         dhcp_address = get_one(
-            self.instance.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.DHCP))
+            self.instance.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.DHCP)
+        )
         if dhcp_address is not None:
             if dhcp_address.subnet is not None:
                 set_form_error(
-                    self, "mode",
-                    "Interface is already set to DHCP from '%s'." % (
-                        dhcp_address.subnet))
+                    self,
+                    "mode",
+                    "Interface is already set to DHCP from '%s'."
+                    % (dhcp_address.subnet),
+                )
             else:
                 set_form_error(
-                    self, "mode", "Interface is already set to DHCP.")
+                    self, "mode", "Interface is already set to DHCP."
+                )
 
     def _clean_mode_static(self, cleaned_data):
         subnet = cleaned_data.get("subnet", None)
@@ -132,14 +133,18 @@ class InterfaceLinkForm(forms.Form):
             ip_address = IPAddress(ip_address)
             if ip_address not in subnet.get_ipnetwork():
                 set_form_error(
-                    self, "ip_address",
-                    "IP address is not in the given subnet '%s'." % subnet)
+                    self,
+                    "ip_address",
+                    "IP address is not in the given subnet '%s'." % subnet,
+                )
             ip_range = subnet.get_dynamic_range_for_ip(ip_address)
             if ip_range is not None:
                 set_form_error(
-                    self, "ip_address",
+                    self,
+                    "ip_address",
                     "IP address is inside a dynamic range "
-                    "%s to %s." % (ip_range.start_ip, ip_range.end_ip))
+                    "%s to %s." % (ip_range.start_ip, ip_range.end_ip),
+                )
 
     def _clean_mode_link_up(self):
         # Cannot set LINK_UP unless no other IP address are attached to
@@ -147,17 +152,21 @@ class InterfaceLinkForm(forms.Form):
         # null, because the user could be trying to change the subnet for a
         # LINK_UP address. And exclude DISCOVERED because what MAAS discovered
         # doesn't matter with regard to the user's intention.
-        exclude_types = (
-            IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.DISCOVERED
+        exclude_types = (IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.DISCOVERED)
+        has_active_links = (
+            self.instance.ip_addresses.exclude(
+                alloc_type__in=exclude_types, ip__isnull=True
+            ).count()
+            > 0
         )
-        has_active_links = self.instance.ip_addresses.exclude(
-            alloc_type__in=exclude_types, ip__isnull=True).count() > 0
         if has_active_links and self.force is not True:
             set_form_error(
-                self, "mode",
+                self,
+                "mode",
                 "Cannot configure interface to link up (with no IP address) "
                 "while other links are already configured. Specify force=True "
-                "to override this behavior and delete all links.")
+                "to override this behavior and delete all links.",
+            )
 
     def _clean_default_gateway(self, cleaned_data):
         mode = cleaned_data.get("mode", None)
@@ -167,17 +176,22 @@ class InterfaceLinkForm(forms.Form):
             return
         if mode not in GATEWAY_OPTION_MODES:
             set_form_error(
-                self, "default_gateway", "Cannot use in mode '%s'." % mode)
+                self, "default_gateway", "Cannot use in mode '%s'." % mode
+            )
         else:
             if subnet is None:
                 set_form_error(
-                    self, "default_gateway",
-                    "Subnet is required when default_gateway is True.")
+                    self,
+                    "default_gateway",
+                    "Subnet is required when default_gateway is True.",
+                )
             elif not subnet.gateway_ip:
                 set_form_error(
-                    self, "default_gateway",
+                    self,
+                    "default_gateway",
                     "Cannot set as default gateway because subnet "
-                    "%s doesn't provide a gateway IP address." % subnet)
+                    "%s doesn't provide a gateway IP address." % subnet,
+                )
 
     def save(self):
         mode = self.cleaned_data.get("mode", None)
@@ -194,15 +208,17 @@ class InterfaceLinkForm(forms.Form):
         # out the VLAN so that link_subnet() will reset the interface's subnet
         # to be correct.
         should_clear_vlan = (
-            self.force is True and subnet is not None and
-            self.instance.vlan is not None
+            self.force is True
+            and subnet is not None
+            and self.instance.vlan is not None
         )
         if should_clear_vlan:
             self.instance.vlan = None
         if not ip_address:
             ip_address = None
         link_ip = self.instance.link_subnet(
-            mode, subnet, ip_address=ip_address)
+            mode, subnet, ip_address=ip_address
+        )
         if default_gateway:
             node = self.instance.get_node()
             network = subnet.get_ipnetwork()
@@ -212,7 +228,8 @@ class InterfaceLinkForm(forms.Form):
                 node.gateway_link_ipv6 = link_ip
             else:
                 raise ValueError(
-                    "Unknown subnet IP version: %s" % network.version)
+                    "Unknown subnet IP version: %s" % network.version
+                )
             node.save()
         return Interface.objects.get(id=self.instance.id)
 
@@ -227,17 +244,15 @@ class InterfaceUnlinkForm(forms.Form):
 
     def set_up_id_field(self):
         link_ids = self.instance.ip_addresses.all().values_list(
-            "id", flat=True)
-        link_choices = [
-            (link_id, link_id)
-            for link_id in link_ids
-        ]
-        invalid_choice = compose_invalid_choice_text('id', link_choices)
+            "id", flat=True
+        )
+        link_choices = [(link_id, link_id) for link_id in link_ids]
+        invalid_choice = compose_invalid_choice_text("id", link_choices)
         self.fields["id"] = forms.ChoiceField(
-            choices=link_choices, required=True,
-            error_messages={
-                'invalid_choice': invalid_choice,
-            })
+            choices=link_choices,
+            required=True,
+            error_messages={"invalid_choice": invalid_choice},
+        )
 
     def save(self):
         link_id = self.cleaned_data.get("id", None)
@@ -261,26 +276,22 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
             alloc_type__in=[
                 IPADDRESS_TYPE.AUTO,
                 IPADDRESS_TYPE.STICKY,
-                IPADDRESS_TYPE.DHCP],
-            subnet__isnull=False, subnet__gateway_ip__isnull=False)
+                IPADDRESS_TYPE.DHCP,
+            ],
+            subnet__isnull=False,
+            subnet__gateway_ip__isnull=False,
+        )
         links = links.select_related("subnet")
-        return [
-            link
-            for link in links.all()
-            if link.subnet.gateway_ip
-        ]
+        return [link for link in links.all() if link.subnet.gateway_ip]
 
     def set_up_link_id_field(self):
-        link_choices = [
-            (link.id, link.id)
-            for link in self.links
-        ]
-        invalid_choice = compose_invalid_choice_text('link_id', link_choices)
+        link_choices = [(link.id, link.id) for link in self.links]
+        invalid_choice = compose_invalid_choice_text("link_id", link_choices)
         self.fields["link_id"] = forms.ChoiceField(
-            choices=link_choices, required=False,
-            error_messages={
-                'invalid_choice': invalid_choice,
-            })
+            choices=link_choices,
+            required=False,
+            error_messages={"invalid_choice": invalid_choice},
+        )
 
     def _clean_has_gateways(self):
         """Sets error if the interface has not available gateways."""
@@ -290,27 +301,28 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
     def _clean_ipv4_and_ipv6_gateways(self):
         """Sets error if the interface doesn't have only one IPv4 and one
         IPv6 gateway."""
-        unique_gateways = set(
-            link.subnet.gateway_ip
-            for link in self.links
-            )
+        unique_gateways = set(link.subnet.gateway_ip for link in self.links)
         gateway_versions = Counter(
-            IPAddress(gateway).version
-            for gateway in unique_gateways
-            )
-        too_many = sorted([
-            ip_family
-            for ip_family, count in gateway_versions.items()
-            if count > 1
-        ])
+            IPAddress(gateway).version for gateway in unique_gateways
+        )
+        too_many = sorted(
+            [
+                ip_family
+                for ip_family, count in gateway_versions.items()
+                if count > 1
+            ]
+        )
         if len(too_many) > 0:
             set_form_error(
-                self, "link_id",
+                self,
+                "link_id",
                 "This field is required; Interface has more than "
-                "one usable %s gateway%s." % (
-                    ' and '.join(
-                        "IPv%d" % version for version in too_many),
-                    "s" if len(too_many) > 1 else ""))
+                "one usable %s gateway%s."
+                % (
+                    " and ".join("IPv%d" % version for version in too_many),
+                    "s" if len(too_many) > 1 else "",
+                ),
+            )
 
     def clean(self):
         self._clean_has_gateways()
@@ -338,7 +350,8 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
                 node.gateway_link_ipv6 = link
             else:
                 raise ValueError(
-                    "Unknown subnet IP version: %s" % network.version)
+                    "Unknown subnet IP version: %s" % network.version
+                )
             node.save()
         else:
             ipv4_link = self.get_first_link_by_ip_family(IPADDRESS_FAMILY.IPv4)

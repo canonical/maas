@@ -3,10 +3,7 @@
 
 """HTTP service for the rack controller."""
 
-__all__ = [
-    "HTTPResource",
-    "RackHTTPService",
-]
+__all__ = ["HTTPResource", "RackHTTPService"]
 
 from collections import defaultdict
 from datetime import timedelta
@@ -16,25 +13,16 @@ import sys
 import attr
 from netaddr import IPAddress
 from provisioningserver import services
-from provisioningserver.events import (
-    EVENT_TYPES,
-    send_node_event_ip_address,
-)
+from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils import (
-    load_template,
-    snappy,
-)
+from provisioningserver.utils import load_template, snappy
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import callOut
-from tftp.errors import (
-    AccessViolation,
-    FileNotFound,
-)
+from tftp.errors import AccessViolation, FileNotFound
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
@@ -52,8 +40,8 @@ log = LegacyLogger()
 def get_http_config_dir():
     """Location of MAAS' http configuration files."""
     setting = os.getenv(
-        "MAAS_HTTP_CONFIG_DIR",
-        get_tentative_data_path('/var/lib/maas/http'))
+        "MAAS_HTTP_CONFIG_DIR", get_tentative_data_path("/var/lib/maas/http")
+    )
     if isinstance(setting, bytes):
         fsenc = sys.getfilesystemencoding()
         return setting.decode(fsenc)
@@ -90,8 +78,8 @@ class RackHTTPService(TimerService):
         super().__init__(self.INTERVAL_LOW, self._tryUpdate)
         self._resource_root = resource_root
         # Nginx requires the that root have an ending slash.
-        if not self._resource_root.endswith('/'):
-            self._resource_root += '/'
+        if not self._resource_root.endswith("/"):
+            self._resource_root += "/"
         self._rpc_service = rpc_service
         self.clock = reactor
 
@@ -115,18 +103,19 @@ class RackHTTPService(TimerService):
         # Filter the connects by region.
         conn_per_region = defaultdict(set)
         for eventloop, connection in self._rpc_service.connections.items():
-            conn_per_region[eventloop.split(':')[0]].add(connection)
+            conn_per_region[eventloop.split(":")[0]].add(connection)
         for _, connections in conn_per_region.items():
             # Sort the connections so the same IP is always picked per
             # region controller. This ensures that the HTTP configuration
             # is not reloaded unless its actually required to reload.
-            conn = list(sorted(
-                connections, key=lambda conn: conn.address[0]))[0]
+            conn = list(sorted(connections, key=lambda conn: conn.address[0]))[
+                0
+            ]
             addr = IPAddress(conn.address[0])
             if addr.is_ipv4_mapped():
                 yield str(addr.ipv4())
             elif addr.version == 6:
-                yield '[%s]' % addr
+                yield "[%s]" % addr
             else:
                 yield str(addr)
 
@@ -161,18 +150,14 @@ class RackHTTPService(TimerService):
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
         """
-        d = deferToThread(
-            self._configure,
-            configuration.upstream_http)
+        d = deferToThread(self._configure, configuration.upstream_http)
         # XXX: blake_r 2018-06-12 bug=1687620. When running in a snap,
         # supervisord tracks services. It does not support reloading.
         # Instead, we need to restart the service.
         if snappy.running_in_snap():
-            d.addCallback(
-                lambda _: service_monitor.restartService("http"))
+            d.addCallback(lambda _: service_monitor.restartService("http"))
         else:
-            d.addCallback(
-                lambda _: service_monitor.reloadService("http"))
+            d.addCallback(lambda _: service_monitor.reloadService("http"))
         return d
 
     def _configurationApplied(self, configuration):
@@ -185,15 +170,19 @@ class RackHTTPService(TimerService):
 
     def _configure(self, upstream_http):
         """Update the HTTP configuration for the rack."""
-        template = load_template('http', 'rackd.nginx.conf.template')
+        template = load_template("http", "rackd.nginx.conf.template")
         try:
-            rendered = template.substitute({
-                'upstream_http': list(sorted(upstream_http)),
-                'resource_root': self._resource_root,
-                'machine_resources': os.path.join(
-                    snappy.get_snap_path(), 'usr/share/maas') if (
-                        snappy.running_in_snap()) else '/usr/share/maas',
-            })
+            rendered = template.substitute(
+                {
+                    "upstream_http": list(sorted(upstream_http)),
+                    "resource_root": self._resource_root,
+                    "machine_resources": os.path.join(
+                        snappy.get_snap_path(), "usr/share/maas"
+                    )
+                    if (snappy.running_in_snap())
+                    else "/usr/share/maas",
+                }
+            )
         except NameError as error:
             raise HTTPConfigFail(*error.args)
         else:
@@ -201,7 +190,7 @@ class RackHTTPService(TimerService):
             # only ASCII characters.
             rendered = rendered.encode("ascii")
 
-        target_path = compose_http_config_path('rackd.nginx.conf')
+        target_path = compose_http_config_path("rackd.nginx.conf")
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
         atomic_write(rendered, target_path, overwrite=True, mode=0o644)
 
@@ -219,28 +208,35 @@ class HTTPLogResource(resource.Resource):
 
     def render_GET(self, request):
         # Extract the original path and original IP of the request.
-        path = request.getHeader('X-Original-URI')
-        remote_host = request.getHeader('X-Original-Remote-IP')
+        path = request.getHeader("X-Original-URI")
+        remote_host = request.getHeader("X-Original-Remote-IP")
 
         def log_event_ephemeral_loading(result):
-            if 'squashfs' in path:
+            if "squashfs" in path:
                 send_node_event_ip_address(
                     event_type=EVENT_TYPES.LOADING_EPHEMERAL,
-                    ip_address=remote_host)
+                    ip_address=remote_host,
+                )
 
         # Log the HTTP request to rackd.log and push that event to the
         # region controller.
         log.info(
             "{path} requested by {remote_host}",
-            path=path, remote_host=remote_host)
+            path=path,
+            remote_host=remote_host,
+        )
         d = deferLater(
-            reactor, 0, send_node_event_ip_address,
+            reactor,
+            0,
+            send_node_event_ip_address,
             event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-            ip_address=remote_host, description=path)
+            ip_address=remote_host,
+            description=path,
+        )
         d.addCallback(log_event_ephemeral_loading)
         d.addErrback(log.err, "Logging HTTP request failed.")
         # Respond empty to nginx.
-        return b''
+        return b""
 
 
 class HTTPBootResource(resource.Resource):
@@ -249,50 +245,50 @@ class HTTPBootResource(resource.Resource):
     def render_GET(self, request):
         # Be sure that the TFTP endpoint is running.
         try:
-            tftp = services.getServiceNamed('tftp')
+            tftp = services.getServiceNamed("tftp")
         except KeyError:
             # TFTP service is not installed cannot handle a boot request.
             request.setResponseCode(503)
-            return b'HTTP boot service not ready.'
+            return b"HTTP boot service not ready."
 
         # Extract the local servers IP/port of the request.
-        localHost = request.getHeader('X-Server-Addr')
+        localHost = request.getHeader("X-Server-Addr")
         try:
-            localPort = int(request.getHeader('X-Server-Port'))
+            localPort = int(request.getHeader("X-Server-Port"))
         except (TypeError, ValueError):
             localPort = 0
 
         # Extract the original clients IP/port of the request.
-        remoteHost = request.getHeader('X-Forwarded-For')
+        remoteHost = request.getHeader("X-Forwarded-For")
         try:
-            remotePort = int(request.getHeader('X-Forwarded-Port'))
+            remotePort = int(request.getHeader("X-Forwarded-Port"))
         except (TypeError, ValueError):
             remotePort = 0
 
         # localHost and remoteHost are required headers.
         if not localHost or not remoteHost:
             request.setResponseCode(400)
-            return b'Missing X-Server-Addr and X-Forwarded-For HTTP headers.'
+            return b"Missing X-Server-Addr and X-Forwarded-For HTTP headers."
 
         def handleFailure(failure):
             if failure.check(AccessViolation):
                 request.setResponseCode(403)
-                request.write(b'')
+                request.write(b"")
             elif failure.check(FileNotFound):
                 request.setResponseCode(404)
-                request.write(b'')
+                request.write(b"")
             else:
                 log.err(failure, "Failed to handle boot HTTP request.")
                 request.setResponseCode(500)
-                request.write(str(failure.value).encode('utf-8'))
+                request.write(str(failure.value).encode("utf-8"))
             request.finish()
 
         def writeResponse(reader):
             # Some readers from `tftp` do not provide a way to get the size
             # of the generated content. Only set `Content-Length` when size
             # can be determined for the response.
-            if hasattr(reader, 'size'):
-                request.setHeader(b'Content-Length', reader.size)
+            if hasattr(reader, "size"):
+                request.setHeader(b"Content-Length", reader.size)
 
             # The readers from `tftp` use `finish` instead of `close`, but
             # `NoRangeStaticProducer` expects `close` instead of `finish`. Map
@@ -304,27 +300,36 @@ class HTTPBootResource(resource.Resource):
             producer = NoRangeStaticProducer(request, reader)
             producer.start()
 
-        path = b'/'.join(request.postpath)
+        path = b"/".join(request.postpath)
         d = context.call(
             {
                 "local": (localHost, localPort),
                 "remote": (remoteHost, remotePort),
             },
-            tftp.backend.get_reader, path, skip_logging=True)
+            tftp.backend.get_reader,
+            path,
+            skip_logging=True,
+        )
         d.addCallback(writeResponse)
         d.addErrback(handleFailure)
         d.addErrback(log.err, "Failed to handle boot HTTP request.")
 
         # Log the HTTP request to rackd.log and push that event to the
         # region controller.
-        log_path = path.decode('utf-8')
+        log_path = path.decode("utf-8")
         log.info(
             "{path} requested by {remoteHost}",
-            path=log_path, remoteHost=remoteHost)
+            path=log_path,
+            remoteHost=remoteHost,
+        )
         d = deferLater(
-            reactor, 0, send_node_event_ip_address,
+            reactor,
+            0,
+            send_node_event_ip_address,
             event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-            ip_address=remoteHost, description=log_path)
+            ip_address=remoteHost,
+            description=log_path,
+        )
         d.addErrback(log.err, "Logging HTTP request failed.")
 
         # Response is handled in the defer.
@@ -336,7 +341,8 @@ class HTTPResource(resource.Resource):
 
     def __init__(self):
         super().__init__()
-        self.putChild(b'boot', HTTPBootResource())
-        self.putChild(b'log', HTTPLogResource())
+        self.putChild(b"boot", HTTPBootResource())
+        self.putChild(b"log", HTTPLogResource())
         self.putChild(
-            b'metrics', PrometheusMetricsResource(PROMETHEUS_METRICS))
+            b"metrics", PrometheusMetricsResource(PROMETHEUS_METRICS)
+        )

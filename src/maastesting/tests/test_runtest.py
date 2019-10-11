@@ -6,17 +6,10 @@
 __all__ = []
 
 from maastesting.matchers import DocTestMatches
-from maastesting.runtest import (
-    MAASRunTest,
-    MAASTwistedRunTest,
-)
+from maastesting.runtest import MAASRunTest, MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from testtools import TestCase
-from testtools.matchers import (
-    HasLength,
-    Is,
-    MatchesListwise,
-)
+from testtools.matchers import HasLength, Is, MatchesListwise
 
 
 class TestExecutors(MAASTestCase):
@@ -28,7 +21,6 @@ class TestExecutors(MAASTestCase):
     )
 
     def test_catches_generator_tests(self):
-
         class BrokenTests(TestCase):
 
             run_tests_with = self.executor
@@ -40,13 +32,18 @@ class TestExecutors(MAASTestCase):
         result = test.run()
 
         self.assertThat(result.errors, HasLength(1))
-        self.assertThat(result.errors[0], MatchesListwise((
-            Is(test),
-            DocTestMatches(
-                """\
+        self.assertThat(
+            result.errors[0],
+            MatchesListwise(
+                (
+                    Is(test),
+                    DocTestMatches(
+                        """\
                 ...InvalidTest:
                     Test returned a generator. Should it be
                     decorated with inlineCallbacks?
                 """
+                    ),
+                )
             ),
-        )))
+        )

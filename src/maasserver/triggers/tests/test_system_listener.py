@@ -6,10 +6,7 @@
 
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime, timedelta
 import json
 import random
 
@@ -56,8 +53,8 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestCoreRegionRackRPCConnectionInsertListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the core triggers code."""
 
     @wait_for_reactor
@@ -66,35 +63,43 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         yield deferToDatabase(register_system_triggers)
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         rack_controller = yield deferToDatabase(self.create_rack_controller)
 
         process_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_core_%s" % region_process.id,
-            lambda *args: process_dv.set(args))
+            lambda *args: process_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": region_process_endpoint,
-                "rack_controller": rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": region_process_endpoint,
+                    "rack_controller": rack_controller,
+                },
+            )
             yield process_dv.get(timeout=2)
-            self.assertEqual((
-                "sys_core_%s" % region_process.id,
-                "watch_%s" % rack_controller.id),
-                process_dv.value)
-            rack_controller = yield deferToDatabase(
-                self.reload_object, rack_controller)
             self.assertEqual(
-                region_process.id, rack_controller.managing_process_id)
+                (
+                    "sys_core_%s" % region_process.id,
+                    "watch_%s" % rack_controller.id,
+                ),
+                process_dv.value,
+            )
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller
+            )
+            self.assertEqual(
+                region_process.id, rack_controller.managing_process_id
+            )
         finally:
             yield listener.stopService()
 
@@ -105,40 +110,45 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         # Create region process that has a connection to a rack controller
         # and is already managing it.
         managing_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         managing_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": managing_region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": managing_region_process},
+        )
         rack_controller_connected = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": managing_region_process
-            })
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": managing_region_process_endpoint,
-            "rack_controller": rack_controller_connected,
-        })
+            self.create_rack_controller,
+            {"managing_process": managing_region_process},
+        )
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": managing_region_process_endpoint,
+                "rack_controller": rack_controller_connected,
+            },
+        )
 
         # Create a region process that is not managing a rack controller but
         # has connections to both rack controllers. When the trigger is create
         # and the last connection is added it will select the region process
         # with no connections.
         not_managing_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         not_managing_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": not_managing_region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": not_managing_region_process},
+        )
         not_managed_rack_controller = yield deferToDatabase(
-            self.create_rack_controller)
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": managing_region_process_endpoint,
-            "rack_controller": not_managed_rack_controller,
-        })
+            self.create_rack_controller
+        )
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": managing_region_process_endpoint,
+                "rack_controller": not_managed_rack_controller,
+            },
+        )
 
         # Now create the trigger so that it is actually ran.
         yield deferToDatabase(register_system_triggers)
@@ -146,23 +156,32 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_core_%s" % not_managing_region_process.id,
-            lambda *args: process_dv.set(args))
+            lambda *args: process_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": not_managing_region_process_endpoint,
-                "rack_controller": not_managed_rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": not_managing_region_process_endpoint,
+                    "rack_controller": not_managed_rack_controller,
+                },
+            )
             yield process_dv.get(timeout=2)
-            self.assertEqual((
-                "sys_core_%s" % not_managing_region_process.id,
-                "watch_%s" % not_managed_rack_controller.id),
-                process_dv.value)
+            self.assertEqual(
+                (
+                    "sys_core_%s" % not_managing_region_process.id,
+                    "watch_%s" % not_managed_rack_controller.id,
+                ),
+                process_dv.value,
+            )
             not_managed_rack_controller = yield deferToDatabase(
-                self.reload_object, not_managed_rack_controller)
+                self.reload_object, not_managed_rack_controller
+            )
             self.assertEqual(
                 not_managing_region_process.id,
-                not_managed_rack_controller.managing_process_id)
+                not_managed_rack_controller.managing_process_id,
+            )
         finally:
             yield listener.stopService()
 
@@ -173,43 +192,50 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         # Create region process that has a connection to a rack controller
         # and is already managing it.
         managing_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         managing_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": managing_region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": managing_region_process},
+        )
         rack_controller_connected = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": managing_region_process
-            })
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": managing_region_process_endpoint,
-            "rack_controller": rack_controller_connected,
-        })
+            self.create_rack_controller,
+            {"managing_process": managing_region_process},
+        )
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": managing_region_process_endpoint,
+                "rack_controller": rack_controller_connected,
+            },
+        )
 
         # Create a dead region process that is managing a rack controller but
         # has connections to both rack controllers. When the trigger is create
         # and the last connection is added it will select the region process
         # with no connections.
         dead_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
+            self.create_region_controller_process,
+            {
                 "region": region,
                 "updated": datetime.now() - timedelta(seconds=90),
-            })
+            },
+        )
         dead_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": dead_region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": dead_region_process},
+        )
         dead_managed_rack_controller = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": dead_region_process,
-            })
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": managing_region_process_endpoint,
-            "rack_controller": dead_managed_rack_controller,
-        })
+            self.create_rack_controller,
+            {"managing_process": dead_region_process},
+        )
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": managing_region_process_endpoint,
+                "rack_controller": dead_managed_rack_controller,
+            },
+        )
 
         # Now create the trigger so that it is actually ran.
         yield deferToDatabase(register_system_triggers)
@@ -217,23 +243,32 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_core_%s" % managing_region_process.id,
-            lambda *args: process_dv.set(args))
+            lambda *args: process_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": dead_region_process_endpoint,
-                "rack_controller": dead_managed_rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": dead_region_process_endpoint,
+                    "rack_controller": dead_managed_rack_controller,
+                },
+            )
             yield process_dv.get(timeout=2)
-            self.assertEqual((
-                "sys_core_%s" % managing_region_process.id,
-                "watch_%s" % dead_managed_rack_controller.id),
-                process_dv.value)
+            self.assertEqual(
+                (
+                    "sys_core_%s" % managing_region_process.id,
+                    "watch_%s" % dead_managed_rack_controller.id,
+                ),
+                process_dv.value,
+            )
             dead_managed_rack_controller = yield deferToDatabase(
-                self.reload_object, dead_managed_rack_controller)
+                self.reload_object, dead_managed_rack_controller
+            )
             self.assertEqual(
                 managing_region_process.id,
-                dead_managed_rack_controller.managing_process_id)
+                dead_managed_rack_controller.managing_process_id,
+            )
         finally:
             yield listener.stopService()
 
@@ -243,39 +278,40 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         region = yield deferToDatabase(self.create_region_controller)
         # Create a region process that is managing 5 rack controllers.
         overloaded_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         for _ in range(5):
             yield deferToDatabase(
-                self.create_rack_controller, {
-                    "managing_process": overloaded_region_process
-                })
+                self.create_rack_controller,
+                {"managing_process": overloaded_region_process},
+            )
 
         # Create region process that has no managing rack controllers.
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
 
         # Create the rack controller connected to the overloaded region
         # process.
         rack_controller = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": overloaded_region_process,
-            })
+            self.create_rack_controller,
+            {"managing_process": overloaded_region_process},
+        )
         overloaded_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": overloaded_region_process,
-            })
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": overloaded_region_process_endpoint,
-            "rack_controller": rack_controller,
-        })
+            self.create_region_controller_process_endpoint,
+            {"process": overloaded_region_process},
+        )
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": overloaded_region_process_endpoint,
+                "rack_controller": rack_controller,
+            },
+        )
 
         # Now create the trigger so that it is actually ran.
         yield deferToDatabase(register_system_triggers)
@@ -286,34 +322,46 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         overloaded_dv = DeferredValue()
         listener.register(
             "sys_core_%s" % overloaded_region_process.id,
-            lambda *args: overloaded_dv.set(args))
+            lambda *args: overloaded_dv.set(args),
+        )
         process_dv = DeferredValue()
         listener.register(
             "sys_core_%s" % region_process.id,
-            lambda *args: process_dv.set(args))
+            lambda *args: process_dv.set(args),
+        )
         yield listener.startService()
         try:
             # Create the connection that will balance the connection for
             # the client.
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": region_process_endpoint,
-                "rack_controller": rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": region_process_endpoint,
+                    "rack_controller": rack_controller,
+                },
+            )
             yield overloaded_dv.get(timeout=2)
             yield process_dv.get(timeout=2)
-            self.assertEqual((
-                "sys_core_%s" % overloaded_region_process.id,
-                "unwatch_%s" % rack_controller.id),
-                overloaded_dv.value)
-            self.assertEqual((
-                "sys_core_%s" % region_process.id,
-                "watch_%s" % rack_controller.id),
-                process_dv.value)
-            rack_controller = yield deferToDatabase(
-                self.reload_object, rack_controller)
             self.assertEqual(
-                region_process.id,
-                rack_controller.managing_process_id)
+                (
+                    "sys_core_%s" % overloaded_region_process.id,
+                    "unwatch_%s" % rack_controller.id,
+                ),
+                overloaded_dv.value,
+            )
+            self.assertEqual(
+                (
+                    "sys_core_%s" % region_process.id,
+                    "watch_%s" % rack_controller.id,
+                ),
+                process_dv.value,
+            )
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller
+            )
+            self.assertEqual(
+                region_process.id, rack_controller.managing_process_id
+            )
         finally:
             yield listener.stopService()
 
@@ -323,29 +371,31 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         region = yield deferToDatabase(self.create_region_controller)
         # Create a region process that is managing 5 rack controllers.
         overloaded_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         for _ in range(5):
             yield deferToDatabase(
-                self.create_rack_controller, {
-                    "managing_process": overloaded_region_process
-                })
+                self.create_rack_controller,
+                {"managing_process": overloaded_region_process},
+            )
 
         # Create the rack controller connected to the overloaded region
         # process.
         rack_controller = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": overloaded_region_process,
-            })
+            self.create_rack_controller,
+            {"managing_process": overloaded_region_process},
+        )
         overloaded_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": overloaded_region_process,
-            })
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": overloaded_region_process_endpoint,
-            "rack_controller": rack_controller,
-        })
+            self.create_region_controller_process_endpoint,
+            {"process": overloaded_region_process},
+        )
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": overloaded_region_process_endpoint,
+                "rack_controller": rack_controller,
+            },
+        )
 
         # Create many more region processes where the rack controller is
         # not connected.
@@ -353,14 +403,13 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         region_process_endpoints = []
         for _ in range(4):
             process = yield deferToDatabase(
-                self.create_region_controller_process, {
-                    "region": region,
-                })
+                self.create_region_controller_process, {"region": region}
+            )
             region_processes.append(process)
             endpoint = yield deferToDatabase(
-                self.create_region_controller_process_endpoint, {
-                    "process": process,
-                })
+                self.create_region_controller_process_endpoint,
+                {"process": process},
+            )
             region_process_endpoints.append(endpoint)
 
         # Now create the trigger so that it is actually ran.
@@ -370,15 +419,19 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         # un-used region process. The managing rack controller should not
         # change because the rack controller is not connected to at least
         # half of the region processes.
-        yield deferToDatabase(self.create_region_rack_rpc_connection, {
-            "endpoint": region_process_endpoints[0],
-            "rack_controller": rack_controller,
-        })
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection,
+            {
+                "endpoint": region_process_endpoints[0],
+                "rack_controller": rack_controller,
+            },
+        )
         rack_controller = yield deferToDatabase(
-            self.reload_object, rack_controller)
+            self.reload_object, rack_controller
+        )
         self.assertEqual(
-            overloaded_region_process.id,
-            rack_controller.managing_process_id)
+            overloaded_region_process.id, rack_controller.managing_process_id
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -386,33 +439,35 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         yield deferToDatabase(register_system_triggers)
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         rack_controller = yield deferToDatabase(self.create_rack_controller)
         yield self.capturePublication()
 
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": region_process_endpoint,
-                "rack_controller": rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": region_process_endpoint,
+                    "rack_controller": rack_controller,
+                },
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("rack controller %s connected" % rack_controller.hostname))
+            Equals("rack controller %s connected" % rack_controller.hostname),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -420,37 +475,41 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         yield deferToDatabase(register_system_triggers)
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         region_process_endpoint2 = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         rack_controller = yield deferToDatabase(self.create_rack_controller)
         yield self.capturePublication()
 
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": region_process_endpoint,
-                "rack_controller": rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": region_process_endpoint,
+                    "rack_controller": rack_controller,
+                },
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
             publication = self.getCapturedPublication()
-            yield deferToDatabase(self.create_region_rack_rpc_connection, {
-                "endpoint": region_process_endpoint2,
-                "rack_controller": rack_controller,
-            })
+            yield deferToDatabase(
+                self.create_region_rack_rpc_connection,
+                {
+                    "endpoint": region_process_endpoint2,
+                    "rack_controller": rack_controller,
+                },
+            )
         finally:
             yield listener.stopService()
         # Verify that the DNS publication has not changed.
@@ -459,8 +518,8 @@ class TestCoreRegionRackRPCConnectionInsertListener(
 
 
 class TestCoreRegionRackRPCConnectionDeleteListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the core triggers code."""
 
     @wait_for_reactor
@@ -477,45 +536,47 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
                 cursor.execute(
                     "DROP TRIGGER IF EXISTS "
                     "regionrackrpcconnection_sys_core_rpc_insert ON "
-                    "maasserver_regionrackrpcconnection")
+                    "maasserver_regionrackrpcconnection"
+                )
 
         yield deferToDatabase(drop_sys_core_rpc_insert_trigger)
 
         # Create a region process that is managing for a rack controller.
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         rack_controller = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": region_process
-            })
+            self.create_rack_controller, {"managing_process": region_process}
+        )
         connection = yield deferToDatabase(
-            self.create_region_rack_rpc_connection, {
+            self.create_region_rack_rpc_connection,
+            {
                 "endpoint": region_process_endpoint,
                 "rack_controller": rack_controller,
-            })
+            },
+        )
 
         # Create another process that has a connection to the rack controller.
         other_region = yield deferToDatabase(self.create_region_controller)
         other_region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": other_region,
-            })
+            self.create_region_controller_process, {"region": other_region}
+        )
         other_region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": other_region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": other_region_process},
+        )
         yield deferToDatabase(
-            self.create_region_rack_rpc_connection, {
+            self.create_region_rack_rpc_connection,
+            {
                 "endpoint": other_region_process_endpoint,
                 "rack_controller": rack_controller,
-            })
+            },
+        )
 
         # Now create the trigger so that it is actually ran.
         yield deferToDatabase(register_system_triggers)
@@ -526,32 +587,42 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
         process_dv = DeferredValue()
         listener.register(
             "sys_core_%s" % region_process.id,
-            lambda *args: process_dv.set(args))
+            lambda *args: process_dv.set(args),
+        )
         other_process_dv = DeferredValue()
         listener.register(
             "sys_core_%s" % other_region_process.id,
-            lambda *args: other_process_dv.set(args))
+            lambda *args: other_process_dv.set(args),
+        )
         yield listener.startService()
         try:
             # Remove the connection on the region process causing it to
             # set the other region process as the manager.
             yield deferToDatabase(
-                self.delete_region_rack_rpc_connection, connection.id)
+                self.delete_region_rack_rpc_connection, connection.id
+            )
             yield process_dv.get(timeout=2)
             yield other_process_dv.get(timeout=2)
-            self.assertEqual((
-                "sys_core_%s" % region_process.id,
-                "unwatch_%s" % rack_controller.id),
-                process_dv.value)
-            self.assertEqual((
-                "sys_core_%s" % other_region_process.id,
-                "watch_%s" % rack_controller.id),
-                other_process_dv.value)
-            rack_controller = yield deferToDatabase(
-                self.reload_object, rack_controller)
             self.assertEqual(
-                other_region_process.id,
-                rack_controller.managing_process_id)
+                (
+                    "sys_core_%s" % region_process.id,
+                    "unwatch_%s" % rack_controller.id,
+                ),
+                process_dv.value,
+            )
+            self.assertEqual(
+                (
+                    "sys_core_%s" % other_region_process.id,
+                    "watch_%s" % rack_controller.id,
+                ),
+                other_process_dv.value,
+            )
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller
+            )
+            self.assertEqual(
+                other_region_process.id, rack_controller.managing_process_id
+            )
         finally:
             yield listener.stopService()
 
@@ -561,22 +632,22 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
         # Create a region process that is managing for a rack controller.
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         rack_controller = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": region_process
-            })
+            self.create_rack_controller, {"managing_process": region_process}
+        )
         connection = yield deferToDatabase(
-            self.create_region_rack_rpc_connection, {
+            self.create_region_rack_rpc_connection,
+            {
                 "endpoint": region_process_endpoint,
                 "rack_controller": rack_controller,
-            })
+            },
+        )
 
         # Now create the trigger so that it is actually ran.
         yield deferToDatabase(register_system_triggers)
@@ -587,20 +658,26 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
         process_dv = DeferredValue()
         listener.register(
             "sys_core_%s" % region_process.id,
-            lambda *args: process_dv.set(args))
+            lambda *args: process_dv.set(args),
+        )
         yield listener.startService()
         try:
             # Remove the connection on the region process causing it to
             # notify unwatch and remove the managing process.
             yield deferToDatabase(
-                self.delete_region_rack_rpc_connection, connection.id)
+                self.delete_region_rack_rpc_connection, connection.id
+            )
             yield process_dv.get(timeout=2)
-            self.assertEqual((
-                "sys_core_%s" % region_process.id,
-                "unwatch_%s" % rack_controller.id),
-                process_dv.value)
+            self.assertEqual(
+                (
+                    "sys_core_%s" % region_process.id,
+                    "unwatch_%s" % rack_controller.id,
+                ),
+                process_dv.value,
+            )
             rack_controller = yield deferToDatabase(
-                self.reload_object, rack_controller)
+                self.reload_object, rack_controller
+            )
             self.assertIsNone(rack_controller.managing_process_id)
         finally:
             yield listener.stopService()
@@ -611,22 +688,22 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
         # Create a region process that is managing for a rack controller.
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
-            self.create_region_controller_process, {
-                "region": region,
-            })
+            self.create_region_controller_process, {"region": region}
+        )
         region_process_endpoint = yield deferToDatabase(
-            self.create_region_controller_process_endpoint, {
-                "process": region_process,
-            })
+            self.create_region_controller_process_endpoint,
+            {"process": region_process},
+        )
         rack_controller = yield deferToDatabase(
-            self.create_rack_controller, {
-                "managing_process": region_process
-            })
+            self.create_rack_controller, {"managing_process": region_process}
+        )
         connection = yield deferToDatabase(
-            self.create_region_rack_rpc_connection, {
+            self.create_region_rack_rpc_connection,
+            {
                 "endpoint": region_process_endpoint,
                 "rack_controller": rack_controller,
-            })
+            },
+        )
 
         # Now create the trigger so that it is actually ran.
         yield deferToDatabase(register_system_triggers)
@@ -635,13 +712,13 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
 
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             # Remove the connection on the region process.
             yield deferToDatabase(
-                self.delete_region_rack_rpc_connection, connection.id)
+                self.delete_region_rack_rpc_connection, connection.id
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
@@ -649,11 +726,14 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
         self.assertThat(
             self.getCapturedPublication().source,
             Equals(
-                "rack controller %s disconnected" % rack_controller.hostname))
+                "rack controller %s disconnected" % rack_controller.hostname
+            ),
+        )
 
 
 class TestDHCPVLANListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -666,14 +746,15 @@ class TestDHCPVLANListener(
         primary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "dhcp_on": True,
-                "primary_rack": primary_rack,
-            })
+            yield deferToDatabase(
+                self.update_vlan,
+                vlan.id,
+                {"dhcp_on": True, "primary_rack": primary_rack},
+            )
             yield primary_dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -683,21 +764,18 @@ class TestDHCPVLANListener(
     def test_sends_message_for_primary_when_mtu_changed(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
 
         primary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "mtu": 1400,
-            })
+            yield deferToDatabase(self.update_vlan, vlan.id, {"mtu": 1400})
             yield primary_dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -714,18 +792,23 @@ class TestDHCPVLANListener(
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "dhcp_on": True,
-                "primary_rack": primary_rack,
-                "secondary_rack": secondary_rack,
-            })
+            yield deferToDatabase(
+                self.update_vlan,
+                vlan.id,
+                {
+                    "dhcp_on": True,
+                    "primary_rack": primary_rack,
+                    "secondary_rack": secondary_rack,
+                },
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -737,25 +820,25 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "secondary_rack": secondary_rack,
-            })
+            yield deferToDatabase(
+                self.update_vlan, vlan.id, {"secondary_rack": secondary_rack}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -767,26 +850,30 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         old_secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": old_secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": old_secondary_rack,
+            },
+        )
 
         primary_dv = DeferredValue()
         old_secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % old_secondary_rack.id,
-            lambda *args: old_secondary_dv.set(args))
+            lambda *args: old_secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "secondary_rack": None,
-            })
+            yield deferToDatabase(
+                self.update_vlan, vlan.id, {"secondary_rack": None}
+            )
             yield primary_dv.get(timeout=2)
             yield old_secondary_dv.get(timeout=2)
         finally:
@@ -797,22 +884,22 @@ class TestDHCPVLANListener(
     def test_sends_message_for_old_primary_when_turned_off(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
 
         primary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "dhcp_on": False,
-                "primary_rack": None,
-            })
+            yield deferToDatabase(
+                self.update_vlan,
+                vlan.id,
+                {"dhcp_on": False, "primary_rack": None},
+            )
             yield primary_dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -823,28 +910,36 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "dhcp_on": False,
-                "primary_rack": None,
-                "secondary_rack": None,
-            })
+            yield deferToDatabase(
+                self.update_vlan,
+                vlan.id,
+                {
+                    "dhcp_on": False,
+                    "primary_rack": None,
+                    "secondary_rack": None,
+                },
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -856,25 +951,27 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         old_primary_rack = yield deferToDatabase(self.create_rack_controller)
         new_primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": old_primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {"dhcp_on": True, "primary_rack": old_primary_rack},
+        )
 
         old_primary_dv = DeferredValue()
         new_primary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % old_primary_rack.id,
-            lambda *args: old_primary_dv.set(args))
+            lambda *args: old_primary_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % new_primary_rack.id,
-            lambda *args: new_primary_rack_dv.set(args))
+            lambda *args: new_primary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "primary_rack": new_primary_rack,
-            })
+            yield deferToDatabase(
+                self.update_vlan, vlan.id, {"primary_rack": new_primary_rack}
+            )
             yield old_primary_dv.get(timeout=2)
             yield new_primary_rack_dv.get(timeout=2)
         finally:
@@ -887,30 +984,37 @@ class TestDHCPVLANListener(
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         old_secondary_rack = yield deferToDatabase(self.create_rack_controller)
         new_secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": old_secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": old_secondary_rack,
+            },
+        )
 
         primary_dv = DeferredValue()
         old_secondary_dv = DeferredValue()
         new_secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % old_secondary_rack.id,
-            lambda *args: old_secondary_dv.set(args))
+            lambda *args: old_secondary_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % new_secondary_rack.id,
-            lambda *args: new_secondary_rack_dv.set(args))
+            lambda *args: new_secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "secondary_rack": new_secondary_rack,
-            })
+            yield deferToDatabase(
+                self.update_vlan,
+                vlan.id,
+                {"secondary_rack": new_secondary_rack},
+            )
             yield primary_dv.get(timeout=2)
             yield old_secondary_dv.get(timeout=2)
             yield new_secondary_rack_dv.get(timeout=2)
@@ -925,11 +1029,14 @@ class TestDHCPVLANListener(
         new_primary_rack = yield deferToDatabase(self.create_rack_controller)
         old_secondary_rack = yield deferToDatabase(self.create_rack_controller)
         new_secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": old_primary_rack,
-            "secondary_rack": old_secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": old_primary_rack,
+                "secondary_rack": old_secondary_rack,
+            },
+        )
 
         old_primary_dv = DeferredValue()
         new_primary_rack_dv = DeferredValue()
@@ -938,22 +1045,30 @@ class TestDHCPVLANListener(
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % old_primary_rack.id,
-            lambda *args: old_primary_dv.set(args))
+            lambda *args: old_primary_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % new_primary_rack.id,
-            lambda *args: new_primary_rack_dv.set(args))
+            lambda *args: new_primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % old_secondary_rack.id,
-            lambda *args: old_secondary_dv.set(args))
+            lambda *args: old_secondary_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % new_secondary_rack.id,
-            lambda *args: new_secondary_rack_dv.set(args))
+            lambda *args: new_secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "primary_rack": new_primary_rack,
-                "secondary_rack": new_secondary_rack,
-            })
+            yield deferToDatabase(
+                self.update_vlan,
+                vlan.id,
+                {
+                    "primary_rack": new_primary_rack,
+                    "secondary_rack": new_secondary_rack,
+                },
+            )
             yield old_primary_dv.get(timeout=2)
             yield new_primary_rack_dv.get(timeout=2)
             yield old_secondary_dv.get(timeout=2)
@@ -967,26 +1082,31 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
         vlan = yield deferToDatabase(self.create_vlan)
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "relay_vlan": relay_vlan,
-            })
+            yield deferToDatabase(
+                self.update_vlan, vlan.id, {"relay_vlan": relay_vlan}
+            )
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
         finally:
@@ -998,28 +1118,31 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        vlan = yield deferToDatabase(self.create_vlan, params={
-            "relay_vlan": relay_vlan,
-        })
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        vlan = yield deferToDatabase(
+            self.create_vlan, params={"relay_vlan": relay_vlan}
+        )
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "mtu": 1400,
-            })
+            yield deferToDatabase(self.update_vlan, vlan.id, {"mtu": 1400})
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
         finally:
@@ -1030,27 +1153,30 @@ class TestDHCPVLANListener(
     def test_sends_messages_when_ip_address_created(self):
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "relay_vlan": vlan
-        })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan, params={"relay_vlan": vlan}
+        )
+        yield deferToDatabase(self.create_subnet, {"vlan": relay_vlan})
         yield deferToDatabase(register_system_triggers)
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_staticipaddress, vlan=relay_vlan)
@@ -1064,35 +1190,38 @@ class TestDHCPVLANListener(
     def test_sends_messages_when_ip_address_updated(self):
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "relay_vlan": vlan
-        })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan, params={"relay_vlan": vlan}
+        )
+        yield deferToDatabase(self.create_subnet, {"vlan": relay_vlan})
         yield deferToDatabase(register_system_triggers)
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         sip = yield deferToDatabase(
-            self.create_staticipaddress, vlan=relay_vlan)
+            self.create_staticipaddress, vlan=relay_vlan
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_staticipaddress, sip.id, params={
-                    'ip': ''
-                })
+                self.update_staticipaddress, sip.id, params={"ip": ""}
+            )
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
         finally:
@@ -1103,37 +1232,42 @@ class TestDHCPVLANListener(
     def test_sends_messages_when_ip_address_no_longer_temp(self):
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "relay_vlan": vlan
-        })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan, params={"relay_vlan": vlan}
+        )
+        yield deferToDatabase(self.create_subnet, {"vlan": relay_vlan})
         yield deferToDatabase(register_system_triggers)
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         sip = yield deferToDatabase(
-            self.create_staticipaddress, {
-                'temp_expires_on': datetime.utcnow(),
-            }, vlan=relay_vlan)
+            self.create_staticipaddress,
+            {"temp_expires_on": datetime.utcnow()},
+            vlan=relay_vlan,
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_staticipaddress, sip.id, params={
-                    'temp_expires_on': None
-                })
+                self.update_staticipaddress,
+                sip.id,
+                params={"temp_expires_on": None},
+            )
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
         finally:
@@ -1144,35 +1278,40 @@ class TestDHCPVLANListener(
     def test_sends_messages_when_ip_address_becomes_temp(self):
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "relay_vlan": vlan
-        })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan, params={"relay_vlan": vlan}
+        )
+        yield deferToDatabase(self.create_subnet, {"vlan": relay_vlan})
         yield deferToDatabase(register_system_triggers)
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         sip = yield deferToDatabase(
-            self.create_staticipaddress, vlan=relay_vlan)
+            self.create_staticipaddress, vlan=relay_vlan
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_staticipaddress, sip.id, params={
-                    'temp_expires_on': datetime.utcnow()
-                })
+                self.update_staticipaddress,
+                sip.id,
+                params={"temp_expires_on": datetime.utcnow()},
+            )
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
         finally:
@@ -1183,29 +1322,33 @@ class TestDHCPVLANListener(
     def test_sends_messages_when_ip_address_deleted(self):
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "relay_vlan": vlan
-        })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan, params={"relay_vlan": vlan}
+        )
+        yield deferToDatabase(self.create_subnet, {"vlan": relay_vlan})
         yield deferToDatabase(register_system_triggers)
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         sip = yield deferToDatabase(
-            self.create_staticipaddress, vlan=relay_vlan)
+            self.create_staticipaddress, vlan=relay_vlan
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
@@ -1220,28 +1363,33 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "relay_vlan": relay_vlan,
-        })
+        relay_vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"relay_vlan": relay_vlan}
+        )
         primary_rack_dv = DeferredValue()
         secondary_rack_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_rack_dv.set(args))
+            lambda *args: primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_rack_dv.set(args))
+            lambda *args: secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "relay_vlan": None,
-            })
+            yield deferToDatabase(
+                self.update_vlan, vlan.id, {"relay_vlan": None}
+            )
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
         finally:
@@ -1253,21 +1401,27 @@ class TestDHCPVLANListener(
         yield deferToDatabase(register_system_triggers)
         old_primary_rack = yield deferToDatabase(self.create_rack_controller)
         old_secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        old_relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": old_primary_rack,
-            "secondary_rack": old_secondary_rack,
-        })
+        old_relay_vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": old_primary_rack,
+                "secondary_rack": old_secondary_rack,
+            },
+        )
         new_primary_rack = yield deferToDatabase(self.create_rack_controller)
         new_secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        new_relay_vlan = yield deferToDatabase(self.create_vlan, params={
-            "dhcp_on": True,
-            "primary_rack": new_primary_rack,
-            "secondary_rack": new_secondary_rack,
-        })
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "relay_vlan": old_relay_vlan,
-        })
+        new_relay_vlan = yield deferToDatabase(
+            self.create_vlan,
+            params={
+                "dhcp_on": True,
+                "primary_rack": new_primary_rack,
+                "secondary_rack": new_secondary_rack,
+            },
+        )
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"relay_vlan": old_relay_vlan}
+        )
         old_primary_rack_dv = DeferredValue()
         old_secondary_rack_dv = DeferredValue()
         new_primary_rack_dv = DeferredValue()
@@ -1275,21 +1429,25 @@ class TestDHCPVLANListener(
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dhcp_%s" % old_primary_rack.id,
-            lambda *args: old_primary_rack_dv.set(args))
+            lambda *args: old_primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % old_secondary_rack.id,
-            lambda *args: old_secondary_rack_dv.set(args))
+            lambda *args: old_secondary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % new_primary_rack.id,
-            lambda *args: new_primary_rack_dv.set(args))
+            lambda *args: new_primary_rack_dv.set(args),
+        )
         listener.register(
             "sys_dhcp_%s" % new_secondary_rack.id,
-            lambda *args: new_secondary_rack_dv.set(args))
+            lambda *args: new_secondary_rack_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_vlan, vlan.id, {
-                "relay_vlan": new_relay_vlan,
-            })
+            yield deferToDatabase(
+                self.update_vlan, vlan.id, {"relay_vlan": new_relay_vlan}
+            )
             yield old_primary_rack_dv.get(timeout=2)
             yield old_secondary_rack_dv.get(timeout=2)
             yield new_primary_rack_dv.get(timeout=2)
@@ -1299,7 +1457,8 @@ class TestDHCPVLANListener(
 
 
 class TestDHCPSubnetListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -1308,44 +1467,52 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack_1 = yield deferToDatabase(self.create_rack_controller)
         secondary_rack_1 = yield deferToDatabase(self.create_rack_controller)
-        vlan_1 = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack_1,
-            "secondary_rack": secondary_rack_1,
-        })
+        vlan_1 = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack_1,
+                "secondary_rack": secondary_rack_1,
+            },
+        )
         primary_rack_2 = yield deferToDatabase(self.create_rack_controller)
         secondary_rack_2 = yield deferToDatabase(self.create_rack_controller)
-        vlan_2 = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack_2,
-            "secondary_rack": secondary_rack_2,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan_1,
-        })
+        vlan_2 = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack_2,
+                "secondary_rack": secondary_rack_2,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan_1})
 
         listener = self.make_listener_without_delay()
         primary_dv_1 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % primary_rack_1.id,
-            lambda *args: primary_dv_1.set(args))
+            lambda *args: primary_dv_1.set(args),
+        )
         secondary_dv_1 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack_1.id,
-            lambda *args: secondary_dv_1.set(args))
+            lambda *args: secondary_dv_1.set(args),
+        )
         primary_dv_2 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % primary_rack_2.id,
-            lambda *args: primary_dv_2.set(args))
+            lambda *args: primary_dv_2.set(args),
+        )
         secondary_dv_2 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack_2.id,
-            lambda *args: secondary_dv_2.set(args))
+            lambda *args: secondary_dv_2.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "vlan": vlan_2,
-            })
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"vlan": vlan_2}
+            )
             yield primary_dv_1.get(timeout=2)
             yield secondary_dv_1.get(timeout=2)
             yield primary_dv_1.get(timeout=2)
@@ -1359,33 +1526,37 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             network = factory.make_ip4_or_6_network()
             gateway_ip = yield deferToDatabase(
-                factory.pick_ip_in_network, network)
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "cidr": str(network.cidr),
-                "gateway_ip": gateway_ip,
-            })
+                factory.pick_ip_in_network, network
+            )
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {"cidr": str(network.cidr), "gateway_ip": gateway_ip},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1397,32 +1568,36 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             gateway_ip = yield deferToDatabase(
-                factory.pick_ip_in_network, subnet.get_ipnetwork(),
-                but_not=[subnet.gateway_ip])
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "gateway_ip": gateway_ip,
-            })
+                factory.pick_ip_in_network,
+                subnet.get_ipnetwork(),
+                but_not=[subnet.gateway_ip],
+            )
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"gateway_ip": gateway_ip}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1434,35 +1609,38 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         # Make sure its empty. This test that it handles being set.
-        yield deferToDatabase(self.update_subnet, subnet.id, {
-            "gateway_ip": None,
-        })
+        yield deferToDatabase(
+            self.update_subnet, subnet.id, {"gateway_ip": None}
+        )
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             gateway_ip = yield deferToDatabase(
-                factory.pick_ip_in_network, subnet.get_ipnetwork())
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "gateway_ip": gateway_ip,
-            })
+                factory.pick_ip_in_network, subnet.get_ipnetwork()
+            )
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"gateway_ip": gateway_ip}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1474,29 +1652,31 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "gateway_ip": None,
-            })
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"gateway_ip": None}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1508,32 +1688,36 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             dns_server = yield deferToDatabase(
-                factory.pick_ip_in_network, subnet.get_ipnetwork(),
-                but_not=subnet.dns_servers)
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "dns_servers": [dns_server],
-            })
+                factory.pick_ip_in_network,
+                subnet.get_ipnetwork(),
+                but_not=subnet.dns_servers,
+            )
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"dns_servers": [dns_server]}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1545,36 +1729,40 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         # Make sure its empty. This test that it handles being set.
-        yield deferToDatabase(self.update_subnet, subnet.id, {
-            "dns_servers": [],
-        })
+        yield deferToDatabase(
+            self.update_subnet, subnet.id, {"dns_servers": []}
+        )
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             dns_server = yield deferToDatabase(
-                factory.pick_ip_in_network, subnet.get_ipnetwork(),
-                but_not=subnet.dns_servers)
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "dns_servers": [dns_server],
-            })
+                factory.pick_ip_in_network,
+                subnet.get_ipnetwork(),
+                but_not=subnet.dns_servers,
+            )
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"dns_servers": [dns_server]}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1586,35 +1774,39 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         dns_server = yield deferToDatabase(
-            factory.pick_ip_in_network, subnet.get_ipnetwork(),
-            but_not=subnet.dns_servers)
-        yield deferToDatabase(self.update_subnet, subnet.id, {
-            "dns_servers": [dns_server],
-        })
+            factory.pick_ip_in_network,
+            subnet.get_ipnetwork(),
+            but_not=subnet.dns_servers,
+        )
+        yield deferToDatabase(
+            self.update_subnet, subnet.id, {"dns_servers": [dns_server]}
+        )
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "dns_servers": [],
-            })
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"dns_servers": []}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1626,24 +1818,26 @@ class TestDHCPSubnetListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
 
         primary_dv = DeferredValue()
         secondary_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
@@ -1654,12 +1848,13 @@ class TestDHCPSubnetListener(
 
 
 class TestDHCPIPRangeListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     scenarios = (
-        ('with_dhcp_relay', {"dhcp_relay": True}),
-        ('without_dhcp_relay', {"dhcp_relay": False}),
+        ("with_dhcp_relay", {"dhcp_relay": True}),
+        ("without_dhcp_relay", {"dhcp_relay": False}),
     )
 
     @wait_for_reactor
@@ -1668,41 +1863,51 @@ class TestDHCPIPRangeListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
         network = factory.make_ipv4_network()
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "cidr": str(network.cidr),
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {
+                "cidr": str(network.cidr),
+                "vlan": relay_vlan if self.dhcp_relay else vlan,
+            },
+        )
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             network = subnet.get_ipnetwork()
             start_ip = str(IPAddress(network.first + 2))
             end_ip = str(IPAddress(network.first + 3))
-            yield deferToDatabase(self.create_iprange, {
-                "subnet": subnet,
-                "alloc_type": IPRANGE_TYPE.DYNAMIC,
-                "start_ip": start_ip,
-                "end_ip": end_ip,
-            })
+            yield deferToDatabase(
+                self.create_iprange,
+                {
+                    "subnet": subnet,
+                    "alloc_type": IPRANGE_TYPE.DYNAMIC,
+                    "start_ip": start_ip,
+                    "end_ip": end_ip,
+                },
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1714,46 +1919,56 @@ class TestDHCPIPRangeListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
         network = factory.make_ipv4_network()
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "cidr": str(network.cidr),
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {
+                "cidr": str(network.cidr),
+                "vlan": relay_vlan if self.dhcp_relay else vlan,
+            },
+        )
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
         end_ip = str(IPAddress(network.first + 3))
-        ip_range = yield deferToDatabase(self.create_iprange, {
-            "subnet": subnet,
-            "alloc_type": IPRANGE_TYPE.DYNAMIC,
-            "start_ip": start_ip,
-            "end_ip": end_ip,
-        })
+        ip_range = yield deferToDatabase(
+            self.create_iprange,
+            {
+                "subnet": subnet,
+                "alloc_type": IPRANGE_TYPE.DYNAMIC,
+                "start_ip": start_ip,
+                "end_ip": end_ip,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             end_ip = str(IPAddress(network.first + 4))
-            yield deferToDatabase(self.update_iprange, ip_range.id, {
-                "end_ip": end_ip,
-            })
+            yield deferToDatabase(
+                self.update_iprange, ip_range.id, {"end_ip": end_ip}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1765,45 +1980,57 @@ class TestDHCPIPRangeListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
         network = factory.make_ipv4_network()
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "cidr": str(network.cidr),
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {
+                "cidr": str(network.cidr),
+                "vlan": relay_vlan if self.dhcp_relay else vlan,
+            },
+        )
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
         end_ip = str(IPAddress(network.first + 3))
-        ip_range = yield deferToDatabase(self.create_iprange, {
-            "subnet": subnet,
-            "alloc_type": IPRANGE_TYPE.DYNAMIC,
-            "start_ip": start_ip,
-            "end_ip": end_ip,
-        })
+        ip_range = yield deferToDatabase(
+            self.create_iprange,
+            {
+                "subnet": subnet,
+                "alloc_type": IPRANGE_TYPE.DYNAMIC,
+                "start_ip": start_ip,
+                "end_ip": end_ip,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_iprange, ip_range.id, {
-                "type": IPRANGE_TYPE.RESERVED,
-            })
+            yield deferToDatabase(
+                self.update_iprange,
+                ip_range.id,
+                {"type": IPRANGE_TYPE.RESERVED},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1815,45 +2042,57 @@ class TestDHCPIPRangeListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
         network = factory.make_ipv4_network()
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "cidr": str(network.cidr),
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {
+                "cidr": str(network.cidr),
+                "vlan": relay_vlan if self.dhcp_relay else vlan,
+            },
+        )
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
         end_ip = str(IPAddress(network.first + 3))
-        ip_range = yield deferToDatabase(self.create_iprange, {
-            "subnet": subnet,
-            "alloc_type": IPRANGE_TYPE.RESERVED,
-            "start_ip": start_ip,
-            "end_ip": end_ip,
-        })
+        ip_range = yield deferToDatabase(
+            self.create_iprange,
+            {
+                "subnet": subnet,
+                "alloc_type": IPRANGE_TYPE.RESERVED,
+                "start_ip": start_ip,
+                "end_ip": end_ip,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_iprange, ip_range.id, {
-                "type": IPRANGE_TYPE.DYNAMIC,
-            })
+            yield deferToDatabase(
+                self.update_iprange,
+                ip_range.id,
+                {"type": IPRANGE_TYPE.DYNAMIC},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1865,40 +2104,50 @@ class TestDHCPIPRangeListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
         network = factory.make_ipv4_network()
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "cidr": str(network.cidr),
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {
+                "cidr": str(network.cidr),
+                "vlan": relay_vlan if self.dhcp_relay else vlan,
+            },
+        )
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
         end_ip = str(IPAddress(network.first + 3))
-        ip_range = yield deferToDatabase(self.create_iprange, {
-            "subnet": subnet,
-            "alloc_type": IPRANGE_TYPE.DYNAMIC,
-            "start_ip": start_ip,
-            "end_ip": end_ip,
-        })
+        ip_range = yield deferToDatabase(
+            self.create_iprange,
+            {
+                "subnet": subnet,
+                "alloc_type": IPRANGE_TYPE.DYNAMIC,
+                "start_ip": start_ip,
+                "end_ip": end_ip,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_iprange, ip_range.id)
@@ -1909,7 +2158,8 @@ class TestDHCPIPRangeListener(
 
 
 class TestDHCPStaticIPAddressListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -1918,32 +2168,37 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_staticipaddress, params={
-                "subnet": subnet,
-                "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
-                "user": user,
-            })
+            yield deferToDatabase(
+                self.create_staticipaddress,
+                params={
+                    "subnet": subnet,
+                    "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
+                    "user": user,
+                },
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -1955,55 +2210,65 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack_1 = yield deferToDatabase(self.create_rack_controller)
         secondary_rack_1 = yield deferToDatabase(self.create_rack_controller)
-        vlan_1 = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack_1,
-            "secondary_rack": secondary_rack_1,
-        })
-        subnet_1 = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan_1,
-        })
+        vlan_1 = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack_1,
+                "secondary_rack": secondary_rack_1,
+            },
+        )
+        subnet_1 = yield deferToDatabase(self.create_subnet, {"vlan": vlan_1})
         primary_rack_2 = yield deferToDatabase(self.create_rack_controller)
         secondary_rack_2 = yield deferToDatabase(self.create_rack_controller)
-        vlan_2 = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack_2,
-            "secondary_rack": secondary_rack_2,
-        })
-        subnet_2 = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan_2,
-        })
+        vlan_2 = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack_2,
+                "secondary_rack": secondary_rack_2,
+            },
+        )
+        subnet_2 = yield deferToDatabase(self.create_subnet, {"vlan": vlan_2})
         user = yield deferToDatabase(self.create_user)
-        staticip = yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet_1,
-            "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
-            "user": user,
-        })
+        staticip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet_1,
+                "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
+                "user": user,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv_1 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % primary_rack_1.id,
-            lambda *args: primary_dv_1.set(args))
+            lambda *args: primary_dv_1.set(args),
+        )
         secondary_dv_1 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack_1.id,
-            lambda *args: secondary_dv_1.set(args))
+            lambda *args: secondary_dv_1.set(args),
+        )
         primary_dv_2 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % primary_rack_2.id,
-            lambda *args: primary_dv_2.set(args))
+            lambda *args: primary_dv_2.set(args),
+        )
         secondary_dv_2 = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack_2.id,
-            lambda *args: secondary_dv_2.set(args))
+            lambda *args: secondary_dv_2.set(args),
+        )
         yield listener.startService()
         try:
             ip = yield deferToDatabase(factory.pick_ip_in_Subnet, subnet_2)
-            yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "subnet": subnet_2,
-                "ip": ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress,
+                staticip.id,
+                {"subnet": subnet_2, "ip": ip},
+            )
             yield primary_dv_1.get(timeout=2)
             yield secondary_dv_1.get(timeout=2)
             yield primary_dv_2.get(timeout=2)
@@ -2017,41 +2282,45 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet_1 = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
-        subnet_2 = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet_1 = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
+        subnet_2 = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         user = yield deferToDatabase(self.create_user)
-        staticip = yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet_1,
-            "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
-            "user": user,
-        })
+        staticip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet_1,
+                "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
+                "user": user,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             ip = yield deferToDatabase(factory.pick_ip_in_Subnet, subnet_2)
-            yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "subnet": subnet_2,
-                "ip": ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress,
+                staticip.id,
+                {"subnet": subnet_2, "ip": ip},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2063,42 +2332,46 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        staticip = yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-            "ip": "",
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        staticip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+                "ip": "",
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             ip = yield deferToDatabase(factory.pick_ip_in_Subnet, subnet)
-            yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, staticip.id, {"ip": ip}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2110,40 +2383,44 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        staticip = yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        staticip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": "",
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, staticip.id, {"ip": ""}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2155,42 +2432,47 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        staticip = yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        staticip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             ip = yield deferToDatabase(
-                factory.pick_ip_in_Subnet, subnet, but_not=[staticip.ip])
-            yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": ip,
-            })
+                factory.pick_ip_in_Subnet, subnet, but_not=[staticip.ip]
+            )
+            yield deferToDatabase(
+                self.update_staticipaddress, staticip.id, {"ip": ip}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2202,42 +2484,47 @@ class TestDHCPStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        staticip = yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        staticip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
             ip = yield deferToDatabase(
-                factory.pick_ip_in_Subnet, subnet, but_not=[staticip.ip])
-            yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": ip,
-            })
+                factory.pick_ip_in_Subnet, subnet, but_not=[staticip.ip]
+            )
+            yield deferToDatabase(
+                self.update_staticipaddress, staticip.id, {"ip": ip}
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2245,7 +2532,8 @@ class TestDHCPStaticIPAddressListener(
 
 
 class TestDHCPInterfaceListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -2254,39 +2542,45 @@ class TestDHCPInterfaceListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_interface, interface.id, {
-                "name": factory.make_name("eth"),
-            })
+            yield deferToDatabase(
+                self.update_interface,
+                interface.id,
+                {"name": factory.make_name("eth")},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2298,39 +2592,45 @@ class TestDHCPInterfaceListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_interface, interface.id, {
-                "mac_address": factory.make_mac_address(),
-            })
+            yield deferToDatabase(
+                self.update_interface,
+                interface.id,
+                {"mac_address": factory.make_mac_address()},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2338,7 +2638,8 @@ class TestDHCPInterfaceListener(
 
 
 class TestDHCPNodeListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -2347,39 +2648,45 @@ class TestDHCPNodeListener(
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-            "secondary_rack": secondary_rack,
-        })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
         node = yield deferToDatabase(self.create_node)
-        interface = yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
-        yield deferToDatabase(self.create_staticipaddress, {
-            "subnet": subnet,
-            "alloc_type": IPADDRESS_TYPE.AUTO,
-            "interface": interface,
-        })
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
+        yield deferToDatabase(
+            self.create_staticipaddress,
+            {
+                "subnet": subnet,
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+            },
+        )
 
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: primary_dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
         secondary_dv = DeferredValue()
         listener.register(
             "sys_dhcp_%s" % secondary_rack.id,
-            lambda *args: secondary_dv.set(args))
+            lambda *args: secondary_dv.set(args),
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_node, node.system_id, {
-                "hostname": factory.make_name("host"),
-            })
+            yield deferToDatabase(
+                self.update_node,
+                node.system_id,
+                {"hostname": factory.make_name("host")},
+            )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
         finally:
@@ -2387,12 +2694,13 @@ class TestDHCPNodeListener(
 
 
 class TestDHCPSnippetListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code."""
 
     scenarios = (
-        ('with_dhcp_relay', {"dhcp_relay": True}),
-        ('without_dhcp_relay', {"dhcp_relay": False}),
+        ("with_dhcp_relay", {"dhcp_relay": True}),
+        ("without_dhcp_relay", {"dhcp_relay": False}),
     )
 
     @wait_for_reactor
@@ -2400,28 +2708,26 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_global_dhcp_snippet_inserted(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_dhcp_snippet, {
-                "enabled": True,
-            })
+            yield deferToDatabase(self.create_dhcp_snippet, {"enabled": True})
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2431,28 +2737,26 @@ class TestDHCPSnippetListener(
     def test_no_message_for_global_dhcp_snippet_inserted_when_disabled(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_dhcp_snippet, {
-                "enabled": False,
-            })
+            yield deferToDatabase(self.create_dhcp_snippet, {"enabled": False})
             try:
                 yield dv.get(timeout=1)
             except CancelledError:
@@ -2465,29 +2769,28 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_inserted_with_subnet(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_dhcp_snippet, {
-                "enabled": True,
-                "subnet": subnet,
-            })
+            yield deferToDatabase(
+                self.create_dhcp_snippet, {"enabled": True, "subnet": subnet}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2497,34 +2800,32 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_inserted_with_node(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
         node = yield deferToDatabase(self.create_node)
-        yield deferToDatabase(self.create_interface, {
-            "node": node,
-            "vlan": vlan,
-        })
+        yield deferToDatabase(
+            self.create_interface, {"node": node, "vlan": vlan}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_dhcp_snippet, {
-                "enabled": True,
-                "node": node,
-            })
+            yield deferToDatabase(
+                self.create_dhcp_snippet, {"enabled": True, "node": node}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2534,30 +2835,31 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_updated_value(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
             new_value = yield deferToDatabase(
-                dhcp_snippet.value.update, factory.make_string())
+                dhcp_snippet.value.update, factory.make_string()
+            )
             dhcp_snippet.value = new_value
             yield deferToDatabase(dhcp_snippet.save)
             yield dv.get(timeout=2)
@@ -2569,30 +2871,31 @@ class TestDHCPSnippetListener(
     def test_no_message_for_dhcp_snippet_updated_when_disabled(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": False,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": False}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
             new_value = yield deferToDatabase(
-                dhcp_snippet.value.update, factory.make_string())
+                dhcp_snippet.value.update, factory.make_string()
+            )
             dhcp_snippet.value = new_value
             yield deferToDatabase(dhcp_snippet.save)
             try:
@@ -2607,31 +2910,31 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_updated_enabled(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": False,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": False}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
-                "enabled": True,
-            })
+            yield deferToDatabase(
+                self.update_dhcp_snippet, dhcp_snippet.id, {"enabled": True}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2641,31 +2944,33 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_updated_description(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
-                "description": factory.make_string(),
-            })
+            yield deferToDatabase(
+                self.update_dhcp_snippet,
+                dhcp_snippet.id,
+                {"description": factory.make_string()},
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2675,31 +2980,31 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_updated_subnet(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
-                "subnet": subnet,
-            })
+            yield deferToDatabase(
+                self.update_dhcp_snippet, dhcp_snippet.id, {"subnet": subnet}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2709,36 +3014,35 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_updated_node(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
         node = yield deferToDatabase(self.create_node)
-        yield deferToDatabase(self.create_interface, {
-            "vlan": vlan,
-            "node": node,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-        })
+        yield deferToDatabase(
+            self.create_interface, {"vlan": vlan, "node": node}
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
-                "node": node,
-            })
+            yield deferToDatabase(
+                self.update_dhcp_snippet, dhcp_snippet.id, {"node": node}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -2748,26 +3052,26 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_global_dhcp_snippet_deleted(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
@@ -2780,26 +3084,26 @@ class TestDHCPSnippetListener(
     def test_no_message_for_global_dhcp_snippet_deleted_when_disabled(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": False,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": False}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
@@ -2815,27 +3119,26 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_with_subnet_deleted(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-            "subnet": subnet,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True, "subnet": subnet}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
@@ -2848,32 +3151,30 @@ class TestDHCPSnippetListener(
     def test_sends_message_for_dhcp_snippet_with_node_deleted(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
-        vlan = yield deferToDatabase(self.create_vlan, {
-            "dhcp_on": True,
-            "primary_rack": primary_rack,
-        })
+        vlan = yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
         relay_vlan = None
         if self.dhcp_relay:
-            relay_vlan = yield deferToDatabase(self.create_vlan, {
-                "relay_vlan": vlan,
-            })
-        yield deferToDatabase(self.create_subnet, {
-            "vlan": relay_vlan if self.dhcp_relay else vlan,
-        })
+            relay_vlan = yield deferToDatabase(
+                self.create_vlan, {"relay_vlan": vlan}
+            )
+        yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": relay_vlan if self.dhcp_relay else vlan},
+        )
         node = yield deferToDatabase(self.create_node)
-        yield deferToDatabase(self.create_interface, {
-            "vlan": vlan,
-            "node": node,
-        })
-        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
-            "enabled": True,
-            "node": node,
-        })
+        yield deferToDatabase(
+            self.create_interface, {"vlan": vlan, "node": node}
+        )
+        dhcp_snippet = yield deferToDatabase(
+            self.create_dhcp_snippet, {"enabled": True, "node": node}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
-            "sys_dhcp_%s" % primary_rack.id,
-            lambda *args: dv.set(args))
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: dv.set(args)
+        )
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
@@ -2883,7 +3184,8 @@ class TestDHCPSnippetListener(
 
 
 class TestDHCPConfigNTPListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code.
 
     This tests the notifications issued by the database when NTP servers are
@@ -2892,24 +3194,30 @@ class TestDHCPConfigNTPListener(
 
     def set_ntp_servers(self, *servers):
         return deferToDatabase(
-            Config.objects.set_config, "ntp_servers", " ".join(servers))
+            Config.objects.set_config, "ntp_servers", " ".join(servers)
+        )
 
     def clear_ntp_servers(self):
         return deferToDatabase(
-            lambda: Config.objects.filter(name="ntp_servers").delete())
+            lambda: Config.objects.filter(name="ntp_servers").delete()
+        )
 
     def make_racks(self):
         return [
-            self.create_vlan({
-                "dhcp_on": True,
-                "primary_rack": self.create_rack_controller(),
-                "secondary_rack": self.create_rack_controller(),
-            }),
-            self.create_vlan({
-                "dhcp_on": True,
-                "primary_rack": self.create_rack_controller(),
-                "secondary_rack": None,
-            }),
+            self.create_vlan(
+                {
+                    "dhcp_on": True,
+                    "primary_rack": self.create_rack_controller(),
+                    "secondary_rack": self.create_rack_controller(),
+                }
+            ),
+            self.create_vlan(
+                {
+                    "dhcp_on": True,
+                    "primary_rack": self.create_rack_controller(),
+                    "secondary_rack": None,
+                }
+            ),
         ]
 
     def listen_for_sys_dhcp(self, *rack_ids):
@@ -2927,8 +3235,8 @@ class TestDHCPConfigNTPListener(
 
     def wait_for_dvalues(self, dvalues):
         d = DeferredList(
-            (dv.get(timeout=2) for dv in dvalues),
-            consumeErrors=True)
+            (dv.get(timeout=2) for dv in dvalues), consumeErrors=True
+        )
 
         def unpack(results):
             # Return the first failure, if there is one. We do this in
@@ -2950,8 +3258,10 @@ class TestDHCPConfigNTPListener(
 
         vlan1, vlan2 = yield deferToDatabase(self.make_racks)
         listener, rack_dvs = self.listen_for_sys_dhcp(
-            vlan1.primary_rack_id, vlan1.secondary_rack_id,
-            vlan2.primary_rack_id)
+            vlan1.primary_rack_id,
+            vlan1.secondary_rack_id,
+            vlan2.primary_rack_id,
+        )
 
         yield listener.startService()
         try:
@@ -2968,8 +3278,10 @@ class TestDHCPConfigNTPListener(
 
         vlan1, vlan2 = yield deferToDatabase(self.make_racks)
         listener, rack_dvs = self.listen_for_sys_dhcp(
-            vlan1.primary_rack_id, vlan1.secondary_rack_id,
-            vlan2.primary_rack_id)
+            vlan1.primary_rack_id,
+            vlan1.secondary_rack_id,
+            vlan2.primary_rack_id,
+        )
 
         yield listener.startService()
         try:
@@ -2986,8 +3298,10 @@ class TestDHCPConfigNTPListener(
 
         vlan1, vlan2 = yield deferToDatabase(self.make_racks)
         listener, rack_dvs = self.listen_for_sys_dhcp(
-            vlan1.primary_rack_id, vlan1.secondary_rack_id,
-            vlan2.primary_rack_id)
+            vlan1.primary_rack_id,
+            vlan1.secondary_rack_id,
+            vlan2.primary_rack_id,
+        )
 
         yield listener.startService()
         try:
@@ -2998,7 +3312,8 @@ class TestDHCPConfigNTPListener(
 
 
 class TestDHCPConfigNTPExternalListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the DHCP triggers code.
 
     This tests the notifications issued by the database when NTP is configured
@@ -3007,25 +3322,30 @@ class TestDHCPConfigNTPExternalListener(
 
     def set_ntp_external_only(self, external_only):
         return deferToDatabase(
-            Config.objects.set_config, "ntp_external_only",
-            bool(external_only))
+            Config.objects.set_config, "ntp_external_only", bool(external_only)
+        )
 
     def clear_ntp_external_only(self):
         return deferToDatabase(
-            lambda: Config.objects.filter(name="ntp_external_only").delete())
+            lambda: Config.objects.filter(name="ntp_external_only").delete()
+        )
 
     def make_racks(self):
         return [
-            self.create_vlan({
-                "dhcp_on": True,
-                "primary_rack": self.create_rack_controller(),
-                "secondary_rack": self.create_rack_controller(),
-            }),
-            self.create_vlan({
-                "dhcp_on": True,
-                "primary_rack": self.create_rack_controller(),
-                "secondary_rack": None,
-            }),
+            self.create_vlan(
+                {
+                    "dhcp_on": True,
+                    "primary_rack": self.create_rack_controller(),
+                    "secondary_rack": self.create_rack_controller(),
+                }
+            ),
+            self.create_vlan(
+                {
+                    "dhcp_on": True,
+                    "primary_rack": self.create_rack_controller(),
+                    "secondary_rack": None,
+                }
+            ),
         ]
 
     def listen_for_sys_dhcp(self, *rack_ids):
@@ -3043,8 +3363,8 @@ class TestDHCPConfigNTPExternalListener(
 
     def wait_for_dvalues(self, dvalues):
         d = DeferredList(
-            (dv.get(timeout=2) for dv in dvalues),
-            consumeErrors=True)
+            (dv.get(timeout=2) for dv in dvalues), consumeErrors=True
+        )
 
         def unpack(results):
             # Return the first failure, if there is one. We do this in
@@ -3066,8 +3386,10 @@ class TestDHCPConfigNTPExternalListener(
 
         vlan1, vlan2 = yield deferToDatabase(self.make_racks)
         listener, rack_dvs = self.listen_for_sys_dhcp(
-            vlan1.primary_rack_id, vlan1.secondary_rack_id,
-            vlan2.primary_rack_id)
+            vlan1.primary_rack_id,
+            vlan1.secondary_rack_id,
+            vlan2.primary_rack_id,
+        )
 
         yield listener.startService()
         try:
@@ -3085,8 +3407,10 @@ class TestDHCPConfigNTPExternalListener(
 
         vlan1, vlan2 = yield deferToDatabase(self.make_racks)
         listener, rack_dvs = self.listen_for_sys_dhcp(
-            vlan1.primary_rack_id, vlan1.secondary_rack_id,
-            vlan2.primary_rack_id)
+            vlan1.primary_rack_id,
+            vlan1.secondary_rack_id,
+            vlan2.primary_rack_id,
+        )
 
         yield listener.startService()
         try:
@@ -3104,8 +3428,10 @@ class TestDHCPConfigNTPExternalListener(
 
         vlan1, vlan2 = yield deferToDatabase(self.make_racks)
         listener, rack_dvs = self.listen_for_sys_dhcp(
-            vlan1.primary_rack_id, vlan1.secondary_rack_id,
-            vlan2.primary_rack_id)
+            vlan1.primary_rack_id,
+            vlan1.secondary_rack_id,
+            vlan2.primary_rack_id,
+        )
 
         yield listener.startService()
         try:
@@ -3116,8 +3442,8 @@ class TestDHCPConfigNTPExternalListener(
 
 
 class TestDNSDomainListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3125,22 +3451,23 @@ class TestDNSDomainListener(
     def test_sends_message_for_domain_insert_authorative(self):
         yield deferToDatabase(register_system_triggers)
         yield self.capturePublication()
-        name = factory.make_name('domain')
+        name = factory.make_name("domain")
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.create_domain, {'name': name, 'authoritative': True})
+                self.create_domain, {"name": name, "authoritative": True}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("added zone %s" % name))
+            Equals("added zone %s" % name),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3149,12 +3476,10 @@ class TestDNSDomainListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(
-                self.create_domain, {'authoritative': False})
+            yield deferToDatabase(self.create_domain, {"authoritative": False})
             with ExpectedException(CancelledError):
                 yield dv.get(timeout=1)
         finally:
@@ -3165,81 +3490,89 @@ class TestDNSDomainListener(
     def test_sends_message_for_domain_update_now_authorative(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': False})
-        domain_name = factory.make_name('domain')
+            self.create_domain, {"authoritative": False}
+        )
+        domain_name = factory.make_name("domain")
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_domain, domain.id, {
-                "name": domain_name,
-                "authoritative": True,
-            })
+            yield deferToDatabase(
+                self.update_domain,
+                domain.id,
+                {"name": domain_name, "authoritative": True},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("added zone %s" % domain_name))
+            Equals("added zone %s" % domain_name),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_domain_update_no_longer_authorative(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': True})
-        domain_name = factory.make_name('domain')
+            self.create_domain, {"authoritative": True}
+        )
+        domain_name = factory.make_name("domain")
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_domain, domain.id, {
-                "name": domain_name,
-                "authoritative": False,
-            })
+            yield deferToDatabase(
+                self.update_domain,
+                domain.id,
+                {"name": domain_name, "authoritative": False},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("removed zone %s" % domain_name))
+            Equals("removed zone %s" % domain_name),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_domain_update(self):
         yield deferToDatabase(register_system_triggers)
-        old_name = factory.make_name('domain')
-        new_name = factory.make_name('domain')
+        old_name = factory.make_name("domain")
+        new_name = factory.make_name("domain")
         new_ttl = random.randint(100, 300)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': True, 'name': old_name})
+            self.create_domain, {"authoritative": True, "name": old_name}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_domain, domain.id, {
-                "name": new_name,
-                "ttl": new_ttl,
-            })
+            yield deferToDatabase(
+                self.update_domain,
+                domain.id,
+                {"name": new_name, "ttl": new_ttl},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("zone %s renamed to %s and ttl changed to %s" % (
-                old_name, new_name, new_ttl)))
+            Equals(
+                "zone %s renamed to %s and ttl changed to %s"
+                % (old_name, new_name, new_ttl)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3249,8 +3582,7 @@ class TestDNSDomainListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_domain, domain.id)
@@ -3260,12 +3592,13 @@ class TestDNSDomainListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("removed zone %s" % domain.name))
+            Equals("removed zone %s" % domain.name),
+        )
 
 
 class TestDNSStaticIPAddressListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3277,13 +3610,14 @@ class TestDNSStaticIPAddressListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "alloc_type": IPADDRESS_TYPE.STICKY,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress,
+                sip.id,
+                {"alloc_type": IPADDRESS_TYPE.STICKY},
+            )
             with ExpectedException(CancelledError):
                 yield dv.get(timeout=1)
         finally:
@@ -3296,27 +3630,30 @@ class TestDNSStaticIPAddressListener(
         node = yield deferToDatabase(self.create_node_with_interface)
         sip = yield deferToDatabase(self.get_node_ip_address, node)
         new_ip = yield deferToDatabase(
-            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
-        yield deferToDatabase(self.update_staticipaddress, sip.id, {
-            'ip': new_ip
-        })
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip
+        )
+        yield deferToDatabase(
+            self.update_staticipaddress, sip.id, {"ip": new_ip}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "alloc_type": IPADDRESS_TYPE.STICKY,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress,
+                sip.id,
+                {"alloc_type": IPADDRESS_TYPE.STICKY},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s alloc_type changed to 1" % new_ip))
+            Equals("ip %s alloc_type changed to 1" % new_ip),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3325,24 +3662,25 @@ class TestDNSStaticIPAddressListener(
         node = yield deferToDatabase(self.create_node_with_interface)
         sip = yield deferToDatabase(self.get_node_ip_address, node)
         new_ip = yield deferToDatabase(
-            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "ip": new_ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, {"ip": new_ip}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s allocated" % new_ip))
+            Equals("ip %s allocated" % new_ip),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3351,27 +3689,28 @@ class TestDNSStaticIPAddressListener(
         node = yield deferToDatabase(self.create_node_with_interface)
         sip = yield deferToDatabase(self.get_node_ip_address, node)
         new_ip = yield deferToDatabase(
-            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip
+        )
         sip.ip = new_ip
         sip.temp_expires_on = datetime.utcnow()
         yield deferToDatabase(sip.save)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "temp_expires_on": None,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, {"temp_expires_on": None}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s allocated" % new_ip))
+            Equals("ip %s allocated" % new_ip),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3380,27 +3719,30 @@ class TestDNSStaticIPAddressListener(
         node = yield deferToDatabase(self.create_node_with_interface)
         sip = yield deferToDatabase(self.get_node_ip_address, node)
         new_ip = yield deferToDatabase(
-            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip
+        )
         sip.ip = new_ip
         sip.temp_expires_on = None
         yield deferToDatabase(sip.save)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "temp_expires_on": datetime.utcnow(),
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress,
+                sip.id,
+                {"temp_expires_on": datetime.utcnow()},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s released" % new_ip))
+            Equals("ip %s released" % new_ip),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3412,17 +3754,17 @@ class TestDNSStaticIPAddressListener(
         yield deferToDatabase(lambda domain: domain.save(), domain)
         sip = yield deferToDatabase(self.get_node_ip_address, node)
         new_ip = yield deferToDatabase(
-            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "ip": new_ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, {"ip": new_ip}
+            )
             with ExpectedException(CancelledError):
                 yield dv.get(timeout=1)
         finally:
@@ -3434,65 +3776,71 @@ class TestDNSStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         dnsrr = yield deferToDatabase(
-            self.create_dnsresource, {
-                "domain": domain, "no_ip_addresses": True})
+            self.create_dnsresource,
+            {"domain": domain, "no_ip_addresses": True},
+        )
         subnet = yield deferToDatabase(self.create_subnet)
         old_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         sip = yield deferToDatabase(
-            self.create_staticipaddress, {
+            self.create_staticipaddress,
+            {
                 "alloc_type": IPADDRESS_TYPE.STICKY,
                 "dnsresource": dnsrr,
                 "subnet": subnet,
                 "ip": old_ip,
-                })
+            },
+        )
         new_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "ip": new_ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, {"ip": new_ip}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s changed to %s" % (old_ip, new_ip)))
+            Equals("ip %s changed to %s" % (old_ip, new_ip)),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_doesnt_send_message_on_dnsresource_non_authorative(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': False})
+            self.create_domain, {"authoritative": False}
+        )
         dnsrr = yield deferToDatabase(
-            self.create_dnsresource, {
-                "domain": domain, "no_ip_addresses": True})
+            self.create_dnsresource,
+            {"domain": domain, "no_ip_addresses": True},
+        )
         subnet = yield deferToDatabase(self.create_subnet)
         old_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         sip = yield deferToDatabase(
-            self.create_staticipaddress, {
+            self.create_staticipaddress,
+            {
                 "alloc_type": IPADDRESS_TYPE.STICKY,
                 "dnsresource": dnsrr,
                 "subnet": subnet,
                 "ip": old_ip,
-                })
+            },
+        )
         new_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_staticipaddress, sip.id, {
-                "ip": new_ip,
-            })
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, {"ip": new_ip}
+            )
             with ExpectedException(CancelledError):
                 yield dv.get(timeout=1)
         finally:
@@ -3500,8 +3848,8 @@ class TestDNSStaticIPAddressListener(
 
 
 class TestDNSInterfaceStaticIPAddressListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3514,45 +3862,47 @@ class TestDNSInterfaceStaticIPAddressListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            sip = yield deferToDatabase(self.create_staticipaddress, {
-                "interface": interface,
-                "subnet": subnet,
-            })
+            sip = yield deferToDatabase(
+                self.create_staticipaddress,
+                {"interface": interface, "subnet": subnet},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s connected to %s on %s" % (
-                sip.ip, node.hostname, interface.name)))
+            Equals(
+                "ip %s connected to %s on %s"
+                % (sip.ip, node.hostname, interface.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_doesnt_send_message_for_nic_link_non_authorative_domain(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': False})
-        node = yield deferToDatabase(
-            self.create_node, {'domain': domain})
+            self.create_domain, {"authoritative": False}
+        )
+        node = yield deferToDatabase(self.create_node, {"domain": domain})
         interface = yield deferToDatabase(
-            self.create_interface, {'node': node})
+            self.create_interface, {"node": node}
+        )
         subnet = yield deferToDatabase(self.create_subnet)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_staticipaddress, {
-                "interface": interface,
-                "subnet": subnet,
-            })
+            yield deferToDatabase(
+                self.create_staticipaddress,
+                {"interface": interface, "subnet": subnet},
+            )
             with ExpectedException(CancelledError):
                 yield dv.get(timeout=1)
         finally:
@@ -3565,15 +3915,14 @@ class TestDNSInterfaceStaticIPAddressListener(
         interface = yield deferToDatabase(self.create_interface)
         node = yield deferToDatabase(lambda nic: nic.node, interface)
         subnet = yield deferToDatabase(self.create_subnet)
-        sip = yield deferToDatabase(self.create_staticipaddress, {
-            "interface": interface,
-            "subnet": subnet,
-        })
+        sip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {"interface": interface, "subnet": subnet},
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
@@ -3583,29 +3932,32 @@ class TestDNSInterfaceStaticIPAddressListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s disconnected from %s on %s" % (
-                sip.ip, node.hostname, interface.name)))
+            Equals(
+                "ip %s disconnected from %s on %s"
+                % (sip.ip, node.hostname, interface.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_doesnt_send_message_for_nic_unlink_non_authorative_domain(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': False})
-        node = yield deferToDatabase(
-            self.create_node, {'domain': domain})
+            self.create_domain, {"authoritative": False}
+        )
+        node = yield deferToDatabase(self.create_node, {"domain": domain})
         interface = yield deferToDatabase(
-            self.create_interface, {'node': node})
+            self.create_interface, {"node": node}
+        )
         subnet = yield deferToDatabase(self.create_subnet)
-        sip = yield deferToDatabase(self.create_staticipaddress, {
-            "interface": interface,
-            "subnet": subnet,
-        })
+        sip = yield deferToDatabase(
+            self.create_staticipaddress,
+            {"interface": interface, "subnet": subnet},
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
@@ -3616,8 +3968,8 @@ class TestDNSInterfaceStaticIPAddressListener(
 
 
 class TestDNSDNSResourceListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3628,23 +3980,22 @@ class TestDNSDNSResourceListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             # Pass ip_addresses=[] to avoid an extra .save() -- and thus an
             # UPDATE -- in the factory method.
             resource = yield deferToDatabase(
-                self.create_dnsresource,
-                {"domain": domain, "ip_addresses": []})
+                self.create_dnsresource, {"domain": domain, "ip_addresses": []}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("zone %s added resource %s" % (
-                domain.name, resource.name)))
+            Equals("zone %s added resource %s" % (domain.name, resource.name)),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3652,27 +4003,26 @@ class TestDNSDNSResourceListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             new_name = factory.make_name("resource")
             yield deferToDatabase(
-                self.update_dnsresource, resource.id, {
-                    "name": new_name,
-                })
+                self.update_dnsresource, resource.id, {"name": new_name}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("zone %s updated resource %s" % (
-                domain.name, new_name)))
+            Equals("zone %s updated resource %s" % (domain.name, new_name)),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3680,40 +4030,45 @@ class TestDNSDNSResourceListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         new_domain = yield deferToDatabase(self.create_domain)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_dnsresource, resource.id, {
-                    "domain": new_domain,
-                })
+                self.update_dnsresource, resource.id, {"domain": new_domain}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
 
         def _validate_publications(
-                resource_name, old_domain_name, new_domain_name):
-            sources = reversed([
-                pub.source
-                for pub in DNSPublication.objects.order_by('-id')[:2]
-            ])
+            resource_name, old_domain_name, new_domain_name
+        ):
+            sources = reversed(
+                [
+                    pub.source
+                    for pub in DNSPublication.objects.order_by("-id")[:2]
+                ]
+            )
             self.assertEquals(
-                list(sources), [
-                    'zone %s removed resource %s' % (
-                        old_domain_name, resource_name),
-                    'zone %s added resource %s' % (
-                        new_domain_name, resource_name),
-                ])
+                list(sources),
+                [
+                    "zone %s removed resource %s"
+                    % (old_domain_name, resource_name),
+                    "zone %s added resource %s"
+                    % (new_domain_name, resource_name),
+                ],
+            )
+
         yield deferToDatabase(
-            _validate_publications,
-            resource.name, domain.name, new_domain.name)
+            _validate_publications, resource.name, domain.name, new_domain.name
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3721,12 +4076,12 @@ class TestDNSDNSResourceListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_dnsresource, resource.id)
@@ -3736,13 +4091,15 @@ class TestDNSDNSResourceListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("zone %s removed resource %s" % (
-                domain.name, resource.name)))
+            Equals(
+                "zone %s removed resource %s" % (domain.name, resource.name)
+            ),
+        )
 
 
 class TestDNSDNSResourceStaticIPAddressListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3751,13 +4108,13 @@ class TestDNSDNSResourceStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         sip = yield deferToDatabase(self.create_staticipaddress)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(resource.ip_addresses.add, sip)
@@ -3767,8 +4124,11 @@ class TestDNSDNSResourceStaticIPAddressListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s linked to resource %s on zone %s" % (
-                sip.ip, resource.name, domain.name)))
+            Equals(
+                "ip %s linked to resource %s on zone %s"
+                % (sip.ip, resource.name, domain.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3776,14 +4136,14 @@ class TestDNSDNSResourceStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         sip = yield deferToDatabase(self.create_staticipaddress)
         yield deferToDatabase(resource.ip_addresses.add, sip)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(resource.ip_addresses.remove, sip)
@@ -3793,13 +4153,16 @@ class TestDNSDNSResourceStaticIPAddressListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s unlinked from resource %s on zone %s" % (
-                sip.ip, resource.name, domain.name)))
+            Equals(
+                "ip %s unlinked from resource %s on zone %s"
+                % (sip.ip, resource.name, domain.name)
+            ),
+        )
 
 
 class TestDNSDNSDataListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3808,24 +4171,28 @@ class TestDNSDNSDataListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             data = yield deferToDatabase(
-                self.create_dnsdata, {'dnsresource': resource})
+                self.create_dnsdata, {"dnsresource": resource}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("added %s to resource %s on zone %s" % (
-                data.rrtype, resource.name, domain.name)))
+            Equals(
+                "added %s to resource %s on zone %s"
+                % (data.rrtype, resource.name, domain.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3833,30 +4200,38 @@ class TestDNSDNSDataListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
-        data = yield deferToDatabase(self.create_dnsdata, {
-            "dnsresource": resource,
-            "rrtype": "TXT",
-            "rrdata": factory.make_name("txt"),
-        })
+            self.create_dnsresource, {"domain": domain}
+        )
+        data = yield deferToDatabase(
+            self.create_dnsdata,
+            {
+                "dnsresource": resource,
+                "rrtype": "TXT",
+                "rrdata": factory.make_name("txt"),
+            },
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_dnsdata, data.id, {
-                "rrdata": factory.make_name("txt"),
-            })
+            yield deferToDatabase(
+                self.update_dnsdata,
+                data.id,
+                {"rrdata": factory.make_name("txt")},
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("updated %s in resource %s on zone %s" % (
-                data.rrtype, resource.name, domain.name)))
+            Equals(
+                "updated %s in resource %s on zone %s"
+                % (data.rrtype, resource.name, domain.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3864,14 +4239,15 @@ class TestDNSDNSDataListener(
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
         resource = yield deferToDatabase(
-            self.create_dnsresource, {'domain': domain})
+            self.create_dnsresource, {"domain": domain}
+        )
         data = yield deferToDatabase(
-            self.create_dnsdata, {'dnsresource': resource})
+            self.create_dnsdata, {"dnsresource": resource}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_dnsdata, data.id)
@@ -3881,13 +4257,16 @@ class TestDNSDNSDataListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("removed %s from resource %s on zone %s" % (
-                data.rrtype, resource.name, domain.name)))
+            Equals(
+                "removed %s from resource %s on zone %s"
+                % (data.rrtype, resource.name, domain.name)
+            ),
+        )
 
 
 class TestDNSSubnetListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -3897,8 +4276,7 @@ class TestDNSSubnetListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             subnet = yield deferToDatabase(self.create_subnet)
@@ -3908,7 +4286,8 @@ class TestDNSSubnetListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("added subnet %s" % subnet.cidr))
+            Equals("added subnet %s" % subnet.cidr),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3917,12 +4296,12 @@ class TestDNSSubnetListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.create_subnet, {'rdns_mode': RDNS_MODE.DISABLED})
+                self.create_subnet, {"rdns_mode": RDNS_MODE.DISABLED}
+            )
             with ExpectedException(CancelledError):
                 yield dv.get(timeout=1)
         finally:
@@ -3936,25 +4315,28 @@ class TestDNSSubnetListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             network = factory.make_ip4_or_6_network()
             cidr_old, cidr_new = subnet.cidr, str(network.cidr)
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "cidr": cidr_new,
-                "gateway_ip": factory.pick_ip_in_network(network),
-                "dns_servers": [],
-            })
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {
+                    "cidr": cidr_new,
+                    "gateway_ip": factory.pick_ip_in_network(network),
+                    "dns_servers": [],
+                },
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "subnet %s changed to %s"
-                % (cidr_old, cidr_new)))
+            self.getCapturedPublication().source,
+            Equals("subnet %s changed to %s" % (cidr_old, cidr_new)),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3964,23 +4346,22 @@ class TestDNSSubnetListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             rdns_old = subnet.rdns_mode
             rdns_new = factory.pick_enum(RDNS_MODE, but_not=[rdns_old])
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "rdns_mode": rdns_new,
-            })
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"rdns_mode": rdns_new}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "subnet %s rdns changed to %s"
-                % (subnet.cidr, rdns_new)))
+            self.getCapturedPublication().source,
+            Equals("subnet %s rdns changed to %s" % (subnet.cidr, rdns_new)),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3990,8 +4371,7 @@ class TestDNSSubnetListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
@@ -4001,19 +4381,20 @@ class TestDNSSubnetListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("removed subnet %s" % subnet.cidr))
+            Equals("removed subnet %s" % subnet.cidr),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_doesnt_send_message_for_subnet_delete_disabled_rdns(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(
-            self.create_subnet, {'rdns_mode': RDNS_MODE.DISABLED})
+            self.create_subnet, {"rdns_mode": RDNS_MODE.DISABLED}
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
@@ -4024,8 +4405,8 @@ class TestDNSSubnetListener(
 
 
 class TestDNSNodeListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -4036,23 +4417,24 @@ class TestDNSNodeListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             hostname_old = node.hostname
             hostname_new = factory.make_name("hostname")
-            yield deferToDatabase(self.update_node, node.system_id, {
-                "hostname": hostname_new,
-            })
+            yield deferToDatabase(
+                self.update_node, node.system_id, {"hostname": hostname_new}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "node %s changed hostname to %s"
-                % (hostname_old, hostname_new)))
+            self.getCapturedPublication().source,
+            Equals(
+                "node %s changed hostname to %s" % (hostname_old, hostname_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4063,21 +4445,22 @@ class TestDNSNodeListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_node, node.system_id, {
-                "domain": domain,
-            })
+            yield deferToDatabase(
+                self.update_node, node.system_id, {"domain": domain}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "node %s changed zone to %s" % (
-                    node.hostname, domain.name)))
+            self.getCapturedPublication().source,
+            Equals(
+                "node %s changed zone to %s" % (node.hostname, domain.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4087,8 +4470,7 @@ class TestDNSNodeListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
@@ -4098,20 +4480,21 @@ class TestDNSNodeListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("removed node %s" % node.hostname))
+            Equals("removed node %s" % node.hostname),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_doesnt_send_message_for_delete_on_non_authorative_domain(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(
-            self.create_domain, {'authoritative': False})
-        node = yield deferToDatabase(self.create_node, {'domain': domain})
+            self.create_domain, {"authoritative": False}
+        )
+        node = yield deferToDatabase(self.create_node, {"domain": domain})
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
@@ -4122,8 +4505,8 @@ class TestDNSNodeListener(
 
 
 class TestDNSInterfaceListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @transactional
@@ -4151,23 +4534,25 @@ class TestDNSInterfaceListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             name_old = interface.name
             name_new = factory.make_name("name")
-            yield deferToDatabase(self.update_interface, interface.id, {
-                "name": name_new,
-            })
+            yield deferToDatabase(
+                self.update_interface, interface.id, {"name": name_new}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "node %s renamed interface %s to %s"
-                % (node.hostname, name_old, name_new)))
+                % (node.hostname, name_old, name_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4178,20 +4563,22 @@ class TestDNSInterfaceListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.migrate_unknown_to_physical, interface.id, node)
+                self.migrate_unknown_to_physical, interface.id, node
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "node %s added interface %s" % (
-                    node.hostname, interface.name)))
+            self.getCapturedPublication().source,
+            Equals(
+                "node %s added interface %s" % (node.hostname, interface.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4202,20 +4589,23 @@ class TestDNSInterfaceListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.migrate_physical_to_unknown, interface.id)
+                self.migrate_physical_to_unknown, interface.id
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "node %s removed interface %s" % (
-                    node.hostname, interface.name)))
+            self.getCapturedPublication().source,
+            Equals(
+                "node %s removed interface %s"
+                % (node.hostname, interface.name)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4227,37 +4617,43 @@ class TestDNSInterfaceListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_interface, interface.id, {"node": new_node})
+                self.update_interface, interface.id, {"node": new_node}
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
 
         def _validate_publications(nic_name, old_hostname, new_hostname):
-            sources = reversed([
-                pub.source
-                for pub in DNSPublication.objects.order_by('-id')[:2]
-            ])
+            sources = reversed(
+                [
+                    pub.source
+                    for pub in DNSPublication.objects.order_by("-id")[:2]
+                ]
+            )
             self.assertEquals(
-                list(sources), [
-                    'node %s removed interface %s' % (
-                        old_hostname, nic_name),
-                    'node %s added interface %s' % (
-                        new_hostname, nic_name),
-                ])
+                list(sources),
+                [
+                    "node %s removed interface %s" % (old_hostname, nic_name),
+                    "node %s added interface %s" % (new_hostname, nic_name),
+                ],
+            )
+
         yield deferToDatabase(
             _validate_publications,
-            interface.name, old_node.hostname, new_node.hostname)
+            interface.name,
+            old_node.hostname,
+            new_node.hostname,
+        )
 
 
 class TestDNSConfigListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, DNSHelpersMixin
+):
     """End-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -4268,21 +4664,23 @@ class TestDNSConfigListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                "upstream_dns", upstream_dns_new)
+                Config.objects.set_config, "upstream_dns", upstream_dns_new
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration upstream_dns set to %s"
-                % json.dumps(upstream_dns_new)))
+                % json.dumps(upstream_dns_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4291,21 +4689,22 @@ class TestDNSConfigListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                "dnssec_validation", "no")
+                Config.objects.set_config, "dnssec_validation", "no"
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "configuration dnssec_validation set to %s"
-                % json.dumps("no")))
+            self.getCapturedPublication().source,
+            Equals(
+                "configuration dnssec_validation set to %s" % json.dumps("no")
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4315,69 +4714,81 @@ class TestDNSConfigListener(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "default_dns_ttl", default_dns_ttl_new)
+                "default_dns_ttl",
+                default_dns_ttl_new,
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration default_dns_ttl set to %s"
-                % json.dumps(default_dns_ttl_new)))
+                % json.dumps(default_dns_ttl_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_maas_internal_domain_insert(self):
-        maas_internal_domain_new = factory.make_name('internal')
+        maas_internal_domain_new = factory.make_name("internal")
         yield deferToDatabase(register_system_triggers)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "maas_internal_domain", maas_internal_domain_new)
+                "maas_internal_domain",
+                maas_internal_domain_new,
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration maas_internal_domain set to %s"
-                % json.dumps(maas_internal_domain_new)))
+                % json.dumps(maas_internal_domain_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_dns_trusted_acl_insert(self):
-        dns_trusted_acl_new = factory.make_name('internal')
+        dns_trusted_acl_new = factory.make_name("internal")
         yield deferToDatabase(register_system_triggers)
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "dns_trusted_acl", dns_trusted_acl_new)
+                "dns_trusted_acl",
+                dns_trusted_acl_new,
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration dns_trusted_acl set to %s"
-                % json.dumps(dns_trusted_acl_new)))
+                % json.dumps(dns_trusted_acl_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4386,52 +4797,56 @@ class TestDNSConfigListener(
         upstream_dns_new = factory.make_ip_address()
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            Config.objects.set_config,
-            "upstream_dns", upstream_dns_old)
+            Config.objects.set_config, "upstream_dns", upstream_dns_old
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                "upstream_dns", upstream_dns_new)
+                Config.objects.set_config, "upstream_dns", upstream_dns_new
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration upstream_dns changed to %s"
-                % (json.dumps(upstream_dns_new))))
+                % (json.dumps(upstream_dns_new))
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_dnssec_validation_update(self):
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            Config.objects.set_config,
-            "dnssec_validation", "no")
+            Config.objects.set_config, "dnssec_validation", "no"
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                "dnssec_validation", "yes")
+                Config.objects.set_config, "dnssec_validation", "yes"
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration dnssec_validation changed to %s"
-                % (json.dumps("yes"))))
+                % (json.dumps("yes"))
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4440,87 +4855,103 @@ class TestDNSConfigListener(
         default_dns_ttl_new = random.randint(10, 1000)
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            Config.objects.set_config,
-            "default_dns_ttl", default_dns_ttl_old)
+            Config.objects.set_config, "default_dns_ttl", default_dns_ttl_old
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "default_dns_ttl", default_dns_ttl_new)
+                "default_dns_ttl",
+                default_dns_ttl_new,
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration default_dns_ttl changed to %s"
-                % (json.dumps(default_dns_ttl_new))))
+                % (json.dumps(default_dns_ttl_new))
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_maas_internal_domain_update(self):
-        maas_internal_domain_old = factory.make_name('internal')
-        maas_internal_domain_new = factory.make_name('internal_new')
+        maas_internal_domain_old = factory.make_name("internal")
+        maas_internal_domain_new = factory.make_name("internal_new")
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
             Config.objects.set_config,
-            "maas_internal_domain", maas_internal_domain_old)
+            "maas_internal_domain",
+            maas_internal_domain_old,
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "maas_internal_domain", maas_internal_domain_new)
+                "maas_internal_domain",
+                maas_internal_domain_new,
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration maas_internal_domain changed to %s"
-                % (json.dumps(maas_internal_domain_new))))
+                % (json.dumps(maas_internal_domain_new))
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_dns_trusted_acl_update(self):
-        dns_trusted_acl_old = factory.make_name('internal')
-        dns_trusted_acl_new = factory.make_name('internal_new')
+        dns_trusted_acl_old = factory.make_name("internal")
+        dns_trusted_acl_new = factory.make_name("internal_new")
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            Config.objects.set_config,
-            "dns_trusted_acl", dns_trusted_acl_old)
+            Config.objects.set_config, "dns_trusted_acl", dns_trusted_acl_old
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "dns_trusted_acl", dns_trusted_acl_new)
+                "dns_trusted_acl",
+                dns_trusted_acl_new,
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration dns_trusted_acl changed to %s"
-                % (json.dumps(dns_trusted_acl_new))))
+                % (json.dumps(dns_trusted_acl_new))
+            ),
+        )
 
 
 class TestDNSConfigListenerLegacy(
-        MAASLegacyTransactionServerTestCase, TransactionalHelpersMixin,
-        DNSHelpersMixin):
+    MAASLegacyTransactionServerTestCase,
+    TransactionalHelpersMixin,
+    DNSHelpersMixin,
+):
     """Legacy end-to-end test for the DNS triggers code."""
 
     @wait_for_reactor
@@ -4531,21 +4962,23 @@ class TestDNSConfigListenerLegacy(
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                "windows_kms_host", kms_host_new)
+                Config.objects.set_config, "windows_kms_host", kms_host_new
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration windows_kms_host set to %s"
-                % json.dumps(kms_host_new)))
+                % json.dumps(kms_host_new)
+            ),
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4554,30 +4987,33 @@ class TestDNSConfigListenerLegacy(
         kms_host_new = factory.make_name("kms-host-new")
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            Config.objects.set_config,
-            "windows_kms_host", kms_host_old)
+            Config.objects.set_config, "windows_kms_host", kms_host_old
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                "windows_kms_host", kms_host_new)
+                Config.objects.set_config, "windows_kms_host", kms_host_new
+            )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
         self.assertThat(
-            self.getCapturedPublication().source, Equals(
+            self.getCapturedPublication().source,
+            Equals(
                 "configuration windows_kms_host changed to %s"
-                % (json.dumps(kms_host_new))))
+                % (json.dumps(kms_host_new))
+            ),
+        )
 
 
 class TestProxyListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
     """End-to-end test for the proxy triggers code."""
 
     @wait_for_reactor
@@ -4586,8 +5022,7 @@ class TestProxyListener(
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_subnet)
@@ -4602,16 +5037,19 @@ class TestProxyListener(
         subnet = yield deferToDatabase(self.create_subnet)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             network = factory.make_ip4_or_6_network()
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "cidr": str(network.cidr),
-                "gateway_ip": factory.pick_ip_in_network(network),
-                "dns_servers": [],
-            })
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {
+                    "cidr": str(network.cidr),
+                    "gateway_ip": factory.pick_ip_in_network(network),
+                    "dns_servers": [],
+                },
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -4621,16 +5059,16 @@ class TestProxyListener(
     def test_sends_message_for_subnet_allow_dns_update(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(
-            self.create_subnet, {"allow_dns": False})
+            self.create_subnet, {"allow_dns": False}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
+        listener.register("sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "allow_dns": True,
-            })
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"allow_dns": True}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -4640,16 +5078,16 @@ class TestProxyListener(
     def test_sends_message_for_subnet_allow_proxy_update(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(
-            self.create_subnet, {"allow_proxy": False})
+            self.create_subnet, {"allow_proxy": False}
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_subnet, subnet.id, {
-                "allow_proxy": True,
-            })
+            yield deferToDatabase(
+                self.update_subnet, subnet.id, {"allow_proxy": True}
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -4661,8 +5099,7 @@ class TestProxyListener(
         subnet = yield deferToDatabase(self.create_subnet)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
@@ -4676,8 +5113,7 @@ class TestProxyListener(
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_config, "enable_proxy", True)
@@ -4691,8 +5127,7 @@ class TestProxyListener(
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_config, "use_peer_proxy", True)
@@ -4706,8 +5141,7 @@ class TestProxyListener(
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_config, "prefer_v4_proxy", True)
@@ -4721,8 +5155,7 @@ class TestProxyListener(
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_config, "maas_proxy_port", 9000)
@@ -4736,12 +5169,12 @@ class TestProxyListener(
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.create_config, "http_proxy", "http://proxy.example.com")
+                self.create_config, "http_proxy", "http://proxy.example.com"
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -4753,8 +5186,7 @@ class TestProxyListener(
         yield deferToDatabase(self.create_config, "enable_proxy", True)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.set_config, "enable_proxy", False)
@@ -4769,8 +5201,7 @@ class TestProxyListener(
         yield deferToDatabase(self.create_config, "use_peer_proxy", True)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.set_config, "use_peer_proxy", False)
@@ -4785,8 +5216,7 @@ class TestProxyListener(
         yield deferToDatabase(self.create_config, "prefer_v4_proxy", True)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.set_config, "prefer_v4_proxy", False)
@@ -4801,8 +5231,7 @@ class TestProxyListener(
         yield deferToDatabase(self.create_config, "maas_proxy_port", 8000)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.set_config, "maas_proxy_port", 9000)
@@ -4815,23 +5244,24 @@ class TestProxyListener(
     def test_sends_message_for_config_update_http_proxy(self):
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            self.create_config, "http_proxy", "http://proxy1.example.com")
+            self.create_config, "http_proxy", "http://proxy1.example.com"
+        )
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_proxy", lambda *args: dv.set(args))
+        listener.register("sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.set_config, "http_proxy", "http://proxy2.example.com")
+                self.set_config, "http_proxy", "http://proxy2.example.com"
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
 
 
 class TestRBACResourcePoolListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        RBACHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, RBACHelpersMixin
+):
     """End-to-end test for the resource pool RBAC triggers code."""
 
     @wait_for_reactor
@@ -4839,49 +5269,41 @@ class TestRBACResourcePoolListener(
     def test_sends_message_for_resource_pool_insert(self):
         yield deferToDatabase(register_system_triggers)
         yield self.captureSynced()
-        name = factory.make_name('pool')
+        name = factory.make_name("pool")
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_rbac", lambda *args: dv.set(args))
+        listener.register("sys_rbac", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             pool = yield deferToDatabase(
-                self.create_resource_pool, {'name': name})
+                self.create_resource_pool, {"name": name}
+            )
             yield dv.get(timeout=2)
             yield self.assertSynced()
         finally:
             yield listener.stopService()
         change = self.getCapturedSynced()
-        self.assertThat(
-            change.source,
-            Equals("added resource pool %s" % name))
-        self.assertThat(
-            change.action, Equals("add"))
-        self.assertThat(
-            change.resource_type, Equals("resource-pool"))
-        self.assertThat(
-            change.resource_id, Equals(pool.id))
-        self.assertThat(
-            change.resource_name, Equals(name))
+        self.assertThat(change.source, Equals("added resource pool %s" % name))
+        self.assertThat(change.action, Equals("add"))
+        self.assertThat(change.resource_type, Equals("resource-pool"))
+        self.assertThat(change.resource_id, Equals(pool.id))
+        self.assertThat(change.resource_name, Equals(name))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_resource_pool_update(self):
         yield deferToDatabase(register_system_triggers)
-        pool = yield deferToDatabase(
-            self.create_resource_pool, {})
-        pool_name = factory.make_name('pool')
+        pool = yield deferToDatabase(self.create_resource_pool, {})
+        pool_name = factory.make_name("pool")
         yield self.captureSynced()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_rbac", lambda *args: dv.set(args))
+        listener.register("sys_rbac", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_resource_pool, pool.id, {
-                "name": pool_name,
-            })
+            yield deferToDatabase(
+                self.update_resource_pool, pool.id, {"name": pool_name}
+            )
             yield dv.get(timeout=2)
             yield self.assertSynced()
         finally:
@@ -4889,15 +5311,12 @@ class TestRBACResourcePoolListener(
         change = self.getCapturedSynced()
         self.assertThat(
             change.source,
-            Equals("renamed resource pool %s to %s" % (pool.name, pool_name)))
-        self.assertThat(
-            change.action, Equals("update"))
-        self.assertThat(
-            change.resource_type, Equals("resource-pool"))
-        self.assertThat(
-            change.resource_id, Equals(pool.id))
-        self.assertThat(
-            change.resource_name, Equals(pool_name))
+            Equals("renamed resource pool %s to %s" % (pool.name, pool_name)),
+        )
+        self.assertThat(change.action, Equals("update"))
+        self.assertThat(change.resource_type, Equals("resource-pool"))
+        self.assertThat(change.resource_id, Equals(pool.id))
+        self.assertThat(change.resource_name, Equals(pool_name))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4907,8 +5326,7 @@ class TestRBACResourcePoolListener(
         yield self.captureSynced()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_rbac", lambda *args: dv.set(args))
+        listener.register("sys_rbac", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_resource_pool, pool.id)
@@ -4918,36 +5336,24 @@ class TestRBACResourcePoolListener(
             yield listener.stopService()
         change = self.getCapturedSynced()
         self.assertThat(
-            change.source,
-            Equals("removed resource pool %s" % pool.name))
-        self.assertThat(
-            change.action, Equals("remove"))
-        self.assertThat(
-            change.resource_type, Equals("resource-pool"))
-        self.assertThat(
-            change.resource_id, Equals(pool.id))
-        self.assertThat(
-            change.resource_name, Equals(pool.name))
+            change.source, Equals("removed resource pool %s" % pool.name)
+        )
+        self.assertThat(change.action, Equals("remove"))
+        self.assertThat(change.resource_type, Equals("resource-pool"))
+        self.assertThat(change.resource_id, Equals(pool.id))
+        self.assertThat(change.resource_name, Equals(pool.name))
 
 
 class TestRBACConfigListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin,
-        RBACHelpersMixin):
+    MAASTransactionServerTestCase, TransactionalHelpersMixin, RBACHelpersMixin
+):
     """End-to-end test for the config RBAC triggers code."""
 
     scenarios = (
-        ('external_auth_url', {
-            'config': 'external_auth_url',
-        }),
-        ('external_auth_user', {
-            'config': 'external_auth_user',
-        }),
-        ('external_auth_key', {
-            'config': 'external_auth_key',
-        }),
-        ('rbac_url', {
-            'config': 'rbac_url',
-        }),
+        ("external_auth_url", {"config": "external_auth_url"}),
+        ("external_auth_user", {"config": "external_auth_user"}),
+        ("external_auth_key", {"config": "external_auth_key"}),
+        ("rbac_url", {"config": "rbac_url"}),
     )
 
     @wait_for_reactor
@@ -4958,24 +5364,25 @@ class TestRBACConfigListener(
         yield self.captureSynced()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_rbac", lambda *args: dv.set(args))
+        listener.register("sys_rbac", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                self.config, new_value)
+                Config.objects.set_config, self.config, new_value
+            )
             yield dv.get(timeout=2)
             yield self.assertSynced()
         finally:
             yield listener.stopService()
         change = self.getCapturedSynced()
         self.assertThat(
-            change.source, Equals(
+            change.source,
+            Equals(
                 "configuration %s set to %s"
-                % (self.config, json.dumps(new_value))))
-        self.assertThat(
-            change.action, Equals("full"))
+                % (self.config, json.dumps(new_value))
+            ),
+        )
+        self.assertThat(change.action, Equals("full"))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4984,26 +5391,27 @@ class TestRBACConfigListener(
         new_value = factory.make_name("new")
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
-            Config.objects.set_config,
-            self.config, old_value)
+            Config.objects.set_config, self.config, old_value
+        )
         yield self.captureSynced()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_rbac", lambda *args: dv.set(args))
+        listener.register("sys_rbac", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
-                Config.objects.set_config,
-                self.config, new_value)
+                Config.objects.set_config, self.config, new_value
+            )
             yield dv.get(timeout=2)
             yield self.assertSynced()
         finally:
             yield listener.stopService()
         change = self.getCapturedSynced()
         self.assertThat(
-            change.source, Equals(
+            change.source,
+            Equals(
                 "configuration %s changed to %s"
-                % (self.config, json.dumps(new_value))))
-        self.assertThat(
-            change.action, Equals("full"))
+                % (self.config, json.dumps(new_value))
+            ),
+        )
+        self.assertThat(change.action, Equals("full"))

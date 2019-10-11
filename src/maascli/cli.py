@@ -3,9 +3,7 @@
 
 """CLI management commands."""
 
-__all__ = [
-    'register_cli_commands',
-    ]
+__all__ = ["register_cli_commands"]
 
 from functools import partial
 import os
@@ -28,11 +26,7 @@ from maascli.init import (
     add_rbac_options,
     init_maas,
 )
-from maascli.utils import (
-    api_url,
-    parse_docstring,
-    safe_name,
-)
+from maascli.utils import api_url, parse_docstring, safe_name
 
 
 class cmd_login(Command):
@@ -45,26 +39,41 @@ class cmd_login(Command):
     def __init__(self, parser):
         super(cmd_login, self).__init__(parser)
         parser.add_argument(
-            "profile_name", metavar="profile-name", help=(
+            "profile_name",
+            metavar="profile-name",
+            help=(
                 "The name with which you will later refer to this remote "
                 "server and credentials within this tool."
-                ))
+            ),
+        )
         parser.add_argument(
-            "url", type=api_url, help=(
+            "url",
+            type=api_url,
+            help=(
                 "The URL of the remote API, e.g. http://example.com/MAAS/ "
                 "or http://example.com/MAAS/api/2.0/ if you wish to specify "
-                "the API version."))
+                "the API version."
+            ),
+        )
         parser.add_argument(
-            "credentials", nargs="?", default=None, help=(
+            "credentials",
+            nargs="?",
+            default=None,
+            help=(
                 "The credentials, also known as the API key, for the "
                 "remote MAAS server. These can be found in the user "
                 "preferences page in the web UI; they take the form of "
                 "a long random-looking string composed of three parts, "
                 "separated by colons."
-                ))
+            ),
+        )
         parser.add_argument(
-            '-k', '--insecure', action='store_true', help=(
-                "Disable SSL certificate check"), default=False)
+            "-k",
+            "--insecure",
+            action="store_true",
+            help="Disable SSL certificate check",
+            default=False,
+        )
         parser.set_defaults(credentials=None)
 
     def __call__(self, options):
@@ -76,7 +85,8 @@ class cmd_login(Command):
         if credentials is not None:
             try:
                 valid_apikey = check_valid_apikey(
-                    options.url, credentials, options.insecure)
+                    options.url, credentials, options.insecure
+                )
             except UnexpectedResponse as e:
                 raise SystemExit("%s" % e)
             else:
@@ -92,7 +102,7 @@ class cmd_login(Command):
                 "description": description,
                 "name": profile_name,
                 "url": options.url,
-                }
+            }
             profile = config[profile_name]
         self.print_whats_next(profile)
 
@@ -104,7 +114,7 @@ class cmd_login(Command):
             "with the profile name '{name}'.",
             "For help with the available commands, try:",
             "  maas {name} --help",
-            ]
+        ]
         print()
         for message in what_next:
             message = message.format(**profile)
@@ -142,10 +152,13 @@ class cmd_logout(Command):
     def __init__(self, parser):
         super(cmd_logout, self).__init__(parser)
         parser.add_argument(
-            "profile_name", metavar="profile-name", help=(
+            "profile_name",
+            metavar="profile-name",
+            help=(
                 "The name with which a remote server and its credentials "
                 "are referred to within this tool."
-                ))
+            ),
+        )
 
     def __call__(self, options):
         with ProfileConfig.open() as config:
@@ -177,14 +190,21 @@ class cmd_init(Command):
     def __init__(self, parser):
         super().__init__(parser)
         parser.add_argument(
-            '--skip-admin', action='store_true',
-            help="Skip the admin creation.")
+            "--skip-admin",
+            action="store_true",
+            help="Skip the admin creation.",
+        )
         add_create_admin_options(parser)
         parser.add_argument(
-            '--enable-candid', default=False, action="store_true",
-            help=("Enable configuring the use of an external Candid server. "
-                  "If this isn't enabled, all --candid-* arguments "
-                  "will be ignored."))
+            "--enable-candid",
+            default=False,
+            action="store_true",
+            help=(
+                "Enable configuring the use of an external Candid server. "
+                "If this isn't enabled, all --candid-* arguments "
+                "will be ignored."
+            ),
+        )
         add_candid_options(parser)
         add_rbac_options(parser)
 
@@ -194,20 +214,23 @@ class cmd_init(Command):
 
 # Built-in commands to the maascli.
 commands = {
-    'login': cmd_login,
-    'logout': cmd_logout,
-    'list': cmd_list,
-    'refresh': cmd_refresh,
+    "login": cmd_login,
+    "logout": cmd_logout,
+    "list": cmd_list,
+    "refresh": cmd_refresh,
 }
 
 # Commands to expose in the maascli when installed on a machine with
 # python3-maasserver.
 regiond_commands = (
-    ('apikey', 'maasserver', None),
-    ('configauth', 'maasserver', None),
-    ('createadmin', 'maasserver', None),
-    ('changepassword', 'django.contrib.auth',
-     "Change a MAAS user's password."),
+    ("apikey", "maasserver", None),
+    ("configauth", "maasserver", None),
+    ("createadmin", "maasserver", None),
+    (
+        "changepassword",
+        "django.contrib.auth",
+        "Change a MAAS user's password.",
+    ),
 )
 
 
@@ -216,37 +239,47 @@ def register_cli_commands(parser):
     for name, command in commands.items():
         help_title, help_body = parse_docstring(command)
         command_parser = parser.subparsers.add_parser(
-            safe_name(name), help=help_title, description=help_title,
-            epilog=help_body)
+            safe_name(name),
+            help=help_title,
+            description=help_title,
+            epilog=help_body,
+        )
         command_parser.set_defaults(execute=command(command_parser))
 
     # Setup the snap commands into the maascli if in a snap and command exists.
-    if 'SNAP' in os.environ:
+    if "SNAP" in os.environ:
         # Only import snappy if running under the snap.
         from maascli import snappy
+
         extra_commands = [
-            ('init', snappy.cmd_init),
-            ('config', snappy.cmd_config),
-            ('status', snappy.cmd_status),
-            ('migrate', snappy.cmd_migrate)]
+            ("init", snappy.cmd_init),
+            ("config", snappy.cmd_config),
+            ("status", snappy.cmd_status),
+            ("migrate", snappy.cmd_migrate),
+        ]
     elif is_maasserver_available():
-        extra_commands = [('init', cmd_init)]
+        extra_commands = [("init", cmd_init)]
     else:
         extra_commands = []
 
     for name, command in extra_commands:
         help_title, help_body = parse_docstring(command)
         command_parser = parser.subparsers.add_parser(
-            safe_name(name), help=help_title, description=help_title,
-            epilog=help_body)
+            safe_name(name),
+            help=help_title,
+            description=help_title,
+            epilog=help_body,
+        )
         command_parser.set_defaults(execute=command(command_parser))
 
     # Setup and the allowed django commands into the maascli.
     management = get_django_management()
     if management is not None and is_maasserver_available():
         os.environ.setdefault(
-            "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
+            "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings"
+        )
         from django import setup as django_setup
+
         django_setup()
         load_regiond_commands(management, parser)
 
@@ -285,7 +318,9 @@ def load_regiond_commands(management, parser):
         if help_text is None:
             help_text = klass.help
         command_parser = parser.subparsers.add_parser(
-            safe_name(name), help=help_text, description=help_text)
+            safe_name(name), help=help_text, description=help_text
+        )
         klass.add_arguments(command_parser)
         command_parser.set_defaults(
-            execute=partial(run_regiond_command, management))
+            execute=partial(run_regiond_command, management)
+        )

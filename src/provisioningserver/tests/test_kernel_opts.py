@@ -3,9 +3,7 @@
 
 """Test composition of kernel command lines."""
 
-__all__ = [
-    "make_kernel_parameters",
-    ]
+__all__ = ["make_kernel_parameters"]
 
 import os
 import random
@@ -14,10 +12,7 @@ from unittest.mock import sentinel
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
-from provisioningserver.drivers import (
-    Architecture,
-    ArchitectureRegistry,
-)
+from provisioningserver.drivers import Architecture, ArchitectureRegistry
 from provisioningserver.kernel_opts import (
     compose_arch_opts,
     compose_kernel_command_line,
@@ -26,11 +21,7 @@ from provisioningserver.kernel_opts import (
     get_last_directory,
     KernelParameters,
 )
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    Not,
-)
+from testtools.matchers import Contains, ContainsAll, Not
 
 
 def make_kernel_parameters(testcase=None, **parms):
@@ -41,16 +32,19 @@ def make_kernel_parameters(testcase=None, **parms):
     it is removed after the test completes.
     """
     # fs_host needs to be an IP address, set it if it was not passed.
-    if 'fs_host' not in parms:
-        parms.update({'fs_host': factory.make_ip_address()})
-    had_log_port = 'log_port' in parms
+    if "fs_host" not in parms:
+        parms.update({"fs_host": factory.make_ip_address()})
+    had_log_port = "log_port" in parms
     parms.update(
-        {field: factory.make_name(field)
-         for field in KernelParameters._fields
-         if field not in parms})
+        {
+            field: factory.make_name(field)
+            for field in KernelParameters._fields
+            if field not in parms
+        }
+    )
     # KernelParameters will handle setting the default.
     if not had_log_port:
-        del parms['log_port']
+        del parms["log_port"]
     params = KernelParameters(**parms)
 
     if testcase is not None:
@@ -62,19 +56,17 @@ def make_kernel_parameters(testcase=None, **parms):
         resource = Architecture(name, name)
         ArchitectureRegistry.register_item(name, resource)
 
-        testcase.addCleanup(
-            ArchitectureRegistry.unregister_item, name)
+        testcase.addCleanup(ArchitectureRegistry.unregister_item, name)
 
     return params
 
 
 class TestUtilitiesKernelOpts(MAASTestCase):
-
     def test_get_last_directory(self):
         root = self.make_dir()
-        dir1 = os.path.join(root, '20120405')
-        dir2 = os.path.join(root, '20120105')
-        dir3 = os.path.join(root, '20120403')
+        dir1 = os.path.join(root, "20120405")
+        dir2 = os.path.join(root, "20120105")
+        dir3 = os.path.join(root, "20120403")
         os.makedirs(dir1)
         os.makedirs(dir2)
         os.makedirs(dir3)
@@ -88,30 +80,31 @@ class TestUtilitiesKernelOpts(MAASTestCase):
 
 
 class TestGetCurtinKernelCmdlineSepTest(MAASTestCase):
-
     def test_get_curtin_kernel_cmdline_sep_returns_curtin_value(self):
-        sep = factory.make_name('separator')
-        self.patch(
-            kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME, sep)
+        sep = factory.make_name("separator")
+        self.patch(kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME, sep)
         self.assertEqual(sep, get_curtin_kernel_cmdline_sep())
 
     def test_get_curtin_kernel_cmdline_sep_returns_default(self):
         original_sep = getattr(
-            kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME,
-            sentinel.missing)
+            kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME, sentinel.missing
+        )
 
         if original_sep != sentinel.missing:
+
             def restore_sep():
                 setattr(
                     kernel_opts.curtin,
-                    CURTIN_KERNEL_CMDLINE_NAME, original_sep)
+                    CURTIN_KERNEL_CMDLINE_NAME,
+                    original_sep,
+                )
+
             self.addCleanup(restore_sep)
             delattr(kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME)
-        self.assertEqual('--', get_curtin_kernel_cmdline_sep())
+        self.assertEqual("--", get_curtin_kernel_cmdline_sep())
 
 
 class TestKernelOpts(MAASTestCase):
-
     def make_kernel_parameters(self, *args, **kwargs):
         return make_kernel_parameters(self, *args, **kwargs)
 
@@ -126,7 +119,8 @@ class TestKernelOpts(MAASTestCase):
 
     def test_compose_kernel_command_line_includes_disable_overlay_cfg(self):
         params = self.make_kernel_parameters(
-            purpose=random.choice(["commissioning", "xinstall", "enlist"]))
+            purpose=random.choice(["commissioning", "xinstall", "enlist"])
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, Contains("overlayroot_cfgdisk=disabled"))
 
@@ -134,165 +128,214 @@ class TestKernelOpts(MAASTestCase):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "xinstall" node.
         params = self.make_kernel_parameters(
-            purpose="xinstall", fs_host=factory.make_ipv4_address())
+            purpose="xinstall", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "root=squash:http://",
-                "overlayroot=tmpfs",
-                "ip6=off",
-                "ip=::::%s:BOOTIF" % params.hostname]))
+            ContainsAll(
+                [
+                    "root=squash:http://",
+                    "overlayroot=tmpfs",
+                    "ip6=off",
+                    "ip=::::%s:BOOTIF" % params.hostname,
+                ]
+            ),
+        )
 
     def test_xinstall_compose_kernel_command_line_inc_purpose_opts6(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "xinstall" node.
         params = self.make_kernel_parameters(
-            purpose="xinstall", fs_host=factory.make_ipv6_address())
+            purpose="xinstall", fs_host=factory.make_ipv6_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "root=squash:http://",
-                "overlayroot=tmpfs",
-                "ip=off",
-                "ip6=dhcp"]))
+            ContainsAll(
+                [
+                    "root=squash:http://",
+                    "overlayroot=tmpfs",
+                    "ip=off",
+                    "ip6=dhcp",
+                ]
+            ),
+        )
 
     def test_xinstall_compose_kernel_command_line_inc_cc_datasource(self):
         # The result of compose_kernel_command_line includes the cloud-init
         # options for the datasource and cloud-config-url
         params = self.make_kernel_parameters(
-            purpose="xinstall", fs_host=factory.make_ipv4_address())
+            purpose="xinstall", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "cc:{'datasource_list': ['MAAS']}end_cc",
-                "cloud-config-url=%s" % params.preseed_url]))
+            ContainsAll(
+                [
+                    "cc:{'datasource_list': ['MAAS']}end_cc",
+                    "cloud-config-url=%s" % params.preseed_url,
+                ]
+            ),
+        )
 
     def test_ephemeral_compose_kernel_command_line_inc_cc_datasource(self):
         # The result of compose_kernel_command_line includes the cloud-init
         # options for the datasource and cloud-config-url
         params = self.make_kernel_parameters(
-            purpose="ephemeral", fs_host=factory.make_ipv4_address())
+            purpose="ephemeral", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "cc:{'datasource_list': ['MAAS']}end_cc",
-                "cloud-config-url=%s" % params.preseed_url]))
+            ContainsAll(
+                [
+                    "cc:{'datasource_list': ['MAAS']}end_cc",
+                    "cloud-config-url=%s" % params.preseed_url,
+                ]
+            ),
+        )
 
     def test_commissioning_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
         params = self.make_kernel_parameters(
-            purpose="commissioning", fs_host=factory.make_ipv4_address())
+            purpose="commissioning", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "root=squash:http://",
-                "overlayroot=tmpfs",
-                "ip6=off",
-                "ip=::::%s:BOOTIF" % params.hostname]))
+            ContainsAll(
+                [
+                    "root=squash:http://",
+                    "overlayroot=tmpfs",
+                    "ip6=off",
+                    "ip=::::%s:BOOTIF" % params.hostname,
+                ]
+            ),
+        )
 
     def test_commissioning_compose_kernel_command_line_inc_purpose_opts6(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
         params = self.make_kernel_parameters(
-            purpose="commissioning", fs_host=factory.make_ipv6_address())
+            purpose="commissioning", fs_host=factory.make_ipv6_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "root=squash:http://",
-                "overlayroot=tmpfs",
-                "ip=off",
-                "ip6=dhcp"]))
+            ContainsAll(
+                [
+                    "root=squash:http://",
+                    "overlayroot=tmpfs",
+                    "ip=off",
+                    "ip6=dhcp",
+                ]
+            ),
+        )
 
     def test_commissioning_compose_kernel_command_line_inc_cc_datasource(self):
         # The result of compose_kernel_command_line includes the cloud-init
         # options for the datasource and cloud-config-url
         params = self.make_kernel_parameters(
-            purpose="commissioning", fs_host=factory.make_ipv4_address())
+            purpose="commissioning", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "cc:{'datasource_list': ['MAAS']}end_cc",
-                "cloud-config-url=%s" % params.preseed_url]))
+            ContainsAll(
+                [
+                    "cc:{'datasource_list': ['MAAS']}end_cc",
+                    "cloud-config-url=%s" % params.preseed_url,
+                ]
+            ),
+        )
 
     def test_enlist_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
         params = self.make_kernel_parameters(
-            purpose="enlist", fs_host=factory.make_ipv4_address())
+            purpose="enlist", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "root=squash:http://",
-                "overlayroot=tmpfs",
-                "ip6=off",
-                "ip=::::%s:BOOTIF" % params.hostname]))
+            ContainsAll(
+                [
+                    "root=squash:http://",
+                    "overlayroot=tmpfs",
+                    "ip6=off",
+                    "ip=::::%s:BOOTIF" % params.hostname,
+                ]
+            ),
+        )
 
     def test_enlist_compose_kernel_command_line_inc_purpose_opts6(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
         params = self.make_kernel_parameters(
-            purpose="enlist", fs_host=factory.make_ipv6_address())
+            purpose="enlist", fs_host=factory.make_ipv6_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "root=squash:http://",
-                "overlayroot=tmpfs",
-                "ip=off",
-                "ip6=dhcp"]))
+            ContainsAll(
+                [
+                    "root=squash:http://",
+                    "overlayroot=tmpfs",
+                    "ip=off",
+                    "ip6=dhcp",
+                ]
+            ),
+        )
 
     def test_enlist_compose_kernel_command_line_inc_cc_datasource(self):
         # The result of compose_kernel_command_line includes the cloud-init
         # options for the datasource and cloud-config-url
         params = self.make_kernel_parameters(
-            purpose="enlist", fs_host=factory.make_ipv4_address())
+            purpose="enlist", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
-            ContainsAll([
-                "cc:{'datasource_list': ['MAAS']}end_cc",
-                "cloud-config-url=%s" % params.preseed_url]))
+            ContainsAll(
+                [
+                    "cc:{'datasource_list': ['MAAS']}end_cc",
+                    "cloud-config-url=%s" % params.preseed_url,
+                ]
+            ),
+        )
 
     def test_enlist_compose_kernel_command_line_apparmor_disabled(self):
         # The result of compose_kernel_command_line includes the
         # options for apparmor. See LP: #1677336 and LP: #1408106
         params = self.make_kernel_parameters(
-            purpose="enlist", fs_host=factory.make_ipv4_address())
+            purpose="enlist", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
-        self.assertThat(
-            cmdline,
-            ContainsAll(["apparmor=0"]))
+        self.assertThat(cmdline, ContainsAll(["apparmor=0"]))
 
     def test_commissioning_compose_kernel_command_line_apparmor_disabled(self):
         # The result of compose_kernel_command_line includes the
         # options for apparmor. See LP: #1677336 and LP: #1408106
         params = self.make_kernel_parameters(
-            purpose="commissioning", fs_host=factory.make_ipv4_address())
+            purpose="commissioning", fs_host=factory.make_ipv4_address()
+        )
         cmdline = compose_kernel_command_line(params)
-        self.assertThat(
-            cmdline,
-            ContainsAll(["apparmor=0"]))
+        self.assertThat(cmdline, ContainsAll(["apparmor=0"]))
 
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         mock_get_curtin_sep = self.patch(
-            kernel_opts, 'get_curtin_kernel_cmdline_sep')
-        sep = factory.make_name('sep')
+            kernel_opts, "get_curtin_kernel_cmdline_sep"
+        )
+        sep = factory.make_name("sep")
         mock_get_curtin_sep.return_value = sep
         extra_opts = "special console=ABCD -- options to pass"
         params = self.make_kernel_parameters(extra_opts=extra_opts)
         cmdline = compose_kernel_command_line(params)
         # There should be KERNEL_CMDLINE_COPY_TO_INSTALL_SEP surrounded by
         # spaces before the options, but otherwise added verbatim.
-        self.assertThat(cmdline, Contains(' %s ' % sep + extra_opts))
+        self.assertThat(cmdline, Contains(" %s " % sep + extra_opts))
 
     def test_commissioning_compose_kernel_handles_extra_opts_None(self):
         params = self.make_kernel_parameters(extra_opts=None)
@@ -305,17 +348,16 @@ class TestKernelOpts(MAASTestCase):
         expected = ["nomodeset"]
 
         params = self.make_kernel_parameters(
-            purpose="commissioning", arch="i386")
+            purpose="commissioning", arch="i386"
+        )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
-        params = self.make_kernel_parameters(
-            purpose="xinstall", arch="i386")
+        params = self.make_kernel_parameters(purpose="xinstall", arch="i386")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
-        params = self.make_kernel_parameters(
-            purpose="install", arch="i386")
+        params = self.make_kernel_parameters(purpose="install", arch="i386")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
@@ -325,7 +367,8 @@ class TestKernelOpts(MAASTestCase):
         params = self.make_kernel_parameters(purpose="xinstall")
         self.assertThat(
             compose_kernel_command_line(params),
-            ContainsAll(["root=squash:http://"]))
+            ContainsAll(["root=squash:http://"]),
+        )
 
     def test_compose_kernel_command_line_inc_purpose_opts_comm_node(self):
         # The result of compose_kernel_command_line includes the purpose
@@ -333,19 +376,21 @@ class TestKernelOpts(MAASTestCase):
         params = self.make_kernel_parameters(purpose="commissioning")
         self.assertThat(
             compose_kernel_command_line(params),
-            ContainsAll(["root=squash:http://"]))
+            ContainsAll(["root=squash:http://"]),
+        )
 
     def test_compose_kernel_command_line_inc_arm_specific_option(self):
         params = self.make_kernel_parameters(arch="armhf", subarch="highbank")
         self.assertThat(
-            compose_kernel_command_line(params),
-            Contains("console=ttyAMA0"))
+            compose_kernel_command_line(params), Contains("console=ttyAMA0")
+        )
 
     def test_compose_kernel_command_line_not_inc_arm_specific_option(self):
         params = self.make_kernel_parameters(arch="i386")
         self.assertThat(
             compose_kernel_command_line(params),
-            Not(Contains("console=ttyAMA0")))
+            Not(Contains("console=ttyAMA0")),
+        )
 
     def test_compose_arch_opts_copes_with_unknown_subarch(self):
         # Pass a None testcase so that the architecture doesn't get
@@ -353,26 +398,46 @@ class TestKernelOpts(MAASTestCase):
         params = make_kernel_parameters(
             testcase=None,
             arch=factory.make_name("arch"),
-            subarch=factory.make_name("subarch"))
+            subarch=factory.make_name("subarch"),
+        )
         self.assertEqual([], compose_arch_opts(params))
 
     def test_compose_rootfs_over_http_ipv4(self):
         params = make_kernel_parameters(fs_host=factory.make_ipv4_address())
         self.assertThat(
             compose_kernel_command_line(params),
-            ContainsAll([
-                "ro",
-                "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs" % (
-                    params.fs_host, params.osystem, params.arch,
-                    params.subarch, params.release, params.label)]))
+            ContainsAll(
+                [
+                    "ro",
+                    "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs"
+                    % (
+                        params.fs_host,
+                        params.osystem,
+                        params.arch,
+                        params.subarch,
+                        params.release,
+                        params.label,
+                    ),
+                ]
+            ),
+        )
 
     def test_compose_rootfs_over_http_ipv6(self):
         params = make_kernel_parameters(fs_host=factory.make_ipv6_address())
         self.assertThat(
             compose_kernel_command_line(params),
-            ContainsAll([
-                "ro",
-                "root=squash:http://[%s]:5248/images/%s/%s/%s/%s/%s/squashfs" %
-                (
-                    params.fs_host, params.osystem, params.arch,
-                    params.subarch, params.release, params.label)]))
+            ContainsAll(
+                [
+                    "ro",
+                    "root=squash:http://[%s]:5248/images/%s/%s/%s/%s/%s/squashfs"
+                    % (
+                        params.fs_host,
+                        params.osystem,
+                        params.arch,
+                        params.subarch,
+                        params.release,
+                        params.label,
+                    ),
+                ]
+            ),
+        )

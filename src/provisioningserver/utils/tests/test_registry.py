@@ -13,7 +13,6 @@ from provisioningserver.utils.testing import RegistryFixture
 
 
 class TestRegistry(MAASTestCase):
-
     def setUp(self):
         super(TestRegistry, self).setUp()
         # Ensure the global registry is empty for each test run.
@@ -35,11 +34,15 @@ class TestRegistry(MAASTestCase):
     def test_is_singleton_over_multiple_imports(self):
         Registry.register_item("resource1", sentinel.resource1)
         from provisioningserver.drivers import Registry as Registry2
+
         Registry2.register_item("resource2", sentinel.resource2)
         self.assertItemsEqual(
-            [("resource1", sentinel.resource1),
-             ("resource2", sentinel.resource2)],
-            Registry2)
+            [
+                ("resource1", sentinel.resource1),
+                ("resource2", sentinel.resource2),
+            ],
+            Registry2,
+        )
 
     def test___getitem__(self):
         Registry.register_item("resource", sentinel.resource)
@@ -54,8 +57,8 @@ class TestRegistry(MAASTestCase):
 
     def test_get_item_returns_default_if_value_not_present(self):
         self.assertEqual(
-            sentinel.default,
-            Registry.get_item("resource", sentinel.default))
+            sentinel.default, Registry.get_item("resource", sentinel.default)
+        )
 
     def test_get_item_returns_None_default(self):
         self.assertIsNone(Registry.get_item("resource"))
@@ -65,7 +68,6 @@ class TestRegistry(MAASTestCase):
         self.assertIn("resource", Registry)
 
     def test_registered_items_are_stored_separately_by_registry(self):
-
         class RegistryOne(Registry):
             """A registry distinct from the base `Registry`."""
 

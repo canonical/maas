@@ -28,8 +28,8 @@ class TestBootSourceForm(MAASServerTestCase):
     def test_edits_boot_source_object(self):
         boot_source = factory.make_BootSource()
         params = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('keyring_filename'),
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("keyring_filename"),
         }
         form = BootSourceForm(instance=boot_source, data=params)
         self.assertTrue(form.is_valid(), form._errors)
@@ -39,8 +39,8 @@ class TestBootSourceForm(MAASServerTestCase):
 
     def test_creates_boot_source_object_with_keyring_filename(self):
         params = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('keyring_filename'),
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("keyring_filename"),
         }
         form = BootSourceForm(data=params)
         self.assertTrue(form.is_valid(), form._errors)
@@ -49,15 +49,15 @@ class TestBootSourceForm(MAASServerTestCase):
 
     def test_creates_boot_source_object_with_keyring_data(self):
         in_mem_file = InMemoryUploadedFile(
-            BytesIO(sample_binary_data), name=factory.make_name('name'),
-            field_name=factory.make_name('field-name'),
-            content_type='application/octet-stream',
+            BytesIO(sample_binary_data),
+            name=factory.make_name("name"),
+            field_name=factory.make_name("field-name"),
+            content_type="application/octet-stream",
             size=len(sample_binary_data),
-            charset=None)
-        params = {'url': 'http://example.com/'}
-        form = BootSourceForm(
-            data=params,
-            files={'keyring_data': in_mem_file})
+            charset=None,
+        )
+        params = {"url": "http://example.com/"}
+        form = BootSourceForm(data=params, files={"keyring_data": in_mem_file})
         self.assertTrue(form.is_valid(), form._errors)
         boot_source = form.save()
         self.assertEqual(sample_binary_data, bytes(boot_source.keyring_data))

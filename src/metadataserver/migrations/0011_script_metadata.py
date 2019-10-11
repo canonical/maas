@@ -1,48 +1,60 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 import maasserver.fields
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metadataserver', '0010_scriptresult_time_and_script_title'),
+        ("metadataserver", "0010_scriptresult_time_and_script_title")
     ]
 
     operations = [
         migrations.AddField(
-            model_name='script',
-            name='hardware_type',
-            field=models.IntegerField(default=0, choices=[(0, 'Node'), (1, 'CPU'), (2, 'Memory'), (3, 'Storage')]),
+            model_name="script",
+            name="hardware_type",
+            field=models.IntegerField(
+                default=0,
+                choices=[
+                    (0, "Node"),
+                    (1, "CPU"),
+                    (2, "Memory"),
+                    (3, "Storage"),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='script',
-            name='packages',
+            model_name="script",
+            name="packages",
             field=maasserver.fields.JSONObjectField(blank=True, default={}),
         ),
         migrations.AddField(
-            model_name='script',
-            name='parallel',
-            field=models.IntegerField(default=0, choices=[(0, 'Disabled'), (1, 'Run along other instances of this script'), (2, 'Run along any other script.')]),
+            model_name="script",
+            name="parallel",
+            field=models.IntegerField(
+                default=0,
+                choices=[
+                    (0, "Disabled"),
+                    (1, "Run along other instances of this script"),
+                    (2, "Run along any other script."),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='script',
-            name='parameters',
+            model_name="script",
+            name="parameters",
             field=maasserver.fields.JSONObjectField(blank=True, default={}),
         ),
         migrations.AddField(
-            model_name='script',
-            name='results',
+            model_name="script",
+            name="results",
             field=maasserver.fields.JSONObjectField(blank=True, default={}),
         ),
         migrations.AddField(
-            model_name='scriptresult',
-            name='parameters',
+            model_name="scriptresult",
+            name="parameters",
             field=maasserver.fields.JSONObjectField(blank=True, default={}),
         ),
     ]

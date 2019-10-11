@@ -16,19 +16,15 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.utils.testing import callWithServiceRunning
-from provisioningserver.utils.tests.test_network import (
-    TestReverseResolveMixIn,
-)
-from testtools.matchers import (
-    Equals,
-    Is,
-)
+from provisioningserver.utils.tests.test_network import TestReverseResolveMixIn
+from testtools.matchers import Equals, Is
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 
 
 class TestReverseDNSService(
-        TestReverseResolveMixIn, MAASTransactionServerTestCase):
+    TestReverseResolveMixIn, MAASTransactionServerTestCase
+):
     """Tests for `RegionNetworksMonitoringService`."""
 
     def setUp(self):
@@ -39,7 +35,8 @@ class TestReverseDNSService(
         RegionController.objects = Mock()
         RegionController.objects.get_running_controller = Mock()
         RegionController.objects.get_running_controller.return_value = (
-            self.region)
+            self.region
+        )
 
     @wait_for(30)
     @inlineCallbacks
@@ -104,13 +101,15 @@ class TestReverseDNSService(
         listener.unregister = Mock()
         service = ReverseDNSService(postgresListener=listener)
         yield service.startService()
-        self.assertThat(listener.register, MockCalledOnceWith(
-            'neighbour', service.consumeNeighbourEvent
-        ))
+        self.assertThat(
+            listener.register,
+            MockCalledOnceWith("neighbour", service.consumeNeighbourEvent),
+        )
         service.stopService()
-        self.assertThat(listener.unregister, MockCalledOnceWith(
-            'neighbour', service.consumeNeighbourEvent
-        ))
+        self.assertThat(
+            listener.unregister,
+            MockCalledOnceWith("neighbour", service.consumeNeighbourEvent),
+        )
 
     @wait_for(30)
     @inlineCallbacks
@@ -120,8 +119,8 @@ class TestReverseDNSService(
         ip = factory.make_ip_address(ipv6=False)
         service = ReverseDNSService()
         yield callWithServiceRunning(
-            service, service.consumeNeighbourEvent,
-            "create", "%s/32" % ip)
+            service, service.consumeNeighbourEvent, "create", "%s/32" % ip
+        )
         self.assertThat(reverseResolve, MockCalledOnceWith(ip))
         result = yield deferToDatabase(RDNS.objects.first)
         self.assertThat(result, Is(None))

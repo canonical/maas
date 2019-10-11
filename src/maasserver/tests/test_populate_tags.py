@@ -5,24 +5,13 @@
 
 __all__ = []
 
-from unittest.mock import (
-    ANY,
-    call,
-    create_autospec,
-)
+from unittest.mock import ANY, call, create_autospec
 
 from apiclient.creds import convert_tuple_to_string
 from django.db import transaction
 from fixtures import FakeLogger
-from maasserver import (
-    populate_tags as populate_tags_module,
-    rpc as rpc_module,
-)
-from maasserver.models import (
-    Node,
-    Tag,
-    tag as tag_module,
-)
+from maasserver import populate_tags as populate_tags_module, rpc as rpc_module
+from maasserver.models import Node, Tag, tag as tag_module
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -46,19 +35,13 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
     extract_result,
 )
-from metadataserver.enum import (
-    RESULT_TYPE,
-    SCRIPT_STATUS,
-)
+from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
@@ -82,7 +65,8 @@ def make_script_result(node, script_name=None, stdout=None, exit_status=0):
     script_set = node.current_commissioning_script_set
     if script_set is None:
         script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            node=node, result_type=RESULT_TYPE.COMMISSIONING
+        )
         node.current_commissioning_script_set = script_set
         node.save()
     if exit_status == 0:
@@ -90,8 +74,12 @@ def make_script_result(node, script_name=None, stdout=None, exit_status=0):
     else:
         status = SCRIPT_STATUS.FAILED
     return factory.make_ScriptResult(
-        script_set=script_set, status=status, exit_status=exit_status,
-        script_name=script_name, stdout=stdout)
+        script_set=script_set,
+        status=status,
+        exit_status=exit_status,
+        script_name=script_name,
+        stdout=stdout,
+    )
 
 
 def make_lshw_result(node, stdout=None, exit_status=0):
@@ -103,18 +91,17 @@ def make_lldp_result(node, stdout=None, exit_status=0):
 
 
 class TestDoPopulateTags(MAASServerTestCase):
-
     def patch_clients(self, rack_controllers):
         clients = [
-            create_autospec(Client, instance=True)
-            for _ in rack_controllers
+            create_autospec(Client, instance=True) for _ in rack_controllers
         ]
         for rack, client in zip(rack_controllers, clients):
             client.side_effect = always_succeed_with(None)
             client.ident = rack.system_id
 
         _get_clients = self.patch_autospec(
-            populate_tags_module, "getAllClients")
+            populate_tags_module, "getAllClients"
+        )
         _get_clients.return_value = clients
 
         return clients
@@ -136,31 +123,43 @@ class TestDoPopulateTags(MAASServerTestCase):
             creds = factory.make_name("creds")
             rack_creds.append(creds)
             nodes = [
-                {"system_id": factory.make_Node().system_id}
-                for _ in range(3)
+                {"system_id": factory.make_Node().system_id} for _ in range(3)
             ]
             rack_nodes.append(nodes)
-            work.append({
-                "system_id": rack.system_id,
-                "hostname": rack.hostname,
-                "client": client,
-                "tag_name": tag_name,
-                "tag_definition": tag_definition,
-                "tag_nsmap": tag_nsmap,
-                "credentials": creds,
-                "nodes": nodes,
-            })
+            work.append(
+                {
+                    "system_id": rack.system_id,
+                    "hostname": rack.hostname,
+                    "client": client,
+                    "tag_name": tag_name,
+                    "tag_definition": tag_definition,
+                    "tag_nsmap": tag_nsmap,
+                    "credentials": creds,
+                    "nodes": nodes,
+                }
+            )
 
         [d] = _do_populate_tags(work)
 
         self.assertIsNone(extract_result(d))
 
         for rack, client, creds, nodes in zip(
-                rack_controllers, clients, rack_creds, rack_nodes):
-            self.expectThat(client, MockCallsMatch(call(
-                EvaluateTag, tag_name=tag_name, tag_definition=tag_definition,
-                system_id=rack.system_id,
-                tag_nsmap=tag_nsmap, credentials=creds, nodes=nodes)))
+            rack_controllers, clients, rack_creds, rack_nodes
+        ):
+            self.expectThat(
+                client,
+                MockCallsMatch(
+                    call(
+                        EvaluateTag,
+                        tag_name=tag_name,
+                        tag_definition=tag_definition,
+                        system_id=rack.system_id,
+                        tag_nsmap=tag_nsmap,
+                        credentials=creds,
+                        nodes=nodes,
+                    )
+                ),
+            )
 
     def test__logs_successes(self):
         rack_controllers = [factory.make_RackController()]
@@ -172,19 +171,21 @@ class TestDoPopulateTags(MAASServerTestCase):
 
         work = []
         for rack, client in zip(rack_controllers, clients):
-            work.append({
-                "system_id": rack.system_id,
-                "hostname": rack.hostname,
-                "client": client,
-                "tag_name": tag_name,
-                "tag_definition": tag_definition,
-                "tag_nsmap": tag_nsmap,
-                "credentials": factory.make_name("creds"),
-                "nodes": [
-                    {"system_id": factory.make_Node().system_id}
-                    for _ in range(3)
-                ],
-            })
+            work.append(
+                {
+                    "system_id": rack.system_id,
+                    "hostname": rack.hostname,
+                    "client": client,
+                    "tag_name": tag_name,
+                    "tag_definition": tag_definition,
+                    "tag_nsmap": tag_nsmap,
+                    "credentials": factory.make_name("creds"),
+                    "nodes": [
+                        {"system_id": factory.make_Node().system_id}
+                        for _ in range(3)
+                    ],
+                }
+            )
 
         with FakeLogger("maas") as log:
             [d] = _do_populate_tags(work)
@@ -193,13 +194,15 @@ class TestDoPopulateTags(MAASServerTestCase):
         self.assertDocTestMatches(
             "Tag tag-... (definition-...) evaluated on rack "
             "controller ... (...)",
-            log.output)
+            log.output,
+        )
 
     def test__logs_failures(self):
         rack_controllers = [factory.make_RackController()]
         clients = self.patch_clients(rack_controllers)
         clients[0].side_effect = always_fail_with(
-            ZeroDivisionError("splendid day for a spot of cricket"))
+            ZeroDivisionError("splendid day for a spot of cricket")
+        )
 
         tag_name = factory.make_name("tag")
         tag_definition = factory.make_name("definition")
@@ -207,19 +210,21 @@ class TestDoPopulateTags(MAASServerTestCase):
 
         work = []
         for rack, client in zip(rack_controllers, clients):
-            work.append({
-                "system_id": rack.system_id,
-                "hostname": rack.hostname,
-                "client": client,
-                "tag_name": tag_name,
-                "tag_definition": tag_definition,
-                "tag_nsmap": tag_nsmap,
-                "credentials": factory.make_name("creds"),
-                "nodes": [
-                    {"system_id": factory.make_Node().system_id}
-                    for _ in range(3)
-                ],
-            })
+            work.append(
+                {
+                    "system_id": rack.system_id,
+                    "hostname": rack.hostname,
+                    "client": client,
+                    "tag_name": tag_name,
+                    "tag_definition": tag_definition,
+                    "tag_nsmap": tag_nsmap,
+                    "credentials": factory.make_name("creds"),
+                    "nodes": [
+                        {"system_id": factory.make_Node().system_id}
+                        for _ in range(3)
+                    ],
+                }
+            )
 
         with FakeLogger("maas") as log:
             [d] = _do_populate_tags(work)
@@ -227,7 +232,9 @@ class TestDoPopulateTags(MAASServerTestCase):
 
         self.assertDocTestMatches(
             "Tag tag-... (definition-...) could not be evaluated ... (...): "
-            "splendid day for a spot of cricket", log.output)
+            "splendid day for a spot of cricket",
+            log.output,
+        )
 
 
 class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
@@ -246,7 +253,8 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
         with transaction.atomic():
             tag = factory.make_Tag(populate=False)
             self.assertRaises(
-                transaction.TransactionManagementError, populate_tags, tag)
+                transaction.TransactionManagementError, populate_tags, tag
+            )
 
     def test__calls_are_made_to_all_clusters(self):
         rpc_fixture = self.prepare_live_rpc()
@@ -276,11 +284,20 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
         wait_for_populate().wait(10)
 
         for rack, protocol, creds in zip(
-                rack_controllers, protocols, rack_creds):
-            self.expectThat(protocol.EvaluateTag, MockCalledOnceWith(
-                protocol, tag_name=tag.name, tag_definition=tag.definition,
-                system_id=rack.system_id,
-                tag_nsmap=ANY, credentials=creds, nodes=ANY))
+            rack_controllers, protocols, rack_creds
+        ):
+            self.expectThat(
+                protocol.EvaluateTag,
+                MockCalledOnceWith(
+                    protocol,
+                    tag_name=tag.name,
+                    tag_definition=tag.definition,
+                    system_id=rack.system_id,
+                    tag_nsmap=ANY,
+                    credentials=creds,
+                    nodes=ANY,
+                ),
+            )
 
 
 class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
@@ -296,7 +313,7 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
             # Make a Tag by hand to trigger normal node population handling
             # behaviour rather than the (generally more convenient) default
             # behaviour in the factory.
-            tag = Tag(name=factory.make_name("tag"), definition='true()')
+            tag = Tag(name=factory.make_name("tag"), definition="true()")
             tag.save()
 
         # A call has been scheduled to populate tags.
@@ -304,26 +321,31 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
         self.assertThat(calls, HasLength(1))
         [call] = calls
         self.assertThat(
-            call, MatchesAll(
+            call,
+            MatchesAll(
                 IsInstance(DelayedCall),
                 MatchesStructure.byEquality(
-                    time=0, func=deferToDatabase,
-                    args=(populate_tags, tag), kw={}),
+                    time=0,
+                    func=deferToDatabase,
+                    args=(populate_tags, tag),
+                    kw={},
+                ),
                 first_only=True,
-            ))
+            ),
+        )
 
     def test__populate_in_region_when_no_clients(self):
         clock = self.patch(tag_module, "reactor", Clock())
 
         # Ensure there are no clients.
-        self.patch(rpc_module, 'getAllClients').return_value = []
+        self.patch(rpc_module, "getAllClients").return_value = []
 
         with post_commit_hooks:
             node = factory.make_Node()
             # Make a Tag by hand to trigger normal node population handling
             # behaviour rather than the (generally more convenient) default
             # behaviour in the factory.
-            tag = Tag(name=factory.make_name("tag"), definition='true()')
+            tag = Tag(name=factory.make_name("tag"), definition="true()")
             tag.save()
 
         # A call has been scheduled to populate tags.
@@ -335,7 +357,6 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
 
 
 class TestPopulateTagsForSingleNode(MAASServerTestCase):
-
     def test_updates_node_with_all_applicable_tags(self):
         node = factory.make_Node()
         make_lshw_result(node, b"<foo/>")
@@ -344,10 +365,11 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
             factory.make_Tag("foo", "/foo", populate=False),
             factory.make_Tag("bar", "//lldp:bar", populate=False),
             factory.make_Tag("baz", "/foo/bar", populate=False),
-            ]
+        ]
         populate_tags_for_single_node(tags, node)
         self.assertItemsEqual(
-            ["foo", "bar"], [tag.name for tag in node.tags.all()])
+            ["foo", "bar"], [tag.name for tag in node.tags.all()]
+        )
 
     def test_ignores_tags_with_unrecognised_namespaces(self):
         node = factory.make_Node()
@@ -355,10 +377,11 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         tags = [
             factory.make_Tag("foo", "/foo", populate=False),
             factory.make_Tag("lou", "//nge:bar", populate=False),
-            ]
+        ]
         populate_tags_for_single_node(tags, node)  # Look mom, no exception!
         self.assertSequenceEqual(
-            ["foo"], [tag.name for tag in node.tags.all()])
+            ["foo"], [tag.name for tag in node.tags.all()]
+        )
 
     def test_ignores_tags_without_definition(self):
         node = factory.make_Node()
@@ -367,14 +390,14 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
             factory.make_Tag("foo", "/foo", populate=False),
             Tag(name="empty", definition=""),
             Tag(name="null", definition=None),
-            ]
+        ]
         populate_tags_for_single_node(tags, node)  # Look mom, no exception!
         self.assertSequenceEqual(
-            ["foo"], [tag.name for tag in node.tags.all()])
+            ["foo"], [tag.name for tag in node.tags.all()]
+        )
 
 
 class TestPopulateTagForMultipleNodes(MAASServerTestCase):
-
     def test_updates_nodes_with_tag(self):
         nodes = [factory.make_Node() for _ in range(5)]
         for node in nodes[0:2]:
@@ -383,4 +406,5 @@ class TestPopulateTagForMultipleNodes(MAASServerTestCase):
         populate_tag_for_multiple_nodes(tag, nodes)
         self.assertItemsEqual(
             [node.hostname for node in nodes[0:2]],
-            [node.hostname for node in Node.objects.filter(tags__name='bar')])
+            [node.hostname for node in Node.objects.filter(tags__name="bar")],
+        )

@@ -6,11 +6,7 @@
 __all__ = []
 
 import contextlib
-from operator import (
-    delitem,
-    methodcaller,
-    setitem,
-)
+from operator import delitem, methodcaller, setitem
 import os.path
 import sqlite3
 from unittest.mock import sentinel
@@ -22,10 +18,7 @@ import formencode.validators
 import maastesting
 from maastesting.factory import factory
 from maastesting.fixtures import ImportErrorFixture
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import (
     ClusterConfiguration,
@@ -71,17 +64,21 @@ class ExampleConfiguration(Configuration, metaclass=ExampleConfigurationMeta):
     """
 
     something = ConfigurationOption(
-        "something", "Something alright, don't know what, just something.",
-        formencode.validators.IPAddress(if_missing=sentinel.missing))
+        "something",
+        "Something alright, don't know what, just something.",
+        formencode.validators.IPAddress(if_missing=sentinel.missing),
+    )
 
 
 class ExampleConfigurationForDatabase(ExampleConfiguration):
     """An example configuration object using an SQLite3 database."""
+
     backend = ConfigurationDatabase
 
 
 class ExampleConfigurationForFile(ExampleConfiguration):
     """An example configuration object using a file."""
+
     backend = ConfigurationFile
 
 
@@ -95,26 +92,32 @@ class TestConfigurationMeta(MAASTestCase):
 
     def set_envvar(self, filepath=None):
         """Set the env. variable named by `ExampleConfiguration.envvar"."""
-        self.useFixture(EnvironmentVariableFixture(
-            self.example_configuration.envvar, filepath))
+        self.useFixture(
+            EnvironmentVariableFixture(
+                self.example_configuration.envvar, filepath
+            )
+        )
 
     def test_gets_filename_from_environment(self):
         dummy_filename = factory.make_name("config")
         self.set_envvar(dummy_filename)
         self.assertEqual(
-            dummy_filename, self.example_configuration.DEFAULT_FILENAME)
+            dummy_filename, self.example_configuration.DEFAULT_FILENAME
+        )
 
     def test_falls_back_to_default(self):
         self.set_envvar(None)
         self.assertEqual(
             get_data_path(self.example_configuration.default),
-            self.example_configuration.DEFAULT_FILENAME)
+            self.example_configuration.DEFAULT_FILENAME,
+        )
 
     def test_set(self):
         dummy_filename = factory.make_name("config")
         self.example_configuration.DEFAULT_FILENAME = dummy_filename
         self.assertEqual(
-            dummy_filename, self.example_configuration.DEFAULT_FILENAME)
+            dummy_filename, self.example_configuration.DEFAULT_FILENAME
+        )
 
     def test_delete(self):
         self.set_envvar(None)
@@ -123,7 +126,8 @@ class TestConfigurationMeta(MAASTestCase):
         del self.example_configuration.DEFAULT_FILENAME
         self.assertEqual(
             get_data_path(self.example_configuration.default),
-            self.example_configuration.DEFAULT_FILENAME)
+            self.example_configuration.DEFAULT_FILENAME,
+        )
         # The delete does not fail when called multiple times.
         del self.example_configuration.DEFAULT_FILENAME
 
@@ -142,7 +146,8 @@ class TestConfiguration(MAASTestCase):
     def test_cannot_set_attributes(self):
         config = Configuration({})
         expected_exception = ExpectedException(
-            AttributeError, "^'Configuration' object has no attribute 'foo'$")
+            AttributeError, "^'Configuration' object has no attribute 'foo'$"
+        )
         with expected_exception:
             config.foo = "bar"
 
@@ -155,14 +160,15 @@ class TestConfiguration(MAASTestCase):
             # The object returned from backend.open() has been used as the
             # context manager, providing `config`.
             backend_ctx = backend.open.return_value
-            self.assertThat(config.store, Is(
-                backend_ctx.__enter__.return_value))
+            self.assertThat(
+                config.store, Is(backend_ctx.__enter__.return_value)
+            )
             # We're within the context, as expected.
             self.assertThat(backend_ctx.__exit__, MockNotCalled())
         # The backend context has also been exited.
         self.assertThat(
-            backend_ctx.__exit__,
-            MockCalledOnceWith(None, None, None))
+            backend_ctx.__exit__, MockCalledOnceWith(None, None, None)
+        )
 
     def test_open_for_update_uses_backend_as_context_manager(self):
         config_file = self.make_file()
@@ -170,18 +176,20 @@ class TestConfiguration(MAASTestCase):
         with ExampleConfiguration.open_for_update(config_file) as config:
             # The backend was opened using open_for_update() too.
             self.assertThat(
-                backend.open_for_update, MockCalledOnceWith(config_file))
+                backend.open_for_update, MockCalledOnceWith(config_file)
+            )
             # The object returned from backend.open_for_update() has been used
             # as the context manager, providing `config`.
             backend_ctx = backend.open_for_update.return_value
-            self.assertThat(config.store, Is(
-                backend_ctx.__enter__.return_value))
+            self.assertThat(
+                config.store, Is(backend_ctx.__enter__.return_value)
+            )
             # We're within the context, as expected.
             self.assertThat(backend_ctx.__exit__, MockNotCalled())
         # The backend context has also been exited.
         self.assertThat(
-            backend_ctx.__exit__,
-            MockCalledOnceWith(None, None, None))
+            backend_ctx.__exit__, MockCalledOnceWith(None, None, None)
+        )
 
 
 class TestConfigurationOption(MAASTestCase):
@@ -211,7 +219,7 @@ class TestConfigurationOption(MAASTestCase):
     def test_getting_something_is_not_validated(self):
         # The value in the database is trusted.
         config = self.make_config()
-        example_value = factory.make_name('not-an-ip-address')
+        example_value = factory.make_name("not-an-ip-address")
         config.store[config.__class__.something.name] = example_value
         self.assertEqual(example_value, config.something)
 
@@ -245,8 +253,10 @@ class TestConfigurationDatabase(MAASTestCase):
                 cursor.execute(
                     "SELECT COUNT(*) FROM sqlite_master"
                     " WHERE type = 'table'"
-                    "   AND name = 'configuration'").fetchone(),
-                (1,))
+                    "   AND name = 'configuration'"
+                ).fetchone(),
+                (1,),
+            )
 
     def test_configuration_pristine(self):
         # A pristine configuration has no entries.
@@ -296,8 +306,7 @@ class TestConfigurationDatabase(MAASTestCase):
         with config as config:
             self.assertIsInstance(config, ConfigurationDatabase)
             with config.cursor() as cursor:
-                self.assertEqual(
-                    (1,), cursor.execute("SELECT 1").fetchone())
+                self.assertEqual((1,), cursor.execute("SELECT 1").fetchone())
         self.assertRaises(sqlite3.ProgrammingError, config.cursor)
 
     def test_open_permissions_new_database(self):
@@ -344,8 +353,9 @@ class TestConfigurationDatabase(MAASTestCase):
     def test_as_string(self):
         database = sqlite3.connect(":memory:")
         config = ConfigurationDatabase(database)
-        self.assertThat(str(config), Equals(
-            "ConfigurationDatabase(main=:memory:)"))
+        self.assertThat(
+            str(config), Equals("ConfigurationDatabase(main=:memory:)")
+        )
 
 
 class TestConfigurationDatabaseMutability(MAASTestCase):
@@ -387,8 +397,11 @@ class TestConfigurationFile(MAASTestCase):
         # A pristine configuration has no entries.
         config = ConfigurationFile(sentinel.filename)
         self.assertThat(
-            config, MatchesStructure.byEquality(
-                config={}, dirty=False, path=sentinel.filename))
+            config,
+            MatchesStructure.byEquality(
+                config={}, dirty=False, path=sentinel.filename
+            ),
+        )
 
     def test_adding_configuration_option(self):
         config = ConfigurationFile(sentinel.filename, mutable=True)
@@ -442,7 +455,8 @@ class TestConfigurationFile(MAASTestCase):
         error = self.assertRaises(ValueError, config.load)
         self.assertDocTestMatches(
             "Configuration in /.../config is not a mapping: [1, 2, 3]",
-            str(error))
+            str(error),
+        )
 
     def test_open_and_close(self):
         # ConfigurationFile.open() returns a context manager.
@@ -540,8 +554,9 @@ class TestConfigurationFile(MAASTestCase):
     def test_as_string(self):
         config_file = os.path.join(self.make_dir(), "config")
         config = ConfigurationFile(config_file)
-        self.assertThat(str(config), Equals(
-            "ConfigurationFile(%r)" % config_file))
+        self.assertThat(
+            str(config), Equals("ConfigurationFile(%r)" % config_file)
+        )
 
 
 class TestConfigurationFileMutability(MAASTestCase):
@@ -601,7 +616,8 @@ class TestClusterConfiguration(MAASTestCase):
     def test_set_maas_url_accepts_very_short_hostnames(self):
         config = ClusterConfiguration({})
         example_url = factory.make_simple_http_url(
-            netloc=factory.make_string(size=1))
+            netloc=factory.make_string(size=1)
+        )
         config.maas_url = example_url
         self.assertEqual([example_url], config.maas_url)
         self.assertEqual({"maas_url": [example_url]}, config.store)
@@ -609,14 +625,16 @@ class TestClusterConfiguration(MAASTestCase):
     def test_set_maas_url_rejects_bare_ipv6_addresses(self):
         config = ClusterConfiguration({})
         example_url = factory.make_simple_http_url(
-            netloc=factory.make_ipv6_address())
+            netloc=factory.make_ipv6_address()
+        )
         with ExpectedException(formencode.api.Invalid):
             config.maas_url = example_url
 
     def test_set_maas_url_accepts_ipv6_addresses_with_brackets(self):
         config = ClusterConfiguration({})
         example_url = factory.make_simple_http_url(
-            netloc="[%s]" % factory.make_ipv6_address())
+            netloc="[%s]" % factory.make_ipv6_address()
+        )
         config.maas_url = example_url
         self.assertEqual([example_url], config.maas_url)
         self.assertEqual({"maas_url": [example_url]}, config.store)
@@ -640,7 +658,8 @@ class TestClusterConfiguration(MAASTestCase):
         config = ClusterConfiguration({})
         self.assertEqual(
             os.path.join(maas_root, "var/lib/maas/boot-resources/current"),
-            config.tftp_root)
+            config.tftp_root,
+        )
 
     def test_set_and_get_tftp_root(self):
         config = ClusterConfiguration({})
@@ -707,7 +726,7 @@ class TestConfig(MAASTestCase):
     """Tests for `maasserver.config`."""
 
     def test_is_dev_environment_returns_false(self):
-        self.useFixture(ImportErrorFixture('maastesting', 'root'))
+        self.useFixture(ImportErrorFixture("maastesting", "root"))
         self.assertFalse(is_dev_environment())
 
     def test_is_dev_environment_returns_true(self):

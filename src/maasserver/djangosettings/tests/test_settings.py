@@ -9,10 +9,7 @@ import os
 import types
 
 from django.db import connections
-from maasserver.djangosettings import (
-    find_settings,
-    import_settings,
-)
+from maasserver.djangosettings import find_settings, import_settings
 from maasserver.djangosettings.settings import (
     _get_local_timezone,
     _read_timezone,
@@ -21,11 +18,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
 from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 from testtools import TestCase
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    Is,
-)
+from testtools.matchers import ContainsDict, Equals, Is
 
 
 class TestSettingsHelpers(MAASServerTestCase):
@@ -56,47 +49,55 @@ class TestSettingsHelpers(MAASServerTestCase):
 
 
 class TestDatabaseConfiguration(MAASServerTestCase):
-
     def test_atomic_requests_are_enabled(self):
         # ATOMIC_REQUESTS *must* be set for the default connection.
         self.assertThat(
-            connections.databases, ContainsDict({
-                "default": ContainsDict({
-                    "ATOMIC_REQUESTS": Is(True),
-                }),
-            }),
+            connections.databases,
+            ContainsDict(
+                {"default": ContainsDict({"ATOMIC_REQUESTS": Is(True)})}
+            ),
         )
 
     def test_isolation_level_is_serializable(self):
         # Transactions *must* be SERIALIZABLE for the default connection.
         self.assertThat(
-            connections.databases, ContainsDict({
-                "default": ContainsDict({
-                    "OPTIONS": ContainsDict({
-                        "isolation_level": Equals(
-                            ISOLATION_LEVEL_REPEATABLE_READ),
-                    }),
-                }),
-            }),
+            connections.databases,
+            ContainsDict(
+                {
+                    "default": ContainsDict(
+                        {
+                            "OPTIONS": ContainsDict(
+                                {
+                                    "isolation_level": Equals(
+                                        ISOLATION_LEVEL_REPEATABLE_READ
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
+            ),
         )
 
 
 class TestTimezoneSettings(TestCase):
-
     def test_etc_timezone_exists(self):
         self.assertTrue(
-            os.path.isfile('/etc/timezone'),
+            os.path.isfile("/etc/timezone"),
             "If this assert fails, that means /etc/timezone was removed from "
-            "Ubuntu, and we need to use systemd APIs to get it instead.")
+            "Ubuntu, and we need to use systemd APIs to get it instead.",
+        )
 
     def test_read_timezone(self):
         timezone = _read_timezone()
         self.assertIsNotNone(timezone)
         self.assertTrue(
-            os.path.isfile(os.path.join(
-                '/', 'usr', 'share', 'zoneinfo', timezone)))
+            os.path.isfile(
+                os.path.join("/", "usr", "share", "zoneinfo", timezone)
+            )
+        )
 
     def get_local_timezone_falls_back_to_utc(self):
         # Force the file open to fail by passing an empty filename.
-        timezone = _get_local_timezone(tzfilename='')
-        self.assertTrue(timezone, Equals('UTC'))
+        timezone = _get_local_timezone(tzfilename="")
+        self.assertTrue(timezone, Equals("UTC"))

@@ -29,98 +29,97 @@ class TestProductMapping(MAASTestCase):
 
     def test_make_key_extracts_identifying_items(self):
         resource = make_boot_resource()
-        content_id = resource['content_id']
-        product_name = resource['product_name']
-        version_name = resource['version_name']
+        content_id = resource["content_id"]
+        product_name = resource["product_name"]
+        version_name = resource["version_name"]
         self.assertEqual(
             (content_id, product_name, version_name),
-            ProductMapping.make_key(resource))
+            ProductMapping.make_key(resource),
+        )
 
     def test_make_key_ignores_other_items(self):
         resource = make_boot_resource()
-        resource['other_item'] = factory.make_name('other')
+        resource["other_item"] = factory.make_name("other")
         self.assertEqual(
             (
-                resource['content_id'],
-                resource['product_name'],
-                resource['version_name'],
+                resource["content_id"],
+                resource["product_name"],
+                resource["version_name"],
             ),
-            ProductMapping.make_key(resource))
+            ProductMapping.make_key(resource),
+        )
 
     def test_make_key_fails_if_key_missing(self):
         resource = make_boot_resource()
-        del resource['version_name']
-        self.assertRaises(
-            KeyError,
-            ProductMapping.make_key, resource)
+        del resource["version_name"]
+        self.assertRaises(KeyError, ProductMapping.make_key, resource)
 
     def test_add_creates_subarches_list_if_needed(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource, subarch)
         self.assertEqual(
-            {product_dict.make_key(resource): [subarch]},
-            product_dict.mapping)
+            {product_dict.make_key(resource): [subarch]}, product_dict.mapping
+        )
 
     def test_add_appends_to_existing_list(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarches = [factory.make_name('subarch') for _ in range(2)]
+        subarches = [factory.make_name("subarch") for _ in range(2)]
         for subarch in subarches:
             product_dict.add(resource, subarch)
         self.assertEqual(
-            {product_dict.make_key(resource): subarches},
-            product_dict.mapping)
+            {product_dict.make_key(resource): subarches}, product_dict.mapping
+        )
 
     def test_contains_returns_true_for_stored_item(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource, subarch)
         self.assertTrue(product_dict.contains(resource))
 
     def test_contains_returns_false_for_unstored_item(self):
-        self.assertFalse(
-            ProductMapping().contains(make_boot_resource()))
+        self.assertFalse(ProductMapping().contains(make_boot_resource()))
 
     def test_contains_ignores_similar_items(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource.copy(), subarch)
-        resource['product_name'] = factory.make_name('other')
+        resource["product_name"] = factory.make_name("other")
         self.assertFalse(product_dict.contains(resource))
 
     def test_contains_ignores_extraneous_keys(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource.copy(), subarch)
-        resource['other_item'] = factory.make_name('other')
+        resource["other_item"] = factory.make_name("other")
         self.assertTrue(product_dict.contains(resource))
 
     def test_get_returns_stored_item(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource, subarch)
         self.assertEqual([subarch], product_dict.get(resource))
 
     def test_get_fails_for_unstored_item(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource.copy(), subarch)
-        resource['content_id'] = factory.make_name('other')
+        resource["content_id"] = factory.make_name("other")
         self.assertRaises(KeyError, product_dict.get, resource)
 
     def test_get_ignores_extraneous_keys(self):
         product_dict = ProductMapping()
         resource = make_boot_resource()
-        subarch = factory.make_name('subarch')
+        subarch = factory.make_name("subarch")
         product_dict.add(resource, subarch)
-        resource['other_item'] = factory.make_name('other')
+        resource["other_item"] = factory.make_name("other")
         self.assertEqual([subarch], product_dict.get(resource))
 
 
@@ -138,12 +137,13 @@ class TestMapProducts(MAASTestCase):
         self.assertEqual(
             {
                 (
-                    resource['content_id'],
-                    resource['product_name'],
-                    resource['version_name'],
-                ): [image.subarch],
+                    resource["content_id"],
+                    resource["product_name"],
+                    resource["version_name"],
+                ): [image.subarch]
             },
-            map_products(boot_dict).mapping)
+            map_products(boot_dict).mapping,
+        )
 
     def test_concatenates_similar_resources(self):
         image1 = make_image_spec()
@@ -153,16 +153,16 @@ class TestMapProducts(MAASTestCase):
         # Create two images in boot_dict, both containing the same resource.
         for image in [image1, image2]:
             set_resource(
-                boot_dict=boot_dict, resource=resource.copy(),
-                image_spec=image)
+                boot_dict=boot_dict, resource=resource.copy(), image_spec=image
+            )
 
         products_mapping = map_products(boot_dict)
         key = (
-            resource['content_id'],
-            resource['product_name'],
-            resource['version_name'],
-            )
+            resource["content_id"],
+            resource["product_name"],
+            resource["version_name"],
+        )
         self.assertEqual([key], list(products_mapping.mapping))
         self.assertItemsEqual(
-            [image1.subarch, image2.subarch],
-            products_mapping.get(resource))
+            [image1.subarch, image2.subarch], products_mapping.get(resource)
+        )

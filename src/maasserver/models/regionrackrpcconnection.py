@@ -3,14 +3,9 @@
 
 """RegionRackRPCConnection object."""
 
-__all__ = [
-    "RegionRackRPCConnection",
-    ]
+__all__ = ["RegionRackRPCConnection"]
 
-from django.db.models import (
-    CASCADE,
-    ForeignKey,
-)
+from django.db.models import CASCADE, ForeignKey
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import RackController
@@ -36,11 +31,20 @@ class RegionRackRPCConnection(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed recognize this model."""
+
         unique_together = ("endpoint", "rack_controller")
 
     endpoint = ForeignKey(
-        RegionControllerProcessEndpoint, null=False, blank=False,
-        related_name="connections", on_delete=CASCADE)
+        RegionControllerProcessEndpoint,
+        null=False,
+        blank=False,
+        related_name="connections",
+        on_delete=CASCADE,
+    )
     rack_controller = ForeignKey(
-        RackController, null=False, blank=False,
-        related_name="connections", on_delete=CASCADE)
+        RackController,
+        null=False,
+        blank=False,
+        related_name="connections",
+        on_delete=CASCADE,
+    )

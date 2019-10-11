@@ -3,9 +3,7 @@
 
 """Ubuntu Operating System."""
 
-__all__ = [
-    "UbuntuOS",
-    ]
+__all__ = ["UbuntuOS"]
 
 from distro_info import UbuntuDistroInfo
 from provisioningserver.drivers.osystem import (
@@ -30,7 +28,7 @@ class UbuntuOS(OperatingSystem):
             BOOT_IMAGE_PURPOSE.INSTALL,
             BOOT_IMAGE_PURPOSE.XINSTALL,
             BOOT_IMAGE_PURPOSE.DISKLESS,
-            ]
+        ]
 
     def is_release_supported(self, release):
         """Return True when the release is supported, False otherwise."""
@@ -41,7 +39,7 @@ class UbuntuOS(OperatingSystem):
         """Return the latest Ubuntu LTS release."""
         # XXX ltrager 2018-01-08 - Force the default to be bionic before
         # bionic release for testing with MAAS 2.4.0.
-        return 'bionic'
+        return "bionic"
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
@@ -53,10 +51,13 @@ class UbuntuOS(OperatingSystem):
         only exists on Ubuntu, because that is the only operating
         system that supports commissioning.
         """
-        unsupported_releases = ['precise', 'trusty']
-        return [name for name in self.ubuntu_distro_info.supported()
-                if name not in unsupported_releases
-                if self.ubuntu_distro_info.is_lts(name)]
+        unsupported_releases = ["precise", "trusty"]
+        return [
+            name
+            for name in self.ubuntu_distro_info.supported()
+            if name not in unsupported_releases
+            if self.ubuntu_distro_info.is_lts(name)
+        ]
 
     def get_default_commissioning_release(self):
         """Gets the default commissioning release for Ubuntu. This only exists
@@ -77,7 +78,7 @@ class UbuntuOS(OperatingSystem):
             row_dict = row
             if not isinstance(row, dict):
                 row_dict = row.__dict__
-            if row_dict['series'] == release:
+            if row_dict["series"] == release:
                 return row
         return None
 
@@ -98,4 +99,5 @@ class UbuntuOS(OperatingSystem):
         :return: tuple with name of root image and image type
         """
         return self._find_image(
-            arch, subarch, release, label, tgz=True, squashfs=True)
+            arch, subarch, release, label, tgz=True, squashfs=True
+        )

@@ -3,9 +3,7 @@
 
 """Test helpers for boot-image parameters."""
 
-__all__ = [
-    'make_boot_image_params',
-    ]
+__all__ = ["make_boot_image_params"]
 
 from maastesting.factory import factory
 
@@ -18,14 +16,14 @@ def make_boot_image_params():
     sub-architecture, Ubuntu release, boot purpose, and release label.
     """
     return dict(
-        osystem=factory.make_name('osystem'),
-        architecture=factory.make_name('architecture'),
-        subarchitecture=factory.make_name('subarchitecture'),
-        release=factory.make_name('release'),
-        label=factory.make_name('label'),
-        purpose=factory.make_name('purpose'),
+        osystem=factory.make_name("osystem"),
+        architecture=factory.make_name("architecture"),
+        subarchitecture=factory.make_name("subarchitecture"),
+        release=factory.make_name("release"),
+        label=factory.make_name("label"),
+        purpose=factory.make_name("purpose"),
         supported_subarches=factory.make_name("sup_subarches"),
-        )
+    )
 
 
 def make_boot_image_storage_params():
@@ -36,32 +34,33 @@ def make_boot_image_storage_params():
     and release label.
     """
     return dict(
-        osystem=factory.make_name('osystem'),
-        architecture=factory.make_name('architecture'),
-        subarchitecture=factory.make_name('subarchitecture'),
-        release=factory.make_name('release'),
-        label=factory.make_name('label'),
-        )
+        osystem=factory.make_name("osystem"),
+        architecture=factory.make_name("architecture"),
+        subarchitecture=factory.make_name("subarchitecture"),
+        release=factory.make_name("release"),
+        label=factory.make_name("label"),
+    )
 
 
-def make_image(params, purpose, metadata=None, xinstall_path=None,
-               xinstall_type=None):
+def make_image(
+    params, purpose, metadata=None, xinstall_path=None, xinstall_type=None
+):
     """Describe an image as a dict similar to what `list_boot_images` returns.
 
     The `params` are as returned from `make_boot_image_storage_params`.
     """
     image = params.copy()
-    image['purpose'] = purpose
+    image["purpose"] = purpose
     if metadata is not None:
         image.update(metadata)
-    if purpose == 'xinstall':
+    if purpose == "xinstall":
         if xinstall_path is None:
-            xinstall_path = 'root-tgz'
+            xinstall_path = "root-tgz"
         if xinstall_type is None:
-            xinstall_type = 'tgz'
-        image['xinstall_path'] = xinstall_path
-        image['xinstall_type'] = xinstall_type
+            xinstall_type = "tgz"
+        image["xinstall_path"] = xinstall_path
+        image["xinstall_type"] = xinstall_type
     else:
-        image['xinstall_path'] = ''
-        image['xinstall_type'] = ''
+        image["xinstall_path"] = ""
+        image["xinstall_type"] = ""
     return image

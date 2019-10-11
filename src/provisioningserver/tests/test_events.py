@@ -3,14 +3,10 @@
 
 """Test event catalog."""
 
-__all__ = [
-    ]
+__all__ = []
 
 import random
-from unittest.mock import (
-    ANY,
-    sentinel,
-)
+from unittest.mock import ANY, sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -18,10 +14,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
@@ -34,35 +27,22 @@ from provisioningserver.events import (
     send_rack_event,
 )
 from provisioningserver.rpc import region
-from provisioningserver.rpc.exceptions import (
-    NoSuchEventType,
-    NoSuchNode,
-)
+from provisioningserver.rpc.exceptions import NoSuchEventType, NoSuchNode
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.testing import MAASIDFixture
 from testtools import ExpectedException
-from testtools.matchers import (
-    AllMatch,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-)
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from testtools.matchers import AllMatch, Equals, HasLength, Is, IsInstance
+from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 
 class TestEvents(MAASTestCase):
-
     def test_every_event_has_details(self):
         all_events = map_enum(EVENT_TYPES)
         self.assertItemsEqual(all_events.values(), EVENT_DETAILS.keys())
         self.assertThat(
-            EVENT_DETAILS.values(), AllMatch(IsInstance(EventDetail)))
+            EVENT_DETAILS.values(), AllMatch(IsInstance(EventDetail))
+        )
 
 
 class TestSendEventNode(MAASTestCase):
@@ -71,11 +51,18 @@ class TestSendEventNode(MAASTestCase):
     def test__calls_singleton_hub_logByID_directly(self):
         self.patch(nodeEventHub, "logByID").return_value = sentinel.d
         result = send_node_event(
-            sentinel.event_type, sentinel.system_id, sentinel.hostname,
-            sentinel.description)
+            sentinel.event_type,
+            sentinel.system_id,
+            sentinel.hostname,
+            sentinel.description,
+        )
         self.assertThat(result, Is(sentinel.d))
-        self.assertThat(nodeEventHub.logByID, MockCalledOnceWith(
-            sentinel.event_type, sentinel.system_id, sentinel.description))
+        self.assertThat(
+            nodeEventHub.logByID,
+            MockCalledOnceWith(
+                sentinel.event_type, sentinel.system_id, sentinel.description
+            ),
+        )
 
 
 class TestSendEventNodeMACAddress(MAASTestCase):
@@ -84,10 +71,15 @@ class TestSendEventNodeMACAddress(MAASTestCase):
     def test__calls_singleton_hub_logByMAC_directly(self):
         self.patch(nodeEventHub, "logByMAC").return_value = sentinel.d
         result = send_node_event_mac_address(
-            sentinel.event_type, sentinel.mac_address, sentinel.description)
+            sentinel.event_type, sentinel.mac_address, sentinel.description
+        )
         self.assertThat(result, Is(sentinel.d))
-        self.assertThat(nodeEventHub.logByMAC, MockCalledOnceWith(
-            sentinel.event_type, sentinel.mac_address, sentinel.description))
+        self.assertThat(
+            nodeEventHub.logByMAC,
+            MockCalledOnceWith(
+                sentinel.event_type, sentinel.mac_address, sentinel.description
+            ),
+        )
 
 
 class TestSendEventNodeIPAddress(MAASTestCase):
@@ -96,10 +88,15 @@ class TestSendEventNodeIPAddress(MAASTestCase):
     def test__calls_singleton_hub_logByIP_directly(self):
         self.patch(nodeEventHub, "logByIP").return_value = sentinel.d
         result = send_node_event_ip_address(
-            sentinel.event_type, sentinel.ip_address, sentinel.description)
+            sentinel.event_type, sentinel.ip_address, sentinel.description
+        )
         self.assertThat(result, Is(sentinel.d))
-        self.assertThat(nodeEventHub.logByIP, MockCalledOnceWith(
-            sentinel.event_type, sentinel.ip_address, sentinel.description))
+        self.assertThat(
+            nodeEventHub.logByIP,
+            MockCalledOnceWith(
+                sentinel.event_type, sentinel.ip_address, sentinel.description
+            ),
+        )
 
 
 class TestSendRackEvent(MAASTestCase):
@@ -111,8 +108,12 @@ class TestSendRackEvent(MAASTestCase):
         self.useFixture(MAASIDFixture(rack_system_id))
         result = send_rack_event(sentinel.event_type, sentinel.description)
         self.assertThat(result, Is(sentinel.d))
-        self.assertThat(nodeEventHub.logByID, MockCalledOnceWith(
-            sentinel.event_type, rack_system_id, sentinel.description))
+        self.assertThat(
+            nodeEventHub.logByID,
+            MockCalledOnceWith(
+                sentinel.event_type, rack_system_id, sentinel.description
+            ),
+        )
 
 
 class TestNodeEventHubLogByID(MAASTestCase):
@@ -123,7 +124,8 @@ class TestNodeEventHubLogByID(MAASTestCase):
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
-            region.SendEvent, region.RegisterEventType)
+            region.SendEvent, region.RegisterEventType
+        )
         protocol.SendEvent.side_effect = side_effect
         return protocol, connecting
 
@@ -132,25 +134,31 @@ class TestNodeEventHubLogByID(MAASTestCase):
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
-        system_id = factory.make_name('system_id')
-        description = factory.make_name('description')
+        system_id = factory.make_name("system_id")
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByID(event_name, system_id, description)
 
         self.assertThat(
-            protocol.SendEvent, MockCalledOnceWith(
-                ANY, type_name=event_name, system_id=system_id,
-                description=description))
+            protocol.SendEvent,
+            MockCalledOnceWith(
+                ANY,
+                type_name=event_name,
+                system_id=system_id,
+                description=description,
+            ),
+        )
 
     @inlineCallbacks
     def test__event_type_is_registered_on_first_call_only(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), succeed({})])
+            side_effect=[succeed({}), succeed({})]
+        )
         self.addCleanup((yield connecting))
 
-        system_id = factory.make_name('system_id')
-        description = factory.make_name('description')
+        system_id = factory.make_name("system_id")
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_detail = EVENT_DETAILS[event_name]
         event_hub = NodeEventHub()
@@ -159,9 +167,14 @@ class TestNodeEventHubLogByID(MAASTestCase):
         # sent to the region.
         yield event_hub.logByID(event_name, system_id, description)
         self.assertThat(
-            protocol.RegisterEventType, MockCalledOnceWith(
-                ANY, name=event_name, description=event_detail.description,
-                level=event_detail.level))
+            protocol.RegisterEventType,
+            MockCalledOnceWith(
+                ANY,
+                name=event_name,
+                description=event_detail.description,
+                level=event_detail.level,
+            ),
+        )
         self.assertThat(protocol.SendEvent, MockCalledOnce())
 
         # Reset RPC call handlers.
@@ -177,11 +190,12 @@ class TestNodeEventHubLogByID(MAASTestCase):
     @inlineCallbacks
     def test__updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), fail(NoSuchEventType())])
+            side_effect=[succeed({}), fail(NoSuchEventType())]
+        )
         self.addCleanup((yield connecting))
 
-        system_id = factory.make_name('system_id')
-        description = factory.make_name('description')
+        system_id = factory.make_name("system_id")
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_hub = NodeEventHub()
 
@@ -204,7 +218,8 @@ class TestSendEventMACAddress(MAASTestCase):
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
-            region.SendEventMACAddress, region.RegisterEventType)
+            region.SendEventMACAddress, region.RegisterEventType
+        )
         protocol.SendEventMACAddress.side_effect = side_effect
         return protocol, connecting
 
@@ -214,32 +229,43 @@ class TestSendEventMACAddress(MAASTestCase):
         self.addCleanup((yield connecting))
 
         mac_address = factory.make_mac_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByMAC(event_name, mac_address, description)
 
         self.assertThat(
-            protocol.SendEventMACAddress, MockCalledOnceWith(
-                ANY, type_name=event_name, mac_address=mac_address,
-                description=description))
+            protocol.SendEventMACAddress,
+            MockCalledOnceWith(
+                ANY,
+                type_name=event_name,
+                mac_address=mac_address,
+                description=description,
+            ),
+        )
 
     @inlineCallbacks
     def test__failure_is_suppressed_if_node_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[fail(NoSuchNode())])
+            side_effect=[fail(NoSuchNode())]
+        )
         self.addCleanup((yield connecting))
 
         mac_address = factory.make_mac_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByMAC(event_name, mac_address, description)
 
         self.assertThat(
-            protocol.SendEventMACAddress, MockCalledOnceWith(
-                ANY, type_name=event_name, mac_address=mac_address,
-                description=description))
+            protocol.SendEventMACAddress,
+            MockCalledOnceWith(
+                ANY,
+                type_name=event_name,
+                mac_address=mac_address,
+                description=description,
+            ),
+        )
 
     @inlineCallbacks
     def test__event_type_is_registered_on_first_call_only(self):
@@ -247,7 +273,7 @@ class TestSendEventMACAddress(MAASTestCase):
         self.addCleanup((yield connecting))
 
         mac_address = factory.make_mac_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_detail = EVENT_DETAILS[event_name]
         event_hub = NodeEventHub()
@@ -256,9 +282,14 @@ class TestSendEventMACAddress(MAASTestCase):
         # sent to the region.
         yield event_hub.logByMAC(event_name, mac_address, description)
         self.assertThat(
-            protocol.RegisterEventType, MockCalledOnceWith(
-                ANY, name=event_name, description=event_detail.description,
-                level=event_detail.level))
+            protocol.RegisterEventType,
+            MockCalledOnceWith(
+                ANY,
+                name=event_name,
+                description=event_detail.description,
+                level=event_detail.level,
+            ),
+        )
         self.assertThat(protocol.SendEventMACAddress, MockCalledOnce())
 
         # Reset RPC call handlers.
@@ -274,11 +305,12 @@ class TestSendEventMACAddress(MAASTestCase):
     @inlineCallbacks
     def test__updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), fail(NoSuchEventType())])
+            side_effect=[succeed({}), fail(NoSuchEventType())]
+        )
         self.addCleanup((yield connecting))
 
         mac_address = factory.make_mac_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_hub = NodeEventHub()
 
@@ -301,7 +333,8 @@ class TestSendEventIPAddress(MAASTestCase):
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
-            region.SendEventIPAddress, region.RegisterEventType)
+            region.SendEventIPAddress, region.RegisterEventType
+        )
         protocol.SendEventIPAddress.side_effect = side_effect
         return protocol, connecting
 
@@ -311,32 +344,43 @@ class TestSendEventIPAddress(MAASTestCase):
         self.addCleanup((yield connecting))
 
         ip_address = factory.make_ip_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByIP(event_name, ip_address, description)
 
         self.assertThat(
-            protocol.SendEventIPAddress, MockCalledOnceWith(
-                ANY, type_name=event_name, ip_address=ip_address,
-                description=description))
+            protocol.SendEventIPAddress,
+            MockCalledOnceWith(
+                ANY,
+                type_name=event_name,
+                ip_address=ip_address,
+                description=description,
+            ),
+        )
 
     @inlineCallbacks
     def test__failure_is_suppressed_if_node_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[fail(NoSuchNode())])
+            side_effect=[fail(NoSuchNode())]
+        )
         self.addCleanup((yield connecting))
 
         ip_address = factory.make_ip_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByIP(event_name, ip_address, description)
 
         self.assertThat(
-            protocol.SendEventIPAddress, MockCalledOnceWith(
-                ANY, type_name=event_name, ip_address=ip_address,
-                description=description))
+            protocol.SendEventIPAddress,
+            MockCalledOnceWith(
+                ANY,
+                type_name=event_name,
+                ip_address=ip_address,
+                description=description,
+            ),
+        )
 
     @inlineCallbacks
     def test__event_type_is_registered_on_first_call_only(self):
@@ -344,7 +388,7 @@ class TestSendEventIPAddress(MAASTestCase):
         self.addCleanup((yield connecting))
 
         ip_address = factory.make_ip_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_detail = EVENT_DETAILS[event_name]
         event_hub = NodeEventHub()
@@ -353,9 +397,14 @@ class TestSendEventIPAddress(MAASTestCase):
         # sent to the region.
         yield event_hub.logByIP(event_name, ip_address, description)
         self.assertThat(
-            protocol.RegisterEventType, MockCalledOnceWith(
-                ANY, name=event_name, description=event_detail.description,
-                level=event_detail.level))
+            protocol.RegisterEventType,
+            MockCalledOnceWith(
+                ANY,
+                name=event_name,
+                description=event_detail.description,
+                level=event_detail.level,
+            ),
+        )
         self.assertThat(protocol.SendEventIPAddress, MockCalledOnce())
 
         # Reset RPC call handlers.
@@ -371,11 +420,12 @@ class TestSendEventIPAddress(MAASTestCase):
     @inlineCallbacks
     def test__updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), fail(NoSuchEventType())])
+            side_effect=[succeed({}), fail(NoSuchEventType())]
+        )
         self.addCleanup((yield connecting))
 
         ip_address = factory.make_ip_address()
-        description = factory.make_name('description')
+        description = factory.make_name("description")
         event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_hub = NodeEventHub()
 

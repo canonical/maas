@@ -10,7 +10,6 @@ from provisioningserver.drivers.nos import flexswitch as flexswitch_module
 
 
 class TestFlexswitchNOSDriver(MAASTestCase):
-
     def test_is_switch_supported_not(self):
         driver = flexswitch_module.FlexswitchNOSDriver()
         self.assertFalse(driver.is_switch_supported("Foo", "bar-v1"))

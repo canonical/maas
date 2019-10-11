@@ -11,21 +11,12 @@ import os.path
 import random
 from shutil import rmtree
 import stat
-from subprocess import (
-    CalledProcessError,
-    PIPE,
-)
+from subprocess import CalledProcessError, PIPE
 import tempfile
 import time
 import tokenize
 import types
-from unittest.mock import (
-    ANY,
-    call,
-    create_autospec,
-    Mock,
-    sentinel,
-)
+from unittest.mock import ANY, call, create_autospec, Mock, sentinel
 
 from maastesting import root
 from maastesting.factory import factory
@@ -40,10 +31,7 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
-from provisioningserver.path import (
-    get_data_path,
-    get_tentative_data_path,
-)
+from provisioningserver.path import get_data_path, get_tentative_data_path
 from provisioningserver.utils.fs import (
     atomic_copy,
     atomic_delete,
@@ -113,19 +101,19 @@ class TestAtomicWrite(MAASTestCase):
         filename = self.make_file()
         atomic_write(factory.make_bytes(), filename, overwrite=False)
         self.assertEqual(
-            [os.path.basename(filename)],
-            os.listdir(os.path.dirname(filename)))
+            [os.path.basename(filename)], os.listdir(os.path.dirname(filename))
+        )
 
     def test_atomic_write_does_not_leak_temp_file_on_failure(self):
         # If the overwrite fails, atomic_write does not leak its
         # temporary file.
-        self.patch(fs_module, 'rename', Mock(side_effect=OSError()))
+        self.patch(fs_module, "rename", Mock(side_effect=OSError()))
         filename = self.make_file()
         with ExpectedException(OSError):
             atomic_write(factory.make_bytes(), filename)
         self.assertEqual(
-            [os.path.basename(filename)],
-            os.listdir(os.path.dirname(filename)))
+            [os.path.basename(filename)], os.listdir(os.path.dirname(filename))
+        )
 
     def test_atomic_write_sets_permissions(self):
         atomic_file = self.make_file()
@@ -144,21 +132,21 @@ class TestAtomicWrite(MAASTestCase):
             """Stub for os.rename: get source file's access mode."""
             recorded_modes.append(os.stat(source).st_mode)
 
-        self.patch(fs_module, 'rename', Mock(side_effect=record_mode))
+        self.patch(fs_module, "rename", Mock(side_effect=record_mode))
         playground = self.make_dir()
-        atomic_file = os.path.join(playground, factory.make_name('atomic'))
+        atomic_file = os.path.join(playground, factory.make_name("atomic"))
         mode = 0o323
         atomic_write(factory.make_bytes(), atomic_file, mode=mode)
         [recorded_mode] = recorded_modes
         self.assertEqual(mode, stat.S_IMODE(recorded_mode))
 
     def test_atomic_write_preserves_ownership_before_moving_into_place(self):
-        atomic_file = self.make_file('atomic')
+        atomic_file = self.make_file("atomic")
 
-        self.patch(fs_module, 'isfile').return_value = True
-        self.patch(fs_module, 'chown')
-        self.patch(fs_module, 'rename')
-        self.patch(fs_module, 'stat')
+        self.patch(fs_module, "isfile").return_value = True
+        self.patch(fs_module, "chown")
+        self.patch(fs_module, "rename")
+        self.patch(fs_module, "stat")
 
         ret_stat = fs_module.stat.return_value
         ret_stat.st_uid = sentinel.uid
@@ -168,8 +156,10 @@ class TestAtomicWrite(MAASTestCase):
         atomic_write(factory.make_bytes(), atomic_file)
 
         self.assertThat(fs_module.stat, MockCalledOnceWith(atomic_file))
-        self.assertThat(fs_module.chown, MockCalledOnceWith(
-            ANY, sentinel.uid, sentinel.gid))
+        self.assertThat(
+            fs_module.chown,
+            MockCalledOnceWith(ANY, sentinel.uid, sentinel.gid),
+        )
 
     def test_atomic_write_sets_OSError_filename_if_undefined(self):
         # When the filename attribute of an OSError is undefined when
@@ -181,8 +171,8 @@ class TestAtomicWrite(MAASTestCase):
         filename = os.path.join("directory", "basename")
         error = self.assertRaises(OSError, atomic_write, b"content", filename)
         self.assertEqual(
-            os.path.join("directory", ".basename.XXXXXX.tmp"),
-            error.filename)
+            os.path.join("directory", ".basename.XXXXXX.tmp"), error.filename
+        )
 
     def test_atomic_write_does_not_set_OSError_filename_if_defined(self):
         # When the filename attribute of an OSError is defined when attempting
@@ -192,18 +182,18 @@ class TestAtomicWrite(MAASTestCase):
         mock_mkstemp.side_effect.filename = factory.make_name("filename")
         filename = os.path.join("directory", "basename")
         error = self.assertRaises(OSError, atomic_write, b"content", filename)
-        self.assertEqual(
-            mock_mkstemp.side_effect.filename,
-            error.filename)
+        self.assertEqual(mock_mkstemp.side_effect.filename, error.filename)
 
     def test_atomic_write_rejects_non_bytes_contents(self):
         self.assertRaises(
-            TypeError, atomic_write, factory.make_string(),
-            factory.make_string())
+            TypeError,
+            atomic_write,
+            factory.make_string(),
+            factory.make_string(),
+        )
 
 
 class TestAtomicCopy(MAASTestCase):
-
     def test_integration(self):
         loader_contents = factory.make_bytes()
         loader = self.make_file(contents=loader_contents)
@@ -215,7 +205,7 @@ class TestAtomicCopy(MAASTestCase):
         contents = factory.make_bytes()
         loader = self.make_file(contents=contents)
         install_dir = self.make_dir()
-        dest = os.path.join(install_dir, factory.make_name('loader'))
+        dest = os.path.join(install_dir, factory.make_name("loader"))
         atomic_copy(loader, dest)
         self.assertThat(dest, FileContains(contents))
 
@@ -240,9 +230,10 @@ class TestAtomicCopy(MAASTestCase):
         contents = factory.make_bytes()
         loader = self.make_file(contents=contents)
         dest = self.make_file(contents="Old contents")
-        temp_file = '%s.new' % dest
+        temp_file = "%s.new" % dest
         factory.make_file(
-            os.path.dirname(temp_file), name=os.path.basename(temp_file))
+            os.path.dirname(temp_file), name=os.path.basename(temp_file)
+        )
         atomic_copy(loader, dest)
         self.assertThat(dest, FileContains(contents))
 
@@ -286,41 +277,41 @@ class TestAtomicSymlink(MAASTestCase):
     def test_atomic_symlink_creates_symlink(self):
         filename = self.make_file(contents=factory.make_string())
         target_dir = self.make_dir()
-        link_name = factory.make_name('link')
+        link_name = factory.make_name("link")
         target = os.path.join(target_dir, link_name)
         atomic_symlink(filename, target)
         self.assertTrue(
-            os.path.islink(target), "atomic_symlink didn't create a symlink")
+            os.path.islink(target), "atomic_symlink didn't create a symlink"
+        )
         self.assertThat(target, SamePath(filename))
 
     def test_atomic_symlink_overwrites_dest_file(self):
         filename = self.make_file(contents=factory.make_string())
         target_dir = self.make_dir()
-        link_name = factory.make_name('link')
+        link_name = factory.make_name("link")
         # Create a file that will be overwritten.
         factory.make_file(location=target_dir, name=link_name)
         target = os.path.join(target_dir, link_name)
         atomic_symlink(filename, target)
         self.assertTrue(
-            os.path.islink(target), "atomic_symlink didn't create a symlink")
+            os.path.islink(target), "atomic_symlink didn't create a symlink"
+        )
         self.assertThat(target, SamePath(filename))
 
     def test_atomic_symlink_does_not_leak_temp_file_if_failure(self):
         # In the face of failure, no temp file is leaked.
-        self.patch(os, 'rename', Mock(side_effect=OSError()))
+        self.patch(os, "rename", Mock(side_effect=OSError()))
         filename = self.make_file()
         target_dir = self.make_dir()
-        link_name = factory.make_name('link')
+        link_name = factory.make_name("link")
         target = os.path.join(target_dir, link_name)
         with ExpectedException(OSError):
             atomic_symlink(filename, target)
-        self.assertEqual(
-            [],
-            os.listdir(target_dir))
+        self.assertEqual([], os.listdir(target_dir))
 
     def test_atomic_symlink_uses_relative_path(self):
         filename = self.make_file(contents=factory.make_string())
-        link_name = factory.make_name('link')
+        link_name = factory.make_name("link")
         target = os.path.join(os.path.dirname(filename), link_name)
         atomic_symlink(filename, target)
         self.assertEquals(os.path.basename(filename), os.readlink(target))
@@ -330,8 +321,10 @@ class TestAtomicSymlink(MAASTestCase):
         target_path = self.make_dir()  # The target is a directory.
         link_path = os.path.join(self.make_dir(), factory.make_name("sub"))
         atomic_symlink(target_path, link_path)
-        self.assertThat(os.readlink(link_path), Equals(
-            os.path.relpath(target_path, os.path.dirname(link_path))))
+        self.assertThat(
+            os.readlink(link_path),
+            Equals(os.path.relpath(target_path, os.path.dirname(link_path))),
+        )
         self.assertTrue(os.path.samefile(target_path, link_path))
 
 
@@ -348,8 +341,7 @@ class TestIncrementalWrite(MAASTestCase):
         incremental_write(content, filename)
         new_time = time.time()
         # should be much closer to new_time than to old_mtime.
-        self.assertAlmostEqual(
-            os.stat(filename).st_mtime, new_time, delta=2.0)
+        self.assertAlmostEqual(os.stat(filename).st_mtime, new_time, delta=2.0)
 
     def test_incremental_write_does_not_set_future_time(self):
         content = factory.make_bytes()
@@ -360,8 +352,7 @@ class TestIncrementalWrite(MAASTestCase):
         os.utime(filename, (old_mtime, old_mtime))
         incremental_write(content, filename)
         new_time = time.time()
-        self.assertAlmostEqual(
-            os.stat(filename).st_mtime, new_time, delta=2.0)
+        self.assertAlmostEqual(os.stat(filename).st_mtime, new_time, delta=2.0)
 
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
@@ -371,26 +362,27 @@ class TestIncrementalWrite(MAASTestCase):
 
 
 class TestGetMAASProvisionCommand(MAASTestCase):
-
     def test__returns_just_command_for_production(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
         self.assertEqual(
-            "/usr/lib/maas/maas-common", get_maas_common_command())
+            "/usr/lib/maas/maas-common", get_maas_common_command()
+        )
 
     def test__returns_maas_rack_for_snap(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
-        self.patch(os, 'environ', {'SNAP': '/snap/maas/10'})
+        self.patch(os, "environ", {"SNAP": "/snap/maas/10"})
         self.assertEqual(
-            get_maas_common_command(), '/snap/maas/10/bin/maas-rack')
+            get_maas_common_command(), "/snap/maas/10/bin/maas-rack"
+        )
 
     def test__returns_full_path_for_development(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = True
         self.assertEqual(
-            root.rstrip("/") + "/bin/maas-common",
-            get_maas_common_command())
+            root.rstrip("/") + "/bin/maas-common", get_maas_common_command()
+        )
 
 
 class TestGetLibraryScriptPath(MAASTestCase):
@@ -402,7 +394,8 @@ class TestGetLibraryScriptPath(MAASTestCase):
         script_name = factory.make_name("script")
         self.assertEqual(
             "/usr/lib/maas/" + script_name,
-            get_library_script_path(script_name))
+            get_library_script_path(script_name),
+        )
 
     def test__returns_full_path_for_development(self):
         self.patch(provisioningserver.config, "is_dev_environment")
@@ -410,12 +403,13 @@ class TestGetLibraryScriptPath(MAASTestCase):
         script_name = factory.make_name("script")
         self.assertEqual(
             root.rstrip("/") + "/scripts/" + script_name,
-            get_library_script_path(script_name))
+            get_library_script_path(script_name),
+        )
 
 
 def patch_popen(test, returncode=0):
-    process = test.patch_autospec(fs_module, 'Popen').return_value
-    process.communicate.return_value = 'output', 'error output'
+    process = test.patch_autospec(fs_module, "Popen").return_value
+    process.communicate.return_value = "output", "error output"
     process.returncode = returncode
     return process
 
@@ -440,35 +434,48 @@ class TestSudoWriteFile(MAASTestCase):
         patch_sudo(self)
         patch_dev(self, False)
 
-        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        path = os.path.join(self.make_dir(), factory.make_name("file"))
         contents = factory.make_bytes()
         sudo_write_file(path, contents)
 
-        self.assertThat(fs_module.Popen, MockCalledOnceWith(
-            ['sudo', '-n', get_library_script_path("maas-write-file"),
-             path, "0644"], stdin=PIPE))
+        self.assertThat(
+            fs_module.Popen,
+            MockCalledOnceWith(
+                [
+                    "sudo",
+                    "-n",
+                    get_library_script_path("maas-write-file"),
+                    path,
+                    "0644",
+                ],
+                stdin=PIPE,
+            ),
+        )
 
     def test_calls_atomic_write_dev_mode(self):
         patch_popen(self)
         patch_dev(self, True)
 
-        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        path = os.path.join(self.make_dir(), factory.make_name("file"))
         contents = factory.make_bytes()
         sudo_write_file(path, contents)
 
         called_command = fs_module.Popen.call_args[0][0]
-        self.assertNotIn('sudo', called_command)
+        self.assertNotIn("sudo", called_command)
 
     def test_rejects_non_bytes_contents(self):
         self.assertRaises(
-            TypeError, sudo_write_file, self.make_file(),
-            factory.make_string())
+            TypeError, sudo_write_file, self.make_file(), factory.make_string()
+        )
 
     def test_catches_failures(self):
         patch_popen(self, 1)
         self.assertRaises(
             CalledProcessError,
-            sudo_write_file, self.make_file(), factory.make_bytes())
+            sudo_write_file,
+            self.make_file(),
+            factory.make_bytes(),
+        )
 
     def test_can_write_file_in_development(self):
         filename = get_data_path("/var/lib/maas/dhcpd.conf")
@@ -487,27 +494,36 @@ class TestSudoDeleteFile(MAASTestCase):
         patch_sudo(self)
         patch_dev(self, False)
 
-        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        path = os.path.join(self.make_dir(), factory.make_name("file"))
         sudo_delete_file(path)
 
-        self.assertThat(fs_module.Popen, MockCalledOnceWith(
-            ['sudo', '-n', get_library_script_path("maas-delete-file"), path]))
+        self.assertThat(
+            fs_module.Popen,
+            MockCalledOnceWith(
+                [
+                    "sudo",
+                    "-n",
+                    get_library_script_path("maas-delete-file"),
+                    path,
+                ]
+            ),
+        )
 
     def test_calls_atomic_delete_dev_mode(self):
         patch_popen(self)
         patch_dev(self, True)
 
-        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        path = os.path.join(self.make_dir(), factory.make_name("file"))
         sudo_delete_file(path)
 
         called_command = fs_module.Popen.call_args[0][0]
-        self.assertNotIn('sudo', called_command)
+        self.assertNotIn("sudo", called_command)
 
     def test_catches_failures(self):
         patch_popen(self, 1)
         self.assertRaises(
-            CalledProcessError,
-            sudo_delete_file, self.make_file())
+            CalledProcessError, sudo_delete_file, self.make_file()
+        )
 
     def test_can_delete_file_in_development(self):
         filename = get_data_path("/var/lib/maas/dhcpd.conf")
@@ -548,11 +564,12 @@ class TestSudoWriteFileScript(MAASTestCase):
             mode = random.randint(0o000, 0o777)  # Inclusive of endpoints.
             args = self.script.arg_parser.parse_args([filename, oct(mode)])
             self.script.main(args, io.BytesIO(content))
-            calls_expected.append(call(
-                content, filename, overwrite=True, mode=mode))
+            calls_expected.append(
+                call(content, filename, overwrite=True, mode=mode)
+            )
         self.assertThat(
-            self.script.atomic_write,
-            MockCallsMatch(*calls_expected))
+            self.script.atomic_write, MockCallsMatch(*calls_expected)
+        )
 
     def test__rejects_file_name_not_on_white_list(self):
         filename = factory.make_name("/some/where", sep="/")
@@ -560,14 +577,18 @@ class TestSudoWriteFileScript(MAASTestCase):
         args = self.script.arg_parser.parse_args([filename, oct(mode)])
         with CaptureStandardIO() as stdio:
             error = self.assertRaises(
-                SystemExit, self.script.main, args, io.BytesIO())
+                SystemExit, self.script.main, args, io.BytesIO()
+            )
         self.assertThat(error.code, GreaterThan(0))
         self.assertThat(self.script.atomic_write, MockNotCalled())
         self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), DocTestMatches(
-            "usage: ... Given filename ... is not in the "
-            "white list. Choose from: ..."
-        ))
+        self.assertThat(
+            stdio.getError(),
+            DocTestMatches(
+                "usage: ... Given filename ... is not in the "
+                "white list. Choose from: ..."
+            ),
+        )
 
     def test__rejects_file_mode_with_high_bits_set(self):
         filename = random.choice(list(self.script.whitelist))
@@ -575,14 +596,18 @@ class TestSudoWriteFileScript(MAASTestCase):
         args = self.script.arg_parser.parse_args([filename, oct(mode)])
         with CaptureStandardIO() as stdio:
             error = self.assertRaises(
-                SystemExit, self.script.main, args, io.BytesIO())
+                SystemExit, self.script.main, args, io.BytesIO()
+            )
         self.assertThat(error.code, GreaterThan(0))
         self.assertThat(self.script.atomic_write, MockNotCalled())
         self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), DocTestMatches(
-            "usage: ... Given file mode 0o... is not permitted; "
-            "only permission bits may be set."
-        ))
+        self.assertThat(
+            stdio.getError(),
+            DocTestMatches(
+                "usage: ... Given file mode 0o... is not permitted; "
+                "only permission bits may be set."
+            ),
+        )
 
 
 class TestSudoDeleteFileScript(MAASTestCase):
@@ -606,8 +631,8 @@ class TestSudoDeleteFileScript(MAASTestCase):
             self.script.main(args)
             calls_expected.append(call(filename))
         self.assertThat(
-            self.script.atomic_delete,
-            MockCallsMatch(*calls_expected))
+            self.script.atomic_delete, MockCallsMatch(*calls_expected)
+        )
 
     def test__is_okay_when_the_file_does_not_exist(self):
         filename = random.choice(list(self.script.whitelist))
@@ -615,29 +640,30 @@ class TestSudoDeleteFileScript(MAASTestCase):
         self.script.atomic_delete.side_effect = FileNotFoundError
         self.script.main(args)
         self.assertThat(
-            self.script.atomic_delete,
-            MockCalledOnceWith(filename))
+            self.script.atomic_delete, MockCalledOnceWith(filename)
+        )
 
     def test__rejects_file_name_not_on_white_list(self):
         filename = factory.make_name("/some/where", sep="/")
         args = self.script.arg_parser.parse_args([filename])
         with CaptureStandardIO() as stdio:
-            error = self.assertRaises(
-                SystemExit, self.script.main, args)
+            error = self.assertRaises(SystemExit, self.script.main, args)
         self.assertThat(error.code, GreaterThan(0))
         self.assertThat(self.script.atomic_delete, MockNotCalled())
         self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), DocTestMatches(
-            "usage: ... Given filename ... is not in the "
-            "white list. Choose from: ..."
-        ))
+        self.assertThat(
+            stdio.getError(),
+            DocTestMatches(
+                "usage: ... Given filename ... is not in the "
+                "white list. Choose from: ..."
+            ),
+        )
 
 
 class TestTempDir(MAASTestCase):
-
     def test_creates_real_fresh_directory(self):
         stored_text = factory.make_string()
-        filename = factory.make_name('test-file')
+        filename = factory.make_name("test-file")
         with tempdir() as directory:
             self.assertThat(directory, DirExists())
             write_text_file(os.path.join(directory, filename), stored_text)
@@ -696,9 +722,9 @@ class TestTempDir(MAASTestCase):
         self.assertIsInstance(directory, str)
 
     def test_accepts_unicode_from_mkdtemp(self):
-        fake_dir = os.path.join(self.make_dir(), factory.make_name('tempdir'))
+        fake_dir = os.path.join(self.make_dir(), factory.make_name("tempdir"))
         self.assertIsInstance(fake_dir, str)
-        self.patch(tempfile, 'mkdtemp').return_value = fake_dir
+        self.patch(tempfile, "mkdtemp").return_value = fake_dir
 
         with tempdir() as directory:
             pass
@@ -724,8 +750,8 @@ class TestTempDir(MAASTestCase):
         with tempdir() as directory:
             mode = os.stat(directory).st_mode
         self.assertEqual(
-            stat.S_IMODE(mode),
-            stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+            stat.S_IMODE(mode), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+        )
 
 
 class TestReadTextFile(MAASTestCase):
@@ -735,25 +761,26 @@ class TestReadTextFile(MAASTestCase):
 
     def test_defaults_to_utf8(self):
         # Test input: "registered trademark" (ringed R) symbol.
-        text = '\xae'
+        text = "\xae"
         self.assertEqual(
-            text,
-            read_text_file(self.make_file(contents=text.encode('utf-8'))))
+            text, read_text_file(self.make_file(contents=text.encode("utf-8")))
+        )
 
     def test_uses_given_encoding(self):
         # Test input: "registered trademark" (ringed R) symbol.
-        text = '\xae'
+        text = "\xae"
         self.assertEqual(
             text,
             read_text_file(
-                self.make_file(contents=text.encode('utf-16')),
-                encoding='utf-16'))
+                self.make_file(contents=text.encode("utf-16")),
+                encoding="utf-16",
+            ),
+        )
 
 
 class TestWriteTextFile(MAASTestCase):
-
     def test_creates_file(self):
-        path = os.path.join(self.make_dir(), factory.make_name('text'))
+        path = os.path.join(self.make_dir(), factory.make_name("text"))
         text = factory.make_string()
         write_text_file(path, text)
         self.assertThat(path, FileContains(text, encoding="ascii"))
@@ -767,7 +794,7 @@ class TestWriteTextFile(MAASTestCase):
     def test_defaults_to_utf8(self):
         path = self.make_file()
         # Test input: "registered trademark" (ringed R) symbol.
-        text = '\xae'
+        text = "\xae"
         write_text_file(path, text)
         with open(path, "r", encoding="utf-8") as fd:
             self.assertThat(fd.read(), Equals(text))
@@ -775,8 +802,8 @@ class TestWriteTextFile(MAASTestCase):
     def test_uses_given_encoding(self):
         path = self.make_file()
         # Test input: "registered trademark" (ringed R) symbol.
-        text = '\xae'
-        write_text_file(path, text, encoding='utf-16')
+        text = "\xae"
+        write_text_file(path, text, encoding="utf-16")
         with open(path, "r", encoding="utf-16") as fd:
             self.assertThat(fd.read(), Equals(text))
 
@@ -806,10 +833,12 @@ class TestSystemLocks(MAASTestCase):
         def do_lock():
             self.assertTrue(self.locktype.PROCESS_LOCK.locked())
             return True
+
         self.patch(lock._fslock, "lock").side_effect = do_lock
 
         def do_unlock():
             self.assertTrue(self.locktype.PROCESS_LOCK.locked())
+
         self.patch(lock._fslock, "unlock").side_effect = do_unlock
 
     def test__path_is_read_only(self):
@@ -835,12 +864,10 @@ class TestSystemLocks(MAASTestCase):
         lock = self.make_lock()
         PROCESS_LOCK = self.patch(self.locktype, "PROCESS_LOCK")
         self.assertFalse(lock.is_locked())
+        self.assertThat(PROCESS_LOCK.__enter__, MockCalledOnceWith())
         self.assertThat(
-            PROCESS_LOCK.__enter__,
-            MockCalledOnceWith())
-        self.assertThat(
-            PROCESS_LOCK.__exit__,
-            MockCalledOnceWith(None, None, None))
+            PROCESS_LOCK.__exit__, MockCalledOnceWith(None, None, None)
+        )
 
     def test__cannot_be_acquired_twice(self):
         """
@@ -973,16 +1000,18 @@ class TestRunLock(MAASTestCase):
     """Tests specific to `RunLock`."""
 
     def test__string_path(self):
-        filename = '/foo/bar/123:456.txt'
+        filename = "/foo/bar/123:456.txt"
         expected = get_tentative_data_path(
-            '/run/lock/maas@foo:bar:123::456.txt')
+            "/run/lock/maas@foo:bar:123::456.txt"
+        )
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
     def test__byte_path(self):
-        filename = b'/foo/bar/123:456.txt'
+        filename = b"/foo/bar/123:456.txt"
         expected = get_tentative_data_path(
-            '/run/lock/maas@foo:bar:123::456.txt')
+            "/run/lock/maas@foo:bar:123::456.txt"
+        )
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
@@ -992,15 +1021,14 @@ class TestNamedLock(MAASTestCase):
 
     def test__string_name(self):
         name = factory.make_name("lock")
-        expected = get_tentative_data_path('/run/lock/maas:' + name)
+        expected = get_tentative_data_path("/run/lock/maas:" + name)
         observed = NamedLock(name).path
         self.assertEqual(expected, observed)
 
     def test__byte_name_is_rejected(self):
         name = factory.make_name("lock").encode("ascii")
         error = self.assertRaises(TypeError, NamedLock, name)
-        self.assertThat(str(error), Equals(
-            "Lock name must be str, not bytes"))
+        self.assertThat(str(error), Equals("Lock name must be str, not bytes"))
 
     def test__name_rejects_unacceptable_characters(self):
         # This demonstrates that validation is performed, but it is not an
@@ -1013,5 +1041,6 @@ class TestNamedLock(MAASTestCase):
         self.assertRaises(ValueError, NamedLock, "foo=bar")
         # The error message contains all of the unacceptable characters.
         error = self.assertRaises(ValueError, NamedLock, "[foo;bar]")
-        self.assertThat(str(error), Equals(
-            "Lock name contains illegal characters: ;[]"))
+        self.assertThat(
+            str(error), Equals("Lock name contains illegal characters: ;[]")
+        )

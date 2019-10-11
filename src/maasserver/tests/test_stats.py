@@ -10,18 +10,8 @@ import json
 
 from django.db import transaction
 from maasserver import stats
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    IPRANGE_TYPE,
-    NODE_STATUS,
-)
-from maasserver.models import (
-    Config,
-    Fabric,
-    Space,
-    Subnet,
-    VLAN,
-)
+from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
+from maasserver.models import Config, Fabric, Space, Subnet, VLAN
 from maasserver.stats import (
     get_kvm_pods_stats,
     get_maas_stats,
@@ -35,10 +25,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnce, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import asynchronous
@@ -48,53 +35,58 @@ from twisted.internet.defer import fail
 
 
 class TestMAASStats(MAASServerTestCase):
-
     def make_pod(self, cpu=0, mem=0, cpu_over_commit=1, mem_over_commit=1):
         # Make one pod
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
         ip = factory.make_ipv4_address()
         power_parameters = {
-            'power_address': 'qemu+ssh://%s/system' % ip,
-            'power_pass': 'pass',
+            "power_address": "qemu+ssh://%s/system" % ip,
+            "power_pass": "pass",
         }
         return factory.make_Pod(
-            pod_type='virsh', zone=zone, pool=pool,
-            cores=cpu, memory=mem,
+            pod_type="virsh",
+            zone=zone,
+            pool=pool,
+            cores=cpu,
+            memory=mem,
             cpu_over_commit_ratio=cpu_over_commit,
             memory_over_commit_ratio=mem_over_commit,
-            parameters=power_parameters)
+            parameters=power_parameters,
+        )
 
     def test_get_machines_by_architecture(self):
         arches = [
-            'amd64/generic', 's390x/generic', 'ppc64el/generic',
-            'arm64/generic', 'i386/generic']
+            "amd64/generic",
+            "s390x/generic",
+            "ppc64el/generic",
+            "arm64/generic",
+            "i386/generic",
+        ]
         for arch in arches:
             factory.make_Machine(architecture=arch)
         stats = get_machines_by_architecture()
-        compare = {
-            "amd64": 1,
-            "i386": 1,
-            "arm64": 1,
-            "ppc64el": 1,
-            "s390x": 1,
-        }
+        compare = {"amd64": 1, "i386": 1, "arm64": 1, "ppc64el": 1, "s390x": 1}
         self.assertEquals(stats, compare)
 
     def test_get_kvm_pods_stats(self):
         pod1 = self.make_pod(
-            cpu=10, mem=100, cpu_over_commit=2, mem_over_commit=3)
+            cpu=10, mem=100, cpu_over_commit=2, mem_over_commit=3
+        )
         pod2 = self.make_pod(
-            cpu=20, mem=200, cpu_over_commit=3, mem_over_commit=2)
+            cpu=20, mem=200, cpu_over_commit=3, mem_over_commit=2
+        )
 
         total_cores = pod1.cores + pod2.cores
         total_memory = pod1.memory + pod2.memory
         over_cores = (
-            pod1.cores * pod1.cpu_over_commit_ratio +
-            pod2.cores * pod2.cpu_over_commit_ratio)
+            pod1.cores * pod1.cpu_over_commit_ratio
+            + pod2.cores * pod2.cpu_over_commit_ratio
+        )
         over_memory = (
-            pod1.memory * pod1.memory_over_commit_ratio +
-            pod2.memory * pod2.memory_over_commit_ratio)
+            pod1.memory * pod1.memory_over_commit_ratio
+            + pod2.memory * pod2.memory_over_commit_ratio
+        )
 
         stats = get_kvm_pods_stats()
         compare = {
@@ -107,45 +99,44 @@ class TestMAASStats(MAASServerTestCase):
                 "over_memory": over_memory,
                 "storage": 0,
             },
-            "kvm_utilized_resources": {
-                'cores': 0,
-                'memory': 0,
-                'storage': 0
-            },
+            "kvm_utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
         }
         self.assertEquals(compare, stats)
 
     def test_get_kvm_pods_stats_no_pod(self):
         self.assertEqual(
             get_kvm_pods_stats(),
-            {'kvm_pods': 0,
-             'kvm_machines': 0,
-             'kvm_available_resources': {
-                 'cores': 0,
-                 'memory': 0,
-                 'storage': 0,
-                 'over_cores': 0,
-                 'over_memory': 0
-             },
-             'kvm_utilized_resources': {
-                 'cores': 0,
-                 'memory': 0,
-                 'storage': 0
-             }})
+            {
+                "kvm_pods": 0,
+                "kvm_machines": 0,
+                "kvm_available_resources": {
+                    "cores": 0,
+                    "memory": 0,
+                    "storage": 0,
+                    "over_cores": 0,
+                    "over_memory": 0,
+                },
+                "kvm_utilized_resources": {
+                    "cores": 0,
+                    "memory": 0,
+                    "storage": 0,
+                },
+            },
+        )
 
     def test_get_maas_stats(self):
         # Make one component of everything
         factory.make_RegionRackController()
         factory.make_RegionController()
         factory.make_RackController()
-        factory.make_Machine(
-            cpu_count=2, memory=200, status=NODE_STATUS.READY)
+        factory.make_Machine(cpu_count=2, memory=200, status=NODE_STATUS.READY)
         factory.make_Machine(status=NODE_STATUS.READY)
         factory.make_Machine(status=NODE_STATUS.NEW)
         for _ in range(4):
             factory.make_Machine(status=NODE_STATUS.ALLOCATED)
         factory.make_Machine(
-            cpu_count=3, memory=100, status=NODE_STATUS.FAILED_DEPLOYMENT)
+            cpu_count=3, memory=100, status=NODE_STATUS.FAILED_DEPLOYMENT
+        )
         for _ in range(2):
             factory.make_Machine(status=NODE_STATUS.DEPLOYED)
         factory.make_Device()
@@ -161,18 +152,11 @@ class TestMAASStats(MAASServerTestCase):
         # Due to floating point calculation subtleties, sometimes the value the
         # database returns is off by one compared to the value Python
         # calculates, so just get it directly from the database for the test.
-        total_storage = machine_stats['total_storage']
+        total_storage = machine_stats["total_storage"]
 
         expected = {
-            "controllers": {
-                "regionracks": 1,
-                "regions": 1,
-                "racks": 1,
-            },
-            "nodes": {
-                "machines": 10,
-                "devices": 2,
-            },
+            "controllers": {"regionracks": 1, "regions": 1, "racks": 1},
+            "nodes": {"machines": 10, "devices": 2},
             "machine_stats": {
                 "total_cpu": 5,
                 "total_mem": 300,
@@ -203,15 +187,8 @@ class TestMAASStats(MAASServerTestCase):
 
     def test_get_maas_stats_no_machines(self):
         expected = {
-            "controllers": {
-                "regionracks": 0,
-                "regions": 0,
-                "racks": 0,
-            },
-            "nodes": {
-                "machines": 0,
-                "devices": 0,
-            },
+            "controllers": {"regionracks": 0, "regions": 0, "racks": 0},
+            "nodes": {"machines": 0, "devices": 0},
             "machine_stats": {
                 "total_cpu": 0,
                 "total_mem": 0,
@@ -244,7 +221,8 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_RegionRackController()
         params = {
             "data": base64.b64encode(
-                json.dumps(get_maas_stats()).encode()).decode()
+                json.dumps(get_maas_stats()).encode()
+            ).decode()
         }
         self.assertEquals(params, get_request_params())
 
@@ -256,126 +234,168 @@ class TestMAASStats(MAASServerTestCase):
 
 
 class TestGetSubnetsUtilisationStats(MAASServerTestCase):
-
     def test_stats_totals(self):
-        factory.make_Subnet(
-            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
-        factory.make_Subnet(cidr='::1/128', gateway_ip='')
+        factory.make_Subnet(cidr="1.2.0.0/16", gateway_ip="1.2.0.254")
+        factory.make_Subnet(cidr="::1/128", gateway_ip="")
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
             {
-                '1.2.0.0/16': {
-                    'available': 2 ** 16 - 3,
-                    'dynamic_available': 0,
-                    'dynamic_used': 0,
-                    'reserved_available': 0,
-                    'reserved_used': 0,
-                    'static': 0,
-                    'unavailable': 1},
-                '::1/128': {
-                    'available': 1,
-                    'dynamic_available': 0,
-                    'dynamic_used': 0,
-                    'reserved_available': 0,
-                    'reserved_used': 0,
-                    'static': 0,
-                    'unavailable': 0}})
+                "1.2.0.0/16": {
+                    "available": 2 ** 16 - 3,
+                    "dynamic_available": 0,
+                    "dynamic_used": 0,
+                    "reserved_available": 0,
+                    "reserved_used": 0,
+                    "static": 0,
+                    "unavailable": 1,
+                },
+                "::1/128": {
+                    "available": 1,
+                    "dynamic_available": 0,
+                    "dynamic_used": 0,
+                    "reserved_available": 0,
+                    "reserved_used": 0,
+                    "static": 0,
+                    "unavailable": 0,
+                },
+            },
+        )
 
     def test_stats_dynamic(self):
-        subnet = factory.make_Subnet(
-            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        subnet = factory.make_Subnet(cidr="1.2.0.0/16", gateway_ip="1.2.0.254")
         factory.make_IPRange(
-            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
-            alloc_type=IPRANGE_TYPE.DYNAMIC)
+            subnet=subnet,
+            start_ip="1.2.0.11",
+            end_ip="1.2.0.20",
+            alloc_type=IPRANGE_TYPE.DYNAMIC,
+        )
         factory.make_IPRange(
-            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.60',
-            alloc_type=IPRANGE_TYPE.DYNAMIC)
+            subnet=subnet,
+            start_ip="1.2.0.51",
+            end_ip="1.2.0.60",
+            alloc_type=IPRANGE_TYPE.DYNAMIC,
+        )
         factory.make_StaticIPAddress(
-            ip='1.2.0.15', alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
+            ip="1.2.0.15", alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet
+        )
         factory.make_StaticIPAddress(
-            ip='1.2.0.52', alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
+            ip="1.2.0.52", alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet
+        )
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
-            {'1.2.0.0/16': {
-                'available': 2 ** 16 - 23,
-                'dynamic_available': 18,
-                'dynamic_used': 2,
-                'reserved_available': 0,
-                'reserved_used': 0,
-                'static': 0,
-                'unavailable': 21}})
+            {
+                "1.2.0.0/16": {
+                    "available": 2 ** 16 - 23,
+                    "dynamic_available": 18,
+                    "dynamic_used": 2,
+                    "reserved_available": 0,
+                    "reserved_used": 0,
+                    "static": 0,
+                    "unavailable": 21,
+                }
+            },
+        )
 
     def test_stats_reserved(self):
-        subnet = factory.make_Subnet(
-            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        subnet = factory.make_Subnet(cidr="1.2.0.0/16", gateway_ip="1.2.0.254")
         factory.make_IPRange(
-            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
-            alloc_type=IPRANGE_TYPE.RESERVED)
+            subnet=subnet,
+            start_ip="1.2.0.11",
+            end_ip="1.2.0.20",
+            alloc_type=IPRANGE_TYPE.RESERVED,
+        )
         factory.make_IPRange(
-            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.60',
-            alloc_type=IPRANGE_TYPE.RESERVED)
+            subnet=subnet,
+            start_ip="1.2.0.51",
+            end_ip="1.2.0.60",
+            alloc_type=IPRANGE_TYPE.RESERVED,
+        )
         factory.make_StaticIPAddress(
-            ip='1.2.0.15', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-            subnet=subnet)
+            ip="1.2.0.15",
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet,
+        )
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
-            {'1.2.0.0/16': {
-                'available': 2 ** 16 - 23,
-                'dynamic_available': 0,
-                'dynamic_used': 0,
-                'reserved_available': 19,
-                'reserved_used': 1,
-                'static': 0,
-                'unavailable': 21}})
+            {
+                "1.2.0.0/16": {
+                    "available": 2 ** 16 - 23,
+                    "dynamic_available": 0,
+                    "dynamic_used": 0,
+                    "reserved_available": 19,
+                    "reserved_used": 1,
+                    "static": 0,
+                    "unavailable": 21,
+                }
+            },
+        )
 
     def test_stats_static(self):
-        subnet = factory.make_Subnet(
-            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        subnet = factory.make_Subnet(cidr="1.2.0.0/16", gateway_ip="1.2.0.254")
         for n in (10, 20, 30):
             factory.make_StaticIPAddress(
-                ip='1.2.0.{}'.format(n),
-                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+                ip="1.2.0.{}".format(n),
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                subnet=subnet,
+            )
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
-            {'1.2.0.0/16': {
-                'available': 2 ** 16 - 6,
-                'dynamic_available': 0,
-                'dynamic_used': 0,
-                'reserved_available': 0,
-                'reserved_used': 0,
-                'static': 3,
-                'unavailable': 4}})
+            {
+                "1.2.0.0/16": {
+                    "available": 2 ** 16 - 6,
+                    "dynamic_available": 0,
+                    "dynamic_used": 0,
+                    "reserved_available": 0,
+                    "reserved_used": 0,
+                    "static": 3,
+                    "unavailable": 4,
+                }
+            },
+        )
 
     def test_stats_all(self):
-        subnet = factory.make_Subnet(
-            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        subnet = factory.make_Subnet(cidr="1.2.0.0/16", gateway_ip="1.2.0.254")
         factory.make_IPRange(
-            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
-            alloc_type=IPRANGE_TYPE.DYNAMIC)
+            subnet=subnet,
+            start_ip="1.2.0.11",
+            end_ip="1.2.0.20",
+            alloc_type=IPRANGE_TYPE.DYNAMIC,
+        )
         factory.make_IPRange(
-            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.70',
-            alloc_type=IPRANGE_TYPE.RESERVED)
+            subnet=subnet,
+            start_ip="1.2.0.51",
+            end_ip="1.2.0.70",
+            alloc_type=IPRANGE_TYPE.RESERVED,
+        )
         factory.make_StaticIPAddress(
-            ip='1.2.0.12',
-            alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
+            ip="1.2.0.12", alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet
+        )
         for n in (60, 61):
             factory.make_StaticIPAddress(
-                ip='1.2.0.{}'.format(n),
-                alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+                ip="1.2.0.{}".format(n),
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                subnet=subnet,
+            )
         for n in (80, 90, 100):
             factory.make_StaticIPAddress(
-                ip='1.2.0.{}'.format(n),
-                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+                ip="1.2.0.{}".format(n),
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                subnet=subnet,
+            )
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
-            {'1.2.0.0/16': {
-                'available': 2 ** 16 - 36,
-                'dynamic_available': 9,
-                'dynamic_used': 1,
-                'reserved_available': 18,
-                'reserved_used': 2,
-                'static': 3,
-                'unavailable': 34}})
+            {
+                "1.2.0.0/16": {
+                    "available": 2 ** 16 - 36,
+                    "dynamic_available": 9,
+                    "dynamic_used": 1,
+                    "reserved_available": 18,
+                    "reserved_used": 2,
+                    "static": 3,
+                    "unavailable": 34,
+                }
+            },
+        )
 
 
 class TestStatsService(MAASTestCase):
@@ -392,8 +412,8 @@ class TestStatsService(MAASTestCase):
     def test__calls__maybe_make_stats_request(self):
         service = stats.StatsService()
         self.assertEqual(
-            (service.maybe_make_stats_request, (), {}),
-            service.call)
+            (service.maybe_make_stats_request, (), {}), service.call
+        )
 
     def test_maybe_make_stats_request_does_not_error(self):
         service = stats.StatsService()
@@ -411,11 +431,12 @@ class TestStatsServiceAsync(MAASTransactionServerTestCase):
         mock_call = self.patch(stats, "make_maas_user_agent_request")
 
         with transaction.atomic():
-            Config.objects.set_config('enable_analytics', True)
+            Config.objects.set_config("enable_analytics", True)
 
         service = stats.StatsService()
         maybe_make_stats_request = asynchronous(
-            service.maybe_make_stats_request)
+            service.maybe_make_stats_request
+        )
         maybe_make_stats_request().wait(5)
 
         self.assertThat(mock_call, MockCalledOnce())
@@ -424,11 +445,12 @@ class TestStatsServiceAsync(MAASTransactionServerTestCase):
         mock_call = self.patch(stats, "make_maas_user_agent_request")
 
         with transaction.atomic():
-            Config.objects.set_config('enable_analytics', False)
+            Config.objects.set_config("enable_analytics", False)
 
         service = stats.StatsService()
         maybe_make_stats_request = asynchronous(
-            service.maybe_make_stats_request)
+            service.maybe_make_stats_request
+        )
         maybe_make_stats_request().wait(5)
 
         self.assertThat(mock_call, MockNotCalled())

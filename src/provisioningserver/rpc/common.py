@@ -3,26 +3,15 @@
 
 """Common RPC classes and utilties."""
 
-__all__ = [
-    "Authenticate",
-    "Client",
-    "Identify",
-    "RPCProtocol",
-]
+__all__ = ["Authenticate", "Client", "Identify", "RPCProtocol"]
 
 from os import getpid
 from socket import gethostname
 
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.rpc.interfaces import (
-    IConnection,
-    IConnectionToRegion,
-)
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    deferWithTimeout,
-)
+from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
+from provisioningserver.utils.twisted import asynchronous, deferWithTimeout
 from twisted.internet.defer import Deferred
 from twisted.protocols import amp
 from twisted.python.failure import Failure
@@ -70,9 +59,7 @@ class Authenticate(amp.Command):
     :since: 1.7
     """
 
-    arguments = [
-        (b"message", amp.String()),
-    ]
+    arguments = [(b"message", amp.String())]
     response = [
         (b"digest", amp.String()),
         (b"salt", amp.String()),  # Is 'salt' the right term here?
@@ -101,8 +88,9 @@ class Client:
 
     def __init__(self, conn):
         super(Client, self).__init__()
-        assert IConnection.providedBy(conn), (
-            "%r does not provide IConnection" % (conn,))
+        assert IConnection.providedBy(
+            conn
+        ), "%r does not provide IConnection" % (conn,)
         self._conn = conn
 
     @property
@@ -121,7 +109,8 @@ class Client:
             return self._conn.localIdent
         else:
             raise NotImplementedError(
-                "Client localIdent is only available in the rack.")
+                "Client localIdent is only available in the rack."
+            )
 
     @property
     def address(self):
@@ -134,15 +123,17 @@ class Client:
             return self._conn.address
         else:
             raise NotImplementedError(
-                "Client address is only available in the rack.")
+                "Client address is only available in the rack."
+            )
 
     def _get_call_latency_metric_labels(self, cmd, *args, **kwargs):
         """Return labels for the rack/region call latency metric."""
-        return {'call': cmd.__name__}
+        return {"call": cmd.__name__}
 
     @PROMETHEUS_METRICS.record_call_latency(
-        'maas_rack_region_rpc_call_latency',
-        get_labels=_get_call_latency_metric_labels)
+        "maas_rack_region_rpc_call_latency",
+        get_labels=_get_call_latency_metric_labels,
+    )
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
         """Call a remote RPC method.
@@ -168,20 +159,24 @@ class Client:
         """
         if len(args) != 0:
             receiver_name = "%s.%s" % (
-                self.__module__, self.__class__.__name__)
+                self.__module__,
+                self.__class__.__name__,
+            )
             raise TypeError(
                 "%s called with %d positional arguments, %r, but positional "
                 "arguments are not supported. Usage: client(command, arg1="
-                "value1, ...)" % (receiver_name, len(args), args))
+                "value1, ...)" % (receiver_name, len(args), args)
+            )
 
-        timeout = kwargs.pop('_timeout', undefined)
+        timeout = kwargs.pop("_timeout", undefined)
         if timeout is undefined:
             timeout = 120  # 2 minutes
         if timeout is None or timeout <= 0:
             return self._conn.callRemote(cmd, **kwargs)
         else:
             return deferWithTimeout(
-                timeout, self._conn.callRemote, cmd, **kwargs)
+                timeout, self._conn.callRemote, cmd, **kwargs
+            )
 
     @asynchronous
     def getHostCertificate(self):
@@ -226,8 +221,11 @@ def make_command_ref(box):
     returns unambiguous references for command, answer, and errors boxes.
     """
     return "%s:pid=%d:cmd=%s:ask=%s" % (
-        gethostname(), getpid(), box[amp.COMMAND].decode("ascii"),
-        box.get(amp.ASK, b"none").decode("ascii"))
+        gethostname(),
+        getpid(),
+        box[amp.COMMAND].decode("ascii"),
+        box.get(amp.ASK, b"none").decode("ascii"),
+    )
 
 
 class RPCProtocol(amp.AMP, object):
@@ -262,7 +260,8 @@ class RPCProtocol(amp.AMP, object):
         box[amp.COMMAND] = command
         log.debug("[RPC -> sent] {box}", box=box)
         return super(RPCProtocol, self)._sendBoxCommand(
-            command, box, requiresAnswer=requiresAnswer)
+            command, box, requiresAnswer=requiresAnswer
+        )
 
     def dispatchCommand(self, box):
         """Call up, but coerce errors into non-fatal failures.
@@ -286,14 +285,24 @@ class RPCProtocol(amp.AMP, object):
             else:
                 command = box[amp.COMMAND]
                 command_ref = make_command_ref(box)
-                log.err(failure, (
-                    "Unhandled failure dispatching AMP command. This is "
-                    "probably a bug. Please ensure that this error is handled "
-                    "within application code or declared in the signature of "
-                    "the %s command. [%s]") % (command, command_ref))
-                return Failure(amp.RemoteAmpError(
-                    amp.UNHANDLED_ERROR_CODE, b"Unknown Error [%s]" %
-                    command_ref.encode("ascii"), fatal=False, local=failure))
+                log.err(
+                    failure,
+                    (
+                        "Unhandled failure dispatching AMP command. This is "
+                        "probably a bug. Please ensure that this error is handled "
+                        "within application code or declared in the signature of "
+                        "the %s command. [%s]"
+                    )
+                    % (command, command_ref),
+                )
+                return Failure(
+                    amp.RemoteAmpError(
+                        amp.UNHANDLED_ERROR_CODE,
+                        b"Unknown Error [%s]" % command_ref.encode("ascii"),
+                        fatal=False,
+                        local=failure,
+                    )
+                )
 
         return d.addErrback(coerce_error)
 
@@ -328,10 +337,14 @@ class RPCProtocol(amp.AMP, object):
         Here we instead log the failure but do *not* disconnect because it's
         too disruptive to the running of MAAS.
         """
-        log.err(failure, (
-            "Unhandled failure during AMP request. This is probably a bug. "
-            "Please ensure that this error is handled within application "
-            "code."))
+        log.err(
+            failure,
+            (
+                "Unhandled failure during AMP request. This is probably a bug. "
+                "Please ensure that this error is handled within application "
+                "code."
+            ),
+        )
 
     @Ping.responder
     def ping(self):

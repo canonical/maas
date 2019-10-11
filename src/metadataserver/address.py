@@ -3,9 +3,7 @@
 
 """Figure out server address for the maas_url setting."""
 
-__all__ = [
-    'guess_server_host',
-    ]
+__all__ = ["guess_server_host"]
 
 import re
 import socket
@@ -46,13 +44,13 @@ def find_default_interface(ip_route_output):
     """
     route_lines = list(ip_route_output)
     for line in route_lines:
-        match = re.match(r'default\s+.*\sdev\s+([^\s]+)', line)
+        match = re.match(r"default\s+.*\sdev\s+([^\s]+)", line)
         if match is not None:
             return match.groups()[0]
 
     # Still nothing?  Try the first recognizable interface in the list.
     for line in route_lines:
-        match = re.match(r'\s*(?:\S+\s+)*dev\s+([^\s]+)', line)
+        match = re.match(r"\s*(?:\S+\s+)*dev\s+([^\s]+)", line)
         if match is not None:
             return match.groups()[0]
     return None
@@ -76,8 +74,8 @@ def get_ip_address(interface):
     except Exception as e:
         logger.warning(
             "Could not determine address for apparent default interface "
-            "%s (%s)"
-            % (interface, e))
+            "%s (%s)" % (interface, e)
+        )
         return None
 
 
@@ -88,7 +86,8 @@ def guess_server_host():
     :rtype: unicode
     """
     ip_route_output = get_command_output(
-        '/bin/ip', '-oneline', 'route', 'show')
+        "/bin/ip", "-oneline", "route", "show"
+    )
     interface = find_default_interface(ip_route_output)
     if interface is None:
         return socket.gethostname()

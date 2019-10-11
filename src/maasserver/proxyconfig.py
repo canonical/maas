@@ -3,9 +3,7 @@
 
 """Proxy config management module."""
 
-__all__ = [
-    'proxy_update_config',
-    ]
+__all__ = ["proxy_update_config"]
 
 
 from django.conf import settings
@@ -22,8 +20,8 @@ from twisted.internet.defer import succeed
 
 
 maaslog = get_maas_logger("dns")
-MAAS_PROXY_CONF_NAME = 'maas-proxy.conf'
-MAAS_PROXY_CONF_TEMPLATE = 'maas-proxy.conf.template'
+MAAS_PROXY_CONF_NAME = "maas-proxy.conf"
+MAAS_PROXY_CONF_TEMPLATE = "maas-proxy.conf.template"
 
 
 def is_proxy_enabled():
@@ -39,18 +37,26 @@ def proxy_update_config(reload_proxy=True):
     def _write_config():
         allowed_subnets = Subnet.objects.filter(allow_proxy=True)
         cidrs = [subnet.cidr for subnet in allowed_subnets]
-        config = Config.objects.get_configs([
-            'http_proxy', 'maas_proxy_port', 'use_peer_proxy',
-            'prefer_v4_proxy', 'enable_http_proxy'])
+        config = Config.objects.get_configs(
+            [
+                "http_proxy",
+                "maas_proxy_port",
+                "use_peer_proxy",
+                "prefer_v4_proxy",
+                "enable_http_proxy",
+            ]
+        )
 
         kwargs = {
-            'prefer_v4_proxy': config['prefer_v4_proxy'],
-            'maas_proxy_port': config['maas_proxy_port'],
+            "prefer_v4_proxy": config["prefer_v4_proxy"],
+            "maas_proxy_port": config["maas_proxy_port"],
         }
-        if (config['enable_http_proxy'] and
-                config['http_proxy'] and
-                config['use_peer_proxy']):
-            kwargs['peer_proxies'] = [config['http_proxy']]
+        if (
+            config["enable_http_proxy"]
+            and config["http_proxy"]
+            and config["use_peer_proxy"]
+        ):
+            kwargs["peer_proxies"] = [config["http_proxy"]]
         write_config(cidrs, **kwargs)
 
     if is_proxy_enabled():
@@ -62,11 +68,15 @@ def proxy_update_config(reload_proxy=True):
             if snappy.running_in_snap():
                 d.addCallback(
                     lambda _: service_monitor.restartService(
-                        "proxy", if_on=True))
+                        "proxy", if_on=True
+                    )
+                )
             else:
                 d.addCallback(
                     lambda _: service_monitor.reloadService(
-                        "proxy", if_on=True))
+                        "proxy", if_on=True
+                    )
+                )
         return d
     else:
         return succeed(None)

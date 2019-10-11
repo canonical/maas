@@ -3,10 +3,7 @@
 
 """Test helpers for TLS negotiation with AMP."""
 
-__all__ = [
-    "get_tls_parameters_for_cluster",
-    "get_tls_parameters_for_region",
-    ]
+__all__ = ["get_tls_parameters_for_cluster", "get_tls_parameters_for_region"]
 
 from functools import partial
 
@@ -24,9 +21,7 @@ def get_tls_parameters(private_cert_name, trust_cert_name):
     with testing.child(private_cert_name).open() as fin:
         tls_localCertificate = ssl.PrivateCertificate.loadPEM(fin.read())
     with testing.child(trust_cert_name).open() as fin:
-        tls_verifyAuthorities = [
-            ssl.Certificate.loadPEM(fin.read()),
-        ]
+        tls_verifyAuthorities = [ssl.Certificate.loadPEM(fin.read())]
     return {
         "tls_localCertificate": tls_localCertificate,
         "tls_verifyAuthorities": tls_verifyAuthorities,
@@ -34,6 +29,8 @@ def get_tls_parameters(private_cert_name, trust_cert_name):
 
 
 get_tls_parameters_for_cluster = partial(
-    get_tls_parameters, "cluster.crt", "trust.crt")
+    get_tls_parameters, "cluster.crt", "trust.crt"
+)
 get_tls_parameters_for_region = partial(
-    get_tls_parameters, "region.crt", "trust.crt")
+    get_tls_parameters, "region.crt", "trust.crt"
+)

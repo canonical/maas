@@ -3,9 +3,7 @@
 
 """Twisted service recieves lease information from the MAAS dhcpd.sock."""
 
-__all__ = [
-    "LeaseSocketService",
-    ]
+__all__ = ["LeaseSocketService"]
 
 from collections import deque
 import json
@@ -15,15 +13,9 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_data_path
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLease
-from provisioningserver.utils.twisted import (
-    pause,
-    retries,
-)
+from provisioningserver.utils.twisted import pause, retries
 from twisted.application.service import Service
-from twisted.internet import (
-    reactor,
-    task,
-)
+from twisted.internet import reactor, task
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import DatagramProtocol
 
@@ -48,7 +40,8 @@ class LeaseSocketService(Service, DatagramProtocol):
         self.address = get_socket_path()
         self.notifications = deque()
         self.processor = task.LoopingCall(
-            self.processNotifications, clock=self.reactor)
+            self.processNotifications, clock=self.reactor
+        )
 
     def startService(self):
         """Start the service."""
@@ -93,12 +86,15 @@ class LeaseSocketService(Service, DatagramProtocol):
 
     def processNotifications(self, clock=reactor):
         """Process all notifications."""
+
         def gen_notifications(notifications):
             while len(notifications) != 0:
                 yield notifications.popleft()
+
         return task.coiterate(
             self.processNotification(notification, clock=clock)
-            for notification in gen_notifications(self.notifications))
+            for notification in gen_notifications(self.notifications)
+        )
 
     @inlineCallbacks
     def processNotification(self, notification, clock=reactor):
@@ -113,7 +109,8 @@ class LeaseSocketService(Service, DatagramProtocol):
         else:
             maaslog.error(
                 "Can't send DHCP lease information, no RPC "
-                "connection to region.")
+                "connection to region."
+            )
             return
 
         # Notification contains all the required data except for the cluster

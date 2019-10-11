@@ -3,19 +3,12 @@
 
 """Physical zone objects."""
 
-__all__ = [
-    "DEFAULT_ZONE_NAME",
-    "Zone",
-    ]
+__all__ = ["DEFAULT_ZONE_NAME", "Zone"]
 
 import datetime
 
 from django.core.exceptions import ValidationError
-from django.db.models import (
-    CharField,
-    Manager,
-    TextField,
-)
+from django.db.models import CharField, Manager, TextField
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MODEL_NAME_VALIDATOR
@@ -24,7 +17,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 # Name of the special, default zone.  This zone can be neither deleted nor
 # renamed.
-DEFAULT_ZONE_NAME = 'default'
+DEFAULT_ZONE_NAME = "default"
 
 
 class ZoneManager(Manager):
@@ -40,9 +33,9 @@ class ZoneManager(Manager):
         zone, _ = self.get_or_create(
             name=DEFAULT_ZONE_NAME,
             defaults={
-                'name': DEFAULT_ZONE_NAME,
-                'created': now,
-                'updated': now,
+                "name": DEFAULT_ZONE_NAME,
+                "created": now,
+                "updated": now,
             },
         )
         return zone
@@ -58,6 +51,7 @@ class Zone(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
         verbose_name = "Physical zone"
         verbose_name_plural = "Physical zones"
         ordering = ["name"]
@@ -65,8 +59,11 @@ class Zone(CleanSave, TimestampedModel):
     objects = ZoneManager()
 
     name = CharField(
-        max_length=256, unique=True, editable=True,
-        validators=[MODEL_NAME_VALIDATOR])
+        max_length=256,
+        unique=True,
+        editable=True,
+        validators=[MODEL_NAME_VALIDATOR],
+    )
 
     description = TextField(blank=True, editable=True)
 
@@ -80,7 +77,8 @@ class Zone(CleanSave, TimestampedModel):
     def delete(self):
         if self.is_default():
             raise ValidationError(
-                "This zone is the default zone, it cannot be deleted.")
+                "This zone is the default zone, it cannot be deleted."
+            )
         super(Zone, self).delete()
 
     @property

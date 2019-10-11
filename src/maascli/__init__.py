@@ -3,9 +3,7 @@
 
 """The MAAS command-line interface."""
 
-__all__ = [
-    "main",
-    ]
+__all__ = ["main"]
 
 import os
 import sys
@@ -14,14 +12,17 @@ from maascli.parser import prepare_parser
 
 
 def snap_setup():
-    if 'SNAP' in os.environ:
-        os.environ.update({
-            "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
-            "MAAS_PATH": os.environ["SNAP"],
-            "MAAS_ROOT": os.environ["SNAP_DATA"],
-            "MAAS_REGION_CONFIG": os.path.join(
-                os.environ["SNAP_DATA"], "regiond.conf")
-        })
+    if "SNAP" in os.environ:
+        os.environ.update(
+            {
+                "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
+                "MAAS_PATH": os.environ["SNAP"],
+                "MAAS_ROOT": os.environ["SNAP_DATA"],
+                "MAAS_REGION_CONFIG": os.path.join(
+                    os.environ["SNAP_DATA"], "regiond.conf"
+                ),
+            }
+        )
 
 
 def main(argv=sys.argv):
@@ -31,8 +32,8 @@ def main(argv=sys.argv):
     if len(argv) == 1:
         sys.stderr.write(
             "Error: no arguments given.\n"
-            "Run %s --help for usage details.\n"
-            % argv[0])
+            "Run %s --help for usage details.\n" % argv[0]
+        )
         raise SystemExit(2)
 
     parser = prepare_parser(argv)
@@ -50,7 +51,7 @@ def main(argv=sys.argv):
     except SystemExit:
         raise  # Pass-through.
     except Exception as error:
-        show = getattr(error, 'always_show', False)
+        show = getattr(error, "always_show", False)
         if options.debug or show:
             raise
         else:

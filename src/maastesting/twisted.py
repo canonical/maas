@@ -15,19 +15,12 @@ import inspect
 from textwrap import dedent
 
 from fixtures import Fixture
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
+from testtools.content import Content, UTF8_TEXT
 from testtools.deferredruntest import CaptureTwistedLogs
 from testtools.monkey import patch
 from testtools.twistedsupport._deferred import extract_result
 from twisted.internet import defer
-from twisted.logger import (
-    formatEvent,
-    globalLogPublisher,
-    LogLevel,
-)
+from twisted.logger import formatEvent, globalLogPublisher, LogLevel
 from twisted.python import log
 
 
@@ -39,7 +32,7 @@ def maybe_fix_bug_230_in_CaptureTwistedLogs():
     writing this has been fixed upstream but not released.
     """
     source = inspect.getsource(CaptureTwistedLogs._setUp)
-    if '[logs.getvalue()]' in source:
+    if "[logs.getvalue()]" in source:
         source = source.replace("getvalue()", "getvalue().encode('utf-8')")
         namespace = CaptureTwistedLogs._setUp.__globals__.copy()
         exec(dedent(source), namespace)
@@ -71,10 +64,11 @@ class TwistedLoggerFixture(Fixture):
         This returns a list of event *dictionaries*, not strings.
         """
         return [
-            event for event in self.events
-            if "log_level" in event and
-            event["log_level"] is not None and
-            event["log_level"] >= LogLevel.error
+            event
+            for event in self.events
+            if "log_level" in event
+            and event["log_level"] is not None
+            and event["log_level"] >= LogLevel.error
         ]
 
     @property
@@ -101,7 +95,8 @@ class TwistedLoggerFixture(Fixture):
         machinery.
         """
         return "\n---\n".join(
-            log.textFromEventDict(event) for event in self.events)
+            log.textFromEventDict(event) for event in self.events
+        )
 
     # For compatibility with fixtures.FakeLogger.
     output = property(dump)
@@ -113,6 +108,7 @@ class TwistedLoggerFixture(Fixture):
         because more often than not these logs are meant to be tested directly
         and not kept.
         """
+
         def render(events=self.events):
             for event in events:
                 rendered = formatEvent(event)
@@ -141,8 +137,10 @@ def always_succeed_with(result):
     The callable allows (and ignores) all arguments, and returns a shallow
     `copy` of `result`.
     """
+
     def always_succeed(*args, **kwargs):
         return defer.succeed(copy(result))
+
     return always_succeed
 
 
@@ -152,6 +150,8 @@ def always_fail_with(result):
     The callable allows (and ignores) all arguments, and returns a shallow
     `copy` of `result`.
     """
+
     def always_fail(*args, **kwargs):
         return defer.fail(copy(result))
+
     return always_fail

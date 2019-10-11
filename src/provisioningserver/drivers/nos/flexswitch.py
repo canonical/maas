@@ -10,11 +10,11 @@ from provisioningserver.drivers.nos import NOSDriver
 
 class FlexswitchNOSDriver(NOSDriver):
 
-    name = 'flexswitch'
+    name = "flexswitch"
     description = "Flexswitch"
     settings = []
 
     def is_switch_supported(self, vendor, model):
-        if vendor == 'accton' and model in ('wedge100', 'wedge40'):
+        if vendor == "accton" and model in ("wedge100", "wedge40"):
             return True
         return False

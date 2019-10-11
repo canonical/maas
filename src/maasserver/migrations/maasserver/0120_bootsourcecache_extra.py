@@ -1,23 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations, models
 import maasserver.fields
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0119_set_default_vlan_field'),
-    ]
+    dependencies = [("maasserver", "0119_set_default_vlan_field")]
 
     operations = [
         migrations.AddField(
-            model_name='bootsourcecache',
-            name='extra',
-            field=maasserver.fields.JSONObjectField(blank=True, default='', editable=False),
-        ),
+            model_name="bootsourcecache",
+            name="extra",
+            field=maasserver.fields.JSONObjectField(
+                blank=True, default="", editable=False
+            ),
+        )
     ]

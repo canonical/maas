@@ -3,17 +3,9 @@
 
 """Base NOS driver."""
 
-__all__ = [
-    "NOSDriver",
-    "NOSDriverBase",
-    "NOSError",
-    ]
+__all__ = ["NOSDriver", "NOSDriverBase", "NOSError"]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty,
-)
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 from jsonschema import validate
 from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
@@ -22,36 +14,27 @@ from twisted.internet import reactor
 # We specifically declare this here so that a switch not knowing its own
 # NOS driver won't fail to enlist nor do we want this in the list of NOS
 # drivers.
-UNKNOWN_NOS_DRIVER = ''
+UNKNOWN_NOS_DRIVER = ""
 
 # JSON schema for what a NOS driver definition should look like.
 JSON_NOS_DRIVER_SCHEMA = {
-    'title': "NOS driver setting set",
-    'type': 'object',
-    'properties': {
-        'driver_type': {
-            'type': 'string',
-        },
-        'name': {
-            'type': 'string',
-        },
-        'description': {
-            'type': 'string',
-        },
-        'fields': {
-            'type': 'array',
-            'items': SETTING_PARAMETER_FIELD_SCHEMA,
-        },
+    "title": "NOS driver setting set",
+    "type": "object",
+    "properties": {
+        "driver_type": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "fields": {"type": "array", "items": SETTING_PARAMETER_FIELD_SCHEMA},
     },
-    'required': ['driver_type', 'name', 'description', 'fields'],
+    "required": ["driver_type", "name", "description", "fields"],
 }
 
 
 # JSON schema for multiple NOS drivers.
 JSON_NOS_DRIVERS_SCHEMA = {
-    'title': "NOS drivers parameters set",
-    'type': 'array',
-    'items': JSON_NOS_DRIVER_SCHEMA,
+    "title": "NOS drivers parameters set",
+    "type": "array",
+    "items": JSON_NOS_DRIVER_SCHEMA,
 }
 
 
@@ -94,14 +77,18 @@ class NOSDriverBase(metaclass=ABCMeta):
     def get_schema(self):
         """Returns the JSON schema for the driver."""
         schema = dict(
-            driver_type='nos', name=self.name, description=self.description,
-            fields=self.settings, deployable=self.deployable)
+            driver_type="nos",
+            name=self.name,
+            description=self.description,
+            fields=self.settings,
+            deployable=self.deployable,
+        )
         return schema
 
     def get_setting(self, name):
         """Return the setting field by its name."""
         for setting in self.settings:
-            if setting['name'] == name:
+            if setting["name"] == name:
                 return setting
         return None
 

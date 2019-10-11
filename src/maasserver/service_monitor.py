@@ -3,9 +3,7 @@
 
 """Services monitored on regiond."""
 
-__all__ = [
-    "service_monitor",
-]
+__all__ = ["service_monitor"]
 
 from maasserver.models.config import Config
 from maasserver.utils.orm import transactional
@@ -31,7 +29,7 @@ class BIND9Service(AlwaysOnService):
     snap_service_name = "bind9"
 
     # Pass SIGKILL directly to parent.
-    kill_extra_opts = ('-s', 'SIGKILL')
+    kill_extra_opts = ("-s", "SIGKILL")
 
 
 class NTPServiceOnRegion(AlwaysOnService):
@@ -58,14 +56,17 @@ class ProxyService(Service):
     snap_service_name = "proxy"
 
     def getExpectedState(self):
-
         @transactional
         def db_getExpectedState():
-            if (Config.objects.get_config("enable_http_proxy") and
-                    Config.objects.get_config("http_proxy") and
-                    not Config.objects.get_config("use_peer_proxy")):
-                return (SERVICE_STATE.OFF,
-                        "disabled, alternate proxy is configured in settings.")
+            if (
+                Config.objects.get_config("enable_http_proxy")
+                and Config.objects.get_config("http_proxy")
+                and not Config.objects.get_config("use_peer_proxy")
+            ):
+                return (
+                    SERVICE_STATE.OFF,
+                    "disabled, alternate proxy is configured in settings.",
+                )
             elif config.is_config_present() is False:
                 return (SERVICE_STATE.OFF, "no configuration file present.")
             else:

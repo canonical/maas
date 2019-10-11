@@ -14,21 +14,20 @@ from provisioningserver.drivers.osystem.caringo import CaringoOS
 
 
 class TestCaringoOS(MAASTestCase):
-
     def test_get_boot_image_purposes(self):
         osystem = CaringoOS()
-        archs = [factory.make_name('arch') for _ in range(2)]
-        subarchs = [factory.make_name('subarch') for _ in range(2)]
-        releases = [factory.make_name('release') for _ in range(2)]
-        labels = [factory.make_name('label') for _ in range(2)]
+        archs = [factory.make_name("arch") for _ in range(2)]
+        subarchs = [factory.make_name("subarch") for _ in range(2)]
+        releases = [factory.make_name("release") for _ in range(2)]
+        labels = [factory.make_name("label") for _ in range(2)]
         for arch, subarch, release, label in product(
-                archs, subarchs, releases, labels):
+            archs, subarchs, releases, labels
+        ):
             expected = osystem.get_boot_image_purposes(
-                arch, subarchs, release, label)
+                arch, subarchs, release, label
+            )
             self.assertIsInstance(expected, list)
-            self.assertEqual(expected, [
-                BOOT_IMAGE_PURPOSE.EPHEMERAL,
-                ])
+            self.assertEqual(expected, [BOOT_IMAGE_PURPOSE.EPHEMERAL])
 
     def test_get_default_release(self):
         osystem = CaringoOS()
@@ -37,6 +36,4 @@ class TestCaringoOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = CaringoOS()
-        self.assertEqual(
-            osystem.get_release_title("9.0"),
-            "9.0")
+        self.assertEqual(osystem.get_release_title("9.0"), "9.0")

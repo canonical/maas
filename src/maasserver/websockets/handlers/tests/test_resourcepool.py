@@ -8,11 +8,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.resourcepool import ResourcePool
-from maasserver.rbac import (
-    ALL_RESOURCES,
-    FakeRBACClient,
-    rbac,
-)
+from maasserver.rbac import ALL_RESOURCES, FakeRBACClient, rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -25,9 +21,8 @@ from maasserver.websockets.handlers.resourcepool import ResourcePoolHandler
 
 
 class TestResourcePoolHandler(MAASServerTestCase):
-
     def enable_rbac(self):
-        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        Config.objects.set_config("rbac_url", "http://rbac.example.com")
         client = FakeRBACClient()
         rbac._store.client = client
         rbac._store.cleared = False  # Prevent re-creation of the client
@@ -39,16 +34,19 @@ class TestResourcePoolHandler(MAASServerTestCase):
         pool = factory.make_ResourcePool()
         result = handler.get({"id": pool.id})
         self.assertEqual(
-            {'id': pool.id,
-             'name': pool.name,
-             'description': pool.description,
-             'is_default': False,
-             'created': dehydrate_datetime(pool.created),
-             'updated': dehydrate_datetime(pool.updated),
-             'machine_total_count': 0,
-             'machine_ready_count': 0,
-             'permissions': []},
-            result)
+            {
+                "id": pool.id,
+                "name": pool.name,
+                "description": pool.description,
+                "is_default": False,
+                "created": dehydrate_datetime(pool.created),
+                "updated": dehydrate_datetime(pool.updated),
+                "machine_total_count": 0,
+                "machine_ready_count": 0,
+                "permissions": [],
+            },
+            result,
+        )
 
     def test_get_rbac(self):
         self.enable_rbac()
@@ -56,19 +54,22 @@ class TestResourcePoolHandler(MAASServerTestCase):
         handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, 'view')
+        self.rbac_store.allow(user.username, pool, "view")
         result = handler.get({"id": pool.id})
         self.assertEqual(
-            {'id': pool.id,
-             'name': pool.name,
-             'description': pool.description,
-             'is_default': False,
-             'created': dehydrate_datetime(pool.created),
-             'updated': dehydrate_datetime(pool.updated),
-             'machine_total_count': 0,
-             'machine_ready_count': 0,
-             'permissions': []},
-            result)
+            {
+                "id": pool.id,
+                "name": pool.name,
+                "description": pool.description,
+                "is_default": False,
+                "created": dehydrate_datetime(pool.created),
+                "updated": dehydrate_datetime(pool.updated),
+                "machine_total_count": 0,
+                "machine_ready_count": 0,
+                "permissions": [],
+            },
+            result,
+        )
 
     def test_get_rbac_fails(self):
         self.enable_rbac()
@@ -77,7 +78,8 @@ class TestResourcePoolHandler(MAASServerTestCase):
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
         self.assertRaises(
-            HandlerDoesNotExistError, handler.get, {"id": pool.id})
+            HandlerDoesNotExistError, handler.get, {"id": pool.id}
+        )
 
     def test_get_machine_count(self):
         user = factory.make_User()
@@ -85,7 +87,7 @@ class TestResourcePoolHandler(MAASServerTestCase):
         pool = factory.make_ResourcePool()
         factory.make_Machine(pool=pool)
         result = handler.get({"id": pool.id})
-        self.assertEqual(1, result['machine_total_count'])
+        self.assertEqual(1, result["machine_total_count"])
 
     def test_get_machine_ready_count(self):
         user = factory.make_User()
@@ -94,22 +96,21 @@ class TestResourcePoolHandler(MAASServerTestCase):
         factory.make_Machine(pool=pool, status=NODE_STATUS.NEW)
         factory.make_Machine(pool=pool, status=NODE_STATUS.READY)
         result = handler.get({"id": pool.id})
-        self.assertEqual(2, result['machine_total_count'])
-        self.assertEqual(1, result['machine_ready_count'])
+        self.assertEqual(2, result["machine_total_count"])
+        self.assertEqual(1, result["machine_ready_count"])
 
     def test_get_is_default(self):
         pool = ResourcePool.objects.get_default_resource_pool()
         handler = ResourcePoolHandler(factory.make_User(), {}, None)
         result = handler.get({"id": pool.id})
-        self.assertTrue(result['is_default'])
+        self.assertTrue(result["is_default"])
 
     def test_list(self):
         user = factory.make_User()
         handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
-        returned_pool_names = [
-            data['name'] for data in handler.list({})]
-        self.assertEqual(['default', pool.name], returned_pool_names)
+        returned_pool_names = [data["name"] for data in handler.list({})]
+        self.assertEqual(["default", pool.name], returned_pool_names)
 
     def test_list_rbac(self):
         self.enable_rbac()
@@ -117,44 +118,53 @@ class TestResourcePoolHandler(MAASServerTestCase):
         handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, 'view')
-        returned_pool_names = [
-            data['name'] for data in handler.list({})]
+        self.rbac_store.allow(user.username, pool, "view")
+        returned_pool_names = [data["name"] for data in handler.list({})]
         self.assertEqual([pool.name], returned_pool_names)
 
     def test_create_annotations(self):
         handler = ResourcePoolHandler(factory.make_admin(), {}, None)
         result = handler.create(
-            {'name': factory.make_name('pool'),
-             'description': factory.make_name('description')})
-        self.assertEqual(0, result['machine_total_count'])
-        self.assertEqual(0, result['machine_ready_count'])
+            {
+                "name": factory.make_name("pool"),
+                "description": factory.make_name("description"),
+            }
+        )
+        self.assertEqual(0, result["machine_total_count"])
+        self.assertEqual(0, result["machine_ready_count"])
 
     def test_create_rbac(self):
         self.enable_rbac()
         user = factory.make_User()
-        self.rbac_store.allow(user.username, ALL_RESOURCES, 'view')
-        self.rbac_store.allow(user.username, ALL_RESOURCES, 'edit')
+        self.rbac_store.allow(user.username, ALL_RESOURCES, "view")
+        self.rbac_store.allow(user.username, ALL_RESOURCES, "edit")
         handler = ResourcePoolHandler(user, {}, None)
         result = handler.create(
-            {'name': factory.make_name('pool'),
-             'description': factory.make_name('description')})
-        self.assertEqual(0, result['machine_total_count'])
-        self.assertEqual(0, result['machine_ready_count'])
+            {
+                "name": factory.make_name("pool"),
+                "description": factory.make_name("description"),
+            }
+        )
+        self.assertEqual(0, result["machine_total_count"])
+        self.assertEqual(0, result["machine_ready_count"])
 
     def test_create_rbac_requires_edit_on_all(self):
         self.enable_rbac()
         user = factory.make_User()
-        self.rbac_store.allow(user.username, ALL_RESOURCES, 'view')
+        self.rbac_store.allow(user.username, ALL_RESOURCES, "view")
         handler = ResourcePoolHandler(user, {}, None)
         self.assertRaises(
-            HandlerPermissionError, handler.create,
-            {'name': factory.make_name('pool'),
-             'description': factory.make_name('description')})
+            HandlerPermissionError,
+            handler.create,
+            {
+                "name": factory.make_name("pool"),
+                "description": factory.make_name("description"),
+            },
+        )
 
     def test_update(self):
         pool = factory.make_ResourcePool()
-        new_name = factory.make_name('pool')
+        new_name = factory.make_name("pool")
         handler = ResourcePoolHandler(factory.make_admin(), {}, None)
         handler.update({"id": pool.id, "name": new_name})
         pool = reload_object(pool)
@@ -164,16 +174,17 @@ class TestResourcePoolHandler(MAASServerTestCase):
         handler = ResourcePoolHandler(factory.make_User(), {}, None)
         pool = factory.make_ResourcePool()
         self.assertRaises(
-            HandlerPermissionError, handler.update, {"id": pool.id})
+            HandlerPermissionError, handler.update, {"id": pool.id}
+        )
 
     def test_update_rbac(self):
         self.enable_rbac()
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, 'view')
-        self.rbac_store.allow(user.username, pool, 'edit')
-        new_name = factory.make_name('pool')
+        self.rbac_store.allow(user.username, pool, "view")
+        self.rbac_store.allow(user.username, pool, "edit")
+        new_name = factory.make_name("pool")
         handler = ResourcePoolHandler(user, {}, None)
         handler.update({"id": pool.id, "name": new_name})
         pool = reload_object(pool)
@@ -184,10 +195,11 @@ class TestResourcePoolHandler(MAASServerTestCase):
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, 'view')
+        self.rbac_store.allow(user.username, pool, "view")
         handler = ResourcePoolHandler(user, {}, None)
         self.assertRaises(
-            HandlerPermissionError, handler.update, {"id": pool.id})
+            HandlerPermissionError, handler.update, {"id": pool.id}
+        )
 
     def test_delete(self):
         handler = ResourcePoolHandler(factory.make_admin(), {}, None)
@@ -199,7 +211,8 @@ class TestResourcePoolHandler(MAASServerTestCase):
         handler = ResourcePoolHandler(factory.make_User(), {}, None)
         pool = factory.make_ResourcePool()
         self.assertRaises(
-            HandlerPermissionError, handler.delete, {"id": pool.id})
+            HandlerPermissionError, handler.delete, {"id": pool.id}
+        )
 
     def test_delete_default_fails(self):
         pool = ResourcePool.objects.get_default_resource_pool()
@@ -211,8 +224,8 @@ class TestResourcePoolHandler(MAASServerTestCase):
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, 'view')
-        self.rbac_store.allow(user.username, ALL_RESOURCES, 'edit')
+        self.rbac_store.allow(user.username, pool, "view")
+        self.rbac_store.allow(user.username, ALL_RESOURCES, "edit")
         handler = ResourcePoolHandler(user, {}, None)
         handler.delete({"id": pool.id})
         self.assertIsNone(reload_object(pool))
@@ -222,8 +235,9 @@ class TestResourcePoolHandler(MAASServerTestCase):
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, 'view')
-        self.rbac_store.allow(user.username, pool, 'edit')
+        self.rbac_store.allow(user.username, pool, "view")
+        self.rbac_store.allow(user.username, pool, "edit")
         handler = ResourcePoolHandler(user, {}, None)
         self.assertRaises(
-            HandlerPermissionError, handler.delete, {"id": pool.id})
+            HandlerPermissionError, handler.delete, {"id": pool.id}
+        )

@@ -21,7 +21,8 @@ from provisioningserver.utils.fs import atomic_write
 
 class TestGetLatestFixedAddress(MAASTestCase):
 
-    IPV4_LEASE_FILE = dedent("""\
+    IPV4_LEASE_FILE = dedent(
+        """\
         lease {
           interface "eno1";
           fixed-address 192.168.1.111;
@@ -34,9 +35,11 @@ class TestGetLatestFixedAddress(MAASTestCase):
           interface "eno1";
           fixed-address 192.168.1.113;
         }
-        """)
+        """
+    )
 
-    IPV6_LEASE_FILE = dedent("""\
+    IPV6_LEASE_FILE = dedent(
+        """\
         lease {
           interface "eno1";
           fixed-address6 2001:db8:a0b:12f0::1;
@@ -49,11 +52,13 @@ class TestGetLatestFixedAddress(MAASTestCase):
           interface "eno1";
           fixed-address6 2001:db8:a0b:12f0::3;
         }
-        """)
+        """
+    )
 
     def test__missing(self):
         self.assertIsNone(
-            get_lastest_fixed_address(factory.make_name("lease")))
+            get_lastest_fixed_address(factory.make_name("lease"))
+        )
 
     def test__empty(self):
         path = self.make_file(contents="")
@@ -65,46 +70,52 @@ class TestGetLatestFixedAddress(MAASTestCase):
 
     def test__ipv4(self):
         path = self.make_file(contents=self.IPV4_LEASE_FILE)
-        self.assertEquals(
-            "192.168.1.113", get_lastest_fixed_address(path))
+        self.assertEquals("192.168.1.113", get_lastest_fixed_address(path))
 
     def test__ipv6(self):
         path = self.make_file(contents=self.IPV6_LEASE_FILE)
         self.assertEquals(
-            "2001:db8:a0b:12f0::3", get_lastest_fixed_address(path))
+            "2001:db8:a0b:12f0::3", get_lastest_fixed_address(path)
+        )
 
 
 class TestGetDhclientInfo(MAASTestCase):
-
     def test__returns_interface_name_with_address(self):
         proc_path = self.make_dir()
         leases_path = self.make_dir()
-        running_pids = set(
-            random.randint(2, 999)
-            for _ in range(3)
-        )
+        running_pids = set(random.randint(2, 999) for _ in range(3))
         self.patch(
-            dhclient_module,
-            "get_running_pids_with_command").return_value = running_pids
+            dhclient_module, "get_running_pids_with_command"
+        ).return_value = running_pids
         interfaces = {}
         for pid in running_pids:
             interface_name = factory.make_name("eth")
             address = factory.make_ipv4_address()
             interfaces[interface_name] = address
             lease_path = os.path.join(leases_path, "%s.lease" % interface_name)
-            lease_data = dedent("""\
+            lease_data = (
+                dedent(
+                    """\
                 lease {
                   interface "%s";
                   fixed-address %s;
                 }
-                """) % (interface_name, address)
+                """
+                )
+                % (interface_name, address)
+            )
             atomic_write(lease_data.encode("ascii"), lease_path)
             cmdline_path = os.path.join(proc_path, str(pid), "cmdline")
             cmdline = [
-                "/sbin/dhclient", "-d", "-q",
-                "-pf", "/run/dhclient-%s.pid" % interface_name,
-                "-lf", lease_path,
-                "-cf", "/var/lib/dhclient/dhclient-%s.conf" % interface_name,
+                "/sbin/dhclient",
+                "-d",
+                "-q",
+                "-pf",
+                "/run/dhclient-%s.pid" % interface_name,
+                "-lf",
+                lease_path,
+                "-cf",
+                "/var/lib/dhclient/dhclient-%s.conf" % interface_name,
                 interface_name,
             ]
             cmdline = "\x00".join(cmdline) + "\x00"

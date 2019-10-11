@@ -3,39 +3,20 @@
 
 """API handlers: `Discovery`."""
 
-__all__ = [
-    'DiscoveryHandler',
-    'DiscoveriesHandler',
-    ]
+__all__ = ["DiscoveryHandler", "DiscoveriesHandler"]
 
 from textwrap import dedent
 
-from django.http.response import (
-    HttpResponseBadRequest,
-    HttpResponseForbidden,
-)
-from formencode.validators import (
-    CIDR,
-    Number,
-    StringBool,
-)
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
+from formencode.validators import CIDR, Number, StringBool
+from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_list,
     get_optional_param,
 )
-from maasserver.clusterrpc.utils import (
-    call_racks_synchronously,
-    RPCResults,
-)
-from maasserver.models import (
-    Discovery,
-    RackController,
-)
+from maasserver.clusterrpc.utils import call_racks_synchronously, RPCResults
+from maasserver.models import Discovery, RackController
 from maasserver.permissions import NodePermission
 from netaddr import IPNetwork
 from piston3.utils import rc
@@ -43,20 +24,21 @@ from provisioningserver.rpc import cluster
 
 
 DISPLAYED_DISCOVERY_FIELDS = (
-    'discovery_id',
-    'ip',
-    'mac_address',
-    'mac_organization',
-    'last_seen',
-    'hostname',
-    'fabric_name',
-    'vid',
-    'observer',
+    "discovery_id",
+    "ip",
+    "mac_address",
+    "mac_organization",
+    "last_seen",
+    "hostname",
+    "fabric_name",
+    "vid",
+    "observer",
 )
 
 
 class DiscoveryHandler(OperationsHandler):
     """Read or delete an observed discovery."""
+
     api_doc_section_name = "Discovery"
     # This is a view-backed, read-only API.
     create = delete = update = None
@@ -70,7 +52,7 @@ class DiscoveryHandler(OperationsHandler):
         if discovery is not None:
             # discovery_id = quote_url(discovery.discovery_id)
             discovery_id = discovery.discovery_id
-        return ('discovery_handler', (discovery_id,))
+        return ("discovery_handler", (discovery_id,))
 
     def read(self, request, **kwargs):
         """@description-title Read a discovery
@@ -89,29 +71,30 @@ class DiscoveryHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        discovery_id = kwargs.get('discovery_id', None)
+        discovery_id = kwargs.get("discovery_id", None)
         discovery = Discovery.objects.get_discovery_or_404(discovery_id)
         return discovery
 
     @classmethod
     def observer(cls, discovery):
         return {
-            'system_id': discovery.observer_system_id,
-            'hostname': discovery.observer_hostname,
-            'interface_id': discovery.observer_interface_id,
-            'interface_name': discovery.observer_interface_name,
+            "system_id": discovery.observer_system_id,
+            "hostname": discovery.observer_hostname,
+            "interface_id": discovery.observer_interface_id,
+            "interface_name": discovery.observer_interface_name,
         }
 
 
 class DiscoveriesHandler(OperationsHandler):
     """Query observed discoveries."""
+
     api_doc_section_name = "Discoveries"
     # This is a view-backed, read-only API.
     create = update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('discoveries_handler', [])
+        return ("discoveries_handler", [])
 
     def read(self, request, **kwargs):
         """@description-title List all discovered devices
@@ -203,26 +186,34 @@ class DiscoveriesHandler(OperationsHandler):
         @success (http-status-code) "server-success" 204
         """
         all = get_optional_param(
-            request.POST, 'all', default=False, validator=StringBool)
+            request.POST, "all", default=False, validator=StringBool
+        )
         mdns = get_optional_param(
-            request.POST, 'mdns', default=False, validator=StringBool)
+            request.POST, "mdns", default=False, validator=StringBool
+        )
         neighbours = get_optional_param(
-            request.POST, 'neighbours', default=False, validator=StringBool)
+            request.POST, "neighbours", default=False, validator=StringBool
+        )
 
         if not request.user.has_perm(NodePermission.admin, Discovery):
             response = HttpResponseForbidden(
-                content_type='text/plain',
-                content="Must be an administrator to clear discovery entries.")
+                content_type="text/plain",
+                content="Must be an administrator to clear discovery entries.",
+            )
             return response
         if True not in (mdns, neighbours, all):
-            content = dedent("""\
+            content = dedent(
+                """\
                 Bad request: could not determine what data to clear.
-                Must specify mdns=True, neighbours=True, or all=True.""")
+                Must specify mdns=True, neighbours=True, or all=True."""
+            )
             response = HttpResponseBadRequest(
-                content_type='text/plain', content=content)
+                content_type="text/plain", content=content
+            )
             return response
         Discovery.objects.clear(
-            user=request.user, all=all, mdns=mdns, neighbours=neighbours)
+            user=request.user, all=all, mdns=mdns, neighbours=neighbours
+        )
         return rc.DELETED
 
     @operation(idempotent=False)
@@ -237,16 +228,18 @@ class DiscoveriesHandler(OperationsHandler):
 
         @success (http-status-code) "server-success" 204
         """
-        ip = get_mandatory_param(request.POST, 'ip')
-        mac = get_mandatory_param(request.POST, 'mac')
+        ip = get_mandatory_param(request.POST, "ip")
+        mac = get_mandatory_param(request.POST, "mac")
 
         if not request.user.has_perm(NodePermission.admin, Discovery):
             response = HttpResponseForbidden(
-                content_type='text/plain',
-                content="Must be an administrator to clear discovery entries.")
+                content_type="text/plain",
+                content="Must be an administrator to clear discovery entries.",
+            )
             return response
         delete_result = Discovery.objects.delete_by_mac_and_ip(
-            ip=ip, mac=mac, user=request.user)
+            ip=ip, mac=mac, user=request.user
+        )
         if delete_result[0] == 0:
             return rc.NOT_HERE
         else:
@@ -320,18 +313,25 @@ class DiscoveriesHandler(OperationsHandler):
         placeholder text
         """
         cidrs = get_optional_list(
-            request.POST, 'cidr', default=[], validator=CIDR)
+            request.POST, "cidr", default=[], validator=CIDR
+        )
         # The RPC call requires a list of CIDRs.
         ipnetworks = [IPNetwork(cidr) for cidr in cidrs]
         force = get_optional_param(
-            request.POST, 'force', default=False, validator=StringBool)
+            request.POST, "force", default=False, validator=StringBool
+        )
         always_use_ping = get_optional_param(
-            request.POST, 'always_use_ping', default=False,
-            validator=StringBool)
+            request.POST,
+            "always_use_ping",
+            default=False,
+            validator=StringBool,
+        )
         slow = get_optional_param(
-            request.POST, 'slow', default=False, validator=StringBool)
+            request.POST, "slow", default=False, validator=StringBool
+        )
         threads = get_optional_param(
-            request.POST, 'threads', default=None, validator=Number)
+            request.POST, "threads", default=None, validator=Number
+        )
         if threads is not None:
             threads = int(threads)  # Could be a floating point.
         if len(cidrs) == 0 and force is not True:
@@ -340,18 +340,23 @@ class DiscoveriesHandler(OperationsHandler):
                 "force=True is specified.\n\n**WARNING: This will scan ALL "
                 "networks attached to MAAS rack controllers.\nCheck with your "
                 "internet service provider or IT department to be sure this "
-                "is\nallowed before proceeding.**\n")
+                "is\nallowed before proceeding.**\n"
+            )
             return HttpResponseBadRequest(
-                content_type="text/plain", content=error)
+                content_type="text/plain", content=error
+            )
         elif len(cidrs) == 0 and force is True:
             # No CIDRs specified and force==True, so scan all networks.
             results = scan_all_rack_networks(
-                scan_all=True, ping=always_use_ping, slow=slow,
-                threads=threads)
+                scan_all=True, ping=always_use_ping, slow=slow, threads=threads
+            )
         else:
             results = scan_all_rack_networks(
-                cidrs=ipnetworks, ping=always_use_ping, slow=slow,
-                threads=threads)
+                cidrs=ipnetworks,
+                ping=always_use_ping,
+                slow=slow,
+                threads=threads,
+            )
         return user_friendly_scan_results(results)
 
 
@@ -361,28 +366,31 @@ def get_scan_result_string_for_humans(rpc_results: RPCResults) -> str:
         result = (
             "Unable to initiate network scanning on any rack controller. "
             "Verify that the rack controllers are started and have "
-            "connected to the region.")
+            "connected to the region."
+        )
     elif len(rpc_results.unavailable) > 0:
         if len(rpc_results.failed) == 0:
             result = (
                 "Scanning could not be started on %d rack controller(s). "
                 "Verify that all rack controllers are connected to the "
-                "region." % len(rpc_results.unavailable))
+                "region." % len(rpc_results.unavailable)
+            )
         else:
             result = (
                 "Scanning could not be started on %d rack controller(s). "
                 "Verify that all rack controllers are connected to the "
                 "region. In addition, a scan was already in-progress on %d "
                 "rack controller(s); another scan cannot be started until the "
-                "current scan finishes." % (
-                    len(rpc_results.unavailable), len(rpc_results.failed)))
+                "current scan finishes."
+                % (len(rpc_results.unavailable), len(rpc_results.failed))
+            )
     elif len(rpc_results.failed) == 0:
         result = "Scanning is in-progress on all rack controllers."
     else:
         result = (
             "A scan was already in-progress on %d rack controller(s); another "
-            "scan cannot be started until the current scan finishes." % (
-                len(rpc_results.failed))
+            "scan cannot be started until the current scan finishes."
+            % (len(rpc_results.failed))
         )
     return result
 
@@ -390,10 +398,7 @@ def get_scan_result_string_for_humans(rpc_results: RPCResults) -> str:
 def get_failure_summary(failures):
     """Returns a list of dictionaries summarizing each `Failure`."""
     return [
-        {
-            'type': failure.type.__name__,
-            'message': str(failure.value),
-        }
+        {"type": failure.type.__name__, "message": str(failure.value)}
         for failure in failures
     ]
 
@@ -401,17 +406,14 @@ def get_failure_summary(failures):
 def get_controller_summary(controllers):
     """Return a list of dictionaries summarizing each controller."""
     return [
-        {
-            'system_id': controller.system_id,
-            'hostname': controller.hostname,
-        }
+        {"system_id": controller.system_id, "hostname": controller.hostname}
         for controller in controllers
     ]
 
 
 def scan_all_rack_networks(
-        scan_all=None, cidrs=None, ping=None, threads=None,
-        slow=None) -> RPCResults:
+    scan_all=None, cidrs=None, ping=None, threads=None, slow=None
+) -> RPCResults:
     """Call each rack controller and instruct it to scan its attached networks.
 
     Interprets the results and returns a dict with the following keys:
@@ -447,19 +449,21 @@ def scan_all_rack_networks(
     kwargs = {}
     controllers = None
     if scan_all is not None:
-        kwargs['scan_all'] = scan_all
+        kwargs["scan_all"] = scan_all
     if cidrs is not None:
-        kwargs['cidrs'] = cidrs
+        kwargs["cidrs"] = cidrs
         controllers = list(
-            RackController.objects.filter_by_subnet_cidrs(cidrs))
+            RackController.objects.filter_by_subnet_cidrs(cidrs)
+        )
     if ping is not None:
-        kwargs['force_ping'] = ping
+        kwargs["force_ping"] = ping
     if threads is not None:
-        kwargs['threads'] = threads
+        kwargs["threads"] = threads
     if slow is not None:
-        kwargs['slow'] = slow
+        kwargs["slow"] = slow
     rpc_results = call_racks_synchronously(
-        cluster.ScanNetworks, controllers=controllers, kwargs=kwargs)
+        cluster.ScanNetworks, controllers=controllers, kwargs=kwargs
+    )
     return rpc_results
 
 
@@ -476,18 +480,14 @@ def user_friendly_scan_results(rpc_results: RPCResults) -> dict:
     # API backward compatibility.
     results = {
         "result": result,
-        "scan_started_on":
-            get_controller_summary(rpc_results.success),
-        "scan_failed_on":
-            get_controller_summary(rpc_results.failed),
-        "scan_attempted_on":
-            get_controller_summary(rpc_results.available),
-        "failed_to_connect_to":
-            get_controller_summary(rpc_results.unavailable),
+        "scan_started_on": get_controller_summary(rpc_results.success),
+        "scan_failed_on": get_controller_summary(rpc_results.failed),
+        "scan_attempted_on": get_controller_summary(rpc_results.available),
+        "failed_to_connect_to": get_controller_summary(
+            rpc_results.unavailable
+        ),
         # This is very unlikely to happen, but it's here just in case.
-        "rpc_call_timed_out_on":
-            get_controller_summary(rpc_results.timeout),
-        "failures":
-            get_failure_summary(rpc_results.failures),
+        "rpc_call_timed_out_on": get_controller_summary(rpc_results.timeout),
+        "failures": get_failure_summary(rpc_results.failures),
     }
     return results

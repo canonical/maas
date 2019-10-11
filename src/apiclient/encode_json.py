@@ -3,9 +3,7 @@
 
 """Encoding requests as JSON data."""
 
-__all__ = [
-    'encode_json_data',
-    ]
+__all__ = ["encode_json_data"]
 
 import json
 
@@ -19,7 +17,7 @@ def encode_json_data(params):
     """
     body = json.dumps(params)
     headers = {
-        'Content-Length': str(len(body)),
-        'Content-Type': 'application/json',
-        }
+        "Content-Length": str(len(body)),
+        "Content-Type": "application/json",
+    }
     return body, headers

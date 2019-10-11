@@ -3,9 +3,7 @@
 
 """Simplestreams code to download boot resources."""
 
-__all__ = [
-    'download_all_boot_resources',
-    ]
+__all__ = ["download_all_boot_resources"]
 
 from datetime import datetime
 import os.path
@@ -17,10 +15,7 @@ from provisioningserver.import_images.helpers import (
     maaslog,
 )
 from provisioningserver.logger import LegacyLogger
-from simplestreams.mirrors import (
-    BasicMirrorWriter,
-    UrlMirrorReader,
-)
+from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import FileStore
 from simplestreams.util import (
     item_checksums,
@@ -57,7 +52,10 @@ def insert_file(store, name, tag, checksums, size, content_source):
     """
     log.debug(
         "Inserting file {name} (tag={tag}, size={size}).",
-        name=name, tag=tag, size=size)
+        name=name,
+        tag=tag,
+        size=size,
+    )
     store.insert(tag, content_source, checksums, mutable=False, size=size)
     # XXX jtv 2014-04-24 bug=1313580: Isn't _fullpath meant to be private?
     return [(store._fullpath(tag), name)]
@@ -85,9 +83,12 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
     """
     log.debug(
         "Inserting archive {name} (tag={tag}, size={size}).",
-        name=name, tag=tag, size=size)
+        name=name,
+        tag=tag,
+        size=size,
+    )
     extracted_files = []
-    cache_dir = store._fullpath('')
+    cache_dir = store._fullpath("")
     # Check if the archive has already been extracted. This is done by scanning
     # the cache directory for files containing the given tag. Since the tag is
     # the SHA256 this will always be unique and if files are added/removed from
@@ -96,9 +97,9 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
         for f in files:
             if f.endswith(tag):
                 # Strip out the tag
-                filename = f[:-(len(tag) + 1)]
+                filename = f[: -(len(tag) + 1)]
                 if root != cache_dir:
-                    filename = os.path.join(root[len(cache_dir):], filename)
+                    filename = os.path.join(root[len(cache_dir) :], filename)
                 # Give full path to cached file
                 filepath = os.path.join(root, f)
                 extracted_files.append((filepath, filename))
@@ -107,14 +108,17 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
     if extracted_files == []:
         log.debug(
             "Extracting archive {name} (tag={tag}, size={size}).",
-            name=name, tag=tag, size=size)
+            name=name,
+            tag=tag,
+            size=size,
+        )
         archive_path = store._fullpath(tag)
         store.insert(tag, content_source, checksums, mutable=False, size=size)
-        with tarfile.open(archive_path, 'r|*') as tar:
+        with tarfile.open(archive_path, "r|*") as tar:
             for member in tar:
                 if member.isfile():
                     filename = member.name
-                    filepath = store._fullpath('%s-%s' % (filename, tag))
+                    filepath = store._fullpath("%s-%s" % (filename, tag))
                     fo = tar.extractfile(member)
                     store.insert(filepath, fo, mutable=False)
                     extracted_files.append((filepath, filename))
@@ -126,8 +130,15 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
 
 
 def link_resources(
-        snapshot_path, links, osystem, arch, release, label,
-        subarches, bootloader_type=None):
+    snapshot_path,
+    links,
+    osystem,
+    arch,
+    release,
+    label,
+    subarches,
+    bootloader_type=None,
+):
     """Hardlink entries in the snapshot directory to resources in the cache.
 
     This creates file entries in the snapshot directory for boot resources
@@ -155,15 +166,17 @@ def link_resources(
     for subarch in subarches:
         if bootloader_type is None:
             directory = os.path.join(
-                snapshot_path, osystem, arch, subarch, release, label)
+                snapshot_path, osystem, arch, subarch, release, label
+            )
         else:
             # Subarches are only supported on Ubuntu. With the path bootloaders
             # are being put in below having multiple subarches on a bootloader
             # will cause the contents from one subarch to overwrite the
             # contents of another.
-            assert(len(subarches) == 1)
+            assert len(subarches) == 1
             directory = os.path.join(
-                snapshot_path, 'bootloader', bootloader_type, arch)
+                snapshot_path, "bootloader", bootloader_type, arch
+            )
         if not os.path.exists(directory):
             os.makedirs(directory)
         for cached_file, logical_name in links:
@@ -190,11 +203,13 @@ class RepoWriter(BasicMirrorWriter):
         self.root_path = root_path
         self.store = store
         self.product_mapping = product_mapping
-        super(RepoWriter, self).__init__(config={
-            # Only download the latest version. Without this all versions
-            # will be downloaded from simplestreams.
-            'max_items': 1,
-            })
+        super(RepoWriter, self).__init__(
+            config={
+                # Only download the latest version. Without this all versions
+                # will be downloaded from simplestreams.
+                "max_items": 1
+            }
+        )
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""
@@ -211,16 +226,18 @@ class RepoWriter(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
         checksums = item_checksums(data)
-        tag = checksums['sha256']
-        size = data['size']
-        ftype = item['ftype']
-        filename = os.path.basename(item['path'])
-        if ftype == 'archive.tar.xz':
+        tag = checksums["sha256"]
+        size = data["size"]
+        ftype = item["ftype"]
+        filename = os.path.basename(item["path"])
+        if ftype == "archive.tar.xz":
             links = extract_archive_tar(
-                self.store, filename, tag, checksums, size, contentsource)
+                self.store, filename, tag, checksums, size, contentsource
+            )
         else:
             links = insert_file(
-                self.store, filename, tag, checksums, size, contentsource)
+                self.store, filename, tag, checksums, size, contentsource
+            )
 
         osystem = get_os_from_product(item)
 
@@ -235,34 +252,41 @@ class RepoWriter(BasicMirrorWriter):
         # flavor is processed after the generic kernel. Since MAAS doesn't use
         # the other hard links only create hard links for the subarch of the
         # product we have and a rolling link if it's a rolling kernel.
-        if 'subarch' in item:
+        if "subarch" in item:
             # MAAS uses the 'generic' subarch when it doesn't know which
             # subarch to use. This happens during enlistment and commissioning.
             # Allow the 'generic' kflavor to own the 'generic' hardlink. The
             # generic kernel should always be the ga kernel for xenial+,
             # hwe-<first letter of release> for older releases.
-            if (item.get('kflavor') == 'generic' and (
-                    item['subarch'].startswith('ga-') or
-                    item['subarch'] == 'hwe-%s' % item['release'][0])):
-                subarches = {item['subarch'], 'generic'}
+            if item.get("kflavor") == "generic" and (
+                item["subarch"].startswith("ga-")
+                or item["subarch"] == "hwe-%s" % item["release"][0]
+            ):
+                subarches = {item["subarch"], "generic"}
             else:
-                subarches = {item['subarch']}
+                subarches = {item["subarch"]}
         else:
-            subarches = {'generic'}
+            subarches = {"generic"}
 
-        if item.get('rolling', False):
-            subarch_parts = item['subarch'].split('-')
-            subarch_parts[1] = 'rolling'
-            subarches.add('-'.join(subarch_parts))
+        if item.get("rolling", False):
+            subarch_parts = item["subarch"].split("-")
+            subarch_parts[1] = "rolling"
+            subarches.add("-".join(subarch_parts))
         link_resources(
-            snapshot_path=self.root_path, links=links,
-            osystem=osystem, arch=item['arch'], release=item['release'],
-            label=item['label'], subarches=subarches,
-            bootloader_type=item.get('bootloader-type'))
+            snapshot_path=self.root_path,
+            links=links,
+            osystem=osystem,
+            arch=item["arch"],
+            release=item["release"],
+            label=item["label"],
+            subarches=subarches,
+            bootloader_type=item.get("bootloader-type"),
+        )
 
 
-def download_boot_resources(path, store, snapshot_path, product_mapping,
-                            keyring_file=None):
+def download_boot_resources(
+    path, store, snapshot_path, product_mapping, keyring_file=None
+):
     """Download boot resources for one simplestreams source.
 
     :param path: The Simplestreams URL for this source.
@@ -294,12 +318,13 @@ def compose_snapshot_path(storage_path):
     :return: Path to the snapshot directory.
     """
     now = datetime.utcnow()
-    snapshot_name = 'snapshot-%s' % now.strftime('%Y%m%d-%H%M%S')
+    snapshot_name = "snapshot-%s" % now.strftime("%Y%m%d-%H%M%S")
     return os.path.join(storage_path, snapshot_name)
 
 
 def download_all_boot_resources(
-        sources, storage_path, product_mapping, store=None):
+    sources, storage_path, product_mapping, store=None
+):
     """Download the actual boot resources.
 
     Local copies of boot resources are downloaded into a "cache" directory.
@@ -326,14 +351,18 @@ def download_all_boot_resources(
     # Use a FileStore as our ObjectStore implementation.  It will write to the
     # cache directory.
     if store is None:
-        cache_path = os.path.join(storage_path, 'cache')
+        cache_path = os.path.join(storage_path, "cache")
         store = FileStore(cache_path)
     # XXX jtv 2014-04-11: FileStore now also takes an argument called
     # complete_callback, which can be used for progress reporting.
 
     for source in sources:
         download_boot_resources(
-            source['url'], store, snapshot_path, product_mapping,
-            keyring_file=source.get('keyring')),
+            source["url"],
+            store,
+            snapshot_path,
+            product_mapping,
+            keyring_file=source.get("keyring"),
+        ),
 
     return snapshot_path

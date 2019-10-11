@@ -29,16 +29,12 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from piston3.models import Nonce
-from testtools.matchers import (
-    ContainsAll,
-    StartsWith,
-)
+from testtools.matchers import ContainsAll, StartsWith
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.task import Clock
 
 
 class TestCleanupOldNonces(MAASServerTestCase):
-
     def test_cleanup_old_nonces_returns_0_if_no_checkpoint(self):
         self.assertEqual(0, cleanup_old_nonces())
 
@@ -49,14 +45,16 @@ class TestCleanupOldNonces(MAASServerTestCase):
         timemod = self.patch(module_time, "time")
         timemod.return_value = now - timestamp_threshold
         old_nonces = [
-            Nonce.objects.create(
-                token_key=factory.make_string()) for _ in range(3)]
+            Nonce.objects.create(token_key=factory.make_string())
+            for _ in range(3)
+        ]
         self.assertEqual(0, cleanup_old_nonces())
         # Patch the module's time module back.
         timemod.return_value = now
         new_nonces = [
             Nonce.objects.create(token_key=factory.make_string())
-            for _ in range(3)]
+            for _ in range(3)
+        ]
 
         cleanup_count = cleanup_old_nonces()
 
@@ -67,13 +65,12 @@ class TestCleanupOldNonces(MAASServerTestCase):
 
 
 class TestUtilities(MAASServerTestCase):
-
     def test_create_checkpoint_nonce_creates_checkpoint_nonce(self):
         before = time.time()
         create_checkpoint_nonce()
-        checkpoint = Nonce.objects.get(token_key='', consumer_key='')
+        checkpoint = Nonce.objects.get(token_key="", consumer_key="")
         after = time.time()
-        checkpoint_time = checkpoint.key[len(key_prefix):]
+        checkpoint_time = checkpoint.key[len(key_prefix) :]
         self.assertLessEqual(before, float(checkpoint_time))
         self.assertGreaterEqual(after, float(checkpoint_time))
 
@@ -81,21 +78,26 @@ class TestUtilities(MAASServerTestCase):
         now = time.time()
         self.patch(module_time, "time").return_value = now
         create_checkpoint_nonce()
-        nonce1 = Nonce.objects.filter(
-            token_key='', consumer_key='').latest('id')
+        nonce1 = Nonce.objects.filter(token_key="", consumer_key="").latest(
+            "id"
+        )
         create_checkpoint_nonce()
-        nonce2 = Nonce.objects.filter(
-            token_key='', consumer_key='').latest('id')
+        nonce2 = Nonce.objects.filter(token_key="", consumer_key="").latest(
+            "id"
+        )
         self.assertEqual(nonce1.id, nonce2.id)
 
     def test_delete_old_nonces_delete_nonces(self):
         # Create old nonces.
-        [Nonce.objects.create(
-            token_key=factory.make_string()) for _ in range(3)]
-        checkpoint = Nonce.objects.create(
-            token_key=factory.make_string())
-        new_nonces = [Nonce.objects.create(
-            token_key=factory.make_string()) for _ in range(3)]
+        [
+            Nonce.objects.create(token_key=factory.make_string())
+            for _ in range(3)
+        ]
+        checkpoint = Nonce.objects.create(token_key=factory.make_string())
+        new_nonces = [
+            Nonce.objects.create(token_key=factory.make_string())
+            for _ in range(3)
+        ]
         delete_old_nonces(checkpoint)
         self.assertItemsEqual(new_nonces, Nonce.objects.all())
 
@@ -108,16 +110,21 @@ class TestUtilities(MAASServerTestCase):
         # Create a "checkpoint" nonce created timestamp_threshold + 5
         # seconds ago.
         Nonce.objects.create(
-            token_key='', consumer_key='',
-            key=get_time_string(now - 5 - timestamp_threshold))
+            token_key="",
+            consumer_key="",
+            key=get_time_string(now - 5 - timestamp_threshold),
+        )
         # Create a "checkpoint" nonce created timestamp_threshold
         # seconds ago.
         checkpoint = Nonce.objects.create(
-            token_key='', consumer_key='',
-            key=get_time_string(now - timestamp_threshold))
+            token_key="",
+            consumer_key="",
+            key=get_time_string(now - timestamp_threshold),
+        )
         # Create a "checkpoint" nonce created 1 second ago.
         Nonce.objects.create(
-            token_key='', consumer_key='', key=get_time_string(now - 1))
+            token_key="", consumer_key="", key=get_time_string(now - 1)
+        )
 
         self.assertEqual(checkpoint, find_checkpoint_nonce())
 
@@ -131,7 +138,6 @@ class TestUtilities(MAASServerTestCase):
 
 
 class TestNonceCleanupService(MAASServerTestCase):
-
     def test_init_with_default_interval(self):
         # The service itself calls `cleanup_old_nonces` in a thread, via
         # a couple of decorators. This indirection makes it clearer to

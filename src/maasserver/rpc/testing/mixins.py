@@ -3,9 +3,7 @@
 
 """Convenient test mix-in classes."""
 
-__all__ = [
-    "PreseedRPCMixin",
-]
+__all__ = ["PreseedRPCMixin"]
 
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
@@ -39,6 +37,6 @@ class PreseedRPCMixin:
         # GetPreseedData call with a simple NotImplementedError.
         self.rpc_rack_controller = factory.make_RackController()
         self.rpc_cluster = self.rpc_fixture.makeCluster(
-            self.rpc_rack_controller, GetPreseedData)
-        self.rpc_cluster.GetPreseedData.side_effect = (
-            NotImplementedError())
+            self.rpc_rack_controller, GetPreseedData
+        )
+        self.rpc_cluster.GetPreseedData.side_effect = NotImplementedError()

@@ -16,11 +16,8 @@ import yaml
 
 
 class TestSnappyUtils(MAASTestCase):
-
     def test_running_in_snap_returns_True(self):
-        self.patch(os, "environ", {
-            "SNAP": factory.make_name()
-        })
+        self.patch(os, "environ", {"SNAP": factory.make_name()})
         self.assertTrue(snappy.running_in_snap())
 
     def test_running_in_snap_returns_False(self):
@@ -29,9 +26,7 @@ class TestSnappyUtils(MAASTestCase):
 
     def test_get_snap_path_returns_path(self):
         path = factory.make_name()
-        self.patch(os, "environ", {
-            "SNAP": path
-        })
+        self.patch(os, "environ", {"SNAP": path})
         self.assertEqual(path, snappy.get_snap_path())
 
     def test_get_snap_path_returns_None(self):
@@ -40,9 +35,7 @@ class TestSnappyUtils(MAASTestCase):
 
     def test_get_snap_data_path_returns_path(self):
         path = factory.make_name()
-        self.patch(os, "environ", {
-            "SNAP_DATA": path
-        })
+        self.patch(os, "environ", {"SNAP_DATA": path})
         self.assertEqual(path, snappy.get_snap_data_path())
 
     def test_get_snap_data_path_returns_None(self):
@@ -51,9 +44,7 @@ class TestSnappyUtils(MAASTestCase):
 
     def test_get_snap_common_path_returns_path(self):
         path = factory.make_name()
-        self.patch(os, "environ", {
-            "SNAP_COMMON": path
-        })
+        self.patch(os, "environ", {"SNAP_COMMON": path})
         self.assertEqual(path, snappy.get_snap_common_path())
 
     def test_get_snap_common_path_returns_None(self):

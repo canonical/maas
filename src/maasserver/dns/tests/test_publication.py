@@ -5,10 +5,7 @@
 
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime, timedelta
 
 from crochet import wait_for
 from maasserver.dns import publication
@@ -26,20 +23,14 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.twisted import pause
 from pytz import UTC
-from testtools.matchers import (
-    LessThan,
-    MatchesAll,
-)
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-)
+from testtools.matchers import LessThan, MatchesAll
+from twisted.internet.defer import fail, inlineCallbacks
 from twisted.internet.task import Clock
 
 
 IsExpectedInterval = MatchesAll(
-    GreaterThanOrEqual(3 * 60 * 60), LessThan(6 * 60 * 60),
-    first_only=True)
+    GreaterThanOrEqual(3 * 60 * 60), LessThan(6 * 60 * 60), first_only=True
+)
 
 
 def patch_utcnow(test):
@@ -70,8 +61,8 @@ class TestDNSPublicationGarbageService(MAASTestCase):
 
         clock.advance(dnsgc._loop.interval)
         self.assertThat(
-            deferToDatabase, MockCalledOnceWith(
-                dnsgc._collectGarbage, cutoff))
+            deferToDatabase, MockCalledOnceWith(dnsgc._collectGarbage, cutoff)
+        )
         self.assertThat(dnsgc._loop.interval, IsExpectedInterval)
 
         dnsgc.stopService()
@@ -90,18 +81,23 @@ class TestDNSPublicationGarbageService(MAASTestCase):
             clock.advance(dnsgc._loop.interval)
             dnsgc.stopService()
 
-        self.assertThat(logger.output, DocTestMatches(
-            """\
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                """\
             Failure when removing old DNS publications.
             Traceback (most recent call last):...
             Failure: maastesting.factory.TestException#...
-            """))
+            """
+            ),
+        )
 
         self.assertFalse(dnsgc.running)
 
 
 class TestDNSPublicationGarbageServiceWithDatabase(
-        MAASTransactionServerTestCase):
+    MAASTransactionServerTestCase
+):
     """Tests for `DNSPublicationGarbageService` with the database."""
 
     run_tests_with = MAASCrochetRunTest
@@ -122,5 +118,5 @@ class TestDNSPublicationGarbageServiceWithDatabase(
         yield dnsgc.stopService()
 
         self.assertThat(
-            DNSPublication.objects.collect_garbage,
-            MockCalledOnceWith(cutoff))
+            DNSPublication.objects.collect_garbage, MockCalledOnceWith(cutoff)
+        )

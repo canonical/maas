@@ -55,36 +55,49 @@ class PrometheusRequestMetricsMiddleware:
         return response
 
     def _process_metrics(self, request, response, latency, query_latencies):
-        op = request.POST.get('op', request.GET.get('op', ''))
+        op = request.POST.get("op", request.GET.get("op", ""))
         labels = {
-            'method': request.method,
-            'path': request.path,
-            'status': response.status_code,
-            'op': op
+            "method": request.method,
+            "path": request.path,
+            "status": response.status_code,
+            "op": op,
         }
         self.prometheus_metrics.update(
-            'maas_http_request_latency', 'observe',
-            value=latency, labels=labels)
+            "maas_http_request_latency",
+            "observe",
+            value=latency,
+            labels=labels,
+        )
         if not response.streaming:
             self.prometheus_metrics.update(
-                'maas_http_response_size', 'observe',
-                value=len(response.content), labels=labels)
+                "maas_http_response_size",
+                "observe",
+                value=len(response.content),
+                labels=labels,
+            )
         self.prometheus_metrics.update(
-            'maas_http_request_query_count', 'observe',
-            value=len(query_latencies), labels=labels)
+            "maas_http_request_query_count",
+            "observe",
+            value=len(query_latencies),
+            labels=labels,
+        )
         for latency in query_latencies:
             self.prometheus_metrics.update(
-                'maas_http_request_query_latency', 'observe',
-                value=latency, labels=labels)
+                "maas_http_request_query_latency",
+                "observe",
+                value=latency,
+                labels=labels,
+            )
 
 
 @contextmanager
-def wrap_query_counter_cursor(query_latencies, dbconn_name='default'):
+def wrap_query_counter_cursor(query_latencies, dbconn_name="default"):
     """Context manager replacing the cursor with a QueryCountCursorWrapper."""
     dbconn = connections[dbconn_name]
     orig_make_cursor = dbconn.make_cursor
     dbconn.make_cursor = lambda cursor: QueryCountCursorWrapper(
-        cursor, dbconn, query_latencies)
+        cursor, dbconn, query_latencies
+    )
     try:
         yield
     finally:

@@ -7,18 +7,12 @@ __all__ = []
 
 from io import BytesIO
 from random import randint
-from unittest.mock import (
-    ANY,
-    call,
-)
+from unittest.mock import ANY, call
 
 from crochet import wait_for
 from django.db import transaction
 from maasserver.fields import LargeObjectFile
-from maasserver.models import (
-    largefile as largefile_module,
-    signals,
-)
+from maasserver.models import largefile as largefile_module, signals
 from maasserver.models.largefile import LargeFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -26,10 +20,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit_hooks
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 import psycopg2
 from testtools.matchers import (
     Equals,
@@ -42,7 +33,6 @@ from twisted.internet.task import Clock
 
 
 class TestLargeFileManager(MAASServerTestCase):
-
     def test_has_file(self):
         largefile = factory.make_LargeFile()
         self.assertTrue(LargeFile.objects.has_file(largefile.sha256))
@@ -54,31 +44,30 @@ class TestLargeFileManager(MAASServerTestCase):
 
     def test_get_or_create_file_from_content_returns_same_largefile(self):
         largefile = factory.make_LargeFile()
-        stream = largefile.content.open('rb')
+        stream = largefile.content.open("rb")
         self.addCleanup(stream.close)
         self.assertEqual(
             largefile,
-            LargeFile.objects.get_or_create_file_from_content(stream))
+            LargeFile.objects.get_or_create_file_from_content(stream),
+        )
 
     def test_get_or_create_file_from_content_returns_new_largefile(self):
         content = factory.make_bytes(1024)
         largefile = LargeFile.objects.get_or_create_file_from_content(
-            BytesIO(content))
-        with largefile.content.open('rb') as stream:
+            BytesIO(content)
+        )
+        with largefile.content.open("rb") as stream:
             written_content = stream.read()
-        self.assertEqual(
-            content, written_content)
-        self.assertEqual(
-            len(content), largefile.size)
+        self.assertEqual(content, written_content)
+        self.assertEqual(len(content), largefile.size)
 
 
 class TestLargeFile(MAASServerTestCase):
-
     def test_content(self):
         size = randint(512, 1024)
         content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content, size=size)
-        with largefile.content.open('rb') as stream:
+        with largefile.content.open("rb") as stream:
             data = stream.read()
         self.assertEqual(content, data)
 
@@ -86,7 +75,7 @@ class TestLargeFile(MAASServerTestCase):
         size = 0
         content = b""
         largefile = factory.make_LargeFile(content, size=size)
-        with largefile.content.open('rb') as stream:
+        with largefile.content.open("rb") as stream:
             data = stream.read()
         self.assertEqual(content, data)
 
@@ -123,7 +112,7 @@ class TestLargeFile(MAASServerTestCase):
 
     def test_valid_returns_False_when_content_doesnt_have_equal_sha256(self):
         largefile = factory.make_LargeFile()
-        with largefile.content.open('wb') as stream:
+        with largefile.content.open("wb") as stream:
             stream.write(factory.make_bytes(size=largefile.total_size))
         self.assertFalse(largefile.valid)
 
@@ -147,7 +136,8 @@ class TestLargeFile(MAASServerTestCase):
             largefile.delete()
         self.assertThat(
             signals.largefiles.delete_large_object_content_later,
-            MockCalledOnceWith(largefile.content))
+            MockCalledOnceWith(largefile.content),
+        )
 
     def test_deletes_content_asynchronously_for_queries_too(self):
         self.patch(signals.largefiles, "delete_large_object_content_later")
@@ -158,11 +148,11 @@ class TestLargeFile(MAASServerTestCase):
             LargeFile.objects.all().delete()
         self.assertThat(
             signals.largefiles.delete_large_object_content_later,
-            MockCallsMatch(call(ANY), call(ANY)))
+            MockCallsMatch(call(ANY), call(ANY)),
+        )
 
 
 class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
-
     def test__schedules_unlink(self):
         # We're going to capture the delayed call that
         # delete_large_object_content_later() creates.
@@ -182,11 +172,15 @@ class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
 
         # It is scheduled to be run on the next iteration of the reactor.
         self.assertFalse(delayed_call.called)
-        self.assertThat(delayed_call, MatchesStructure(
-            func=MatchesStructure.byEquality(__name__="unlink"),
-            args=MatchesListwise([Is(largefile.content)]),
-            kw=Equals({}), time=Equals(0),
-        ))
+        self.assertThat(
+            delayed_call,
+            MatchesStructure(
+                func=MatchesStructure.byEquality(__name__="unlink"),
+                args=MatchesListwise([Is(largefile.content)]),
+                kw=Equals({}),
+                time=Equals(0),
+            ),
+        )
 
         # Call the delayed function ourselves instead of advancing `clock` so
         # that we can wait for it to complete (it returns a Deferred).
@@ -196,8 +190,8 @@ class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
         # The content has been removed from the database.
         with transaction.atomic():
             error = self.assertRaises(
-                psycopg2.OperationalError,
-                LargeObjectFile(oid).open, "rb")
+                psycopg2.OperationalError, LargeObjectFile(oid).open, "rb"
+            )
             self.assertDocTestMatches(
-                "ERROR: large object ... does not exist",
-                str(error))
+                "ERROR: large object ... does not exist", str(error)
+            )

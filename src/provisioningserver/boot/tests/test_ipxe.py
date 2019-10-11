@@ -17,10 +17,7 @@ from provisioningserver.boot.ipxe import (
     IPXEBootMethod,
     re_config_file,
 )
-from provisioningserver.boot.testing import (
-    TFTPPath,
-    TFTPPathAndComponents,
-)
+from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
@@ -52,7 +49,6 @@ def compose_config_path(mac: str) -> TFTPPath:
 
 
 class TestIPXEBootMethod(MAASTestCase):
-
     def make_tftp_root(self):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
@@ -62,49 +58,47 @@ class TestIPXEBootMethod(MAASTestCase):
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         mac = factory.make_mac_address()
         self.assertEqual(
-            'ipxe.cfg-%s' % mac,
-            compose_config_path(mac).decode("ascii"))
+            "ipxe.cfg-%s" % mac, compose_config_path(mac).decode("ascii")
+        )
 
     def test_compose_config_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root().asBytesMode()
         mac = factory.make_mac_address()
         self.assertThat(
-            compose_config_path(mac),
-            Not(StartsWith(tftproot.path)))
+            compose_config_path(mac), Not(StartsWith(tftproot.path))
+        )
 
     def test_bootloader_path(self):
         method = IPXEBootMethod()
-        self.assertEqual('ipxe.cfg', method.bootloader_path)
+        self.assertEqual("ipxe.cfg", method.bootloader_path)
 
     def test_bootloader_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root()
         method = IPXEBootMethod()
-        self.assertThat(
-            method.bootloader_path,
-            Not(StartsWith(tftproot.path)))
+        self.assertThat(method.bootloader_path, Not(StartsWith(tftproot.path)))
 
     def test_name(self):
         method = IPXEBootMethod()
-        self.assertEqual('ipxe', method.name)
+        self.assertEqual("ipxe", method.name)
 
     def test_template_subdir(self):
         method = IPXEBootMethod()
-        self.assertEqual('ipxe', method.template_subdir)
+        self.assertEqual("ipxe", method.template_subdir)
 
     def test_arch_octet(self):
         method = IPXEBootMethod()
-        self.assertEqual('00:00', method.arch_octet)
+        self.assertEqual("00:00", method.arch_octet)
 
     def test_user_class(self):
         method = IPXEBootMethod()
-        self.assertEqual('iPXE', method.user_class)
+        self.assertEqual("iPXE", method.user_class)
 
     def test_link_bootloader_creates_ipxe_cfg(self):
         method = IPXEBootMethod()
         with tempdir() as tmp:
             method.link_bootloader(tmp)
 
-            cfg_file_path = os.path.join(tmp, 'ipxe.cfg')
+            cfg_file_path = os.path.join(tmp, "ipxe.cfg")
             self.assertTrue(cfg_file_path, FileContains(CONFIG_FILE))
 
 
@@ -115,13 +109,20 @@ class TestIPXEBootMethodRender(MAASTestCase):
         # Given the right configuration options, the iPXE configuration is
         # correctly rendered.
         method = IPXEBootMethod()
-        xtra = "custom_xtra_cfg=http://{{ kernel_params.fs_host }}/" \
-               "my_extra_config?mac={{ kernel_params.mac }}"
+        xtra = (
+            "custom_xtra_cfg=http://{{ kernel_params.fs_host }}/"
+            "my_extra_config?mac={{ kernel_params.mac }}"
+        )
         params = make_kernel_parameters(
-            self, arch="amd64", subarch="generic",
-            purpose="ephemeral", extra_opts=xtra)
-        fs_host = 'http://%s:5248/images' % (
-            convert_host_to_uri_str(params.fs_host))
+            self,
+            arch="amd64",
+            subarch="generic",
+            purpose="ephemeral",
+            extra_opts=xtra,
+        )
+        fs_host = "http://%s:5248/images" % (
+            convert_host_to_uri_str(params.fs_host)
+        )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -131,35 +132,50 @@ class TestIPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("#!ipxe"))
         # The iPXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s*kernel %s/%s/%s$' % (
-                        re.escape(fs_host), re.escape(image_dir),
-                        params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s*kernel %s/%s/%s$"
+                    % (
+                        re.escape(fs_host),
+                        re.escape(image_dir),
+                        params.kernel,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s*initrd %s/%s/%s\s+' % (
-                        re.escape(fs_host), re.escape(image_dir),
-                        params.initrd),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s*initrd %s/%s/%s\s+"
+                    % (
+                        re.escape(fs_host),
+                        re.escape(image_dir),
+                        params.initrd,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*\s+custom_xtra_cfg=http://%s/my_extra_config.*?\s+' % (
-                        params.fs_host),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*\s+maas_url=.+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*\s+custom_xtra_cfg=http://%s/my_extra_config.*?\s+"
+                    % (params.fs_host),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*\s+maas_url=.+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_install(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = IPXEBootMethod()
         params = make_kernel_parameters(self, purpose="xinstall")
-        fs_host = 'http://%s:5248/images' % (
-            convert_host_to_uri_str(params.fs_host))
+        fs_host = "http://%s:5248/images" % (
+            convert_host_to_uri_str(params.fs_host)
+        )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -169,23 +185,36 @@ class TestIPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("#!ipxe"))
         # The iPXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
-            release=params.release, label=params.label)
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
         self.assertThat(
-            output, MatchesAll(
+            output,
+            MatchesAll(
                 MatchesRegex(
-                    r'.*^\s*kernel %s/%s/%s$' % (
-                        re.escape(fs_host), re.escape(image_dir),
-                        params.kernel),
-                    re.MULTILINE | re.DOTALL),
+                    r".*^\s*kernel %s/%s/%s$"
+                    % (
+                        re.escape(fs_host),
+                        re.escape(image_dir),
+                        params.kernel,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
                 MatchesRegex(
-                    r'.*^\s*initrd %s/%s/%s$' % (
-                        re.escape(fs_host), re.escape(image_dir),
-                        params.initrd),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
-                    r'.*^\s*imgargs .+?$',
-                    re.MULTILINE | re.DOTALL)))
+                    r".*^\s*initrd %s/%s/%s$"
+                    % (
+                        re.escape(fs_host),
+                        re.escape(image_dir),
+                        params.initrd,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(r".*^\s*imgargs .+?$", re.MULTILINE | re.DOTALL),
+            ),
+        )
 
     def test_get_reader_with_local_purpose(self):
         # If purpose is "local", the config.localboot.template should be
@@ -194,13 +223,13 @@ class TestIPXEBootMethodRender(MAASTestCase):
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(purpose="local"),
-            }
+        }
         output = method.get_reader(**options).read(10000)
         self.assertIn(b"sanboot --no-describe --drive 0x80", output)
 
 
 class TestIPXEBootMethodRegex(MAASTestCase):
-    "Tests for `provisioningserver.boot.ipxe.IPXEBootMethod.re_config_file`."""
+    "Tests for `provisioningserver.boot.ipxe.IPXEBootMethod.re_config_file`." ""
 
     @staticmethod
     @typed
@@ -253,53 +282,42 @@ class TestIPXEBootMethodRegex(MAASTestCase):
     def test_re_config_file_matches_ipxe_cfg(self):
         # The default config path is simply "ipxe.cfg" (without
         # leading slash).  The regex matches this.
-        mac = b'aa:bb:cc:dd:ee:ff'
-        match = re_config_file.match(b'ipxe.cfg-%s' % mac)
+        mac = b"aa:bb:cc:dd:ee:ff"
+        match = re_config_file.match(b"ipxe.cfg-%s" % mac)
         self.assertIsNotNone(match)
         self.assertDictEqual(
-            {
-                'mac': mac,
-                'arch': None,
-                'subarch': None,
-            }, match.groupdict())
+            {"mac": mac, "arch": None, "subarch": None}, match.groupdict()
+        )
 
     def test_re_config_file_matches_ipxe_cfg_with_leading_slash(self):
-        mac = b'aa:bb:cc:dd:ee:ff'
-        match = re_config_file.match(b'/ipxe.cfg-%s' % mac)
+        mac = b"aa:bb:cc:dd:ee:ff"
+        match = re_config_file.match(b"/ipxe.cfg-%s" % mac)
         self.assertIsNotNone(match)
         self.assertDictEqual(
-            {
-                'mac': mac,
-                'arch': None,
-                'subarch': None
-            }, match.groupdict())
+            {"mac": mac, "arch": None, "subarch": None}, match.groupdict()
+        )
 
     def test_re_config_file_does_not_match_non_config_file(self):
-        self.assertIsNone(re_config_file.match(b'ipxe.cfg-kernel'))
+        self.assertIsNone(re_config_file.match(b"ipxe.cfg-kernel"))
 
     def test_re_config_file_does_not_match_file_in_root(self):
-        self.assertIsNone(re_config_file.match(b'aa:bb:cc:dd:ee:ff'))
+        self.assertIsNone(re_config_file.match(b"aa:bb:cc:dd:ee:ff"))
 
     def test_re_config_file_with_default_arch(self):
-        arch = factory.make_name('arch', sep='').encode("ascii")
-        match = re_config_file.match(b'ipxe.cfg-default-%s' % arch)
+        arch = factory.make_name("arch", sep="").encode("ascii")
+        match = re_config_file.match(b"ipxe.cfg-default-%s" % arch)
         self.assertIsNotNone(match)
         self.assertDictEqual(
-            {
-                'mac': None,
-                'arch': arch,
-                'subarch': None,
-            }, match.groupdict())
+            {"mac": None, "arch": arch, "subarch": None}, match.groupdict()
+        )
 
     def test_re_config_file_with_default_arch_and_subarch(self):
-        arch = factory.make_name('arch', sep='').encode("ascii")
-        subarch = factory.make_name('subarch', sep='').encode("ascii")
+        arch = factory.make_name("arch", sep="").encode("ascii")
+        subarch = factory.make_name("subarch", sep="").encode("ascii")
         match = re_config_file.match(
-            b'ipxe.cfg-default-%s-%s' % (arch, subarch))
+            b"ipxe.cfg-default-%s-%s" % (arch, subarch)
+        )
         self.assertIsNotNone(match)
         self.assertDictEqual(
-            {
-                'mac': None,
-                'arch': arch,
-                'subarch': subarch,
-            }, match.groupdict())
+            {"mac": None, "arch": arch, "subarch": subarch}, match.groupdict()
+        )

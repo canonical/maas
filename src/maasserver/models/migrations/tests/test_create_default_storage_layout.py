@@ -12,10 +12,7 @@ occur.
 
 __all__ = []
 
-from maasserver.enum import (
-    FILESYSTEM_GROUP_TYPE,
-    FILESYSTEM_TYPE,
-)
+from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import (
     Filesystem,
     FilesystemGroup,
@@ -31,107 +28,134 @@ from maasserver.models.migrations.create_default_storage_layout import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    Is,
-    MatchesStructure,
-    Not,
-)
+from testtools.matchers import Is, MatchesStructure, Not
 
 
 class TestClearFullStorageConfigration(MAASServerTestCase):
-
     def test__clears_all_objects(self):
         node = factory.make_Node()
         physical_block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
             for _ in range(3)
-            ]
+        ]
         filesystem = factory.make_Filesystem(
-            block_device=physical_block_devices[0])
+            block_device=physical_block_devices[0]
+        )
         partition_table = factory.make_PartitionTable(
-            block_device=physical_block_devices[1])
+            block_device=physical_block_devices[1]
+        )
         partition = factory.make_Partition(partition_table=partition_table)
         fslvm = factory.make_Filesystem(
             block_device=physical_block_devices[2],
-            fstype=FILESYSTEM_TYPE.LVM_PV)
+            fstype=FILESYSTEM_TYPE.LVM_PV,
+        )
         vgroup = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[fslvm])
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[fslvm]
+        )
         vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup, size=2 * 1000 ** 3)
+            filesystem_group=vgroup, size=2 * 1000 ** 3
+        )
         vbd2 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup, size=3 * 1000 ** 3)
+            filesystem_group=vgroup, size=3 * 1000 ** 3
+        )
         filesystem_on_vbd1 = factory.make_Filesystem(
-            block_device=vbd1, fstype=FILESYSTEM_TYPE.LVM_PV)
+            block_device=vbd1, fstype=FILESYSTEM_TYPE.LVM_PV
+        )
         vgroup_on_vgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
-            filesystems=[filesystem_on_vbd1])
+            filesystems=[filesystem_on_vbd1],
+        )
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3)
+            filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3
+        )
         clear_full_storage_configuration(
             node,
             PhysicalBlockDevice=PhysicalBlockDevice,
             VirtualBlockDevice=VirtualBlockDevice,
             PartitionTable=PartitionTable,
             Filesystem=Filesystem,
-            FilesystemGroup=FilesystemGroup)
+            FilesystemGroup=FilesystemGroup,
+        )
         for pbd in physical_block_devices:
             self.expectThat(
-                reload_object(pbd), Not(Is(None)),
-                "Physical block device should not have been deleted.")
+                reload_object(pbd),
+                Not(Is(None)),
+                "Physical block device should not have been deleted.",
+            )
         self.expectThat(
-            reload_object(filesystem), Is(None),
-            "Filesystem should have been removed.")
+            reload_object(filesystem),
+            Is(None),
+            "Filesystem should have been removed.",
+        )
         self.expectThat(
-            reload_object(partition_table), Is(None),
-            "PartitionTable should have been removed.")
+            reload_object(partition_table),
+            Is(None),
+            "PartitionTable should have been removed.",
+        )
         self.expectThat(
-            reload_object(partition), Is(None),
-            "Partition should have been removed.")
+            reload_object(partition),
+            Is(None),
+            "Partition should have been removed.",
+        )
         self.expectThat(
-            reload_object(fslvm), Is(None),
-            "LVM PV Filesystem should have been removed.")
+            reload_object(fslvm),
+            Is(None),
+            "LVM PV Filesystem should have been removed.",
+        )
         self.expectThat(
-            reload_object(vgroup), Is(None),
-            "Volume group should have been removed.")
+            reload_object(vgroup),
+            Is(None),
+            "Volume group should have been removed.",
+        )
         self.expectThat(
-            reload_object(vbd1), Is(None),
-            "Virtual block device should have been removed.")
+            reload_object(vbd1),
+            Is(None),
+            "Virtual block device should have been removed.",
+        )
         self.expectThat(
-            reload_object(vbd2), Is(None),
-            "Virtual block device should have been removed.")
+            reload_object(vbd2),
+            Is(None),
+            "Virtual block device should have been removed.",
+        )
         self.expectThat(
-            reload_object(filesystem_on_vbd1), Is(None),
-            "Filesystem on virtual block device should have been removed.")
+            reload_object(filesystem_on_vbd1),
+            Is(None),
+            "Filesystem on virtual block device should have been removed.",
+        )
         self.expectThat(
-            reload_object(vgroup_on_vgroup), Is(None),
-            "Volume group on virtual block device should have been removed.")
+            reload_object(vgroup_on_vgroup),
+            Is(None),
+            "Volume group on virtual block device should have been removed.",
+        )
         self.expectThat(
-            reload_object(vbd3_on_vbd1), Is(None),
+            reload_object(vbd3_on_vbd1),
+            Is(None),
             "Virtual block device on another virtual block device should have "
-            "been removed.")
+            "been removed.",
+        )
 
 
 class TestCreateFlatLayout(MAASServerTestCase):
-
     def test__creates_layout_for_1TiB_disk(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=1024 ** 4, block_size=512)
+            node=node, size=1024 ** 4, block_size=512
+        )
         create_flat_layout(
             node,
             boot_disk,
             PartitionTable=PartitionTable,
             Partition=Partition,
-            Filesystem=Filesystem)
+            Filesystem=Filesystem,
+        )
 
         # Validate the filesystem on the root partition.
         partition_table = boot_disk.get_partitiontable()
-        partitions = partition_table.partitions.order_by('id').all()
+        partitions = partition_table.partitions.order_by("id").all()
         root_partition = partitions[0]
         self.assertThat(
             root_partition.get_effective_filesystem(),
             MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="root",
-                mount_point="/",
-                ))
+                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
+            ),
+        )

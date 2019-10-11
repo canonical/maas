@@ -10,10 +10,7 @@ The main purpose of this command is for it to be run when 'maas-region-api' or
 'maas-rack-controller' is installed.
 """
 
-__all__ = [
-    "add_arguments",
-    "run"
-]
+__all__ = ["add_arguments", "run"]
 
 import sys
 from textwrap import dedent
@@ -30,17 +27,22 @@ def add_arguments(parser):
 
     Specified by the `ActionScript` interface.
     """
-    parser.description = dedent("""\
+    parser.description = dedent(
+        """\
         Setup MAAS DNS configuration: a blank configuration and
         all the RNDC configuration options allowing MAAS to reload
         BIND once zones configuration files will be written.
-        """)
+        """
+    )
     parser.add_argument(
-        '--no-clobber', dest='no_clobber', action='store_true',
+        "--no-clobber",
+        dest="no_clobber",
+        action="store_true",
         default=False,
         help=(
-            "Don't overwrite the configuration file if it already "
-            "exists."))
+            "Don't overwrite the configuration file if it already " "exists."
+        ),
+    )
 
 
 def run(args, stdout=sys.stdout, stderr=sys.stderr):
@@ -51,8 +53,8 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
     :param stderr: Standard error stream to write to.
     """
     set_up_rndc()
-    set_up_options_conf(
-        overwrite=not args.no_clobber)
+    set_up_options_conf(overwrite=not args.no_clobber)
     config = DNSConfig()
     config.write_config(
-        overwrite=not args.no_clobber, zone_names=(), reverse_zone_names=())
+        overwrite=not args.no_clobber, zone_names=(), reverse_zone_names=()
+    )

@@ -8,11 +8,7 @@ __all__ = []
 from functools import partial
 import random
 import threading
-from unittest.mock import (
-    call,
-    Mock,
-    sentinel,
-)
+from unittest.mock import call, Mock, sentinel
 from uuid import uuid1
 
 from maastesting.factory import factory
@@ -24,10 +20,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import services
@@ -49,12 +42,7 @@ from provisioningserver.utils.services import (
     ProtocolForObserveBeacons,
 )
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-    IsInstance,
-    Not,
-)
+from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -77,11 +65,14 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
     """Concrete subclass for testing."""
 
     def __init__(
-            self, enable_monitoring=False, enable_beaconing=False,
-            *args, **kwargs):
+        self, enable_monitoring=False, enable_beaconing=False, *args, **kwargs
+    ):
         super().__init__(
-            *args, enable_monitoring=enable_monitoring,
-            enable_beaconing=enable_beaconing, **kwargs)
+            *args,
+            enable_monitoring=enable_monitoring,
+            enable_beaconing=enable_beaconing,
+            **kwargs
+        )
         self.iterations = DeferredQueue()
         self.interfaces = []
         self.update_interface__calls = 0
@@ -119,17 +110,19 @@ class TestNetworksMonitoringService(MAASTestCase):
         service = self.makeService()
         self.assertThat(service, IsInstance(MultiService))
         self.assertThat(
-            service.interface_monitor.step,
-            Equals(service.interval))
-        self.assertThat(service.interface_monitor.call, Equals(
-            (service.updateInterfaces, (), {})))
+            service.interface_monitor.step, Equals(service.interval)
+        )
+        self.assertThat(
+            service.interface_monitor.call,
+            Equals((service.updateInterfaces, (), {})),
+        )
 
     @inlineCallbacks
     def test_get_all_interfaces_definition_is_called_in_thread(self):
         service = self.makeService()
         self.patch(
-            services, "get_all_interfaces_definition",
-            threading.current_thread)
+            services, "get_all_interfaces_definition", threading.current_thread
+        )
         yield service.updateInterfaces()
         self.assertThat(service.interfaces, HasLength(1))
         [thread] = service.interfaces
@@ -150,12 +143,17 @@ class TestNetworksMonitoringService(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             error_message = factory.make_string()
             get_interfaces = self.patch(
-                services, "get_all_interfaces_definition")
+                services, "get_all_interfaces_definition"
+            )
             get_interfaces.side_effect = Exception(error_message)
             yield service.updateInterfaces()
-        self.assertThat(logger.output, DocTestMatches(
-            "Failed to update and/or record network interface configuration"
-            "..."))
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                "Failed to update and/or record network interface configuration"
+                "..."
+            ),
+        )
 
     @inlineCallbacks
     def test_starting_service_triggers_interface_update(self):
@@ -190,8 +188,9 @@ class TestNetworksMonitoringService(MAASTestCase):
         yield service.updateInterfaces()
         self.assertThat(service.interfaces, Equals([sentinel.config1]))
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals(
-            [sentinel.config1, sentinel.config2]))
+        self.assertThat(
+            service.interfaces, Equals([sentinel.config1, sentinel.config2])
+        )
 
         self.assertThat(get_interfaces, MockCallsMatch(call(), call()))
 
@@ -353,7 +352,8 @@ class TestJSONPerLineProtocol(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             proto.outReceived(b"{\n")
         self.assertThat(
-            logger.output, DocTestMatches("Failed to parse JSON: ..."))
+            logger.output, DocTestMatches("Failed to parse JSON: ...")
+        )
 
     def test__logs_stderr(self):
         message = factory.make_name("message")
@@ -402,12 +402,13 @@ class TestProtocolForObserveARP(MAASTestCase):
 
     def test_adds_interface(self):
         callback = Mock()
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         proto = ProtocolForObserveARP(ifname, callback=callback)
         proto.makeConnection(Mock(pid=None))
         proto.outReceived(b"{}\n")
         self.expectThat(
-            callback, MockCallsMatch(call([{"interface": ifname}])))
+            callback, MockCallsMatch(call([{"interface": ifname}]))
+        )
 
 
 class TestProtocolForObserveBeacons(MAASTestCase):
@@ -417,16 +418,16 @@ class TestProtocolForObserveBeacons(MAASTestCase):
 
     def test_adds_interface(self):
         callback = Mock()
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         proto = ProtocolForObserveBeacons(ifname, callback=callback)
         proto.makeConnection(Mock(pid=None))
         proto.outReceived(b"{}\n")
         self.expectThat(
-            callback, MockCallsMatch(call([{"interface": ifname}])))
+            callback, MockCallsMatch(call([{"interface": ifname}]))
+        )
 
 
 class MockProcessProtocolService(ProcessProtocolService):
-
     def __init__(self):
         super().__init__()
         self._callback = Mock()
@@ -439,25 +440,21 @@ class MockProcessProtocolService(ProcessProtocolService):
 
 
 class TrueProcessProtocolService(MockProcessProtocolService):
-
     def getProcessParameters(self):
         return [b"/bin/true"]
 
 
 class FalseProcessProtocolService(MockProcessProtocolService):
-
     def getProcessParameters(self):
         return [b"/bin/false"]
 
 
 class SleepProcessProtocolService(MockProcessProtocolService):
-
     def getProcessParameters(self):
         return [b"/bin/sleep", b"7"]
 
 
 class EchoProcessProtocolService(MockProcessProtocolService):
-
     def getProcessParameters(self):
         return [b"/bin/echo", b"{}\n"]
 
@@ -474,8 +471,11 @@ class TestProcessProtocolService(MAASTestCase):
     def setUp(self):
         super(TestProcessProtocolService, self).setUp()
         # Alter timings of terminateProcess so we don't have to wait so long.
-        self.patch(services, "terminateProcess", partial(
-            services.terminateProcess, quit_after=0.2, kill_after=0.4))
+        self.patch(
+            services,
+            "terminateProcess",
+            partial(services.terminateProcess, quit_after=0.2, kill_after=0.4),
+        )
 
     def test__base_class_cannot_be_used(self):
         with ExpectedException(TypeError):
@@ -490,11 +490,14 @@ class TestProcessProtocolService(MAASTestCase):
             yield service.stopService()
             result = yield service._protocol.done
             self.assertThat(result, Is(None))
-        self.assertThat(logger.output, DocTestMatches(
-            "SleepProcessProtocolService started.\n"
-            "-...-\n"
-            "SleepProcessProtocolService ..."
-        ))
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                "SleepProcessProtocolService started.\n"
+                "-...-\n"
+                "SleepProcessProtocolService ..."
+            ),
+        )
         with ExpectedException(ProcessExitedAlready):
             service._process.signalProcess("INT")
 
@@ -507,11 +510,14 @@ class TestProcessProtocolService(MAASTestCase):
             service.startService()
             yield service._protocol.done
             yield service.stopService()
-        self.assertThat(logger.output, Equals(
-            "TrueProcessProtocolService started.\n"
-            "---\n"
-            "TrueProcessProtocolService ended normally."
-        ))
+        self.assertThat(
+            logger.output,
+            Equals(
+                "TrueProcessProtocolService started.\n"
+                "---\n"
+                "TrueProcessProtocolService ended normally."
+            ),
+        )
 
     @inlineCallbacks
     def test__handles_terminated_process_exit(self):
@@ -521,11 +527,14 @@ class TestProcessProtocolService(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             service.startService()
             yield service.stopService()
-        self.assertThat(logger.output, Equals(
-            "SleepProcessProtocolService started.\n"
-            "---\n"
-            "SleepProcessProtocolService was terminated."
-        ))
+        self.assertThat(
+            logger.output,
+            Equals(
+                "SleepProcessProtocolService started.\n"
+                "---\n"
+                "SleepProcessProtocolService was terminated."
+            ),
+        )
 
     @inlineCallbacks
     def test__handles_abnormal_process_exit(self):
@@ -537,14 +546,17 @@ class TestProcessProtocolService(MAASTestCase):
             result = yield service._protocol.done
             self.assertThat(result, Is(None))
             yield service.stopService()
-        self.assertThat(logger.output, DocTestMatches(
-            "FalseProcessProtocolService started.\n"
-            "---\n"
-            "FalseProcessProtocolService failed.\n"
-            "Traceback (most recent call last):\n"
-            "...: A process has ended with a probable error "
-            "condition: process ended with exit code 1."
-        ))
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                "FalseProcessProtocolService started.\n"
+                "---\n"
+                "FalseProcessProtocolService failed.\n"
+                "Traceback (most recent call last):\n"
+                "...: A process has ended with a probable error "
+                "condition: process ended with exit code 1."
+            ),
+        )
 
     @inlineCallbacks
     def test__calls_protocol_callback(self):
@@ -563,20 +575,20 @@ class TestNeighbourDiscoveryService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__returns_expected_arguments(self):
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, Mock())
         args = service.getProcessParameters()
         self.assertThat(args, HasLength(3))
-        self.assertTrue(args[0].endswith(b'maas-common'))
+        self.assertTrue(args[0].endswith(b"maas-common"))
         self.assertTrue(args[1], Equals(b"observe-arp"))
-        self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
+        self.assertTrue(args[2], Equals(ifname.encode("utf-8")))
 
     @inlineCallbacks
     def test__restarts_process_after_finishing(self):
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, Mock())
-        mock_process_params = self.patch(service, 'getProcessParameters')
-        mock_process_params.return_value = [b'/bin/echo', b'{}']
+        mock_process_params = self.patch(service, "getProcessParameters")
+        mock_process_params.return_value = [b"/bin/echo", b"{}"]
         service.clock = Clock()
         service.startService()
         # Wait for the protocol to finish
@@ -593,20 +605,25 @@ class TestNeighbourDiscoveryService(MAASTestCase):
     @inlineCallbacks
     def test__protocol_logs_stderr(self):
         logger = self.useFixture(TwistedLoggerFixture())
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, lambda _: None)
         protocol = service.createProcessProtocol()
         reactor.spawnProcess(protocol, b"sh", (b"sh", b"-c", b"exec cat >&2"))
         protocol.transport.write(
             b"Lines written to stderr are logged\n"
-            b"with a prefix, with no exceptions.\n")
+            b"with a prefix, with no exceptions.\n"
+        )
         protocol.transport.closeStdin()
         yield protocol.done
-        self.assertThat(logger.output, Equals(
-            "observe-arp[%s]: Lines written to stderr are logged\n"
-            "---\n"
-            "observe-arp[%s]: with a prefix, with no exceptions."
-            % (ifname, ifname)))
+        self.assertThat(
+            logger.output,
+            Equals(
+                "observe-arp[%s]: Lines written to stderr are logged\n"
+                "---\n"
+                "observe-arp[%s]: with a prefix, with no exceptions."
+                % (ifname, ifname)
+            ),
+        )
 
 
 class TestBeaconingService(MAASTestCase):
@@ -615,20 +632,20 @@ class TestBeaconingService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__returns_expected_arguments(self):
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         service = BeaconingService(ifname, Mock())
         args = service.getProcessParameters()
         self.assertThat(args, HasLength(3))
-        self.assertTrue(args[0].endswith(b'maas-common'))
+        self.assertTrue(args[0].endswith(b"maas-common"))
         self.assertTrue(args[1], Equals(b"observe-beacons"))
-        self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
+        self.assertTrue(args[2], Equals(ifname.encode("utf-8")))
 
     @inlineCallbacks
     def test__restarts_process_after_finishing(self):
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         service = BeaconingService(ifname, Mock())
-        mock_process_params = self.patch(service, 'getProcessParameters')
-        mock_process_params.return_value = [b'/bin/echo', b'{}']
+        mock_process_params = self.patch(service, "getProcessParameters")
+        mock_process_params.return_value = [b"/bin/echo", b"{}"]
         service.clock = Clock()
         service.startService()
         # Wait for the protocol to finish
@@ -645,20 +662,25 @@ class TestBeaconingService(MAASTestCase):
     @inlineCallbacks
     def test__protocol_logs_stderr(self):
         logger = self.useFixture(TwistedLoggerFixture())
-        ifname = factory.make_name('eth')
+        ifname = factory.make_name("eth")
         service = BeaconingService(ifname, lambda _: None)
         protocol = service.createProcessProtocol()
         reactor.spawnProcess(protocol, b"sh", (b"sh", b"-c", b"exec cat >&2"))
         protocol.transport.write(
             b"Lines written to stderr are logged\n"
-            b"with a prefix, with no exceptions.\n")
+            b"with a prefix, with no exceptions.\n"
+        )
         protocol.transport.closeStdin()
         yield protocol.done
-        self.assertThat(logger.output, Equals(
-            "observe-beacons[%s]: Lines written to stderr are logged\n"
-            "---\n"
-            "observe-beacons[%s]: with a prefix, with no exceptions."
-            % (ifname, ifname)))
+        self.assertThat(
+            logger.output,
+            Equals(
+                "observe-beacons[%s]: Lines written to stderr are logged\n"
+                "---\n"
+                "observe-beacons[%s]: with a prefix, with no exceptions."
+                % (ifname, ifname)
+            ),
+        )
 
 
 class TestMDNSResolverService(MAASTestCase):
@@ -682,13 +704,18 @@ class TestMDNSResolverService(MAASTestCase):
         protocol.transport.write(
             b"Lines written to stderr are logged\n"
             b"with a prefix, with one exception:\n"
-            b"Got SIGFAKE, quitting.\n")
+            b"Got SIGFAKE, quitting.\n"
+        )
         protocol.transport.closeStdin()
         yield protocol.done
-        self.assertThat(logger.output, Equals(
-            "observe-mdns: Lines written to stderr are logged\n"
-            "---\n"
-            "observe-mdns: with a prefix, with one exception:"))
+        self.assertThat(
+            logger.output,
+            Equals(
+                "observe-mdns: Lines written to stderr are logged\n"
+                "---\n"
+                "observe-mdns: with a prefix, with one exception:"
+            ),
+        )
 
 
 def wait_for_rx_packets(beacon_protocol, count, deferred=None):
@@ -699,29 +726,34 @@ def wait_for_rx_packets(beacon_protocol, count, deferred=None):
         deferred.callback(None)
     else:
         reactor.callLater(
-            0.001, wait_for_rx_packets, beacon_protocol, count,
-            deferred=deferred)
+            0.001,
+            wait_for_rx_packets,
+            beacon_protocol,
+            count,
+            deferred=deferred,
+        )
     return deferred
 
 
 class FakeBeaconPayload(BeaconPayload):
-
     def __new__(
-            cls, uuid, payload=None, ifname='eth0', mac=None, vid=None,
-            version=1, beacon_type='solicitation'):
+        cls,
+        uuid,
+        payload=None,
+        ifname="eth0",
+        mac=None,
+        vid=None,
+        version=1,
+        beacon_type="solicitation",
+    ):
         if payload is None:
-            remote = {
-                'name': ifname
-            }
+            remote = {"name": ifname}
             if mac is not None:
-                remote['mac_address'] = mac
+                remote["mac_address"] = mac
             if vid is not None:
-                remote['vid'] = vid
-            payload = {
-                'uuid': uuid,
-                'remote': remote
-            }
-        return super().__new__(cls, b'', version, beacon_type, payload)
+                remote["vid"] = vid
+            payload = {"uuid": uuid, "remote": remote}
+        return super().__new__(cls, b"", version, beacon_type, payload)
 
 
 class TestBeaconingSocketProtocol(SharedSecretTestCase):
@@ -751,13 +783,18 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # Note: Always use a random port for testing. (port=0)
         logger = self.useFixture(TwistedLoggerFixture())
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=True, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=True,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         self.assertThat(protocol.listen_port, Not(Is(None)))
         listen_port = protocol.listen_port._realPortNumber
         self.write_secret()
         beacon = create_beacon_payload("solicitation", {})
-        rx_uuid = beacon.payload['uuid']
+        rx_uuid = beacon.payload["uuid"]
         destination = random.choice(["::ffff:127.0.0.1", "::1"])
         protocol.send_beacon(beacon, (destination, listen_port))
         # Pretend we didn't send this packet. Otherwise we won't reply to it.
@@ -771,30 +808,35 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # Grab the beacon we know we transmitted and then received.
         received = protocol.rx_queue.pop(rx_uuid, None)
         self.assertThat(transmitted, Equals(beacon))
-        self.assertThat(received[0].json['payload']['uuid'], Equals(rx_uuid))
+        self.assertThat(received[0].json["payload"]["uuid"], Equals(rx_uuid))
         # Grab the subsequent packets from the queues.
         transmitted = protocol.tx_queue.popitem()[1]
         received = protocol.rx_queue.popitem()[1]
         # We should have received a second packet to ack the first beacon.
-        self.assertThat(received[0].json['payload']['acks'], Equals(rx_uuid))
+        self.assertThat(received[0].json["payload"]["acks"], Equals(rx_uuid))
         # We should have transmitted an advertisement in response to the
         # solicitation.
-        self.assertThat(transmitted.type, Equals('advertisement'))
+        self.assertThat(transmitted.type, Equals("advertisement"))
         # This tests that the post gets closed properly; otherwise the test
         # suite will complain about things left in the reactor.
         yield protocol.stopProtocol()
         # In debug mode, the logger should have printed each packet.
         self.assertThat(
             logger.output,
-            DocTestMatches(
-                '...Beacon received:...Own beacon received:...'))
+            DocTestMatches("...Beacon received:...Own beacon received:..."),
+        )
 
     @inlineCallbacks
     def test__send_multicast_beacon_sets_ipv4_source(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=True, loopback=True,
-            interface="::", debug=False)
+            reactor,
+            port=0,
+            process_incoming=True,
+            loopback=True,
+            interface="::",
+            debug=False,
+        )
         self.assertThat(protocol.listen_port, Not(Is(None)))
         listen_port = protocol.listen_port._realPortNumber
         self.write_secret()
@@ -827,8 +869,13 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # 'ff02::15a' group.
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=True, loopback=True,
-            interface="::", debug=False)
+            reactor,
+            port=0,
+            process_incoming=True,
+            loopback=True,
+            interface="::",
+            debug=False,
+        )
         self.assertThat(protocol.listen_port, Not(Is(None)))
         listen_port = protocol.listen_port._realPortNumber
         self.write_secret()
@@ -844,13 +891,18 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test__hints_for_own_beacon_received_on_another_interface(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Need to generate a real UUID with the current time, so it doesn't
         # get aged out.
         uuid = str(uuid1())
         # Make the protocol think we sent a beacon with this UUID already.
-        fake_tx_beacon = FakeBeaconPayload(uuid, ifname='eth0')
+        fake_tx_beacon = FakeBeaconPayload(uuid, ifname="eth0")
         protocol.tx_queue[uuid] = fake_tx_beacon
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
@@ -859,7 +911,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             # Note the different receive interface.
             "interface": "eth1",
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         # Should only have created one hint.
@@ -871,13 +923,18 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test__hints_for_own_beacon_received_on_same_interface(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Need to generate a real UUID with the current time, so it doesn't
         # get aged out.
         uuid = str(uuid1())
         # Make the protocol think we sent a beacon with this UUID already.
-        fake_tx_beacon = FakeBeaconPayload(uuid, ifname='eth0')
+        fake_tx_beacon = FakeBeaconPayload(uuid, ifname="eth0")
         protocol.tx_queue[uuid] = fake_tx_beacon
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
@@ -885,7 +942,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             "destination_ip": "224.0.0.118",
             "interface": "eth0",
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         # Should only have created one hint.
@@ -897,23 +954,28 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test__hints_for_same_beacon_seen_on_multiple_interfaces(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        self.patch(protocol, "send_beacon")
         # Need to generate a real UUID with the current time, so it doesn't
         # get aged out.
         uuid = str(uuid1())
         # Make the protocol think we sent a beacon with this UUID already.
-        fake_tx_beacon = FakeBeaconPayload(uuid, ifname='eth0')
+        fake_tx_beacon = FakeBeaconPayload(uuid, ifname="eth0")
         fake_rx_beacon_eth0 = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "224.0.0.118",
             "interface": "eth0",
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         fake_rx_beacon_eth1 = {
             "source_ip": "127.0.0.1",
@@ -922,18 +984,28 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             "interface": "eth1",
             "vid": 100,
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon_eth0)
         protocol.beaconReceived(fake_rx_beacon_eth1)
         hints = protocol.topology_hints[uuid]
         expected_hints = {
             TopologyHint(
-                ifname='eth0', vid=None, hint="same_local_fabric_as",
-                related_ifname='eth1', related_vid=100, related_mac=None),
+                ifname="eth0",
+                vid=None,
+                hint="same_local_fabric_as",
+                related_ifname="eth1",
+                related_vid=100,
+                related_mac=None,
+            ),
             TopologyHint(
-                ifname='eth1', vid=100, hint="same_local_fabric_as",
-                related_ifname='eth0', related_vid=None, related_mac=None),
+                ifname="eth1",
+                vid=100,
+                hint="same_local_fabric_as",
+                related_ifname="eth0",
+                related_vid=None,
+                related_mac=None,
+            ),
         }
         self.assertThat(hints, Equals(expected_hints))
         yield protocol.stopProtocol()
@@ -942,33 +1014,43 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test__hints_for_remote_unicast(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        self.patch(protocol, "send_beacon")
         # Need to generate a real UUID with the current time, so it doesn't
         # get aged out.
         uuid = str(uuid1())
         # Make the protocol think we sent a beacon with this UUID already.
         tx_mac = factory.make_mac_address()
         fake_tx_beacon = FakeBeaconPayload(
-            uuid, ifname='eth1', mac=tx_mac, vid=100)
+            uuid, ifname="eth1", mac=tx_mac, vid=100
+        )
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "127.0.0.1",
             "interface": "eth0",
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         hints = protocol.topology_hints[uuid]
         expected_hints = {
             TopologyHint(
-                ifname='eth0', vid=None, hint="routable_to",
-                related_ifname='eth1', related_vid=100,
-                related_mac=tx_mac),
+                ifname="eth0",
+                vid=None,
+                hint="routable_to",
+                related_ifname="eth1",
+                related_vid=100,
+                related_mac=tx_mac,
+            )
         }
         self.assertThat(hints, Equals(expected_hints))
         yield protocol.stopProtocol()
@@ -977,18 +1059,24 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test__hints_for_remote_multicast(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        self.patch(protocol, "send_beacon")
         # Need to generate a real UUID with the current time, so it doesn't
         # get aged out.
         uuid = str(uuid1())
         # Make the protocol think we sent a beacon with this UUID already.
         tx_mac = factory.make_mac_address()
         fake_tx_beacon = FakeBeaconPayload(
-            uuid, ifname='eth1', mac=tx_mac, vid=100)
+            uuid, ifname="eth1", mac=tx_mac, vid=100
+        )
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
@@ -996,15 +1084,19 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             "interface": "eth0",
             "vid": 200,
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         hints = protocol.topology_hints[uuid]
         expected_hints = {
             TopologyHint(
-                ifname='eth0', vid=200, hint="on_remote_network",
-                related_ifname='eth1', related_vid=100,
-                related_mac=tx_mac),
+                ifname="eth0",
+                vid=200,
+                hint="on_remote_network",
+                related_ifname="eth1",
+                related_vid=100,
+                related_mac=tx_mac,
+            )
         }
         self.assertThat(hints, Equals(expected_hints))
         yield protocol.stopProtocol()
@@ -1013,25 +1105,31 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test__getJSONTopologyHints_converts_hints_to_dictionary(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
-            reactor, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            reactor,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        self.patch(protocol, "send_beacon")
         # Need to generate a real UUID with the current time, so it doesn't
         # get aged out.
         uuid = str(uuid1())
         # Make the protocol think we sent a beacon with this UUID already.
         tx_mac = factory.make_mac_address()
         fake_tx_beacon = FakeBeaconPayload(
-            uuid, ifname='eth1', mac=tx_mac, vid=100)
+            uuid, ifname="eth1", mac=tx_mac, vid=100
+        )
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "224.0.0.118",
             "interface": "eth0",
             "type": "solicitation",
-            "payload": fake_tx_beacon.payload
+            "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         all_hints = protocol.getJSONTopologyHints()
@@ -1039,9 +1137,12 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             # Note: since vid=None on the received beacon, we expect that
             # the hint won't have a 'vid' field.
             dict(
-                ifname='eth0', hint="on_remote_network",
-                related_ifname='eth1', related_vid=100,
-                related_mac=tx_mac),
+                ifname="eth0",
+                hint="on_remote_network",
+                related_ifname="eth1",
+                related_vid=100,
+                related_mac=tx_mac,
+            )
         ]
         self.assertThat(all_hints, Equals(expected_hints))
         yield protocol.stopProtocol()
@@ -1051,29 +1152,40 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
-            clock, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            clock,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        send_mcast_mock = self.patch(protocol, "send_multicast_beacons")
+        self.patch(protocol, "send_beacon")
         yield protocol.queueMulticastBeaconing(solicitation=True)
         clock.advance(0)
         self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, 'solicitation'))
+            send_mcast_mock, MockCalledOnceWith({}, "solicitation")
+        )
 
     @inlineCallbacks
     def test__multicasts_at_most_once_per_five_seconds(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
-            clock, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            clock,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        monotonic_mock = self.patch(services.time, 'monotonic')
-        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        monotonic_mock = self.patch(services.time, "monotonic")
+        send_mcast_mock = self.patch(protocol, "send_multicast_beacons")
+        self.patch(protocol, "send_beacon")
         monotonic_mock.side_effect = [
             # Initial queue
             6,
@@ -1089,47 +1201,60 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.queueMulticastBeaconing()
         clock.advance(0)
         self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, 'advertisement'))
+            send_mcast_mock, MockCalledOnceWith({}, "advertisement")
+        )
         send_mcast_mock.reset_mock()
         yield protocol.queueMulticastBeaconing()
         yield protocol.queueMulticastBeaconing(solicitation=True)
         clock.advance(4.9)
-        self.assertThat(
-            send_mcast_mock, MockNotCalled())
+        self.assertThat(send_mcast_mock, MockNotCalled())
         clock.advance(0.1)
         self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, 'solicitation'))
+            send_mcast_mock, MockCalledOnceWith({}, "solicitation")
+        )
 
     @inlineCallbacks
     def test__multiple_beacon_requests_coalesced(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
-            clock, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            clock,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        send_mcast_mock = self.patch(protocol, "send_multicast_beacons")
+        self.patch(protocol, "send_beacon")
         yield protocol.queueMulticastBeaconing()
         yield protocol.queueMulticastBeaconing()
         clock.advance(5)
         self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, 'advertisement'))
+            send_mcast_mock, MockCalledOnceWith({}, "advertisement")
+        )
 
     @inlineCallbacks
     def test__solicitation_wins_when_multiple_requests_queued(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
-            clock, port=0, process_incoming=False, loopback=True,
-            interface="::", debug=True)
+            clock,
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
         # Don't try to send out any replies.
-        self.patch(services, 'create_beacon_payload')
-        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
-        self.patch(protocol, 'send_beacon')
+        self.patch(services, "create_beacon_payload")
+        send_mcast_mock = self.patch(protocol, "send_multicast_beacons")
+        self.patch(protocol, "send_beacon")
         yield protocol.queueMulticastBeaconing()
         yield protocol.queueMulticastBeaconing(solicitation=True)
         clock.advance(5)
         self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, 'solicitation'))
+            send_mcast_mock, MockCalledOnceWith({}, "solicitation")
+        )

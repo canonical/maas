@@ -7,26 +7,14 @@
 __all__ = []
 
 import random
-from unittest.mock import (
-    Mock,
-    sentinel,
-)
+from unittest.mock import Mock, sentinel
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rackdservices import service_monitor_service as sms
-from provisioningserver.rpc import (
-    getRegionClient,
-    region,
-)
+from provisioningserver.rpc import getRegionClient, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.service_monitor import (
@@ -36,11 +24,7 @@ from provisioningserver.utils.service_monitor import (
     ToggleableService,
 )
 from testtools.matchers import MatchesStructure
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import Clock
 
 
@@ -65,55 +49,68 @@ class TestServiceMonitorService(MAASTestCase):
 
     def test_init_sets_up_timer_correctly(self):
         monitor_service = sms.ServiceMonitorService(
-            sentinel.client_service, sentinel.clock)
-        self.assertThat(monitor_service, MatchesStructure.byEquality(
-            call=(monitor_service.monitorServices, (), {}),
-            step=(30), client_service=sentinel.client_service,
-            clock=sentinel.clock))
+            sentinel.client_service, sentinel.clock
+        )
+        self.assertThat(
+            monitor_service,
+            MatchesStructure.byEquality(
+                call=(monitor_service.monitorServices, (), {}),
+                step=30,
+                client_service=sentinel.client_service,
+                clock=sentinel.clock,
+            ),
+        )
 
     def test_monitorServices_does_not_do_anything_in_dev_environment(self):
         # Belt-n-braces make sure we're in a development environment.
         self.assertTrue(sms.is_dev_environment())
 
         monitor_service = sms.ServiceMonitorService(
-            sentinel.client_service, Clock())
+            sentinel.client_service, Clock()
+        )
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
         self.assertThat(mock_ensureServices, MockNotCalled())
         self.assertDocTestMatches(
             "Skipping check of services; they're not running under the "
-            "supervision of systemd.", logger.output)
+            "supervision of systemd.",
+            logger.output,
+        )
 
     def test_monitorServices_calls_ensureServices(self):
         # Pretend we're in a production environment.
         self.patch(sms, "is_dev_environment").return_value = False
 
         monitor_service = sms.ServiceMonitorService(
-            sentinel.client_service, Clock())
+            sentinel.client_service, Clock()
+        )
         mock_client = Mock()
-        self.patch(monitor_service, "_getConnection").return_value = (
-            succeed(mock_client))
+        self.patch(monitor_service, "_getConnection").return_value = succeed(
+            mock_client
+        )
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         monitor_service.monitorServices()
-        self.assertThat(
-            mock_ensureServices,
-            MockCalledOnceWith())
+        self.assertThat(mock_ensureServices, MockCalledOnceWith())
 
     def test_monitorServices_handles_failure(self):
         # Pretend we're in a production environment.
         self.patch(sms, "is_dev_environment").return_value = False
 
         monitor_service = sms.ServiceMonitorService(
-            sentinel.client_service, Clock())
+            sentinel.client_service, Clock()
+        )
         mock_ensureServices = self.patch(monitor_service, "_getConnection")
         mock_ensureServices.return_value = fail(factory.make_exception())
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
-        self.assertDocTestMatches("""\
+        self.assertDocTestMatches(
+            """\
             Failed to monitor services and update region.
             Traceback (most recent call last):
-            ...""", logger.output)
+            ...""",
+            logger.output,
+        )
 
     @inlineCallbacks
     def test_reports_services_to_region_on_start(self):
@@ -124,8 +121,9 @@ class TestServiceMonitorService(MAASTestCase):
         self.addCleanup((yield connecting))
 
         class ExampleService(AlwaysOnService):
-            name = service_name = snap_service_name = (
-                factory.make_name("service"))
+            name = service_name = snap_service_name = factory.make_name(
+                "service"
+            )
 
         service = ExampleService()
         # Inveigle this new service into the service monitor.
@@ -134,30 +132,27 @@ class TestServiceMonitorService(MAASTestCase):
 
         state = ServiceState(SERVICE_STATE.ON, "running")
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
-        mock_ensureServices.return_value = succeed({
-            service.name: state
-        })
+        mock_ensureServices.return_value = succeed({service.name: state})
 
         client = getRegionClient()
         rpc_service = Mock()
         rpc_service.getClientNow.return_value = succeed(client)
-        monitor_service = sms.ServiceMonitorService(
-            rpc_service, Clock())
+        monitor_service = sms.ServiceMonitorService(rpc_service, Clock())
         yield monitor_service.startService()
         yield monitor_service.stopService()
 
         expected_services = list(monitor_service.ALWAYS_RUNNING_SERVICES)
-        expected_services.append({
-            "name": service.name,
-            "status": "running",
-            "status_info": "",
-        })
+        expected_services.append(
+            {"name": service.name, "status": "running", "status_info": ""}
+        )
         self.assertThat(
             protocol.UpdateServices,
             MockCalledOnceWith(
                 protocol,
                 system_id=client.localIdent,
-                services=expected_services))
+                services=expected_services,
+            ),
+        )
 
     @inlineCallbacks
     def test_reports_services_to_region(self):
@@ -168,8 +163,9 @@ class TestServiceMonitorService(MAASTestCase):
         self.addCleanup((yield connecting))
 
         class ExampleService(AlwaysOnService):
-            name = service_name = snap_service_name = (
-                factory.make_name("service"))
+            name = service_name = snap_service_name = factory.make_name(
+                "service"
+            )
 
         service = ExampleService()
         # Inveigle this new service into the service monitor.
@@ -178,53 +174,51 @@ class TestServiceMonitorService(MAASTestCase):
 
         state = ServiceState(SERVICE_STATE.ON, "running")
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
-        mock_ensureServices.return_value = succeed({
-            service.name: state
-        })
+        mock_ensureServices.return_value = succeed({service.name: state})
 
         client = getRegionClient()
         rpc_service = Mock()
         rpc_service.getClientNow.return_value = succeed(client)
-        monitor_service = sms.ServiceMonitorService(
-            rpc_service, Clock())
+        monitor_service = sms.ServiceMonitorService(rpc_service, Clock())
 
         yield monitor_service.startService()
         yield monitor_service.stopService()
 
         expected_services = list(monitor_service.ALWAYS_RUNNING_SERVICES)
-        expected_services.append({
-            "name": service.name,
-            "status": "running",
-            "status_info": "",
-        })
+        expected_services.append(
+            {"name": service.name, "status": "running", "status_info": ""}
+        )
         self.assertThat(
             protocol.UpdateServices,
             MockCalledOnceWith(
                 protocol,
                 system_id=client.localIdent,
-                services=expected_services))
+                services=expected_services,
+            ),
+        )
 
     @inlineCallbacks
     def test__buildServices_includes_always_running_services(self):
         monitor_service = sms.ServiceMonitorService(
-            sentinel.client_service, Clock())
+            sentinel.client_service, Clock()
+        )
         observed_services = yield monitor_service._buildServices({})
         self.assertEquals(
-            monitor_service.ALWAYS_RUNNING_SERVICES, observed_services)
+            monitor_service.ALWAYS_RUNNING_SERVICES, observed_services
+        )
 
     @inlineCallbacks
     def test__buildServices_adds_services_to_always_running_services(self):
         monitor_service = sms.ServiceMonitorService(
-            sentinel.client_service, Clock())
+            sentinel.client_service, Clock()
+        )
         service = self.pick_service()
         state = ServiceState(SERVICE_STATE.ON, "running")
-        observed_services = yield monitor_service._buildServices({
-            service.name: state
-        })
+        observed_services = yield monitor_service._buildServices(
+            {service.name: state}
+        )
         expected_services = list(monitor_service.ALWAYS_RUNNING_SERVICES)
-        expected_services.append({
-            "name": service.name,
-            "status": "running",
-            "status_info": "",
-        })
+        expected_services.append(
+            {"name": service.name, "status": "running", "status_info": ""}
+        )
         self.assertEquals(expected_services, observed_services)

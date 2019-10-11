@@ -7,13 +7,8 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('maasserver', '0155_add_globaldefaults_model'),
-    ]
+    dependencies = [("maasserver", "0155_add_globaldefaults_model")]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='sshkey',
-            unique_together=set([]),
-        ),
+        migrations.AlterUniqueTogether(name="sshkey", unique_together=set([]))
     ]

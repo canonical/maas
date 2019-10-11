@@ -6,7 +6,7 @@
 Overrides the default implementation.
 """
 
-__all__ = ['Command']
+__all__ = ["Command"]
 
 import subprocess
 
@@ -21,19 +21,29 @@ class Command(dbshell.Command):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--database', default=None, help="Database to connect to.")
+            "--database", default=None, help="Database to connect to."
+        )
         parser.add_argument(
-            '--dev', action='store_true', default=False,
+            "--dev",
+            action="store_true",
+            default=False,
             help=(
                 "Connect to a development database database. "
                 "Default is to start, and connect to, a system-installed "
-                "database."))
+                "database."
+            ),
+        )
         parser.add_argument(
-            '--installed', '-i', action='store_true', default=False,
+            "--installed",
+            "-i",
+            action="store_true",
+            default=False,
             help=(
                 "Connect to global, system-installed database. "
                 "This is the default, unless a development environment is "
-                "detected."))
+                "detected."
+            ),
+        )
 
     def get_development_database(self):
         database = None
@@ -47,10 +57,10 @@ class Command(dbshell.Command):
 
     def handle(self, **options):
         database_fixture = self.get_development_database()
-        if options.get('dev'):
+        if options.get("dev"):
             if database_fixture is None:
                 raise CommandError("No development database found.")
-        elif options.get('installed'):
+        elif options.get("installed"):
             # If we have a development database but the user passed in
             # --installed, we need to use the system database instead.
             # So clear it out if we found one.
@@ -58,12 +68,13 @@ class Command(dbshell.Command):
 
         if database_fixture is None:
             # Access the global system-installed MAAS database.
-            database_name = options.get('database')
+            database_name = options.get("database")
             if database_name is None:
-                database_name = 'maasdb'
+                database_name = "maasdb"
             try:
                 subprocess.check_call(
-                    ['sudo', '-u', 'postgres', 'psql', database_name])
+                    ["sudo", "-u", "postgres", "psql", database_name]
+                )
             except subprocess.CalledProcessError:
                 # If psql fails to run, it will print a message to stderr.
                 # Capturing that can get a little involved; psql might think
@@ -77,6 +88,7 @@ class Command(dbshell.Command):
             # Don't call up to Django's dbshell, because that ends up exec'ing
             # the shell, preventing this from clearing down the fixture.
             cluster = database_fixture.MAASClusterFixture(
-                options.get('database'))
+                options.get("database")
+            )
             with cluster:
                 cluster.shell(cluster.dbname)
