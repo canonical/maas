@@ -9,7 +9,7 @@ __all__ = [
     'DHCP_EXPLORE_OUTPUT_NAME',
     'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
-    'IPADDR_OUTPUT_NAME',
+    'KERNEL_CMDLINE_OUTPUT_NAME',
     'LIST_MODALIASES_OUTPUT_NAME',
     'LLDP_INSTALL_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
@@ -45,6 +45,7 @@ SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
 LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
 IPADDR_OUTPUT_NAME = '99-maas-03-network-interfaces'
 SRIOV_OUTPUT_NAME = '99-maas-04-network-interfaces-with-sriov'
+KERNEL_CMDLINE_OUTPUT_NAME = '99-maas-05-kernel-cmdline'
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -145,6 +146,11 @@ SRIOV_SCRIPT = dedent("""\
             echo "$eth $mac"
         done
     done
+    """)
+
+KERNEL_CMDLINE_SCRIPT = dedent("""\
+    #!/bin/bash
+    cat /proc/cmdline
     """)
 
 SUPPORT_SCRIPT = dedent("""\
@@ -682,6 +688,12 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'timeout': timedelta(minutes=5),
         'run_on_controller': True,
+    }),
+    (KERNEL_CMDLINE_OUTPUT_NAME, {
+        'content': KERNEL_CMDLINE_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'timeout': timedelta(seconds=10),
+        'run_on_controller': False,
     }),
     (SERIAL_PORTS_OUTPUT_NAME, {
         'content': SERIAL_PORTS_SCRIPT.encode('ascii'),
