@@ -41498,6 +41498,26 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
     return;
   };
 
+  $scope.getInterfaceNumaNodes = function (iface) {
+    if (iface.parents && iface.parents.length) {
+      var originalInterfaces = $scope.originalInterfaces;
+      var allNumas = iface.parents.reduce(function (acc, parent) {
+        var parentInterface = originalInterfaces[parent];
+
+        if (parentInterface && !acc.includes(parentInterface.numa_node)) {
+          acc.push(parentInterface.numa_node);
+        }
+
+        return acc;
+      }, iface.numa_node ? [iface.numa_node] : []);
+      return allNumas.sort(function (a, b) {
+        return a - b;
+      });
+    }
+
+    return [iface.numa_node];
+  };
+
   $scope.canMarkAsConnected = function (nic) {
     return !$scope.cannotEditInterface(nic) && !nic.link_connected && $scope.isInterface(nic);
   };

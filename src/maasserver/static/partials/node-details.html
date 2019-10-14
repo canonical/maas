@@ -2165,9 +2165,14 @@
                                         <div>MAC</div>
                                     </div>
                                 </th>
-                                <th><div data-ng-if="!isController" class="u-align--center">PXE</div></th>
+                                <th>
+                                    <div data-ng-if="!isController">PXE</div>
+                                </th>
                                 <th>Link/Interface speed</th>
-                                <th>Type</th>
+                                <th class="p-double-row">
+                                    <div>Type</div>
+                                    <div>NUMA node</div>
+                                </th>
                                 <th class="p-double-row">
                                     <div>Fabric</div>
                                     <div>VLAN</div>
@@ -2250,20 +2255,31 @@
                                     </div>
                                 </td>
                                 <td aria-label="Boot interface">
-                                    <span class="u-align--center u-hide u-show--large">
+                                    <span class="u-align--center">
                                         <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
                                             data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)"
                                             class="u-no-margin">
-                                        <label for="{$ interface.name $}"></label>
+                                        <label class="u-no-margin" for="{$ interface.name $}"></label>
                                     </span>
-                                    <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
-                                    <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
                                 </td>
                                 <td aria-label="Link and interface speed">
                                     {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
                                 </td>
-                                <td aria-label="Type">
-                                    <span data-ng-if="!isEditing(interface)" title="{$ getInterfaceTypeText(interface) $}">{$ getInterfaceTypeText(interface) $}</span>
+                                <td aria-label="Type, NUMA node" class="p-double-row">
+                                    <div
+                                        class="p-tooltip--top-left numa-tooltip"
+                                        ng-class="{ 'show-warning': getInterfaceNumaNodes(interface).length > 1 }"
+                                    >
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row">
+                                                <span data-ng-if="!isEditing(interface)" title="{$ getInterfaceTypeText(interface) $}">{$ getInterfaceTypeText(interface) $}</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <span>{$ getInterfaceNumaNodes(interface).join(", ") $}</span>
+                                            </div>
+                                        </div>
+                                        <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(interface).length > 1">This bond is spread over multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                    </div>
                                 </td>
                                 <td class="p-double-row">
                                     <div class="p-double-row__rows-container">

@@ -2348,6 +2348,26 @@ export function NodeNetworkingController(
     return;
   };
 
+  $scope.getInterfaceNumaNodes = iface => {
+    if (iface.parents && iface.parents.length) {
+      const { originalInterfaces } = $scope;
+
+      const allNumas = iface.parents.reduce(
+        (acc, parent) => {
+          const parentInterface = originalInterfaces[parent];
+          if (parentInterface && !acc.includes(parentInterface.numa_node)) {
+            acc.push(parentInterface.numa_node);
+          }
+          return acc;
+        },
+        iface.numa_node ? [iface.numa_node] : []
+      );
+
+      return allNumas.sort((a, b) => a - b);
+    }
+    return [iface.numa_node];
+  };
+
   $scope.canMarkAsConnected = nic => {
     return (
       !$scope.cannotEditInterface(nic) &&

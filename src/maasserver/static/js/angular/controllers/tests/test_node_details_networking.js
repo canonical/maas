@@ -5224,4 +5224,28 @@ describe("NodeNetworkingController", function() {
       expect($scope.formatSpeedUnits(2000000)).toEqual("2 Tbps");
     });
   });
+
+  describe("getInterfaceNumaNodes", () => {
+    it("returns an interface's numa node if it has no parents", () => {
+      makeController();
+      const iface = {
+        numa_node: 2,
+        parents: []
+      };
+      expect($scope.getInterfaceNumaNodes(iface)).toEqual([2]);
+    });
+
+    it("returns numa nodes of interface and its parents", () => {
+      makeController();
+      $scope.originalInterfaces = {
+        0: { numa_node: 0 },
+        1: { numa_node: 1 }
+      };
+      const iface = {
+        numa_node: 2,
+        parents: [0, 1]
+      };
+      expect($scope.getInterfaceNumaNodes(iface)).toEqual([0, 1, 2]);
+    });
+  });
 });
