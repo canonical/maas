@@ -2312,18 +2312,25 @@ export function NodeNetworkingController(
       .then(() => {
         $scope.isChangingConnectionStatus = false;
         $scope.selectedInterfaces = [];
+        $scope.isSaving = false;
       })
       .catch(err => $log.error(err));
   };
 
   $scope.showEditWarning = false;
-  $scope.checkIfConnected = nic => {
+  $scope.handleEdit = nic => {
+    if (!$scope.isInterface(nic)) {
+      $scope.edit(nic);
+      return;
+    }
+
     if (nic.link_connected) {
       $scope.edit(nic);
-    } else {
-      $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
-      $scope.showEditWarning = true;
+      return;
     }
+
+    $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+    $scope.showEditWarning = true;
   };
 
   $scope.getNetworkTestingStatus = nic => {

@@ -41460,6 +41460,7 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
     $scope.$parent.nodesManager.updateInterface($scope.node, nic.id, params).then(function () {
       $scope.isChangingConnectionStatus = false;
       $scope.selectedInterfaces = [];
+      $scope.isSaving = false;
     }).catch(function (err) {
       return $log.error(err);
     });
@@ -41467,13 +41468,19 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
 
   $scope.showEditWarning = false;
 
-  $scope.checkIfConnected = function (nic) {
+  $scope.handleEdit = function (nic) {
+    if (!$scope.isInterface(nic)) {
+      $scope.edit(nic);
+      return;
+    }
+
     if (nic.link_connected) {
       $scope.edit(nic);
-    } else {
-      $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
-      $scope.showEditWarning = true;
+      return;
     }
+
+    $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+    $scope.showEditWarning = true;
   };
 
   $scope.getNetworkTestingStatus = function (nic) {

@@ -2369,7 +2369,7 @@
                                             <button class="p-contextual-menu__link"
                                                 data-ng-if="!cannotEditInterface(interface)"
                                                 aria-label="Edit"
-                                                data-ng-click="toggleMenu(); checkIfConnected(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                                data-ng-click="toggleMenu(); handleEdit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
                                             <button class="p-contextual-menu__link"
                                                 data-ng-if="canBeRemoved()"
                                                 aria-label="Remove"

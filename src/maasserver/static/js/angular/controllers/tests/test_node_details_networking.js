@@ -5058,7 +5058,7 @@ describe("NodeNetworkingController", function() {
     });
   });
 
-  describe("checkIfConnected", () => {
+  describe("handleEdit", () => {
     it("calls edit method if connected", () => {
       makeController();
       const nic = {
@@ -5066,10 +5066,26 @@ describe("NodeNetworkingController", function() {
         link_id: -1,
         vlan: { id: 2 },
         fabric: { name: "fabric-2" },
-        link_connected: true
+        link_connected: true,
+        type: "physical"
       };
       spyOn($scope, "edit");
-      $scope.checkIfConnected(nic);
+      $scope.handleEdit(nic);
+      expect($scope.edit).toHaveBeenCalled();
+    });
+
+    it("calls edit method if not a physical interface", () => {
+      makeController();
+      const nic = {
+        id: 1,
+        link_id: -1,
+        vlan: { id: 2 },
+        fabric: { name: "fabric-2" },
+        link_connected: false,
+        type: "bond"
+      };
+      spyOn($scope, "edit");
+      $scope.handleEdit(nic);
       expect($scope.edit).toHaveBeenCalled();
     });
 
@@ -5080,10 +5096,11 @@ describe("NodeNetworkingController", function() {
         link_id: -1,
         vlan: { id: 2 },
         fabric: { name: "fabric-2" },
-        link_connected: false
+        link_connected: false,
+        type: "physical"
       };
       spyOn($scope, "edit");
-      $scope.checkIfConnected(nic);
+      $scope.handleEdit(nic);
       expect($scope.edit).not.toHaveBeenCalled();
     });
 
@@ -5093,9 +5110,10 @@ describe("NodeNetworkingController", function() {
         id: 1,
         link_id: -1,
         vlan: { id: 2 },
-        fabric: { name: "fabric-2" }
+        fabric: { name: "fabric-2" },
+        type: "physical"
       };
-      $scope.checkIfConnected(nic);
+      $scope.handleEdit(nic);
       expect($scope.selectedInterfaces).toEqual(["1/-1"]);
     });
   });
