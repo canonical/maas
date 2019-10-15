@@ -784,10 +784,11 @@
                             <button class="p-button--neutral" data-ng-click="validateNetworkConfiguration()">Validate network configuration</button>
                         </div>
                     </div>
-                    <div data-ng-if="isDevice"
+                    <div data-ng-if="isDevice" class="row"
                         data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
-                        <button class="p-button--neutral" data-ng-disabled="selectedMode !== null"
-                            data-ng-click="showCreatePhysical()">Add interface</button>
+                        <div class="col-8">
+                            <button class="p-button--neutral" data-ng-disabled="selectedMode !== null" data-ng-click="showCreatePhysical()">Add interface</button>
+                        </div>
                     </div>
                 </div>
 
@@ -3004,7 +3005,7 @@
                 </div>
             </form>
         </div>
-        <div class="row" data-ng-if="filteredSnippets.length">
+        <div class="row" data-ng-if="filteredSnippets.length && !isShowingCreateBridge() && !isShowingEdit() && !isShowingCreateBond()">
             <div class="col-12">
                 <h2 class="p-heading--four">DHCP snippets</h2>
                 <maas-dhcp-snippets-table snippets="filteredSnippets"></maas-dhcp-snippets-table>
