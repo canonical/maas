@@ -268,6 +268,7 @@ RegionControllerRule = Rule(
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("markupsafe|markupsafe.**"),
     Allow("metadataserver|metadataserver.**"),
+    Allow("mimeparse"),
     Allow("netaddr|netaddr.**"),
     Allow("oauth|oauth.**"),
     Allow("OpenSSL|OpenSSL.**"),

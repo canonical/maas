@@ -50,6 +50,16 @@ class TestLogin(MAASServerTestCase):
         response = self.client.get(reverse("login"))
         self.assertEqual(reverse("index"), extract_redirect(response))
 
+    def test_login_json_returns_204_when_already_authenticated(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
+        self.client.login(username=user.username, password=password)
+        response = self.client.get(
+            reverse("login"), HTTP_ACCEPT="application/json"
+        )
+        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+
     def test_login_doesnt_redirect_to_logout_GET(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
@@ -99,6 +109,31 @@ class TestLogin(MAASServerTestCase):
             },
         )
         self.assertEqual(reverse("prefs"), extract_redirect(response))
+
+    def test_login_json_returns_204_on_authentication(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
+        response = self.client.post(
+            reverse("login"),
+            {"username": user.username, "password": password},
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+
+    def test_login_json_returns_400_on_bad_authentication(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
+        response = self.client.post(
+            reverse("login"),
+            {
+                "username": factory.make_name("username"),
+                "password": factory.make_name("password"),
+            },
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test_login_sets_autocomplete_off_in_production(self):
         self.patch(settings, "DEBUG", False)
@@ -161,10 +196,10 @@ class TestLogout(MAASServerTestCase):
             logout_link, get_content_links(response, element="#user-options")
         )
 
-    def test_loggout_uses_POST(self):
+    def test_logout_uses_POST(self):
         # Using POST for logging out, along with Django's csrf_token
         # tag, guarantees that we're protected against CSRF attacks on
-        # the loggout page.
+        # the logout page.
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
@@ -172,6 +207,31 @@ class TestLogout(MAASServerTestCase):
         self.client.handler.enforce_csrf_checks = False
         self.client.post(reverse("logout"))
         self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_logout_json_returns_204(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
+        self.client.login(username=user.username, password=password)
+        self.client.handler.enforce_csrf_checks = False
+        response = self.client.post(
+            reverse("logout"), HTTP_ACCEPT="application/json"
+        )
+        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_logout_json_GET_returns_405(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
+        self.client.login(username=user.username, password=password)
+        self.client.handler.enforce_csrf_checks = False
+        response = self.client.get(
+            reverse("logout"), HTTP_ACCEPT="application/json"
+        )
+        self.assertThat(
+            response, HasStatusCode(http.client.METHOD_NOT_ALLOWED)
+        )
 
     def test_logout_creates_audit_event(self):
         password = factory.make_string()

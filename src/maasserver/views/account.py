@@ -5,14 +5,20 @@
 
 __all__ = ["authenticate", "login", "logout"]
 
+import json
+import mimeparse
+
 from django import forms
 from django.conf import settings as django_settings
 from django.contrib.auth import (
     authenticate as dj_authenticate,
     REDIRECT_FIELD_NAME,
 )
-from django.contrib.auth.views import login as dj_login, logout as dj_logout
+from django.contrib.auth.views import LoginView, logout as dj_logout
+from django.contrib.auth.forms import AuthenticationForm
 from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
     HttpResponseForbidden,
     HttpResponseNotAllowed,
     HttpResponseRedirect,
@@ -30,6 +36,32 @@ from maasserver.utils.django_urls import reverse
 from provisioningserver.events import EVENT_TYPES
 
 
+def wants_json_response(request):
+    """Return True when the requestor wants a JSON response."""
+    try:
+        return ("application", "json") == mimeparse.parse_mime_type(
+            request.META.get("HTTP_ACCEPT", "")
+        )[:2]
+    except mimeparse.MimeTypeParseException:
+        return False
+
+
+class LoginJSONView(LoginView):
+    """A `LoginView` that conditionally returns JSON instead of a HTML view."""
+
+    def form_valid(self, form):
+        if wants_json_response(self.request):
+            return HttpResponse(status=204)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        if wants_json_response(self.request):
+            return HttpResponseBadRequest(
+                json.dumps(form.errors), content_type="application/json"
+            )
+        return super().form_invalid(form)
+
+
 @csrf_exempt
 def login(request):
     extra_context = {
@@ -38,6 +70,8 @@ def login(request):
         "external_auth_url": Config.objects.get_config("external_auth_url"),
     }
     if request.user.is_authenticated:
+        if wants_json_response(request):
+            return HttpResponse(status=204)
         return HttpResponseRedirect(reverse("index"))
     else:
         redirect_url = request.GET.get(
@@ -47,11 +81,13 @@ def login(request):
             redirect_field_name = None  # Ignore next page.
         else:
             redirect_field_name = REDIRECT_FIELD_NAME
-        result = dj_login(
-            request,
+        result = LoginJSONView.as_view(
+            template_name="registration/login.html",
             redirect_field_name=redirect_field_name,
+            form_class=AuthenticationForm,
             extra_context=extra_context,
-        )
+            redirect_authenticated_user=False,
+        )(request)
         if request.user.is_authenticated:
             create_audit_event(
                 EVENT_TYPES.AUTHORISATION,
@@ -88,10 +124,19 @@ def logout(request):
                     % ("admin" if request.user.is_superuser else "user")
                 ),
             )
-            return dj_logout(request, next_page=reverse("login"))
+            response = dj_logout(request, next_page=reverse("login"))
+            if wants_json_response(request):
+                return HttpResponse(status=204)
+            return response
+        elif wants_json_response(request):
+            return HttpResponseBadRequest(
+                json.dumps(form.errors), content_type="application/json"
+            )
     else:
         form = LogoutForm()
 
+    if wants_json_response(request):
+        return HttpResponseNotAllowed([request.method])
     return render(request, "maasserver/logout_confirm.html", {"form": form})
 
 

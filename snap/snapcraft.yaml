@@ -113,6 +113,7 @@ parts:
       - python3-httplib2
       - python3-jsonschema
       - python3-lxml
+      - python3-mimeparse
       - python3-netaddr
       - python3-netifaces
       - python3-paramiko

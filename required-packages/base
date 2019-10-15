@@ -38,6 +38,7 @@ python3-jsonschema
 python3-lxml
 python3-macaroonbakery
 python3-markupsafe
+python3-mimeparse
 python3-novaclient
 python3-netaddr
 python3-netifaces
