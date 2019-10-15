@@ -69,7 +69,6 @@ parts:
   maas:
     plugin: python
     source: .
-    requirements: []
     after:
         # Make sure the pypi packages are built first, before we install
         # the deb versions of possible dependencies.

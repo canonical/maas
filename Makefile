@@ -104,9 +104,9 @@ sudoers:
 	utilities/grant-nmap-permissions
 .PHONY: sudoers
 
-$(VENV): requirements.txt
+$(VENV): requirements-dev.txt
 	python3 -m venv --system-site-packages --clear $@
-	$(VENV)/bin/pip install -r requirements.txt
+	$(VENV)/bin/pip install -r $<
 
 bin/black bin/coverage \
   bin/postgresfixture \
