@@ -141,6 +141,10 @@ parts:
       - tcpdump
       - ubuntu-keyring
       - util-linux
+    # As a workaround to issues similar to https://pad.lv/1613898 we manually specify setuptools and wheel
+    python-packages:
+      - setuptools
+      - wheel
     organize:
         lib/python3.*/site-packages/etc/*: etc
         lib/python3.*/site-packages/usr/bin/*: usr/bin
