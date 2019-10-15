@@ -795,28 +795,34 @@
                 <div class="row" data-ng-if="isShowingCreateBridge()">
                     <div class="p-card--highlighted">
                         <h2 class="p-heading--four">Create bridge</h2>
-                        <table>
+                        <table class="p-table-interface">
                             <thead>
                                 <tr>
                                     <th class="p-double-row">
                                         <div class="p-double-row__rows-container--checkbox">
-                                            <div>Name,</div>
+                                            <div>Name</div>
                                             <div>MAC</div>
                                         </div>
                                     </th>
-                                    <th>Type</th>
+                                    <th>Primary</th>
+                                    <th>Link/interface speed</th>
                                     <th class="p-double-row">
-                                        <div>Fabric,</div>
+                                        <div>Type</div>
+                                        <div>NUMA node</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>Fabric</div>
                                         <div>VLAN</div>
                                     </th>
                                     <th class="p-double-row">
-                                        <div>Subnet,</div>
+                                        <div>Subnet</div>
                                         <div>Name</div>
                                     </th>
                                     <th class="p-double-row">
-                                        <div>IP address,</div>
-                                        <div>IP mode</div>
+                                        <div>IP address</div>
+                                        <div>Status</div>
                                     </th>
+                                    <th>DHCP</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -839,10 +845,28 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td aria-label="Type">
-                                        <span title="{$ getInterfaceTypeText(interface) $}">
-                                            {$ getInterfaceTypeText(interface) $}
-                                        </span>
+                                    <td aria-label="Primary">
+                                        <input type="radio" name="bondPrimary" id="{$ parent.name $}" data-ng-model="newBondInterface.primary"
+                                            data-ng-value="parent">
+                                        <label for="{$ parent.name $}"></label>
+                                    </td>
+                                    <td aria-label="Link and interface speed">
+                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    </td>
+                                    <td aria-label="Type, NUMA node" class="p-double-row">
+                                        <div class="p-tooltip--top-left numa-tooltip"
+                                            ng-class="{ 'show-warning': getInterfaceNumaNodes(interface).length > 1 }">
+                                            <div class="p-double-row__rows-container">
+                                                <div class="p-double-row__main-row" title="{$ getInterfaceTypeText(interface) $}">
+                                                    {$ getInterfaceTypeText(interface) $}
+                                                </div>
+                                                <div class="p-double-row__muted-row">
+                                                    <span>{$ getInterfaceNumaNodes(interface).join(", ") $}</span>
+                                                </div>
+                                            </div>
+                                            <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(interface).length > 1">This bond is spread over
+                                                multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                        </div>
                                     </td>
                                     <td class="p-double-row" aria-label="Fabric">
                                         <div class="p-double-row__rows-container">
@@ -870,15 +894,27 @@
                                             <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
                                         </div>
                                     </td>
-                                    <td class="p-double-row" aria-label="IP">
-                                        <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
-                                            <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
-                                            <span data-ng-if="!interface.ip_address">Unconfigured</span>
+                                    <td class="p-double-row">
+                                        <div data-ng-if="!interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
+                                                <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
+                                                <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
+                                                <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
                                         </div>
-                                        <div class="p-double-row__muted-row" aria-label="IP mode" title="{$ interface.ip_mode $}">
-                                            {$ interface.mode $}
+                                        <div data-ng-if="interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.discovered[0].ip_address $}">
+                                                <span data-ng-if="interface.discovered[0].ip_address">{$ interface.discovered[0].ip_address $}</span>
+                                                <span data-ng-if="!interface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="DHCP">
+                                                <span data-ng-if="interface.discovered[0].ip_address">DHCP</span>
+                                            </div>
                                         </div>
                                     </td>
+                                    <td>{$ getDHCPStatus(interface.vlan) $}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1025,14 +1061,17 @@
                 <div class="row" data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface) && isShowingEdit() && interface.type === editInterface.type">
                     <div class="p-card--highlighted">
                         <h2 class="p-heading--four">Edit {$ getInterfaceTypeText(interface).toLowerCase() $}</h2>
-                        <table>
+                        <table class="p-table-interface">
                             <thead>
                                 <tr data-ng-if="isDevice" class="p-table--is-device">
                                     <th class="p-double-row">
                                         <div>Name,</div>
                                         <div>MAC</div>
                                     </th>
-                                    <th>Type</th>
+                                    <th class="p-double-row">
+                                        <div>Type</div>
+                                        <div>NUMA node</div>
+                                    </th>
                                     <th class="p-double-row">
                                         <div>Fabric,</div>
                                         <div>VLAN</div>
@@ -1050,7 +1089,7 @@
                                 <tr data-ng-if="!isDevice" class="p-table--is-not-device">
                                     <th class="p-double-row">
                                         <div class="p-double-row__rows-container--checkbox">
-                                            <div>Name,</div>
+                                            <div>Name</div>
                                             <div>MAC</div>
                                         </div>
                                     </th>
@@ -1058,19 +1097,24 @@
                                         <div data-ng-if="!isController && !isBond(editInterface)">PXE</div>
                                         <div data-ng-if="isBond(editInterface)">Primary</div>
                                     </th>
-                                    <th>Type</th>
+                                    <th>Link/interface speed</th>
                                     <th class="p-double-row">
-                                        <div>Fabric,</div>
+                                        <div>Type</div>
+                                        <div>NUMA node</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>Fabric</div>
                                         <div>VLAN</div>
                                     </th>
                                     <th class="p-double-row">
-                                        <div>Subnet,</div>
+                                        <div>Subnet</div>
                                         <div>Name</div>
                                     </th>
                                     <th class="p-double-row">
-                                        <div>IP Address,</div>
-                                        <div>IP Mode</div>
+                                        <div>IP Address</div>
+                                        <div>IP Status</div>
                                     </th>
+                                    <th>DHCP</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1100,10 +1144,23 @@
                                         <span class="u-hide--large"
                                             data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
                                     </td>
-                                    <td aria-label="Type">
-                                        <span title="{$ getInterfaceTypeText(interface) $}">
-                                            {$ getInterfaceTypeText(interface) $}
-                                        </span>
+                                    <td aria-label="Link and interface speed">
+                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    </td>
+                                    <td aria-label="Type, NUMA node" class="p-double-row">
+                                        <div class="p-tooltip--top-left numa-tooltip"
+                                            ng-class="{ 'show-warning': getInterfaceNumaNodes(interface).length > 1 }">
+                                            <div class="p-double-row__rows-container">
+                                                <div class="p-double-row__main-row" title="{$ getInterfaceTypeText(interface) $}">
+                                                    {$ getInterfaceTypeText(interface) $}
+                                                </div>
+                                                <div class="p-double-row__muted-row">
+                                                    <span>{$ getInterfaceNumaNodes(interface).join(", ") $}</span>
+                                                </div>
+                                            </div>
+                                            <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(interface).length > 1">This bond is spread over
+                                                multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                        </div>
                                     </td>
                                     <td class="p-double-row">
                                         <div class="p-double-row__rows-container">
@@ -1171,6 +1228,7 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td>{$ getDHCPStatus(interface.vlan) $}</td>
                                 </tr>
                                 <tr data-ng-repeat="interface in editInterface.members" data-ng-if="isBond(editInterface)">
                                     <td class=" p-double-row" aria-label="Name">
@@ -1197,10 +1255,23 @@
                                             data-ng-value="interface">
                                         <label for="{$ interface.name $}"></label>
                                     </td>
-                                    <td aria-label="Type">
-                                        <span title="{$ getInterfaceTypeText(interface) $}">
-                                            {$ getInterfaceTypeText(interface) $}
-                                        </span>
+                                    <td aria-label="Link and interface speed">
+                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    </td>
+                                    <td aria-label="Type, NUMA node" class="p-double-row">
+                                        <div class="p-tooltip--top-left numa-tooltip"
+                                            ng-class="{ 'show-warning': getInterfaceNumaNodes(interface).length > 1 }">
+                                            <div class="p-double-row__rows-container">
+                                                <div class="p-double-row__main-row" title="{$ getInterfaceTypeText(interface) $}">
+                                                    {$ getInterfaceTypeText(interface) $}
+                                                </div>
+                                                <div class="p-double-row__muted-row">
+                                                    <span>{$ getInterfaceNumaNodes(interface).join(", ") $}</span>
+                                                </div>
+                                            </div>
+                                            <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(interface).length > 1">This bond is spread over
+                                                multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                        </div>
                                     </td>
                                     <td class="p-double-row">
                                         <div class="p-double-row__rows-container">
@@ -1273,6 +1344,7 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td>{$ getDHCPStatus(interface.vlan) $}</td>
                                 </tr>
                                 <tr class="p-table__row--muted"
                                     data-ng-repeat="interface in interfaces | filterEditInterface:editInterface"
@@ -1810,7 +1882,7 @@
                 <div class="row" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
                     <div class="p-card--highlighted">
                         <h2 class="p-heading--four">Create bond</h2>
-                        <table>
+                        <table class="p-table-interface">
                             <thead>
                                 <tr>
                                     <th class="p-double-row">
@@ -1820,7 +1892,11 @@
                                         </div>
                                     </th>
                                     <th>Primary</th>
-                                    <th>Type</th>
+                                    <th>Link/Interface speed</th>
+                                    <th class="p-double-row">
+                                        <div>Type</div>
+                                        <div>NUMA node</div>
+                                    </th>
                                     <th class="p-double-row">
                                         <div>Fabric,</div>
                                         <div>VLAN</div>
@@ -1831,8 +1907,9 @@
                                     </th>
                                     <th class="p-double-row">
                                         <div>IP Address,</div>
-                                        <div>IP Mode</div>
+                                        <div>Status</div>
                                     </th>
+                                    <th>DHCP</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1855,8 +1932,23 @@
                                         <input type="radio" name="bondPrimary" id="{$ parent.name $}" data-ng-model="newBondInterface.primary" data-ng-value="parent">
                                         <label for="{$ parent.name $}"></label>
                                     </td>
-                                    <td aria-label="Type">
-                                        {$ getInterfaceTypeText(parent) $}
+                                    <td aria-label="Link and interface speed">
+                                        {$ formatSpeedUnits(parent.link_speed) $}/{$ formatSpeedUnits(parent.interface_speed) $}
+                                    </td>
+                                    <td aria-label="Type, NUMA node" class="p-double-row">
+                                        <div class="p-tooltip--top-left numa-tooltip"
+                                            ng-class="{ 'show-warning': getInterfaceNumaNodes(parent).length > 1 }">
+                                            <div class="p-double-row__rows-container">
+                                                <div class="p-double-row__main-row" title="{$ getInterfaceTypeText(parent) $}">
+                                                    {$ getInterfaceTypeText(parent) $}
+                                                </div>
+                                                <div class="p-double-row__muted-row">
+                                                    <span>{$ getInterfaceNumaNodes(parent).join(", ") $}</span>
+                                                </div>
+                                            </div>
+                                            <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(parent).length > 1">This bond is spread over
+                                                multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                        </div>
                                     </td>
                                     <td class="p-double-row" aria-label="Fabric">
                                         <div class="p-double-row__rows-container">
@@ -1893,6 +1985,7 @@
                                             </span>
                                         </span>
                                     </td>
+                                    <td>{$ getDHCPStatus(interface.vlan) $}</td>
                                 </tr>
                                 <tr class="p-table__row--muted" data-ng-repeat="interface in interfaces | filterSelectedInterfaces:selectedInterfaces:newBondInterface" data-ng-if="isShowingInterfaces">
                                     <td class="p-double-row" aria-label="Name">
@@ -1941,15 +2034,25 @@
                                             </span>
                                         </span>
                                     </td>
-                                    <td aria-label="IP address">
-                                        <span title="{$ interface.ip_address $}">
-                                            <span data-ng-if="interface.ip_address">
-                                                {$ interface.ip_address $}
-                                            </span>
-                                            <span data-ng-if="!interface.ip_address">
-                                                {$ getLinkModeText(interface) $}
-                                            </span>
-                                        </span>
+                                    <td class="p-double-row">
+                                        <div data-ng-if="!interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
+                                                <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
+                                                <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
+                                                <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
+                                        </div>
+                                        <div data-ng-if="interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.discovered[0].ip_address $}">
+                                                <span data-ng-if="interface.discovered[0].ip_address">{$ interface.discovered[0].ip_address $}</span>
+                                                <span data-ng-if="!interface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="DHCP">
+                                                <span data-ng-if="interface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>

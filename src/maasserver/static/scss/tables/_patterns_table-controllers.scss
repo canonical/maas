@@ -186,6 +186,53 @@
     }
   }
 
+  .p-table-interface {
+    th,
+    td {
+      &:nth-child(1) {
+        width: 20%;
+      }
+      &:nth-child(2) {
+        width: 5%;
+      }
+      &:nth-child(3) {
+        width: 15%;
+      }
+      &:nth-child(4) {
+        width: 12%;
+      }
+      &:nth-child(5) {
+        width: 12%;
+      }
+      &:nth-child(6) {
+        width: 12%;
+      }
+      &:nth-child(7) {
+        width: 12%;
+      }
+      &:nth-child(8) {
+        width: 12%;
+      }
+    }
+
+    th:nth-child(4) {
+      padding-left: $sph-inner--large;
+    }
+
+    .numa-tooltip {
+      padding-left: $sph-inner--large;
+
+      &.show-warning::after {
+        @include vf-icon-size(map-get($icon-sizes, default));
+        @include vf-icon-warning($color-warning);
+        content: "";
+        left: 0;
+        position: absolute;
+        top: #{$sp-unit / 2};
+      }
+    }
+  }
+
   .p-table--controller-vlans {
     .p-table__row {
       @media (min-width: $breakpoint-small) {
