@@ -55780,6 +55780,10 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     $scope.$broadcast("validate", testAction);
   };
 
+  $scope.linkSpeedValid = function (nic) {
+    return parseInt(nic.link_speed, 10) <= parseInt(nic.interface_speed, 10);
+  };
+
   var page_managers;
 
   if ($location.path().indexOf("/controller") !== -1) {

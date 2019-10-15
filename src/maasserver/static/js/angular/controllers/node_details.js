@@ -1528,6 +1528,10 @@ function NodeDetailsController(
     $scope.$broadcast("validate", testAction);
   };
 
+  $scope.linkSpeedValid = nic => {
+    return parseInt(nic.link_speed, 10) <= parseInt(nic.interface_speed, 10);
+  };
+
   var page_managers;
   if ($location.path().indexOf("/controller") !== -1) {
     $scope.nodesManager = ControllersManager;

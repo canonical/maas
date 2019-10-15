@@ -2791,4 +2791,24 @@ describe("NodeDetailsController", function() {
       expect(grouped[3].vendor).toEqual("vendorB");
     });
   });
+
+  describe("linkSpeedValid", () => {
+    it("returns false if link speed is higher than interface speed", () => {
+      makeController();
+      const nic = { link_speed: 10000, interface_speed: 1000 };
+      expect($scope.linkSpeedValid(nic)).toBe(false);
+    });
+
+    it("returns true if link speed is lower than interface speed", () => {
+      makeController();
+      const nic = { link_speed: 500, interface_speed: 1000 };
+      expect($scope.linkSpeedValid(nic)).toBe(true);
+    });
+
+    it("returns true if link speed is equal to interface speed", () => {
+      makeController();
+      const nic = { link_speed: 1000, interface_speed: 1000 };
+      expect($scope.linkSpeedValid(nic)).toBe(true);
+    });
+  });
 });

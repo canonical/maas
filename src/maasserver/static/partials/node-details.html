@@ -1546,11 +1546,14 @@
                                                             <tags-input data-ng-model="interface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group row">
+                                                    <div class="p-form__group row p-form-validation" data-ng-class="{ 'is-error': !linkSpeedValid(editInterface) }">
                                                         <label class="p-form__label col-2">Link speed (Mbps)</label>
                                                         <div class="p-form__control col-4">
                                                             <input type="text" name="link_speed" id="link_speed" data-ng-model="editInterface.link_speed"
-                                                                data-ng-disabled="!editInterface.link_connected">
+                                                                data-ng-disabled="!editInterface.link_connected" class="p-form-validation__input">
+                                                            <p class="p-form-validation__message u-no-margin--top" data-ng-if="!linkSpeedValid(editInterface)">
+                                                                <strong>Error:</strong> Link speed cannot be higher than interface speed
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <div class="p-form__group row">
