@@ -30,9 +30,11 @@ def evaluate_tag(
     :param credentials: A 3-tuple of OAuth credentials.
     :param maas_url: URL of the MAAS API.
     """
+    # Turn off proxy detection, since the rack should talk directly to
+    # the region, even if a system-wide proxy is configured.
     client = MAASClient(
         auth=MAASOAuth(*credentials),
-        dispatcher=MAASDispatcher(),
+        dispatcher=MAASDispatcher(autodetect_proxies=False),
         base_url=maas_url,
     )
     process_node_tags(
