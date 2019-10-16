@@ -1349,7 +1349,7 @@
                                 </tr>
                                 <tr class="p-table__row--muted"
                                     data-ng-repeat="interface in interfaces | filterEditInterface:editInterface"
-                                    data-ng-if="isShowingInterfaces && isBond(editInterface)">
+                                    data-ng-if="isShowingInterfaces && isBond(editInterface) && isInterface(interface)">
                                     <td class="p-double-row" aria-label="Name">
                                         <div class="p-double-row__checkbox">
                                             <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
@@ -1370,8 +1370,23 @@
                                             data-ng-value="interface">
                                         <label for="{$ interface.name $}"></label>
                                     </td>
-                                    <td aria-label="Type">
-                                        {$ getInterfaceTypeText(interface) $}
+                                    <td aria-label="Link and interface speed">
+                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    </td>
+                                    <td aria-label="Type, NUMA node" class="p-double-row">
+                                        <div class="p-tooltip--top-left numa-tooltip"
+                                            ng-class="{ 'show-warning': getInterfaceNumaNodes(interface).length > 1 }">
+                                            <div class="p-double-row__rows-container">
+                                                <div class="p-double-row__main-row" title="{$ getInterfaceTypeText(interface) $}">
+                                                    {$ getInterfaceTypeText(interface) $}
+                                                </div>
+                                                <div class="p-double-row__muted-row">
+                                                    <span>{$ getInterfaceNumaNodes(interface).join(", ") $}</span>
+                                                </div>
+                                            </div>
+                                            <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(interface).length > 1">This bond is spread over
+                                                multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                        </div>
                                     </td>
                                     <td class="p-double-row" aria-label="Fabric">
                                         <div class="p-double-row__main-row">
@@ -1408,6 +1423,7 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td aria-label="DHCP">{$ getDHCPStatus(interface.vlan) $}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -2011,8 +2027,23 @@
                                         <input type="radio" name="bondPrimary" id="{$ interface.name $}" data-ng-model="newBondInterface.primary" data-ng-value="interface">
                                         <label for="{$ interface.name $}"></label>
                                     </td>
-                                    <td aria-label="Type">
-                                        {$ getInterfaceTypeText(interface) $}
+                                    <td aria-label="Link and interface speed">
+                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    </td>
+                                    <td aria-label="Type, NUMA node" class="p-double-row">
+                                        <div class="p-tooltip--top-left numa-tooltip"
+                                            ng-class="{ 'show-warning': getInterfaceNumaNodes(interface).length > 1 }">
+                                            <div class="p-double-row__rows-container">
+                                                <div class="p-double-row__main-row" title="{$ getInterfaceTypeText(interface) $}">
+                                                    {$ getInterfaceTypeText(interface) $}
+                                                </div>
+                                                <div class="p-double-row__muted-row">
+                                                    <span>{$ getInterfaceNumaNodes(interface).join(", ") $}</span>
+                                                </div>
+                                            </div>
+                                            <span class="p-tooltip__message" ng-if="getInterfaceNumaNodes(interface).length > 1">This bond is spread over
+                                                multiple NUMA nodes.<br>This may lead to suboptimal performance.</span>
+                                        </div>
                                     </td>
                                     <td class="p-double-row" aria-label="Fabric">
                                         <div class="p-double-row__rows-container">
@@ -2059,6 +2090,7 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td aria-label="DHCP">{$ getDHCPStatus(interface.vlan) $}</td>
                                 </tr>
                             </tbody>
                         </table>
