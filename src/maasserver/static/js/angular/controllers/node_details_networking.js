@@ -1174,6 +1174,8 @@ export function NodeNetworkingController(
         link_connected: nic.link_connected,
         link_speed: nic.link_speed,
         interface_speed: nic.interface_speed,
+        formatted_link_speed: nic.link_speed / 1000,
+        formatted_interface_speed: nic.interface_speed / 1000,
         type: nic.type,
         bridge_fd: nic.params.bridge_fd,
         bridge_stp: nic.params.bridge_stp,
@@ -1371,6 +1373,12 @@ export function NodeNetworkingController(
     }
     if (nic.tags) {
       params.tags = nic.tags.map(tag => tag.text);
+    }
+    if (nic.link_speed && nic.formatted_link_speed) {
+      params.link_speed = nic.formatted_link_speed * 1000;
+    }
+    if (nic.interface_speed && nic.formatted_interface_speed) {
+      params.interface_speed = nic.formatted_interface_speed * 1000;
     }
     return params;
   };
