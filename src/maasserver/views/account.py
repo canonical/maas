@@ -42,7 +42,7 @@ def wants_json_response(request):
         return ("application", "json") == mimeparse.parse_mime_type(
             request.META.get("HTTP_ACCEPT", "")
         )[:2]
-    except mimeparse.MimeTypeParseException:
+    except ValueError:
         return False
 
 
