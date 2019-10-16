@@ -50,7 +50,16 @@
           <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
         </li>
         <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'cpu')">
-          <a ng-click="validateNetworkConfiguration()">Test CPU...</a>
+          <span class="p-tooltip--top-left">
+            <button
+              class="p-button--link"
+              ng-click="validateNetworkConfiguration()"
+              ng-disabled="!node.actions.includes('test')"
+            >
+              Test CPU...
+            </button>
+            <span class="p-tooltip__message" ng-if="!node.actions.includes('test')">Machine cannot run tests at this time.</span>
+          </span>
         </li>
       </ul>
     </div>
@@ -76,7 +85,16 @@
         <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'memory')">
-        <a ng-click="validateNetworkConfiguration()">Test memory...</a>
+        <span class="p-tooltip--top-left">
+          <button
+            class="p-button--link"
+            ng-click="validateNetworkConfiguration()"
+            ng-disabled="!node.actions.includes('test')"
+          >
+            Test memory...
+          </button>
+          <span class="p-tooltip__message" ng-if="!node.actions.includes('test')">Machine cannot run tests at this time.</span>
+        </span>
       </li>
     </ul>
   </div>
@@ -110,7 +128,16 @@
         <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'storage')">
-        <a ng-click="validateNetworkConfiguration()">Test storage...</a>
+        <span class="p-tooltip--top-left">
+          <button
+            class="p-button--link"
+            ng-click="validateNetworkConfiguration()"
+            ng-disabled="!node.actions.includes('test')"
+          >
+            Test storage...
+          </button>
+          <span class="p-tooltip__message" ng-if="!node.actions.includes('test')">Machine cannot run tests at this time.</span>
+        </span>
       </li>
     </ul>
   </div>

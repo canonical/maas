@@ -16,11 +16,14 @@
                 </th>
                 <th class="p-table__cell"><div class="u-align--center">Boot</div></th>
                 <th class="p-table__cell">Size</th>
-                <th class="col-3 p-double-row p-table__cell">
+                <th class="p-double-row p-table__cell">
                     <div>Type</div>
+                    <div>NUMA node</div>
+                </th>
+                <th class="p-double-row p-table__cell">
+                    <div>Health</div>
                     <div>Tags</div>
                 </th>
-                <th class="p-table__cell">Health</th>
                 <th data-ng-if="canEdit()" class="p-table__cell"><div class="u-align--right">Actions</div></th>
             </tr>
         </thead>
@@ -76,18 +79,45 @@
                         <label for="{$ item.name $}-boot" data-ng-hide="availableMode === 'edit' && item.$selected"></label>
                     </div>
                 </td>
-                <td class="p-table__cell" aria-label="Size">
-                    <div class="u-text-overflow">
-                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.size_human $}">
-                            {$ item.size_human $} <span class="table__labeldatastore-name ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span>
-                        </span>
+                <td class="p-double-row p-table__cell" aria-label="Size">
+                    <div class="p-double-rows__container" ng-hide="availableMode === 'edit' && item.$selected">
+                        <div class="p-double-row__main-row">
+                            <div class="u-text-overflow">
+                                <span title="{$ item.size_human $}">
+                                    {$ item.size_human $}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-double-row__muted-row" ng-if="showFreeSpace(item)">
+                            <div class="u-text-overflow">
+                                Free: {$ item.available_size_human $}
+                            </div>
+                        </div>
                     </div>
                 </td>
-                <td class="p-double-row p-table__cell" aria-label="type">
+                <td class="p-double-row p-table__cell" aria-label="Type, NUMA node">
                     <div class="p-double-rows__container">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 {$ getDeviceType(item) $}
+                            </div>
+                        </div>
+                        <div class="p-double-row__muted-row">
+                            <div class="u-text-overflow">
+                                {$ item.original.numa_node $}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-table__cell" aria-label="Health, Tags">
+                    <div class="p-double-rows__container">
+                        <div class="p-double-row__main-row">
+                            <div class="u-text-overflow">
+                                <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
+                                <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
+                                <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
+                                <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
+                                <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                             </div>
                         </div>
                         <div class="p-double-row__muted-row">
@@ -98,13 +128,6 @@
                             </div>
                         </div>
                     </div>
-                </td>
-                <td class="p-table__cell" aria-label="Health">
-                    <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
-                    <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
-                    <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
-                    <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
-                    <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                 </td>
                 <td data-ng-if="canEdit()" class="p-table--action-cell p-table__cell">
                     <div class="u-align--right">
@@ -1024,9 +1047,12 @@
                 <th class="p-table__cell">Size</th>
                 <th class="p-double-row p-table__cell">
                     <div>Type</div>
+                    <div>NUMA node</div>
+                </th>
+                <th class="p-double-row p-table__cell">
+                    <div>Health</div>
                     <div>Tags</div>
                 </th>
-                <th class="p-table__cell">Health</th>
                 <th class="p-double-row p-table__cell">
                     <div>Used for</div>
                     <div>Mount point</div>
@@ -1080,11 +1106,34 @@
                     </div>
                 </td>
                 <td class="p-table__cell">{$ item.size_human $}</td>
-                <td class="p-double-row p-table__cell">
+                <td aria-label="Type, NUMA node" class="p-double-row p-table__cell">
                     <div class="p-double-rows__container">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 {$ getDeviceType(item) $}
+                            </div>
+                        </div>
+                        <div class="p-double-row__muted-row">
+                            <div class="u-text-overflow">
+                                {$ item.numa_node $}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td aria-label="Health, Tags" class="p-double-row p-table__cell">
+                    <div class="p-double-rows__container">
+                        <div class="p-double-row__main-row">
+                            <div class="u-text-overflow">
+                                <span data-ng-if="item.type === 'physical'">
+                                    <span data-maas-script-status="script-status" data-script-status="item.test_status"></span>
+                                    <span
+                                        data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7"
+                                        title="Ok">Ok</span>
+                                    <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8"
+                                        title="Error">Error</span>
+                                    <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
+                                    <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
+                                </span>
                             </div>
                         </div>
                         <div class="p-double-row__muted-row">
@@ -1094,20 +1143,6 @@
                                 </span>
                             </div>
                         </div>
-                    </div>
-                </td>
-                <td aria-label="Health" class="p-table__cell">
-                    <div class="u-text-overflow">
-                        <span data-ng-if="item.type === 'physical'">
-                            <span data-maas-script-status="script-status" data-script-status="item.test_status"></span>
-                            <span
-                                data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7"
-                                title="Ok">Ok</span>
-                            <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8"
-                                title="Error">Error</span>
-                            <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
-                            <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
-                        </span>
                     </div>
                 </td>
                 <td class="p-double-row p-table__cell" aria-label="Used for" title="{$ item.used_for $}">

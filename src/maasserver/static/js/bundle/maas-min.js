@@ -42159,7 +42159,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
           is_boot: disk.is_boot,
           original: disk,
           test_status: disk.test_status,
-          firmware_version: disk.firmware_version
+          firmware_version: disk.firmware_version,
+          numa_node: disk.numa_node
         };
 
         if (disk.type === "virtual") {
@@ -42261,7 +42262,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
           is_boot: disk.is_boot,
           has_partitions: has_partitions,
           test_status: disk.test_status,
-          firmware_version: disk.firmware_version
+          firmware_version: disk.firmware_version,
+          numa_node: disk.numa_node
         };
 
         if (disk.type === "virtual") {
