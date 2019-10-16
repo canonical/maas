@@ -39064,6 +39064,16 @@ function maasScriptSelect(ScriptsManager, ManagerHelperService) {
         $scope.refocus();
       };
 
+      $scope.$on("validate", function (e, action, testSelection) {
+        $scope.ngModel = testSelection;
+        $scope.ngModel.forEach(function (script) {
+          $scope.setDefaultValues(script.parameters);
+        });
+        $scope.scriptsWithUrlParam = filterScriptsByParam($scope.ngModel, "url");
+        $scope.onParameterChange();
+        $scope.refocus();
+      });
+
       $scope.onTagRemoved = function () {
         $scope.scriptsWithUrlParam = filterScriptsByParam($scope.ngModel, "url");
         $scope.onParameterChange();
@@ -55789,7 +55799,10 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     var testAction = $scope.action.availableOptions.find(function (action) {
       return action.name === "test";
     });
-    $scope.$broadcast("validate", testAction);
+    $scope.testSelection = $scope.scripts.filter(function (script) {
+      return script.apply_configured_networking;
+    });
+    $scope.$broadcast("validate", testAction, $scope.testSelection);
   };
 
   $scope.linkSpeedValid = function (nic) {

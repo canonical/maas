@@ -1525,7 +1525,10 @@ function NodeDetailsController(
     const testAction = $scope.action.availableOptions.find(action => {
       return action.name === "test";
     });
-    $scope.$broadcast("validate", testAction);
+    $scope.testSelection = $scope.scripts.filter(script => {
+      return script.apply_configured_networking;
+    });
+    $scope.$broadcast("validate", testAction, $scope.testSelection);
   };
 
   $scope.linkSpeedValid = nic => {

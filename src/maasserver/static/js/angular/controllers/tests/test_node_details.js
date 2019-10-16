@@ -2672,9 +2672,69 @@ describe("NodeDetailsController", function() {
       spyOn($rootScope, "$broadcast");
       $scope.action.availableOptions = [{ name: "test" }];
       $scope.validateNetworkConfiguration();
-      expect($rootScope.$broadcast).toHaveBeenCalledWith("validate", {
-        name: "test"
-      });
+      expect($rootScope.$broadcast).toHaveBeenCalledWith(
+        "validate",
+        {
+          name: "test"
+        },
+        []
+      );
+    });
+
+    it("adds network tests to testSelection", () => {
+      makeController();
+      $scope.testSelection = [];
+      $scope.scripts = [
+        {
+          apply_configured_networking: false,
+          hardware_type: 4,
+          name: "smartctl-validate"
+        },
+        {
+          apply_configured_networking: true,
+          hardware_type: 4,
+          name: "internet-connectivity"
+        },
+        {
+          apply_configured_networking: true,
+          hardware_type: 4,
+          name: "gateway-connectivity"
+        }
+      ];
+      $scope.validateNetworkConfiguration();
+      expect($scope.testSelection).toEqual([
+        {
+          apply_configured_networking: true,
+          hardware_type: 4,
+          name: "internet-connectivity"
+        },
+        {
+          apply_configured_networking: true,
+          hardware_type: 4,
+          name: "gateway-connectivity"
+        }
+      ]);
+    });
+
+    it("doesn't add tests that are already in testSelect", () => {
+      makeController();
+      $scope.testSelection = [];
+      $scope.scripts = [
+        {
+          apply_configured_networking: true,
+          hardware_type: 4,
+          name: "internet-connectivity"
+        },
+        {
+          apply_configured_networking: true,
+          hardware_type: 4,
+          name: "gateway-connectivity"
+        }
+      ];
+      // Call twice to make sure deduped
+      $scope.validateNetworkConfiguration();
+      $scope.validateNetworkConfiguration();
+      expect($scope.testSelection.length).toBe(2);
     });
   });
 
