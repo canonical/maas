@@ -806,7 +806,14 @@
                                         </div>
                                     </th>
                                     <th>Primary</th>
-                                    <th>Link/interface speed</th>
+                                    <th class="p-table__col--status p-double-row">
+                                        <div class="p-double-row__icon-container">
+                                            <i class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            Link/interface speed
+                                        </div>
+                                    </th>
                                     <th class="p-double-row">
                                         <div>Type</div>
                                         <div>NUMA node</div>
@@ -851,8 +858,25 @@
                                             data-ng-value="parent">
                                         <label for="{$ parent.name $}"></label>
                                     </td>
-                                    <td aria-label="Link and interface speed">
-                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                        <div class="p-double-row__icon-container">
+                                            <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                                aria-describedby="not-connected-tooltip">
+                                                <i class="p-icon--error"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is disconnected.</span>
+                                            </span>
+                                            <span class="p-tooltip--top-left"
+                                                data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                                aria-describedby="link-speed-tooltip">
+                                                <i class="p-icon--warning"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow interface.</span>
+                                            </span>
+                                            <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                                class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                        </div>
                                     </td>
                                     <td aria-label="Type, NUMA node" class="p-double-row">
                                         <div class="p-tooltip--top-left numa-tooltip"
@@ -1098,7 +1122,14 @@
                                         <div data-ng-if="!isController && !isBond(editInterface)">PXE</div>
                                         <div data-ng-if="isBond(editInterface)">Primary</div>
                                     </th>
-                                    <th>Link/interface speed</th>
+                                    <th class="p-table__col--status p-double-row">
+                                        <div class="p-double-row__icon-container">
+                                            <i class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            Link/interface speed
+                                        </div>
+                                    </th>
                                     <th class="p-double-row">
                                         <div>Type</div>
                                         <div>NUMA node</div>
@@ -1145,8 +1176,25 @@
                                         <span class="u-hide--large"
                                             data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
                                     </td>
-                                    <td aria-label="Link and interface speed">
-                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                        <div class="p-double-row__icon-container">
+                                            <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                                aria-describedby="not-connected-tooltip">
+                                                <i class="p-icon--error"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is disconnected.</span>
+                                            </span>
+                                            <span class="p-tooltip--top-left"
+                                                data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                                aria-describedby="link-speed-tooltip">
+                                                <i class="p-icon--warning"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow interface.</span>
+                                            </span>
+                                            <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                                class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                        </div>
                                     </td>
                                     <td aria-label="Type, NUMA node" class="p-double-row">
                                         <div class="p-tooltip--top-left numa-tooltip"
@@ -1256,8 +1304,25 @@
                                             data-ng-value="interface">
                                         <label for="{$ interface.name $}"></label>
                                     </td>
-                                    <td aria-label="Link and interface speed">
-                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                        <div class="p-double-row__icon-container">
+                                            <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                                aria-describedby="not-connected-tooltip">
+                                                <i class="p-icon--error"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is disconnected.</span>
+                                            </span>
+                                            <span class="p-tooltip--top-left"
+                                                data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                                aria-describedby="link-speed-tooltip">
+                                                <i class="p-icon--warning"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow interface.</span>
+                                            </span>
+                                            <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                                class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                        </div>
                                     </td>
                                     <td aria-label="Type, NUMA node" class="p-double-row">
                                         <div class="p-tooltip--top-left numa-tooltip"
@@ -1370,8 +1435,27 @@
                                             data-ng-value="interface">
                                         <label for="{$ interface.name $}"></label>
                                     </td>
-                                    <td aria-label="Link and interface speed">
-                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                        <div class="p-double-row__icon-container">
+                                            <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                                aria-describedby="not-connected-tooltip">
+                                                <i class="p-icon--error"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is
+                                                    disconnected.</span>
+                                            </span>
+                                            <span class="p-tooltip--top-left"
+                                                data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                                aria-describedby="link-speed-tooltip">
+                                                <i class="p-icon--warning"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow
+                                                    interface.</span>
+                                            </span>
+                                            <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                                class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                        </div>
                                     </td>
                                     <td aria-label="Type, NUMA node" class="p-double-row">
                                         <div class="p-tooltip--top-left numa-tooltip"
@@ -1913,7 +1997,14 @@
                                         </div>
                                     </th>
                                     <th>Primary</th>
-                                    <th>Link/Interface speed</th>
+                                    <th class="p-table__col--status p-double-row">
+                                        <div class="p-double-row__icon-container">
+                                            <i class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            Link/interface speed
+                                        </div>
+                                    </th>
                                     <th class="p-double-row">
                                         <div>Type</div>
                                         <div>NUMA node</div>
@@ -1953,8 +2044,27 @@
                                         <input type="radio" name="bondPrimary" id="{$ parent.name $}" data-ng-model="newBondInterface.primary" data-ng-value="parent">
                                         <label for="{$ parent.name $}"></label>
                                     </td>
-                                    <td aria-label="Link and interface speed">
-                                        {$ formatSpeedUnits(parent.link_speed) $}/{$ formatSpeedUnits(parent.interface_speed) $}
+                                    <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                        <div class="p-double-row__icon-container">
+                                            <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                                aria-describedby="not-connected-tooltip">
+                                                <i class="p-icon--error"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is
+                                                    disconnected.</span>
+                                            </span>
+                                            <span class="p-tooltip--top-left"
+                                                data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                                aria-describedby="link-speed-tooltip">
+                                                <i class="p-icon--warning"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow
+                                                    interface.</span>
+                                            </span>
+                                            <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                                class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                        </div>
                                     </td>
                                     <td aria-label="Type, NUMA node" class="p-double-row">
                                         <div class="p-tooltip--top-left numa-tooltip"
@@ -2027,8 +2137,27 @@
                                         <input type="radio" name="bondPrimary" id="{$ interface.name $}" data-ng-model="newBondInterface.primary" data-ng-value="interface">
                                         <label for="{$ interface.name $}"></label>
                                     </td>
-                                    <td aria-label="Link and interface speed">
-                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                        <div class="p-double-row__icon-container">
+                                            <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                                aria-describedby="not-connected-tooltip">
+                                                <i class="p-icon--error"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is
+                                                    disconnected.</span>
+                                            </span>
+                                            <span class="p-tooltip--top-left"
+                                                data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                                aria-describedby="link-speed-tooltip">
+                                                <i class="p-icon--warning"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow
+                                                    interface.</span>
+                                            </span>
+                                            <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                                class="p-icon--placeholder"></i>
+                                        </div>
+                                        <div class="p-double-row__rows-container--icon">
+                                            {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                        </div>
                                     </td>
                                     <td aria-label="Type, NUMA node" class="p-double-row">
                                         <div class="p-tooltip--top-left numa-tooltip"
@@ -2308,7 +2437,14 @@
                                 <th>
                                     <div data-ng-if="!isController">PXE</div>
                                 </th>
-                                <th>Link/Interface speed</th>
+                                <th class="p-table__col--status p-double-row">
+                                    <div class="p-double-row__icon-container">
+                                        <i class="p-icon--placeholder"></i>
+                                    </div>
+                                    <div class="p-double-row__rows-container--icon">
+                                        Link/interface speed
+                                    </div>
+                                </th>
                                 <th class="p-double-row">
                                     <div>Type</div>
                                     <div>NUMA node</div>
@@ -2402,8 +2538,25 @@
                                         <label class="u-no-margin" for="{$ interface.name $}"></label>
                                     </span>
                                 </td>
-                                <td aria-label="Link and interface speed">
-                                    {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                <td class="p-table__col--status p-double-row" aria-label="Link and interface speed">
+                                    <div class="p-double-row__icon-container">
+                                        <span class="p-tooltip--top-left" data-ng-if="!interface.link_connected"
+                                            aria-describedby="not-connected-tooltip">
+                                            <i class="p-icon--error"></i>
+                                            <span class="p-tooltip__message" role="tooltip" id="not-connected-tooltip">This interface is disconnected.</span>
+                                        </span>
+                                        <span class="p-tooltip--top-left"
+                                            data-ng-if="interface.link_connected && interface.link_speed < interface.interface_speed"
+                                            aria-describedby="link-speed-tooltip">
+                                            <i class="p-icon--warning"></i>
+                                            <span class="p-tooltip__message" role="tooltip" id="link-speed-tooltip">Link connected to slow interface.</span>
+                                        </span>
+                                        <i data-ng-if="interface.link_connected && interface.link_speed === interface.interface_speed"
+                                            class="p-icon--placeholder"></i>
+                                    </div>
+                                    <div class="p-double-row__rows-container--icon">
+                                        {$ formatSpeedUnits(interface.link_speed) $}/{$ formatSpeedUnits(interface.interface_speed) $}
+                                    </div>
                                 </td>
                                 <td aria-label="Type, NUMA node" class="p-double-row">
                                     <div
