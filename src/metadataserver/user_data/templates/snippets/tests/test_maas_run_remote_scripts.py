@@ -2786,11 +2786,14 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         mock_download_and_extract_tar = self.patch(
             maas_run_remote_scripts, "download_and_extract_tar"
         )
-        simple_dl_and_extract = lambda *args, **kwargs: self.make_index_json(
-            scripts_dir,
-            with_commissioning=False,
-            testing_scripts=testing_scripts,
-        )
+
+        def simple_dl_and_extract(*args, **kwargs):
+            return self.make_index_json(
+                scripts_dir,
+                with_commissioning=False,
+                testing_scripts=testing_scripts,
+            )
+
         mock_download_and_extract_tar.side_effect = simple_dl_and_extract
         index_json = self.make_index_json(
             scripts_dir, testing_scripts=testing_scripts

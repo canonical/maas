@@ -20,7 +20,8 @@ from metadataserver.builtin_scripts import seven_z
 import yaml
 
 
-SEVEN_Z_OUTPUT = dedent("""
+SEVEN_Z_OUTPUT = dedent(
+    """
     7-Zip [64] 9.20  Copyright (c) 1999-2010 Igor Pavlov  2010-11-18
     p7zip Version 9.20 (locale=en_US.UTF-8,Utf16=on,HugeFiles=on,8 CPUs)
 
@@ -38,49 +39,50 @@ SEVEN_Z_OUTPUT = dedent("""
     ----------------------------------------------------------------
     Avr:          635   2852  18134               771   2354  18165
     Tot:          703   2603  18149
-    """)
+    """
+)
 
 
 class TestSevenZTest(MAASTestCase):
-
     def setUp(self):
         super().setUp()
-        self.patch(seven_z, 'print')
+        self.patch(seven_z, "print")
 
     def test_run_7z_executes_cmd_and_writes_results_file(self):
-        self.patch(os, 'environ', {
-            "RESULT_PATH": factory.make_name()
-        })
-        cmd = ['7z', 'b']
+        self.patch(os, "environ", {"RESULT_PATH": factory.make_name()})
+        cmd = ["7z", "b"]
         mock_popen = self.patch(seven_z, "Popen")
         proc = mock_popen.return_value
-        proc.communicate.return_value = (SEVEN_Z_OUTPUT.encode('utf-8'), None)
+        proc.communicate.return_value = (SEVEN_Z_OUTPUT.encode("utf-8"), None)
         proc.returncode = 0
-        match = re.search(seven_z.REGEX, SEVEN_Z_OUTPUT.encode('utf-8'))
+        match = re.search(seven_z.REGEX, SEVEN_Z_OUTPUT.encode("utf-8"))
         averages = match.group(1).split()
         mock_open = self.patch(seven_z, "open")
         mock_open.return_value = io.StringIO()
         mock_yaml_safe_dump = self.patch(yaml, "safe_dump")
         results = {
-            'status': "passed",
-            'results': {
-                'compression_ru_mips': averages[1].decode(),
-                'compression_rating_mips': averages[2].decode(),
-                'decompression_ru_mips': averages[4].decode(),
-                'decompression_rating_mips': averages[5].decode(),
-            }
+            "status": "passed",
+            "results": {
+                "compression_ru_mips": averages[1].decode(),
+                "compression_rating_mips": averages[2].decode(),
+                "decompression_ru_mips": averages[4].decode(),
+                "decompression_rating_mips": averages[5].decode(),
+            },
         }
         returncode = seven_z.run_7z()
 
-        self.assertThat(mock_popen, MockCalledOnceWith(
-            cmd, stdout=PIPE, stderr=PIPE))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=PIPE)
+        )
         self.assertThat(mock_open, MockCalledOnceWith(ANY, "w"))
-        self.assertThat(mock_yaml_safe_dump, MockCalledOnceWith(
-            results, mock_open.return_value))
+        self.assertThat(
+            mock_yaml_safe_dump,
+            MockCalledOnceWith(results, mock_open.return_value),
+        )
         self.assertEquals(returncode, 0)
 
     def test_run_7z_exits_if_returncode_non_zero(self):
-        cmd = ['7z', 'b']
+        cmd = ["7z", "b"]
         mock_popen = self.patch(seven_z, "Popen")
         mock_stderr = self.patch(sys, "stderr")
         proc = mock_popen.return_value
@@ -88,20 +90,21 @@ class TestSevenZTest(MAASTestCase):
         proc.returncode = 1
 
         self.assertRaises(SystemExit, seven_z.run_7z)
-        self.assertThat(mock_popen, MockCalledOnceWith(
-            cmd, stdout=PIPE, stderr=PIPE))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=PIPE)
+        )
         self.assertThat(mock_stderr.write, MockCalledOnceWith("Error"))
 
     def test_run_7z_exits_if_no_regex_match_found(self):
-        self.patch(os, 'environ', {
-            "RESULT_PATH": factory.make_name()
-        })
+        self.patch(os, "environ", {"RESULT_PATH": factory.make_name()})
         stderr = factory.make_string()
-        cmd = ['7z', 'b']
+        cmd = ["7z", "b"]
         mock_popen = self.patch(seven_z, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (
-            SEVEN_Z_OUTPUT.encode('utf-8'), stderr.encode('utf-8'))
+            SEVEN_Z_OUTPUT.encode("utf-8"),
+            stderr.encode("utf-8"),
+        )
         proc.returncode = 0
 
         mock_re_search = self.patch(re, "search")
@@ -109,9 +112,11 @@ class TestSevenZTest(MAASTestCase):
         mock_sys_stderr = self.patch(sys, "stderr")
 
         self.assertRaises(SystemExit, seven_z.run_7z)
-        self.assertThat(mock_popen, MockCalledOnceWith(
-            cmd, stdout=PIPE, stderr=PIPE))
-        self.assertThat(mock_re_search, MockCalledOnceWith(
-            seven_z.REGEX, SEVEN_Z_OUTPUT.encode('utf-8')))
-        self.assertThat(mock_sys_stderr.write, MockCalledOnceWith(
-            stderr))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=PIPE)
+        )
+        self.assertThat(
+            mock_re_search,
+            MockCalledOnceWith(seven_z.REGEX, SEVEN_Z_OUTPUT.encode("utf-8")),
+        )
+        self.assertThat(mock_sys_stderr.write, MockCalledOnceWith(stderr))

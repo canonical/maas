@@ -90,8 +90,13 @@ def get_boot_images(rack_controller):
 @synchronous
 def _get_available_boot_images():
     """Obtain boot images available on connected rack controllers."""
-    listimages_v1 = lambda client: partial(client, ListBootImages)
-    listimages_v2 = lambda client: partial(client, ListBootImagesV2)
+
+    def listimages_v1(client):
+        return partial(client, ListBootImages)
+
+    def listimages_v2(client):
+        return partial(client, ListBootImagesV2)
+
     clients_v2 = getAllClients()
     responses_v2 = gather(map(listimages_v2, clients_v2))
     clients_v1 = []

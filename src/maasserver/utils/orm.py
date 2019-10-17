@@ -945,7 +945,8 @@ def parse_item_operation(specifier):
 
     from operator import and_ as AND, inv as INV, or_ as OR
 
-    AND_NOT = lambda current, next: AND(current, INV(next))
+    def AND_NOT(current, next_):
+        return AND(current, INV(next_))
 
     if specifier.startswith("|"):
         op = OR

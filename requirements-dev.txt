@@ -1,5 +1,4 @@
 argparse==1.1
-black==19.3b0
 blessings==1.6
 decorator==4.0.10
 django-nose==1.4.5
@@ -19,7 +18,6 @@ pickleshare==0.7.4
 postgresfixture==0.4.1
 prompt-toolkit==1.0.9
 ptyprocess==0.6.0
-Pygments==2.1.3
 python-subunit==1.2.0
 selenium==2.45
 setuptools==36.2.7
@@ -39,7 +37,13 @@ wcwidth==0.1.7
 psycopg2==2.7.4
 six==1.11.0
 # lint dependencies
+black==19.3b0
 entrypoints==0.3
+flake8==3.7.8
+mccabe==0.6.1
+pycodestyle==2.5.0
+pyflakes==2.1.1
+Pygments==2.1.3
 # coverage dependencies
 coverage==4.3.1
 # Install MAAS itself in editable mode

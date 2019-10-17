@@ -28,12 +28,10 @@ re_paragraph_splitter = re.compile(r"(?:\r\n){2,}|\r{2,}|\n{2,}", re.MULTILINE)
 
 paragraph_split = re_paragraph_splitter.split
 docstring_split = partial(paragraph_split, maxsplit=1)
-remove_line_breaks = lambda string: (
-    " ".join(line.strip() for line in string.splitlines())
-)
 
-newline = "\n"
-empty = ""
+
+def remove_line_breaks(string):
+    return " ".join(line.strip() for line in string.splitlines())
 
 
 def parse_docstring(thing):
@@ -45,18 +43,18 @@ def parse_docstring(thing):
     assert not isinstance(thing, bytes)
     is_string = isinstance(thing, str)
     doc = cleandoc(thing) if is_string else getdoc(thing)
-    doc = empty if doc is None else doc
+    doc = "" if doc is None else doc
     assert not isinstance(doc, bytes)
     # Break the docstring into two parts: title and body.
     parts = docstring_split(doc)
     if len(parts) == 2:
         title, body = parts[0], parts[1]
     else:
-        title, body = parts[0], empty
+        title, body = parts[0], ""
     # Remove line breaks from the title line.
     title = remove_line_breaks(title)
     # Normalise line-breaks on newline.
-    body = body.replace("\r\n", newline).replace("\r", newline)
+    body = body.replace("\r\n", "\n").replace("\r", "\n")
     return title, body
 
 
@@ -149,11 +147,12 @@ def print_response_headers(headers, file=None):
     :type headers: :class:`httplib2.Response`, or :class:`dict`
     """
     file = sys.stdout if file is None else file
+
     # Function to change headers like "transfer-encoding" into
     # "Transfer-Encoding".
-    cap = lambda header: "-".join(
-        part.capitalize() for part in header.split("-")
-    )
+    def cap(header):
+        return "-".join(part.capitalize() for part in header.split("-"))
+
     # Format string to prettify reporting of response headers.
     form = "%%%ds: %%s" % (max(len(header) for header in headers) + 2)
     # Print the response.

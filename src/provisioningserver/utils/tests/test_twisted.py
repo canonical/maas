@@ -138,7 +138,8 @@ class TestAsynchronousDecorator(MAASTestCase):
         self.assertThat(asynchronous(return_args), Provides(IAsynchronous))
 
 
-noop = lambda: None
+def noop():
+    pass
 
 
 class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
@@ -196,7 +197,9 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
         wait.return_value = sentinel.result
 
         # Our placeholder function, and its wrapped version.
-        do_nothing = lambda: None
+        def do_nothing():
+            pass
+
         do_nothing_async = asynchronous(do_nothing, timeout=self.timeout)
 
         # Call our wrapped function in a thread so that the wrapper calls back

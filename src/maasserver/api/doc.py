@@ -45,12 +45,13 @@ def accumulate_api_resources(resolver, accumulator):
 
     :rtype: Generator, yielding handlers.
     """
-    p_has_resource_uri = lambda resource: (
-        getattr(resource.handler, "resource_uri", None) is not None
-    )
-    p_is_not_hidden = lambda resource: (
-        getattr(resource.handler, "hidden", False)
-    )
+
+    def p_has_resource_uri(resource):
+        return getattr(resource.handler, "resource_uri", None) is not None
+
+    def p_is_not_hidden(resource):
+        return getattr(resource.handler, "hidden", False)
+
     for pattern in resolver.url_patterns:
         if isinstance(pattern, RegexURLResolver):
             accumulate_api_resources(pattern, accumulator)
@@ -184,7 +185,10 @@ def generate_api_docs(resources):
     :return: Generates :class:`piston.doc.HandlerDocumentation` instances.
     """
     sentinel = object()
-    resource_key = lambda resource: resource.handler.__class__.__name__
+
+    def resource_key(resource):
+        return resource.handler.__class__.__name__
+
     for resource in sorted(resources, key=resource_key):
         handler = type(resource.handler)
         if getattr(handler, "resource_uri", sentinel) is sentinel:

@@ -242,8 +242,12 @@ class TestNodeAPI(APITestCase.ForUser):
         response = self.client.get(self.get_node_uri(machine))
         parsed_result = json_load_bytes(response.content)
 
-        status = lambda s: get_status_from_qs([s])
-        status_name = lambda s: SCRIPT_STATUS_CHOICES[status(s)][1]
+        def status(s):
+            return get_status_from_qs([s])
+
+        def status_name(s):
+            return SCRIPT_STATUS_CHOICES[status(s)][1]
+
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEquals(
             status(commissioning_script_result),

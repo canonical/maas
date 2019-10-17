@@ -249,7 +249,9 @@ class TestSignalsManager(MAASServerTestCase):
         )
 
     def test__can_watch_config(self):
-        callback = lambda: None
+        def callback():
+            pass
+
         config_name = factory.make_name("config")
 
         manager = SignalsManager()

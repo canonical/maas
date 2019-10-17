@@ -42,7 +42,9 @@ class TestOperationDecorator(MAASTestCase):
     def test_idempotent_uses_GET(self):
         # If a function is declared as idempotent the export signature
         # includes the HTTP GET method.
-        func = lambda: None
+        def func():
+            pass
+
         self.assertEqual(
             ("GET", func.__name__), operation(idempotent=True)(func).export
         )
@@ -50,7 +52,9 @@ class TestOperationDecorator(MAASTestCase):
     def test_non_idempotent_uses_POST(self):
         # If a function is declared as not idempotent the export signature
         # includes the HTTP POST method.
-        func = lambda: None
+        def func():
+            pass
+
         self.assertEqual(
             ("POST", func.__name__), operation(idempotent=False)(func).export
         )

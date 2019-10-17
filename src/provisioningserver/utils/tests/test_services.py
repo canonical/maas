@@ -386,8 +386,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
 
     @inlineCallbacks
     def test__propagates_errors_from_command(self):
-        do_nothing = lambda obj: None
-        proto = JSONPerLineProtocol(callback=do_nothing)
+        proto = JSONPerLineProtocol(callback=lambda obj: None)
         proto.connectionMade()
         reason = Failure(ProcessTerminated(1))
         proto.processEnded(reason)

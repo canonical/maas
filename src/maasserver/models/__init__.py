@@ -673,4 +673,4 @@ class MAASAuthorizationBackend(ModelBackend):
 
 
 # Ensure that all signals modules are loaded.
-from maasserver.models import signals
+from maasserver.models import signals  # noqa: E402

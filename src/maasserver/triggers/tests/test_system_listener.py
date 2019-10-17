@@ -3226,7 +3226,10 @@ class TestDHCPConfigNTPListener(
         Return the listener and a mapping from the given rack IDs to the
         DeferredValues that will capture messages.
         """
-        dsetter = lambda dv: (lambda *args: dv.set(args))
+
+        def dsetter(dv):
+            return lambda *args: dv.set(args)
+
         dvalues = {rack_id: DeferredValue() for rack_id in rack_ids}
         listener = self.make_listener_without_delay()
         for rack_id, dv in dvalues.items():
@@ -3354,7 +3357,10 @@ class TestDHCPConfigNTPExternalListener(
         Return the listener and a mapping from the given rack IDs to the
         DeferredValues that will capture messages.
         """
-        dsetter = lambda dv: (lambda *args: dv.set(args))
+
+        def dsetter(dv):
+            return lambda *args: dv.set(args)
+
         dvalues = {rack_id: DeferredValue() for rack_id in rack_ids}
         listener = self.make_listener_without_delay()
         for rack_id, dv in dvalues.items():

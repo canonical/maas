@@ -31,7 +31,10 @@ def get_signing_policy(path, keyring=None):
         # The configuration deliberately selected an un-signed index.  A signed
         # index would have a suffix of '.sjson'.  Use a policy that doesn't
         # check anything.
-        policy = lambda content, path, keyring: content
+
+        def policy(content, path, keyring):
+            return content
+
     else:
         # Otherwise: use default Simplestreams policy for verifying signatures.
         policy = policy_read_signed

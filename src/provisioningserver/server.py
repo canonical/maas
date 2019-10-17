@@ -9,7 +9,8 @@ import asyncio
 import sys
 
 from twisted.internet import asyncioreactor
-
+from twisted.python import usage
+from twisted.scripts._twistd_unix import ServerOptions, UnixApplicationRunner
 
 try:
     import uvloop
@@ -18,10 +19,6 @@ try:
 except ImportError:
     pass
 asyncioreactor.install()
-
-
-from twisted.python import usage
-from twisted.scripts._twistd_unix import ServerOptions, UnixApplicationRunner
 
 
 # Load the available MAAS plugins.

@@ -312,7 +312,10 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.ImportBootImages`.
         """
-        get_proxy_url = lambda url: None if url is None else url.geturl()
+
+        def get_proxy_url(url):
+            return None if url is None else url.geturl()
+
         import_boot_images(
             sources,
             self.service.maas_url,

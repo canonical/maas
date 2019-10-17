@@ -54,7 +54,10 @@ class TestRoutablePairs(MAASServerTestCase):
         # Routes between all addresses are found, even back to themselves.
         left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
         right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
-        row = lambda ent1, ent2, metric: (*ent1, *ent2, None, metric)
+
+        def row(ent1, ent2, metric):
+            return (*ent1, *ent2, None, metric)
+
         expected = [
             row(left, left, 0),
             row(left, right, 1),  # Same space, hence metric of 3.
@@ -80,7 +83,10 @@ class TestRoutablePairs(MAASServerTestCase):
         # Routes between all addresses are found, even back to themselves.
         left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
         right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
-        row = lambda ent1, ent2, metric: (*ent1, *ent2, None, metric)
+
+        def row(ent1, ent2, metric):
+            return (*ent1, *ent2, None, metric)
+
         expected = [
             row(left, left, 0),
             row(left, right, 2),  # Same VLAN, hence metric of 2.
@@ -102,7 +108,10 @@ class TestRoutablePairs(MAASServerTestCase):
         # Routes between all addresses are found, even back to themselves.
         left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
         right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
-        row = lambda ent1, ent2, metric: (*ent1, *ent2, space.id, metric)
+
+        def row(ent1, ent2, metric):
+            return (*ent1, *ent2, space.id, metric)
+
         expected = [
             row(left, left, 0),
             row(left, right, 3),  # Same space, hence metric of 3.
@@ -123,7 +132,10 @@ class TestRoutablePairs(MAASServerTestCase):
         # Routes between all addresses are found, even back to themselves.
         left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
         right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
-        row = lambda ent1, ent2, metric: (*ent1, *ent2, None, metric)
+
+        def row(ent1, ent2, metric):
+            return (*ent1, *ent2, None, metric)
+
         expected = [
             row(left, left, 0),
             row(left, right, 4),  # The NULL space, hence metric of 4.

@@ -4,7 +4,7 @@
 *.log
 *.snap
 *.fuse_hidden*
-/.bzr
+/.mypy_cache
 /.coverage
 /.coverage.*
 /.db.lock

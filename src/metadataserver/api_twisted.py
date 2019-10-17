@@ -478,7 +478,10 @@ class StatusWorkerService(TimerService, object):
         """Extract the content of the sent file."""
         # Select the appropriate decompressor.
         if compression is None:
-            decompress = lambda s: s
+
+            def decompress(s):
+                return s
+
         elif compression == "bzip2":
             decompress = bz2.decompress
         else:

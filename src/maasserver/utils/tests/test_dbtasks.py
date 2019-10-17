@@ -41,7 +41,8 @@ from twisted.internet.defer import (
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-noop = lambda: None
+def noop():
+    pass
 
 
 class TestDatabaseTaskService(MAASTestCase):
@@ -89,7 +90,9 @@ class TestDatabaseTaskService(MAASTestCase):
             service.stopService()
 
     def test__task_is_executed_in_other_thread(self):
-        get_thread_ident = lambda: threading.currentThread().ident
+        def get_thread_ident():
+            return threading.currentThread().ident
+
         service = DatabaseTasksService()
         service.startService()
         try:

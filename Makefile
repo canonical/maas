@@ -57,23 +57,30 @@ endef
 
 .DEFAULT_GOAL := build
 
+define BIN_SCRIPTS
+bin/black \
+bin/coverage \
+bin/flake8 \
+bin/maas \
+bin/maas-common \
+bin/maas-rack \
+bin/maas-region \
+bin/postgresfixture \
+bin/rackd \
+bin/regiond \
+bin/test.cli \
+bin/test.parallel \
+bin/test.rack \
+bin/test.region \
+bin/test.region.legacy \
+bin/test.testing
+endef
+
+
 build: \
   .run \
   $(VENV) \
-  bin/database \
-  bin/maas \
-  bin/maas-common \
-  bin/maas-rack \
-  bin/maas-region \
-  bin/rackd \
-  bin/regiond \
-  bin/test.cli \
-  bin/test.rack \
-  bin/test.region \
-  bin/test.region.legacy \
-  bin/test.testing \
-  bin/test.parallel \
-  bin/postgresfixture \
+  $(BIN_SCRIPTS) \
   bin/py \
   machine-resources \
   pycharm
@@ -108,13 +115,7 @@ $(VENV): requirements-dev.txt
 	python3 -m venv --system-site-packages --clear $@
 	$(VENV)/bin/pip install -r $<
 
-bin/black bin/coverage \
-  bin/postgresfixture \
-  bin/maas bin/rackd bin/regiond \
-  bin/maas-region bin/maas-rack bin/maas-common \
-  bin/test.region bin/test.region.legacy \
-  bin/test.rack bin/test.cli \
-  bin/test.testing bin/test.parallel:
+$(BIN_SCRIPTS): $(VENV)
 	mkdir -p bin
 	ln -sf ../$(VENV)/$@ $@
 
@@ -302,8 +303,9 @@ lint-css:
 .PHONY: lint-css
 
 lint-py: sources = $(wildcard *.py contrib/*.py) src utilities etc
-lint-py: bin/black
+lint-py: bin/flake8 bin/black
 	@bin/black $(sources) --check
+	@bin/flake8 $(sources)
 .PHONY: lint-py
 
 # Statically check imports against policy.

@@ -29,7 +29,9 @@ import tempita
 try:
     from maastesting.typecheck import typed
 except ImportError:
-    typed = lambda func: func
+
+    def typed(func):
+        return func
 
 
 @typed

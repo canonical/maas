@@ -123,7 +123,7 @@ class TestLogin(MAASServerTestCase):
 
     def test_login_json_returns_400_on_bad_authentication(self):
         password = factory.make_string()
-        user = factory.make_User(password=password)
+        factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
         response = self.client.post(
             reverse("login"),

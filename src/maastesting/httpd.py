@@ -32,8 +32,11 @@ def gzip_compress(f):
 
 class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
     # SimpleHTTPRequestHandler logs to stdout: silence it.
-    log_request = lambda *args, **kwargs: None
-    log_error = lambda *args, **kwargs: None
+    def log_request(*args, **kwargs):
+        pass
+
+    def log_error(*args, **kwargs):
+        pass
 
     def is_gzip_accepted(self):
         accepted = set()

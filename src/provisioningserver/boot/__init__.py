@@ -429,19 +429,21 @@ class BootMethodRegistry(Registry):
 
 
 # Import the supported boot methods after defining BootMethod.
-from provisioningserver.boot.ipxe import IPXEBootMethod
-from provisioningserver.boot.pxe import PXEBootMethod
+from provisioningserver.boot.ipxe import IPXEBootMethod  # noqa: E402
+from provisioningserver.boot.pxe import PXEBootMethod  # noqa: E402
 from provisioningserver.boot.uefi_amd64 import (
     UEFIAMD64BootMethod,
     UEFIAMD64HTTPBootMethod,
-)
-from provisioningserver.boot.uefi_arm64 import UEFIARM64BootMethod
+)  # noqa: E402
+from provisioningserver.boot.uefi_arm64 import (
+    UEFIARM64BootMethod,
+)  # noqa: E402
 from provisioningserver.boot.open_firmware_ppc64el import (
     OpenFirmwarePPC64ELBootMethod,
-)
-from provisioningserver.boot.powernv import PowerNVBootMethod
-from provisioningserver.boot.windows import WindowsPXEBootMethod
-from provisioningserver.boot.s390x import S390XBootMethod
+)  # noqa: E402
+from provisioningserver.boot.powernv import PowerNVBootMethod  # noqa: E402
+from provisioningserver.boot.windows import WindowsPXEBootMethod  # noqa: E402
+from provisioningserver.boot.s390x import S390XBootMethod  # noqa: E402
 
 
 builtin_boot_methods = [

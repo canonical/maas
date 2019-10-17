@@ -9,8 +9,10 @@ __all__ = [
     "STATS_SERVICE_PERIOD",
 ]
 
-from collections import defaultdict
+import base64
+from collections import Counter, defaultdict
 from datetime import timedelta
+import json
 
 from django.db.models import Count, Sum, Value
 from django.db.models.functions import Coalesce
@@ -21,14 +23,6 @@ from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import IPRangeStatistics
 from twisted.application.internet import TimerService
-
-
-log = LegacyLogger()
-
-import base64
-from collections import Counter
-import json
-
 from maasserver.enum import IPADDRESS_TYPE, NODE_TYPE, NODE_STATUS, BMC_TYPE
 from maasserver.models import (
     Machine,
@@ -43,6 +37,8 @@ from maasserver.models import (
 )
 from maasserver.utils import get_maas_user_agent
 import requests
+
+log = LegacyLogger()
 
 
 def NotNullSum(column):

@@ -182,7 +182,10 @@ class TestClassify(MAASTestCase):
 
     def test_subjects(self):
         subjects = [("one", 1), ("two", 2), ("three", 3)]
-        is_even = lambda subject: subject % 2 == 0
+
+        def is_even(subject):
+            return subject % 2 == 0
+
         self.assertSequenceEqual(
             (["two"], ["one", "three"]), classify(is_even, subjects)
         )

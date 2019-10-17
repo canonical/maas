@@ -150,8 +150,11 @@ class TestGeneratingDocs(MAASTestCase):
         handler, with a fabricated name and a `resource_uri` class-method.
         """
         name = factory.make_name("handler")
-        resource_uri = lambda cls: factory.make_name("resource-uri")
-        namespace = {"resource_uri": classmethod(resource_uri)}
+        namespace = {
+            "resource_uri": classmethod(
+                lambda cls: factory.make_name("resource-uri")
+            )
+        }
         handler = type(name, (BaseHandler,), namespace)
         return OperationsResource(handler)
 

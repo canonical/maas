@@ -252,16 +252,20 @@ class OperatingSystemRegistry(Registry):
     """Registry for operating system classes."""
 
 
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.drivers.osystem.ubuntucore import UbuntuCoreOS
-from provisioningserver.drivers.osystem.bootloader import BootLoaderOS
-from provisioningserver.drivers.osystem.centos import CentOS
-from provisioningserver.drivers.osystem.rhel import RHELOS
-from provisioningserver.drivers.osystem.custom import CustomOS
-from provisioningserver.drivers.osystem.windows import WindowsOS
-from provisioningserver.drivers.osystem.suse import SUSEOS
-from provisioningserver.drivers.osystem.caringo import CaringoOS
-from provisioningserver.drivers.osystem.esxi import ESXi
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS  # noqa: E402
+from provisioningserver.drivers.osystem.ubuntucore import (
+    UbuntuCoreOS,
+)  # noqa: E402
+from provisioningserver.drivers.osystem.bootloader import (
+    BootLoaderOS,
+)  # noqa: E402
+from provisioningserver.drivers.osystem.centos import CentOS  # noqa: E402
+from provisioningserver.drivers.osystem.rhel import RHELOS  # noqa: E402
+from provisioningserver.drivers.osystem.custom import CustomOS  # noqa: E402
+from provisioningserver.drivers.osystem.windows import WindowsOS  # noqa: E402
+from provisioningserver.drivers.osystem.suse import SUSEOS  # noqa: E402
+from provisioningserver.drivers.osystem.caringo import CaringoOS  # noqa: E402
+from provisioningserver.drivers.osystem.esxi import ESXi  # noqa: E402
 
 builtin_osystems = [
     UbuntuOS(),

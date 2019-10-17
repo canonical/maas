@@ -606,8 +606,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         self.assertThat(function, MockCallsMatch(call(), call()))
 
     def test_passes_args_to_wrapped_function(self):
-        function = lambda a, b: (a, b)
-        function_wrapped = retry_on_retryable_failure(function)
+        function_wrapped = retry_on_retryable_failure(lambda a, b: (a, b))
         self.assertEqual(
             (sentinel.a, sentinel.b),
             function_wrapped(sentinel.a, b=sentinel.b),
@@ -988,7 +987,9 @@ class TestPostCommit(MAASTestCase):
         self.assertThat(hook_added, IsInstance(Deferred))
 
     def test__adds_callable_as_hook(self):
-        hook = lambda arg: None
+        def hook(arg):
+            pass
+
         hook_added = post_commit(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
         self.assertThat(hook_added, IsInstance(Deferred))
@@ -1050,7 +1051,9 @@ class TestPostCommitDo(MAASTestCase):
         self.addCleanup(post_commit_hooks.reset)
 
     def test__adds_callable_as_hook(self):
-        hook = lambda arg: None
+        def hook(arg):
+            pass
+
         post_commit_do(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
 
@@ -1232,7 +1235,10 @@ class TestTransactional(MAASTransactionServerTestCase):
 
     def test__fires_post_commit_hooks_when_done(self):
         fire = self.patch(orm.post_commit_hooks, "fire")
-        function = lambda: sentinel.something
+
+        def function():
+            return sentinel.something
+
         decorated_function = orm.transactional(function)
         self.assertIs(sentinel.something, decorated_function())
         self.assertThat(fire, MockCalledOnceWith())

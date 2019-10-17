@@ -54,10 +54,7 @@
 import argparse
 import os
 import re
-from subprocess import (
-    PIPE,
-    Popen,
-)
+from subprocess import PIPE, Popen
 import sys
 
 import yaml
@@ -68,13 +65,13 @@ REGEX = b"Avr:(.*)"
 
 def run_7z():
     result_path = os.environ.get("RESULT_PATH")
-    cmd = ['7z', 'b']
+    cmd = ["7z", "b"]
     proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
     stdout, stderr = proc.communicate()
 
     # Print stdout to the console.
     if stdout is not None:
-        print('Running command: %s\n' % ' '.join(cmd))
+        print("Running command: %s\n" % " ".join(cmd))
         print(stdout.decode())
 
     if proc.returncode != 0:
@@ -100,22 +97,23 @@ def run_7z():
         # mark a machine in the degraded state based on one of its tests.
         averages = match.group(1).split()
         results = {
-            'status': "passed",
-            'results': {
-                'compression_ru_mips': averages[1].decode(),
-                'compression_rating_mips': averages[2].decode(),
-                'decompression_ru_mips': averages[4].decode(),
-                'decompression_rating_mips': averages[5].decode(),
-            }
+            "status": "passed",
+            "results": {
+                "compression_ru_mips": averages[1].decode(),
+                "compression_rating_mips": averages[2].decode(),
+                "decompression_ru_mips": averages[4].decode(),
+                "decompression_rating_mips": averages[5].decode(),
+            },
         }
-        with open(result_path, 'w') as results_file:
+        with open(result_path, "w") as results_file:
             yaml.safe_dump(results, results_file)
 
     return proc.returncode
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='7z Hardware Benchmark Testing.')
+        description="7z Hardware Benchmark Testing."
+    )
     args = parser.parse_args()
     sys.exit(run_7z())

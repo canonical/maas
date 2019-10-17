@@ -112,8 +112,11 @@ class TestCrochet(MAASTestCase):
 class TestResources(MAASTestCase):
     def test_prepareTest_returns_optimised_test_suite(self):
         class SomeTests(MAASTestCase):
-            test_a = lambda self: None
-            test_b = lambda self: None
+            def test_a(self):
+                pass
+
+            def test_b(self):
+                pass
 
         loader = unittest.TestLoader()
         suite = loader.loadTestsFromTestCase(SomeTests)
@@ -128,12 +131,18 @@ class TestResources(MAASTestCase):
 
     def test_prepareTest_flattens_nested_suites(self):
         class SomeTests(MAASTestCase):
-            test_a = lambda self: None
-            test_b = lambda self: None
+            def test_a(self):
+                pass
+
+            def test_b(self):
+                pass
 
         class MoreTests(MAASTestCase):
-            test_c = lambda self: None
-            test_d = lambda self: None
+            def test_c(self):
+                pass
+
+            def test_d(self):
+                pass
 
         loader = unittest.TestLoader()
         suite = unittest.TestSuite(
@@ -157,8 +166,12 @@ class TestResources(MAASTestCase):
     def test_prepareTest_hoists_resources(self):
         class SomeTests(MAASTestCase):
             resources = sentinel.resources
-            test_a = lambda self: None
-            test_b = lambda self: None
+
+            def test_a(self):
+                pass
+
+            def test_b(self):
+                pass
 
         loader = unittest.TestLoader()
         suite = loader.loadTestsFromTestCase(SomeTests)
@@ -187,8 +200,12 @@ class TestResources(MAASTestCase):
     def test_prepareTest_hoists_resources_of_nested_tests(self):
         class SomeTests(MAASTestCase):
             resources = sentinel.resources
-            test_a = lambda self: None
-            test_b = lambda self: None
+
+            def test_a(self):
+                pass
+
+            def test_b(self):
+                pass
 
         loader = unittest.TestLoader()
         suite = loader.loadTestsFromTestCase(SomeTests)
@@ -228,8 +245,11 @@ class TestScenarios(MAASTestCase):
 
     def test_makeTest_makes_tests_from_test_case_class(self):
         class SomeTests(MAASTestCase):
-            test_a = lambda self: None
-            test_b = lambda self: None
+            def test_a(self):
+                pass
+
+            def test_b(self):
+                pass
 
         tests = self.makeTest(Scenarios(), SomeTests, self)
 
@@ -243,8 +263,12 @@ class TestScenarios(MAASTestCase):
     def test_makeTest_makes_tests_from_test_case_class_with_scenarios(self):
         class SomeTests(MAASTestCase):
             scenarios = [("scn1", {"attr": 1}), ("scn2", {"attr": 2})]
-            test_a = lambda self: None
-            test_b = lambda self: None
+
+            def test_a(self):
+                pass
+
+            def test_b(self):
+                pass
 
         tests = self.makeTest(Scenarios(), SomeTests, self)
 
