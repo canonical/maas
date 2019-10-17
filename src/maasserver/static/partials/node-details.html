@@ -996,7 +996,7 @@
                                         <div class="p-form__control col-4">
                                             <select name="vlan"
                                                 data-ng-model="newBridgeInterface.vlan"
-                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterVLANNotOnFabric:newBridgeInterface.fabric.vlan_ids"
                                             >
                                             </select>
                                         </div>
