@@ -622,7 +622,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
                 "content": IPADDR_SCRIPT.encode("ascii"),
                 "hook": null_hook,
                 "timeout": timedelta(seconds=10),
-                "run_on_controller": False,
+                "run_on_controller": True,
             },
         ),
     ]
