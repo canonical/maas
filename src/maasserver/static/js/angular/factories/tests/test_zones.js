@@ -56,7 +56,9 @@ describe("ZonesManager", function() {
     it("returns correct zone if optional pod is passed", function() {
       var i;
       for (i = 0; i < 3; i++) {
-        ZonesManager._items.push(makeZone());
+        const zone = makeZone(i);
+        zone.name = `test-zone-${i}`;
+        ZonesManager._items.push(zone);
       }
       expect(
         ZonesManager.getDefaultZone({
