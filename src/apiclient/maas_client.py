@@ -81,7 +81,13 @@ class MAASDispatcher:
     Be careful when changing its API: this class is designed so that it
     can be replaced with a Twisted-enabled alternative.  See the MAAS
     provider in Juju for the code this would require.
+
+    @ivar autodetect_proxies: Extract proxy information from the
+        environment variables (http_proxy, no_proxy). Default True
     """
+
+    def __init__(self, autodetect_proxies=True):
+        self.autodetect_proxies = autodetect_proxies
 
     def dispatch_query(self, request_url, headers, method="GET", data=None):
         """Synchronously dispatch an OAuth-signed request to L{request_url}.
@@ -112,9 +118,13 @@ class MAASDispatcher:
             data = bytes(data, 'utf-8')
         req = RequestWithMethod(request_url, data, headers, method=method)
         # Retry the request maximum of 3 times.
+        handlers = []
+        if not self.autodetect_proxies:
+            handlers.append(urllib.request.ProxyHandler({}))
         for try_count in range(3):
+            opener = urllib.request.build_opener(*handlers)
             try:
-                res = urllib.request.urlopen(req)
+                res = opener.open(req)
             except urllib.error.HTTPError as exc:
                 if exc.code == 503:
                     # HTTP 503 Service Unavailable - MAAS might still be

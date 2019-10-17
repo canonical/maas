@@ -8,8 +8,13 @@ __all__ = []
 import gzip
 from io import BytesIO
 import json
+import os
 from random import randint
-from unittest.mock import ANY
+from unittest.mock import (
+    ANY,
+    MagicMock,
+    patch,
+)
 import urllib.error
 import urllib.parse
 from urllib.parse import (
@@ -46,6 +51,22 @@ class TestMAASOAuth(MAASTestCase):
 
 
 class TestMAASDispatcher(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch_urllib()
+
+    def patch_urllib(self):
+        def patch_build_opener(*args, **kwargs):
+            self.opener = real_build_opener(*args, **kwargs)
+            self.orig_open_func = self.opener.open
+            if self.open_func is not None:
+                self.opener.open = self.open_func
+            return self.opener
+
+        real_build_opener = urllib.request.build_opener
+        build_opener_mock = self.patch(urllib.request, "build_opener")
+        build_opener_mock.side_effect = patch_build_opener
+        self.open_func = None
 
     def test_dispatch_query_makes_direct_call(self):
         contents = factory.make_string().encode("ascii")
@@ -56,13 +77,13 @@ class TestMAASDispatcher(MAASTestCase):
     def test_dispatch_query_encodes_string_data(self):
         # urllib, used by MAASDispatcher, requires data encoded into bytes. We
         # encode into utf-8 in dispatch_query if necessary.
-        request = self.patch(urllib.request.Request, '__init__')
-        urlopen = self.patch(urllib.request, 'urlopen')
+        request = self.patch(urllib.request.Request, "__init__")
+        self.patch_urllib()
+        self.open_func = lambda *args: MagicMock()
         url = factory.make_url()
         data = factory.make_string(300, spaces=True)
         MAASDispatcher().dispatch_query(url, {}, method="POST", data=data)
         request.assert_called_once_with(ANY, url, bytes(data, "utf-8"), ANY)
-        urlopen.assert_called_once_with(ANY)
 
     def test_request_from_http(self):
         # We can't just call self.make_file because HTTPServerFixture will only
@@ -106,12 +127,12 @@ class TestMAASDispatcher(MAASTestCase):
         content = factory.make_string(300).encode('ascii')
         factory.make_file(location='.', name=name, contents=content)
         called = []
-        orig_urllib = urllib.request.urlopen
 
-        def logging_urlopen(*args, **kwargs):
+        def logging_open(*args, **kwargs):
             called.append((args, kwargs))
-            return orig_urllib(*args, **kwargs)
-        self.patch(urllib.request, 'urlopen', logging_urlopen)
+            return self.orig_open_func(*args, **kwargs)
+
+        self.open_func = logging_open
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
             res = MAASDispatcher().dispatch_query(url, {})
@@ -146,19 +167,18 @@ class TestMAASDispatcher(MAASTestCase):
         factory.make_file(location='.', name=name, contents=content)
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
-            original_urlopen = urllib.request.urlopen
 
             counter = {'count': 0}
 
-            def _wrap_urlopen(*args, **kwargs):
-                if counter['count'] < 2:
-                    counter['count'] += 1
+            def _wrap_open(*args, **kwargs):
+                if counter["count"] < 2:
+                    counter["count"] += 1
                     raise urllib.error.HTTPError(
                         url, 503, "service unavailable", {}, None)
                 else:
-                    return original_urlopen(*args, **kwargs)
+                    return self.orig_open_func(*args, **kwargs)
 
-            self.patch(urllib.request, "urlopen").side_effect = _wrap_urlopen
+            self.open_func = _wrap_open
             response = MAASDispatcher().dispatch_query(url, {})
             self.assertEqual(200, response.code)
             self.assertEqual(content, response.read())
@@ -171,15 +191,53 @@ class TestMAASDispatcher(MAASTestCase):
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
 
-            def _wrap_urlopen(*args, **kwargs):
+            def _wrap_open(*args, **kwargs):
                 raise urllib.error.HTTPError(
                     url, 503, "service unavailable", {}, None)
 
-            self.patch(urllib.request, "urlopen").side_effect = _wrap_urlopen
+            self.open_func = _wrap_open
             err = self.assertRaises(
                 urllib.error.HTTPError,
                 MAASDispatcher().dispatch_query, url, {})
             self.assertEqual(503, err.code)
+
+    def test_autodetects_proxies(self):
+        self.open_func = lambda *args: MagicMock()
+        url = factory.make_url()
+        proxy_variables = {
+            "http_proxy": "http://proxy.example.com",
+            "https_proxy": "https://proxy.example.com",
+            "no_proxy": "noproxy.example.com",
+        }
+        with patch.dict(os.environ, proxy_variables):
+            MAASDispatcher().dispatch_query(url, {}, method="GET")
+        for handler in self.opener.handle_open["http"]:
+            if isinstance(handler, urllib.request.ProxyHandler):
+                break
+        else:
+            raise AssertionError("No ProxyHandler installed")
+        expected = {
+            "http": proxy_variables["http_proxy"],
+            "https": proxy_variables["https_proxy"],
+            "no": proxy_variables["no_proxy"],
+        }
+        for key, value in expected.items():
+            self.assertEqual(value, handler.proxies[key])
+
+    def test_no_autodetects_proxies(self):
+        self.open_func = lambda *args: MagicMock()
+        url = factory.make_url()
+        proxy_variables = {
+            "http_proxy": "http://proxy.example.com",
+            "https_proxy": "https://proxy.example.com",
+            "no_proxy": "noproxy.example.com",
+        }
+        with patch.dict(os.environ, proxy_variables):
+            dispatcher = MAASDispatcher(autodetect_proxies=False)
+            dispatcher.dispatch_query(url, {}, method="GET")
+        for handler in self.opener.handle_open["http"]:
+            if isinstance(handler, urllib.request.ProxyHandler):
+                raise AssertionError("ProxyHandler shouldn't be there")
 
 
 def make_path():

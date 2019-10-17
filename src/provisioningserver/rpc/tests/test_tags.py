@@ -60,5 +60,24 @@ class TestEvaluateTag(MAASTestCase):
         self.assertEqual(self.mock_url, client.url)
         self.assertIsInstance(client.dispatcher, MAASDispatcher)
         self.assertIsInstance(client.auth, MAASOAuth)
-        self.assertThat(tags.MAASOAuth, MockCalledOnceWith(
-            consumer_key, resource_token, resource_secret))
+        self.assertThat(
+            tags.MAASOAuth,
+            MockCalledOnceWith(consumer_key, resource_token, resource_secret),
+        )
+
+    def test__constructs_client_with_no_proxies(self):
+        credentials = "aaa", "bbb", "ccc"
+        rack_id = factory.make_name("rack")
+        process_node_tags = self.patch_autospec(tags, "process_node_tags")
+        tags.evaluate_tag(
+            rack_id,
+            [],
+            sentinel.tag_name,
+            sentinel.tag_definition,
+            sentinel.tag_nsmap,
+            credentials,
+            self.mock_url,
+        )
+
+        client = process_node_tags.call_args[1]["client"]
+        self.assertFalse(client.dispatcher.autodetect_proxies)
