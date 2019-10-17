@@ -165,7 +165,7 @@ class VLANForm(MAASModelForm):
             and not self.instance.primary_rack
         ):
             raise ValidationError(
-                "dhcp can only be turned on when a primary rack controller"
+                "dhcp can only be turned on when a primary rack controller "
                 "is set."
             )
         # XXX ltrager 2016-02-09 - Hack to get around
