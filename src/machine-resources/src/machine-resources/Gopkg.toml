@@ -24,3 +24,10 @@
 [[constraint]]
   branch = "master"
   name = "github.com/lxc/lxd"
+
+## Example for building lxd binaries for a specific commit.
+## Uncomment below and replace revision with the commit you
+## want to build lxd from.
+# [[override]]
+#   name = "github.com/lxc/lxd"
+#   revision = "77aec6c9028080e9593bb3d47c7253725dd16d7e"

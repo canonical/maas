@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/lxc/lxd"
   packages = ["lxd/resources","shared/api","shared/units"]
-  revision = "be4c194bb1d06bcd4b3dcc0fc51ff9d5f6dcb078"
+  revision = "bd7e2ec94c4f44ad96edf09cc4a3125c24e5301c"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
@@ -29,7 +29,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "ef33b2fb2c414dca4bfcf6ca59cbd1d9ad00703d"
+  revision = "b09406accb4736d857a32bf9444cd7edae2ffa79"
 
 [solve-meta]
   analyzer-name = "dep"
