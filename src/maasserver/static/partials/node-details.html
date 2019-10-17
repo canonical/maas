@@ -1646,7 +1646,7 @@
                                                             <tags-input data-ng-model="interface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group row p-form-validation" data-ng-class="{ 'is-error': !linkSpeedValid(editInterface) }">
+                                                    <div class="p-form__group row p-form-validation" data-ng-class="{ 'is-error': !linkSpeedValid(editInterface) }" data-ng-if="editInterface.type === 'physical'">
                                                         <label class="p-form__label col-2">Link speed (Gbps)</label>
                                                         <div class="p-form__control col-4">
                                                             <input type="text" name="link_speed" id="link_speed" data-ng-model="editInterface.formatted_link_speed"
@@ -1656,7 +1656,7 @@
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group row">
+                                                    <div class="p-form__group row" data-ng-if="editInterface.type === 'physical'">
                                                         <label class="p-form__label col-2">Interface speed (Gbps)</label>
                                                         <div class="p-form__control col-4">
                                                             <input type="text" name="interface_speed" id="interface_speed" data-ng-model="editInterface.formatted_interface_speed" data-ng-disabled="!editInterface.link_connected">
