@@ -79,7 +79,13 @@ class MAASDispatcher:
     Be careful when changing its API: this class is designed so that it
     can be replaced with a Twisted-enabled alternative.  See the MAAS
     provider in Juju for the code this would require.
+
+    @ivar autodetect_proxies: Extract proxy information from the
+        environment variables (http_proxy, no_proxy). Default True
     """
+
+    def __init__(self, autodetect_proxies=True):
+        self.autodetect_proxies = autodetect_proxies
 
     def dispatch_query(self, request_url, headers, method="GET", data=None):
         """Synchronously dispatch an OAuth-signed request to L{request_url}.
@@ -109,7 +115,11 @@ class MAASDispatcher:
         if data is not None and not isinstance(data, bytes):
             data = bytes(data, 'utf-8')
         req = RequestWithMethod(request_url, data, headers, method=method)
-        res = urllib.request.urlopen(req)
+        handlers = []
+        if not self.autodetect_proxies:
+            handlers.append(urllib.request.ProxyHandler({}))
+        opener = urllib.request.build_opener(*handlers)
+        res = opener.open(req)
         # If we set the Accept-encoding header, then we decode the header for
         # the caller.
         is_gzip = (
