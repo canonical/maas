@@ -105,8 +105,9 @@ def call_and_check(command, *args, **kwargs):
     :return: The command's output from standard output.
     :raise ExternalProcessError: If the command returns nonzero.
     """
+    timeout = kwargs.pop('timeout', None)
     process = Popen(command, *args, stdout=PIPE, stderr=PIPE, **kwargs)
-    stdout, stderr = process.communicate()
+    stdout, stderr = process.communicate(timeout=timeout)
     stderr = stderr.strip()
     if process.returncode != 0:
         raise ExternalProcessError(process.returncode, command, output=stderr)

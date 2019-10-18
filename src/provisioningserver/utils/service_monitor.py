@@ -35,8 +35,12 @@ from provisioningserver.utils import (
     typed,
 )
 from provisioningserver.utils.shell import get_env_with_bytes_locale
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    deferWithTimeout,
+)
 from twisted.internet.defer import (
+    CancelledError,
     DeferredList,
     DeferredLock,
     inlineCallbacks,
@@ -371,6 +375,67 @@ class ServiceMonitor:
         yield self._performServiceAction(service, "reload")
 
     @asynchronous
+    @inlineCallbacks
+    def killService(self, name):
+        """Kill service.
+
+        Service will be killed then its state will be ensured to be in its
+        expected state. This is a way of getting a broken related service to be
+        responsive.
+        """
+        service = self.getServiceByName(name)
+        try:
+            yield self._performServiceAction(service, "kill")
+        except ServiceActionError:
+            # Kill action is allowed to fail, as its possible the service is
+            # already dead or not responding to correct signals to check
+            # the current status.
+            pass
+        state = yield self.ensureService(name)
+        return state
+
+    @inlineCallbacks
+    def _execCmd(self, cmd, env, timeout=8, retries=3):
+        """Execute the `cmd` with the `env`."""
+
+        def decode(result):
+            out, err, code = result
+            return code, out.decode("utf-8"), err.decode("utf-8")
+
+        def log_code(result, cmd, try_num):
+            _, _, code = result
+            log.debug(
+                "[try:{try_num}] Service monitor got exit "
+                "code '{code}' from cmd: {cmd()}",
+                try_num=try_num, code=code, cmd=lambda: ' '.join(cmd))
+            return result
+
+        def call_proc(cmd, env, try_num, timeout):
+            log.debug(
+                "[try:{try_num}] Service monitor executing cmd: {cmd()}",
+                try_num=try_num, cmd=lambda: ' '.join(cmd))
+
+            d = deferWithTimeout(
+                timeout, getProcessOutputAndValue, cmd[0], cmd[1:], env=env)
+            d.addCallback(log_code, cmd, try_num)
+            return d.addCallback(decode)
+
+        for try_num in range(retries):
+            try:
+                result = yield call_proc(cmd, env, try_num + 1, timeout)
+            except CancelledError:
+                if try_num == retries - 1:
+                    # Failed on final retry.
+                    raise ServiceActionError(
+                        "Service monitor timed out after '%d' "
+                        "seconds and '%s' retries running cmd: %s" % (
+                            timeout, retries, ' '.join(cmd)))
+                else:
+                    # Try again.
+                    continue
+            return result
+
+    @asynchronous
     def _execSystemDServiceAction(self, service_name, action, extra_opts=None):
         """Perform the action with the systemctl command.
 
@@ -390,21 +455,47 @@ class ServiceMonitor:
         return d.addCallback(decode)
 
     @asynchronous
-    def _execSupervisorServiceAction(self, service_name, action):
+    def _execSupervisorServiceAction(
+            self, service_name, action, extra_opts=None):
         """Perform the action with the run-supervisorctl command.
 
         :return: tuple (exit code, std-output, std-error)
         """
         env = get_env_with_bytes_locale()
         cmd = os.path.join(snappy.get_snap_path(), "bin", "run-supervisorctl")
-        cmd = (cmd, action, service_name)
 
-        def decode(result):
-            out, err, code = result
-            return code, out.decode("utf-8"), err.decode("utf-8")
+        # supervisord doesn't support native kill like systemd. Emulate this
+        # behaviour by getting the PID of the process and then killing the PID.
+        if action == 'kill':
 
-        d = getProcessOutputAndValue(cmd[0], cmd[1:], env=env)
-        return d.addCallback(decode)
+            def _kill_pid(result):
+                exit_code, stdout, _ = result
+                if exit_code != 0:
+                    return result
+                try:
+                    pid = int(stdout.strip())
+                except ValueError:
+                    pid = 0
+                if pid == 0:
+                    # supervisorctl returns 0 when the process is already dead
+                    # or we where not able to get the actual pid. Nothing to
+                    # do, as its already dead.
+                    return 0, "", ""
+                cmd = ('kill',)
+                if extra_opts:
+                    cmd += extra_opts
+                cmd += ('%s' % pid,)
+                return self._execCmd(cmd, env)
+
+            d = self._execCmd((cmd, 'pid', service_name), env)
+            d.addCallback(_kill_pid)
+            return d
+
+        cmd = (cmd, action)
+        if extra_opts is not None:
+            cmd += extra_opts
+        cmd += (service_name,)
+        return self._execCmd(cmd, env)
 
     @inlineCallbacks
     def _performServiceAction(self, service, action):
@@ -416,8 +507,9 @@ class ServiceMonitor:
         else:
             exec_action = self._execSystemDServiceAction
             service_name = service.service_name
+        extra_opts = getattr(service, '%s_extra_opts' % action, None)
         exit_code, output, error = yield lock.run(
-            exec_action, service_name, action)
+            exec_action, service_name, action, extra_opts=extra_opts)
         if exit_code != 0:
             error_msg = (
                 "Service '%s' failed to %s: %s" % (

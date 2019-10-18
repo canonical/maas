@@ -172,12 +172,12 @@ def set_up_rndc():
         f.write(named_content)
 
 
-def execute_rndc_command(arguments):
+def execute_rndc_command(arguments, timeout=None):
     """Execute a rndc command."""
     rndc_conf = get_rndc_conf_path()
     rndc_cmd = ['rndc', '-c', rndc_conf]
     rndc_cmd.extend(arguments)
-    call_and_check(rndc_cmd)
+    call_and_check(rndc_cmd, timeout=timeout)
 
 
 def set_up_options_conf(overwrite=True, **kwargs):

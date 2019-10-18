@@ -13,7 +13,10 @@ __all__ = [
 ]
 
 import collections
-from subprocess import CalledProcessError
+from subprocess import (
+    CalledProcessError,
+    TimeoutExpired,
+)
 from time import sleep
 
 from provisioningserver.dns.config import (
@@ -48,7 +51,7 @@ def bind_reconfigure():
         raise
 
 
-def bind_reload():
+def bind_reload(timeout=2):
     """Ask BIND to reload its configuration and all zone files.  This operation
     is 'best effort' (with logging) as the server may not be running, and there
     is often no context for reporting.
@@ -56,21 +59,24 @@ def bind_reload():
     :return: True if success, False otherwise.
     """
     try:
-        execute_rndc_command(("reload",))
+        execute_rndc_command(("reload",), timeout=timeout)
         return True
     except CalledProcessError as exc:
         maaslog.error("Reloading BIND failed (is it running?): %s", exc)
         return False
+    except TimeoutExpired as exc:
+        maaslog.error("Reloading BIND timed out (is it locked?): %s", exc)
+        return False
 
 
-def bind_reload_with_retries(attempts=10, interval=2):
+def bind_reload_with_retries(attempts=10, interval=2, timeout=2):
     """Ask BIND to reload its configuration and all zone files.
 
     :param attempts: The number of attempts.
     :param interval: The time in seconds to sleep between each attempt.
     """
     for countdown in range(attempts - 1, -1, -1):
-        if bind_reload():
+        if bind_reload(timeout=timeout):
             break
         if countdown == 0:
             break

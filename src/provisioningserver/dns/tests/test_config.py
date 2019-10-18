@@ -9,7 +9,10 @@ import errno
 import os.path
 import random
 from textwrap import dedent
-from unittest.mock import Mock
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
@@ -273,10 +276,11 @@ class TestRNDCUtilities(MAASTestCase):
         fake_dir = patch_dns_config_path(self)
         self.patch(config, 'call_and_check', recorder)
         command = factory.make_string()
-        execute_rndc_command([command])
+        execute_rndc_command([command], timeout=sentinel.timeout)
         rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
         expected_command = ['rndc', '-c', rndc_conf_path, command]
         self.assertEqual((expected_command,), recorder.calls[0][0])
+        self.assertEqual({'timeout': sentinel.timeout}, recorder.calls[0][1])
 
     def test_extract_suggested_named_conf_extracts_section(self):
         named_part = factory.make_string()

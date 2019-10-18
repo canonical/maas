@@ -26,6 +26,7 @@ __all__ = [
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.proxyconfig import proxy_update_config
+from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
@@ -60,7 +61,7 @@ class RegionControllerService(Service):
     See module documentation for more details.
     """
 
-    def __init__(self, postgresListener, clock=reactor):
+    def __init__(self, postgresListener, clock=reactor, retryOnFailure=True):
         """Initialise a new `RegionControllerService`.
 
         :param postgresListener: The `PostgresListenerService` that is running
@@ -68,6 +69,7 @@ class RegionControllerService(Service):
         """
         super(RegionControllerService, self).__init__()
         self.clock = clock
+        self.retryOnFailure = retryOnFailure
         self.processing = LoopingCall(self.process)
         self.processing.clock = self.clock
         self.processingDefer = None
@@ -118,12 +120,27 @@ class RegionControllerService(Service):
 
     def process(self):
         """Process the DNS and/or proxy update."""
+
+        def _onFailureRetry(failure, attr):
+            """Retry update on failure.
+
+            Doesn't mask the failure, the failure is still raised.
+            """
+            if self.retryOnFailure:
+                setattr(self, attr, True)
+            return failure
+
         defers = []
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
             d = deferToDatabase(transactional(dns_update_all_zones))
             d.addCallback(self._checkSerial)
             d.addCallback(self._logDNSReload)
+            # Order here matters, first needsDNSUpdate is set then pass the
+            # failure onto `_onDNSReloadFailure` to do the correct thing
+            # with the DNS server.
+            d.addErrback(_onFailureRetry, 'needsDNSUpdate')
+            d.addErrback(self._onDNSReloadFailure)
             d.addErrback(
                 log.err,
                 "Failed configuring DNS.")
@@ -150,7 +167,10 @@ class RegionControllerService(Service):
         """Check that the serial of the domain is updated."""
         if result is None:
             return None
-        serial, domain_names = result
+        serial, reloaded, domain_names = result
+        if not reloaded:
+            raise DNSReloadError(
+                "Failed to reload DNS; timeout or rdnc command failed.")
         not_matching_domains = set(domain_names)
         loop = 0
         while len(not_matching_domains) > 0 and loop != 30:
@@ -173,13 +193,13 @@ class RegionControllerService(Service):
             raise DNSReloadError(
                 "Failed to reload DNS; serial mismatch "
                 "on domains %s" % ', '.join(not_matching_domains))
-        return serial, domain_names
+        return result
 
     def _logDNSReload(self, result):
         """Log the reason DNS was reloaded."""
         if result is None:
             return None
-        serial, domain_names = result
+        serial, _, domain_names = result
         if self.previousSerial is None:
             # This was the first load for starting the service.
             self.previousSerial = serial
@@ -190,7 +210,10 @@ class RegionControllerService(Service):
             # reason for the reload.
 
             def _logReason(reasons):
-                if len(reasons) == 1:
+                if len(reasons) == 0:
+                    msg = (
+                        "Reloaded DNS configuration; previous failure (retry)")
+                elif len(reasons) == 1:
                     msg = "Reloaded DNS configuration; %s" % reasons[0]
                 else:
                     msg = 'Reloaded DNS configuration: \n' + '\n'.join(
@@ -206,6 +229,16 @@ class RegionControllerService(Service):
 
             self.previousSerial = serial
             return d
+
+    def _onDNSReloadFailure(self, failure):
+        """Force kill and restart bind9."""
+        failure.trap(DNSReloadError)
+        if not self.retryOnFailure:
+            return failure
+        log.err(failure, "Failed configuring DNS; killing and restarting")
+        d = service_monitor.killService('bind9')
+        d.addErrback(log.err, "Failed to kill and restart DNS.")
+        return d
 
     @transactional
     def _getReloadReasons(self, previousSerial, currentSerial):

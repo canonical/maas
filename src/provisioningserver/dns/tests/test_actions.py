@@ -78,7 +78,7 @@ class TestReload(MAASTestCase):
         actions.bind_reload()
         self.assertThat(
             actions.execute_rndc_command,
-            MockCalledOnceWith(("reload",)))
+            MockCalledOnceWith(("reload",), timeout=2))
 
     def test__logs_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
@@ -105,7 +105,7 @@ class TestReloadWithRetries(MAASTestCase):
         bind_reload.return_value = False
         attempts = randint(3, 13)
         actions.bind_reload_with_retries(attempts=attempts)
-        expected_calls = [call()] * attempts
+        expected_calls = [call(timeout=2)] * attempts
         self.assertThat(
             actions.bind_reload,
             MockCallsMatch(*expected_calls))
@@ -114,11 +114,11 @@ class TestReloadWithRetries(MAASTestCase):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch(actions, "bind_reload")
         bind_reload_return_values = [False, False, True, ]
-        bind_reload.side_effect = lambda: (
+        bind_reload.side_effect = lambda *args, **kwargs: (
             bind_reload_return_values.pop(0))
 
         actions.bind_reload_with_retries(attempts=5)
-        expected_calls = [call(), call(), call()]
+        expected_calls = [call(timeout=2), call(timeout=2), call(timeout=2)]
         self.assertThat(
             actions.bind_reload,
             MockCallsMatch(*expected_calls))
