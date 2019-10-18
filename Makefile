@@ -277,7 +277,9 @@ lxd:
 	utilities/configure-lxd-profile
 	utilities/create-lxd-bionic-image
 
-test: bin/test.parallel bin/coverage
+test: test-js test-py
+
+test-py: bin/test.parallel bin/coverage
 	@$(RM) .coverage .coverage.*
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine

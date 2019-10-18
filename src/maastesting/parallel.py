@@ -372,7 +372,6 @@ def main(args=None):
         # Run the monolithic tests first. These will each consume a worker
         # thread (spawned by ConcurrentTestSuite) for a prolonged duration.
         # Putting divisible tests afterwards evens out the spread of work.
-        TestScriptMonolithic(lock, "bin/test.js", with_subunit=False),
         TestScriptMonolithic(lock, "bin/test.region.legacy"),
         # The divisible test scripts will each be executed multiple times,
         # each time to work on a distinct "bucket" of tests.

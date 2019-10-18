@@ -56,7 +56,6 @@ class TestSelectorArguments(MAASTestCase):
         sysexit = self.assertRaises(SystemExit, parallel.main, [])
         self.assertThat(sysexit.code, Equals(0))
         self.assertScriptsMatch(
-            MatchesUnselectableScript("js"),
             MatchesUnselectableScript("region.legacy"),
             MatchesSelectableScript("cli"),
             MatchesSelectableScript("rack"),
