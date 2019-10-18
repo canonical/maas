@@ -1700,6 +1700,26 @@ describe("NodeNetworkingController", function() {
       };
       expect($scope.getInterfaceTypeText(nic)).toBe("Open vSwitch");
     });
+
+    it(`returns correct text if physical interface
+      has a child with bond type`, () => {
+      makeController();
+      const child = { type: "bond" };
+      const parent = { type: "physical" };
+      expect($scope.getInterfaceTypeText(child, parent)).toBe(
+        "Bonded physical"
+      );
+    });
+
+    it(`returns correct text if physical interface
+      has a child with bridge type`, () => {
+      makeController();
+      const child = { type: "bridge" };
+      const parent = { type: "physical" };
+      expect($scope.getInterfaceTypeText(child, parent)).toBe(
+        "Bridged physical"
+      );
+    });
   });
 
   describe("getLinkModeText", function() {

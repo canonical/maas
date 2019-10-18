@@ -788,7 +788,7 @@ export function NodeNetworkingController(
   };
 
   // Get the text for the type of the interface.
-  $scope.getInterfaceTypeText = function(nic) {
+  $scope.getInterfaceTypeText = (nic, member) => {
     let text;
     let type = nic.type;
 
@@ -799,10 +799,19 @@ export function NodeNetworkingController(
     text = INTERFACE_TYPE_TEXTS[type];
 
     if (angular.isDefined(text)) {
+      if (angular.isDefined(member) && member.type === "physical") {
+        switch (text) {
+          case "Bond":
+            return "Bonded physical";
+          case "Bridge":
+            return "Bridged physical";
+          default:
+            return INTERFACE_TYPE_TEXTS[type] || type;
+        }
+      }
       return text;
-    } else {
-      return nic.type;
     }
+    return type;
   };
 
   // Get the text for the link mode of the interface.
