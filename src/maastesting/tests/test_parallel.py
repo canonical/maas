@@ -10,14 +10,6 @@ import random
 from unittest.mock import ANY
 
 import junitxml
-from maastesting import parallel
-from maastesting.fixtures import CaptureStandardIO
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
-from maastesting.testcase import MAASTestCase
 import subunit
 from testtools import (
     ExtendedToOriginalDecorator,
@@ -35,6 +27,15 @@ from testtools.matchers import (
     MatchesSetwise,
     MatchesStructure,
 )
+
+from maastesting import parallel
+from maastesting.fixtures import CaptureStandardIO
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+    MockNotCalled,
+)
+from maastesting.testcase import MAASTestCase
 
 
 class TestSelectorArguments(MAASTestCase):

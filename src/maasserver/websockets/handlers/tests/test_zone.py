@@ -9,6 +9,9 @@ from collections import defaultdict
 
 from django.core.exceptions import ValidationError
 from django.db.models import Count
+from testtools import ExpectedException
+from testtools.matchers import Equals
+
 from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
@@ -17,8 +20,6 @@ from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.zone import ZoneHandler
 from maastesting.djangotestcase import count_queries
-from testtools import ExpectedException
-from testtools.matchers import Equals
 
 
 class TestZoneHandler(MAASServerTestCase):

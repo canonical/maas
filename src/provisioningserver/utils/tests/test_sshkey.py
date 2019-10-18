@@ -7,6 +7,8 @@ __all__ = []
 
 import re
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
@@ -14,8 +16,6 @@ from provisioningserver.utils.sshkey import (
     normalise_openssh_public_key,
     OpenSSHKeyError,
 )
-from testtools.matchers import Equals
-
 
 example_openssh_public_keys = {
     "ecdsa256": (

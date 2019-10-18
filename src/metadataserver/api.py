@@ -32,6 +32,9 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import Int, String
+from piston3.utils import rc
+import yaml
+
 from maasserver.api.nodes import store_node_power_parameters
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
@@ -91,15 +94,12 @@ from metadataserver.user_data import (
     generate_user_data_for_status,
 )
 from metadataserver.vendor_data import get_vendor_data
-from piston3.utils import rc
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_STATUS_MESSAGES,
     EVENT_TYPES,
 )
 from provisioningserver.logger import LegacyLogger
-import yaml
-
 
 log = LegacyLogger()
 

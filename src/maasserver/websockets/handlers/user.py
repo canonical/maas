@@ -9,6 +9,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.http import HttpRequest
+
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.forms import EditUserForm, NewUserCreationForm

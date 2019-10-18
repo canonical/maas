@@ -96,6 +96,8 @@ from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import _user_has_perm, User, UserManager
 from django.core.exceptions import ViewDoesNotExist
 from django.db.models.signals import post_save
+from piston3.doc import HandlerDocumentation
+
 from maasserver import logger
 from maasserver.enum import NODE_TYPE
 from maasserver.models.blockdevice import BlockDevice
@@ -202,7 +204,6 @@ from maasserver.utils.django_urls import (
     get_resolver,
     get_script_prefix,
 )
-from piston3.doc import HandlerDocumentation
 from provisioningserver.utils import is_instance_or_subclass
 
 # Connect post-creation methods for models.
@@ -673,4 +674,4 @@ class MAASAuthorizationBackend(ModelBackend):
 
 
 # Ensure that all signals modules are loaded.
-from maasserver.models import signals  # noqa: E402
+from maasserver.models import signals  # noqa:E402 isort:skip

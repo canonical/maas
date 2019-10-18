@@ -12,6 +12,7 @@ __all__ = ["info"]
 import json
 
 from django.http import HttpResponse
+
 from maasserver.models.node import RegionController
 
 

@@ -4,6 +4,8 @@
 """API handlers: `BlockDevice`."""
 
 from django.core.exceptions import PermissionDenied
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_STATUS
@@ -28,8 +30,6 @@ from maasserver.models import (
     VirtualBlockDevice,
 )
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_BLOCKDEVICE_FIELDS = (
     "system_id",

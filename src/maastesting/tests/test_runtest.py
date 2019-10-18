@@ -5,11 +5,12 @@
 
 __all__ = []
 
+from testtools import TestCase
+from testtools.matchers import HasLength, Is, MatchesListwise
+
 from maastesting.matchers import DocTestMatches
 from maastesting.runtest import MAASRunTest, MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
-from testtools import TestCase
-from testtools.matchers import HasLength, Is, MatchesListwise
 
 
 class TestExecutors(MAASTestCase):

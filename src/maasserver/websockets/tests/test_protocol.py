@@ -9,10 +9,15 @@ import json
 import random
 from unittest.mock import MagicMock, sentinel
 
-from apiclient.utils import ascii_url
 from crochet import wait_for
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from testtools.matchers import Equals, Is
+from twisted.internet import defer
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.web.server import NOT_DONE_YET
+
+from apiclient.utils import ascii_url
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.listener import FakePostgresListenerService
@@ -40,11 +45,6 @@ from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.url import splithost
-from testtools.matchers import Equals, Is
-from twisted.internet import defer
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.web.server import NOT_DONE_YET
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

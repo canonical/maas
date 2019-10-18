@@ -9,6 +9,8 @@ import random
 import uuid
 
 from django.core.exceptions import ValidationError
+from testtools.matchers import MatchesStructure
+
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
@@ -24,7 +26,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import get_one, reload_object
-from testtools.matchers import MatchesStructure
 
 
 class TestFormatBlockDeviceForm(MAASServerTestCase):

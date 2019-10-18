@@ -11,6 +11,16 @@ import re
 from unittest.mock import sentinel
 
 from jsonschema import validate, ValidationError
+from testtools.matchers import (
+    AfterPreprocessing,
+    ContainsAll,
+    Equals,
+    Is,
+    MatchesAll,
+    MatchesDict,
+    Not,
+)
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import (
@@ -22,15 +32,6 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.utils.testing import RegistryFixture
-from testtools.matchers import (
-    AfterPreprocessing,
-    ContainsAll,
-    Equals,
-    Is,
-    MatchesAll,
-    MatchesDict,
-    Not,
-)
 
 
 class TestIpExtractor(MAASTestCase):

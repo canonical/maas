@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from django.utils.safestring import mark_safe
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.keysource import KeySource

@@ -10,14 +10,14 @@ import http.client
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from maasserver.api.support import OperationsHandler
-from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import BootSourceForm
-from maasserver.models import BootSource
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
 
+from maasserver.api.support import OperationsHandler
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import BootSourceForm
+from maasserver.models import BootSource
 
 DISPLAYED_BOOTSOURCE_FIELDS = (
     "id",

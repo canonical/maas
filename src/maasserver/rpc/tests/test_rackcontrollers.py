@@ -10,6 +10,13 @@ from unittest.mock import sentinel
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesSetwise,
+    MatchesStructure,
+)
+
 from maasserver import locks, worker_user
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models import (
@@ -33,12 +40,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
-from testtools.matchers import (
-    IsInstance,
-    MatchesAll,
-    MatchesSetwise,
-    MatchesStructure,
-)
 
 
 class TestHandleUpgrade(MAASServerTestCase):

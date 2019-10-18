@@ -36,6 +36,8 @@ __all__ = [
     "UpdateNodePowerState",
 ]
 
+from twisted.protocols import amp
+
 from provisioningserver.rpc.arguments import (
     AmpList,
     Bytes,
@@ -53,7 +55,6 @@ from provisioningserver.rpc.exceptions import (
     NoSuchEventType,
     NoSuchNode,
 )
-from twisted.protocols import amp
 
 
 class RegisterRackController(amp.Command):

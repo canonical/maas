@@ -8,6 +8,8 @@ __all__ = []
 from unittest.mock import call, sentinel
 
 from django.contrib.auth.models import User
+from testtools.matchers import MatchesStructure
+
 from maasserver.models import Node, SSHKey
 from maasserver.support.pertenant import migration
 from maasserver.support.pertenant.migration import (
@@ -34,7 +36,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
-from testtools.matchers import MatchesStructure
 
 
 def get_ssh_key_string(num=0):

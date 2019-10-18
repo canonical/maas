@@ -10,7 +10,6 @@ import os
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.utils.fs import write_text_file
 
-
 CONFIG_FILE = """
 # MAAS GRUB2 pre-loader configuration file
 

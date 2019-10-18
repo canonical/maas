@@ -16,6 +16,10 @@ import sys
 import warnings
 
 import crochet
+from twisted import logger as twistedModern
+from twisted.python import log as twistedLegacy
+from twisted.python import usage
+
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_FORMAT_DATE,
@@ -26,8 +30,6 @@ from provisioningserver.logger._common import (
     warn_unless,
 )
 from provisioningserver.utils import typed
-from twisted import logger as twistedModern
-from twisted.python import log as twistedLegacy, usage
 
 # Map verbosity numbers to `twisted.logger` levels.
 DEFAULT_TWISTED_VERBOSITY_LEVELS = {

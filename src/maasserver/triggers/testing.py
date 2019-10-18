@@ -8,6 +8,9 @@ __all__ = []
 
 from crochet import wait_for
 from django.contrib.auth.models import User
+from testtools.matchers import GreaterThan, Is, Not
+from twisted.internet.defer import inlineCallbacks, returnValue
+
 from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import BlockDevice
@@ -52,9 +55,6 @@ from maasserver.testing.factory import factory, RANDOM
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.models import Script, ScriptSet
-from testtools.matchers import GreaterThan, Is, Not
-from twisted.internet.defer import inlineCallbacks, returnValue
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

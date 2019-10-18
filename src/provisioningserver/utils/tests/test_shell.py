@@ -10,9 +10,12 @@ import random
 from subprocess import CalledProcessError
 
 from fixtures import EnvironmentVariable
+from testtools.matchers import ContainsDict, Equals, Is, IsInstance, Not
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+import provisioningserver.utils.shell as shell_module
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -20,8 +23,6 @@ from provisioningserver.utils.shell import (
     get_env_with_locale,
     has_command_available,
 )
-import provisioningserver.utils.shell as shell_module
-from testtools.matchers import ContainsDict, Equals, Is, IsInstance, Not
 
 
 class TestCallAndCheck(MAASTestCase):

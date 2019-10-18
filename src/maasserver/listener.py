@@ -11,9 +11,6 @@ from errno import ENOENT
 
 from django.db import connections
 from django.db.utils import load_backend
-from provisioningserver.utils.enum import map_enum
-from provisioningserver.utils.events import EventGroup
-from provisioningserver.utils.twisted import callOut, suppress, synchronous
 from twisted.application.service import Service
 from twisted.internet import defer, error, interfaces, reactor, task
 from twisted.internet.defer import CancelledError, Deferred, succeed
@@ -22,6 +19,10 @@ from twisted.internet.threads import deferToThread
 from twisted.logger import Logger
 from twisted.python.failure import Failure
 from zope.interface import implementer
+
+from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.events import EventGroup
+from provisioningserver.utils.twisted import callOut, suppress, synchronous
 
 
 class ACTIONS:

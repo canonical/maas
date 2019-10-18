@@ -23,13 +23,13 @@ from django.db.models import (
     TextField,
 )
 from django.shortcuts import get_object_or_404
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
 from maasserver.utils.storage import get_effective_filesystem, used_for
-
 
 MIN_BLOCK_DEVICE_SIZE = 4 * 1024 * 1024  # 4MiB
 MIN_BLOCK_DEVICE_BLOCK_SIZE = 512  # A ProDOS block

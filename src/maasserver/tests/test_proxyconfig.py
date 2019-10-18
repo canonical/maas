@@ -11,6 +11,9 @@ import random
 from crochet import wait_for
 from django.conf import settings
 from fixtures import EnvironmentVariableFixture
+from testtools.matchers import Contains, FileContains, Not
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver import proxyconfig
 from maasserver.models import Config
 from maasserver.models.signals import bootsources
@@ -21,9 +24,6 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.proxy import config
 from provisioningserver.utils import snappy
-from testtools.matchers import Contains, FileContains, Not
-from twisted.internet.defer import inlineCallbacks
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

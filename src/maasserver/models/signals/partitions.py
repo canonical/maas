@@ -6,10 +6,10 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_delete
+
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.utils.signals import SignalsManager
-
 
 signals = SignalsManager()
 

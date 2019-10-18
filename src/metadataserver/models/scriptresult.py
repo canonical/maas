@@ -16,6 +16,8 @@ from django.db.models import (
     Q,
     SET_NULL,
 )
+import yaml
+
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.event import Event
@@ -36,7 +38,6 @@ from metadataserver.fields import Bin, BinaryField
 from metadataserver.models.script import Script
 from metadataserver.models.scriptset import ScriptSet
 from provisioningserver.events import EVENT_TYPES
-import yaml
 
 
 class ScriptResult(CleanSave, TimestampedModel):

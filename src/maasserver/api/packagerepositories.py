@@ -3,15 +3,15 @@
 
 __all__ = ["PackageRepositoryHandler", "PackageRepositoriesHandler"]
 
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
-
 
 DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
     "id",

@@ -15,10 +15,11 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from django.utils.safestring import mark_safe
+from OpenSSL import crypto
+
 from maasserver import DefaultMeta, logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from OpenSSL import crypto
 
 
 class SSLKeyManager(Manager):

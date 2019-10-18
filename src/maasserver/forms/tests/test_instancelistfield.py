@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.core.exceptions import ValidationError
+
 from maasserver.forms import InstanceListField
 from maasserver.models import Node
 from maasserver.testing.factory import factory

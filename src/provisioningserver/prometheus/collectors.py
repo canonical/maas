@@ -6,7 +6,6 @@ from provisioningserver.prometheus.utils import (
     PrometheusMetrics,
 )
 
-
 MEMINFO_FIELDS = [
     "AnonPages",
     "Buffers",

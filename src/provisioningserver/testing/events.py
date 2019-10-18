@@ -6,6 +6,7 @@
 __all__ = ["EventTypesAllRegistered"]
 
 from fixtures import Fixture
+
 from provisioningserver import events
 
 

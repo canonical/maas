@@ -12,7 +12,6 @@ from textwrap import dedent
 
 from provisioningserver.dns.config import DNSConfig
 
-
 INCLUDE_SNIPPET_COMMENT = """\
 # Append the following content to your local BIND configuration
 # file (usually /etc/bind/named.conf.local) in order to allow

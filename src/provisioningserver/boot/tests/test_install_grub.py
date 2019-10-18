@@ -7,12 +7,13 @@ __all__ = []
 
 import os.path
 
+from testtools.matchers import FileExists
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver.boot.install_grub
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.script import MainScript
-from testtools.matchers import FileExists
 
 
 class TestInstallGrub(MAASTestCase):

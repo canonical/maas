@@ -10,6 +10,11 @@ from random import randint
 from unittest.mock import ANY, sentinel
 from urllib.parse import urlparse
 
+from testtools.matchers import Equals, Is
+from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.task import Clock
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -33,10 +38,6 @@ from provisioningserver.testing.config import (
     ClusterConfigurationFixture,
 )
 from provisioningserver.utils.twisted import pause
-from testtools.matchers import Equals, Is
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.internet.task import Clock
 
 
 def make_sources():

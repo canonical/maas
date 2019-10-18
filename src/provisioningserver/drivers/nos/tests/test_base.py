@@ -8,6 +8,8 @@ __all__ = []
 from unittest.mock import sentinel
 
 from jsonschema import validate
+from twisted.internet import reactor
+
 from maastesting.factory import factory
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
@@ -17,7 +19,6 @@ from provisioningserver.drivers.nos import (
     NOSDriver,
     NOSDriverBase,
 )
-from twisted.internet import reactor
 
 
 class FakeNOSDriverBase(NOSDriverBase):

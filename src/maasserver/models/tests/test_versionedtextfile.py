@@ -10,13 +10,13 @@ import random
 from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is
+
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is
-
 
 SAMPLE_TEXT = """\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor

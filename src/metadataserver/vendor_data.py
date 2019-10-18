@@ -10,6 +10,9 @@ from crypt import crypt
 from itertools import chain
 from os import urandom
 
+from netaddr import IPAddress
+import yaml
+
 from maasserver import ntp
 from maasserver.models import Config, NodeMetadata
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
@@ -17,11 +20,9 @@ from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
-from netaddr import IPAddress
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 from provisioningserver.utils.version import get_maas_version_track_channel
-import yaml
 
 
 def get_vendor_data(node, proxy):

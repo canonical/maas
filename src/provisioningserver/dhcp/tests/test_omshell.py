@@ -12,6 +12,8 @@ import tempfile
 from textwrap import dedent
 from unittest.mock import ANY, Mock
 
+from testtools.matchers import EndsWith, MatchesStructure
+
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.fixtures import TempDirectory
@@ -24,7 +26,6 @@ from provisioningserver.dhcp.omshell import (
     Omshell,
 )
 from provisioningserver.utils.shell import ExternalProcessError
-from testtools.matchers import EndsWith, MatchesStructure
 
 
 class TestOmshell(MAASTestCase):

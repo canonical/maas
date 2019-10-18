@@ -13,6 +13,17 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from fixtures import FakeLogger
 from hypothesis import given
 from hypothesis.strategies import integers
+from netaddr import AddrFormatError, IPAddress, IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import (
+    Contains,
+    Equals,
+    HasLength,
+    Is,
+    MatchesStructure,
+    Not,
+)
+
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -31,17 +42,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
 from maastesting.djangotestcase import count_queries, CountQueries
 from maastesting.matchers import DocTestMatches
-from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.utils.network import inet_ntop, MAASIPRange
-from testtools import ExpectedException
-from testtools.matchers import (
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    MatchesStructure,
-    Not,
-)
 
 
 class TestSubnet(MAASServerTestCase):

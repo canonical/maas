@@ -13,6 +13,17 @@ from datetime import timedelta
 from functools import partial
 import sys
 
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    CancelledError,
+    DeferredList,
+    DeferredSemaphore,
+    inlineCallbacks,
+    returnValue,
+    succeed,
+)
+from twisted.internet.task import deferLater
+
 from provisioningserver.drivers.power import get_error_message, PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_TYPES, send_node_event
@@ -30,17 +41,6 @@ from provisioningserver.utils.twisted import (
     deferred,
     deferWithTimeout,
 )
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    DeferredList,
-    DeferredSemaphore,
-    inlineCallbacks,
-    returnValue,
-    succeed,
-)
-from twisted.internet.task import deferLater
-
 
 maaslog = get_maas_logger("power")
 log = LegacyLogger()

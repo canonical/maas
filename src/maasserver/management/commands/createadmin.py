@@ -11,12 +11,13 @@ import re
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
+import requests
+
 from maascli.init import read_input
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models.config import Config
 from maasserver.models.keysource import KeySource
 from maasserver.utils.keys import ImportSSHKeysError
-import requests
 
 
 class EmptyUsername(CommandError):

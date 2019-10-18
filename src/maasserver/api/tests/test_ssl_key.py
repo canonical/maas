@@ -9,6 +9,7 @@ import http.client
 import json
 
 from django.conf import settings
+
 from maasserver.models import Event, SSLKey
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase

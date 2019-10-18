@@ -17,7 +17,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
 
-
 maaslog = get_maas_logger("uefi_amd64")
 
 

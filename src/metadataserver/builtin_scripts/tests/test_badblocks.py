@@ -13,12 +13,12 @@ from subprocess import PIPE, STDOUT
 from textwrap import dedent
 from unittest.mock import ANY
 
+import yaml
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import badblocks
-import yaml
-
 
 BADBLOCKS = random.randint(0, 1000)
 READ_ERRORS = random.randint(0, 1000)

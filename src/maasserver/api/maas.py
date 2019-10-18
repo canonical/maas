@@ -9,6 +9,8 @@ import json
 
 from django.http import HttpResponse
 from formencode import validators
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import ENDPOINT
@@ -20,7 +22,6 @@ from maasserver.forms.settings import (
     validate_config_name,
 )
 from maasserver.models import Config, PackageRepository
-from piston3.utils import rc
 
 
 class MigratedConfigValue:

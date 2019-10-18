@@ -3,6 +3,8 @@
 
 """API handlers: `CacheSet`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, NODE_STATUS
@@ -14,9 +16,7 @@ from maasserver.exceptions import (
 from maasserver.forms import CreateCacheSetForm, UpdateCacheSetForm
 from maasserver.models import CacheSet, Machine
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
-
 
 DISPLAYED_CACHE_SET_FIELDS = ("system_id", "id", "name", "cache_device")
 

@@ -7,9 +7,10 @@ __all__ = []
 
 from unittest.mock import Mock
 
+from testtools.matchers import Equals, HasLength
+
 from maastesting.testcase import MAASTestCase
 from provisioningserver import support_dump
-from testtools.matchers import Equals, HasLength
 
 
 class TestUpdateMaasClusterConf(MAASTestCase):

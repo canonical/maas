@@ -13,6 +13,8 @@ from collections import defaultdict
 from functools import partial
 from urllib.parse import urlparse
 
+from twisted.python.failure import Failure
+
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import BootResource
 from maasserver.rpc import getAllClients, getClientFor
@@ -24,7 +26,6 @@ from provisioningserver.rpc.cluster import (
     ValidateLicenseKey,
 )
 from provisioningserver.utils.twisted import synchronous
-from twisted.python.failure import Failure
 
 
 def get_uploaded_resource_with_name(resources, name):

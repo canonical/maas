@@ -9,6 +9,11 @@ from errno import ENOPROTOOPT
 import socket
 from socket import error as socket_error
 
+from twisted.application.service import IServiceMaker
+from twisted.internet import reactor
+from twisted.plugin import IPlugin
+from zope.interface import implementer
+
 from provisioningserver import logger, settings
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
 from provisioningserver.monkey import (
@@ -20,10 +25,6 @@ from provisioningserver.utils.debug import (
     register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
 )
-from twisted.application.service import IServiceMaker
-from twisted.internet import reactor
-from twisted.plugin import IPlugin
-from zope.interface import implementer
 
 
 class Options(logger.VerbosityOptions):

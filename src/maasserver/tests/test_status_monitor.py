@@ -9,6 +9,9 @@ __all__ = []
 from datetime import timedelta
 from unittest.mock import call
 
+from twisted.internet.defer import maybeDeferred
+from twisted.internet.task import Clock
+
 from maasserver import status_monitor
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Config, Node
@@ -36,8 +39,6 @@ from maastesting.matchers import (
 from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
 from metadataserver.models import ScriptSet
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
-from twisted.internet.defer import maybeDeferred
-from twisted.internet.task import Clock
 
 
 class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):

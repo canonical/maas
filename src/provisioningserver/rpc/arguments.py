@@ -17,9 +17,10 @@ import json
 import urllib.parse
 import zlib
 
-from apiclient.utils import ascii_url
 import netaddr
 from twisted.protocols import amp
+
+from apiclient.utils import ascii_url
 
 
 class Bytes(amp.Argument):

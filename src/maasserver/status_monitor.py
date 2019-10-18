@@ -8,6 +8,8 @@ __all__ = ["mark_nodes_failed_after_expiring", "StatusMonitorService"]
 from datetime import timedelta
 
 from django.db.models import Prefetch
+from twisted.application.internet import TimerService
+
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.models.config import Config
 from maasserver.models.node import Node
@@ -20,8 +22,6 @@ from metadataserver.models import Script, ScriptResult, ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous
-from twisted.application.internet import TimerService
-
 
 maaslog = get_maas_logger("node")
 

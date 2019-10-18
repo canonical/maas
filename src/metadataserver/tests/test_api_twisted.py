@@ -15,6 +15,12 @@ from unittest.mock import call, Mock, sentinel
 
 from crochet import wait_for
 from django.db.utils import DatabaseError
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is, MatchesListwise, MatchesSetwise
+from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.web.server import NOT_DONE_YET
+from twisted.web.test.requesthelper import DummyRequest
+
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Event, NodeMetadata, Tag
 from maasserver.models.signals.testing import SignalsDisabled
@@ -39,7 +45,8 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from metadataserver import api, api_twisted as api_twisted_module
+from metadataserver import api
+from metadataserver import api_twisted as api_twisted_module
 from metadataserver.api_twisted import (
     _create_pod_for_deployment,
     POD_CREATION_ERROR,
@@ -49,12 +56,6 @@ from metadataserver.api_twisted import (
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, MatchesListwise, MatchesSetwise
-from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.web.server import NOT_DONE_YET
-from twisted.web.test.requesthelper import DummyRequest
-
 
 wait_for_reactor = wait_for(30)
 

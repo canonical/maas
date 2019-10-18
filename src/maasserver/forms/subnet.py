@@ -7,6 +7,8 @@ __all__ = ["SubnetForm"]
 
 from django import forms
 from django.core.exceptions import ValidationError
+from netaddr import AddrFormatError, IPNetwork
+
 from maasserver.enum import RDNS_MODE_CHOICES
 from maasserver.fields import IPListFormField
 from maasserver.forms import MAASModelForm
@@ -15,7 +17,6 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import get_one
-from netaddr import AddrFormatError, IPNetwork
 
 
 class SubnetForm(MAASModelForm):

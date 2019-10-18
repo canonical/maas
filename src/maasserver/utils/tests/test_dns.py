@@ -8,6 +8,8 @@ __all__ = []
 from math import pow
 
 from django.core.exceptions import ValidationError
+from testtools.matchers import Equals, HasLength
+
 from maasserver.utils.dns import (
     get_ip_based_hostname,
     validate_domain_name,
@@ -16,8 +18,6 @@ from maasserver.utils.dns import (
 )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals, HasLength
-
 
 EXTENDED_SCHEMES = ["http", "https", "ftp", "ftps", "git", "file", "git+ssh"]
 

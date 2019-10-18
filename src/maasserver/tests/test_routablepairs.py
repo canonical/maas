@@ -8,12 +8,13 @@ __all__ = []
 from itertools import product, takewhile
 import random
 
+from testtools import ExpectedException
+from testtools.matchers import AfterPreprocessing, Equals
+
 from maasserver.models.node import Node
 from maasserver.routablepairs import find_addresses_between_nodes
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools import ExpectedException
-from testtools.matchers import AfterPreprocessing, Equals
 
 
 class TestFindAddressesBetweenNodes(MAASServerTestCase):

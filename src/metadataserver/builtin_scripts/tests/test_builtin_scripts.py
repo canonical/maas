@@ -7,6 +7,8 @@ import copy
 from datetime import timedelta
 import random
 
+from testtools.matchers import ContainsAll, Equals, Not
+
 from maasserver.models import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -18,7 +20,6 @@ from metadataserver.builtin_scripts import (
 from metadataserver.enum import SCRIPT_TYPE_CHOICES
 from metadataserver.models import Script
 from provisioningserver.utils.version import get_maas_version
-from testtools.matchers import ContainsAll, Equals, Not
 
 
 class TestBuiltinScripts(MAASServerTestCase):

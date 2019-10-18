@@ -10,6 +10,7 @@ import json
 import random
 
 from django.conf import settings
+
 from maasserver.api import machines as machines_module
 from maasserver.clusterrpc import boot_images
 from maasserver.enum import NODE_STATUS

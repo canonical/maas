@@ -15,6 +15,18 @@ from unittest.mock import (
     sentinel,
 )
 
+from testtools.content import Content
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    ContainsDict,
+    Equals,
+    IsInstance,
+    MatchesStructure,
+    Mismatch,
+)
+from twisted.internet import defer
+
 from maastesting import matchers
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -38,17 +50,6 @@ from maastesting.matchers import (
     TextEquals,
 )
 from maastesting.testcase import MAASTestCase
-from testtools.content import Content
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    ContainsDict,
-    Equals,
-    IsInstance,
-    MatchesStructure,
-    Mismatch,
-)
-from twisted.internet import defer
 
 
 class TestMatches(MAASTestCase):

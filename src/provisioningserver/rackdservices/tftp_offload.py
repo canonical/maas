@@ -17,8 +17,6 @@ import os
 import shutil
 import tempfile
 
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import call, callOut
 import tftp.backend
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import interfaces, protocol
@@ -27,6 +25,8 @@ from twisted.python import context
 from twisted.python.filepath import FilePath
 from zope.interface import implementer
 
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.twisted import call, callOut
 
 log = LegacyLogger()
 

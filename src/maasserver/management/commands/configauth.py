@@ -12,6 +12,8 @@ from django.contrib.sessions.models import Session
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
+from macaroonbakery.bakery import generate_key
+
 from maascli.init import (
     add_candid_options,
     add_rbac_options,
@@ -23,7 +25,6 @@ from maasserver.models import Config
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.rbac import RBACUserClient
 from maasserver.utils.dns import validate_url
-from macaroonbakery.bakery import generate_key
 
 
 @attr.s

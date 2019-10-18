@@ -14,6 +14,9 @@ from random import randint
 from unittest import mock
 from unittest.mock import call, MagicMock
 
+from testtools.matchers import DirExists, FileExists, Not
+import yaml
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
@@ -35,8 +38,6 @@ from provisioningserver.testing.config import (
     ClusterConfigurationFixture,
 )
 from provisioningserver.utils.fs import write_text_file
-from testtools.matchers import DirExists, FileExists, Not
-import yaml
 
 
 class TestUpdateCurrentSymlink(MAASTestCase):

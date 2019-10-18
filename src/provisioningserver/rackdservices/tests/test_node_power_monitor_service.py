@@ -9,6 +9,11 @@ __all__ = []
 from unittest.mock import ANY, Mock, sentinel
 
 from fixtures import FakeLogger
+from testtools.matchers import MatchesStructure
+from twisted.internet.defer import fail, succeed
+from twisted.internet.error import ConnectionDone
+from twisted.internet.task import Clock
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -16,10 +21,6 @@ from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.rackdservices import node_power_monitor_service as npms
 from provisioningserver.rpc import exceptions, getRegionClient, region
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
-from testtools.matchers import MatchesStructure
-from twisted.internet.defer import fail, succeed
-from twisted.internet.error import ConnectionDone
-from twisted.internet.task import Clock
 
 
 class TestNodePowerMonitorService(MAASTestCase):

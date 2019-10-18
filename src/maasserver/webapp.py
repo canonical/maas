@@ -11,6 +11,17 @@ import re
 import socket
 
 from django.conf import settings
+from twisted.application.internet import StreamServerEndpointService
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.endpoints import AdoptedStreamServerEndpoint
+from twisted.web.error import UnsupportedMethod
+from twisted.web.resource import NoResource, Resource
+from twisted.web.server import Request, Site
+from twisted.web.static import File
+from twisted.web.util import Redirect
+from twisted.web.wsgi import WSGIResource
+
 from maasserver import concurrency
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.views import WebApplicationHandler
@@ -26,17 +37,6 @@ from provisioningserver.utils.twisted import (
     reducedWebLogFormatter,
     ThreadPoolLimiter,
 )
-from twisted.application.internet import StreamServerEndpointService
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.endpoints import AdoptedStreamServerEndpoint
-from twisted.web.error import UnsupportedMethod
-from twisted.web.resource import NoResource, Resource
-from twisted.web.server import Request, Site
-from twisted.web.static import File
-from twisted.web.util import Redirect
-from twisted.web.wsgi import WSGIResource
-
 
 log = LegacyLogger()
 

@@ -7,6 +7,7 @@ __all__ = ["BootSourceCache"]
 
 
 from django.db.models import CASCADE, CharField, DateField, ForeignKey, Manager
+
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.bootsource import BootSource

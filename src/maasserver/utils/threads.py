@@ -20,6 +20,9 @@ __all__ = [
 ]
 
 from django.conf import settings
+from twisted.internet import reactor, threads
+from twisted.internet.defer import DeferredSemaphore
+
 from maasserver.utils.orm import (
     count_queries,
     ExclusivelyConnected,
@@ -33,9 +36,6 @@ from provisioningserver.utils.twisted import (
     ThreadPool,
     ThreadUnpool,
 )
-from twisted.internet import reactor, threads
-from twisted.internet.defer import DeferredSemaphore
-
 
 log = LegacyLogger()
 

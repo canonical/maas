@@ -7,6 +7,7 @@ __all__ = ["VLANForm"]
 
 from django import forms
 from django.core.exceptions import ValidationError
+
 from maasserver.enum import SERVICE_STATUS
 from maasserver.fields import NodeChoiceField, SpecifierOrModelChoiceField
 from maasserver.forms import MAASModelForm

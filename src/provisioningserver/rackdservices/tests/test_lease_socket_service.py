@@ -11,6 +11,12 @@ import socket
 import time
 from unittest.mock import MagicMock, sentinel
 
+from testtools.matchers import Not, PathExists
+from twisted.application.service import Service
+from twisted.internet import defer, reactor
+from twisted.internet.protocol import DatagramProtocol
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -22,11 +28,6 @@ from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLease
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.twisted import DeferredValue, pause, retries
-from testtools.matchers import Not, PathExists
-from twisted.application.service import Service
-from twisted.internet import defer, reactor
-from twisted.internet.protocol import DatagramProtocol
-from twisted.internet.threads import deferToThread
 
 
 class TestLeaseSocketService(MAASTestCase):

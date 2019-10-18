@@ -10,6 +10,11 @@ from datetime import datetime
 import json
 
 from django.db.utils import DatabaseError
+from twisted.application.internet import TimerService
+from twisted.internet import reactor
+from twisted.web.resource import Resource
+from twisted.web.server import NOT_DONE_YET
+
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.forms.pods import PodForm
@@ -28,11 +33,6 @@ from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import deferred
-from twisted.application.internet import TimerService
-from twisted.internet import reactor
-from twisted.web.resource import Resource
-from twisted.web.server import NOT_DONE_YET
-
 
 log = LegacyLogger()
 

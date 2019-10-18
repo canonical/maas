@@ -7,6 +7,7 @@ import http.client
 from unittest.mock import call
 
 from django.utils.http import urlencode
+
 from maasserver.enum import NODE_TYPE
 from maasserver.models.bmc import Pod
 from maasserver.testing.api import APITestCase, explain_unexpected_response

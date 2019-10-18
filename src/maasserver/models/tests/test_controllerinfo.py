@@ -6,6 +6,8 @@
 __all__ = []
 
 from crochet import wait_for
+from testtools.matchers import Equals, Is
+
 from maasserver.models import ControllerInfo, Notification
 from maasserver.models.controllerinfo import (
     ControllerVersionInfo,
@@ -16,8 +18,6 @@ from maasserver.models.controllerinfo import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Equals, Is
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

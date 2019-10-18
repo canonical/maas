@@ -7,6 +7,8 @@ __all__ = []
 
 from itertools import product
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.rhel import (
@@ -14,7 +16,6 @@ from provisioningserver.drivers.osystem.rhel import (
     DISTRO_SERIES_DEFAULT,
     RHELOS,
 )
-from testtools.matchers import Equals
 
 
 class TestRHEL(MAASTestCase):

@@ -11,11 +11,12 @@ from unittest.mock import Mock
 
 from fixtures import FakeLogger
 from lxml import etree
+from testscenarios import multiply_scenarios
+from testtools.matchers import DocTestMatches
+
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.xpath import try_match_xpath
-from testscenarios import multiply_scenarios
-from testtools.matchers import DocTestMatches
 
 
 class TestTryMatchXPathScenarios(MAASTestCase):

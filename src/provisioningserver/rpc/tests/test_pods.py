@@ -9,6 +9,9 @@ import random
 import re
 from unittest.mock import MagicMock
 
+from testtools import ExpectedException
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.pod import (
@@ -21,8 +24,6 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.rpc import exceptions, pods
-from testtools import ExpectedException
-from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 
 class TestDiscoverPod(MAASTestCase):

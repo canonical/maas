@@ -18,7 +18,6 @@ from provisioningserver.drivers.hardware.virsh import (
 from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.utils import shell
 
-
 REQUIRED_PACKAGES = [
     ["virsh", "libvirt-clients"],
     ["virt-login-shell", "libvirt-clients"],

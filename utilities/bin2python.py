@@ -12,6 +12,5 @@ adjustments.
 from pprint import pprint
 import sys
 
-
 in_bytes = sys.stdin.buffer.read()
 pprint(in_bytes, width=76)

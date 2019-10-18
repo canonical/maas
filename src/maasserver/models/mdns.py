@@ -13,14 +13,14 @@ from django.db.models import (
     IntegerField,
     Manager,
 )
+from netaddr import IPAddress
+
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one, UniqueViolation
-from netaddr import IPAddress
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("mDNS")
 

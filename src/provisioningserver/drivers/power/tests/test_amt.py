@@ -11,19 +11,19 @@ from textwrap import dedent
 from unittest.mock import call, Mock, sentinel
 
 from lxml import etree
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
-    amt as amt_module,
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
+from provisioningserver.drivers.power import amt as amt_module
 from provisioningserver.drivers.power.amt import AMT_ERRORS, AMTPowerDriver
 from provisioningserver.utils.shell import has_command_available
-from testtools.matchers import Equals
-
 
 AMTTOOL_OUTPUT = dedent(
     """\

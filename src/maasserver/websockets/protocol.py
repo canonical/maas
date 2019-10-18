@@ -17,6 +17,12 @@ from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from twisted.internet import defer
+from twisted.internet.defer import fail, inlineCallbacks
+from twisted.internet.protocol import Factory, Protocol
+from twisted.python.modules import getModule
+from twisted.web.server import NOT_DONE_YET
+
 from maasserver.eventloop import services
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -26,12 +32,6 @@ from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import deferred, synchronous
 from provisioningserver.utils.url import splithost
-from twisted.internet import defer
-from twisted.internet.defer import fail, inlineCallbacks
-from twisted.internet.protocol import Factory, Protocol
-from twisted.python.modules import getModule
-from twisted.web.server import NOT_DONE_YET
-
 
 log = LegacyLogger()
 

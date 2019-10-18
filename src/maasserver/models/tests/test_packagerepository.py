@@ -6,10 +6,11 @@
 __all__ = []
 
 from django.core.exceptions import ValidationError
+from testtools import ExpectedException
+
 from maasserver.models import PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools import ExpectedException
 
 
 class TestPackageRepositoryManager(MAASServerTestCase):

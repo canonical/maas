@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.forms import BootResourceForm
 from maasserver.models import BootResource, BootResourceFile

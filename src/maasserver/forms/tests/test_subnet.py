@@ -7,12 +7,13 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Equals, MatchesStructure
+
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models.fabric import Fabric
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals, MatchesStructure
 
 
 class TestSubnetForm(MAASServerTestCase):

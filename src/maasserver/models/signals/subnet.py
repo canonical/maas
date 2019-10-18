@@ -6,10 +6,10 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_save
+
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress, Subnet
 from maasserver.utils.signals import SignalsManager
-
 
 signals = SignalsManager()
 

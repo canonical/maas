@@ -9,6 +9,8 @@ from argparse import ArgumentParser
 import io
 import os
 
+from testtools.matchers import AllMatch, FileContains, FileExists
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns.commands.setup_dns import add_arguments, run
@@ -17,7 +19,6 @@ from provisioningserver.dns.config import (
     MAAS_RNDC_CONF_NAME,
 )
 from provisioningserver.dns.testing import patch_dns_config_path
-from testtools.matchers import AllMatch, FileContains, FileExists
 
 
 class TestSetupCommand(MAASTestCase):

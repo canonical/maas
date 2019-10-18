@@ -12,6 +12,7 @@ from django.forms import widgets
 from django.http import QueryDict
 from lxml.etree import XPath
 from lxml.html import fromstring
+
 from maasserver.config_forms import (
     DictCharField,
     DictCharWidget,

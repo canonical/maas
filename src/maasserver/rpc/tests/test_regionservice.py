@@ -13,39 +13,6 @@ from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 from crochet import wait_for
 from django.db import IntegrityError
-from maasserver.models import RackController, RegionController
-from maasserver.rpc import regionservice
-from maasserver.rpc.regionservice import (
-    RackClient,
-    Region,
-    RegionServer,
-    RegionService,
-)
-from maasserver.rpc.testing.doubles import HandshakingRegionServer
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch, Provides
-from maastesting.testcase import MAASTestCase
-from maastesting.twisted import (
-    always_fail_with,
-    always_succeed_with,
-    extract_result,
-    TwistedLoggerFixture,
-)
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.rpc import cluster, exceptions
-from provisioningserver.rpc.exceptions import (
-    CannotRegisterRackController,
-    NoConnectionsAvailable,
-)
-from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.region import RegisterRackController
-from provisioningserver.rpc.testing import call_responder
-from provisioningserver.rpc.testing.doubles import DummyConnection
-from provisioningserver.utils import events
-from provisioningserver.utils.version import get_maas_version
 from testtools import ExpectedException
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
@@ -81,6 +48,39 @@ from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from zope.interface.verify import verifyObject
 
+from maasserver.models import RackController, RegionController
+from maasserver.rpc import regionservice
+from maasserver.rpc.regionservice import (
+    RackClient,
+    Region,
+    RegionServer,
+    RegionService,
+)
+from maasserver.rpc.testing.doubles import HandshakingRegionServer
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch, Provides
+from maastesting.testcase import MAASTestCase
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+    extract_result,
+    TwistedLoggerFixture,
+)
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.rpc import cluster, exceptions
+from provisioningserver.rpc.exceptions import (
+    CannotRegisterRackController,
+    NoConnectionsAvailable,
+)
+from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.region import RegisterRackController
+from provisioningserver.rpc.testing import call_responder
+from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.utils import events
+from provisioningserver.utils.version import get_maas_version
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

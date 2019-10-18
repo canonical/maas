@@ -12,6 +12,8 @@ from subprocess import CalledProcessError
 from textwrap import dedent
 from unittest.mock import ANY, call
 
+import yaml
+
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
@@ -21,8 +23,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import fio
-import yaml
-
 
 FIO_OLD_READ_OUTPUT = dedent(
     """

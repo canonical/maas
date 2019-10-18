@@ -7,13 +7,13 @@ __all__ = []
 
 from random import choice
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.power import (
-    PowerActionError,
-    seamicro as seamicro_module,
-)
+from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.drivers.power import seamicro as seamicro_module
 from provisioningserver.drivers.power.seamicro import (
     extract_seamicro_parameters,
     SeaMicroPowerDriver,
@@ -22,7 +22,6 @@ from provisioningserver.utils.shell import (
     ExternalProcessError,
     has_command_available,
 )
-from testtools.matchers import Equals
 
 
 class TestSeaMicroPowerDriver(MAASTestCase):

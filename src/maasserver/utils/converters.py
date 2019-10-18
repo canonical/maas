@@ -9,6 +9,7 @@ import json
 
 from django.conf import settings
 from lxml import etree
+
 from provisioningserver.utils import typed
 
 

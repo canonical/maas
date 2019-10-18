@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 
 from lxml.etree import fromstring
+
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -22,7 +23,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
-
 
 maaslog = get_maas_logger("drivers.power.recs")
 

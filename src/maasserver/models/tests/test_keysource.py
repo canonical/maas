@@ -7,15 +7,16 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Equals
+
 from maasserver.enum import KEYS_PROTOCOL_TYPE
-from maasserver.models.keysource import KeySource
 import maasserver.models.keysource as keysource_module
+from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from testtools.matchers import Equals
 
 
 class TestKeySource(MAASServerTestCase):

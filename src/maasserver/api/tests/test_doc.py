@@ -15,6 +15,24 @@ from unittest.mock import sentinel
 
 from django.conf.urls import include, url
 from django.core.exceptions import ImproperlyConfigured
+from piston3.doc import HandlerDocumentation
+from piston3.handler import BaseHandler
+from piston3.resource import Resource
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Contains,
+    ContainsAll,
+    Equals,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesAny,
+    MatchesDict,
+    MatchesStructure,
+    Not,
+)
+
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
     describe_api,
@@ -41,25 +59,8 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.django_urls import reverse
 from maastesting.matchers import IsCallable, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from piston3.doc import HandlerDocumentation
-from piston3.handler import BaseHandler
-from piston3.resource import Resource
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Contains,
-    ContainsAll,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesAny,
-    MatchesDict,
-    MatchesStructure,
-    Not,
-)
 
 
 class TestFindingResources(MAASTestCase):

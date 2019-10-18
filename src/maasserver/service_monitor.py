@@ -17,7 +17,6 @@ from provisioningserver.utils.service_monitor import (
     ServiceMonitor,
 )
 
-
 maaslog = get_maas_logger("service_monitor_service")
 
 

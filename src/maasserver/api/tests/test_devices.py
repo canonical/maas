@@ -10,7 +10,8 @@ import random
 
 from maasserver.api import auth
 from maasserver.enum import NODE_STATUS, NODE_TYPE
-from maasserver.models import Device, Domain, node as node_module
+from maasserver.models import Device, Domain
+from maasserver.models import node as node_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled

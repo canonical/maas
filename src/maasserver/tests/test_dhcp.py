@@ -12,11 +12,25 @@ from unittest.mock import ANY
 
 from crochet import wait_for
 from django.core.exceptions import ValidationError
-from maasserver import (
-    dhcp,
-    dhcp as dhcp_module,
-    server_address as server_address_module,
+from netaddr import IPAddress, IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import (
+    AllMatch,
+    ContainsAll,
+    ContainsDict,
+    Equals,
+    HasLength,
+    IsInstance,
+    MatchesAll,
+    MatchesStructure,
+    Not,
 )
+from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
+from maasserver import dhcp
+from maasserver import server_address as server_address_module
 from maasserver.dhcp import get_default_dns_servers
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, SERVICE_STATUS
 from maasserver.models import (
@@ -41,7 +55,6 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import always_fail_with, always_succeed_with
-from netaddr import IPAddress, IPNetwork
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv4_V2,
@@ -55,22 +68,6 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.twisted import synchronous
-from testtools import ExpectedException
-from testtools.matchers import (
-    AllMatch,
-    ContainsAll,
-    ContainsDict,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-    Not,
-)
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -1054,7 +1051,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
     """Tests for `get_default_dns_servers`."""
 
     def test__returns_default_region_ip_if_no_url_found(self):
-        mock_get_source_address = self.patch(dhcp_module, "get_source_address")
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         rack_controller = factory.make_RackController(interface=False, url="")
@@ -1063,7 +1060,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         self.assertThat(servers, Equals([IPAddress("10.0.0.1")]))
 
     def test__returns_address_from_region_url_if_url_specified(self):
-        mock_get_source_address = self.patch(dhcp_module, "get_source_address")
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         rack_controller = factory.make_RackController(
@@ -1074,7 +1071,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         self.assertThat(servers, Equals([IPAddress("192.168.0.1")]))
 
     def test__chooses_alternate_from_known_reachable_subnet_no_proxy(self):
-        mock_get_source_address = self.patch(dhcp_module, "get_source_address")
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
@@ -1096,7 +1093,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
 
     def test__racks_on_subnet_comes_before_region(self):
-        mock_get_source_address = self.patch(dhcp_module, "get_source_address")
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)

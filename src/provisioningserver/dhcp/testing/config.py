@@ -20,10 +20,11 @@ __all__ = [
 import random
 
 from fixtures import Fixture
-from maastesting.factory import factory
 from netaddr import IPAddress
-from provisioningserver.dhcp import config
 from testtools.monkey import patch
+
+from maastesting.factory import factory
+from provisioningserver.dhcp import config
 
 
 def fix_shared_networks_failover(shared_networks, failover_peers):

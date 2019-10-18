@@ -6,6 +6,8 @@
 __all__ = []
 
 from django.http import HttpRequest
+from testtools import ExpectedException
+
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import NodeActionError
 from maasserver.testing.factory import factory
@@ -15,7 +17,6 @@ from maasserver.utils.orm import reload_object, transactional
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.switch import SwitchHandler
 from maastesting.djangotestcase import count_queries
-from testtools import ExpectedException
 
 
 class TestSwitchHandler(MAASTransactionServerTestCase):

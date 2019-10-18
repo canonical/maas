@@ -7,6 +7,7 @@ __all__ = ["PartitionTable"]
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey
+
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE, PARTITION_TABLE_TYPE_CHOICES
 from maasserver.models.blockdevice import BlockDevice

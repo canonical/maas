@@ -8,6 +8,7 @@ __all__ = ["ControllerHandler"]
 import logging
 
 from django.db.models import OuterRef, Subquery
+
 from maasserver.config import RegionConfiguration
 from maasserver.forms import ControllerForm
 from maasserver.models.config import Config

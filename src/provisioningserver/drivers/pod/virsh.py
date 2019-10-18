@@ -15,6 +15,9 @@ from uuid import uuid4
 
 from lxml import etree
 import pexpect
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from provisioningserver.drivers import (
     IP_EXTRACTOR_PATTERNS,
     make_ip_extractor,
@@ -41,9 +44,6 @@ from provisioningserver.utils import shell, typed
 from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import asynchronous, synchronous
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
-
 
 maaslog = get_maas_logger("drivers.pod.virsh")
 

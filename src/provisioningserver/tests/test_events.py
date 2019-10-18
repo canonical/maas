@@ -8,6 +8,10 @@ __all__ = []
 import random
 from unittest.mock import ANY, sentinel
 
+from testtools import ExpectedException
+from testtools.matchers import AllMatch, Equals, HasLength, Is, IsInstance
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnce,
@@ -31,9 +35,6 @@ from provisioningserver.rpc.exceptions import NoSuchEventType, NoSuchNode
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools import ExpectedException
-from testtools.matchers import AllMatch, Equals, HasLength, Is, IsInstance
-from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 
 class TestEvents(MAASTestCase):

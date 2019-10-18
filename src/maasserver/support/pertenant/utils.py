@@ -6,9 +6,9 @@
 __all__ = ["get_bootstrap_node_owner"]
 
 
-from maasserver.models import FileStorage, Node
 import yaml
 
+from maasserver.models import FileStorage, Node
 
 PROVIDER_STATE_FILENAME = "provider-state"
 

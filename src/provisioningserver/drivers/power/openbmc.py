@@ -10,6 +10,12 @@ from io import BytesIO
 import json
 from os.path import join
 
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+from twisted.python import compat
+from twisted.web.client import Agent, CookieAgent, FileBodyProducer, readBody
+from twisted.web.http_headers import Headers
+
 from provisioningserver.drivers import make_ip_extractor, make_setting_field
 from provisioningserver.drivers.power import (
     PowerActionError,
@@ -18,11 +24,6 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.drivers.power.utils import WebClientContextFactory
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.python import compat
-from twisted.web.client import Agent, CookieAgent, FileBodyProducer, readBody
-from twisted.web.http_headers import Headers
 
 # OpenBMC RESTful uri path
 HOST_CONTROL = "/xyz/openbmc_project/control/host0/boot/"

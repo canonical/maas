@@ -1,8 +1,9 @@
 from django.http import HttpResponse
+import prometheus_client
+
 from maasserver.prometheus.middleware import PrometheusRequestMetricsMiddleware
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
-import prometheus_client
 from provisioningserver.prometheus.metrics import METRICS_DEFINITIONS
 from provisioningserver.prometheus.utils import create_metrics
 

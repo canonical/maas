@@ -9,12 +9,6 @@ from datetime import datetime
 import os.path
 import tarfile
 
-from provisioningserver.import_images.helpers import (
-    get_os_from_product,
-    get_signing_policy,
-    maaslog,
-)
-from provisioningserver.logger import LegacyLogger
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import FileStore
 from simplestreams.util import (
@@ -23,6 +17,12 @@ from simplestreams.util import (
     products_exdata,
 )
 
+from provisioningserver.import_images.helpers import (
+    get_os_from_product,
+    get_signing_policy,
+    maaslog,
+)
+from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
 

@@ -10,18 +10,17 @@ from unittest.mock import call, sentinel
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
+from testtools.matchers import Equals
+
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.power import (
-    fence_cdu as fence_cdu_module,
-    PowerError,
-)
+from provisioningserver.drivers.power import fence_cdu as fence_cdu_module
+from provisioningserver.drivers.power import PowerError
 from provisioningserver.utils.shell import (
     ExternalProcessError,
     get_env_with_locale,
     has_command_available,
 )
-from testtools.matchers import Equals
 
 
 class TestFenceCDUPowerDriver(MAASTestCase):

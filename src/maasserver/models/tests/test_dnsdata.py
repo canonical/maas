@@ -10,6 +10,8 @@ import random
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from testtools import ExpectedException
+
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
 from maasserver.models.domain import Domain
@@ -17,7 +19,6 @@ from maasserver.models.node import Node
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools import ExpectedException
 
 # duplicated from dnsdata.py so as to not export them
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."

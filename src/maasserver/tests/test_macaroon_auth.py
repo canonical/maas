@@ -8,6 +8,16 @@ from unittest import mock, TestCase
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
+from macaroonbakery._utils import visit_page_with_browser
+from macaroonbakery.bakery import (
+    IdentityError,
+    SimpleIdentity,
+    VerificationError,
+)
+from macaroonbakery.httpbakery import WebBrowserInteractor
+from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
+import requests
+
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
     _candid_login,
@@ -30,16 +40,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase
-from macaroonbakery._utils import visit_page_with_browser
-from macaroonbakery.bakery import (
-    IdentityError,
-    SimpleIdentity,
-    VerificationError,
-)
-from macaroonbakery.httpbakery import WebBrowserInteractor
-from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
 from metadataserver.nodeinituser import get_node_init_user
-import requests
 
 
 class TestIDClient(MAASServerTestCase):

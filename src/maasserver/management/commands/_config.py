@@ -10,10 +10,11 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 import formencode
+import yaml
+
 from maascli.utils import parse_docstring
 from maasserver.config import RegionConfiguration
 from provisioningserver.config import ConfigurationOption
-import yaml
 
 
 def make_option_tuple(name, **kwargs):

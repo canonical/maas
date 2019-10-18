@@ -2,6 +2,7 @@
 
 
 from django.db import migrations, models
+
 import maasserver.models.cleansave
 import metadataserver.fields
 

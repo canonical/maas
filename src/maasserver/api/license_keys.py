@@ -7,12 +7,13 @@ __all__ = ["LicenseKeyHandler", "LicenseKeysHandler"]
 
 
 from django.shortcuts import get_object_or_404
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.utils.orm import get_one
-from piston3.utils import rc
 
 
 class LicenseKeysHandler(OperationsHandler):

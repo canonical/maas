@@ -9,6 +9,14 @@ import http.client
 import uuid
 
 from django.conf import settings
+from testtools.matchers import (
+    Contains,
+    ContainsDict,
+    Equals,
+    Is,
+    MatchesStructure,
+)
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
@@ -17,13 +25,6 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    Contains,
-    ContainsDict,
-    Equals,
-    Is,
-    MatchesStructure,
-)
 
 
 def get_blockdevices_uri(node):

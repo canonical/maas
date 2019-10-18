@@ -20,6 +20,8 @@ from django.forms import (
     Form,
     ModelForm,
 )
+import yaml
+
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.fields import VersionedTextFileField
@@ -33,7 +35,6 @@ from metadataserver.models.script import (
     translate_script_type,
 )
 from provisioningserver.events import EVENT_TYPES
-import yaml
 
 
 class ScriptForm(ModelForm):

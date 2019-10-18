@@ -7,7 +7,6 @@ __all__ = ["get_node_init_user", "user_name"]
 
 from django.contrib.auth.models import User
 
-
 user_name = "maas-init-node"
 
 

@@ -6,11 +6,12 @@
 __all__ = []
 
 from django.core.management import call_command
+from testtools.matchers import Equals, MatchesRegex
+
 from maasserver.testing import sampledata
 from maastesting.fixtures import CaptureStandardIO, ImportErrorFixture
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals, MatchesRegex
 
 
 class TestGenerateSampleData(MAASTestCase):

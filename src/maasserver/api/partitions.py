@@ -6,6 +6,8 @@
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from piston3.utils import rc
+
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_STATUS
@@ -18,8 +20,6 @@ from maasserver.forms import AddPartitionForm, FormatPartitionForm
 from maasserver.forms.filesystem import MountFilesystemForm
 from maasserver.models import BlockDevice, Partition, PartitionTable
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_PARTITION_FIELDS = (
     "system_id",

@@ -15,9 +15,29 @@ from socket import AF_INET, AF_INET6, gethostname
 import sys
 from urllib.parse import urlparse
 
+from netaddr import IPAddress
+from twisted import web
+from twisted.application.internet import TimerService
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    DeferredList,
+    inlineCallbacks,
+    maybeDeferred,
+    returnValue,
+)
+from twisted.internet.endpoints import connectProtocol, TCP6ClientEndpoint
+from twisted.internet.error import ConnectError, ConnectionClosed, ProcessDone
+from twisted.internet.threads import deferToThread
+from twisted.protocols import amp
+from twisted.python.reflect import fullyQualifiedName
+from twisted.web.client import _ReadBodyProtocol, Agent
+from twisted.web.http_headers import Headers
+from zope.interface import implementer
+
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
-from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
 from provisioningserver.drivers import ArchitectureRegistry
@@ -94,26 +114,6 @@ from provisioningserver.utils.twisted import (
 )
 from provisioningserver.utils.url import get_domain
 from provisioningserver.utils.version import get_maas_version
-from twisted import web
-from twisted.application.internet import TimerService
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    Deferred,
-    DeferredList,
-    inlineCallbacks,
-    maybeDeferred,
-    returnValue,
-)
-from twisted.internet.endpoints import connectProtocol, TCP6ClientEndpoint
-from twisted.internet.error import ConnectError, ConnectionClosed, ProcessDone
-from twisted.internet.threads import deferToThread
-from twisted.protocols import amp
-from twisted.python.reflect import fullyQualifiedName
-from twisted.web.client import _ReadBodyProtocol, Agent
-from twisted.web.http_headers import Headers
-from zope.interface import implementer
-
 
 maaslog = get_maas_logger("rpc.cluster")
 log = LegacyLogger()

@@ -10,6 +10,21 @@ import random
 from unittest.mock import ANY, call, MagicMock, sentinel
 
 from fixtures import FakeLogger
+from testtools import ExpectedException
+from testtools.deferredruntest import assert_fails_with
+from testtools.matchers import Equals, IsInstance, Not
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    Deferred,
+    fail,
+    inlineCallbacks,
+    maybeDeferred,
+    returnValue,
+    succeed,
+)
+from twisted.internet.task import Clock
+from twisted.python.failure import Failure
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -25,10 +40,10 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver.drivers.power import (
-    DEFAULT_WAITING_POLICY,
     get_error_message as get_driver_error_message,
-    PowerError,
 )
+from provisioningserver.drivers.power import DEFAULT_WAITING_POLICY
+from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc import exceptions, power, region
@@ -37,20 +52,6 @@ from provisioningserver.rpc.testing import (
     MockLiveClusterToRegionRPCFixture,
 )
 from provisioningserver.testing.events import EventTypesAllRegistered
-from testtools import ExpectedException
-from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import Equals, IsInstance, Not
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    Deferred,
-    fail,
-    inlineCallbacks,
-    maybeDeferred,
-    returnValue,
-    succeed,
-)
-from twisted.internet.task import Clock
-from twisted.python.failure import Failure
 
 
 def suppress_reporting(test):

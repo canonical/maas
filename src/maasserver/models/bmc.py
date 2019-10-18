@@ -29,6 +29,9 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
+import petname
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.enum import (
@@ -63,7 +66,6 @@ from maasserver.permissions import PodPermission
 from maasserver.rpc import getAllClients, getClientFromIdentifiers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import BlockDeviceType, InterfaceAttachType
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -72,8 +74,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.constraints import LabeledConstraintMap
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import inlineCallbacks
-
 
 maaslog = get_maas_logger("node")
 podlog = get_maas_logger("pod")

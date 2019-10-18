@@ -6,16 +6,14 @@
 __all__ = ["authenticate", "login", "logout"]
 
 import json
-import mimeparse
 
 from django import forms
 from django.conf import settings as django_settings
-from django.contrib.auth import (
-    authenticate as dj_authenticate,
-    REDIRECT_FIELD_NAME,
-)
-from django.contrib.auth.views import LoginView, logout as dj_logout
+from django.contrib.auth import authenticate as dj_authenticate
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import logout as dj_logout
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -27,6 +25,8 @@ from django.http import (
 from django.middleware.csrf import get_token
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
+import mimeparse
+
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models import UserProfile

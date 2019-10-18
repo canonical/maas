@@ -41,12 +41,6 @@ from zlib import crc32
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
 from netaddr.core import AddrFormatError, NotRegisteredError
 import netifaces
-from provisioningserver.utils.dhclient import get_dhclient_info
-from provisioningserver.utils.ipaddr import get_ip_addr
-from provisioningserver.utils.iproute import get_ip_route
-from provisioningserver.utils.ps import running_in_container
-from provisioningserver.utils.shell import call_and_check, get_env_with_locale
-from provisioningserver.utils.twisted import synchronous
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IResolver
 from twisted.names.client import getResolver
@@ -56,6 +50,13 @@ from twisted.names.error import (
     DomainError,
     ResolverError,
 )
+
+from provisioningserver.utils.dhclient import get_dhclient_info
+from provisioningserver.utils.ipaddr import get_ip_addr
+from provisioningserver.utils.iproute import get_ip_route
+from provisioningserver.utils.ps import running_in_container
+from provisioningserver.utils.shell import call_and_check, get_env_with_locale
+from provisioningserver.utils.twisted import synchronous
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.

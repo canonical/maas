@@ -11,6 +11,25 @@ import threading
 from unittest.mock import call, Mock, sentinel
 from uuid import uuid1
 
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is, IsInstance, Not
+from twisted.application.service import MultiService
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    Deferred,
+    DeferredQueue,
+    inlineCallbacks,
+    succeed,
+)
+from twisted.internet.error import (
+    ProcessDone,
+    ProcessExitedAlready,
+    ProcessTerminated,
+)
+from twisted.internet.task import Clock
+from twisted.python import threadable
+from twisted.python.failure import Failure
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -41,24 +60,6 @@ from provisioningserver.utils.services import (
     ProtocolForObserveARP,
     ProtocolForObserveBeacons,
 )
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, Not
-from twisted.application.service import MultiService
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    Deferred,
-    DeferredQueue,
-    inlineCallbacks,
-    succeed,
-)
-from twisted.internet.error import (
-    ProcessDone,
-    ProcessExitedAlready,
-    ProcessTerminated,
-)
-from twisted.internet.task import Clock
-from twisted.python import threadable
-from twisted.python.failure import Failure
 
 
 class StubNetworksMonitoringService(NetworksMonitoringService):

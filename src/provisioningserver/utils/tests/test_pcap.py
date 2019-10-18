@@ -7,10 +7,11 @@ __all__ = []
 
 import io
 
-from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.pcap import PCAP, PCAPError
 from testtools import ExpectedException
 from testtools.matchers import Equals
+
+from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.pcap import PCAP, PCAPError
 
 # Created with:
 # $ sudo tcpdump -i eth0 -U --immediate-mode -s 64 -n -c 2 -w - arp \

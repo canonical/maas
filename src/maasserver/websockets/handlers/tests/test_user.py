@@ -8,6 +8,9 @@ __all__ = []
 import datetime
 
 from django.contrib.auth.models import User
+from piston3.models import Token
+from testtools.testcase import TestCase
+
 from maasserver.models.event import Event
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.permissions import (
@@ -34,9 +37,7 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers.user import UserHandler
 from maastesting.djangotestcase import count_queries
-from piston3.models import Token
 from provisioningserver.events import AUDIT
-from testtools.testcase import TestCase
 
 
 class TestUserHandler(MAASServerTestCase):

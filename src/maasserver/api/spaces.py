@@ -4,13 +4,13 @@
 """API handlers: `Space`."""
 
 from django.db.models.query import QuerySet
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms.space import SpaceForm
 from maasserver.models import Space, Subnet, VLAN
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_SPACE_FIELDS = ("resource_uri", "id", "name", "vlans", "subnets")
 

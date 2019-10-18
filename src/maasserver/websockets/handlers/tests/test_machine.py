@@ -16,6 +16,21 @@ from crochet import wait_for
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from lxml import etree
+from testtools import ExpectedException
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+    HasLength,
+    Is,
+    MatchesDict,
+    MatchesException,
+    MatchesListwise,
+    MatchesStructure,
+    Raises,
+    StartsWith,
+)
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver.enum import (
     BMC_TYPE,
     BOND_MODE,
@@ -48,8 +63,8 @@ from maasserver.models.nodeprobeddetails import (
     script_output_nsmap,
 )
 from maasserver.models.partition import Partition, PARTITION_ALIGNMENT_SIZE
-from maasserver.node_action import compile_node_actions
 import maasserver.node_action as node_action_module
+from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.storage_layouts import (
@@ -84,10 +99,8 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers import machine as machine_module
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
-from maasserver.websockets.handlers.machine import (
-    MachineHandler,
-    Node as node_model,
-)
+from maasserver.websockets.handlers.machine import MachineHandler
+from maasserver.websockets.handlers.machine import Node as node_model
 from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maasserver.websockets.handlers.node_result import NodeResultHandler
 from maastesting.djangotestcase import count_queries
@@ -107,21 +120,6 @@ from provisioningserver.refresh.node_info_scripts import (
 )
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.tags import merge_details_cleanly
-from testtools import ExpectedException
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    HasLength,
-    Is,
-    MatchesDict,
-    MatchesException,
-    MatchesListwise,
-    MatchesStructure,
-    Raises,
-    StartsWith,
-)
-from twisted.internet.defer import inlineCallbacks
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

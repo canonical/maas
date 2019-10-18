@@ -11,6 +11,7 @@ from unittest import skip
 
 from django.contrib.auth.models import User
 from lxml.html import fromstring
+
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import Config, PackageRepository, UserProfile
 from maasserver.models.event import Event

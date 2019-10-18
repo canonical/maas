@@ -8,6 +8,10 @@ __all__ = []
 from unittest.mock import Mock
 
 from crochet import wait_for
+from testtools.matchers import Equals, Is
+from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver.models import RDNS
 from maasserver.regiondservices import reverse_dns as reverse_dns_module
 from maasserver.regiondservices.reverse_dns import ReverseDNSService
@@ -17,9 +21,6 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.utils.testing import callWithServiceRunning
 from provisioningserver.utils.tests.test_network import TestReverseResolveMixIn
-from testtools.matchers import Equals, Is
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks
 
 
 class TestReverseDNSService(

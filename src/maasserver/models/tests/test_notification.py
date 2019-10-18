@@ -10,9 +10,6 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
-from maasserver.models.notification import Notification
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -24,6 +21,10 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+
+from maasserver.models.notification import Notification
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestNotificationManagerCreateMethods(MAASServerTestCase):

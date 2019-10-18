@@ -6,6 +6,7 @@
 __all__ = ["RegionConfiguration"]
 
 from formencode.validators import Int
+
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,

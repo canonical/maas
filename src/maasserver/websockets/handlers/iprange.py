@@ -12,7 +12,6 @@ from maasserver.websockets.handlers.timestampedmodel import (
 )
 from provisioningserver.logger import get_maas_logger
 
-
 maaslog = get_maas_logger("websockets.iprange")
 
 

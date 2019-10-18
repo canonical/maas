@@ -15,8 +15,9 @@ import random
 import re
 import time
 
-from maastesting.factory import factory
 from twisted.logger import LogLevel
+
+from maastesting.factory import factory
 
 
 def make_event(log_text=None, log_level=None, log_time=None, **other):

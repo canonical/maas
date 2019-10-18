@@ -18,7 +18,6 @@ from metadataserver.enum import (
 from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.events import EVENT_TYPES
 
-
 signals = SignalsManager()
 
 

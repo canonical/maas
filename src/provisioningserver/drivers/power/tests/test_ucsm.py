@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -13,7 +15,6 @@ from provisioningserver.drivers.power.ucsm import (
     extract_ucsm_parameters,
     UCSMPowerDriver,
 )
-from testtools.matchers import Equals
 
 
 class TestUCSMPowerDriver(MAASTestCase):

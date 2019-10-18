@@ -11,6 +11,8 @@ from tempfile import mkdtemp
 from unittest import mock as mock_module
 from unittest.mock import call, MagicMock, sentinel
 
+from testtools.matchers import Contains, DirExists, FileExists
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsCallableMock,
@@ -18,7 +20,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Contains, DirExists, FileExists
 
 
 class TestTestCase(MAASTestCase):

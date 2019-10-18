@@ -22,6 +22,8 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
+from netaddr import AddrFormatError, IPAddress, IPNetwork
+
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -39,10 +41,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
-from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
-    IPRANGE_TYPE as MAASIPRANGE_TYPE,
     IPRangeStatistics,
     MAASIPSet,
     make_ipaddress,
@@ -50,7 +50,7 @@ from provisioningserver.utils.network import (
     MaybeIPAddress,
     parse_integer,
 )
-
+from provisioningserver.utils.network import IPRANGE_TYPE as MAASIPRANGE_TYPE
 
 maaslog = get_maas_logger("subnet")
 

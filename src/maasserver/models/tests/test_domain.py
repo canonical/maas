@@ -10,6 +10,10 @@ import random
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import ProtectedError
+from netaddr import IPAddress
+from testtools.matchers import Equals, HasLength, MatchesStructure
+from testtools.testcase import ExpectedException
+
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
@@ -19,9 +23,6 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPAddress
-from testtools.matchers import Equals, HasLength, MatchesStructure
-from testtools.testcase import ExpectedException
 
 
 class TestDomainManagerGetDomainOr404(MAASServerTestCase):

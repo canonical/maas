@@ -11,6 +11,8 @@ import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest
+from testtools.matchers import ContainsAll
+
 from maasserver.forms.script import (
     CommissioningScriptForm,
     ScriptForm,
@@ -29,7 +31,6 @@ from metadataserver.enum import (
 )
 from metadataserver.models import Script
 from provisioningserver.events import AUDIT
-from testtools.matchers import ContainsAll
 
 
 class TestScriptForm(MAASServerTestCase):

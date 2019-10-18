@@ -39,13 +39,14 @@ from logging import getLogger
 import os
 from socket import gethostname
 
+from twisted.application.service import MultiService, Service
+from twisted.internet import reactor
+from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
+
 from maasserver.utils.orm import disable_all_database_connections
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.prometheus.metrics import set_global_labels
 from provisioningserver.utils.twisted import asynchronous
-from twisted.application.service import MultiService, Service
-from twisted.internet import reactor
-from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 
 # Default port for regiond.
 DEFAULT_PORT = 5240

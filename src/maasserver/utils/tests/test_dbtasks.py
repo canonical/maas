@@ -10,15 +10,6 @@ import threading
 from unittest.mock import sentinel
 
 from crochet import wait_for
-from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.dbtasks import (
-    DatabaseTaskAlreadyRunning,
-    DatabaseTasksService,
-)
-from maasserver.utils.orm import transactional
-from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
-from maastesting.twisted import TwistedLoggerFixture
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -37,6 +28,15 @@ from twisted.internet.defer import (
     QueueOverflow,
 )
 
+from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.utils.dbtasks import (
+    DatabaseTaskAlreadyRunning,
+    DatabaseTasksService,
+)
+from maasserver.utils.orm import transactional
+from maastesting.factory import factory
+from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

@@ -7,9 +7,10 @@ __all__ = []
 
 import json
 
+from testtools.matchers import Equals
+
 from apiclient.encode_json import encode_json_data
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals
 
 
 class TestEncodeJSONData(MAASTestCase):

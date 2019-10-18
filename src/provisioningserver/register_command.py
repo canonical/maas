@@ -30,7 +30,6 @@ from provisioningserver.security import (
 from provisioningserver.utils.env import set_maas_id
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
-
 all_arguments = ("--url", "--secret")
 
 

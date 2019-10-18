@@ -6,6 +6,10 @@
 __all__ = []
 
 from crochet import wait_for
+from testtools.matchers import AllMatch, Equals, IsInstance, MatchesStructure
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver.models.config import Config
 from maasserver.regiondservices import ntp
 from maasserver.service_monitor import service_monitor
@@ -27,10 +31,6 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import AllMatch, Equals, IsInstance, MatchesStructure
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

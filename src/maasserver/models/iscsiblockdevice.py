@@ -8,6 +8,7 @@ __all__ = ["ISCSIBlockDevice"]
 from curtin.block.iscsi import IscsiDisk
 from django.core.exceptions import ValidationError
 from django.db.models import CharField
+
 from maasserver import DefaultMeta
 from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 

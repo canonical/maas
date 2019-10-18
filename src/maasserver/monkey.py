@@ -10,8 +10,9 @@ __all__ = ["add_patches"]
 from collections import OrderedDict
 import inspect
 
-from provisioningserver.monkey import add_patches_to_twisted
 import yaml
+
+from provisioningserver.monkey import add_patches_to_twisted
 
 
 class DeferredValueAccessError(AttributeError):

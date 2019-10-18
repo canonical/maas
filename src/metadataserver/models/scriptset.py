@@ -22,6 +22,7 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
+
 from maasserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from maasserver.exceptions import NoScriptsFound
 from maasserver.forms.parameters import ParametersForm

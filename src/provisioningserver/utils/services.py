@@ -18,6 +18,16 @@ import struct
 import time
 
 from netaddr import IPAddress
+from twisted.application.internet import TimerService
+from twisted.application.service import MultiService
+from twisted.internet.defer import Deferred, inlineCallbacks, maybeDeferred
+from twisted.internet.error import ProcessDone, ProcessTerminated
+from twisted.internet.interfaces import IReactorMulticast
+from twisted.internet.protocol import DatagramProtocol, ProcessProtocol
+from twisted.internet.threads import deferToThread
+from zope.interface.exceptions import DoesNotImplement
+from zope.interface.verify import verifyObject
+
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.beaconing import (
@@ -43,16 +53,6 @@ from provisioningserver.utils.twisted import (
     pause,
     terminateProcess,
 )
-from twisted.application.internet import TimerService
-from twisted.application.service import MultiService
-from twisted.internet.defer import Deferred, inlineCallbacks, maybeDeferred
-from twisted.internet.error import ProcessDone, ProcessTerminated
-from twisted.internet.interfaces import IReactorMulticast
-from twisted.internet.protocol import DatagramProtocol, ProcessProtocol
-from twisted.internet.threads import deferToThread
-from zope.interface.exceptions import DoesNotImplement
-from zope.interface.verify import verifyObject
-
 
 maaslog = get_maas_logger("networks.monitor")
 log = LegacyLogger()

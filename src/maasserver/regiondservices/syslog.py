@@ -8,6 +8,10 @@ __all__ = ["RegionSyslogService"]
 from datetime import timedelta
 
 import attr
+from twisted.application.internet import TimerService
+from twisted.internet.defer import maybeDeferred
+from twisted.internet.threads import deferToThread
+
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.routablepairs import get_routable_address_map
@@ -17,10 +21,6 @@ from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.syslog.config import write_config
 from provisioningserver.utils.twisted import callOut, synchronous
-from twisted.application.internet import TimerService
-from twisted.internet.defer import maybeDeferred
-from twisted.internet.threads import deferToThread
-
 
 log = LegacyLogger()
 

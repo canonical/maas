@@ -22,14 +22,15 @@ from datetime import timedelta
 import sys
 
 from jsonschema import validate
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.threads import deferToThread
+
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
 from provisioningserver.utils.twisted import IAsynchronous, pause
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.internet.threads import deferToThread
 
 # We specifically declare this here so that a node not knowing its own
 # powertype won't fail to enlist. However, we don't want it in the list

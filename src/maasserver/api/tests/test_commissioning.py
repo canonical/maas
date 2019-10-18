@@ -10,6 +10,8 @@ import http.client
 from itertools import chain
 import random
 
+from piston3.utils import rc
+
 from maasserver.models import Event
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -24,7 +26,6 @@ from metadataserver.enum import (
 )
 from metadataserver.fields import Bin
 from metadataserver.models import Script
-from piston3.utils import rc
 from provisioningserver.events import AUDIT
 
 

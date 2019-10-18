@@ -8,6 +8,10 @@ __all__ = []
 from random import choice, randint
 
 from django.core.exceptions import ValidationError
+from netaddr import IPAddress
+from testtools import ExpectedException
+from testtools.matchers import Equals, HasLength, Is, Not
+
 from maasserver.models import DNSData, DNSResource, Domain, StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -18,9 +22,6 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.domain import DomainHandler
-from netaddr import IPAddress
-from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength, Is, Not
 
 
 class TestDomainHandler(MAASServerTestCase):

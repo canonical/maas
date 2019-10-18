@@ -8,9 +8,19 @@ __all__ = []
 import re
 from unittest.mock import Mock
 
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesRegex,
+    Not,
+    StartsWith,
+)
+from twisted.python.filepath import FilePath
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.boot import BytesReader, s390x as s390x_module
+from provisioningserver.boot import BytesReader
+from provisioningserver.boot import s390x as s390x_module
 from provisioningserver.boot.s390x import (
     ARP_HTYPE,
     format_bootif,
@@ -23,14 +33,6 @@ from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
-from testtools.matchers import (
-    IsInstance,
-    MatchesAll,
-    MatchesRegex,
-    Not,
-    StartsWith,
-)
-from twisted.python.filepath import FilePath
 
 
 @typed

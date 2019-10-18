@@ -5,6 +5,8 @@
 
 from django.db.models.query import QuerySet
 from formencode.validators import StringBool
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
@@ -12,8 +14,6 @@ from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.models import DNSResource, Domain
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_DNSRESOURCE_FIELDS = (
     "id",

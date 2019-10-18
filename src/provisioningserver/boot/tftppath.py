@@ -19,7 +19,6 @@ from provisioningserver.import_images.boot_image_mapping import (
 from provisioningserver.import_images.helpers import ImageSpec
 from provisioningserver.logger import get_maas_logger
 
-
 maaslog = get_maas_logger("tftp")
 
 

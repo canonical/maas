@@ -5,9 +5,10 @@
 
 __all__ = []
 
+from testtools.matchers import Equals, HasLength
+
 from maasserver.models.rbacsync import RBACSync
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Equals, HasLength
 
 
 class TestRBACSync(MAASServerTestCase):

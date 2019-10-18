@@ -12,6 +12,7 @@ import unittest
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import CommandError
+
 from maasserver.management.commands import configauth
 from maasserver.models import Config
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync

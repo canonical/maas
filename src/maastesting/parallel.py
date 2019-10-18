@@ -18,9 +18,10 @@ import threading
 import unittest
 
 import junitxml
-from maastesting.utils import content_from_file
 import subunit
 import testtools
+
+from maastesting.utils import content_from_file
 
 
 class TestScriptBase(metaclass=abc.ABCMeta):

@@ -9,6 +9,8 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.urls import reverse
+import yaml
+
 from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import NODE_STATUS, POWER_STATE, PRESEED_TYPE
@@ -23,7 +25,6 @@ from provisioningserver.rpc.exceptions import (
     NoSuchOperatingSystem,
 )
 from provisioningserver.utils.url import compose_URL
-import yaml
 
 # Default port for RSYSLOG
 RSYSLOG_PORT = 5247

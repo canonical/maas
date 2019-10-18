@@ -5,13 +5,14 @@
 
 __all__ = []
 
+from testtools.matchers import MatchesStructure
+
 from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.iprange import IPRangeHandler
-from testtools.matchers import MatchesStructure
 
 
 class TestIPRangeHandler(MAASServerTestCase):

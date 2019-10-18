@@ -10,12 +10,12 @@ import os
 import re
 import shutil
 
+import tempita
+
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import atomic_copy, atomic_symlink
-import tempita
-
 
 maaslog = get_maas_logger("pxe")
 

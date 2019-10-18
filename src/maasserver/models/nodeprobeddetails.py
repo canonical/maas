@@ -15,6 +15,7 @@ __all__ = [
 import base64
 
 from django.db import connection
+
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,

@@ -7,7 +7,6 @@ __all__ = ["field_type"]
 
 from django import template
 
-
 register = template.Library()
 
 

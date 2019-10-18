@@ -15,10 +15,11 @@ import urllib.parse
 import urllib.request
 import uuid
 
+import oauth.oauth as oauth
+
 from apiclient.encode_json import encode_json_data
 from apiclient.multipart import encode_multipart_data
 from apiclient.utils import urlencode
-import oauth.oauth as oauth
 
 
 class MAASOAuth:

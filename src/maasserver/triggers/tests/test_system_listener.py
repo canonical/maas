@@ -12,6 +12,15 @@ import random
 
 from crochet import wait_for
 from django.db import connection as db_connection
+from netaddr import IPAddress
+from testtools import ExpectedException
+from testtools.matchers import Equals
+from twisted.internet.defer import (
+    CancelledError,
+    DeferredList,
+    inlineCallbacks,
+)
+
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -38,16 +47,7 @@ from maasserver.triggers.testing import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import IPAddress
 from provisioningserver.utils.twisted import DeferredValue
-from testtools import ExpectedException
-from testtools.matchers import Equals
-from twisted.internet.defer import (
-    CancelledError,
-    DeferredList,
-    inlineCallbacks,
-)
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

@@ -18,16 +18,16 @@ from django.db.models import (
     PROTECT,
     QuerySet,
 )
+import netaddr
+from netaddr import AddrFormatError, IPAddress, IPNetwork
+
 from maasserver.enum import IPRANGE_TYPE, IPRANGE_TYPE_CHOICES
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin, transactional
-import netaddr
-from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_iprange
-
 
 maaslog = get_maas_logger("iprange")
 

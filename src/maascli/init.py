@@ -10,8 +10,9 @@ import subprocess
 import sys
 from textwrap import dedent
 
-from maascli.configfile import MAASConfiguration
 from macaroonbakery import httpbakery
+
+from maascli.configfile import MAASConfiguration
 
 
 def deprecated_for(new_option):

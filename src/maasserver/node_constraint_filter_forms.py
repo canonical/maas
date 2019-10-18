@@ -14,14 +14,16 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Model, Q
 from django.forms.fields import Field
+from netaddr import IPAddress
+
 from maasserver.enum import NODE_STATUS, NODE_STATUS_SHORT_LABEL_CHOICES
 from maasserver.fields import mac_validator, MODEL_NAME_VALIDATOR
+import maasserver.forms as maasserver_forms
 from maasserver.forms import (
     MultipleChoiceField,
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
 )
-import maasserver.forms as maasserver_forms
 from maasserver.models import (
     BlockDevice,
     Filesystem,
@@ -35,7 +37,6 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.utils.forms import set_form_error
-from netaddr import IPAddress
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 # Matches the storage constraint from Juju. Format is an optional label,

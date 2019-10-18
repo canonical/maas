@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 
 from django.conf import settings
+
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse

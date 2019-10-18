@@ -10,6 +10,8 @@ import json
 import random
 from unittest.mock import ANY
 
+from testtools.matchers import Equals
+
 from maasserver.forms import dhcpsnippet
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.api import APITestCase
@@ -17,7 +19,6 @@ from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from provisioningserver.events import AUDIT
-from testtools.matchers import Equals
 
 
 class TestDHCPSnippetAPI(APITestCase.ForUser):

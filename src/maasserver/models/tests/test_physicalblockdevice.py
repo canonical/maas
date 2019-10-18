@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
+
 from maasserver.models import PhysicalBlockDevice
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.factory import factory

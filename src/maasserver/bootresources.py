@@ -26,6 +26,15 @@ from django.db import connection, connections
 from django.db.utils import load_backend
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from simplestreams import util as sutil
+from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
+from simplestreams.objectstores import ObjectStore
+from twisted.application.internet import TimerService
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
+from twisted.protocols.amp import UnhandledCommand
+from twisted.python.failure import Failure
+
 from maasserver import locks
 from maasserver.bootsources import (
     cache_boot_sources,
@@ -94,15 +103,6 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from provisioningserver.utils.version import get_maas_version_tuple
-from simplestreams import util as sutil
-from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
-from simplestreams.objectstores import ObjectStore
-from twisted.application.internet import TimerService
-from twisted.internet import reactor
-from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
-from twisted.protocols.amp import UnhandledCommand
-from twisted.python.failure import Failure
-
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()

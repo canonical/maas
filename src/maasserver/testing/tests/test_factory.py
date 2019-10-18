@@ -7,10 +7,11 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Contains, ContainsDict, Equals
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Contains, ContainsDict, Equals
 
 
 class TestFactory(MAASServerTestCase):

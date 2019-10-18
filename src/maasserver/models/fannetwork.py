@@ -14,12 +14,12 @@ from django.db.models import (
     PositiveIntegerField,
 )
 from django.shortcuts import get_object_or_404
+from netaddr import IPNetwork
+
 from maasserver import DefaultMeta
 from maasserver.fields import IPv4CIDRField, MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from netaddr import IPNetwork
-
 
 FANNETWORK_BRIDGE_VALIDATOR = RegexValidator(r"^[\w\-_]+$")
 

@@ -7,6 +7,8 @@ __all__ = []
 
 import random
 
+from testtools import ExpectedException
+
 from maasserver.forms.settings import CONFIG_ITEMS, get_config_field
 from maasserver.models.config import Config, get_default_config
 from maasserver.testing.factory import factory
@@ -18,7 +20,6 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.config import ConfigHandler
-from testtools import ExpectedException
 
 
 class TestConfigHandler(MAASServerTestCase):

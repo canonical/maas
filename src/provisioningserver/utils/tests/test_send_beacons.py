@@ -9,14 +9,15 @@ from argparse import ArgumentParser
 import io
 from unittest.mock import ANY, Mock
 
+from testtools.matchers import MatchesStructure
+from twisted import internet
+from twisted.internet.task import Clock
+
 from maastesting.matchers import Matches, MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import send_beacons as send_beacons_module
 from provisioningserver.utils.send_beacons import add_arguments, run
-from testtools.matchers import MatchesStructure
-from twisted import internet
-from twisted.internet.task import Clock
 
 
 def ArgumentsMatching(**kwargs):

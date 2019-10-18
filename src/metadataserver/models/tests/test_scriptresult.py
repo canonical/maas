@@ -8,6 +8,8 @@ import random
 from unittest.mock import MagicMock
 
 from django.core.exceptions import ValidationError
+import yaml
+
 from maasserver.enum import NODE_TYPE
 from maasserver.models import Event, EventType
 from maasserver.testing.factory import factory
@@ -23,12 +25,9 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models import (
-    ScriptResult,
-    scriptresult as scriptresult_module,
-)
+from metadataserver.models import ScriptResult
+from metadataserver.models import scriptresult as scriptresult_module
 from provisioningserver.events import EVENT_TYPES
-import yaml
 
 
 class TestScriptResult(MAASServerTestCase):

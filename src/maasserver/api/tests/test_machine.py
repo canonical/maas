@@ -14,8 +14,19 @@ from unittest.mock import ANY, call
 from django.conf import settings
 from django.db import transaction
 from django.utils.http import urlencode
+from netaddr import IPNetwork
+from testtools.matchers import (
+    ContainsDict,
+    MatchesListwise,
+    MatchesStructure,
+    StartsWith,
+)
+from twisted.internet import defer
+import yaml
+
 from maasserver import forms
-from maasserver.api import auth, machines as machines_module
+from maasserver.api import auth
+from maasserver.api import machines as machines_module
 from maasserver.enum import (
     BRIDGE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
@@ -30,15 +41,9 @@ from maasserver.enum import (
     POWER_STATE,
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
-from maasserver.models import (
-    Config,
-    Domain,
-    Filesystem,
-    Machine,
-    Node,
-    node as node_module,
-    StaticIPAddress,
-)
+from maasserver.models import Config, Domain, Filesystem, Machine, Node
+from maasserver.models import node as node_module
+from maasserver.models import StaticIPAddress
 from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.signals.testing import SignalsDisabled
@@ -73,17 +78,8 @@ from maastesting.matchers import (
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import NodeKey, NodeUserData
 from metadataserver.nodeinituser import get_node_init_user
-from netaddr import IPNetwork
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.enum import map_enum
-from testtools.matchers import (
-    ContainsDict,
-    MatchesListwise,
-    MatchesStructure,
-    StartsWith,
-)
-from twisted.internet import defer
-import yaml
 
 
 class MachineAnonAPITest(MAASServerTestCase):

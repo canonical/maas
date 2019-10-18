@@ -23,7 +23,6 @@ import traceback
 
 from provisioningserver.path import get_data_path
 
-
 _profile = None
 
 

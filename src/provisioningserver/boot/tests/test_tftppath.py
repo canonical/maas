@@ -9,6 +9,9 @@ import errno
 import os.path
 from unittest.mock import Mock
 
+from testtools.matchers import Not, StartsWith
+from testtools.testcase import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import tftppath
@@ -41,8 +44,6 @@ from provisioningserver.testing.boot_images import (
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.os import make_osystem
-from testtools.matchers import Not, StartsWith
-from testtools.testcase import ExpectedException
 
 
 class TestTFTPPath(MAASTestCase):

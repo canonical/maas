@@ -9,6 +9,9 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
+from testtools.matchers import MatchesStructure
+from testtools.testcase import ExpectedException
+
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.interface import PhysicalInterface, VLANInterface
 from maasserver.models.notification import Notification
@@ -16,8 +19,6 @@ from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import MatchesStructure
-from testtools.testcase import ExpectedException
 
 
 class TestVLANManager(MAASServerTestCase):

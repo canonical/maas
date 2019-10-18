@@ -14,8 +14,8 @@ import socket
 from string import ascii_lowercase, ascii_uppercase, digits
 
 import OpenSSL
-from provisioningserver.utils.fs import atomic_write, read_text_file
 
+from provisioningserver.utils.fs import atomic_write, read_text_file
 
 logger = logging.getLogger(__name__)
 

@@ -10,6 +10,8 @@ __all__ = []
 import json
 from random import choice
 
+from twisted.internet import defer
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -22,7 +24,6 @@ from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 import provisioningserver.rpc.utils
 from provisioningserver.rpc.utils import commission_node, create_node
 import provisioningserver.utils
-from twisted.internet import defer
 
 
 class TestCreateNode(MAASTestCase):

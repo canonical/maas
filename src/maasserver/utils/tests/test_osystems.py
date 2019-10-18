@@ -10,6 +10,7 @@ import random
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
+
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,

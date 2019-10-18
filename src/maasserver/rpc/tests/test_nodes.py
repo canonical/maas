@@ -13,6 +13,16 @@ from random import randint
 from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    GreaterThan,
+    HasLength,
+    Is,
+    LessThan,
+    Not,
+)
+
 from maasserver import ntp
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, NODE_TYPE, POWER_STATE
 from maasserver.models.node import Node
@@ -48,15 +58,6 @@ from provisioningserver.rpc.exceptions import (
     NodeStateViolation,
     NoSuchCluster,
     NoSuchNode,
-)
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    GreaterThan,
-    HasLength,
-    Is,
-    LessThan,
-    Not,
 )
 
 

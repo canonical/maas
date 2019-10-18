@@ -9,6 +9,10 @@ import random
 from unittest.mock import sentinel
 
 from crochet import wait_for
+from testtools.matchers import MatchesStructure
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.task import Clock
+
 from maasserver import proxyconfig
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.node import RegionController
@@ -28,10 +32,6 @@ from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
     ServiceState,
 )
-from testtools.matchers import MatchesStructure
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.internet.task import Clock
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

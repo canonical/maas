@@ -12,6 +12,11 @@ from io import BytesIO
 import os
 from typing import Dict
 
+import tempita
+from tftp.backend import IReader
+from twisted.internet.defer import inlineCallbacks, returnValue
+from zope.interface import implementer
+
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import compose_kernel_command_line
@@ -26,11 +31,6 @@ from provisioningserver.utils.network import (
 )
 from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.twisted import asynchronous
-import tempita
-from tftp.backend import IReader
-from twisted.internet.defer import inlineCallbacks, returnValue
-from zope.interface import implementer
-
 
 maaslog = get_maas_logger("bootloaders")
 
@@ -429,22 +429,27 @@ class BootMethodRegistry(Registry):
 
 
 # Import the supported boot methods after defining BootMethod.
-from provisioningserver.boot.ipxe import IPXEBootMethod  # noqa: E402
-from provisioningserver.boot.pxe import PXEBootMethod  # noqa: E402
-from provisioningserver.boot.uefi_amd64 import (
+from provisioningserver.boot.ipxe import IPXEBootMethod  # noqa:E402 isort:skip
+from provisioningserver.boot.open_firmware_ppc64el import (  # noqa:E402 isort:skip
+    OpenFirmwarePPC64ELBootMethod,
+)
+from provisioningserver.boot.powernv import (  # noqa:E402 isort:skip
+    PowerNVBootMethod,
+)
+from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
+from provisioningserver.boot.s390x import (  # noqa:E402 isort:skip
+    S390XBootMethod,
+)
+from provisioningserver.boot.uefi_amd64 import (  # noqa:E402 isort:skip
     UEFIAMD64BootMethod,
     UEFIAMD64HTTPBootMethod,
-)  # noqa: E402
-from provisioningserver.boot.uefi_arm64 import (
+)
+from provisioningserver.boot.uefi_arm64 import (  # noqa:E402 isort:skip
     UEFIARM64BootMethod,
-)  # noqa: E402
-from provisioningserver.boot.open_firmware_ppc64el import (
-    OpenFirmwarePPC64ELBootMethod,
-)  # noqa: E402
-from provisioningserver.boot.powernv import PowerNVBootMethod  # noqa: E402
-from provisioningserver.boot.windows import WindowsPXEBootMethod  # noqa: E402
-from provisioningserver.boot.s390x import S390XBootMethod  # noqa: E402
-
+)
+from provisioningserver.boot.windows import (  # noqa:E402 isort:skip
+    WindowsPXEBootMethod,
+)
 
 builtin_boot_methods = [
     IPXEBootMethod(),

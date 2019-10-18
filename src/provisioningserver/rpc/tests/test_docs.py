@@ -14,12 +14,13 @@ from inspect import getdoc
 from itertools import chain
 import re
 
+from testtools.matchers import Annotate, Contains, MatchesAll, MatchesRegex
+from twisted.protocols import amp
+
 from maastesting.testcase import MAASTestCase
 import provisioningserver.rpc.cluster
 import provisioningserver.rpc.common
 import provisioningserver.rpc.region
-from testtools.matchers import Annotate, Contains, MatchesAll, MatchesRegex
-from twisted.protocols import amp
 
 
 def get_commands(module):

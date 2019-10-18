@@ -10,6 +10,9 @@ import random
 import time
 
 from django.utils import timezone
+from netaddr import IPAddress
+from testtools.matchers import Contains, Equals, MatchesStructure, Not
+
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.models import DNSResource
 from maasserver.models.interface import UnknownInterface
@@ -18,8 +21,6 @@ from maasserver.rpc.leases import LeaseUpdateError, update_lease
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
-from netaddr import IPAddress
-from testtools.matchers import Contains, Equals, MatchesStructure, Not
 
 
 class TestUpdateLease(MAASServerTestCase):

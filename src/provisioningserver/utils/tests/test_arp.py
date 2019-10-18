@@ -15,10 +15,13 @@ from textwrap import dedent
 import time
 from unittest.mock import Mock
 
+from netaddr import EUI, IPAddress
+from testtools.matchers import Equals, HasLength
+from testtools.testcase import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from netaddr import EUI, IPAddress
 from provisioningserver.utils import arp as arp_module
 from provisioningserver.utils.arp import (
     add_arguments,
@@ -35,8 +38,6 @@ from provisioningserver.utils.network import (
     ipv4_to_bytes,
 )
 from provisioningserver.utils.script import ActionScriptError
-from testtools.matchers import Equals, HasLength
-from testtools.testcase import ExpectedException
 
 
 def make_arp_packet(

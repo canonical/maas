@@ -11,8 +11,8 @@ from typing import Iterable, Mapping, Sequence, TypeVar
 
 from django.db import connection
 from netaddr import IPAddress
-from provisioningserver.utils import typed
 
+from provisioningserver.utils import typed
 
 Node = TypeVar("Node")
 

@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.core.exceptions import PermissionDenied, ValidationError
+
 from maasserver.models.staticroute import StaticRoute
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory

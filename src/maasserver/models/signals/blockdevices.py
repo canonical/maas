@@ -6,13 +6,13 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_delete, post_save
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.utils.signals import SignalsManager
-
 
 signals = SignalsManager()
 

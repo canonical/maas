@@ -10,13 +10,14 @@ from random import randint
 from subprocess import CalledProcessError
 import types
 
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import script as script_module
 from provisioningserver.utils.script import ActionScript, ActionScriptError
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
 
 
 class TestActionScript(MAASTestCase):

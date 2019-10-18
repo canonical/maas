@@ -14,6 +14,15 @@ from textwrap import dedent
 from unittest.mock import Mock, sentinel
 
 import httplib2
+from testtools.matchers import (
+    EndsWith,
+    Equals,
+    IsInstance,
+    MatchesAll,
+    MatchesListwise,
+    Not,
+)
+
 from maascli import api
 from maascli.actions.boot_resources_create import BootResourcesCreateAction
 from maascli.actions.sshkeys_import import SSHKeysImportAction
@@ -26,14 +35,6 @@ from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import (
-    EndsWith,
-    Equals,
-    IsInstance,
-    MatchesAll,
-    MatchesListwise,
-    Not,
-)
 
 
 class TestRegisterAPICommands(MAASTestCase):

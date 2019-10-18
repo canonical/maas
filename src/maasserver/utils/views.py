@@ -20,6 +20,13 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.template.response import SimpleTemplateResponse
 from django.utils.module_loading import import_string
+from piston3.authentication import initialize_server_request
+from piston3.models import Nonce
+from piston3.oauth import OAuthError
+from requests.structures import CaseInsensitiveDict
+from twisted.internet import reactor as clock
+from twisted.web import wsgi
+
 from maasserver.utils.django_urls import get_resolver
 from maasserver.utils.orm import (
     gen_retry_intervals,
@@ -28,14 +35,7 @@ from maasserver.utils.orm import (
     retry_context,
     RetryTransaction,
 )
-from piston3.authentication import initialize_server_request
-from piston3.models import Nonce
-from piston3.oauth import OAuthError
 from provisioningserver.utils.twisted import retries
-from requests.structures import CaseInsensitiveDict
-from twisted.internet import reactor as clock
-from twisted.web import wsgi
-
 
 logger = logging.getLogger(__name__)
 

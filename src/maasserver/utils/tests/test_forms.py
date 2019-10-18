@@ -6,10 +6,11 @@
 __all__ = []
 
 
+from testtools.matchers import ContainsAll
+
 from maasserver.testing.factory import factory
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import ContainsAll
 
 
 class TestComposeInvalidChoiceText(MAASTestCase):

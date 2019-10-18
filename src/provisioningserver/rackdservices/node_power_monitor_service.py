@@ -8,6 +8,10 @@ __all__ = ["NodePowerMonitorService"]
 
 from datetime import timedelta
 
+from twisted.application.internet import TimerService
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.error import ConnectionDone
+
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
@@ -16,10 +20,6 @@ from provisioningserver.rpc.exceptions import (
 )
 from provisioningserver.rpc.power import query_all_nodes
 from provisioningserver.rpc.region import ListNodePowerParameters
-from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.error import ConnectionDone
-
 
 maaslog = get_maas_logger("power_monitor_service")
 log = LegacyLogger()

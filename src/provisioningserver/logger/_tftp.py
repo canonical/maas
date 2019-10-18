@@ -5,10 +5,11 @@
 
 __all__ = ["configure_tftp_logging"]
 
+from twisted.logger import globalLogPublisher, LogLevel
+
 from provisioningserver.logger._common import LoggingMode
 from provisioningserver.logger._twisted import LegacyLogger
 from provisioningserver.utils import typed
-from twisted.logger import globalLogPublisher, LogLevel
 
 
 @typed

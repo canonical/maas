@@ -8,6 +8,8 @@ __all__ = []
 from unittest.mock import ANY
 
 from django.core.exceptions import ValidationError
+from twisted.internet import reactor
+
 from maasserver import populate_tags
 from maasserver.models import tag as tag_module
 from maasserver.models.tag import Tag
@@ -15,7 +17,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
-from twisted.internet import reactor
 
 
 class TagTest(MAASServerTestCase):

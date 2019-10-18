@@ -15,16 +15,17 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from apiclient.maas_client import MAASClient
 import bson
 from fixtures import FakeLogger
 from lxml import etree
+from testtools.matchers import DocTestMatches, Equals, MatchesStructure
+
+from apiclient.maas_client import MAASClient
 from maastesting.factory import factory
 from maastesting.matchers import IsCallable, MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver import tags
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from testtools.matchers import DocTestMatches, Equals, MatchesStructure
 
 
 class TestProcessResponse(MAASTestCase):

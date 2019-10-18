@@ -5,6 +5,9 @@
 
 __all__ = []
 
+from testscenarios import multiply_scenarios
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
@@ -19,8 +22,6 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
-from testscenarios import multiply_scenarios
-from testtools.matchers import ContainsDict, Equals
 
 
 class TestControllerHandler(MAASServerTestCase):

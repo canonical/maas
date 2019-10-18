@@ -9,6 +9,11 @@ __all__ = []
 
 import random
 
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is, IsInstance, Not
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import vmware
@@ -17,10 +22,6 @@ from provisioningserver.drivers.hardware.vmware import (
     VMwareVMNotFound,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, Not
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 class FakeVmomiVMSummaryConfig(object):

@@ -10,13 +10,13 @@ finished before stopping.
 
 __all__ = ["DatabaseTaskAlreadyRunning", "DatabaseTasksService"]
 
-from maasserver.utils.threads import deferToDatabase
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import asynchronous, FOREVER
 from twisted.application.service import Service
 from twisted.internet.defer import Deferred, DeferredQueue
 from twisted.internet.task import cooperate
 
+from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.twisted import asynchronous, FOREVER
 
 log = LegacyLogger()
 

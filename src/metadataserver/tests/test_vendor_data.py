@@ -7,6 +7,20 @@ __all__ = []
 
 import random
 
+from netaddr import IPAddress
+from testtools.matchers import (
+    Contains,
+    ContainsDict,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    KeysEqual,
+    MatchesDict,
+    Not,
+)
+import yaml
+
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Config, NodeMetadata
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
@@ -22,20 +36,7 @@ from metadataserver.vendor_data import (
     generate_system_info,
     get_vendor_data,
 )
-from netaddr import IPAddress
 from provisioningserver.utils import version
-from testtools.matchers import (
-    Contains,
-    ContainsDict,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    KeysEqual,
-    MatchesDict,
-    Not,
-)
-import yaml
 
 
 class TestGetVendorData(MAASServerTestCase):

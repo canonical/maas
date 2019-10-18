@@ -9,13 +9,14 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
+from netaddr import IPNetwork
+from testtools import ExpectedException
+
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.models import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from netaddr import IPNetwork
-from testtools import ExpectedException
 
 
 def make_plain_subnet():

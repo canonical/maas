@@ -14,6 +14,22 @@ HyBi-07 (http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-07),
 which are drafts of RFC 6455.
 """
 
+from testtools.matchers import StartsWith
+from twisted.internet.address import IPv6Address
+from twisted.internet.protocol import Factory, Protocol
+from twisted.protocols.tls import TLSMemoryBIOProtocol
+from twisted.test.proto_helpers import (
+    AccumulatingProtocol,
+    StringTransportWithDisconnection,
+)
+from twisted.web.http_headers import Headers
+from twisted.web.resource import IResource, Resource
+from twisted.web.server import NOT_DONE_YET, Request
+from twisted.web.test.test_web import DummyChannel
+from twisted.web.test.test_web import DummyRequest as DummyRequestBase
+from zope.interface import implementer
+from zope.interface.verify import verifyObject
+
 from maasserver.websockets.websockets import (
     _makeAccept,
     _makeFrame,
@@ -31,23 +47,6 @@ from maasserver.websockets.websockets import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from testtools.matchers import StartsWith
-from twisted.internet.address import IPv6Address
-from twisted.internet.protocol import Factory, Protocol
-from twisted.protocols.tls import TLSMemoryBIOProtocol
-from twisted.test.proto_helpers import (
-    AccumulatingProtocol,
-    StringTransportWithDisconnection,
-)
-from twisted.web.http_headers import Headers
-from twisted.web.resource import IResource, Resource
-from twisted.web.server import NOT_DONE_YET, Request
-from twisted.web.test.test_web import (
-    DummyChannel,
-    DummyRequest as DummyRequestBase,
-)
-from zope.interface import implementer
-from zope.interface.verify import verifyObject
 
 
 class DummyRequest(DummyRequestBase):

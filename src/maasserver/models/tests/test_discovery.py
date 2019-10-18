@@ -5,13 +5,11 @@
 
 __all__ = []
 
-from maasserver.models import (
-    Discovery,
-    discovery as discovery_module,
-    MDNS,
-    Neighbour,
-    RDNS,
-)
+from testtools.matchers import Equals, Is
+
+from maasserver.models import Discovery
+from maasserver.models import discovery as discovery_module
+from maasserver.models import MDNS, Neighbour, RDNS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
@@ -21,7 +19,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from testtools.matchers import Equals, Is
 
 
 class TestDiscoveryModel(MAASServerTestCase):

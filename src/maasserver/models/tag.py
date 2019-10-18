@@ -10,12 +10,13 @@ from django.core.validators import RegexValidator
 from django.db.models import CharField, Manager, TextField
 from django.shortcuts import get_object_or_404
 from lxml import etree
+from twisted.internet import reactor
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import post_commit_do
 from maasserver.utils.threads import deferToDatabase
-from twisted.internet import reactor
 
 
 class TagManager(Manager):

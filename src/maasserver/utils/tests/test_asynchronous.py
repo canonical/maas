@@ -12,18 +12,6 @@ from time import time
 from unittest.mock import call, Mock, sentinel
 
 from crochet import wait_for
-from maasserver.exceptions import IteratorReusedError
-from maasserver.testing.orm import PostCommitHooksTestMixin
-from maasserver.utils import asynchronous
-from maasserver.utils.asynchronous import DeferredHooks
-from maastesting.factory import factory
-from maastesting.matchers import (
-    IsFiredDeferred,
-    IsUnfiredDeferred,
-    MockCallsMatch,
-)
-from maastesting.testcase import MAASTestCase
-from maastesting.twisted import extract_result, TwistedLoggerFixture
 from testtools.matchers import (
     Contains,
     Equals,
@@ -38,6 +26,19 @@ from twisted.internet.defer import Deferred
 from twisted.internet.task import deferLater
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
+
+from maasserver.exceptions import IteratorReusedError
+from maasserver.testing.orm import PostCommitHooksTestMixin
+from maasserver.utils import asynchronous
+from maasserver.utils.asynchronous import DeferredHooks
+from maastesting.factory import factory
+from maastesting.matchers import (
+    IsFiredDeferred,
+    IsUnfiredDeferred,
+    MockCallsMatch,
+)
+from maastesting.testcase import MAASTestCase
+from maastesting.twisted import extract_result, TwistedLoggerFixture
 
 
 class TestGather(MAASTestCase):

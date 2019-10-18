@@ -13,23 +13,22 @@ import string
 from unittest.mock import ANY, Mock
 
 from django.conf import settings
+from piston3.doc import generate_doc
+from requests.exceptions import RequestException
+from testtools.matchers import Contains, Equals, MatchesListwise
+
 from maasserver import urls_api as urlconf
-from maasserver.api import (
-    account as account_module,
-    machines as machines_module,
-    nodes as nodes_module,
-)
+from maasserver.api import account as account_module
+from maasserver.api import machines as machines_module
+from maasserver.api import nodes as nodes_module
 from maasserver.api.doc import find_api_resources
 from maasserver.api.nodes import store_node_power_parameters
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import ClusterUnavailable, MAASAPIBadRequest
 from maasserver.forms.settings import INVALID_SETTING_MSG_TEMPLATE
-from maasserver.models import (
-    Config,
-    KeySource,
-    keysource as keysource_module,
-    SSHKey,
-)
+from maasserver.models import Config, KeySource
+from maasserver.models import keysource as keysource_module
+from maasserver.models import SSHKey
 from maasserver.models.event import Event
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
@@ -49,10 +48,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from piston3.doc import generate_doc
 from provisioningserver.events import AUDIT
-from requests.exceptions import RequestException
-from testtools.matchers import Contains, Equals, MatchesListwise
 
 
 class TestResourceURIs(MAASTestCase):

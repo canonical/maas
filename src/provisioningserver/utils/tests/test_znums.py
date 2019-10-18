@@ -7,9 +7,10 @@ __all__ = []
 
 from hypothesis import given
 from hypothesis.strategies import integers
+from testtools.matchers import Equals
+
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.znums import from_int, to_int
-from testtools.matchers import Equals
 
 
 class TestZNumbers(MAASTestCase):

@@ -29,7 +29,6 @@ from snippets.maas_wipe import (
     zero_disk,
 )
 
-
 HDPARM_BEFORE_SECURITY = b"""\
 /dev/sda:
 

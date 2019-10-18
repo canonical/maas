@@ -16,10 +16,11 @@ from django.db.models import (
     OneToOneField,
 )
 from django.shortcuts import get_object_or_404
+from piston3.models import Token
+
 from maasserver import DefaultMeta
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models.cleansave import CleanSave
-from piston3.models import Token
 
 
 class UserProfileManager(Manager):

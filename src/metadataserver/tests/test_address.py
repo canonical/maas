@@ -9,10 +9,11 @@ import random
 from socket import gethostname
 from unittest import skip
 
+from testtools.matchers import MatchesRegex
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from metadataserver import address
-from testtools.matchers import MatchesRegex
 
 
 def parse_locale_lines(output):

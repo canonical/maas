@@ -25,7 +25,6 @@ from provisioningserver.utils.services import (
     interface_info_to_beacon_remote_payload,
 )
 
-
 log = LegacyLogger()
 
 

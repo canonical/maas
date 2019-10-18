@@ -22,8 +22,9 @@ import os
 from pipes import quote
 from typing import Tuple
 
-from provisioningserver.utils import snappy
 import tempita
+
+from provisioningserver.utils import snappy
 
 # Use typecheck-decorator if it's available.
 try:

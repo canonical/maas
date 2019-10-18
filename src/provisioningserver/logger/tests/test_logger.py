@@ -9,6 +9,8 @@ import pathlib
 import subprocess
 import sys
 
+from testtools.content import text_content
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
@@ -16,8 +18,6 @@ from provisioningserver.logger import LoggingMode
 from provisioningserver.logger.testing import find_log_lines
 from provisioningserver.utils import typed
 from provisioningserver.utils.shell import get_env_with_locale
-from testtools.content import text_content
-
 
 here = pathlib.Path(__file__).parent
 

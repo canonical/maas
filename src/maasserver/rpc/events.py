@@ -12,7 +12,6 @@ from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.utils.twisted import synchronous
 
-
 log = LegacyLogger()
 
 

@@ -7,15 +7,16 @@ __all__ = ["api_auth"]
 
 from operator import xor
 
+from piston3.authentication import OAuthAuthentication, send_oauth_error
+from piston3.oauth import OAuthError
+from piston3.utils import rc
+
 from maasserver.exceptions import Unauthorized
 from maasserver.macaroon_auth import (
     MacaroonAPIAuthentication,
     validate_user_external_auth,
 )
 from maasserver.models.user import SYSTEM_USERS
-from piston3.authentication import OAuthAuthentication, send_oauth_error
-from piston3.oauth import OAuthError
-from piston3.utils import rc
 
 
 class OAuthUnauthorized(Unauthorized):

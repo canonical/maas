@@ -17,6 +17,12 @@ from warnings import warn
 
 from crochet import run_in_reactor
 import fixtures
+from testtools.monkey import MonkeyPatcher, patch
+from twisted.internet import defer, endpoints, reactor
+from twisted.internet.protocol import Factory
+from twisted.test import iosim
+from zope.interface import implementer
+
 from maasserver import eventloop, security
 from maasserver.models.node import RackController
 from maasserver.rpc import getClientFor, rackcontrollers
@@ -33,11 +39,6 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.security import calculate_digest
 from provisioningserver.utils.twisted import asynchronous, synchronous
-from testtools.monkey import MonkeyPatcher, patch
-from twisted.internet import defer, endpoints, reactor
-from twisted.internet.protocol import Factory
-from twisted.test import iosim
-from zope.interface import implementer
 
 
 @run_in_reactor

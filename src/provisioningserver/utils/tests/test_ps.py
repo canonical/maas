@@ -21,7 +21,6 @@ from provisioningserver.utils.ps import (
 )
 from provisioningserver.utils.shell import ExternalProcessError
 
-
 NOT_IN_CONTAINER = dedent(
     """\
     11:freezer:/

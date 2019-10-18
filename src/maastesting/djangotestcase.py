@@ -11,6 +11,7 @@ from django.core.signals import request_started
 from django.db import connection, connections, DEFAULT_DB_ALIAS, reset_queries
 from django.http.response import HttpResponseBase
 import django.test
+
 from maastesting.djangoclient import SensibleClient
 from maastesting.testcase import MAASTestCase
 

@@ -11,6 +11,8 @@ import http.client
 import json
 import random
 
+from testtools.matchers import ContainsAll
+
 from maasserver.models import Event, VersionedTextFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -25,7 +27,6 @@ from metadataserver.enum import (
 )
 from metadataserver.models import Script
 from provisioningserver.events import AUDIT
-from testtools.matchers import ContainsAll
 
 
 class TestScriptsAPI(APITestCase.ForUser):

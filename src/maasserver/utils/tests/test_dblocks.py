@@ -10,13 +10,14 @@ from random import randrange
 import sys
 
 from django.db import connection, reset_queries, transaction
+from testtools.matchers import Equals
+
 from maasserver.testing.dblocks import lock_held_in_other_thread
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils import dblocks
-from testtools.matchers import Equals
 
 # Use "high" objid numbers to avoid conflicts with predeclared locks.
 objid_min = 2 << 10

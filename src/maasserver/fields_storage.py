@@ -10,8 +10,8 @@ import re
 
 from django import forms
 from django.core.validators import MaxValueValidator, MinValueValidator
-from maasserver.utils.converters import machine_readable_bytes
 
+from maasserver.utils.converters import machine_readable_bytes
 
 PERCENTAGE_REGEX = r"\d+(\.\d*)?%"
 BYTES_REGEX = r"-?[0-9]+([KkMmGgTtPpEe]{1})?"

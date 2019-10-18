@@ -11,6 +11,8 @@ import os
 import shutil
 import textwrap
 
+from testtools.matchers import Contains, FileContains, Not
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns.commands.edit_named_options import (
@@ -19,8 +21,6 @@ from provisioningserver.dns.commands.edit_named_options import (
 )
 from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 from provisioningserver.utils.isc import make_isc_string, read_isc_file
-from testtools.matchers import Contains, FileContains, Not
-
 
 OPTIONS_FILE = textwrap.dedent(
     """\

@@ -33,7 +33,6 @@ from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import snappy
 
-
 maaslog = get_maas_logger("rack_upgrade")
 
 

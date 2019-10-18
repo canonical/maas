@@ -13,6 +13,8 @@ __all__ = [
 import functools
 
 from django.contrib.auth.models import AnonymousUser
+from testscenarios import multiply_scenarios
+
 from maasserver.models import Config
 from maasserver.models.user import create_auth_token
 from maasserver.testing.factory import factory
@@ -27,7 +29,6 @@ from maasserver.testing.testclient import (
 from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase, MAASTestType
-from testscenarios import multiply_scenarios
 
 
 def merge_scenarios(*scenario_lists):

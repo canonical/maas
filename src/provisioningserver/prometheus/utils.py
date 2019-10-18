@@ -4,9 +4,10 @@ import os
 import re
 from time import time
 
+from twisted.internet.defer import Deferred
+
 from provisioningserver.prometheus import prom_cli, PROMETHEUS_SUPPORTED
 from provisioningserver.utils.ps import is_pid_running
-from twisted.internet.defer import Deferred
 
 
 class MetricDefinition:

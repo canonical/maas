@@ -12,6 +12,8 @@ import re
 import subprocess
 from unittest.mock import call
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     HasLength,
@@ -42,7 +44,6 @@ from snippets.maas_ipmi_autodetect import (
     set_ipmi_lan_channel_settings,
     verify_ipmi_user_settings,
 )
-from testtools.matchers import Equals
 
 
 class TestRunCommand(MAASTestCase):

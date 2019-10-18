@@ -9,7 +9,6 @@ import re
 
 from provisioningserver.logger import LegacyLogger
 
-
 log = LegacyLogger()
 
 # The keys in this dictionary match what is understood by ifupdown, via the

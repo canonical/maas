@@ -8,6 +8,8 @@ __all__ = []
 from math import ceil
 import random
 
+from testtools.matchers import MatchesStructure
+
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
@@ -46,8 +48,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
 from maastesting.matchers import MockCalledOnceWith
-from testtools.matchers import MatchesStructure
-
 
 LARGE_BLOCK_DEVICE = 100 * 1024 * 1024 * 1024  # 100 GiB
 

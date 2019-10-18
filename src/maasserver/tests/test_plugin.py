@@ -13,6 +13,11 @@ import crochet
 from django.db import connections
 from django.db.backends.base.base import BaseDatabaseWrapper
 from fixtures import EnvironmentVariableFixture
+from testtools import monkey
+from testtools.matchers import IsInstance
+from twisted.application.service import MultiService
+from twisted.internet import reactor
+
 from maasserver import eventloop
 from maasserver.plugin import (
     Options,
@@ -30,10 +35,6 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
 from provisioningserver.utils.twisted import asynchronous, ThreadPool
-from testtools import monkey
-from testtools.matchers import IsInstance
-from twisted.application.service import MultiService
-from twisted.internet import reactor
 
 
 def import_websocket_handlers():

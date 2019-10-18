@@ -19,6 +19,7 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -27,7 +28,6 @@ from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
-
 
 CNAME_LABEL = r"[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}"
 CNAME_SPEC = r"^(%s\.)*%s\.?$" % (CNAME_LABEL, CNAME_LABEL)

@@ -9,10 +9,11 @@ import os
 from pathlib import Path
 
 from fixtures import EnvironmentVariable
+import yaml
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import snappy
-import yaml
 
 
 class TestSnappyUtils(MAASTestCase):

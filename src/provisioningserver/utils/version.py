@@ -15,9 +15,9 @@ from functools import lru_cache
 import re
 
 import pkg_resources
+
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell, snappy
-
 
 maaslog = get_maas_logger("version")
 

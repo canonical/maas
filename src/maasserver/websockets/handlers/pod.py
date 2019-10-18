@@ -8,6 +8,7 @@ __all__ = ["PodHandler"]
 from functools import partial
 
 from django.http import HttpRequest
+
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import ComposeMachineForm, PodForm
@@ -28,7 +29,6 @@ from maasserver.websockets.handlers.timestampedmodel import (
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import asynchronous
-
 
 log = LegacyLogger()
 

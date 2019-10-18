@@ -12,6 +12,7 @@ from subprocess import PIPE, Popen
 from time import sleep
 
 from lxml import etree
+
 from provisioningserver.drivers import make_ip_extractor, make_setting_field
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
@@ -22,7 +23,6 @@ from provisioningserver.drivers.power import (
     PowerSettingError,
 )
 from provisioningserver.utils import shell, typed
-
 
 AMT_ERRORS = {
     "401 Unauthorized": {

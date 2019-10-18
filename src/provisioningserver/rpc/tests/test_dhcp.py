@@ -10,6 +10,10 @@ from operator import itemgetter
 from unittest.mock import ANY, call, Mock, sentinel
 
 from fixtures import FakeLogger
+from testtools import ExpectedException
+from testtools.matchers import MatchesStructure
+from twisted.internet.defer import inlineCallbacks
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -35,9 +39,6 @@ from provisioningserver.utils.service_monitor import (
     ServiceState,
 )
 from provisioningserver.utils.shell import ExternalProcessError
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
-from twisted.internet.defer import inlineCallbacks
 
 
 class TestDHCPState(MAASTestCase):

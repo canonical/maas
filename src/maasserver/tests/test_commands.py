@@ -9,10 +9,13 @@ import io
 from io import StringIO
 import random
 
-from apiclient.creds import convert_tuple_to_string
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from requests.exceptions import RequestException
+from testtools.matchers import AfterPreprocessing, HasLength, StartsWith
+
+from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
 from maasserver.models.config import Config
@@ -23,8 +26,6 @@ from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
-from requests.exceptions import RequestException
-from testtools.matchers import AfterPreprocessing, HasLength, StartsWith
 
 
 def assertCommandErrors(runner, command, *args, **kwargs):

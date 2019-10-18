@@ -6,5 +6,4 @@
 
 from . import main
 
-
 main()

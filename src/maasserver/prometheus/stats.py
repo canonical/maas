@@ -9,6 +9,8 @@ from datetime import timedelta
 import json
 
 from django.http import HttpResponse, HttpResponseNotFound
+from twisted.application.internet import TimerService
+
 from maasserver.models import Config
 from maasserver.stats import (
     get_kvm_pods_stats,
@@ -25,8 +27,6 @@ from provisioningserver.prometheus.utils import (
     MetricDefinition,
     PrometheusMetrics,
 )
-from twisted.application.internet import TimerService
-
 
 log = LegacyLogger()
 

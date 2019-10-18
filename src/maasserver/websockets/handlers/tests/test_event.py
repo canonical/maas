@@ -9,6 +9,8 @@ import datetime
 import random
 from unittest.mock import sentinel
 
+from testtools.matchers import Equals, Is
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
@@ -21,7 +23,6 @@ from maasserver.websockets.handlers.event import (
     EventHandler,
 )
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
-from testtools.matchers import Equals, Is
 
 
 class TestEventHandler(MAASServerTestCase):

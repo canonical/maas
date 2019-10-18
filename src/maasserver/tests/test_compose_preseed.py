@@ -8,6 +8,16 @@ __all__ = []
 import random
 
 from django.urls import reverse
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+    KeysEqual,
+    MatchesDict,
+    MatchesListwise,
+    StartsWith,
+)
+import yaml
+
 from maasserver.compose_preseed import (
     compose_enlistment_preseed,
     compose_preseed,
@@ -35,15 +45,6 @@ from provisioningserver.rpc.exceptions import (
     NoSuchOperatingSystem,
 )
 from provisioningserver.testing.os import make_osystem
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    KeysEqual,
-    MatchesDict,
-    MatchesListwise,
-    StartsWith,
-)
-import yaml
 
 
 class TestAptProxy(MAASServerTestCase):

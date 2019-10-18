@@ -15,6 +15,22 @@ from unittest.mock import ANY, sentinel
 from urllib.parse import urlparse
 
 from django.conf import settings
+from testtools.matchers import (
+    AllMatch,
+    Contains,
+    ContainsAll,
+    ContainsDict,
+    Equals,
+    HasLength,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    MatchesListwise,
+    Not,
+    StartsWith,
+)
+import yaml
+
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.compose_preseed import get_archive_config, make_clean_repo_name
@@ -75,21 +91,6 @@ from metadataserver.models import NodeKey
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
-from testtools.matchers import (
-    AllMatch,
-    Contains,
-    ContainsAll,
-    ContainsDict,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    Not,
-    StartsWith,
-)
-import yaml
 
 
 class BootImageHelperMixin:

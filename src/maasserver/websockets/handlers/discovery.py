@@ -17,7 +17,6 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.viewmodel import ViewModelHandler
 from provisioningserver.logger import get_maas_logger
 
-
 maaslog = get_maas_logger("websockets.discovery")
 
 

@@ -11,6 +11,8 @@ from urllib.parse import urlencode, urljoin
 
 from django.http import HttpRequest
 from django.test.client import RequestFactory
+from testtools.matchers import Contains, Equals, Not
+
 from maasserver.models import Config, RegionController
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -33,7 +35,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.testing import MAASIDFixture
 from provisioningserver.utils.version import get_maas_version_user_agent
-from testtools.matchers import Contains, Equals, Not
 
 
 class TestAbsoluteReverse(MAASServerTestCase):

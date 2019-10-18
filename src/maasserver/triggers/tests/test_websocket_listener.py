@@ -12,6 +12,15 @@ import random
 from unittest import skip
 
 from crochet import wait_for
+from netaddr import IPAddress
+from testtools import ExpectedException
+from twisted.internet.defer import (
+    CancelledError,
+    DeferredList,
+    DeferredQueue,
+    inlineCallbacks,
+)
+
 from maasserver.enum import (
     BMC_TYPE,
     IPADDRESS_TYPE,
@@ -38,7 +47,6 @@ from maasserver.triggers.websocket import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from netaddr import IPAddress
 from provisioningserver.utils.twisted import (
     asynchronous,
     DeferredValue,
@@ -46,14 +54,6 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     synchronous,
 )
-from testtools import ExpectedException
-from twisted.internet.defer import (
-    CancelledError,
-    DeferredList,
-    DeferredQueue,
-    inlineCallbacks,
-)
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

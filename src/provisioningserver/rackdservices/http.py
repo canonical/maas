@@ -12,16 +12,6 @@ import sys
 
 import attr
 from netaddr import IPAddress
-from provisioningserver import services
-from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.path import get_tentative_data_path
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.prometheus.resource import PrometheusMetricsResource
-from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils import load_template, snappy
-from provisioningserver.utils.fs import atomic_write
-from provisioningserver.utils.twisted import callOut
 from tftp.errors import AccessViolation, FileNotFound
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
@@ -33,6 +23,16 @@ from twisted.web import resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.static import NoRangeStaticProducer
 
+from provisioningserver import services
+from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.path import get_tentative_data_path
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.prometheus.resource import PrometheusMetricsResource
+from provisioningserver.service_monitor import service_monitor
+from provisioningserver.utils import load_template, snappy
+from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
 

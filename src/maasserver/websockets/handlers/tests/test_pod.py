@@ -9,6 +9,9 @@ import random
 from unittest.mock import MagicMock
 
 from crochet import wait_for
+from testtools.matchers import Equals
+from twisted.internet.defer import inlineCallbacks, succeed
+
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
 from maasserver.testing.factory import factory
@@ -23,9 +26,6 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
 )
-from testtools.matchers import Equals
-from twisted.internet.defer import inlineCallbacks, succeed
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

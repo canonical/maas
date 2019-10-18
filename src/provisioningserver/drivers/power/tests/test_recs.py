@@ -11,6 +11,11 @@ from textwrap import dedent
 from unittest.mock import call, Mock
 import urllib.parse
 
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -18,10 +23,8 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.drivers.power import (
-    PowerConnError,
-    recs as recs_module,
-)
+from provisioningserver.drivers.power import PowerConnError
+from provisioningserver.drivers.power import recs as recs_module
 from provisioningserver.drivers.power.recs import (
     extract_recs_parameters,
     probe_and_enlist_recs,
@@ -31,10 +34,6 @@ from provisioningserver.drivers.power.recs import (
 )
 from provisioningserver.utils.shell import has_command_available
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 class TestRECSPowerDriver(MAASTestCase):

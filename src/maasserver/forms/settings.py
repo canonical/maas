@@ -17,6 +17,7 @@ from socket import gethostname
 
 from django import forms
 from django.core.exceptions import ValidationError
+
 from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver.fields import (
     HostListFormField,
@@ -43,7 +44,6 @@ from maasserver.utils.osystems import (
 )
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.url import splithost
-
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
 

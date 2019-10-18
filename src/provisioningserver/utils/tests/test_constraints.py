@@ -5,14 +5,15 @@
 
 __all__ = []
 
+from testtools import ExpectedException
+from testtools.matchers import Equals, HasLength, Is
+
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.constraints import (
     LabeledConstraintMap,
     parse_labeled_constraint_map,
     validate_constraint_label_name,
 )
-from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength, Is
 
 
 class ConstraintTestException(Exception):

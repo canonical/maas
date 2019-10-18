@@ -8,6 +8,16 @@ __all__ = []
 import random
 from unittest.mock import call, Mock, sentinel
 
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Equals,
+    HasLength,
+    Is,
+    MatchesAll,
+)
+from twisted.python.reflect import namedObject
+
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -28,16 +38,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    HasLength,
-    Is,
-    MatchesAll,
-)
-from twisted.python.reflect import namedObject
-
 
 django_signal_names = [
     "pre_init",

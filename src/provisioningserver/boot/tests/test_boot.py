@@ -10,6 +10,10 @@ import os
 from unittest import mock
 from urllib.parse import urlparse
 
+import tempita
+from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.python import context
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -29,9 +33,6 @@ from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import atomic_symlink, tempdir
-import tempita
-from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.python import context
 
 
 class FakeBootMethod(BootMethod):

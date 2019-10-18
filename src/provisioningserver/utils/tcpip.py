@@ -11,6 +11,7 @@ import struct
 import time
 
 from netaddr import IPAddress
+
 from provisioningserver.utils.ethernet import Ethernet, ETHERTYPE
 
 # Definition for a decoded network packet.

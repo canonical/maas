@@ -8,13 +8,14 @@ __all__ = []
 import random
 
 from django.core.exceptions import PermissionDenied
+from testtools.matchers import MatchesStructure
+
 from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.staticroute import StaticRouteHandler
-from testtools.matchers import MatchesStructure
 
 
 class TestStaticRouteHandler(MAASServerTestCase):

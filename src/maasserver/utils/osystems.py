@@ -25,6 +25,7 @@ from operator import itemgetter
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import BootResource, BootSourceCache, Config
 from provisioningserver.drivers.osystem import OperatingSystemRegistry

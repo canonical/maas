@@ -15,6 +15,8 @@ import tempfile
 from textwrap import dedent
 from unittest.mock import sentinel
 
+from testtools.matchers import Contains, DirExists, Not
+
 from maastesting.factory import factory
 from maastesting.matchers import Equals, MockAnyCall
 from maastesting.testcase import MAASTestCase
@@ -25,7 +27,6 @@ from provisioningserver.refresh.maas_api_helper import (
 )
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.version import get_maas_version
-from testtools.matchers import Contains, DirExists, Not
 
 
 class TestHelpers(MAASTestCase):

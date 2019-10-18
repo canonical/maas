@@ -18,6 +18,8 @@ from django.contrib.messages import constants
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpResponse
 from fixtures import FakeLogger
+from testtools.matchers import Contains, Equals, Not
+
 from maasserver import middleware as middleware_module
 from maasserver.components import (
     get_persistent_error,
@@ -54,7 +56,6 @@ from provisioningserver.rpc.exceptions import (
     PowerActionAlreadyInProgress,
 )
 from provisioningserver.utils.shell import ExternalProcessError
-from testtools.matchers import Contains, Equals, Not
 
 
 class IsPublicPathTest(MAASServerTestCase):

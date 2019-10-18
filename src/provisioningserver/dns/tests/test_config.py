@@ -12,10 +12,28 @@ from textwrap import dedent
 from unittest.mock import Mock, sentinel
 
 from fixtures import EnvironmentVariable
+from netaddr import IPNetwork
+from testtools.matchers import (
+    AllMatch,
+    Contains,
+    ContainsAll,
+    EndsWith,
+    Equals,
+    FileContains,
+    FileExists,
+    Is,
+    IsInstance,
+    MatchesAll,
+    Not,
+    SamePath,
+    StartsWith,
+)
+from testtools.testcase import ExpectedException
+from twisted.python.filepath import FilePath
+
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import MAASTestCase
-from netaddr import IPNetwork
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
     compose_config_path,
@@ -47,24 +65,6 @@ from provisioningserver.dns.zoneconfig import (
 )
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.isc import read_isc_file
-from testtools.matchers import (
-    AllMatch,
-    Contains,
-    ContainsAll,
-    EndsWith,
-    Equals,
-    FileContains,
-    FileExists,
-    Is,
-    IsInstance,
-    MatchesAll,
-    Not,
-    SamePath,
-    StartsWith,
-)
-from testtools.testcase import ExpectedException
-from twisted.python.filepath import FilePath
-
 
 NAMED_CONF_OPTIONS_CONTENTS = dedent(
     """\

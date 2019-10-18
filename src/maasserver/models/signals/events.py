@@ -19,7 +19,6 @@ from maasserver.models.node import (
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 
-
 NODE_CLASSES = [
     Node,
     Machine,

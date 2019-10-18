@@ -15,6 +15,10 @@ import html
 import os
 from urllib.parse import urlparse
 
+from requests.exceptions import ConnectionError
+from simplestreams import util as sutil
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -42,10 +46,6 @@ from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh import get_architecture
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, FOREVER
-from requests.exceptions import ConnectionError
-from simplestreams import util as sutil
-from twisted.internet.defer import inlineCallbacks
-
 
 log = LegacyLogger()
 maaslog = get_maas_logger("bootsources")

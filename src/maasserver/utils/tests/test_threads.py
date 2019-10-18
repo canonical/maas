@@ -10,14 +10,14 @@ from unittest.mock import sentinel
 
 from crochet import wait_for
 from django.db import connection
-from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import orm, threads
-from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.twisted import ThreadPool, ThreadUnpool
 from testtools.matchers import Equals, Is, IsInstance
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredSemaphore, inlineCallbacks
 
+from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import orm, threads
+from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.twisted import ThreadPool, ThreadUnpool
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

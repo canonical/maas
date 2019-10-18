@@ -5,9 +5,10 @@
 
 __all__ = ["DummyClient", "DummyClients", "HandshakingRegionServer"]
 
+from twisted.internet.defer import succeed
+
 from maasserver.rpc.regionservice import RegionServer
 from maastesting.factory import factory
-from twisted.internet.defer import succeed
 
 
 class HandshakingRegionServer(RegionServer):

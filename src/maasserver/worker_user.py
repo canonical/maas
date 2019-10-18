@@ -10,7 +10,6 @@ __all__ = ["get_worker_user", "user_name"]
 
 from django.contrib.auth.models import User
 
-
 user_name = "MAAS"
 
 

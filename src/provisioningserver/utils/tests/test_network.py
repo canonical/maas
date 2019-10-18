@@ -13,6 +13,29 @@ from typing import List
 from unittest import mock
 from unittest.mock import Mock
 
+from netaddr import EUI, IPAddress, IPNetwork, IPRange
+import netifaces
+from netifaces import AF_INET, AF_INET6, AF_LINK
+from testtools import ExpectedException
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+    Equals,
+    HasLength,
+    Is,
+    MatchesDict,
+    MatchesSetwise,
+    Not,
+    StartsWith,
+)
+from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.names.error import (
+    AuthoritativeDomainError,
+    DNSQueryTimeoutError,
+    DomainError,
+    ResolverError,
+)
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsNonEmptyString,
@@ -22,9 +45,6 @@ from maastesting.matchers import (
 )
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
-from netaddr import EUI, IPAddress, IPNetwork, IPRange
-import netifaces
-from netifaces import AF_INET, AF_INET6, AF_LINK
 import provisioningserver.utils
 from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
@@ -73,25 +93,6 @@ from provisioningserver.utils.network import (
     reverseResolve,
 )
 from provisioningserver.utils.shell import get_env_with_locale
-from testtools import ExpectedException
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    Equals,
-    HasLength,
-    Is,
-    MatchesDict,
-    MatchesSetwise,
-    Not,
-    StartsWith,
-)
-from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.names.error import (
-    AuthoritativeDomainError,
-    DNSQueryTimeoutError,
-    DomainError,
-    ResolverError,
-)
 
 
 class TestMakeNetwork(MAASTestCase):

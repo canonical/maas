@@ -9,6 +9,9 @@ import random
 from unittest.mock import ANY
 
 from django.db import transaction
+from netaddr import IPNetwork
+from testtools.matchers import Equals
+
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.clusterrpc.utils import get_error_message_for_exception
@@ -27,6 +30,7 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeActionError
 from maasserver.models import Config, Event, signals, StaticIPAddress
 from maasserver.models.signals.testing import SignalsDisabled
+import maasserver.node_action as node_action_module
 from maasserver.node_action import (
     Abort,
     Acquire,
@@ -53,7 +57,6 @@ from maasserver.node_action import (
     Test,
     Unlock,
 )
-import maasserver.node_action as node_action_module
 from maasserver.node_status import (
     MONITORED_STATUSES,
     NODE_TESTING_RESET_READY_TRANSITIONS,
@@ -70,11 +73,8 @@ from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
 from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS, SCRIPT_TYPE
 from metadataserver.models import ScriptSet
-from netaddr import IPNetwork
 from provisioningserver.events import AUDIT
 from provisioningserver.utils.shell import ExternalProcessError
-from testtools.matchers import Equals
-
 
 ALL_STATUSES = list(NODE_STATUS_CHOICES_DICT)
 

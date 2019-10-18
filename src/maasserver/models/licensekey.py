@@ -7,6 +7,7 @@ __all__ = ["LicenseKey"]
 
 
 from django.db.models import CharField, Manager
+
 from maasserver import DefaultMeta
 from maasserver.models.timestampedmodel import TimestampedModel
 

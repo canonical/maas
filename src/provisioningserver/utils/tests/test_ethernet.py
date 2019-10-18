@@ -7,11 +7,12 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.ethernet import Ethernet, ETHERTYPE
 from provisioningserver.utils.network import hex_str_to_bytes
-from testtools.matchers import Equals
 
 
 def make_ethernet_packet(

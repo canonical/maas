@@ -9,6 +9,9 @@ from textwrap import dedent
 
 from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
 from formencode.validators import CIDR, Number, StringBool
+from netaddr import IPNetwork
+from piston3.utils import rc
+
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
     get_mandatory_param,
@@ -18,10 +21,7 @@ from maasserver.api.utils import (
 from maasserver.clusterrpc.utils import call_racks_synchronously, RPCResults
 from maasserver.models import Discovery, RackController
 from maasserver.permissions import NodePermission
-from netaddr import IPNetwork
-from piston3.utils import rc
 from provisioningserver.rpc import cluster
-
 
 DISPLAYED_DISCOVERY_FIELDS = (
     "discovery_id",

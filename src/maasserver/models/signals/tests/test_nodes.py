@@ -7,6 +7,8 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Equals, HasLength, Is, MatchesStructure, Not
+
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -24,7 +26,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from metadataserver.models.nodekey import NodeKey
-from testtools.matchers import Equals, HasLength, Is, MatchesStructure, Not
 
 
 class TestNodeDeletion(MAASServerTestCase):

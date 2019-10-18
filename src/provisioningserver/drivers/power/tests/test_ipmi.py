@@ -9,14 +9,13 @@ import random
 from subprocess import PIPE
 from unittest.mock import ANY, call, sentinel
 
+from testtools.matchers import Contains, Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.power import (
-    ipmi as ipmi_module,
-    PowerAuthError,
-    PowerError,
-)
+from provisioningserver.drivers.power import ipmi as ipmi_module
+from provisioningserver.drivers.power import PowerAuthError, PowerError
 from provisioningserver.drivers.power.ipmi import (
     IPMI_BOOT_TYPE,
     IPMI_BOOT_TYPE_MAPPING,
@@ -29,7 +28,6 @@ from provisioningserver.utils.shell import (
     get_env_with_locale,
     has_command_available,
 )
-from testtools.matchers import Contains, Equals
 
 
 def make_context():

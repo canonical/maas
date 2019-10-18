@@ -5,8 +5,9 @@
 
 __all__ = []
 
-from maasserver.listener import PostgresListenerService
 from twisted.internet.defer import succeed
+
+from maasserver.listener import PostgresListenerService
 
 
 class FakePostgresListenerService(PostgresListenerService):

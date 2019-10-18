@@ -6,12 +6,13 @@
 __all__ = ["NodeKey"]
 
 from django.db.models import CASCADE, CharField, Manager, Model, OneToOneField
+from piston3.models import KEY_SIZE, Token
+
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
 from maasserver.utils.orm import get_one
 from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
-from piston3.models import KEY_SIZE, Token
 
 
 class NodeKeyManager(Manager):

@@ -13,6 +13,7 @@ __all__ = [
 from typing import Optional
 
 from django.db.models import Q
+
 from maasserver import locks, worker_user
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
@@ -32,7 +33,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
-
 
 maaslog = get_maas_logger("rpc.rackcontrollers")
 

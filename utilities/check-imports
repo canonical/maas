@@ -4,19 +4,17 @@ import argparse
 import ast
 from collections.abc import Iterable
 from glob import iglob
-from itertools import (
-    chain,
-    islice,
-)
+from itertools import chain, islice
 import multiprocessing
 from pathlib import Path
 import re
 import sys
 import tokenize
 
+from python_standard_libs import python_standard_libs
+
 # Get a list of all standard library modules.
 sys.path.insert(0, Path(__file__).parent.absolute())
-from python_standard_libs import python_standard_libs
 
 
 def flatten(*things):

@@ -3,6 +3,8 @@
 
 """API handlers: `VolumeGroups`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_STATUS
@@ -15,8 +17,6 @@ from maasserver.forms import (
 from maasserver.models import Machine, VirtualBlockDevice, VolumeGroup
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
-from piston3.utils import rc
-
 
 DISPLAYED_VOLUME_GROUP_FIELDS = (
     "system_id",

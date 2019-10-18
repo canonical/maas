@@ -5,6 +5,8 @@
 
 __all__ = ["RackNetworksMonitoringService"]
 
+from twisted.internet.defer import inlineCallbacks
+
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
@@ -16,8 +18,6 @@ from provisioningserver.rpc.region import (
 )
 from provisioningserver.utils.services import NetworksMonitoringService
 from provisioningserver.utils.twisted import pause
-from twisted.internet.defer import inlineCallbacks
-
 
 maaslog = get_maas_logger("networks.monitor")
 

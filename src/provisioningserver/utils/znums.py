@@ -11,7 +11,6 @@ __all__ = ["from_int", "to_int"]
 
 from itertools import count
 
-
 zchars = "34678abcdefghkmnpqrstwxy"
 znums = dict(zip(zchars, count(0)))
 

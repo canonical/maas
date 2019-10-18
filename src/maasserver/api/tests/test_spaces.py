@@ -10,13 +10,14 @@ import json
 import random
 
 from django.conf import settings
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.models import VLAN
 from maasserver.models.space import Space
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import ContainsDict, Equals
 
 
 def get_spaces_uri():

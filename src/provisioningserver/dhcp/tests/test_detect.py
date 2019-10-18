@@ -11,6 +11,17 @@ import socket
 from unittest import mock
 from unittest.mock import call
 
+from testtools import ExpectedException
+from testtools.matchers import Contains
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    CancelledError,
+    DeferredList,
+    inlineCallbacks,
+)
+from twisted.internet.task import Clock, deferLater
+from twisted.python.failure import Failure
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -21,6 +32,7 @@ from maastesting.matchers import (
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
+import provisioningserver.dhcp.detect as detect_module
 from provisioningserver.dhcp.detect import (
     BOOTP_CLIENT_PORT,
     BOOTP_SERVER_PORT,
@@ -39,17 +51,6 @@ from provisioningserver.dhcp.detect import (
     send_dhcp_request_packet,
     udp_socket,
 )
-import provisioningserver.dhcp.detect as detect_module
-from testtools import ExpectedException
-from testtools.matchers import Contains
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    DeferredList,
-    inlineCallbacks,
-)
-from twisted.internet.task import Clock, deferLater
-from twisted.python.failure import Failure
 
 
 class MakeDHCPTransactionID(MAASTestCase):

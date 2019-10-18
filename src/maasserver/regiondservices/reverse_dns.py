@@ -7,15 +7,15 @@ __all__ = ["ReverseDNSService"]
 
 from typing import List
 
+from twisted.application.service import Service
+from twisted.internet import defer
+
 from maasserver.listener import PostgresListenerService
 from maasserver.models import RDNS, RegionController
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import reverseResolve
 from provisioningserver.utils.twisted import suppress
-from twisted.application.service import Service
-from twisted.internet import defer
-
 
 log = LegacyLogger()
 

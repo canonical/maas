@@ -8,6 +8,7 @@ __all__ = ["BootSource"]
 
 from django.core.exceptions import ValidationError
 from django.db.models import FilePathField, URLField
+
 from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave

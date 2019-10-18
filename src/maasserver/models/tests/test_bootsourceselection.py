@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.core.exceptions import ValidationError
+
 from maasserver.models import BootSource, BootSourceSelection, Config
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory

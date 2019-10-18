@@ -7,6 +7,9 @@ __all__ = []
 
 from unittest.mock import call, Mock
 
+from twisted.internet.defer import inlineCallbacks, maybeDeferred, succeed
+from twisted.internet.task import Clock
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -17,8 +20,6 @@ from provisioningserver.rackdservices.networks_monitoring_service import (
 from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils import services as services_module
-from twisted.internet.defer import inlineCallbacks, maybeDeferred, succeed
-from twisted.internet.task import Clock
 
 
 class TestRackNetworksMonitoringService(MAASTestCase):

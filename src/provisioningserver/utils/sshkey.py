@@ -14,7 +14,6 @@ from tempfile import TemporaryDirectory
 
 from provisioningserver.utils.shell import get_env_with_locale
 
-
 OPENSSH_PROTOCOL2_KEY_TYPES = frozenset(
     (
         "ecdsa-sha2-nistp256",

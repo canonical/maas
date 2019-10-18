@@ -18,39 +18,6 @@ import tokenize
 import types
 from unittest.mock import ANY, call, create_autospec, Mock, sentinel
 
-from maastesting import root
-from maastesting.factory import factory
-from maastesting.fixtures import CaptureStandardIO
-from maastesting.matchers import (
-    DocTestMatches,
-    FileContains,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
-from maastesting.testcase import MAASTestCase
-from maastesting.utils import age_file
-import provisioningserver.config
-from provisioningserver.path import get_data_path, get_tentative_data_path
-from provisioningserver.utils.fs import (
-    atomic_copy,
-    atomic_delete,
-    atomic_symlink,
-    atomic_write,
-    FileLock,
-    get_library_script_path,
-    get_maas_common_command,
-    incremental_write,
-    NamedLock,
-    read_text_file,
-    RunLock,
-    sudo_delete_file,
-    sudo_write_file,
-    SystemLock,
-    tempdir,
-    write_text_file,
-)
-import provisioningserver.utils.fs as fs_module
 from testtools.matchers import (
     AllMatch,
     DirContains,
@@ -70,6 +37,40 @@ from testtools.testcase import ExpectedException
 from twisted import internet
 from twisted.internet.task import Clock
 from twisted.python import lockfile
+
+from maastesting import root
+from maastesting.factory import factory
+from maastesting.fixtures import CaptureStandardIO
+from maastesting.matchers import (
+    DocTestMatches,
+    FileContains,
+    MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
+)
+from maastesting.testcase import MAASTestCase
+from maastesting.utils import age_file
+import provisioningserver.config
+from provisioningserver.path import get_data_path, get_tentative_data_path
+import provisioningserver.utils.fs as fs_module
+from provisioningserver.utils.fs import (
+    atomic_copy,
+    atomic_delete,
+    atomic_symlink,
+    atomic_write,
+    FileLock,
+    get_library_script_path,
+    get_maas_common_command,
+    incremental_write,
+    NamedLock,
+    read_text_file,
+    RunLock,
+    sudo_delete_file,
+    sudo_write_file,
+    SystemLock,
+    tempdir,
+    write_text_file,
+)
 
 
 class TestAtomicWrite(MAASTestCase):

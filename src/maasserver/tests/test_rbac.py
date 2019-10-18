@@ -4,6 +4,10 @@ from threading import Thread
 from unittest import mock
 
 from django.db import transaction
+from macaroonbakery.bakery import PrivateKey
+from macaroonbakery.httpbakery.agent import Agent, AuthInfo
+import requests
+
 from maasserver.models import Config, ResourcePool
 from maasserver.rbac import (
     ALL_RESOURCES,
@@ -22,9 +26,6 @@ from maasserver.testing.testcase import (
 )
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
-from macaroonbakery.bakery import PrivateKey
-from macaroonbakery.httpbakery.agent import Agent, AuthInfo
-import requests
 
 
 class TestRBACClient(MAASServerTestCase):

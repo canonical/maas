@@ -8,6 +8,8 @@ __all__ = []
 from collections import OrderedDict
 from textwrap import dedent
 
+from testtools import ExpectedException
+
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.isc import (
     ISCParseException,
@@ -15,7 +17,6 @@ from provisioningserver.utils.isc import (
     parse_isc_string,
     read_isc_file,
 )
-from testtools import ExpectedException
 
 
 class TestParseISCString(MAASTestCase):

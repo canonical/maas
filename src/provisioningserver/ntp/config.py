@@ -10,9 +10,9 @@ from itertools import dropwhile, groupby
 import re
 
 from netaddr import AddrFormatError, IPAddress
+
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import sudo_write_file
-
 
 _ntp_conf_name = "chrony/chrony.conf"
 _ntp_maas_conf_name = "chrony/maas.conf"

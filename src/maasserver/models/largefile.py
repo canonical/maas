@@ -8,6 +8,8 @@ __all__ = ["LargeFile"]
 import hashlib
 
 from django.db.models import BigIntegerField, CharField, Manager
+from twisted.internet import reactor
+
 from maasserver import DefaultMeta
 from maasserver.fields import LargeObjectField, LargeObjectFile
 from maasserver.models.cleansave import CleanSave
@@ -16,8 +18,6 @@ from maasserver.utils.orm import get_one, transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import asynchronous, FOREVER
-from twisted.internet import reactor
-
 
 log = LegacyLogger()
 

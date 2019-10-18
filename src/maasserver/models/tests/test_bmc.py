@@ -12,6 +12,17 @@ from crochet import wait_for
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    MatchesSetwise,
+    MatchesStructure,
+)
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -63,17 +74,6 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.rpc.cluster import DecomposeMachine
 from provisioningserver.utils.constraints import LabeledConstraintMap
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesSetwise,
-    MatchesStructure,
-)
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

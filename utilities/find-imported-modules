@@ -14,19 +14,16 @@ server, try the following:
 """
 
 import argparse
-from itertools import (
-    chain,
-    takewhile,
-)
+from itertools import chain, takewhile
 from modulefinder import ModuleFinder
 from operator import itemgetter
 from os import path
 import sys
 import tokenize
 
+from python_standard_libs import python_standard_libs
 
 sys.path.insert(0, path.dirname(__file__))
-from python_standard_libs import python_standard_libs
 
 
 def find_standard_library_modules(seed=python_standard_libs):

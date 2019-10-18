@@ -8,6 +8,9 @@ import errno
 from io import StringIO
 import os
 
+from twisted.internet.defer import inlineCallbacks
+from twisted.python.filepath import FilePath
+
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.config import BootSources, ClusterConfiguration
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
@@ -30,8 +33,6 @@ from provisioningserver.utils.fs import (
     read_text_file,
     tempdir,
 )
-from twisted.internet.defer import inlineCallbacks
-from twisted.python.filepath import FilePath
 
 
 class NoConfigFile(Exception):

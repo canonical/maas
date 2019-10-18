@@ -9,13 +9,14 @@ import http.client
 
 from django.db.models.signals import post_save, pre_save
 from django.http import HttpResponse, HttpResponseRedirect
+from testtools.matchers import Equals
+
 from maasserver.models.node import Node
 from maasserver.testing import extract_redirect, NoReceivers
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals
 
 
 class TestHelpers(MAASServerTestCase):

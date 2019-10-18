@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.models.sslkey import SSLKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
@@ -13,7 +15,6 @@ from maasserver.utils.orm import get_one
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.sslkey import SSLKeyHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
-from testtools.matchers import ContainsDict, Equals
 
 
 class TestSSLKeyHandler(MAASServerTestCase):

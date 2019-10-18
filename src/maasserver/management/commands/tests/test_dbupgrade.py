@@ -10,13 +10,14 @@ import os
 from pipes import quote
 from subprocess import PIPE, Popen, STDOUT
 
+from postgresfixture import ClusterFixture
+from testtools.content import Content, UTF8_TEXT
+from testtools.matchers import HasLength, Not
+
 from maasserver.testing.config import RegionConfigurationFixture
 from maastesting import root
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
-from postgresfixture import ClusterFixture
-from testtools.content import Content, UTF8_TEXT
-from testtools.matchers import HasLength, Not
 
 
 def get_plpgsql_function_names(conn):

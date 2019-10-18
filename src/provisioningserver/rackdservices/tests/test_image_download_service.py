@@ -10,6 +10,11 @@ from unittest.mock import call, Mock, sentinel
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
+from twisted.application.internet import TimerService
+from twisted.internet import defer
+from twisted.internet.task import Clock
+from twisted.protocols.amp import UnhandledCommand
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
@@ -27,10 +32,6 @@ from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import _run_import
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import GetBootSources, GetBootSourcesV2
-from twisted.application.internet import TimerService
-from twisted.internet import defer
-from twisted.internet.task import Clock
-from twisted.protocols.amp import UnhandledCommand
 
 
 class TestPeriodicImageDownloadService(MAASTestCase):

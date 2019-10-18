@@ -5,6 +5,8 @@
 
 __all__ = ["VLANHandler"]
 
+import netaddr
+
 from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.forms.vlan import VLANForm
@@ -17,9 +19,7 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
-import netaddr
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("websockets.vlan")
 

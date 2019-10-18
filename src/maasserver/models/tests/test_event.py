@@ -9,7 +9,10 @@ import logging
 import random
 
 from django.db import IntegrityError
-from maasserver.models import Event, event as event_module, EventType
+
+from maasserver.models import Event
+from maasserver.models import event as event_module
+from maasserver.models import EventType
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import EVENT_TYPES

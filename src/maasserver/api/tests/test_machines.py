@@ -11,8 +11,11 @@ import random
 
 from django.conf import settings
 from django.test import RequestFactory
+from testtools.matchers import Contains, Equals, Not
+
 from maasserver import eventloop, middleware
-from maasserver.api import auth, machines as machines_module
+from maasserver.api import auth
+from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
 from maasserver.enum import (
     BRIDGE_TYPE,
@@ -24,13 +27,8 @@ from maasserver.enum import (
 )
 import maasserver.forms as forms_module
 from maasserver.forms.pods import ComposeMachineForm, ComposeMachineForPodsForm
-from maasserver.models import (
-    Config,
-    Domain,
-    Machine,
-    Node,
-    node as node_module,
-)
+from maasserver.models import Config, Domain, Machine, Node
+from maasserver.models import node as node_module
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
@@ -61,7 +59,6 @@ from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import ScriptSet
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.utils.enum import map_enum
-from testtools.matchers import Contains, Equals, Not
 
 
 class TestGetStorageLayoutParams(MAASTestCase):

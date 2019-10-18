@@ -7,6 +7,8 @@ __all__ = []
 
 from itertools import product
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.centos import (
@@ -14,7 +16,6 @@ from provisioningserver.drivers.osystem.centos import (
     CentOS,
     DISTRO_SERIES_DEFAULT,
 )
-from testtools.matchers import Equals
 
 
 class TestCentOS(MAASTestCase):

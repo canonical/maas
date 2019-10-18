@@ -10,10 +10,10 @@ import os
 import re
 from textwrap import dedent
 
-from provisioningserver.boot import BootMethod, BytesReader, get_parameters
-from provisioningserver.utils import typed
 import tempita
 
+from provisioningserver.boot import BootMethod, BytesReader, get_parameters
+from provisioningserver.utils import typed
 
 CONFIG_FILE = dedent(
     """\

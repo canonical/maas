@@ -16,6 +16,7 @@ __all__ = [
 from abc import abstractmethod
 
 import attr
+
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,

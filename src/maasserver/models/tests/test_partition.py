@@ -10,6 +10,8 @@ from unittest.mock import sentinel
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
+from testtools.matchers import Equals
+
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -33,7 +35,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals
 
 
 class TestPartitionManager(MAASServerTestCase):

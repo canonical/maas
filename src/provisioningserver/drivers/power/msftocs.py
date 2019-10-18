@@ -11,6 +11,7 @@ import urllib.parse
 import urllib.request
 
 from lxml.etree import fromstring
+
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,

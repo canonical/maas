@@ -14,11 +14,11 @@ from operator import itemgetter
 import os
 import sys
 
+import tempita
+
 from provisioningserver.utils import locate_template, snappy
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
-import tempita
-
 
 MAAS_SYSLOG_CONF_NAME = "rsyslog.conf"
 MAAS_SYSLOG_CONF_TEMPLATE = "rsyslog.conf.template"

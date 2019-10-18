@@ -11,6 +11,9 @@ from itertools import combinations
 import pprint
 from unittest.mock import call, Mock
 
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
@@ -25,8 +28,6 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
 
 
 class TestAddArguments(MAASTestCase):

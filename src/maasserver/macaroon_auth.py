@@ -24,15 +24,15 @@ from django.http import (
     HttpResponseNotFound,
     JsonResponse,
 )
-from maasserver.models import Config, MAASAuthorizationBackend, RootKey
-from maasserver.models.user import SYSTEM_USERS
-from maasserver.utils.views import request_headers
 from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery._utils import visit_page_with_browser
 from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
 from piston3.utils import rc
 import requests
 
+from maasserver.models import Config, MAASAuthorizationBackend, RootKey
+from maasserver.models.user import SYSTEM_USERS
+from maasserver.utils.views import request_headers
 
 MACAROON_LIFESPAN = timedelta(days=1)
 

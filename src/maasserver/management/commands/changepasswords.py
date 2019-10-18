@@ -3,11 +3,13 @@
 
 """Django command: Batch update multiple passwords non-interactively."""
 
-from fileinput import hook_encoded, input as fileinput
+from fileinput import hook_encoded
+from fileinput import input as fileinput
 from textwrap import dedent
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
+
 from maasserver.utils.orm import transactional
 
 

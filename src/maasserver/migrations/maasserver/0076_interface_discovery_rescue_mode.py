@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 # -*- coding: utf-8 -*-
 from django.db import migrations, models
+
 import maasserver.fields
 import maasserver.models.cleansave
 

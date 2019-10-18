@@ -20,13 +20,14 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import Manager, NullBooleanField, PositiveIntegerField, Q
 from django.db.models.query import QuerySet
+from netaddr import IPAddress
+
 from maasserver import DefaultMeta
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
-from netaddr import IPAddress
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"

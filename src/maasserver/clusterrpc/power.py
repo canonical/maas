@@ -7,6 +7,10 @@ __all__ = ["power_off_node", "power_on_node"]
 
 from functools import partial
 
+from twisted.internet import reactor
+from twisted.internet.defer import DeferredList
+from twisted.protocols.amp import UnhandledCommand
+
 from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
 from maasserver.rpc import getAllClients
@@ -20,10 +24,6 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
-from twisted.internet import reactor
-from twisted.internet.defer import DeferredList
-from twisted.protocols.amp import UnhandledCommand
-
 
 log = LegacyLogger()
 maaslog = get_maas_logger("power")

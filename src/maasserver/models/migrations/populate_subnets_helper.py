@@ -20,6 +20,7 @@ __all__ = []
 
 from netaddr import IPNetwork
 
+
 # Need to replicate this enum here so it's "frozen in time" for this migration.
 class _NODEGROUPINTERFACE_MANAGEMENT:
     UNMANAGED = 0

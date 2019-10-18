@@ -14,7 +14,6 @@ from provisioningserver.prometheus.utils import (
 )
 from provisioningserver.utils.ipaddr import get_machine_default_gateway_ip
 
-
 _HTTP_REQUEST_LABELS = ["method", "path", "status", "op"]
 _WEBSOCKET_CALL_LABELS = ["call"]
 

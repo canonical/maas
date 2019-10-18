@@ -7,6 +7,10 @@ __all__ = ["ServiceMonitorService"]
 
 from datetime import timedelta
 
+from twisted.application.internet import TimerService
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver.models.node import RegionController
 from maasserver.models.service import Service as ServiceModel
 from maasserver.service_monitor import service_monitor
@@ -14,10 +18,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import LegacyLogger
-from twisted.application.internet import TimerService
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-
 
 log = LegacyLogger()
 

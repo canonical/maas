@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.core.management import call_command
+
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 
 

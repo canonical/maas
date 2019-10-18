@@ -8,6 +8,9 @@ __all__ = []
 from datetime import datetime, timedelta
 import time
 
+from testtools import ExpectedException
+from testtools.matchers import Equals
+
 from maasserver.models import MDNS
 from maasserver.models.discovery import Discovery
 from maasserver.testing.factory import factory
@@ -17,8 +20,6 @@ from maasserver.websockets.base import (
     HandlerPermissionError,
 )
 from maasserver.websockets.handlers.discovery import DiscoveryHandler
-from testtools import ExpectedException
-from testtools.matchers import Equals
 
 
 class TestDiscoveryHandler(MAASServerTestCase):

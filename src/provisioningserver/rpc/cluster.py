@@ -34,6 +34,8 @@ __all__ = [
     "ValidateLicenseKey",
 ]
 
+from twisted.protocols import amp
+
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     AmpDiscoveredMachine,
@@ -49,7 +51,6 @@ from provisioningserver.rpc.arguments import (
     StructureAsJSON,
 )
 from provisioningserver.rpc.common import Authenticate, Identify
-from twisted.protocols import amp
 
 
 class ListBootImages(amp.Command):

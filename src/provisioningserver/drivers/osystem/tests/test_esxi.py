@@ -7,11 +7,12 @@ __all__ = []
 
 from itertools import product
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.drivers.osystem.esxi import ESXi
-from testtools.matchers import Equals
 
 
 class TestESXi(MAASTestCase):

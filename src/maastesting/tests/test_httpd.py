@@ -14,10 +14,11 @@ from unittest import skip
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
+from testtools.matchers import FileExists
+
 from maastesting.fixtures import ProxiesDisabledFixture
 from maastesting.httpd import HTTPServerFixture, ThreadingHTTPServer
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import FileExists
 
 
 class TestHTTPServerFixture(MAASTestCase):

@@ -7,12 +7,12 @@ __all__ = ["BootSourceSelectionHandler", "BootSourceSelectionsHandler"]
 
 
 from django.shortcuts import get_object_or_404
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceSelectionForm
 from maasserver.models import BootSource, BootSourceSelection
-from piston3.utils import rc
-
 
 DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
     "boot_source_id",

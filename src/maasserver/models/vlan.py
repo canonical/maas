@@ -21,6 +21,8 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
+from netaddr import AddrFormatError
+
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MAASIPAddressField, MODEL_NAME_VALIDATOR
@@ -29,9 +31,7 @@ from maasserver.models.interface import VLANInterface
 from maasserver.models.notification import Notification
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
-from netaddr import AddrFormatError
 from provisioningserver.utils.network import parse_integer
-
 
 DEFAULT_VLAN_NAME = "Default VLAN"
 DEFAULT_VID = 0

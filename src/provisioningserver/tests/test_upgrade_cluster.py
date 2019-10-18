@@ -11,6 +11,8 @@ import os
 import os.path
 from unittest.mock import Mock
 
+from testtools.matchers import DirExists, FileExists, Not
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     FileContains,
@@ -26,7 +28,6 @@ from provisioningserver.config import ClusterConfiguration
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import snappy
 from provisioningserver.utils.fs import read_text_file
-from testtools.matchers import DirExists, FileExists, Not
 
 
 class TestUpgradeCluster(MAASTestCase):

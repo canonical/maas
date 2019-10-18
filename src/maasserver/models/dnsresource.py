@@ -24,6 +24,7 @@ from django.db.models import (
     PROTECT,
 )
 from django.db.models.query import QuerySet
+
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import domain
@@ -34,7 +35,6 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import coerce_to_valid_hostname
-
 
 log = LegacyLogger()
 

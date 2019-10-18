@@ -25,8 +25,9 @@ import urllib.request
 from uuid import UUID, uuid1
 
 from distro_info import UbuntuDistroInfo
-from maastesting.fixtures import TempDirectory
 from netaddr import IPAddress, IPNetwork
+
+from maastesting.fixtures import TempDirectory
 
 # Occasionally a parameter needs separate values for None and "no value
 # given, make one up."  In that case, use NO_VALUE as the default and

@@ -11,6 +11,17 @@ import time
 
 from django.conf import settings
 import dns.resolver
+from netaddr import IPAddress
+from testtools.matchers import (
+    Contains,
+    Equals,
+    FileContains,
+    HasLength,
+    Is,
+    MatchesSetwise,
+    MatchesStructure,
+)
+
 from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
@@ -32,7 +43,6 @@ from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPAddress
 from provisioningserver.dns.commands import get_named_conf, setup_dns
 from provisioningserver.dns.config import compose_config_path, DNSConfig
 from provisioningserver.dns.testing import (
@@ -42,15 +52,6 @@ from provisioningserver.dns.testing import (
 from provisioningserver.testing.bindfixture import allocate_ports, BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from provisioningserver.utils.twisted import retries
-from testtools.matchers import (
-    Contains,
-    Equals,
-    FileContains,
-    HasLength,
-    Is,
-    MatchesSetwise,
-    MatchesStructure,
-)
 
 
 class TestDNSUtilities(MAASServerTestCase):

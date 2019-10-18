@@ -16,13 +16,14 @@ import sys
 from textwrap import dedent, fill, wrap
 from urllib.parse import urljoin, urlparse
 
+import httplib2
+
 from apiclient.maas_client import MAASOAuth
 from apiclient.multipart import (
     build_multipart_message,
     encode_multipart_message,
 )
 from apiclient.utils import ascii_url, urlencode
-import httplib2
 from maascli import utils
 from maascli.command import Command, CommandError
 from maascli.config import ProfileConfig

@@ -36,12 +36,13 @@ import tempfile
 import threading
 from time import sleep
 
+from twisted.python.filepath import FilePath
+from twisted.python.lockfile import FilesystemLock
+
 from provisioningserver.path import get_data_path, get_path
 from provisioningserver.utils import snappy, sudo
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
-from twisted.python.filepath import FilePath
-from twisted.python.lockfile import FilesystemLock
 
 
 def get_maas_common_command():

@@ -6,6 +6,7 @@
 __all__ = ["BootResourceFile"]
 
 from django.db.models import CASCADE, CharField, ForeignKey
+
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,

@@ -7,10 +7,11 @@ __all__ = []
 
 from urllib.parse import unquote
 
-from apiclient.utils import ascii_url, urlencode
 from django.utils.encoding import smart_text
-from maastesting.testcase import MAASTestCase
 from testtools.matchers import Equals, IsInstance, MatchesAll
+
+from apiclient.utils import ascii_url, urlencode
+from maastesting.testcase import MAASTestCase
 
 
 class TestHelpers(MAASTestCase):

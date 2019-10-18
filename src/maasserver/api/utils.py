@@ -16,9 +16,10 @@ __all__ = [
 
 from django.http import QueryDict
 from formencode.validators import Invalid
+from piston3.models import Token
+
 from maasserver.config_forms import DictCharField
 from maasserver.exceptions import MAASAPIValidationError, Unauthorized
-from piston3.models import Token
 
 
 def extract_bool(value):

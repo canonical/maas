@@ -11,7 +11,6 @@ import re
 from provisioningserver.utils.fs import read_text_file
 from provisioningserver.utils.ps import get_running_pids_with_command
 
-
 re_entry = re.compile(
     r"""
     ^\s*              # Ignore leading whitespace on each line.

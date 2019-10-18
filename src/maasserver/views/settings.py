@@ -20,6 +20,7 @@ from django.views.generic import CreateView, DeleteView, DetailView
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
+
 from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 from maasserver.enum import ENDPOINT

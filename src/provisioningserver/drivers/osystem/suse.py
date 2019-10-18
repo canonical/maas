@@ -10,7 +10,6 @@ from provisioningserver.drivers.osystem import (
     OperatingSystem,
 )
 
-
 DISTRO_SERIES_CHOICES = {"opensuse13": "openSUSE 13.1"}
 
 DISTRO_SERIES_DEFAULT = "opensuse13"

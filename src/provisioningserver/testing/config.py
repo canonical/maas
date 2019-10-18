@@ -13,9 +13,10 @@ __all__ = [
 from os import path
 
 from fixtures import EnvironmentVariableFixture, Fixture
+import yaml
+
 from maastesting.fixtures import TempDirectory
 from provisioningserver.config import BootSources, ClusterConfiguration
-import yaml
 
 
 class ConfigFixtureBase(Fixture):

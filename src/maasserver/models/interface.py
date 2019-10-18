@@ -32,6 +32,8 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
+from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
+
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BRIDGE_TYPE,
@@ -54,10 +56,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one, MAASQueriesMixin
-from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import parse_integer
-
 
 maaslog = get_maas_logger("interface")
 

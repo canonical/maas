@@ -9,6 +9,16 @@ import random
 from unittest.mock import Mock, sentinel
 
 from crochet import wait_for
+from testtools.matchers import Equals, Is, IsInstance, MatchesAny, MatchesDict
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    CancelledError,
+    fail,
+    inlineCallbacks,
+    succeed,
+)
+from twisted.internet.task import deferLater
+
 from maasserver.clusterrpc import pods as pods_module
 from maasserver.clusterrpc.pods import (
     compose_machine,
@@ -27,16 +37,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod import DiscoveredPod, DiscoveredPodHints
 from provisioningserver.rpc.cluster import ComposeMachine, DecomposeMachine
 from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
-from testtools.matchers import Equals, Is, IsInstance, MatchesAny, MatchesDict
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    fail,
-    inlineCallbacks,
-    succeed,
-)
-from twisted.internet.task import deferLater
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

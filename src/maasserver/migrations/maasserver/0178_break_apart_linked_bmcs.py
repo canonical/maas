@@ -6,6 +6,7 @@ import re
 
 from django.db import migrations
 import petname
+
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 

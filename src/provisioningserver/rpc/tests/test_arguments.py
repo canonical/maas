@@ -8,9 +8,13 @@ __all__ = []
 import random
 import zlib
 
+import netaddr
+from testtools import ExpectedException
+from testtools.matchers import Equals, HasLength, IsInstance, LessThan
+from twisted.protocols import amp
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import netaddr
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -22,9 +26,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.rpc import arguments
-from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength, IsInstance, LessThan
-from twisted.protocols import amp
 
 
 class TestBytes(MAASTestCase):

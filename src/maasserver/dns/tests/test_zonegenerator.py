@@ -11,6 +11,17 @@ import socket
 from unittest.mock import ANY, call, Mock
 from urllib.parse import urlparse
 
+from netaddr import IPAddress, IPNetwork
+from testtools import TestCase
+from testtools.matchers import (
+    Equals,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    MatchesSetwise,
+    MatchesStructure,
+)
+
 from maasserver import server_address
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
@@ -41,19 +52,9 @@ from maasserver.utils.orm import transactional
 from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockAnyCall, MockCalledOnceWith, MockNotCalled
-from netaddr import IPAddress, IPNetwork
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-)
-from testtools import TestCase
-from testtools.matchers import (
-    Equals,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesSetwise,
-    MatchesStructure,
 )
 
 

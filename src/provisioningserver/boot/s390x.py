@@ -7,6 +7,8 @@ __all__ = ["S390XBootMethod"]
 
 import re
 
+from tftp.backend import FilesystemReader
+
 from provisioningserver.boot import (
     BootMethod,
     BytesReader,
@@ -16,7 +18,6 @@ from provisioningserver.boot import (
 from provisioningserver.boot.pxe import ARP_HTYPE, re_mac_address
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import typed
-from tftp.backend import FilesystemReader
 
 # The pxelinux.cfg path is prefixed with the architecture for the
 # S390x nodes. This prefix is set by the path-prefix dhcpd option.

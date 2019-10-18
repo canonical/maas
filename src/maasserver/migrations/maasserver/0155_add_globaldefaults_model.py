@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 import django.db.models.deletion
+
 import maasserver.models.cleansave
 import maasserver.models.dnsresource
 import maasserver.models.node

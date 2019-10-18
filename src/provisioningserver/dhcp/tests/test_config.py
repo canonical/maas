@@ -17,10 +17,18 @@ from textwrap import dedent
 import traceback
 
 from fixtures import FakeLogger
+import netaddr
+from testtools.content import Content, text_content, UTF8_TEXT
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    ContainsAll,
+    Equals,
+)
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches, GreaterThanOrEqual
 from maastesting.testcase import MAASTestCase
-import netaddr
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.config import _get_addresses
@@ -35,13 +43,6 @@ from provisioningserver.utils import flatten
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.text import quote
-from testtools.content import Content, text_content, UTF8_TEXT
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    ContainsAll,
-    Equals,
-)
 
 
 def is_ip_address(string):

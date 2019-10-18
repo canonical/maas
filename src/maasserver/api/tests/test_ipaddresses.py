@@ -8,6 +8,9 @@ __all__ = []
 import http.client
 
 from django.conf import settings
+from netaddr import IPAddress
+from testtools.matchers import Equals, HasLength
+
 from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import DNSResource, StaticIPAddress
 from maasserver.testing.api import APITestCase, APITransactionTestCase
@@ -16,8 +19,6 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object, transactional
 from maastesting.matchers import DocTestMatches
-from netaddr import IPAddress
-from testtools.matchers import Equals, HasLength
 
 
 class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):

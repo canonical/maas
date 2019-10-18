@@ -9,12 +9,12 @@ __all__ = ["RDNS", "RDNSManager"]
 from typing import List
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
+
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField, MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import LegacyLogger
-
 
 log = LegacyLogger()
 

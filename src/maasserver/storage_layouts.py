@@ -10,6 +10,7 @@ from datetime import datetime
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import Form
+
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
@@ -28,7 +29,6 @@ from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
 )
 from maasserver.utils.forms import compose_invalid_choice_text, set_form_error
-
 
 EFI_PARTITION_SIZE = 512 * 1024 * 1024  # 512 MiB
 MIN_BOOT_PARTITION_SIZE = 512 * 1024 * 1024  # 512 MiB

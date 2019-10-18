@@ -7,11 +7,11 @@ __all__ = ["RegionEventLoopFixture", "RunningEventLoopFixture"]
 
 from crochet import wait_for
 from fixtures import Fixture
-from maasserver import eventloop
-from maasserver.eventloop import loop
 from twisted.application.service import Service
 from twisted.internet import defer
 
+from maasserver import eventloop
+from maasserver.eventloop import loop
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

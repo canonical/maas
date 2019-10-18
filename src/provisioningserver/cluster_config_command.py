@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from formencode.api import Invalid
 from formencode.validators import StringBool
+
 from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 
 

@@ -7,9 +7,11 @@ __all__ = []
 
 from unittest.mock import sentinel
 
-from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from piston3.models import KEY_SIZE, SECRET_SIZE
+
+from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
 from maasserver import models
 from maasserver.models.user import (
     create_auth_token,
@@ -19,7 +21,6 @@ from maasserver.models.user import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from piston3.models import KEY_SIZE, SECRET_SIZE
 
 
 class UserTest(MAASServerTestCase):

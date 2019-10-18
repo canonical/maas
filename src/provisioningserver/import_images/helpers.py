@@ -8,8 +8,9 @@ __all__ = ["get_os_from_product", "get_signing_policy", "ImageSpec", "maaslog"]
 from collections import namedtuple
 import functools
 
-from provisioningserver.logger import get_maas_logger
 from simplestreams.util import policy_read_signed
+
+from provisioningserver.logger import get_maas_logger
 
 # A tuple of the items that together select a boot image.
 ImageSpec = namedtuple(

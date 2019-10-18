@@ -7,6 +7,8 @@ __all__ = ["GeneralHandler"]
 
 from collections import OrderedDict
 
+import petname
+
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
@@ -29,7 +31,6 @@ from maasserver.utils.osystems import (
     list_release_choices,
 )
 from maasserver.websockets.base import Handler
-import petname
 from provisioningserver.utils.version import get_maas_version_ui
 
 

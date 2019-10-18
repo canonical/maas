@@ -10,6 +10,8 @@ import random
 
 from django.conf import settings
 from lxml.html import fromstring
+from testtools.matchers import ContainsAll
+
 from maasserver import forms
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import LicenseKey
@@ -25,7 +27,6 @@ from provisioningserver.drivers.osystem import (
     WindowsOS,
 )
 from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
-from testtools.matchers import ContainsAll
 
 
 def make_osystem_requiring_license_key(testcase, osystem=None, release=None):

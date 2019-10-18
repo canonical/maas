@@ -14,6 +14,10 @@ import urllib.parse
 import urllib.request
 
 from lxml.etree import Element, SubElement, XML
+from testtools.matchers import Equals
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -47,9 +51,6 @@ from provisioningserver.drivers.hardware.ucsm import (
     UCSM_XML_API_Error,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 def make_api(

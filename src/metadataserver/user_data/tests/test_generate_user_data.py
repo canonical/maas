@@ -9,6 +9,8 @@ import base64
 import email
 import re
 
+from testtools.matchers import ContainsAll
+
 from maasserver.enum import NODE_STATUS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -16,7 +18,6 @@ from metadataserver.user_data import (
     generate_user_data_for_poweroff,
     generate_user_data_for_status,
 )
-from testtools.matchers import ContainsAll
 
 
 class TestGenerateUserData(MAASServerTestCase):

@@ -17,6 +17,8 @@ from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import Int, StringBool
+from piston3.utils import rc
+
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -69,9 +71,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_CHOICES,
 )
 from metadataserver.models.scriptset import get_status_from_qs
-from piston3.utils import rc
 from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
-
 
 NODES_SELECT_RELATED = ("bmc", "controllerinfo", "owner", "zone")
 

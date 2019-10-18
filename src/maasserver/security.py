@@ -8,6 +8,9 @@ __all__ = ["get_region_certificate", "get_shared_secret"]
 from datetime import datetime
 import os
 
+from pytz import UTC
+from twisted.internet import ssl
+
 from maasserver import locks
 from maasserver.models.config import Config
 from maasserver.utils import synchronised
@@ -21,8 +24,6 @@ from provisioningserver.security import (
     to_hex,
 )
 from provisioningserver.utils.twisted import asynchronous, synchronous
-from pytz import UTC
-from twisted.internet import ssl
 
 
 def get_serial():

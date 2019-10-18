@@ -11,6 +11,8 @@ import http.client
 from django.conf import settings
 from django.contrib.auth import REDIRECT_FIELD_NAME, SESSION_KEY
 from lxml.html import fromstring, tostring
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
@@ -21,7 +23,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from provisioningserver.events import AUDIT
-from testtools.matchers import ContainsDict, Equals
 
 
 class TestLoginLegacy(MAASServerTestCase):

@@ -23,6 +23,7 @@ from django.db import (
     transaction,
 )
 from django.db.utils import IntegrityError, OperationalError
+
 from maasserver.fields import register_mac_type
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,

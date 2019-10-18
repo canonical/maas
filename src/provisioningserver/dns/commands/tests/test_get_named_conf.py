@@ -8,9 +8,10 @@ __all__ = []
 from argparse import ArgumentParser
 import io
 
+from testtools.matchers import Contains, FileContains
+
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns.commands.get_named_conf import add_arguments, run
-from testtools.matchers import Contains, FileContains
 
 
 class TestGetNamedConfCommand(MAASTestCase):

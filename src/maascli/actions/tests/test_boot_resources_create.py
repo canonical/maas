@@ -12,8 +12,9 @@ import os
 from random import randint
 from unittest.mock import ANY, Mock, sentinel
 
-from apiclient.testing.credentials import make_api_credentials
 import httplib2
+
+from apiclient.testing.credentials import make_api_credentials
 from maascli.actions import boot_resources_create
 from maascli.actions.boot_resources_create import (
     BootResourcesCreateAction,

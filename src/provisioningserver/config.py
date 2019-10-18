@@ -129,6 +129,8 @@ from formencode import ForEach, Schema
 from formencode.api import is_validator, NoDefault
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import Number, Set
+import yaml
+
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
@@ -139,8 +141,6 @@ from provisioningserver.utils.config import (
     UUIDString,
 )
 from provisioningserver.utils.fs import atomic_write, RunLock
-import yaml
-
 
 logger = logging.getLogger(__name__)
 

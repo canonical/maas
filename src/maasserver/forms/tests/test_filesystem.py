@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from testtools.matchers import Equals, Is, MatchesStructure
+
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
@@ -19,7 +21,6 @@ from maasserver.models import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals, Is, MatchesStructure
 
 
 class TestMountFilesystemFormWithoutSubstrate(MAASServerTestCase):

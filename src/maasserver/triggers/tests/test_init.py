@@ -8,6 +8,8 @@ __all__ = []
 from contextlib import closing
 
 from django.db import connection
+from testtools.matchers import Equals
+
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_procedure, register_trigger
 from maasserver.triggers.system import register_system_triggers
@@ -15,8 +17,6 @@ from maasserver.triggers.websocket import (
     register_websocket_triggers,
     render_notification_procedure,
 )
-from testtools.matchers import Equals
-
 
 EMPTY_SET = frozenset()
 

@@ -10,6 +10,19 @@ import random
 from unittest.mock import ANY, call, MagicMock, sentinel
 from urllib.parse import urlparse
 
+from testtools.matchers import (
+    Equals,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesListwise,
+    MatchesStructure,
+)
+from twisted.internet.defer import DeferredLock, fail, maybeDeferred, succeed
+from twisted.internet.task import Clock
+from twisted.protocols.amp import UnhandledCommand
+from twisted.python.failure import Failure
+
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.clusterrpc import boot_images as boot_images_module
 from maasserver.clusterrpc.boot_images import (
@@ -58,18 +71,6 @@ from provisioningserver.testing.boot_images import (
     make_image,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from testtools.matchers import (
-    Equals,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesListwise,
-    MatchesStructure,
-)
-from twisted.internet.defer import DeferredLock, fail, maybeDeferred, succeed
-from twisted.internet.task import Clock
-from twisted.protocols.amp import UnhandledCommand
-from twisted.python.failure import Failure
 
 
 def make_image_dir(image_params, tftp_root):

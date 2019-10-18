@@ -11,7 +11,6 @@ from convoy.combo import combine_files
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseNotFound
 
-
 MERGE_VIEWS = {
     "jquery.js": {
         "location": settings.JQUERY_LOCATION,

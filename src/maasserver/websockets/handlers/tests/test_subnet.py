@@ -9,6 +9,10 @@ import re
 from unittest.mock import sentinel
 
 from fixtures import FakeLogger
+from netaddr import IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import Equals, MatchesRegex
+
 from maasserver.api import discoveries as discoveries_module
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.subnet import Subnet
@@ -19,10 +23,7 @@ from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
-from testtools import ExpectedException
-from testtools.matchers import Equals, MatchesRegex
 
 
 class TestSubnetHandler(MAASServerTestCase):

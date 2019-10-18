@@ -7,6 +7,7 @@ __all__ = ["Neighbour"]
 
 from django.db.models import CASCADE, ForeignKey, IntegerField, Manager
 from django.db.models.query import QuerySet
+
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField, MACAddressField
 from maasserver.models.cleansave import CleanSave
@@ -15,7 +16,6 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one, MAASQueriesMixin, UniqueViolation
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import get_mac_organization
-
 
 maaslog = get_maas_logger("neighbour")
 

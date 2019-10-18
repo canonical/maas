@@ -11,6 +11,16 @@ from operator import itemgetter
 import random
 
 from django.conf import settings
+from testtools.content import text_content
+from testtools.matchers import (
+    AfterPreprocessing,
+    Equals,
+    MatchesAll,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+)
+
 from maasserver.forms.settings import CONFIG_ITEMS_KEYS
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config, DEFAULT_CONFIG
@@ -24,15 +34,6 @@ from maasserver.testing.osystems import (
 from maasserver.utils.django_urls import reverse
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
-from testtools.content import text_content
-from testtools.matchers import (
-    AfterPreprocessing,
-    Equals,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
-)
 
 # Names forbidden for use via the Web API.
 FORBIDDEN_NAMES = {

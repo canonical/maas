@@ -4,11 +4,12 @@
 __all__ = ["NotificationHandler", "NotificationsHandler"]
 
 from django.shortcuts import get_object_or_404
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.exceptions import MAASAPIForbidden, MAASAPIValidationError
 from maasserver.forms.notification import NotificationForm
 from maasserver.models.notification import Notification
-from piston3.utils import rc
 
 # Notification fields exposed on the API.
 DISPLAYED_NOTIFICATION_FIELDS = frozenset(

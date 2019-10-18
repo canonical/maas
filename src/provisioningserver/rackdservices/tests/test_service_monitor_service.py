@@ -9,6 +9,10 @@ __all__ = []
 import random
 from unittest.mock import Mock, sentinel
 
+from testtools.matchers import MatchesStructure
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.task import Clock
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -23,9 +27,6 @@ from provisioningserver.utils.service_monitor import (
     ServiceState,
     ToggleableService,
 )
-from testtools.matchers import MatchesStructure
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.internet.task import Clock
 
 
 class TestServiceMonitorService(MAASTestCase):

@@ -9,13 +9,14 @@ __all__ = []
 
 import os
 
+import OpenSSL
+from testtools.matchers import FileExists
+
 from maasserver import x509
 from maasserver.x509 import WinRMX509, WinRMX509Error
 from maastesting.factory import factory
 from maastesting.matchers import FileContains, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-import OpenSSL
-from testtools.matchers import FileExists
 
 
 class TestWinRMX509(MAASTestCase):

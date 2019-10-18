@@ -15,10 +15,10 @@ import urllib.request
 
 import bson
 from lxml import etree
+
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
-
 
 log = LegacyLogger()
 maaslog = get_maas_logger("tag_processing")

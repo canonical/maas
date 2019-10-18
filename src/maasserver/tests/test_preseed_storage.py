@@ -9,6 +9,16 @@ from difflib import ndiff
 import random
 from textwrap import dedent
 
+from testtools.content import text_content
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+    HasLength,
+    IsInstance,
+    MatchesDict,
+)
+import yaml
+
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
@@ -27,15 +37,6 @@ from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.content import text_content
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesDict,
-)
-import yaml
 
 
 class AssertStorageConfigMixin:

@@ -10,6 +10,10 @@ import json
 from unittest import mock
 
 from django.db import transaction
+import prometheus_client
+from twisted.application.internet import TimerService
+from twisted.internet.defer import fail
+
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.models import Config
 from maasserver.prometheus import stats
@@ -31,11 +35,8 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
-import prometheus_client
 from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.utils.twisted import asynchronous
-from twisted.application.internet import TimerService
-from twisted.internet.defer import fail
 
 
 class TestPrometheusHandler(MAASServerTestCase):

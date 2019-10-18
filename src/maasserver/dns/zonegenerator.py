@@ -11,6 +11,8 @@ from itertools import chain
 import socket
 
 import attr
+from netaddr import IPAddress, IPNetwork
+
 from maasserver import logger
 from maasserver.enum import IPRANGE_TYPE, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
@@ -21,7 +23,6 @@ from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_addresses
-from netaddr import IPAddress, IPNetwork
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,

@@ -7,6 +7,8 @@ __all__ = []
 
 import http.client
 
+from testtools.matchers import MatchesStructure
+
 from maasserver.api.boot_source_selections import (
     DISPLAYED_BOOTSOURCESELECTION_FIELDS,
 )
@@ -17,7 +19,6 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import MatchesStructure
 
 
 def get_boot_source_selection_uri(boot_source_selection):

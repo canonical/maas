@@ -6,12 +6,12 @@
 __all__ = ["NodeMetadata"]
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("nodemetadata")
 

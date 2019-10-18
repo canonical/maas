@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.db import IntegrityError
+
 from maasserver.models import LicenseKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

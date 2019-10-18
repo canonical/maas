@@ -12,12 +12,13 @@ import pprint
 from unittest.mock import Mock, patch
 import uuid
 
+from testtools import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import cluster_config_command
 from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from testtools import ExpectedException
 
 
 class TestAddArguments(MAASTestCase):

@@ -5,6 +5,8 @@
 
 __all__ = ["discover_pod"]
 
+from twisted.internet.defer import DeferredList
+
 from maasserver.exceptions import PodProblem
 from maasserver.rpc import getAllClients
 from provisioningserver.rpc.cluster import (
@@ -18,7 +20,6 @@ from provisioningserver.utils.twisted import (
     deferWithTimeout,
     FOREVER,
 )
-from twisted.internet.defer import DeferredList
 
 
 @asynchronous(timeout=FOREVER)

@@ -10,6 +10,7 @@ from datetime import datetime
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Manager, Model
 from django.db.models.fields import BigIntegerField, CharField, DateTimeField
+
 from maasserver import DefaultMeta
 from maasserver.sequence import INT_MAX, Sequence
 

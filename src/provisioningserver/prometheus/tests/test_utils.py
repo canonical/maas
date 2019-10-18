@@ -3,9 +3,11 @@ from pathlib import Path
 from subprocess import Popen
 
 from fixtures import EnvironmentVariable
+import prometheus_client
+from twisted.internet.defer import inlineCallbacks, returnValue
+
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-import prometheus_client
 from provisioningserver.prometheus import utils
 from provisioningserver.prometheus.utils import (
     clean_prometheus_dir,
@@ -13,7 +15,6 @@ from provisioningserver.prometheus.utils import (
     MetricDefinition,
     PrometheusMetrics,
 )
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 
 class TestPrometheusMetrics(MAASTestCase):

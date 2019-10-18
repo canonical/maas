@@ -10,6 +10,7 @@ from datetime import datetime
 import random
 
 from django.core.exceptions import ValidationError
+
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,

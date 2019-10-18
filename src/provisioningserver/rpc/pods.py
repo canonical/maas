@@ -5,6 +5,8 @@
 
 __all__ = ["discover_pod"]
 
+from twisted.internet.defer import Deferred
+
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredPod,
@@ -19,8 +21,6 @@ from provisioningserver.rpc.exceptions import (
     UnknownPodType,
 )
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import Deferred
-
 
 maaslog = get_maas_logger("pod")
 log = LegacyLogger()

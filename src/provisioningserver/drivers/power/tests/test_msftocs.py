@@ -13,26 +13,26 @@ import urllib.parse
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import (
-    msftocs as msftocs_module,
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
+from provisioningserver.drivers.power import msftocs as msftocs_module
 from provisioningserver.drivers.power.msftocs import (
     MicrosoftOCSPowerDriver,
     MicrosoftOCSState,
     probe_and_enlist_msftocs,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
-
 
 XMLNS = "http://schemas.datacontract.org/2004/07/Microsoft.GFS.WCS.Contracts"
 XMLNS_I = "http://www.w3.org/2001/XMLSchema-instance"

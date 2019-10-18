@@ -9,6 +9,11 @@ import random
 from unittest.mock import Mock
 
 from crochet import wait_for
+from testtools import ExpectedException
+from twisted.internet import reactor
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.task import deferLater
+
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power import (
     pick_best_power_state,
@@ -37,11 +42,6 @@ from provisioningserver.rpc.cluster import (
     PowerQuery,
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
-from testtools import ExpectedException
-from twisted.internet import reactor
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.internet.task import deferLater
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

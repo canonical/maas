@@ -12,6 +12,8 @@ import socket
 from typing import Sequence
 
 from netaddr import IPAddress, IPNetwork, IPRange
+import tempita
+
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.path import get_data_path, get_path
 from provisioningserver.utils import load_template, snappy, typed
@@ -22,8 +24,6 @@ from provisioningserver.utils.text import (
     quote,
 )
 from provisioningserver.utils.twisted import synchronous
-import tempita
-
 
 logger = logging.getLogger(__name__)
 

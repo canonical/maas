@@ -21,6 +21,7 @@ from django.db.models import (
     Manager,
     TextField,
 )
+
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -31,7 +32,6 @@ from maasserver.utils.converters import (
 )
 from maasserver.utils.orm import psql_array
 from maasserver.utils.storage import get_effective_filesystem, used_for
-
 
 MAX_PARTITION_SIZE_FOR_MBR = (((2 ** 32) - 1) * 512) - (1024 ** 2)  # 2 TiB
 # All partitions are aligned down to 4MiB blocks for performance (lp:1513085)

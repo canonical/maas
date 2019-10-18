@@ -7,6 +7,7 @@ __all__ = ["SSLKeyHandler"]
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+
 from maasserver.enum import ENDPOINT
 from maasserver.forms import SSLKeyForm
 from maasserver.models.sslkey import SSLKey

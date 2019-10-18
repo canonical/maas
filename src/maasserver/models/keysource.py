@@ -6,6 +6,7 @@
 __all__ = ["KeySource"]
 
 from django.db.models import BooleanField, CharField, Manager
+
 from maasserver import DefaultMeta
 from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave

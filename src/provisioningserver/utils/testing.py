@@ -6,10 +6,11 @@
 __all__ = ["callWithServiceRunning", "MAASIDFixture", "RegistryFixture"]
 
 from fixtures import Fixture
+from twisted.internet import defer
+
 from provisioningserver.utils import env
 from provisioningserver.utils.registry import _registry
 from provisioningserver.utils.twisted import call, callOut
-from twisted.internet import defer
 
 
 class RegistryFixture(Fixture):

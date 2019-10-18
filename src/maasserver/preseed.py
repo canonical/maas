@@ -27,6 +27,9 @@ from curtin.config import merge_config
 from curtin.pack import pack_install
 from django.conf import settings
 from django.urls import reverse
+import tempita
+import yaml
+
 from maasserver import logger
 from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
@@ -62,9 +65,6 @@ from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import typed
 from provisioningserver.utils.url import compose_URL
-import tempita
-import yaml
-
 
 maaslog = get_maas_logger("preseed")
 

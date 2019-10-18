@@ -18,16 +18,16 @@ from functools import wraps
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from maasserver.api.doc import get_api_description_hash
-from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
-from maasserver.utils.orm import get_one
 from piston3.authentication import NoAuthentication
 from piston3.emitters import Emitter
 from piston3.handler import AnonymousBaseHandler, BaseHandler, HandlerMetaClass
 from piston3.resource import Resource
 from piston3.utils import HttpStatusCode, rc
-from provisioningserver.logger import LegacyLogger
 
+from maasserver.api.doc import get_api_description_hash
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
+from maasserver.utils.orm import get_one
+from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
 

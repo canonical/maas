@@ -16,6 +16,25 @@ from django.db import connection, connections, transaction
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
 from django.db.utils import IntegrityError, OperationalError
+import psycopg2
+from psycopg2.errorcodes import (
+    DEADLOCK_DETECTED,
+    FOREIGN_KEY_VIOLATION,
+    SERIALIZATION_FAILURE,
+    UNIQUE_VIOLATION,
+)
+from testtools import ExpectedException
+from testtools.matchers import (
+    AllMatch,
+    Equals,
+    Is,
+    IsInstance,
+    MatchesPredicate,
+    Not,
+)
+from twisted.internet.defer import CancelledError, Deferred, passthru
+from twisted.python.failure import Failure
+
 from maasserver.models import Node
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -69,24 +88,6 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import callOut, DeferredValue
-import psycopg2
-from psycopg2.errorcodes import (
-    DEADLOCK_DETECTED,
-    FOREIGN_KEY_VIOLATION,
-    SERIALIZATION_FAILURE,
-    UNIQUE_VIOLATION,
-)
-from testtools import ExpectedException
-from testtools.matchers import (
-    AllMatch,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesPredicate,
-    Not,
-)
-from twisted.internet.defer import CancelledError, Deferred, passthru
-from twisted.python.failure import Failure
 
 
 class NoSleepMixin(unittest.TestCase):

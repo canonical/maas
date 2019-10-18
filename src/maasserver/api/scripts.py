@@ -12,6 +12,8 @@ from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import Bool, Int, String
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
@@ -23,7 +25,6 @@ from metadataserver.models.script import (
     translate_hardware_type,
     translate_script_type,
 )
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
 
 

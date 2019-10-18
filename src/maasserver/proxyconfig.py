@@ -7,6 +7,8 @@ __all__ = ["proxy_update_config"]
 
 
 from django.conf import settings
+from twisted.internet.defer import succeed
+
 from maasserver.models import Config
 from maasserver.models.subnet import Subnet
 from maasserver.service_monitor import service_monitor
@@ -16,8 +18,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.proxy.config import write_config
 from provisioningserver.utils import snappy
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import succeed
-
 
 maaslog = get_maas_logger("dns")
 MAAS_PROXY_CONF_NAME = "maas-proxy.conf"

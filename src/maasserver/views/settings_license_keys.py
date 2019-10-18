@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, DeleteView, UpdateView
+
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.utils.django_urls import reverse

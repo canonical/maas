@@ -7,9 +7,9 @@ __all__ = []
 
 from crochet import wait_for
 from django.db.utils import IntegrityError
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

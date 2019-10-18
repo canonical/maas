@@ -12,6 +12,8 @@ occur.
 
 __all__ = []
 
+from testtools.matchers import Is, MatchesStructure, Not
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import (
     Filesystem,
@@ -28,7 +30,6 @@ from maasserver.models.migrations.create_default_storage_layout import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Is, MatchesStructure, Not
 
 
 class TestClearFullStorageConfigration(MAASServerTestCase):

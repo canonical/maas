@@ -13,6 +13,10 @@ import uuid
 
 from crochet import wait_for
 from fixtures import EnvironmentVariableFixture
+from testtools.matchers import MatchesStructure
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, succeed
+
 from maasserver import workers
 from maasserver.enum import SERVICE_STATUS
 from maasserver.ipc import (
@@ -40,10 +44,6 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.runtest import MAASCrochetRunTest
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import callOut, DeferredValue
-from testtools.matchers import MatchesStructure
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, succeed
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

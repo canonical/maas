@@ -4,6 +4,7 @@ from random import randint
 import re
 
 from django.db import migrations, models
+
 import maasserver.models.fabric
 import maasserver.models.space
 

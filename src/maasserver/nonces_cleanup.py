@@ -8,13 +8,13 @@ __all__ = ["cleanup_old_nonces", "NonceCleanupService"]
 
 import time
 
-from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
 from oauth.oauth import OAuthServer
 from piston3.models import Nonce
-from provisioningserver.utils.twisted import synchronous
 from twisted.application.internet import TimerService
 
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
+from provisioningserver.utils.twisted import synchronous
 
 timestamp_threshold = OAuthServer.timestamp_threshold
 

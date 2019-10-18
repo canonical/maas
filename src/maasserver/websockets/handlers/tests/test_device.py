@@ -9,6 +9,10 @@ from operator import itemgetter
 from unittest.mock import ANY
 
 from django.http import HttpRequest
+from netaddr import IPAddress, IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is
+
 from maasserver.enum import (
     DEVICE_IP_ASSIGNMENT_TYPE,
     INTERFACE_LINK_TYPE,
@@ -37,9 +41,6 @@ from maasserver.websockets.handlers.device import DeviceHandler
 from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
-from netaddr import IPAddress, IPNetwork
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is
 
 
 class TestDeviceHandler(MAASTransactionServerTestCase):

@@ -10,17 +10,6 @@ from operator import itemgetter
 from urllib.parse import urlparse
 
 from django.test.client import RequestFactory
-from maasserver.api.doc import get_api_description_hash
-from maasserver.api.doc_handler import describe
-from maasserver.testing.api import APITestCase
-from maasserver.testing.factory import factory
-from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import (
-    get_script_prefix,
-    reverse,
-    set_script_prefix,
-)
-from maastesting.testcase import MAASTestCase
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
@@ -34,6 +23,18 @@ from testtools.matchers import (
     MatchesStructure,
     StartsWith,
 )
+
+from maasserver.api.doc import get_api_description_hash
+from maasserver.api.doc_handler import describe
+from maasserver.testing.api import APITestCase
+from maasserver.testing.factory import factory
+from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import (
+    get_script_prefix,
+    reverse,
+    set_script_prefix,
+)
+from maastesting.testcase import MAASTestCase
 
 
 class TestDescribe(APITestCase.ForAnonymousAndUserAndAdmin):

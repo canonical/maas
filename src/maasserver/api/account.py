@@ -9,11 +9,12 @@ import http.client
 import json
 
 from django.http import HttpResponse
+from piston3.utils import rc
+
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
 
 

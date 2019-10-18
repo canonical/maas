@@ -40,6 +40,7 @@ six==1.11.0
 black==19.3b0
 entrypoints==0.3
 flake8==3.7.8
+isort==4.3.21
 mccabe==0.6.1
 pycodestyle==2.5.0
 pyflakes==2.1.1

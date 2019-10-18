@@ -27,7 +27,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
 from provisioningserver.utils.network import find_ip_via_arp
 
-
 IPMI_CONFIG = """\
 Section Chassis_Boot_Flags
         Boot_Flags_Persistent                         No

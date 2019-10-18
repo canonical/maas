@@ -10,6 +10,8 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from testtools.matchers import ContainsAll, Equals
+
 import maasserver.api.auth
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models import Config, Node, SSHKey, SSLKey, StaticIPAddress
@@ -20,7 +22,6 @@ from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import get_one
 from provisioningserver.events import AUDIT
-from testtools.matchers import ContainsAll, Equals
 
 
 def get_user_uri(user):

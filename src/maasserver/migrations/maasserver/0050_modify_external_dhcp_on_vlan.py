@@ -2,6 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
+
 import maasserver.fields
 import maasserver.models.interface
 import maasserver.models.subnet

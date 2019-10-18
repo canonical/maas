@@ -9,6 +9,16 @@ from random import randint
 
 from django import forms
 from django.core.exceptions import ValidationError
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+    Equals,
+    MatchesDict,
+    MatchesListwise,
+    Not,
+    StartsWith,
+)
+
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -36,15 +46,6 @@ from maasserver.testing.factory import factory, RANDOM
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from provisioningserver.utils.constraints import LabeledConstraintMap
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    Equals,
-    MatchesDict,
-    MatchesListwise,
-    Not,
-    StartsWith,
-)
 
 
 class TestUtils(MAASServerTestCase):

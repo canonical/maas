@@ -13,8 +13,10 @@ import sys
 from textwrap import dedent
 from unittest.mock import sentinel
 
-from apiclient.creds import convert_string_to_tuple
 from django.core import management
+from testtools.matchers import DocTestMatches
+
+from apiclient.creds import convert_string_to_tuple
 from maascli import cli, init, snappy
 from maascli.auth import UnexpectedResponse
 from maascli.parser import ArgumentParser
@@ -22,7 +24,6 @@ from maascli.tests.test_auth import make_options
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import DocTestMatches
 
 
 class TestRegisterCommands(MAASTestCase):

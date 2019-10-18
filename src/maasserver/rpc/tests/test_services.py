@@ -6,6 +6,8 @@
 __all__ = []
 
 from fixtures import FakeLogger
+from testtools.matchers import MatchesStructure
+
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.service import RACK_SERVICES, Service
 from maasserver.rpc import services
@@ -14,7 +16,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maastesting.matchers import DocTestMatches
 from provisioningserver.rpc.exceptions import NoSuchCluster
-from testtools.matchers import MatchesStructure
 
 
 class TestUpdateServices(MAASTransactionServerTestCase):

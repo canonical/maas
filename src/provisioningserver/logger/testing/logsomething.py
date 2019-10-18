@@ -22,9 +22,10 @@ import logging
 import sys
 import warnings
 
-import provisioningserver.logger
 import twisted.logger
 import twisted.python.log
+
+import provisioningserver.logger
 
 
 def main():

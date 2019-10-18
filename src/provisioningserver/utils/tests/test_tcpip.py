@@ -9,6 +9,9 @@ from io import BytesIO
 from random import randint
 import time
 
+from testtools import ExpectedException
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
@@ -21,8 +24,6 @@ from provisioningserver.utils.tcpip import (
     PacketProcessingError,
     UDP,
 )
-from testtools import ExpectedException
-from testtools.matchers import Equals
 
 
 def make_ipv4_packet(

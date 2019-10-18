@@ -13,6 +13,18 @@ from random import randint
 from urllib.parse import parse_qsl, urlparse
 
 from django.conf import settings
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    ContainsDict,
+    Equals,
+    HasLength,
+    Is,
+    MatchesDict,
+    MatchesStructure,
+    Not,
+)
+
 from maasserver.api import events as events_module
 from maasserver.api.events import event_to_dict
 from maasserver.api.tests.test_nodes import RequestFixture
@@ -26,17 +38,6 @@ from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from provisioningserver.events import AUDIT
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    ContainsDict,
-    Equals,
-    HasLength,
-    Is,
-    MatchesDict,
-    MatchesStructure,
-    Not,
-)
 
 
 def make_events(count=None, **kwargs):

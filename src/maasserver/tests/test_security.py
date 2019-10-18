@@ -10,15 +10,6 @@ from binascii import b2a_hex
 from datetime import datetime
 from os import unlink
 
-from maasserver import security
-from maasserver.models.config import Config
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
-from maastesting.matchers import FileContains
-from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.fs import write_text_file
 from pytz import UTC
 from testtools.matchers import (
     AfterPreprocessing,
@@ -29,6 +20,16 @@ from testtools.matchers import (
     MatchesAny,
 )
 from twisted.internet import ssl
+
+from maasserver import security
+from maasserver.models.config import Config
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maastesting.matchers import FileContains
+from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.fs import write_text_file
 
 
 class TestGetSerial(MAASTestCase):

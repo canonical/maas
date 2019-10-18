@@ -24,8 +24,9 @@ import sys
 
 import fixtures
 from fixtures import EnvironmentVariable
-from maastesting import root
 from testtools.monkey import MonkeyPatcher
+
+from maastesting import root
 
 
 class ImportErrorFixture(fixtures.Fixture):

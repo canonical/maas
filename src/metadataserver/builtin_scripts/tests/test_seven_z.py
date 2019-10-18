@@ -13,12 +13,12 @@ import sys
 from textwrap import dedent
 from unittest.mock import ANY
 
+import yaml
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import seven_z
-import yaml
-
 
 SEVEN_Z_OUTPUT = dedent(
     """

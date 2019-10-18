@@ -12,10 +12,18 @@ import random
 import subprocess
 from unittest.mock import ANY, Mock
 
+from netaddr import IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    Equals,
+    MatchesStructure,
+)
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches, Matches, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from netaddr import IPNetwork
 from provisioningserver.utils import scan_network as scan_network_module
 from provisioningserver.utils.scan_network import (
     add_arguments,
@@ -31,13 +39,6 @@ from provisioningserver.utils.scan_network import (
 )
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.shell import get_env_with_locale
-from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    Equals,
-    MatchesStructure,
-)
 
 
 def CIDRSet(cidrs):

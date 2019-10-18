@@ -11,11 +11,12 @@ import re
 import uuid
 
 import formencode
+from testtools import ExpectedException
+from testtools.matchers import Equals, IsInstance
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import config
-from testtools import ExpectedException
-from testtools.matchers import Equals, IsInstance
 
 
 class TestSchema(MAASTestCase):

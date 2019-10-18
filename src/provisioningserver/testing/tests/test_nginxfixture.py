@@ -8,13 +8,14 @@ __all__ = []
 
 import os
 
+from testtools.matchers import Contains, FileExists
+
 from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.nginxfixture import (
     NginxServer,
     NginxServerResources,
 )
-from testtools.matchers import Contains, FileExists
 
 
 class TestNginxFixture(MAASTestCase):

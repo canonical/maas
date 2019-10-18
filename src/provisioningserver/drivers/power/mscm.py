@@ -17,6 +17,7 @@ from socket import error as SOCKETError
 from typing import Optional
 
 from paramiko import AutoAddPolicy, SSHClient, SSHException
+
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -31,7 +32,6 @@ from provisioningserver.drivers.power import (
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
-
 
 cartridge_mapping = {
     "ProLiant Moonshot Cartridge": "amd64/generic",

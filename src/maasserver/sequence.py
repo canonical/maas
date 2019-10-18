@@ -8,14 +8,14 @@ __all__ = ["BIGINT_MAX", "INT_MAX", "Sequence"]
 from textwrap import dedent
 
 from django.db import connection, transaction, utils
-from maasserver.utils.orm import get_psycopg2_exception
-from provisioningserver.utils import typed
 from psycopg2.errorcodes import (
     DUPLICATE_TABLE,
     OBJECT_NOT_IN_PREREQUISITE_STATE,
     UNDEFINED_TABLE,
 )
 
+from maasserver.utils.orm import get_psycopg2_exception
+from provisioningserver.utils import typed
 
 BIGINT_MAX = (2 ** 63) - 1
 INT_MAX = (2 ** 32) - 1

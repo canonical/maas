@@ -1,10 +1,11 @@
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.prometheus.resource import PrometheusMetricsResource
-from provisioningserver.utils.twisted import reducedWebLogFormatter
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet.endpoints import TCP6ServerEndpoint
 from twisted.web.resource import Resource
 from twisted.web.server import Site
+
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.prometheus.resource import PrometheusMetricsResource
+from provisioningserver.utils.twisted import reducedWebLogFormatter
 
 
 def create_prometheus_exporter_service(reactor, port):

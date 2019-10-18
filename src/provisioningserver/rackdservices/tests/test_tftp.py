@@ -14,13 +14,38 @@ from socket import AF_INET, AF_INET6
 import time
 from unittest.mock import ANY, Mock, sentinel
 
+from netaddr import IPNetwork
+from netaddr.ip import IPV4_LINK_LOCAL, IPV6_LINK_LOCAL
+import prometheus_client
+from testtools import ExpectedException
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Equals,
+    HasLength,
+    IsInstance,
+    MatchesAll,
+    MatchesStructure,
+)
+from tftp.backend import IReader
+from tftp.datagram import RQDatagram
+from tftp.errors import BackendError, FileNotFound
+import tftp.protocol
+from tftp.protocol import TFTP
+from twisted.application import internet
+from twisted.application.service import MultiService
+from twisted.internet import reactor
+from twisted.internet.address import IPv4Address, IPv6Address
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.protocol import Protocol
+from twisted.internet.task import Clock
+from twisted.python import context
+from zope.interface.verify import verifyObject
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
-from netaddr import IPNetwork
-from netaddr.ip import IPV4_LINK_LOCAL, IPV6_LINK_LOCAL
-import prometheus_client
 from provisioningserver import boot
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
@@ -47,30 +72,6 @@ from provisioningserver.testing.boot_images import (
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-)
-from tftp.backend import IReader
-from tftp.datagram import RQDatagram
-from tftp.errors import BackendError, FileNotFound
-import tftp.protocol
-from tftp.protocol import TFTP
-from twisted.application import internet
-from twisted.application.service import MultiService
-from twisted.internet import reactor
-from twisted.internet.address import IPv4Address, IPv6Address
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.internet.protocol import Protocol
-from twisted.internet.task import Clock
-from twisted.python import context
-from zope.interface.verify import verifyObject
 
 
 class TestGetBootImage(MAASTestCase):

@@ -9,6 +9,9 @@ __all__ = []
 import os
 from subprocess import check_output
 
+from testtools.matchers import Contains, FileExists, Not
+from testtools.testcase import gather_details
+
 from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.bindfixture import (
@@ -16,8 +19,6 @@ from provisioningserver.testing.bindfixture import (
     BINDServerResources,
 )
 from provisioningserver.utils.shell import get_env_with_locale
-from testtools.matchers import Contains, FileExists, Not
-from testtools.testcase import gather_details
 
 
 def dig_call(port=53, server="127.0.0.1", commands=None):

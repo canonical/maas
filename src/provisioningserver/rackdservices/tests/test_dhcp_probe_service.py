@@ -7,6 +7,10 @@ __all__ = []
 
 from unittest.mock import Mock, sentinel
 
+from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.task import Clock
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -24,9 +28,6 @@ from provisioningserver.rackdservices.dhcp_probe_service import (
 )
 from provisioningserver.rpc import getRegionClient, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.task import Clock
 
 
 class TestDHCPProbeService(MAASTestCase):

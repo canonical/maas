@@ -13,6 +13,18 @@ from os.path import join
 import random
 from unittest.mock import call
 
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    Is,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+)
+from twisted.internet.defer import inlineCallbacks
+from twisted.web.client import FileBodyProducer, PartialDownloadError
+from twisted.web.http_headers import Headers
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -34,25 +46,13 @@ from provisioningserver.drivers.pod import (
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
 )
+import provisioningserver.drivers.pod.rsd as rsd_module
 from provisioningserver.drivers.pod.rsd import (
     RSD_NODE_POWER_STATE,
     RSD_SYSTEM_POWER_STATE,
     RSDPodDriver,
 )
-import provisioningserver.drivers.pod.rsd as rsd_module
 from provisioningserver.rpc.exceptions import PodInvalidResources
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    Is,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
-)
-from twisted.internet.defer import inlineCallbacks
-from twisted.web.client import FileBodyProducer, PartialDownloadError
-from twisted.web.http_headers import Headers
-
 
 SAMPLE_JSON_PARTIAL_DOWNLOAD_ERROR = {
     "error": {

@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey
+
 from maasserver import DefaultMeta
 from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 from maasserver.models.filesystemgroup import FilesystemGroup

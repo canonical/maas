@@ -17,6 +17,33 @@ import socket
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 from urllib.parse import urlparse
 
+from netaddr import IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    KeysEqual,
+    MatchesAll,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+)
+from twisted import web
+from twisted.application.internet import TimerService
+from twisted.internet import error, reactor
+from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
+from twisted.internet.endpoints import TCP6ClientEndpoint
+from twisted.internet.error import ConnectionClosed
+from twisted.internet.task import Clock
+from twisted.protocols import amp
+from twisted.python.failure import Failure
+from twisted.python.threadable import isInIOThread
+from twisted.test.proto_helpers import StringTransportWithDisconnection
+from twisted.web.client import Headers
+from zope.interface.verify import verifyObject
+
 from apiclient.creds import convert_tuple_to_string
 from apiclient.utils import ascii_url
 from maastesting.factory import factory
@@ -35,7 +62,6 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
-from netaddr import IPNetwork
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
@@ -72,12 +98,11 @@ from provisioningserver.rpc import (
     dhcp,
     exceptions,
     getRegionClient,
-    osystems as osystems_rpc_module,
-    pods,
-    power as power_module,
-    region,
-    tags,
 )
+from provisioningserver.rpc import osystems as osystems_rpc_module
+from provisioningserver.rpc import pods
+from provisioningserver.rpc import power as power_module
+from provisioningserver.rpc import region, tags
 from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
@@ -107,31 +132,6 @@ from provisioningserver.utils.twisted import (
     pause,
 )
 from provisioningserver.utils.version import get_maas_version
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    KeysEqual,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
-)
-from twisted import web
-from twisted.application.internet import TimerService
-from twisted.internet import error, reactor
-from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
-from twisted.internet.endpoints import TCP6ClientEndpoint
-from twisted.internet.error import ConnectionClosed
-from twisted.internet.task import Clock
-from twisted.protocols import amp
-from twisted.python.failure import Failure
-from twisted.python.threadable import isInIOThread
-from twisted.test.proto_helpers import StringTransportWithDisconnection
-from twisted.web.client import Headers
-from zope.interface.verify import verifyObject
 
 
 class TestClusterProtocol_Identify(MAASTestCase):

@@ -11,8 +11,8 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.hardware.seamicro import (
-    power_control_seamicro15k_v09,
     power_control_seamicro15k_v2,
+    power_control_seamicro15k_v09,
     power_query_seamicro15k_v2,
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver

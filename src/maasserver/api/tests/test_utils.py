@@ -9,6 +9,8 @@ from collections import namedtuple
 
 from django.forms import CharField
 from django.http import QueryDict
+from testtools.matchers import Equals, IsInstance, MatchesDict
+
 from maasserver.api.utils import (
     extract_bool,
     extract_oauth_key,
@@ -21,7 +23,6 @@ from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals, IsInstance, MatchesDict
 
 
 class TestExtractBool(MAASTestCase):

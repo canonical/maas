@@ -2,10 +2,10 @@
 
 from datetime import datetime
 
-from django.db import migrations, models
-
 # Need a copy of this enum as it existed pre-migration.
+from django.db import migrations, models
 from netaddr import IPAddress
+
 from provisioningserver.utils.network import MAASIPSet, make_iprange
 
 

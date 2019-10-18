@@ -7,6 +7,7 @@ __all__ = ["RBACLastSync", "RBACSync"]
 
 from django.db.models import Manager, Model
 from django.db.models.fields import CharField, DateTimeField, IntegerField
+
 from maasserver import DefaultMeta
 
 

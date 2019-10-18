@@ -59,7 +59,6 @@ import sys
 
 import yaml
 
-
 REGEX = b"Avr:(.*)"
 
 

@@ -15,6 +15,9 @@ import time
 from unittest.mock import ANY, sentinel
 
 from cryptography.fernet import InvalidToken
+from testtools import ExpectedException
+from testtools.matchers import Equals, IsInstance
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -30,8 +33,6 @@ from provisioningserver.utils.fs import (
     read_text_file,
     write_text_file,
 )
-from testtools import ExpectedException
-from testtools.matchers import Equals, IsInstance
 
 
 class SharedSecretTestCase(MAASTestCase):

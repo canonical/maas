@@ -16,7 +16,6 @@ import psycopg2
 from psycopg2.errorcodes import DUPLICATE_DATABASE
 from testresources import TestResourceManager
 
-
 here = Path(__file__).parent
 
 

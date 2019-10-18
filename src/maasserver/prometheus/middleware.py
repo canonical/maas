@@ -6,6 +6,7 @@ from time import time
 
 from django.db import connections
 from django.db.backends.utils import CursorWrapper
+
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 
 

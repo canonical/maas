@@ -13,6 +13,10 @@ from typing import Iterable, Optional, Union
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from netaddr import IPAddress, IPNetwork
+from twisted.internet.defer import inlineCallbacks
+from twisted.protocols import amp
+
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
     get_dns_server_addresses,
@@ -37,7 +41,6 @@ from maasserver.models import (
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import IPAddress, IPNetwork
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
@@ -57,9 +60,6 @@ from provisioningserver.utils import typed
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import asynchronous, synchronous
-from twisted.internet.defer import inlineCallbacks
-from twisted.protocols import amp
-
 
 log = LegacyLogger()
 

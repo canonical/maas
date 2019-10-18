@@ -12,6 +12,9 @@ from uuid import uuid4
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is, MatchesStructure, Not
+
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_RAID_TYPES,
@@ -47,8 +50,6 @@ from maasserver.utils.converters import (
 )
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, MatchesStructure, Not
 
 
 class TestManagersGetObjectOr404(MAASServerTestCase):

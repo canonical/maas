@@ -10,6 +10,7 @@ import logging
 
 from django.db import connection
 import fixtures
+
 from maasserver.models.config import Config
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.testing.factory import factory

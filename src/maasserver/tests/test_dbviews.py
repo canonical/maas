@@ -6,11 +6,12 @@
 __all__ = []
 
 from django.db import connection
+from testtools.matchers import HasLength
+
 from maasserver.dbviews import _ALL_VIEWS, register_all_views
 from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import HasLength
 
 
 class TestDatabaseViews(MAASServerTestCase):

@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+
 import maasserver.fields
 
 # IPs must be unique across the entire table, except DISCOVERED addresses

@@ -18,6 +18,9 @@ import re
 from tempfile import NamedTemporaryFile
 
 from netaddr import IPAddress
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
+from twisted.internet.threads import deferToThread
+
 from provisioningserver.dhcp import DHCPv4Server, DHCPv6Server
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.omshell import Omshell
@@ -37,9 +40,6 @@ from provisioningserver.utils.service_monitor import (
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import asynchronous, synchronous
-from twisted.internet.defer import inlineCallbacks, maybeDeferred
-from twisted.internet.threads import deferToThread
-
 
 maaslog = get_maas_logger("dhcp")
 log = LegacyLogger()

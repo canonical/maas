@@ -8,19 +8,17 @@ __all__ = []
 from subprocess import PIPE
 from unittest.mock import Mock
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.power import (
-    apc as apc_module,
-    PowerActionError,
-)
+from provisioningserver.drivers.power import apc as apc_module
+from provisioningserver.drivers.power import PowerActionError
 from provisioningserver.utils.shell import (
     get_env_with_locale,
     has_command_available,
 )
-from testtools.matchers import Equals
-
 
 COMMON_ARGS = "-c private -v1 %s .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s"
 COMMON_OUTPUT = "iso.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s = INTEGER: 1\n"

@@ -6,6 +6,7 @@
 __all__ = ["urlpatterns"]
 
 from django.conf.urls import url
+
 from maasserver.api.auth import api_auth
 from maasserver.api.support import OperationsResource
 from metadataserver.api import (

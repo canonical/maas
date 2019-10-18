@@ -19,11 +19,12 @@ from django.db.models import (
     Model,
     TextField,
 )
+from markupsafe import Markup
+
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from markupsafe import Markup
 
 
 def _create(method, category):

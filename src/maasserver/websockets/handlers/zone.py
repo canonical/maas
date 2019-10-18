@@ -8,6 +8,7 @@ __all__ = ["ZoneHandler"]
 from collections import defaultdict
 
 from django.db.models import Count
+
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ZoneForm
 from maasserver.models.zone import Zone

@@ -10,6 +10,9 @@ from unittest.mock import Mock, sentinel
 
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from fixtures import FakeLogger
+from testtools.matchers import Equals
+from twisted.python.failure import Failure
+
 from maasserver.clusterrpc import utils
 from maasserver.clusterrpc.utils import call_racks_synchronously
 from maasserver.node_action import RPC_EXCEPTIONS
@@ -22,8 +25,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from testtools.matchers import Equals
-from twisted.python.failure import Failure
 
 
 class MockFailure(Failure):

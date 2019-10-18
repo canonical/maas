@@ -9,6 +9,16 @@ import random
 from unittest.mock import sentinel
 
 from jsonschema import validate
+from testtools.matchers import (
+    Equals,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+)
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import make_setting_field
@@ -31,15 +41,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
-)
-from testtools.matchers import (
-    Equals,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
 )
 
 

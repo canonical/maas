@@ -15,6 +15,12 @@ from os.path import join
 import random
 from unittest.mock import call, Mock
 
+from testtools import ExpectedException
+from twisted.internet._sslverify import ClientTLSOptions
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.web.client import FileBodyProducer, PartialDownloadError
+from twisted.web.http_headers import Headers
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -23,18 +29,12 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import PowerActionError
+import provisioningserver.drivers.power.redfish as redfish_module
 from provisioningserver.drivers.power.redfish import (
     REDFISH_POWER_CONTROL_ENDPOINT,
     RedfishPowerDriver,
     WebClientContextFactory,
 )
-import provisioningserver.drivers.power.redfish as redfish_module
-from testtools import ExpectedException
-from twisted.internet._sslverify import ClientTLSOptions
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.web.client import FileBodyProducer, PartialDownloadError
-from twisted.web.http_headers import Headers
-
 
 SAMPLE_JSON_SYSTEMS = {
     "@odata.context": "/redfish/v1/$metadata#Systems",

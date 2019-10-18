@@ -8,6 +8,7 @@ __all__ = []
 from io import BytesIO
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
+
 from maasserver.forms import BootSourceForm
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory

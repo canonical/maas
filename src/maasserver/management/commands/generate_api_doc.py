@@ -6,6 +6,7 @@
 __all__ = ["Command"]
 
 from django.core.management.base import BaseCommand
+
 from maasserver.api.doc_handler import api_doc_title, render_api_docs
 
 

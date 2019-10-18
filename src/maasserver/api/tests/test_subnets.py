@@ -10,13 +10,14 @@ import json
 import random
 
 from django.conf import settings
+from testtools.matchers import Contains, ContainsDict, Equals, HasLength
+
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE_CHOICES
 from maasserver.testing.api import APITestCase, explain_unexpected_response
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from provisioningserver.utils.network import inet_ntop, IPRangeStatistics
-from testtools.matchers import Contains, ContainsDict, Equals, HasLength
 
 
 def get_subnets_uri():

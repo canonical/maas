@@ -5,6 +5,8 @@
 
 from django.forms.utils import ErrorList
 from formencode.validators import StringBool
+from piston3.utils import rc
+
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.enum import (
@@ -43,8 +45,6 @@ from maasserver.models.interface import (
 )
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
-from piston3.utils import rc
-
 
 MISSING_FIELD = "This field is required."
 

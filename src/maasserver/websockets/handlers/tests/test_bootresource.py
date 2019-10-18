@@ -10,6 +10,10 @@ import json
 import random
 from unittest.mock import ANY
 
+from testtools.matchers import ContainsAll, HasLength
+from twisted.internet import reactor
+from twisted.internet.defer import succeed
+
 from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS
 from maasserver.models import BootResource, BootSourceSelection, Config
 from maasserver.models.signals import bootsources
@@ -35,9 +39,6 @@ from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
 )
-from testtools.matchers import ContainsAll, HasLength
-from twisted.internet import reactor
-from twisted.internet.defer import succeed
 
 
 class PatchOSInfoMixin:

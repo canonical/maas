@@ -9,6 +9,7 @@ __all__ = ["Template"]
 import sys
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

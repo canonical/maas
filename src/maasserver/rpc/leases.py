@@ -7,6 +7,8 @@ __all__ = ["update_lease"]
 
 from datetime import datetime
 
+from netaddr import IPAddress
+
 from maasserver.enum import IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.models import (
     DNSResource,
@@ -17,11 +19,9 @@ from maasserver.models import (
     UnknownInterface,
 )
 from maasserver.utils.orm import transactional
-from netaddr import IPAddress
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import synchronous
-
 
 log = LegacyLogger()
 

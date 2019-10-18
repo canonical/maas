@@ -18,6 +18,15 @@ from unittest.mock import MagicMock
 import urllib
 
 from lxml import etree
+from testtools.matchers import (
+    AfterPreprocessing,
+    Equals,
+    MatchesAll,
+    MatchesAny,
+    MatchesDict,
+    MatchesListwise,
+)
+
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
@@ -30,14 +39,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import maas_api_helper
-from testtools.matchers import (
-    AfterPreprocessing,
-    Equals,
-    MatchesAll,
-    MatchesAny,
-    MatchesDict,
-    MatchesListwise,
-)
 
 
 class TestHeaders(MAASTestCase):

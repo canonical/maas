@@ -21,7 +21,6 @@ from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
-
 vmomi_api = None
 vim = None
 

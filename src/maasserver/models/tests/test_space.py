@@ -7,12 +7,13 @@ __all__ = []
 
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from testtools.matchers import Equals, MatchesStructure
+
 from maasserver.models.space import DEFAULT_SPACE_NAME, Space
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals, MatchesStructure
 
 
 class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):

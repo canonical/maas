@@ -8,21 +8,18 @@ __all__ = []
 from random import choice
 from unittest.mock import call, sentinel
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.power import (
-    dli as dli_module,
-    PowerActionError,
-    PowerError,
-)
+from provisioningserver.drivers.power import dli as dli_module
+from provisioningserver.drivers.power import PowerActionError, PowerError
 from provisioningserver.utils.shell import (
     ExternalProcessError,
     get_env_with_locale,
     has_command_available,
 )
-from testtools.matchers import Equals
-
 
 DLI_QUERY_OUTPUT = """\
 ...

@@ -11,13 +11,6 @@ import random
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from maasserver.config import RegionConfiguration
-from maasserver.management.commands import _config as config
-from maasserver.testing.config import RegionConfigurationFixture
-from maasserver.testing.factory import factory
-from maastesting.fixtures import CaptureStandardIO
-from maastesting.testcase import MAASTestCase
-from provisioningserver.config import ConfigurationOption
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -30,6 +23,14 @@ from testtools.matchers import (
     Not,
 )
 import yaml
+
+from maasserver.config import RegionConfiguration
+from maasserver.management.commands import _config as config
+from maasserver.testing.config import RegionConfigurationFixture
+from maasserver.testing.factory import factory
+from maastesting.fixtures import CaptureStandardIO
+from maastesting.testcase import MAASTestCase
+from provisioningserver.config import ConfigurationOption
 
 
 def call_nnn(command, **options):

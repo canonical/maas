@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.conf.urls import url
+
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
 from maasserver.api.bcache import BcacheHandler, BcachesHandler
@@ -103,7 +104,6 @@ from maasserver.api.volume_groups import (
     VolumeGroupsHandler,
 )
 from maasserver.api.zones import ZoneHandler, ZonesHandler
-
 
 maas_handler = RestrictedResource(MaasHandler, authentication=api_auth)
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)

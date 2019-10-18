@@ -1,9 +1,10 @@
 from pathlib import Path
 from textwrap import dedent
 
+import prometheus_client
+
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
-import prometheus_client
 from provisioningserver.prometheus import metrics
 from provisioningserver.prometheus.collectors import (
     MEMINFO_FIELDS,

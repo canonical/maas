@@ -11,6 +11,11 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
+from requests.exceptions import RequestException
+
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.audit import create_audit_event
@@ -20,12 +25,7 @@ from maasserver.forms import SSHKeyForm
 from maasserver.models import KeySource, SSHKey
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
-from piston3.emitters import JSONEmitter
-from piston3.handler import typemapper
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
-from requests.exceptions import RequestException
-
 
 DISPLAY_SSHKEY_FIELDS = ("id", "key", "keysource")
 

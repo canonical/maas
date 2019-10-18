@@ -8,10 +8,11 @@ __all__ = []
 import random
 
 import formencode.api
+from testtools.testcase import ExpectedException
+
 from maasserver.config import RegionConfiguration
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from testtools.testcase import ExpectedException
 
 
 class TestRegionConfiguration(MAASTestCase):

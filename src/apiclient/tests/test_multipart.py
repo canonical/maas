@@ -8,12 +8,12 @@ __all__ = []
 from io import BytesIO
 from os import urandom
 
-from apiclient.multipart import encode_multipart_data, get_content_type
-from apiclient.testing.django import APIClientTestCase
 from django.utils.datastructures import MultiValueDict
-from maastesting.factory import factory
 from testtools.matchers import EndsWith, StartsWith
 
+from apiclient.multipart import encode_multipart_data, get_content_type
+from apiclient.testing.django import APIClientTestCase
+from maastesting.factory import factory
 
 ahem_django_ahem = (
     "If the mismatch appears to be because the parsed values "

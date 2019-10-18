@@ -18,6 +18,17 @@ import time
 from unittest.mock import Mock
 from uuid import UUID, uuid1
 
+from testtools.matchers import (
+    Contains,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    LessThan,
+    Not,
+)
+from testtools.testcase import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -39,16 +50,6 @@ from provisioningserver.utils.beaconing import (
     uuid_to_timestamp,
 )
 from provisioningserver.utils.script import ActionScriptError
-from testtools.matchers import (
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    LessThan,
-    Not,
-)
-from testtools.testcase import ExpectedException
 
 
 class TestUUIDToTimestamp(MAASTestCase):

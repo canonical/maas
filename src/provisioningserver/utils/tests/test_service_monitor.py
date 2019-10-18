@@ -12,32 +12,6 @@ from textwrap import dedent
 from unittest.mock import call, Mock, sentinel
 
 from fixtures import FakeLogger
-from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
-from maastesting.runtest import MAASTwistedRunTest
-from maastesting.testcase import MAASTestCase
-from maastesting.twisted import always_fail_with
-from provisioningserver.utils import (
-    service_monitor as service_monitor_module,
-    snappy,
-)
-from provisioningserver.utils.service_monitor import (
-    Service,
-    SERVICE_STATE,
-    ServiceActionError,
-    ServiceMonitor,
-    ServiceNotOnError,
-    ServiceParsingError,
-    ServiceState,
-    ServiceUnknownError,
-    ToggleableService,
-)
-from provisioningserver.utils.shell import get_env_with_bytes_locale
-from provisioningserver.utils.twisted import pause
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import Contains, Equals
@@ -51,6 +25,30 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import deferLater
 
+from maastesting.factory import factory
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
+)
+from maastesting.runtest import MAASTwistedRunTest
+from maastesting.testcase import MAASTestCase
+from maastesting.twisted import always_fail_with
+from provisioningserver.utils import service_monitor as service_monitor_module
+from provisioningserver.utils import snappy
+from provisioningserver.utils.service_monitor import (
+    Service,
+    SERVICE_STATE,
+    ServiceActionError,
+    ServiceMonitor,
+    ServiceNotOnError,
+    ServiceParsingError,
+    ServiceState,
+    ServiceUnknownError,
+    ToggleableService,
+)
+from provisioningserver.utils.shell import get_env_with_bytes_locale
+from provisioningserver.utils.twisted import pause
 
 EMPTY_SET = frozenset()
 

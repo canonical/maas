@@ -30,24 +30,19 @@ from django import forms
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import RegexValidator, URLValidator
 from django.db import connections
-from django.db.models import (
-    BinaryField,
-    CharField,
-    Field as _BrokenField,
-    GenericIPAddressField,
-    IntegerField,
-    Q,
-    URLField,
-)
+from django.db.models import BinaryField, CharField
+from django.db.models import Field as _BrokenField
+from django.db.models import GenericIPAddressField, IntegerField, Q, URLField
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
+from netaddr import AddrFormatError, IPAddress, IPNetwork
+import psycopg2.extensions
+
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.dns import validate_domain_name, validate_hostname
 from maasserver.utils.orm import get_one, validate_in_transaction
-from netaddr import AddrFormatError, IPAddress, IPNetwork
 from provisioningserver.utils import typed
-import psycopg2.extensions
 
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")

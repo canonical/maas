@@ -13,6 +13,10 @@ import shutil
 from unittest import mock
 from unittest.mock import ANY, sentinel
 
+from testtools.matchers import Is
+from tftp.backend import FilesystemReader
+from twisted.internet.defer import inlineCallbacks
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -21,19 +25,13 @@ from maastesting.twisted import (
     always_succeed_with,
     extract_result,
 )
-from provisioningserver.boot import (
-    BootMethodError,
-    BytesReader,
-    windows as windows_module,
-)
+from provisioningserver.boot import BootMethodError, BytesReader
+from provisioningserver.boot import windows as windows_module
 from provisioningserver.boot.windows import Bcd, WindowsPXEBootMethod
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from testtools.matchers import Is
-from tftp.backend import FilesystemReader
-from twisted.internet.defer import inlineCallbacks
 
 
 class TestBcd(MAASTestCase):

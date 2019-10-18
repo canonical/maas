@@ -7,6 +7,8 @@ __all__ = ["signals"]
 
 from datetime import timedelta
 
+from twisted.internet import reactor
+
 from maasserver.exceptions import PowerProblem
 from maasserver.models.node import Node
 from maasserver.node_status import QUERY_TRANSITIONS
@@ -21,8 +23,6 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     synchronous,
 )
-from twisted.internet import reactor
-
 
 log = LegacyLogger()
 

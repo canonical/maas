@@ -9,6 +9,11 @@ __all__ = []
 import time
 from unittest.mock import call
 
+from piston3.models import Nonce
+from testtools.matchers import ContainsAll, StartsWith
+from twisted.internet.defer import maybeDeferred
+from twisted.internet.task import Clock
+
 from maasserver import nonces_cleanup
 from maasserver.nonces_cleanup import (
     cleanup_old_nonces,
@@ -18,9 +23,9 @@ from maasserver.nonces_cleanup import (
     get_time_string,
     key_prefix,
     NonceCleanupService,
-    time as module_time,
-    timestamp_threshold,
 )
+from maasserver.nonces_cleanup import time as module_time
+from maasserver.nonces_cleanup import timestamp_threshold
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
@@ -28,10 +33,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from piston3.models import Nonce
-from testtools.matchers import ContainsAll, StartsWith
-from twisted.internet.defer import maybeDeferred
-from twisted.internet.task import Clock
 
 
 class TestCleanupOldNonces(MAASServerTestCase):

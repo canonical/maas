@@ -5,12 +5,13 @@
 
 __all__ = []
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import nova as nova_module
 from provisioningserver.drivers.power.nova import NovaPowerDriver
-from testtools.matchers import Equals
 
 
 class TestNovaPowerDriver(MAASTestCase):

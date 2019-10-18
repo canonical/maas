@@ -15,6 +15,7 @@ from django.http import Http404
 from django.test.client import RequestFactory
 from django.views.defaults import server_error
 from lxml.html import fromstring
+
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

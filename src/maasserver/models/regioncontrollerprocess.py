@@ -6,6 +6,7 @@
 __all__ = ["RegionControllerProcess"]
 
 from django.db.models import CASCADE, ForeignKey, IntegerField
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node

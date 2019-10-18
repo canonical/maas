@@ -6,6 +6,7 @@ from typing import Mapping, Sequence, Union
 from urllib.parse import parse_qs, quote, urlparse
 
 import attr
+
 from maasserver.macaroon_auth import (
     APIError,
     AuthInfo,

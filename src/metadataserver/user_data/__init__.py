@@ -17,14 +17,14 @@ from email.mime.text import MIMEText
 import os.path
 
 from django.urls import reverse
+import tempita
+
 from maasserver.enum import NODE_STATUS
 from maasserver.utils import absolute_reverse
 from metadataserver.user_data.snippets import (
     get_snippet_context,
     get_userdata_template_dir,
 )
-import tempita
-
 
 ENCODING = "utf-8"
 

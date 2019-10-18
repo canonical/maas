@@ -10,6 +10,12 @@ import random
 from unittest.mock import ANY, call, MagicMock, sentinel
 
 from crochet import wait_for
+from testtools import ExpectedException
+from testtools.matchers import MatchesStructure
+from twisted.internet import reactor
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.names.dns import A, Record_SOA, RRHeader, SOA
+
 from maasserver import region_controller
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
@@ -32,12 +38,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from provisioningserver.utils.events import Event
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
-from twisted.internet import reactor
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.names.dns import A, Record_SOA, RRHeader, SOA
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

@@ -4,6 +4,7 @@ import datetime
 
 from django.db import migrations, models
 import django.db.models.deletion
+
 import maasserver.models.dnsresource
 from maasserver.models.domain import DEFAULT_DOMAIN_NAME
 import maasserver.models.node

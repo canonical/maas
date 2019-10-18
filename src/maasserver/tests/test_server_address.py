@@ -8,14 +8,15 @@ __all__ = []
 from collections import defaultdict
 from random import randint
 
+from netaddr import IPAddress
+from testtools.matchers import Equals
+
 from maasserver import server_address
 from maasserver.exceptions import UnresolvableHost
 from maasserver.server_address import get_maas_facing_server_addresses
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPAddress
-from testtools.matchers import Equals
 
 
 def make_hostname():

@@ -9,6 +9,8 @@ import random
 import threading
 import time
 
+from testtools.matchers import AllMatch, Equals, MatchesStructure
+
 from maasserver.models.eventtype import EventType, LOGGING_LEVELS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -16,7 +18,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import transactional
-from testtools.matchers import AllMatch, Equals, MatchesStructure
 
 
 class EventTypeTest(MAASServerTestCase):

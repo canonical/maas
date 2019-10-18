@@ -6,6 +6,7 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_init, post_save, pre_delete, pre_save
+
 from maasserver.enum import NODE_STATUS, POWER_STATE
 from maasserver.models import (
     Controller,
@@ -19,7 +20,6 @@ from maasserver.models import (
 from maasserver.models.numa import create_default_numanode
 from maasserver.utils.signals import SignalsManager
 from metadataserver.models.nodekey import NodeKey
-
 
 NODE_CLASSES = [
     Node,

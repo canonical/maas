@@ -14,7 +14,6 @@ from django.forms.fields import Field
 from django.forms.utils import ErrorList
 from django.utils.safestring import mark_safe
 
-
 SKIP_CHECK_NAME = "skip_check"
 
 

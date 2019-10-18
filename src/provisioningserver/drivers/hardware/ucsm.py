@@ -69,6 +69,7 @@ import urllib.parse
 import urllib.request
 
 from lxml.etree import Element, tostring, XML
+
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous

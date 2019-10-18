@@ -8,6 +8,8 @@ __all__ = []
 import os
 
 from crochet import wait_for
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
+
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.service_monitor import ProxyService, service_monitor
@@ -18,8 +20,6 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.testcase import MAASTestCase
 from provisioningserver.proxy import config
 from provisioningserver.utils.service_monitor import SERVICE_STATE
-from twisted.internet.defer import inlineCallbacks, maybeDeferred
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

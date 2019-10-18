@@ -10,7 +10,6 @@ from django.conf.urls import include, url
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.views.static import serve as static_serve
 
-
 urlpatterns = [
     url(r"^", include("maasserver.urls")),
     url(r"^metadata/", include("metadataserver.urls")),

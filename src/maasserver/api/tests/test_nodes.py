@@ -11,7 +11,9 @@ import random
 
 from django.conf import settings
 from django.http import QueryDict
-from maasserver.api import auth, nodes as nodes_module
+
+from maasserver.api import auth
+from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
     INTERFACE_TYPE,

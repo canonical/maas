@@ -16,6 +16,11 @@ from collections import Sequence
 from functools import partial
 from urllib.parse import ParseResult, urlparse
 
+from twisted.internet import reactor
+from twisted.internet.defer import DeferredList, DeferredSemaphore
+from twisted.protocols.amp import UnhandledCommand
+from twisted.python.failure import Failure
+
 from maasserver.models import BootResource, RackController
 from maasserver.rpc import getAllClients, getClientFor
 from maasserver.utils.asynchronous import gather
@@ -31,11 +36,6 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import flatten
 from provisioningserver.utils.twisted import asynchronous, synchronous
-from twisted.internet import reactor
-from twisted.internet.defer import DeferredList, DeferredSemaphore
-from twisted.protocols.amp import UnhandledCommand
-from twisted.python.failure import Failure
-
 
 log = LegacyLogger()
 

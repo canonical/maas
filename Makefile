@@ -61,6 +61,7 @@ define BIN_SCRIPTS
 bin/black \
 bin/coverage \
 bin/flake8 \
+bin/isort \
 bin/maas \
 bin/maas-common \
 bin/maas-rack \
@@ -303,7 +304,8 @@ lint-css:
 .PHONY: lint-css
 
 lint-py: sources = $(wildcard *.py contrib/*.py) src utilities etc
-lint-py: bin/flake8 bin/black
+lint-py: bin/flake8 bin/black bin/isort
+	@bin/isort --check-only --diff --recursive $(sources)
 	@bin/black $(sources) --check
 	@bin/flake8 $(sources)
 .PHONY: lint-py
@@ -349,13 +351,14 @@ format.parallel:
 .PHONY: format.parallel
 
 # Apply automated formatting to all Python, Sass and Javascript files.
-format: format-python format-js format-go
+format: format-py format-js format-go
 .PHONY: format
 
-format-python: sources = $(wildcard *.py contrib/*.py) src utilities etc
-format-python: bin/black
+format-py: sources = $(wildcard *.py contrib/*.py) src utilities etc
+format-py: bin/black bin/isort
+	@bin/isort --recursive $(sources)
 	@bin/black -q $(sources)
-.PHONY: format-python
+.PHONY: format-py
 
 format-js: bin/yarn
 	@bin/yarn -s prettier --loglevel warn

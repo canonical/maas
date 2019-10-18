@@ -5,7 +5,6 @@ import json
 import re
 import subprocess
 
-
 IPMI_MAAS_USER = "Administrator"
 IPMI_MAAS_PASSWORD = "password"
 

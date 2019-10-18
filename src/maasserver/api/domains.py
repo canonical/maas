@@ -3,6 +3,8 @@
 
 """API handlers: `Domain`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -16,8 +18,6 @@ from maasserver.models import Domain, GlobalDefault
 from maasserver.models.dnspublication import zone_serial
 from maasserver.permissions import NodePermission
 from maasserver.sequence import INT_MAX
-from piston3.utils import rc
-
 
 DISPLAYED_DOMAIN_FIELDS = (
     "id",

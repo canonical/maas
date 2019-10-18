@@ -7,9 +7,9 @@ __all__ = ["signals"]
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_delete, post_save
+
 from maasserver.models import IPRange
 from maasserver.utils.signals import SignalsManager
-
 
 signals = SignalsManager()
 

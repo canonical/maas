@@ -8,6 +8,8 @@ __all__ = []
 from unittest.mock import sentinel
 
 from distro_info import UbuntuDistroInfo
+import petname
+
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
@@ -24,7 +26,6 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
-import petname
 
 
 class TestGeneralHandler(MAASServerTestCase):

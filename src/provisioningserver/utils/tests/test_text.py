@@ -10,6 +10,8 @@ import string
 
 import hypothesis
 import hypothesis.strategies
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.text import (
@@ -18,7 +20,6 @@ from provisioningserver.utils.text import (
     normalise_whitespace,
     split_string_list,
 )
-from testtools.matchers import Equals
 
 
 class TestNormaliseWhitespace(MAASTestCase):

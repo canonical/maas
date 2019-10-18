@@ -12,6 +12,7 @@ __all__ = [
 from typing import Optional
 
 from django.forms import ChoiceField, Form
+
 from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
 from maasserver.fields import StrippedCharField
 from maasserver.forms import AbsolutePathField

@@ -14,7 +14,6 @@ from provisioningserver.drivers.osystem import (
     OperatingSystem,
 )
 
-
 WINDOWS_CHOICES = {
     "win2008r2": 'Windows "Server 2008 R2"',
     "win2008hvr2": 'Windows "Hyper-V Server 2008 R2"',

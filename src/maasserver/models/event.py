@@ -17,6 +17,7 @@ from django.db.models import (
     PROTECT,
     TextField,
 )
+
 from maasserver import DefaultMeta
 from maasserver.enum import ENDPOINT, ENDPOINT_CHOICES
 from maasserver.fields import MAASIPAddressField
@@ -28,7 +29,6 @@ from maasserver.utils.dns import validate_hostname
 from provisioningserver.events import EVENT_DETAILS
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import get_maas_id
-
 
 maaslog = get_maas_logger("models.event")
 

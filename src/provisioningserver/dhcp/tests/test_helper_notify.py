@@ -9,6 +9,9 @@ import os
 import random
 from unittest.mock import sentinel
 
+from testtools.matchers import Equals, IsInstance, MatchesDict
+from twisted.internet import defer, reactor
+
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -18,8 +21,6 @@ from provisioningserver.rackdservices.lease_socket_service import (
 )
 from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.twisted import DeferredValue
-from testtools.matchers import Equals, IsInstance, MatchesDict
-from twisted.internet import defer, reactor
 
 
 class TestDHCPNotify(MAASTestCase):

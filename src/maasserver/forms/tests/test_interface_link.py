@@ -7,6 +7,8 @@ __all__ = []
 
 import random
 
+from netaddr import IPAddress
+
 from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.forms.interface_link import (
     InterfaceLinkForm,
@@ -17,7 +19,6 @@ from maasserver.models import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
-from netaddr import IPAddress
 
 
 class TestInterfaceLinkForm(MAASServerTestCase):

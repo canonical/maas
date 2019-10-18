@@ -10,6 +10,7 @@ import shlex
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Q
+
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, INTERFACE_TYPE
@@ -36,7 +37,6 @@ from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.twisted import synchronous, undefined
 from provisioningserver.utils.url import splithost
-
 
 maaslog = get_maas_logger("rpc.boot")
 

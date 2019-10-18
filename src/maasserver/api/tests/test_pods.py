@@ -9,6 +9,8 @@ import http.client
 import random
 from unittest.mock import MagicMock
 
+from twisted.internet.defer import succeed
+
 from maasserver.enum import NODE_CREATION_TYPE
 from maasserver.forms import pods
 from maasserver.models.bmc import Pod
@@ -27,7 +29,6 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodHints,
 )
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
-from twisted.internet.defer import succeed
 
 
 class PodMixin:

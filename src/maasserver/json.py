@@ -12,6 +12,7 @@ __all__ = ["Deserializer", "MAASJSONEncoder", "Serializer"]
 import json
 
 import django.core.serializers.json
+
 from maasserver.fields import MAC
 
 

@@ -11,6 +11,7 @@ import logging
 import re
 
 from lxml import etree
+
 from maasserver.enum import NODE_METADATA
 from maasserver.models import Fabric, NUMANode, Subnet
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -32,7 +33,6 @@ from provisioningserver.refresh.node_info_scripts import (
     VIRTUALITY_OUTPUT_NAME,
 )
 from provisioningserver.utils.ipaddr import parse_ip_addr
-
 
 logger = logging.getLogger(__name__)
 

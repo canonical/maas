@@ -7,12 +7,13 @@ __all__ = []
 
 from unittest.mock import Mock
 
+from testtools.matchers import Contains, Equals
+
 from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Contains, Equals
 
 
 class TestIPRangeForm(MAASServerTestCase):

@@ -8,10 +8,11 @@ __all__ = []
 
 import os
 
+from testtools.matchers import Contains, Not
+
 from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.templates import APITemplateRenderer
 from maasserver.testing.api import APITestCase
-from testtools.matchers import Contains, Not
 
 
 class TestAPIAnnotations(APITestCase.ForUser):

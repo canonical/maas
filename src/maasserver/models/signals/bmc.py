@@ -6,10 +6,10 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_delete, post_save, pre_delete
+
 from maasserver.enum import BMC_TYPE
 from maasserver.models import BMC, Pod, PodHints
 from maasserver.utils.signals import SignalsManager
-
 
 BMC_CLASSES = [BMC, Pod]
 

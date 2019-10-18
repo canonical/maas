@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from random import randint
 
 from django.db import transaction
+
 from maasserver.models.timestampedmodel import now
 from maasserver.testing.testcase import (
     MAASLegacyTransactionServerTestCase,

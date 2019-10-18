@@ -19,6 +19,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
+from netaddr import IPAddress, IPNetwork
+import yaml
+
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
@@ -131,10 +134,8 @@ from metadataserver.enum import (
 )
 from metadataserver.fields import Bin
 from metadataserver.models import Script, ScriptResult, ScriptSet
-from netaddr import IPAddress, IPNetwork
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
-import yaml
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub

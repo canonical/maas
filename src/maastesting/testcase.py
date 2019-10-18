@@ -15,6 +15,13 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import crochet
+from nose.proxy import ResultProxy
+from nose.tools import nottest
+import testresources
+import testtools
+import testtools.matchers
+from testtools.matchers import AllMatch, IsInstance, Not
+
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture, TempDirectory
@@ -26,12 +33,6 @@ from maastesting.runtest import (
 )
 from maastesting.scenarios import WithScenarios
 from maastesting.twisted import TwistedLoggerFixture
-from nose.proxy import ResultProxy
-from nose.tools import nottest
-import testresources
-import testtools
-import testtools.matchers
-from testtools.matchers import AllMatch, IsInstance, Not
 
 
 @nottest

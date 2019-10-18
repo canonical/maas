@@ -7,12 +7,13 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Equals
+
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Domain, GlobalDefault
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals
 
 
 class TestGlobalDefault(MAASServerTestCase):

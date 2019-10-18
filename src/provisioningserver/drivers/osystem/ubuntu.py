@@ -6,6 +6,7 @@
 __all__ = ["UbuntuOS"]
 
 from distro_info import UbuntuDistroInfo
+
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,

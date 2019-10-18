@@ -7,6 +7,10 @@ __all__ = []
 
 from crochet import wait_for
 from fixtures import FakeLogger
+from testtools.matchers import Contains, Equals, HasLength, IsInstance
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, succeed
+
 from maasserver.models.interface import PhysicalInterface
 from maasserver.regiondservices.networks_monitoring import (
     RegionNetworksMonitoringService,
@@ -17,9 +21,6 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import DocTestMatches
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import Contains, Equals, HasLength, IsInstance
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, succeed
 
 
 class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):

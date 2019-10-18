@@ -17,15 +17,12 @@ server, try the following:
 
 import argparse
 from modulefinder import ModuleFinder
-from os import (
-    getcwd,
-    path,
-)
+from os import getcwd, path
 import sys
 
+from python_standard_libs import python_standard_libs
 
 sys.path.insert(0, path.dirname(__file__))
-from python_standard_libs import python_standard_libs
 
 
 def find_standard_library_modules(seed=python_standard_libs):

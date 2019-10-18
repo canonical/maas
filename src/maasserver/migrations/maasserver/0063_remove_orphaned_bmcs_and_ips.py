@@ -2,6 +2,7 @@
 
 from django.db import migrations
 
+
 # Copied from Node model.
 def remove_orphaned_bmcs(apps, schema_editor):
     Node = apps.get_model("maasserver", "Node")

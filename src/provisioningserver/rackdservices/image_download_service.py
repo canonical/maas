@@ -8,6 +8,10 @@ __all__ = ["ImageDownloadService"]
 
 from datetime import timedelta
 
+from twisted.application.internet import TimerService
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.protocols.amp import UnhandledCommand
+
 from provisioningserver.boot import tftppath
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.boot_images import import_boot_images
@@ -18,10 +22,6 @@ from provisioningserver.rpc.region import (
     GetProxies,
 )
 from provisioningserver.utils.twisted import pause, retries
-from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.protocols.amp import UnhandledCommand
-
 
 maaslog = get_maas_logger("boot_image_download_service")
 log = LegacyLogger()

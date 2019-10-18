@@ -25,6 +25,7 @@ from django.db.models import (
     Model,
     OneToOneField,
 )
+
 from maasserver.fields import (
     CIDRField,
     IPv4CIDRField,

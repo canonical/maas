@@ -35,13 +35,13 @@ from http import HTTPStatus
 from itertools import chain, repeat, starmap
 from operator import attrgetter
 import os
-from os import kill as _os_kill, killpg as _os_killpg
+from os import kill as _os_kill
+from os import killpg as _os_killpg
 import signal
 import threading
 
 from crochet import run_in_reactor
 from netaddr import AddrFormatError, IPAddress
-from provisioningserver.logger import LegacyLogger
 from twisted.internet.defer import (
     AlreadyCalledError,
     CancelledError,
@@ -62,6 +62,7 @@ from twisted.web.server import Site
 from zope import interface
 from zope.interface import provider
 
+from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
 

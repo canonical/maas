@@ -8,6 +8,11 @@ __all__ = ["DHCPProbeService"]
 from datetime import timedelta
 import socket
 
+from twisted.application.internet import TimerService
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
+from twisted.internet.threads import deferToThread
+from twisted.protocols.amp import UnhandledCommand
+
 from provisioningserver.config import is_dev_environment
 from provisioningserver.dhcp.detect import probe_interface
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -18,11 +23,6 @@ from provisioningserver.utils.network import (
     has_ipv4_address,
 )
 from provisioningserver.utils.twisted import pause, retries
-from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks, maybeDeferred
-from twisted.internet.threads import deferToThread
-from twisted.protocols.amp import UnhandledCommand
-
 
 maaslog = get_maas_logger("dhcp.probe")
 log = LegacyLogger()

@@ -32,6 +32,7 @@ from uuid import UUID
 from bson import BSON
 from bson.errors import BSONError
 from cryptography.fernet import InvalidToken
+
 from provisioningserver.path import get_path
 from provisioningserver.security import fernet_decrypt_psk, fernet_encrypt_psk
 from provisioningserver.utils import sudo
@@ -42,7 +43,6 @@ from provisioningserver.utils.tcpip import (
     decode_ethernet_udp_packet,
     PacketProcessingError,
 )
-
 
 BEACON_PORT = 5240
 BEACON_IPV4_MULTICAST = "224.0.0.118"

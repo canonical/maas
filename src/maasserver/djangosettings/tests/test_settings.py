@@ -9,6 +9,10 @@ import os
 import types
 
 from django.db import connections
+from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
+from testtools import TestCase
+from testtools.matchers import ContainsDict, Equals, Is
+
 from maasserver.djangosettings import find_settings, import_settings
 from maasserver.djangosettings.settings import (
     _get_local_timezone,
@@ -16,9 +20,6 @@ from maasserver.djangosettings.settings import (
 )
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
-from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
-from testtools import TestCase
-from testtools.matchers import ContainsDict, Equals, Is
 
 
 class TestSettingsHelpers(MAASServerTestCase):

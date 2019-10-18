@@ -7,11 +7,24 @@ __all__ = []
 
 from unittest.mock import ANY, call, create_autospec
 
-from apiclient.creds import convert_tuple_to_string
 from django.db import transaction
 from fixtures import FakeLogger
-from maasserver import populate_tags as populate_tags_module, rpc as rpc_module
-from maasserver.models import Node, Tag, tag as tag_module
+from testtools.matchers import (
+    HasLength,
+    IsInstance,
+    MatchesAll,
+    MatchesStructure,
+)
+from twisted.internet import reactor
+from twisted.internet.base import DelayedCall
+from twisted.internet.task import Clock
+from twisted.internet.threads import blockingCallFromThread
+
+from apiclient.creds import convert_tuple_to_string
+from maasserver import populate_tags as populate_tags_module
+from maasserver import rpc as rpc_module
+from maasserver.models import Node, Tag
+from maasserver.models import tag as tag_module
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -49,16 +62,6 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.rpc.common import Client
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import (
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-)
-from twisted.internet import reactor
-from twisted.internet.base import DelayedCall
-from twisted.internet.task import Clock
-from twisted.internet.threads import blockingCallFromThread
 
 
 def make_script_result(node, script_name=None, stdout=None, exit_status=0):

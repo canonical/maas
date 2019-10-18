@@ -7,8 +7,8 @@ __all__ = ["signals"]
 
 from django.contrib.auth.models import User
 from django.db.models.signals import pre_delete
-from maasserver.utils.signals import SignalsManager
 
+from maasserver.utils.signals import SignalsManager
 
 signals = SignalsManager()
 

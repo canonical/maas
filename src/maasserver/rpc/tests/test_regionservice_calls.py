@@ -18,6 +18,12 @@ from unittest import skip
 from urllib.parse import urlparse
 
 from crochet import wait_for
+from testtools.deferredruntest import assert_fails_with
+from testtools.matchers import ContainsAll, Equals, HasLength, MatchesStructure
+from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.protocols import amp
+from twisted.python.failure import Failure
+
 from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.dns.config import get_trusted_networks
@@ -26,11 +32,9 @@ from maasserver.models import Config, Event, EventType, Node, PackageRepository
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
-from maasserver.rpc import (
-    events as events_module,
-    leases as leases_module,
-    regionservice,
-)
+from maasserver.rpc import events as events_module
+from maasserver.rpc import leases as leases_module
+from maasserver.rpc import regionservice
 from maasserver.rpc.nodes import get_controller_type, get_time_configuration
 from maasserver.rpc.regionservice import Region
 from maasserver.rpc.services import update_services
@@ -85,12 +89,6 @@ from provisioningserver.rpc.testing import (
     call_responder,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import ContainsAll, Equals, HasLength, MatchesStructure
-from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.protocols import amp
-from twisted.python.failure import Failure
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

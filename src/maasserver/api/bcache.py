@@ -3,6 +3,8 @@
 
 """API handlers: `Bcache`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, NODE_STATUS
@@ -11,9 +13,7 @@ from maasserver.forms import CreateBcacheForm, UpdateBcacheForm
 from maasserver.models import Bcache, Machine
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
-
 
 DISPLAYED_BCACHE_FIELDS = (
     "system_id",

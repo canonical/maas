@@ -13,12 +13,12 @@ from datetime import datetime
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import CharField, Manager, TextField
+
 from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
-
 
 DEFAULT_RESOURCEPOOL_NAME = "default"
 DEFAULT_RESOURCEPOOL_DESCRIPTION = "Default pool"

@@ -17,7 +17,6 @@ from provisioningserver.utils import parse_key_value_file, typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
-
 log = LegacyLogger()
 maaslog = get_maas_logger("dhcp.omshell")
 

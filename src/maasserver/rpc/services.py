@@ -13,7 +13,6 @@ from maasserver.utils.orm import transactional
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous
 
-
 log = getLogger(__name__)
 
 

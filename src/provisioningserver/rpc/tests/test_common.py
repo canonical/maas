@@ -9,6 +9,13 @@ import random
 import re
 from unittest.mock import ANY, sentinel
 
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is, IsInstance, Not
+from twisted.internet.defer import Deferred
+from twisted.internet.protocol import connectionDone
+from twisted.protocols import amp
+from twisted.test.proto_helpers import StringTransport
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsFiredDeferred,
@@ -28,12 +35,6 @@ from provisioningserver.rpc.testing.doubles import (
     FakeConnection,
     FakeConnectionToRegion,
 )
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, Not
-from twisted.internet.defer import Deferred
-from twisted.internet.protocol import connectionDone
-from twisted.protocols import amp
-from twisted.test.proto_helpers import StringTransport
 
 
 class TestClient(MAASTestCase):

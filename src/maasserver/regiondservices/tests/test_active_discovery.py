@@ -10,6 +10,11 @@ from textwrap import dedent
 from unittest.mock import Mock
 
 from crochet import wait_for
+from netaddr import IPNetwork
+from testtools.matchers import Equals, MatchesStructure
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.task import Clock
+
 from maasserver.models import Config
 from maasserver.regiondservices import active_discovery
 from maasserver.regiondservices.active_discovery import ActiveDiscoveryService
@@ -23,11 +28,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.twisted import TwistedLoggerFixture
-from netaddr import IPNetwork
-from testtools.matchers import Equals, MatchesStructure
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.task import Clock
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

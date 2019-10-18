@@ -29,8 +29,6 @@ from itertools import cycle
 from struct import pack, unpack
 from typing import List, Sequence
 
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils import typed
 from twisted.internet.protocol import Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
 from twisted.python.constants import ValueConstant, Values
@@ -38,6 +36,8 @@ from twisted.web.resource import IResource
 from twisted.web.server import NOT_DONE_YET
 from zope.interface import directlyProvides, implementer, Interface, providedBy
 
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils import typed
 
 log = LegacyLogger()
 

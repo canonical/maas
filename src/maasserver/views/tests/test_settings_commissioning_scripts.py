@@ -9,6 +9,8 @@ import http.client
 
 from django.conf import settings
 from lxml.html import fromstring
+from testtools.matchers import ContainsAll
+
 from maasserver.models import Event
 from maasserver.testing import extract_redirect, get_content_links
 from maasserver.testing.factory import factory
@@ -20,7 +22,6 @@ from maasserver.views.settings_commissioning_scripts import (
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
 from provisioningserver.events import AUDIT
-from testtools.matchers import ContainsAll
 
 
 class CommissioningScriptListingTest(MAASServerTestCase):

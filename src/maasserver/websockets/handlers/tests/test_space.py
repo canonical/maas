@@ -5,14 +5,15 @@
 
 __all__ = []
 
+from testtools import ExpectedException
+from testtools.matchers import Equals
+
 from maasserver.models.space import Space
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.space import SpaceHandler
-from testtools import ExpectedException
-from testtools.matchers import Equals
 
 
 class TestSpaceHandler(MAASServerTestCase):

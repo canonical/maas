@@ -12,9 +12,11 @@ __all__ = [
 from functools import partial
 from math import ceil
 
-from apiclient.creds import convert_tuple_to_string
 from django.db.transaction import TransactionManagementError
 from lxml import etree
+from twisted.internet.defer import DeferredList
+
+from apiclient.creds import convert_tuple_to_string
 from maasserver import logger
 from maasserver.models.node import Node, RackController
 from maasserver.models.nodeprobeddetails import (
@@ -39,8 +41,6 @@ from provisioningserver.tags import (
 from provisioningserver.utils import classify
 from provisioningserver.utils.twisted import asynchronous, FOREVER, synchronous
 from provisioningserver.utils.xpath import try_match_xpath
-from twisted.internet.defer import DeferredList
-
 
 maaslog = get_maas_logger("tags")
 log = LegacyLogger()

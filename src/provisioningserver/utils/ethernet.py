@@ -9,6 +9,7 @@ from collections import namedtuple
 import struct
 
 from netaddr import EUI
+
 from provisioningserver.utils.network import bytes_to_int, hex_str_to_bytes
 
 # Definitions for Ethernet packet used with `struct`.

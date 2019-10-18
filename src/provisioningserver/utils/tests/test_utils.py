@@ -13,6 +13,8 @@ import os
 from unittest.mock import sentinel
 
 from fixtures import EnvironmentVariableFixture
+from testtools.matchers import DirExists, Equals, IsInstance
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver
@@ -33,7 +35,6 @@ from provisioningserver.utils import (
     sudo,
     UnknownCapacityUnitError,
 )
-from testtools.matchers import DirExists, Equals, IsInstance
 
 
 def get_run_path(*path):

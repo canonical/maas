@@ -12,7 +12,11 @@ import sys
 from unittest.mock import call
 
 from fixtures import EnvironmentVariable
-from maastesting import fixtures as fixtures_module, root
+from testtools.matchers import Equals, Is, Not, PathExists, SamePath
+from testtools.testcase import ExpectedException
+
+from maastesting import fixtures as fixtures_module
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
@@ -25,8 +29,6 @@ from maastesting.fixtures import (
 from maastesting.matchers import DocTestMatches, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
-from testtools.matchers import Equals, Is, Not, PathExists, SamePath
-from testtools.testcase import ExpectedException
 
 
 class TestImportErrorFixture(MAASTestCase):

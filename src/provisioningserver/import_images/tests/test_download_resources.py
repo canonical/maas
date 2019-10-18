@@ -12,6 +12,9 @@ import random
 import tarfile
 from unittest import mock
 
+from simplestreams.contentsource import ChecksummingContentSource
+from simplestreams.objectstores import FileStore
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -23,8 +26,6 @@ from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import download_resources
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.utils.fs import tempdir
-from simplestreams.contentsource import ChecksummingContentSource
-from simplestreams.objectstores import FileStore
 
 
 class MockDateTime(mock.MagicMock):

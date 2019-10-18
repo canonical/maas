@@ -8,14 +8,14 @@ __all__ = ["Authenticate", "Client", "Identify", "RPCProtocol"]
 from os import getpid
 from socket import gethostname
 
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
-from provisioningserver.utils.twisted import asynchronous, deferWithTimeout
 from twisted.internet.defer import Deferred
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
+from provisioningserver.utils.twisted import asynchronous, deferWithTimeout
 
 log = LegacyLogger()
 

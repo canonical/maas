@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 
 

@@ -17,8 +17,6 @@ from typing import List, Optional
 
 import attr
 from netaddr import IPAddress
-from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils.dhcp import DHCP
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -32,6 +30,8 @@ from twisted.internet.task import deferLater
 from twisted.internet.threads import blockingCallFromThread, deferToThread
 from twisted.python.failure import Failure
 
+from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.utils.dhcp import DHCP
 
 maaslog = get_maas_logger("dhcp.detect")
 log = LegacyLogger()

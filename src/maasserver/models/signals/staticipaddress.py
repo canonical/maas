@@ -13,10 +13,10 @@ from django.db.models.signals import (
     pre_delete,
     pre_save,
 )
+
 from maasserver.models import StaticIPAddress
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.logger import LegacyLogger
-
 
 log = LegacyLogger()
 signals = SignalsManager()

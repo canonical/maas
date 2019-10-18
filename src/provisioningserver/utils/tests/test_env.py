@@ -8,13 +8,14 @@ __all__ = []
 import os
 import string
 
+from testtools import ExpectedException
+from testtools.matchers import Equals, FileContains, FileExists, Is, Not
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.path import get_data_path
 from provisioningserver.utils import env
 from provisioningserver.utils.fs import atomic_delete
-from testtools import ExpectedException
-from testtools.matchers import Equals, FileContains, FileExists, Is, Not
 
 
 class TestEnvironmentVariables(MAASTestCase):

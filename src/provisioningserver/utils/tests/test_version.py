@@ -10,15 +10,14 @@ import os.path
 from unittest import skipUnless
 from unittest.mock import MagicMock, sentinel
 
+from testtools.matchers import Equals, Is
+
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import shell, snappy, version
-from provisioningserver.utils.version import (
-    DEFAULT_VERSION as old_version,
-    get_version_tuple,
-)
-from testtools.matchers import Equals, Is
+from provisioningserver.utils.version import DEFAULT_VERSION as old_version
+from provisioningserver.utils.version import get_version_tuple
 
 
 class TestGetVersionFromAPT(MAASTestCase):

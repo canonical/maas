@@ -11,11 +11,26 @@ from subprocess import Popen
 
 import crochet
 from fixtures import EnvironmentVariable
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    Equals,
+    IsInstance,
+    KeysEqual,
+    MatchesAll,
+    MatchesStructure,
+    Not,
+)
+from twisted.application.internet import StreamServerEndpointService
+from twisted.application.service import MultiService
+
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 import provisioningserver
-from provisioningserver import logger, plugin as plugin_module, settings
+from provisioningserver import logger
+from provisioningserver import plugin as plugin_module
+from provisioningserver import settings
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.plugin import Options, ProvisioningServiceMaker
 from provisioningserver.rackdservices.dhcp_probe_service import (
@@ -41,18 +56,6 @@ from provisioningserver.rackdservices.tftp import TFTPBackend, TFTPService
 from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
 from provisioningserver.rpc.clusterservice import ClusterClientCheckerService
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    Equals,
-    IsInstance,
-    KeysEqual,
-    MatchesAll,
-    MatchesStructure,
-    Not,
-)
-from twisted.application.internet import StreamServerEndpointService
-from twisted.application.service import MultiService
 
 
 class TestOptions(MAASTestCase):

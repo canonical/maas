@@ -7,6 +7,8 @@ __all__ = []
 
 import random
 
+from testtools.matchers import Equals, HasLength, MatchesStructure
+
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
 from maasserver.models.service import (
     DEAD_STATUSES,
@@ -17,7 +19,6 @@ from maasserver.models.service import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import Equals, HasLength, MatchesStructure
 
 
 class TestServiceManager(MAASServerTestCase):

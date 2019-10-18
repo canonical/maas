@@ -3,13 +3,13 @@
 
 """API handlers: `ip-ranges`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import IPRANGE_TYPE
 from maasserver.exceptions import MAASAPIForbidden, MAASAPIValidationError
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange
-from piston3.utils import rc
-
 
 DISPLAYED_IPRANGE_FIELDS = (
     "id",

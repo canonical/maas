@@ -10,16 +10,19 @@ from unittest.mock import MagicMock, sentinel
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
+from testtools import ExpectedException
+from testtools.matchers import Equals
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import (
-    BlockDevice,
-    blockdevice as blockdevice_module,
     FilesystemGroup,
     ISCSIBlockDevice,
     PhysicalBlockDevice,
     VirtualBlockDevice,
     VolumeGroup,
 )
+from maasserver.models import BlockDevice
+from maasserver.models import blockdevice as blockdevice_module
 from maasserver.models.iscsiblockdevice import validate_iscsi_target
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.permissions import NodePermission
@@ -28,8 +31,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
-from testtools import ExpectedException
-from testtools.matchers import Equals
 
 
 class TestValidateISCSITarget(MAASTestCase):

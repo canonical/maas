@@ -14,6 +14,18 @@ from functools import partial
 import os
 from socket import gethostname
 
+from netaddr import IPAddress
+from twisted.application import service
+from twisted.internet.defer import CancelledError, inlineCallbacks
+from twisted.internet.endpoints import (
+    connectProtocol,
+    UNIXClientEndpoint,
+    UNIXServerEndpoint,
+)
+from twisted.internet.protocol import Factory
+from twisted.internet.task import LoopingCall
+from twisted.protocols import amp
+
 from maasserver import eventloop, workers
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.node import RackController, RegionController
@@ -26,7 +38,6 @@ from maasserver.models.service import Service
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import IPAddress
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.utils.network import (
@@ -38,17 +49,6 @@ from provisioningserver.utils.twisted import (
     DeferredValue,
     synchronous,
 )
-from twisted.application import service
-from twisted.internet.defer import CancelledError, inlineCallbacks
-from twisted.internet.endpoints import (
-    connectProtocol,
-    UNIXClientEndpoint,
-    UNIXServerEndpoint,
-)
-from twisted.internet.protocol import Factory
-from twisted.internet.task import LoopingCall
-from twisted.protocols import amp
-
 
 log = LegacyLogger()
 

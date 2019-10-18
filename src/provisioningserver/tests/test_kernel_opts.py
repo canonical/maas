@@ -9,6 +9,8 @@ import os
 import random
 from unittest.mock import sentinel
 
+from testtools.matchers import Contains, ContainsAll, Not
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
@@ -21,7 +23,6 @@ from provisioningserver.kernel_opts import (
     get_last_directory,
     KernelParameters,
 )
-from testtools.matchers import Contains, ContainsAll, Not
 
 
 def make_kernel_parameters(testcase=None, **parms):

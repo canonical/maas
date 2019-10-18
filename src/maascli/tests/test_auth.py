@@ -11,14 +11,15 @@ import json
 import sys
 from unittest.mock import ANY, sentinel
 
-from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
 import httplib2
+from macaroonbakery import httpbakery
+import requests
+
+from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
 from maascli import auth
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from macaroonbakery import httpbakery
-import requests
 
 
 def make_credentials():

@@ -14,6 +14,10 @@ from datetime import timedelta
 
 import attr
 from netaddr import IPAddress
+from twisted.application.internet import TimerService
+from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
+from twisted.internet.threads import deferToThread
+
 from provisioningserver.dns.actions import (
     bind_reload_with_retries,
     bind_write_configuration,
@@ -34,10 +38,6 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snappy
 from provisioningserver.utils.twisted import callOut, callOutToThread
-from twisted.application.internet import TimerService
-from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
-from twisted.internet.threads import deferToThread
-
 
 log = LegacyLogger()
 

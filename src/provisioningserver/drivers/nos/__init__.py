@@ -8,8 +8,9 @@ __all__ = ["NOSDriver", "NOSDriverBase", "NOSError"]
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 from jsonschema import validate
-from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
 from twisted.internet import reactor
+
+from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
 
 # We specifically declare this here so that a switch not knowing its own
 # NOS driver won't fail to enlist nor do we want this in the list of NOS

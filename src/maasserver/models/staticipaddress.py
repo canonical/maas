@@ -25,6 +25,8 @@ from django.db.models import (
     Manager,
     PROTECT,
 )
+from netaddr import IPAddress
+
 from maasserver import DefaultMeta, locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -45,9 +47,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import orm
 from maasserver.utils.dns import get_ip_based_hostname
-from netaddr import IPAddress
 from provisioningserver.utils.enum import map_enum_reverse
-
 
 _mapping_base_fields = (
     "fqdn",

@@ -5,10 +5,6 @@
 
 __all__ = []
 
-from maasserver.models.config import Config
-from maasserver.ntp import get_peers_for, get_servers_for
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPAddress, IPSet
 from testtools.matchers import (
     AfterPreprocessing,
@@ -20,6 +16,11 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+
+from maasserver.models.config import Config
+from maasserver.ntp import get_peers_for, get_servers_for
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 
 
 def IsSetOfServers(servers):

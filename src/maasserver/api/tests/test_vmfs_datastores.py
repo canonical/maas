@@ -9,6 +9,8 @@ import http.client
 import random
 import uuid
 
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, NODE_STATUS
 from maasserver.models.filesystemgroup import VMFS
 from maasserver.models.partition import MIN_PARTITION_SIZE
@@ -21,7 +23,6 @@ from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.converters import human_readable_bytes, json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import ContainsDict, Equals
 
 
 class TestVMFSDatastoresAPI(APITestCase.ForUser):

@@ -16,13 +16,14 @@ import urllib.parse
 from urllib.parse import parse_qs, urljoin, urlparse
 import urllib.request
 
+from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
+
 from apiclient.maas_client import MAASClient, MAASDispatcher, MAASOAuth
 from apiclient.testing.django import APIClientTestCase
 from maastesting.factory import factory
 from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
 
 
 class TestMAASOAuth(MAASTestCase):

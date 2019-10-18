@@ -13,10 +13,13 @@ from tempfile import mkdtemp
 from textwrap import dedent
 from unittest.mock import sentinel
 
+import netifaces
+from testtools import ExpectedException
+from testtools.matchers import Contains, Equals, Not
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-import netifaces
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
@@ -32,8 +35,6 @@ from provisioningserver.utils.ipaddr import (
     get_settings_dict,
     parse_ip_addr,
 )
-from testtools import ExpectedException
-from testtools.matchers import Contains, Equals, Not
 
 
 class TestHelperFunctions(MAASTestCase):

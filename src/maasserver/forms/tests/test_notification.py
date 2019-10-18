@@ -8,11 +8,11 @@ __all__ = []
 import json
 import random
 
+from testtools.matchers import Equals, MatchesStructure
+
 from maasserver.forms.notification import NotificationForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Equals, MatchesStructure
-
 
 categories = "info", "success", "warning", "error"
 

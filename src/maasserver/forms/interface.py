@@ -12,6 +12,7 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
+
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,

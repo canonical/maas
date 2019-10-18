@@ -4,6 +4,8 @@
 __all__ = ["DeviceHandler", "DevicesHandler"]
 
 from django.core.exceptions import PermissionDenied
+from piston3.utils import rc
+
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import NodeHandler, NodesHandler, OwnerDataMixin
@@ -13,7 +15,6 @@ from maasserver.forms import DeviceForm, DeviceWithMACsForm
 from maasserver.models.node import Device
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
-from piston3.utils import rc
 
 # Device's fields exposed on the API.
 DISPLAYED_DEVICE_FIELDS = (

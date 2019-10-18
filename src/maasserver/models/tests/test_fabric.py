@@ -7,13 +7,14 @@ __all__ = []
 
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from testtools.matchers import Contains, MatchesStructure
+
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.fabric import DEFAULT_FABRIC_NAME, Fabric
 from maasserver.models.vlan import DEFAULT_VID, DEFAULT_VLAN_NAME, VLAN
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Contains, MatchesStructure
 
 
 class TestFabricManagerGetFabricOr404(MAASServerTestCase):

@@ -5,10 +5,11 @@
 
 from pathlib import Path
 
+import yaml
+
 from maascli.configfile import MAASConfiguration
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import yaml
 
 
 class TestMAASConfiguration(MAASTestCase):

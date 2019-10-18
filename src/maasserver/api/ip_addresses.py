@@ -8,6 +8,10 @@ __all__ = ["IPAddressesHandler"]
 from django.http import Http404
 from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
 from formencode.validators import StringBool
+from netaddr import IPAddress
+from netaddr.core import AddrFormatError
+from piston3.utils import rc
+
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
@@ -27,11 +31,7 @@ from maasserver.models import (
 )
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import transactional
-from netaddr import IPAddress
-from netaddr.core import AddrFormatError
-from piston3.utils import rc
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("ip_addresses")
 

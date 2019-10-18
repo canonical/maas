@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -14,7 +16,6 @@ from provisioningserver.drivers.power.vmware import (
     extract_vmware_parameters,
     VMwarePowerDriver,
 )
-from testtools.matchers import Equals
 
 
 class TestVMwarePowerDriver(MAASTestCase):

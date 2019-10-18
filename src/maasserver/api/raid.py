@@ -3,6 +3,8 @@
 
 """API handlers: `RAID`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.exceptions import MAASAPIValidationError, NodeStateViolation
@@ -10,8 +12,6 @@ from maasserver.forms import CreateRaidForm, UpdateRaidForm
 from maasserver.models import Machine, RAID
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
-from piston3.utils import rc
-
 
 DISPLAYED_RAID_FIELDS = (
     "system_id",

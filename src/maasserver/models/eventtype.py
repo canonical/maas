@@ -9,6 +9,7 @@ __all__ = ["EventType"]
 import logging
 
 from django.db.models import CharField, IntegerField, Manager
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

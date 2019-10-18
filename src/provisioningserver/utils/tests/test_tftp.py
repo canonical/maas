@@ -5,10 +5,11 @@
 
 __all__ = []
 
+from twisted.python.context import call
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import tftp
-from twisted.python.context import call
 
 
 class TestAddressFunctions(MAASTestCase):

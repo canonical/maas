@@ -20,6 +20,9 @@ import sys
 import threading
 import time
 
+import netifaces
+import tempita
+
 from maascli.command import Command
 from maascli.configfile import MAASConfiguration
 from maascli.init import (
@@ -31,9 +34,6 @@ from maascli.init import (
     prompt_for_choices,
     read_input,
 )
-import netifaces
-import tempita
-
 
 OPERATION_MODES = """\
 available modes:

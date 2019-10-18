@@ -20,6 +20,42 @@ from unittest import mock
 from unittest.mock import ANY, Mock, sentinel
 
 from crochet import EventualResult
+from testscenarios import multiply_scenarios
+from testtools.content import content_from_stream
+from testtools.deferredruntest import assert_fails_with
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesException,
+    MatchesListwise,
+    MatchesStructure,
+    Not,
+    Raises,
+)
+from testtools.testcase import ExpectedException
+from twisted import internet
+from twisted.internet import address, reactor
+from twisted.internet.defer import (
+    AlreadyCalledError,
+    CancelledError,
+    Deferred,
+    DeferredSemaphore,
+    inlineCallbacks,
+    succeed,
+)
+from twisted.internet.error import ProcessDone, ProcessTerminated
+from twisted.internet.protocol import ProcessProtocol
+from twisted.internet.task import Clock
+from twisted.internet.threads import deferToThread, deferToThreadPool
+from twisted.python import context, threadable
+from twisted.python.failure import Failure
+from twisted.web.test import requesthelper
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -60,41 +96,6 @@ from provisioningserver.utils.twisted import (
     ThreadPoolLimiter,
     ThreadUnpool,
 )
-from testscenarios import multiply_scenarios
-from testtools.content import content_from_stream
-from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesException,
-    MatchesListwise,
-    MatchesStructure,
-    Not,
-    Raises,
-)
-from testtools.testcase import ExpectedException
-from twisted import internet
-from twisted.internet import address, reactor
-from twisted.internet.defer import (
-    AlreadyCalledError,
-    CancelledError,
-    Deferred,
-    DeferredSemaphore,
-    inlineCallbacks,
-    succeed,
-)
-from twisted.internet.error import ProcessDone, ProcessTerminated
-from twisted.internet.protocol import ProcessProtocol
-from twisted.internet.task import Clock
-from twisted.internet.threads import deferToThread, deferToThreadPool
-from twisted.python import context, threadable
-from twisted.python.failure import Failure
-from twisted.web.test import requesthelper
 
 
 def return_args(*args, **kwargs):

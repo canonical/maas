@@ -10,6 +10,15 @@ from io import BytesIO
 import json
 from os.path import join
 
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+from twisted.web.client import (
+    Agent,
+    FileBodyProducer,
+    PartialDownloadError,
+    readBody,
+)
+
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -34,15 +43,6 @@ from provisioningserver.drivers.power.redfish import (
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils.twisted import asynchronous, pause
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.web.client import (
-    Agent,
-    FileBodyProducer,
-    PartialDownloadError,
-    readBody,
-)
-
 
 maaslog = get_maas_logger("drivers.pod.rsd")
 

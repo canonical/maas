@@ -5,12 +5,13 @@
 
 __all__ = []
 
+from netaddr import IPAddress
+from testtools.matchers import Equals, Is
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
-from netaddr import IPAddress
 from provisioningserver.utils.dhcp import DHCP
-from testtools.matchers import Equals, Is
 
 
 class TestDHCP(MAASTestCase):

@@ -7,6 +7,7 @@ __all__ = ["ConfigHandler"]
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+
 from maasserver.enum import ENDPOINT
 from maasserver.forms.settings import (
     CONFIG_ITEMS,

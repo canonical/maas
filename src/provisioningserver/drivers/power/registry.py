@@ -6,6 +6,7 @@
 __all__ = ["PowerDriverRegistry"]
 
 from jsonschema import validate
+
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver

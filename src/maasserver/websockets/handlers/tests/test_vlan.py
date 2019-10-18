@@ -7,6 +7,9 @@ __all__ = []
 
 import random
 
+from testtools import ExpectedException
+from testtools.matchers import Contains, ContainsDict, Equals, Is
+
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
@@ -18,8 +21,6 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.vlan import VLANHandler
-from testtools import ExpectedException
-from testtools.matchers import Contains, ContainsDict, Equals, Is
 
 
 class TestVLANHandler(MAASServerTestCase):

@@ -10,6 +10,14 @@ import random
 from unittest.mock import sentinel
 
 from django.core.handlers.wsgi import WSGIHandler
+from testtools.matchers import Is, IsInstance, MatchesStructure, Not
+from twisted.internet import reactor
+from twisted.internet.endpoints import TCP4ServerEndpoint
+from twisted.web.error import UnsupportedMethod
+from twisted.web.resource import NoResource, Resource
+from twisted.web.server import Site
+from twisted.web.test.requesthelper import DummyChannel, DummyRequest
+
 from maasserver import eventloop, webapp
 from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.webapp import OverlaySite
@@ -18,13 +26,6 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import reducedWebLogFormatter
-from testtools.matchers import Is, IsInstance, MatchesStructure, Not
-from twisted.internet import reactor
-from twisted.internet.endpoints import TCP4ServerEndpoint
-from twisted.web.error import UnsupportedMethod
-from twisted.web.resource import NoResource, Resource
-from twisted.web.server import Site
-from twisted.web.test.requesthelper import DummyChannel, DummyRequest
 
 
 class TestCleanPathRequest(MAASTestCase):

@@ -5,10 +5,10 @@
 
 __all__ = []
 
-from provisioningserver.drivers.power import PowerDriver
-from provisioningserver.logger import get_maas_logger
 from twisted.internet.defer import maybeDeferred
 
+from provisioningserver.drivers.power import PowerDriver
+from provisioningserver.logger import get_maas_logger
 
 maaslog = get_maas_logger("drivers.power.manual")
 

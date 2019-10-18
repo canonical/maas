@@ -7,6 +7,12 @@ __all__ = []
 
 from unittest.mock import sentinel
 
+from testtools.deferredruntest import assert_fails_with
+from testtools.matchers import Equals
+import tftp.datagram
+from twisted.internet.defer import Deferred
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.monkey import (
@@ -14,11 +20,6 @@ from provisioningserver.monkey import (
     augment_twisted_deferToThreadPool,
     get_patched_URI,
 )
-from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import Equals
-import tftp.datagram
-from twisted.internet.defer import Deferred
-from twisted.internet.threads import deferToThread
 
 
 class TestAddTermErrorCodeToTFTP(MAASTestCase):

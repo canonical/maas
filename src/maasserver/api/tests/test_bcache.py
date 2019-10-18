@@ -9,6 +9,8 @@ import http.client
 from unittest.mock import ANY
 from uuid import uuid4
 
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.api import bcache as bcache_module
 from maasserver.enum import (
     CACHE_MODE_TYPE,
@@ -24,7 +26,6 @@ from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import EVENT_TYPES
-from testtools.matchers import ContainsDict, Equals
 
 
 def get_bcache_devices_uri(node):

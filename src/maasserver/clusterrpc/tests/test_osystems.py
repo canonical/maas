@@ -7,6 +7,16 @@ __all__ = []
 
 from collections import Counter, Iterator
 
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Equals,
+    HasLength,
+    IsInstance,
+    Not,
+)
+from twisted.internet.defer import succeed
+
 from maasserver.clusterrpc.osystems import (
     gen_all_known_operating_systems,
     get_preseed_data,
@@ -20,15 +30,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeKey
 from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    HasLength,
-    IsInstance,
-    Not,
-)
-from twisted.internet.defer import succeed
 
 
 class TestGenAllKnownOperatingSystems(MAASServerTestCase):

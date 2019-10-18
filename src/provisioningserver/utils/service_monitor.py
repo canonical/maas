@@ -19,14 +19,6 @@ from collections import defaultdict, namedtuple
 import enum
 import os
 
-from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils import snappy, typed
-from provisioningserver.utils.shell import get_env_with_bytes_locale
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    deferWithTimeout,
-    getProcessOutputAndValue,
-)
 from twisted.internet.defer import (
     CancelledError,
     DeferredList,
@@ -36,6 +28,14 @@ from twisted.internet.defer import (
     returnValue,
 )
 
+from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.utils import snappy, typed
+from provisioningserver.utils.shell import get_env_with_bytes_locale
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    deferWithTimeout,
+    getProcessOutputAndValue,
+)
 
 log = LegacyLogger()
 maaslog = get_maas_logger("service_monitor")

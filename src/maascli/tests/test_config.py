@@ -11,9 +11,10 @@ import sqlite3
 from unittest import TestCase
 from unittest.mock import patch
 
+from twisted.python.filepath import FilePath
+
 from maascli import api
 from maastesting.testcase import MAASTestCase
-from twisted.python.filepath import FilePath
 
 
 class TestProfileConfig(MAASTestCase):

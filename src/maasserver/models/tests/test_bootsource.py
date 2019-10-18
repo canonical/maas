@@ -8,6 +8,7 @@ __all__ = []
 import os
 
 from django.core.exceptions import ValidationError
+
 from maasserver.models.bootsource import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory

@@ -5,13 +5,13 @@
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.vlan import VLANForm
 from maasserver.models import Fabric, Space, VLAN
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_VLAN_FIELDS = (
     "id",

@@ -9,10 +9,19 @@ from collections import OrderedDict
 import random
 from textwrap import dedent
 
-from maasserver import (
-    preseed_network as preseed_network_module,
-    server_address as server_address_module,
+from netaddr import IPAddress, IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+    IsInstance,
+    MatchesDict,
+    MatchesListwise,
 )
+import yaml
+
+from maasserver import preseed_network as preseed_network_module
+from maasserver import server_address
 from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
     BRIDGE_TYPE,
@@ -26,19 +35,8 @@ from maasserver.preseed_network import (
     compose_curtin_network_config,
     NodeNetworkConfiguration,
 )
-import maasserver.server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPAddress, IPNetwork
-from testtools import ExpectedException
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    IsInstance,
-    MatchesDict,
-    MatchesListwise,
-)
-import yaml
 
 
 class AssertNetworkConfigMixin:
@@ -475,9 +473,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         )
         # Patch resolve_hostname() to return the appropriate network version
         # IP address for MAAS hostname.
-        resolve_hostname = self.patch(
-            maasserver.server_address, "resolve_hostname"
-        )
+        resolve_hostname = self.patch(server_address, "resolve_hostname")
         if self.ip_version == 4:
             resolve_hostname.return_value = {IPAddress("127.0.0.1")}
         else:
@@ -1492,7 +1488,7 @@ class TestNetplan(MAASServerTestCase):
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
-        mock_get_maas_id = self.patch(server_address_module, "get_maas_id")
+        mock_get_maas_id = self.patch(server_address, "get_maas_id")
         mock_get_maas_id.return_value = r1.system_id
         r2 = factory.make_RegionRackController(interface=False)
         interface = factory.make_Interface(

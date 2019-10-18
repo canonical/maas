@@ -14,26 +14,27 @@ from unittest.mock import call, Mock
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
+from paramiko import SSHException
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from paramiko import SSHException
 from provisioningserver.drivers.power import (
-    mscm as mscm_module,
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
+from provisioningserver.drivers.power import mscm as mscm_module
 from provisioningserver.drivers.power.mscm import (
     cartridge_mapping,
     MSCMPowerDriver,
     probe_and_enlist_mscm,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 def make_node_id():

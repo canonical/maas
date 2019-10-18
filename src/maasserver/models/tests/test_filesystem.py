@@ -11,13 +11,14 @@ import re
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
+from testscenarios import multiply_scenarios
+from testtools import ExpectedException
+from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
+
 from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES_DICT
 from maasserver.models.filesystem import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testscenarios import multiply_scenarios
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 
 
 class TestFilesystemManager(MAASServerTestCase):

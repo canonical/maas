@@ -10,7 +10,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.fs import read_text_file
 from provisioningserver.utils.shell import call_and_check
 
-
 LEASES_FILE_WITH_HOSTS = """\
 lease 192.168.10.67 {
   starts 2 2016/03/22 13:44:15;

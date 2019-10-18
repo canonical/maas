@@ -6,6 +6,7 @@
 __all__ = ["RegionRackRPCConnection"]
 
 from django.db.models import CASCADE, ForeignKey
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import RackController

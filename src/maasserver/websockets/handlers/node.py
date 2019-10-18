@@ -11,6 +11,7 @@ import logging
 from operator import attrgetter, itemgetter
 
 from lxml import etree
+
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -56,7 +57,6 @@ from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
 )
 from provisioningserver.tags import merge_details_cleanly
-
 
 NODE_TYPE_TO_LINK_TYPE = {
     NODE_TYPE.DEVICE: "device",

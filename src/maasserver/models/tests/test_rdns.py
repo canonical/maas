@@ -8,13 +8,14 @@ __all__ = []
 from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
+from testtools import ExpectedException
+from testtools.matchers import Equals, GreaterThan, Is, Not
+
 from maasserver.models import RDNS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import DocTestMatches
 from maastesting.twisted import TwistedLoggerFixture
-from testtools import ExpectedException
-from testtools.matchers import Equals, GreaterThan, Is, Not
 
 
 class TestRDNSModel(MAASServerTestCase):

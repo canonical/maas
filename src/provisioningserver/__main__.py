@@ -23,7 +23,6 @@ import provisioningserver.utils.scan_network
 from provisioningserver.utils.script import MainScript
 import provisioningserver.utils.send_beacons
 
-
 COMMON_COMMANDS = {
     "observe-arp": provisioningserver.utils.arp,
     "observe-beacons": provisioningserver.utils.beaconing,

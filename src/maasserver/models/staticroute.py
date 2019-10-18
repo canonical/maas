@@ -9,6 +9,7 @@ __all__ = ["StaticRoute"]
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, PositiveIntegerField
 from django.shortcuts import get_object_or_404
+
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave

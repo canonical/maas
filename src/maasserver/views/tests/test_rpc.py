@@ -8,13 +8,6 @@ __all__ = []
 import json
 
 from crochet import wait_for
-from maasserver import eventloop
-from maasserver.rpc import regionservice
-from maasserver.testing.eventloop import RegionEventLoopFixture
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.django_urls import reverse
-from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import (
     Equals,
     GreaterThan,
@@ -28,6 +21,13 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver import eventloop
+from maasserver.rpc import regionservice
+from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.utils.django_urls import reverse
+from provisioningserver.utils.testing import MAASIDFixture
 
 is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
 

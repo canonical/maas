@@ -13,6 +13,17 @@ import random
 from textwrap import dedent
 
 from fixtures import FakeLogger
+from netaddr import IPNetwork
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+    DocTestMatches,
+    Equals,
+    Is,
+    MatchesStructure,
+    Not,
+)
+
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_METADATA
 from maasserver.fields import MAC
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -29,6 +40,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.testcase import MAASTestCase
+import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
     add_switch,
     add_switch_vendor_model_tags,
@@ -49,25 +61,13 @@ from metadataserver.builtin_scripts.hooks import (
     update_node_network_information,
     update_node_physical_block_devices,
 )
-import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
 from metadataserver.models import ScriptSet
-from netaddr import IPNetwork
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
 )
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    DocTestMatches,
-    Equals,
-    Is,
-    MatchesStructure,
-    Not,
-)
-
 
 lldp_output_template = """
 <?xml version="1.0" encoding="UTF-8"?>

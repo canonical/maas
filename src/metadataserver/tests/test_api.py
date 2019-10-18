@@ -21,13 +21,17 @@ from unittest.mock import ANY, Mock
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from provisioningserver.utils.network import get_source_address
+from netaddr import IPNetwork
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+    ContainsDict,
+    Equals,
+    KeysEqual,
+    StartsWith,
+)
+import yaml
 
-
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
@@ -39,16 +43,16 @@ from maasserver.enum import (
 from maasserver.exceptions import MAASAPINotFound, Unauthorized
 from maasserver.models import (
     Config,
-    NodeMetadata,
     Event,
+    NodeMetadata,
     SSHKey,
     Tag,
     VersionedTextFile,
 )
-from maasserver.preseed import get_network_yaml_settings
-from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
+from maasserver.preseed import get_network_yaml_settings
+from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -69,46 +73,42 @@ from metadataserver.api import (
     add_event_to_node_event_log,
     check_version,
     get_node_for_mac,
-    NETPLAN_TAR_PATH,
     get_node_for_request,
     get_queried_node,
     make_list_response,
     make_text_response,
     MetaDataHandler,
+    NETPLAN_TAR_PATH,
     process_file,
     UnknownMetadataVersion,
 )
 from metadataserver.enum import (
-    SCRIPT_STATUS,
-    RESULT_TYPE,
     HARDWARE_TYPE,
+    RESULT_TYPE,
     SCRIPT_PARALLEL,
+    SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
     SIGNAL_STATUS_CHOICES,
 )
-from metadataserver.models import ScriptSet, NodeKey, NodeUserData
+from metadataserver.models import NodeKey, NodeUserData, ScriptSet
 from metadataserver.nodeinituser import get_node_init_user
-from netaddr import IPNetwork
 from provisioningserver.events import (
     EVENT_DETAILS,
-    EVENT_TYPES,
     EVENT_STATUS_MESSAGES,
+    EVENT_TYPES,
 )
 from provisioningserver.refresh.node_info_scripts import (
-    NODE_INFO_SCRIPTS,
     LIST_MODALIASES_OUTPUT_NAME,
+    NODE_INFO_SCRIPTS,
 )
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    ContainsDict,
-    Equals,
-    KeysEqual,
-    StartsWith,
-)
-import yaml
+from provisioningserver.utils.network import get_source_address
+
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 
 
 LooksLikeCloudInit = ContainsDict({"cloud-init": StartsWith("#cloud-config")})

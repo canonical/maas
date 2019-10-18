@@ -10,6 +10,9 @@ from unittest.mock import ANY, MagicMock, sentinel
 
 from django.db.models.query import QuerySet
 from django.http import HttpRequest
+from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
+from testtools.testcase import ExpectedException
+
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
 from maasserver.models.node import Device, Node
 from maasserver.models.vlan import VLAN
@@ -34,8 +37,6 @@ from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
-from testtools.testcase import ExpectedException
 
 
 def make_handler(name, **kwargs):

@@ -9,6 +9,7 @@ import datetime
 
 from django.core.exceptions import ValidationError
 from django.db.models import CharField, Manager, TextField
+
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MODEL_NAME_VALIDATOR

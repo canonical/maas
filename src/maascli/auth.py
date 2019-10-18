@@ -10,9 +10,10 @@ import http.client
 import sys
 from urllib.parse import urljoin
 
+from macaroonbakery import httpbakery
+
 from apiclient.creds import convert_string_to_tuple
 from maascli.api import Action, http_request
-from macaroonbakery import httpbakery
 
 
 class UnexpectedResponse(Exception):

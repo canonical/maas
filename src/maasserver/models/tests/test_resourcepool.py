@@ -4,6 +4,7 @@
 """Test ResourcePool objects."""
 
 from django.core.exceptions import PermissionDenied, ValidationError
+
 from maasserver.models.config import Config
 from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_DESCRIPTION,

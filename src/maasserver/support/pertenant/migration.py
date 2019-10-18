@@ -29,11 +29,11 @@ SSH keys prior to the migration.
 __all__ = ["migrate"]
 
 from django.contrib.auth.models import User
+
 from maasserver.models import FileStorage, Node, SSHKey
 from maasserver.models.user import get_auth_tokens, SYSTEM_USERS
 from maasserver.support.pertenant.utils import get_bootstrap_node_owner
 from maasserver.utils.orm import get_one
-
 
 legacy_user_name = "shared-environment"
 

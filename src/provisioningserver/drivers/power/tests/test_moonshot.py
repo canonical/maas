@@ -7,20 +7,19 @@ __all__ = []
 
 from unittest.mock import call
 
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.power import (
-    moonshot as moonshot_module,
-    PowerActionError,
-)
+from provisioningserver.drivers.power import moonshot as moonshot_module
+from provisioningserver.drivers.power import PowerActionError
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.utils.shell import (
     ExternalProcessError,
     get_env_with_locale,
     has_command_available,
 )
-from testtools.matchers import Equals
 
 
 def make_context():

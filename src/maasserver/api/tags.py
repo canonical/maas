@@ -12,6 +12,8 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
+from piston3.utils import rc
+
 from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
@@ -31,7 +33,6 @@ from maasserver.models import (
 from maasserver.models.user import get_auth_tokens
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import get_one, prefetch_queryset
-from piston3.utils import rc
 
 
 def check_rack_controller_access(request, rack_controller):

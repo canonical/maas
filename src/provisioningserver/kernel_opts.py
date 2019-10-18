@@ -10,9 +10,9 @@ import os
 
 import curtin
 from netaddr import IPAddress
+
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-
 
 log = LegacyLogger()
 maaslog = get_maas_logger("kernel_opts")

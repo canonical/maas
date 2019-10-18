@@ -9,6 +9,8 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.utils.safestring import SafeString
+from testtools.matchers import EndsWith
+
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import sshkey, SSHKey
 from maasserver.models.sshkey import (
@@ -19,7 +21,6 @@ from maasserver.models.sshkey import (
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import EndsWith
 
 
 class SSHKeyValidatorTest(MAASServerTestCase):

@@ -5,6 +5,8 @@
 
 __all__ = ["ResourcePoolHandler", "ResourcePoolsHandler"]
 
+from piston3.utils import rc
+
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     ModelCollectionOperationsHandler,
@@ -14,8 +16,6 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ResourcePoolForm
 from maasserver.models import ResourcePool
 from maasserver.permissions import ResourcePoolPermission
-from piston3.utils import rc
-
 
 DISPLAYED_RESOURCEPOOL_FIELDS = ("id", "name", "description")
 

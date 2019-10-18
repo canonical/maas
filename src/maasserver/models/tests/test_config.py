@@ -10,6 +10,8 @@ from socket import gethostname
 from django.db import IntegrityError
 from django.http import HttpRequest
 from fixtures import TestWithFixtures
+from testtools.matchers import Is
+
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
@@ -17,7 +19,6 @@ from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import AUDIT
-from testtools.matchers import Is
 
 
 class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):

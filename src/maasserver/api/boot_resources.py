@@ -16,6 +16,10 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import (
@@ -33,10 +37,6 @@ from maasserver.forms import BootResourceForm, BootResourceNoContentForm
 from maasserver.models import BootResource, BootResourceFile
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import post_commit_do
-from piston3.emitters import JSONEmitter
-from piston3.handler import typemapper
-from piston3.utils import rc
-
 
 TYPE_MAPPING = {
     "synced": BOOT_RESOURCE_TYPE.SYNCED,

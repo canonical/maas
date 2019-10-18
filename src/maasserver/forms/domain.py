@@ -6,6 +6,7 @@
 __all__ = ["DomainForm"]
 
 from django import forms
+
 from maasserver.forms import APIEditMixin, MAASModelForm
 from maasserver.models.domain import Domain
 

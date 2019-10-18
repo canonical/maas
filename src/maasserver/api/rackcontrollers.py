@@ -6,6 +6,8 @@ __all__ = ["RackControllerHandler", "RackControllersHandler"]
 from django.conf import settings
 from django.http import HttpResponse
 from formencode.validators import StringBool
+from piston3.utils import rc
+
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.nodes import (
     NodeHandler,
@@ -21,7 +23,6 @@ from maasserver.forms import ControllerForm
 from maasserver.models import RackController
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import post_commit_do
-from piston3.utils import rc
 
 # Rack controller's fields exposed on the API.
 DISPLAYED_RACK_CONTROLLER_FIELDS = (

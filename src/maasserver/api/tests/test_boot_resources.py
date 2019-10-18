@@ -8,6 +8,8 @@ __all__ = []
 import http.client
 import random
 
+from testtools.matchers import ContainsAll
+
 from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
@@ -30,7 +32,6 @@ from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
-from testtools.matchers import ContainsAll
 
 
 def get_boot_resource_uri(resource):

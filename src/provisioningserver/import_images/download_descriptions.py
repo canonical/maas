@@ -12,6 +12,10 @@ __all__ = ["download_all_image_descriptions", "validate_product"]
 
 import re
 
+from simplestreams import util as sutil
+from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
+from simplestreams.util import path_from_mirror_url, products_exdata
+
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
 )
@@ -21,9 +25,6 @@ from provisioningserver.import_images.helpers import (
     ImageSpec,
     maaslog,
 )
-from simplestreams import util as sutil
-from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
-from simplestreams.util import path_from_mirror_url, products_exdata
 
 # Compile a regex to validate Ubuntu product names. This only allows V2 and V3
 # Ubuntu images.

@@ -23,6 +23,7 @@ import fnmatch
 
 from formencode import ForEach
 from formencode.validators import String
+
 from provisioningserver.config import ConfigBase, ConfigMeta
 from provisioningserver.utils.config import ByteString, Schema
 

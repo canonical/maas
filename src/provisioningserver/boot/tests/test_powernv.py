@@ -8,9 +8,19 @@ __all__ = []
 import re
 from unittest.mock import Mock
 
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesRegex,
+    Not,
+    StartsWith,
+)
+from twisted.python.filepath import FilePath
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.boot import BytesReader, powernv as powernv_module
+from provisioningserver.boot import BytesReader
+from provisioningserver.boot import powernv as powernv_module
 from provisioningserver.boot.powernv import (
     ARP_HTYPE,
     format_bootif,
@@ -24,14 +34,6 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
 from provisioningserver.utils.network import convert_host_to_uri_str
-from testtools.matchers import (
-    IsInstance,
-    MatchesAll,
-    MatchesRegex,
-    Not,
-    StartsWith,
-)
-from twisted.python.filepath import FilePath
 
 
 @typed

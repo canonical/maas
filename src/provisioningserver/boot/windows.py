@@ -12,6 +12,10 @@ import re
 import shutil
 import sys
 
+from tftp.backend import FilesystemReader
+from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.python.filepath import FilePath
+
 from provisioningserver.boot import (
     BootMethod,
     BootMethodError,
@@ -26,10 +30,6 @@ from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.utils import tftp, typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, deferred
-from tftp.backend import FilesystemReader
-from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.python.filepath import FilePath
-
 
 maaslog = get_maas_logger("windows")
 

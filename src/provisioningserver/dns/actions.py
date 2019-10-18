@@ -24,7 +24,6 @@ from provisioningserver.dns.config import (
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.shell import ExternalProcessError
 
-
 maaslog = get_maas_logger("dns")
 
 

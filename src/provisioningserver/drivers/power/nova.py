@@ -23,7 +23,6 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.logger import get_maas_logger
 
-
 maaslog = get_maas_logger("drivers.power.nova")
 
 

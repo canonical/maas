@@ -10,12 +10,7 @@ from itertools import chain
 from random import randrange
 import re
 
-from maastesting.factory import factory
-from maastesting.fixtures import MAASRootFixture
-from maastesting.testcase import MAASTestCase
 from netaddr import IPAddress
-from provisioningserver.ntp import config
-from provisioningserver.path import get_data_path
 from testtools.matchers import (
     Contains,
     Equals,
@@ -24,6 +19,12 @@ from testtools.matchers import (
     MatchesStructure,
     StartsWith,
 )
+
+from maastesting.factory import factory
+from maastesting.fixtures import MAASRootFixture
+from maastesting.testcase import MAASTestCase
+from provisioningserver.ntp import config
+from provisioningserver.path import get_data_path
 
 
 def read_configuration(path):

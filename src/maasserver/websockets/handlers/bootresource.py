@@ -11,6 +11,8 @@ import json
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from twisted.internet.defer import Deferred
+
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -53,8 +55,6 @@ from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
-from twisted.internet.defer import Deferred
-
 
 log = LegacyLogger()
 

@@ -26,11 +26,12 @@ from django.core.urlresolvers import (
     RegexURLPattern,
     RegexURLResolver,
 )
-from maasserver.api.annotations import APIDocstringParser
 from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
+
+from maasserver.api.annotations import APIDocstringParser
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 

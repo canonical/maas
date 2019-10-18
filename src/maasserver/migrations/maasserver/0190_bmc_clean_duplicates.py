@@ -6,7 +6,6 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.db import migrations
 from django.db.models.aggregates import Count
 
-
 NON_CHASSIS_POWER_TYPES = ("amt", "ipmi", "openbmc", "wedge")
 
 

@@ -8,6 +8,8 @@ __all__ = ["compose_curtin_storage_config"]
 from operator import attrgetter
 
 from django.db.models import Q, Sum
+import yaml
+
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -23,7 +25,6 @@ from maasserver.models.partitiontable import (
 )
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
-import yaml
 
 
 class CurtinStorageGenerator:

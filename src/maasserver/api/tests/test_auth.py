@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
+from oauth import oauth
+from testtools.matchers import Contains
+
 from maasserver.api import auth as api_auth
 from maasserver.api.auth import MAASAPIAuthentication, OAuthUnauthorized
 from maasserver.middleware import ExternalAuthInfo
@@ -17,8 +20,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import get_node_init_user
-from oauth import oauth
-from testtools.matchers import Contains
 
 
 class TestMAASAPIAuthentication(MAASServerTestCase):

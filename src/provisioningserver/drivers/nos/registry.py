@@ -6,6 +6,7 @@
 __all__ = ["NOSDriverRegistry"]
 
 from jsonschema import validate
+
 from provisioningserver.drivers.nos import JSON_NOS_DRIVERS_SCHEMA
 from provisioningserver.drivers.nos.flexswitch import FlexswitchNOSDriver
 from provisioningserver.utils.registry import Registry

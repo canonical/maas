@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.db import migrations
+
 from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_DESCRIPTION,
     DEFAULT_RESOURCEPOOL_NAME,

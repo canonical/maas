@@ -9,6 +9,9 @@ from datetime import timedelta
 import random
 from unittest.mock import ANY
 
+from netaddr import IPNetwork
+from testtools.matchers import ContainsAll, StartsWith
+
 from maasserver import server_address
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
@@ -23,12 +26,9 @@ from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.preseed import compose_enlistment_preseed_url
 from maasserver.rpc import boot as boot_module
-from maasserver.rpc.boot import (
-    event_log_pxe_request,
-    get_boot_filenames,
-    get_config as orig_get_config,
-    merge_kparams_with_extra,
-)
+from maasserver.rpc.boot import event_log_pxe_request, get_boot_filenames
+from maasserver.rpc.boot import get_config as orig_get_config
+from maasserver.rpc.boot import merge_kparams_with_extra
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -37,11 +37,9 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPNetwork
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
-from testtools.matchers import ContainsAll, StartsWith
 
 
 def get_config(*args, **kwargs):

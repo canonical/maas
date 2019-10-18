@@ -12,9 +12,12 @@ from unittest.mock import ANY, Mock
 
 import bson
 from django.conf import settings
+from twisted.internet.defer import succeed
+
 from maasserver.api import auth
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, POWER_STATE
-from maasserver.models import Config, Node, node as node_module
+from maasserver.models import Config, Node
+from maasserver.models import node as node_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -43,7 +46,6 @@ from provisioningserver.refresh.node_info_scripts import (
     LSHW_OUTPUT_NAME,
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
-from twisted.internet.defer import succeed
 
 
 class NodeAnonAPITest(MAASServerTestCase):

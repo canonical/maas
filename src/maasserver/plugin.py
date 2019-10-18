@@ -13,6 +13,12 @@ import os
 import signal
 import time
 
+from twisted.application.service import IServiceMaker
+from twisted.internet import reactor
+from twisted.plugin import IPlugin
+from twisted.python.threadable import isInIOThread
+from zope.interface import implementer
+
 from provisioningserver import logger
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.utils import clean_prometheus_dir
@@ -20,12 +26,6 @@ from provisioningserver.utils.debug import (
     register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
 )
-from twisted.application.service import IServiceMaker
-from twisted.internet import reactor
-from twisted.plugin import IPlugin
-from twisted.python.threadable import isInIOThread
-from zope.interface import implementer
-
 
 log = LegacyLogger()
 

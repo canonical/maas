@@ -7,7 +7,6 @@ __all__ = ["DefaultMeta", "logger"]
 
 import logging
 
-
 logger = logging.getLogger("metadataserver")
 
 

@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.core.exceptions import ValidationError
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, PARTITION_TABLE_TYPE
 from maasserver.models.blockdevice import BlockDevice, MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import (

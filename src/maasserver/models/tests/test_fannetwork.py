@@ -9,11 +9,12 @@ __all__ = []
 import random
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from testtools import ExpectedException
+
 from maasserver.models.fannetwork import FanNetwork
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools import ExpectedException
 
 
 class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):

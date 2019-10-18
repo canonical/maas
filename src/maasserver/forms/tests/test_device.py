@@ -7,6 +7,8 @@ __all__ = []
 
 from django.http import HttpRequest
 from django.http.request import QueryDict
+from testtools.matchers import Contains, Equals
+
 from maasserver.forms import DeviceForm, DeviceWithMACsForm
 from maasserver.models import Device, Interface
 from maasserver.testing.factory import factory
@@ -14,7 +16,6 @@ from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import get_one, reload_object
-from testtools.matchers import Contains, Equals
 
 
 class TestDeviceForm(MAASServerTestCase):

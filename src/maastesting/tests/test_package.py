@@ -8,9 +8,6 @@ __all__ = []
 from random import randint
 from warnings import catch_warnings, warn_explicit
 
-import maastesting
-from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -18,6 +15,10 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
 )
+
+import maastesting
+from maastesting.factory import factory
+from maastesting.testcase import MAASTestCase
 
 
 class TestWarnings(MAASTestCase):

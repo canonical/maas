@@ -3,13 +3,13 @@
 
 """API handlers: `StaticRoute`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_STATIC_ROUTE_FIELDS = (
     "id",

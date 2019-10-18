@@ -11,10 +11,11 @@ __all__ = [
     "SYSTEM_USERS",
 ]
 
+from piston3.models import Consumer, Token
+
 from maasserver import worker_user
 from maasserver.models import Config
 from metadataserver import nodeinituser
-from piston3.models import Consumer, Token
 
 # Special users internal to MAAS.
 SYSTEM_USERS = [

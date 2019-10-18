@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.models.event import Event
 from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
@@ -18,7 +20,6 @@ from maasserver.websockets.handlers.sshkey import SSHKeyHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import AUDIT
-from testtools.matchers import ContainsDict, Equals
 
 
 class TestSSHKeyHandler(MAASServerTestCase):

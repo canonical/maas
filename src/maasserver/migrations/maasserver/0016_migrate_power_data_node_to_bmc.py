@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from django.db import migrations
+
 from maasserver.models import timestampedmodel
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+
 
 # Copied from BMC model.
 def scope_power_parameters(power_type, power_params):

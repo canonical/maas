@@ -14,6 +14,9 @@ from textwrap import dedent
 import time
 from unittest.mock import call
 
+from testtools.content import text_content
+from testtools.matchers import Equals, HasLength, MatchesAny, Not
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
@@ -23,8 +26,6 @@ from provisioningserver.refresh.node_info_scripts import (
     VIRTUALITY_SCRIPT,
 )
 from provisioningserver.utils.shell import get_env_with_locale
-from testtools.content import text_content
-from testtools.matchers import Equals, HasLength, MatchesAny, Not
 
 
 class TestMakeFunctionCallScript(MAASTestCase):

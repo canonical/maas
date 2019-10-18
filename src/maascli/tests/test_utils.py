@@ -12,11 +12,12 @@ import random
 from unittest.mock import sentinel
 
 import httplib2
+from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
+
 from maascli import utils
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
 
 
 class TestDocstringParsing(MAASTestCase):

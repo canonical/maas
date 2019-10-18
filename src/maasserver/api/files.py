@@ -10,6 +10,10 @@ import http.client
 
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
+
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     operation,
@@ -19,9 +23,6 @@ from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPINotFound
 from maasserver.models import FileStorage
 from maasserver.utils.django_urls import reverse
-from piston3.emitters import JSONEmitter
-from piston3.handler import typemapper
-from piston3.utils import rc
 
 
 def get_file_by_name(handler, request):

@@ -8,7 +8,10 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
-from maasserver.models import SSLKey, sslkey as sslkey_module
+from testtools.matchers import Contains, StartsWith
+
+from maasserver.models import SSLKey
+from maasserver.models import sslkey as sslkey_module
 from maasserver.models.sslkey import (
     crypto,
     find_ssl_common_name,
@@ -18,7 +21,6 @@ from maasserver.models.sslkey import (
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Contains, StartsWith
 
 
 class SSLKeyValidatorTest(MAASServerTestCase):

@@ -9,10 +9,6 @@ from time import time
 
 from django.conf import settings
 from django.test.client import RequestFactory
-from maasserver.models.user import get_auth_tokens
-from maasserver.utils.orm import post_commit_hooks, transactional
-from maastesting.djangoclient import SensibleClient
-from maastesting.factory import factory
 from oauth.oauth import (
     generate_nonce,
     OAuthConsumer,
@@ -20,6 +16,11 @@ from oauth.oauth import (
     OAuthSignatureMethod_PLAINTEXT,
     OAuthToken,
 )
+
+from maasserver.models.user import get_auth_tokens
+from maasserver.utils.orm import post_commit_hooks, transactional
+from maastesting.djangoclient import SensibleClient
+from maastesting.factory import factory
 
 
 class MAASSensibleGetPathMixin:

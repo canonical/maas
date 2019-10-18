@@ -9,6 +9,10 @@ import base64
 import json
 
 from django.db import transaction
+import requests as requests_module
+from twisted.application.internet import TimerService
+from twisted.internet.defer import fail
+
 from maasserver import stats
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
 from maasserver.models import Config, Fabric, Space, Subnet, VLAN
@@ -29,9 +33,6 @@ from maastesting.matchers import MockCalledOnce, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import asynchronous
-import requests as requests_module
-from twisted.application.internet import TimerService
-from twisted.internet.defer import fail
 
 
 class TestMAASStats(MAASServerTestCase):

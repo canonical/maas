@@ -10,6 +10,8 @@ import json
 import random
 
 from django.conf import settings
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.api.dnsresources import get_dnsresource_queryset
 from maasserver.enum import NODE_STATUS
 from maasserver.models.dnsdata import DNSData
@@ -19,7 +21,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import ContainsDict, Equals
 
 
 def get_dnsresources_uri():

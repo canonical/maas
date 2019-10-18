@@ -7,7 +7,6 @@ __all__ = ["signals"]
 
 from maasserver.utils.signals import SignalsManager
 
-
 signals = SignalsManager()
 
 

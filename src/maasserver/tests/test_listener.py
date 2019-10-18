@@ -11,26 +11,6 @@ from unittest.mock import ANY, call, MagicMock, sentinel
 
 from crochet import wait_for
 from django.db import connection
-from maasserver import listener as listener_module
-from maasserver.listener import (
-    PostgresListenerNotifyError,
-    PostgresListenerRegistrationError,
-    PostgresListenerService,
-    PostgresListenerUnregistrationError,
-)
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-    MockCalledWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
-from maastesting.twisted import TwistedLoggerFixture
-from provisioningserver.utils.twisted import DeferredValue
 from psycopg2 import OperationalError
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -51,6 +31,26 @@ from twisted.internet.defer import (
 from twisted.logger import LogLevel
 from twisted.python.failure import Failure
 
+from maasserver import listener as listener_module
+from maasserver.listener import (
+    PostgresListenerNotifyError,
+    PostgresListenerRegistrationError,
+    PostgresListenerService,
+    PostgresListenerUnregistrationError,
+)
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+    MockCalledWith,
+    MockCallsMatch,
+    MockNotCalled,
+)
+from maastesting.twisted import TwistedLoggerFixture
+from provisioningserver.utils.twisted import DeferredValue
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

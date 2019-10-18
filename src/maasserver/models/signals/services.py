@@ -6,12 +6,12 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_delete, post_save
+
 from maasserver.models.node import RackController
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.service import Service
 from maasserver.utils.signals import SignalsManager
-
 
 signals = SignalsManager()
 

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
 import datetime
 
 import django.contrib.postgres.fields
 from django.db import migrations, models
 import django.db.models.deletion
+
 import maasserver.fields
 import maasserver.models.cleansave
 import metadataserver.fields

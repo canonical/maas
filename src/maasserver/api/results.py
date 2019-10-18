@@ -8,6 +8,7 @@ __all__ = ["NodeResultsHandler"]
 from base64 import b64encode
 
 from formencode.validators import Int
+
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_optional_list, get_optional_param
 from maasserver.models import Node

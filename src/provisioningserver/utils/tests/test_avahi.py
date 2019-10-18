@@ -13,6 +13,9 @@ import subprocess
 from tempfile import NamedTemporaryFile
 import time
 
+from testtools.matchers import Equals, HasLength, Not
+from testtools.testcase import ExpectedException
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -23,8 +26,6 @@ from provisioningserver.utils.avahi import (
     run,
     unescape_avahi_service_name,
 )
-from testtools.matchers import Equals, HasLength, Not
-from testtools.testcase import ExpectedException
 
 
 class TestUnescapeAvahiServiceName(MAASTestCase):

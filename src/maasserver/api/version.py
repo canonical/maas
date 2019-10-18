@@ -9,6 +9,7 @@ import http.client
 import json
 
 from django.http import HttpResponse
+
 from maasserver.api.support import AnonymousOperationsHandler
 from provisioningserver.utils.version import get_maas_version_subversion
 

@@ -3,6 +3,8 @@
 
 """API handlers: `DNSData`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms.dnsdata import DNSDataForm
@@ -10,8 +12,6 @@ from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.models import DNSData, DNSResource, Domain
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
-
 
 DISPLAYED_DNSDATA_FIELDS = ("id", "fqdn", "ttl", "rrtype", "rrdata")
 

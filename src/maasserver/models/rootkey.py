@@ -6,6 +6,7 @@
 __all__ = ["RootKey"]
 
 from django.db.models import BigAutoField, BinaryField, DateTimeField
+
 from maasserver.models.timestampedmodel import TimestampedModel
 
 

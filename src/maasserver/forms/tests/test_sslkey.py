@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.http import HttpRequest
+
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms import SSLKeyForm
 from maasserver.models import Event

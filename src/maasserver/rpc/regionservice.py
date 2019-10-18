@@ -13,6 +13,24 @@ import random
 from socket import AF_INET, AF_INET6
 import uuid
 
+from netaddr import AddrConversionError, IPAddress
+from twisted.application import service
+from twisted.internet import defer, reactor
+from twisted.internet.address import IPv4Address, IPv6Address
+from twisted.internet.defer import (
+    CancelledError,
+    inlineCallbacks,
+    maybeDeferred,
+    returnValue,
+    succeed,
+)
+from twisted.internet.endpoints import TCP6ServerEndpoint
+from twisted.internet.error import ConnectionClosed
+from twisted.internet.protocol import Factory
+from twisted.internet.threads import deferToThread
+from twisted.protocols import amp
+from zope.interface import implementer
+
 from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.dns.config import get_trusted_networks
@@ -37,7 +55,6 @@ from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import AddrConversionError, IPAddress
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import (
     GLOBAL_LABELS,
@@ -57,23 +74,6 @@ from provisioningserver.utils.twisted import (
     FOREVER,
 )
 from provisioningserver.utils.version import get_maas_version
-from twisted.application import service
-from twisted.internet import defer, reactor
-from twisted.internet.address import IPv4Address, IPv6Address
-from twisted.internet.defer import (
-    CancelledError,
-    inlineCallbacks,
-    maybeDeferred,
-    returnValue,
-    succeed,
-)
-from twisted.internet.endpoints import TCP6ServerEndpoint
-from twisted.internet.error import ConnectionClosed
-from twisted.internet.protocol import Factory
-from twisted.internet.threads import deferToThread
-from twisted.protocols import amp
-from zope.interface import implementer
-
 
 log = LegacyLogger()
 

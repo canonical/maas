@@ -13,11 +13,12 @@ __all__ = [
 from unittest.mock import sentinel
 
 import attr
-from provisioningserver.drivers.osystem import OperatingSystem
-from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
 from twisted.internet.defer import succeed
 from zope.interface import implementer
 from zope.interface.verify import verifyObject
+
+from provisioningserver.drivers.osystem import OperatingSystem
+from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
 
 
 @implementer(IConnection)

@@ -9,6 +9,7 @@ import threading
 
 from django.db.models import Count
 from django.db.models.signals import m2m_changed, post_save, pre_delete
+
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models import (
     BondInterface,
@@ -24,7 +25,6 @@ from maasserver.models.node import Controller, Node
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.logger import LegacyLogger
-
 
 INTERFACE_CLASSES = [
     BondInterface,

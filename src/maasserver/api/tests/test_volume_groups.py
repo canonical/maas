@@ -11,6 +11,8 @@ import random
 import uuid
 
 from django.conf import settings
+from testtools.matchers import ContainsDict, Equals
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import (
@@ -26,7 +28,6 @@ from maasserver.utils.converters import (
 )
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import ContainsDict, Equals
 
 
 def get_volume_groups_uri(node):

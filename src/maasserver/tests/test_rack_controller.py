@@ -9,6 +9,11 @@ import random
 from unittest.mock import call, create_autospec, Mock, sentinel
 
 from crochet import wait_for
+from testtools import ExpectedException
+from testtools.matchers import MatchesStructure
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
+
 from maasserver import rack_controller
 from maasserver.ipc import IPCWorkerService
 from maasserver.rack_controller import RackControllerService
@@ -22,11 +27,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
-from twisted.internet import reactor
-from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

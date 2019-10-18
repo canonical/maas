@@ -6,9 +6,9 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_delete
+
 from maasserver.models import DHCPSnippet
 from maasserver.utils.signals import SignalsManager
-
 
 signals = SignalsManager()
 

@@ -10,6 +10,8 @@ import random
 from subprocess import CalledProcessError, check_output, STDOUT
 from textwrap import dedent
 
+from testtools.matchers import Equals
+
 from maascli import main
 from maascli.config import ProfileConfig
 from maascli.testing.config import make_configs
@@ -18,7 +20,6 @@ from maastesting import root
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals
 
 
 def locate_maascli():

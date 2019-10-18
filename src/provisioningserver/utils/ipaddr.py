@@ -60,6 +60,7 @@ import re
 
 from netaddr import IPAddress, IPNetwork
 import netifaces
+
 from provisioningserver.utils.shell import call_and_check
 
 

@@ -23,6 +23,7 @@ from django.db.models import (
     OneToOneField,
     TextField,
 )
+
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -36,7 +37,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
-
 
 ForHardware = namedtuple("ForHardware", ("modaliases", "pci", "usb"))
 

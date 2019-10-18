@@ -7,6 +7,8 @@ __all__ = []
 
 from textwrap import dedent
 
+from testtools.matchers import Equals
+
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
@@ -14,7 +16,6 @@ from provisioningserver.utils.netplan import (
     get_netplan_bond_parameters,
     get_netplan_bridge_parameters,
 )
-from testtools.matchers import Equals
 
 
 class TestGetNetplanBondParameters(MAASTestCase):

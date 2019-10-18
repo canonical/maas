@@ -22,6 +22,9 @@ from django.http import (
 )
 from formencode import validators
 from formencode.validators import Int, StringBool
+from piston3.utils import rc
+import yaml
+
 from maasserver import locks
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
@@ -101,8 +104,6 @@ from maasserver.storage_layouts import (
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import get_first, reload_object
-from piston3.utils import rc
-import yaml
 
 # NUMANode fields exposed in the API.
 DISPLAYED_NUMANODE_FIELDS = ("index", "cores", "memory")

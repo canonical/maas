@@ -9,12 +9,13 @@ import os
 
 import attr
 from attr.validators import instance_of, optional
-from maasserver.forms.script import ScriptForm
-from metadataserver.models import Script
-from provisioningserver.utils.version import get_maas_version
 import tempita
 from zope.interface import Attribute, implementer, Interface
 from zope.interface.verify import verifyObject
+
+from maasserver.forms.script import ScriptForm
+from metadataserver.models import Script
+from provisioningserver.utils.version import get_maas_version
 
 
 class IBuiltinScript(Interface):

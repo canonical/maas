@@ -34,6 +34,7 @@ from operator import itemgetter
 
 from django import forms
 from jsonschema import validate
+
 from maasserver.clusterrpc.utils import call_clusters
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
@@ -43,7 +44,6 @@ from provisioningserver.drivers.nos import JSON_NOS_DRIVERS_SCHEMA
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.rpc import cluster
-
 
 FIELD_TYPE_MAPPINGS = {
     "string": forms.CharField,

@@ -2,9 +2,9 @@ from datetime import datetime
 
 from django.conf import settings
 from django.db import migrations
+
 from maasserver.worker_user import user_name as worker_username
 from metadataserver.nodeinituser import user_name as node_init_username
-
 
 DEFAULT_USERGROUP_NAME = "default"
 DEFAULT_USERGROUP_DESCRIPTION = "Default user group"

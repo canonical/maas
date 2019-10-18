@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from datetime import datetime
 
 from django.db import migrations, models
+
 from metadataserver.enum import SCRIPT_TYPE
 
 

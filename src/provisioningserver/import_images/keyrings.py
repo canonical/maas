@@ -11,7 +11,6 @@ from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
 
-
 log = LegacyLogger()
 
 

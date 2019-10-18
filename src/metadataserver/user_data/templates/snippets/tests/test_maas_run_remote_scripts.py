@@ -19,6 +19,8 @@ import time
 from unittest.mock import ANY, call, MagicMock
 from zipfile import ZipFile
 
+import yaml
+
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
@@ -46,7 +48,6 @@ from snippets.maas_run_remote_scripts import (
     run_scripts,
     run_scripts_from_metadata,
 )
-import yaml
 
 # Unused ScriptResult id, used to make sure number is always unique.
 SCRIPT_RESULT_ID = 0

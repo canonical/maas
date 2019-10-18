@@ -12,10 +12,6 @@ from random import randint
 import subprocess
 from unittest.mock import sentinel
 
-from maastesting import factory as factory_module
-from maastesting.factory import factory, TooManyRandomRetries
-from maastesting.matchers import FileContains, Matches, MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
 from netaddr import IPAddress, IPNetwork
 from testtools.matchers import (
     Contains,
@@ -29,6 +25,11 @@ from testtools.matchers import (
     StartsWith,
 )
 from testtools.testcase import ExpectedException
+
+from maastesting import factory as factory_module
+from maastesting.factory import factory, TooManyRandomRetries
+from maastesting.matchers import FileContains, Matches, MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
 
 
 class TestFactory(MAASTestCase):

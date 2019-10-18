@@ -11,17 +11,17 @@ from textwrap import dedent
 from unittest.mock import call
 
 from lxml import etree
-from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
-from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 import pexpect
-from provisioningserver.drivers.hardware import virsh
-from provisioningserver.utils.shell import get_env_with_locale
-from provisioningserver.utils.twisted import asynchronous
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver.drivers.hardware import virsh
+from provisioningserver.utils.shell import get_env_with_locale
+from provisioningserver.utils.twisted import asynchronous
 
 SAMPLE_IFLIST = dedent(
     """

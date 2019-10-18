@@ -7,6 +7,9 @@ __all__ = []
 
 import random
 
+from testtools import ExpectedException
+from testtools.matchers import Equals, Not
+
 from maasserver.enum import SERVICE_STATUS
 from maasserver.forms.vlan import VLANForm
 from maasserver.models.fabric import Fabric
@@ -15,8 +18,6 @@ from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools import ExpectedException
-from testtools.matchers import Equals, Not
 
 
 class TestVLANForm(MAASServerTestCase):

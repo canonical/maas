@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 import re
 
 from django.db import migrations
-from provisioningserver.events import AUDIT
 
+from provisioningserver.events import AUDIT
 
 DESCRIPTION_MAPPINGS = [
     ("Created token for", "Created token."),

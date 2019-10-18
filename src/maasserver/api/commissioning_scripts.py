@@ -9,6 +9,8 @@ from base64 import b64encode
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.audit import create_audit_event
@@ -19,7 +21,6 @@ from maasserver.utils.django_urls import reverse
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import Script
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
 
 

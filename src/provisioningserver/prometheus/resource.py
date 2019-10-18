@@ -1,5 +1,6 @@
-from provisioningserver.prometheus.utils import PrometheusMetrics
 from twisted.web.resource import Resource
+
+from provisioningserver.prometheus.utils import PrometheusMetrics
 
 
 class PrometheusMetricsResource(Resource):

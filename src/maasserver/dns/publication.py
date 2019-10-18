@@ -8,16 +8,16 @@ __all__ = ["DNSPublicationGarbageService"]
 from datetime import datetime, timedelta
 import random
 
-from maasserver.models.dnspublication import DNSPublication
-from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import callOut
 from pytz import UTC
 from twisted.application.service import Service
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 
+from maasserver.models.dnspublication import DNSPublication
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
 

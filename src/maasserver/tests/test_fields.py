@@ -14,6 +14,11 @@ from django.core import serializers
 from django.core.exceptions import ValidationError
 from django.db import connection, DatabaseError
 from django.db.models import BinaryField
+from psycopg2 import OperationalError
+from psycopg2.extensions import ISQLQuote
+from testtools import ExpectedException
+from testtools.matchers import AfterPreprocessing, Equals, Is
+
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import (
     EditableBinaryField,
@@ -51,10 +56,6 @@ from maasserver.tests.models import (
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from psycopg2 import OperationalError
-from psycopg2.extensions import ISQLQuote
-from testtools import ExpectedException
-from testtools.matchers import AfterPreprocessing, Equals, Is
 
 
 class TestMAC(MAASServerTestCase):

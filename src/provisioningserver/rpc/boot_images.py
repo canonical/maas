@@ -11,6 +11,9 @@ __all__ = [
 
 from urllib.parse import urlparse
 
+from twisted.internet.defer import fail, inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from provisioningserver import concurrency
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
@@ -21,9 +24,6 @@ from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLastImageSync
 from provisioningserver.utils.env import environment_variables, get_maas_id
 from provisioningserver.utils.twisted import synchronous
-from twisted.internet.defer import fail, inlineCallbacks
-from twisted.internet.threads import deferToThread
-
 
 log = LegacyLogger()
 

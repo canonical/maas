@@ -8,6 +8,8 @@ __all__ = []
 import random
 import uuid
 
+from testtools.matchers import MatchesStructure
+
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     CreateLogicalVolumeForm,
@@ -20,7 +22,6 @@ from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
-from testtools.matchers import MatchesStructure
 
 
 class TestCreateVolumeGroupForm(MAASServerTestCase):

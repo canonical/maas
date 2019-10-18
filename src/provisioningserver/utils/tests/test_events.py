@@ -7,11 +7,12 @@ __all__ = []
 
 from unittest.mock import MagicMock, sentinel
 
+from testtools.matchers import IsInstance
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.events import Event, EventGroup
-from testtools.matchers import IsInstance
 
 
 class TestEvent(MAASTestCase):

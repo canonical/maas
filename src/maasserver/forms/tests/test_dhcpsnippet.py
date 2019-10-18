@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from django.http import HttpRequest
+
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms import dhcpsnippet
 from maasserver.forms.dhcpsnippet import DHCPSnippetForm

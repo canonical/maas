@@ -14,10 +14,12 @@ from textwrap import dedent
 from unittest.mock import call, sentinel
 
 from fixtures import FakeLogger
+from netaddr import IPNetwork
+from testtools.matchers import AllMatch, Contains, FileContains, FileExists
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from netaddr import IPNetwork
 from provisioningserver.dns import actions
 from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_NAME,
@@ -30,7 +32,6 @@ from provisioningserver.dns.zoneconfig import (
     DNSReverseZoneConfig,
 )
 from provisioningserver.utils.shell import ExternalProcessError
-from testtools.matchers import AllMatch, Contains, FileContains, FileExists
 
 
 class TestReconfigure(MAASTestCase):

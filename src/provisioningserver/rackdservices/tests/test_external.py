@@ -9,6 +9,10 @@ import random
 from unittest.mock import Mock
 
 import attr
+from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
 from maastesting.matchers import (
@@ -24,9 +28,6 @@ from provisioningserver.rpc import common, exceptions, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.service_monitor import SERVICE_STATE
-from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
 
 
 def prepareRegion(

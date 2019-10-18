@@ -5,7 +5,6 @@ import sys
 
 from maas_api_helper import MD_VERSION, read_config, signal, SignalException
 
-
 VALID_STATUS = ("OK", "FAILED", "WORKING", "TESTING", "COMMISSIONING")
 POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot", "wedge")
 

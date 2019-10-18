@@ -11,6 +11,9 @@ from itertools import count
 from queue import Queue
 import threading
 
+from twisted.internet import reactor
+from twisted.internet.defer import CancelledError, Deferred, maybeDeferred
+
 from maasserver.exceptions import IteratorReusedError
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
@@ -20,9 +23,6 @@ from provisioningserver.utils.twisted import (
     suppress,
     synchronous,
 )
-from twisted.internet import reactor
-from twisted.internet.defer import CancelledError, Deferred, maybeDeferred
-
 
 log = LegacyLogger()
 

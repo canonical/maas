@@ -9,17 +9,6 @@ import random
 from unittest.mock import ANY, Mock
 
 import attr
-from maastesting.factory import factory
-from maastesting.fixtures import MAASRootFixture
-from maastesting.matchers import DocTestMatches, MockCalledOnceWith
-from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
-from provisioningserver import services
-from provisioningserver.boot import BytesReader
-from provisioningserver.events import EVENT_TYPES
-from provisioningserver.rackdservices import http
-from provisioningserver.rpc import common, exceptions
-from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from testtools.matchers import (
     Contains,
     Equals,
@@ -34,6 +23,18 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.http_headers import Headers
 from twisted.web.server import NOT_DONE_YET, Request
 from twisted.web.test.test_web import DummyChannel, DummyRequest
+
+from maastesting.factory import factory
+from maastesting.fixtures import MAASRootFixture
+from maastesting.matchers import DocTestMatches, MockCalledOnceWith
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
+from provisioningserver import services
+from provisioningserver.boot import BytesReader
+from provisioningserver.events import EVENT_TYPES
+from provisioningserver.rackdservices import http
+from provisioningserver.rpc import common, exceptions
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
 
 def prepareRegion(test):

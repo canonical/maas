@@ -9,6 +9,12 @@ from unittest.mock import ANY, call, Mock, sentinel
 
 from crochet import wait_for
 from django.db import connections
+from testtools.matchers import Equals, IsInstance
+from twisted.application.internet import StreamServerEndpointService
+from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
+from twisted.python.threadable import isInIOThread
+
 from maasserver import (
     bootresources,
     eventloop,
@@ -35,12 +41,6 @@ from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from metadataserver import api_twisted
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals, IsInstance
-from twisted.application.internet import StreamServerEndpointService
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks
-from twisted.python.threadable import isInIOThread
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

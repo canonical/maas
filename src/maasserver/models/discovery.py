@@ -15,6 +15,7 @@ from django.db.models import (
     NullBooleanField,
 )
 from django.db.models.query import QuerySet
+
 from maasserver import DefaultViewMeta
 from maasserver.fields import (
     CIDRField,
@@ -27,7 +28,6 @@ from maasserver.models.viewmodel import ViewModel
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import get_mac_organization
-
 
 maaslog = get_maas_logger("discovery")
 

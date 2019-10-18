@@ -8,10 +8,10 @@ __all__ = ["get_protocol_keys"]
 import http
 import logging
 
-from maasserver.enum import KEYS_PROTOCOL_TYPE, KEYS_PROTOCOL_TYPE_CHOICES
-from maasserver.models import Config
 import requests
 
+from maasserver.enum import KEYS_PROTOCOL_TYPE, KEYS_PROTOCOL_TYPE_CHOICES
+from maasserver.models import Config
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 

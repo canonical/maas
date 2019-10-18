@@ -15,6 +15,17 @@ from uuid import uuid4
 from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    FileContains,
+    FileExists,
+    Is,
+    MatchesStructure,
+)
+from twisted.python.filepath import FilePath
+import yaml
+
 import maastesting
 from maastesting.factory import factory
 from maastesting.fixtures import ImportErrorFixture
@@ -33,16 +44,6 @@ from provisioningserver.config import (
 from provisioningserver.path import get_data_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.fs import RunLock
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    FileContains,
-    FileExists,
-    Is,
-    MatchesStructure,
-)
-from twisted.python.filepath import FilePath
-import yaml
 
 ###############################################################################
 # New configuration API follows.

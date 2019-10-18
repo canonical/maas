@@ -6,6 +6,7 @@
 __all__ = ["ViewModel"]
 
 from django.db.models import Model
+
 from maasserver import DefaultMeta
 
 

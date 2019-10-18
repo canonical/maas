@@ -8,6 +8,10 @@ __all__ = []
 import random
 from unittest.mock import call
 
+from testtools.matchers import HasLength, Is, IsInstance, Not
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred
+
 from maasserver import eventloop, locks, start_up
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
@@ -30,9 +34,6 @@ from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
-from testtools.matchers import HasLength, Is, IsInstance, Not
-from twisted.internet import reactor
-from twisted.internet.defer import Deferred
 
 
 class TestStartUp(MAASTransactionServerTestCase):

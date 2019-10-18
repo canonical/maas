@@ -46,9 +46,9 @@ copy._copy_dispatch[sentinel_type] = copy._copy_immutable
 copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
 
 # Monkey-patch test dependencies here.
-from maastesting.twisted import (
+from maastesting.twisted import (  # noqa:E402 isort:skip
     maybe_fix_bug_230_in_CaptureTwistedLogs,
-)  # noqa: E402
+)
 
 maybe_fix_bug_230_in_CaptureTwistedLogs()
 del maybe_fix_bug_230_in_CaptureTwistedLogs

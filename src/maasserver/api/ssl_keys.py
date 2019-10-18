@@ -10,17 +10,17 @@ import http.client
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSLKeyForm
 from maasserver.models import SSLKey
-from piston3.emitters import JSONEmitter
-from piston3.handler import typemapper
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
-
 
 DISPLAY_SSLKEY_FIELDS = ("id", "key")
 

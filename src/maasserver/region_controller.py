@@ -29,6 +29,12 @@ __all__ = ["RegionControllerService"]
 
 from operator import attrgetter
 
+from twisted.application.service import Service
+from twisted.internet import reactor
+from twisted.internet.defer import DeferredList, inlineCallbacks
+from twisted.internet.task import LoopingCall
+from twisted.names.client import Resolver
+
 from maasserver import locks
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.macaroon_auth import get_auth_info
@@ -44,12 +50,6 @@ from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
-from twisted.application.service import Service
-from twisted.internet import reactor
-from twisted.internet.defer import DeferredList, inlineCallbacks
-from twisted.internet.task import LoopingCall
-from twisted.names.client import Resolver
-
 
 log = LegacyLogger()
 

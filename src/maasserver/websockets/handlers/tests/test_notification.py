@@ -9,12 +9,6 @@ from itertools import product
 import random
 from unittest.mock import sentinel
 
-from maasserver.models.notification import NotificationDismissal
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime, Handler
-from maasserver.websockets.handlers.notification import NotificationHandler
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
@@ -27,6 +21,13 @@ from testtools.matchers import (
     MatchesListwise,
     Not,
 )
+
+from maasserver.models.notification import NotificationDismissal
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import dehydrate_datetime, Handler
+from maasserver.websockets.handlers.notification import NotificationHandler
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 
 
 def MatchesRenderedNotification(ntfn):

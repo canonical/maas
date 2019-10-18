@@ -9,17 +9,7 @@ from itertools import chain
 import os.path
 import random
 
-from maastesting.factory import factory
-from maastesting.matchers import MockNotCalled
-from maastesting.testcase import MAASTestCase
 from netaddr import IPAddress, IPNetwork, IPRange
-from provisioningserver.dns.config import get_dns_config_dir
-from provisioningserver.dns.testing import patch_dns_config_path
-from provisioningserver.dns.zoneconfig import (
-    DNSForwardZoneConfig,
-    DNSReverseZoneConfig,
-    DomainInfo,
-)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -29,6 +19,17 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from twisted.python.filepath import FilePath
+
+from maastesting.factory import factory
+from maastesting.matchers import MockNotCalled
+from maastesting.testcase import MAASTestCase
+from provisioningserver.dns.config import get_dns_config_dir
+from provisioningserver.dns.testing import patch_dns_config_path
+from provisioningserver.dns.zoneconfig import (
+    DNSForwardZoneConfig,
+    DNSReverseZoneConfig,
+    DomainInfo,
+)
 
 
 class HostnameIPMapping:

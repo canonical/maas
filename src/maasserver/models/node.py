@@ -59,6 +59,21 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
+from netaddr import IPAddress, IPNetwork
+import petname
+from piston3.models import Token
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    Deferred,
+    DeferredList,
+    inlineCallbacks,
+    succeed,
+)
+from twisted.internet.error import ConnectionClosed, ConnectionDone
+from twisted.internet.threads import deferToThread
+from twisted.python.failure import Failure
+from twisted.python.threadable import isInIOThread
+
 from maasserver import DefaultMeta, locks
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
@@ -172,9 +187,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.user_data import generate_user_data_for_status
-from netaddr import IPAddress, IPNetwork
-import petname
-from piston3.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -213,18 +225,6 @@ from provisioningserver.utils.twisted import (
     synchronous,
     undefined,
 )
-from twisted.internet import reactor
-from twisted.internet.defer import (
-    Deferred,
-    DeferredList,
-    inlineCallbacks,
-    succeed,
-)
-from twisted.internet.error import ConnectionClosed, ConnectionDone
-from twisted.internet.threads import deferToThread
-from twisted.python.failure import Failure
-from twisted.python.threadable import isInIOThread
-
 
 log = LegacyLogger()
 maaslog = get_maas_logger("node")

@@ -37,6 +37,11 @@ __all__ = ["RackControllerService"]
 from functools import partial
 import os
 
+from twisted.application.service import Service
+from twisted.internet import reactor
+from twisted.internet.defer import CancelledError, maybeDeferred
+from twisted.internet.task import LoopingCall
+
 from maasserver import dhcp
 from maasserver.listener import PostgresListenerUnregistrationError
 from maasserver.models.node import RackController
@@ -45,11 +50,6 @@ from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
-from twisted.application.service import Service
-from twisted.internet import reactor
-from twisted.internet.defer import CancelledError, maybeDeferred
-from twisted.internet.task import LoopingCall
-
 
 log = LegacyLogger()
 

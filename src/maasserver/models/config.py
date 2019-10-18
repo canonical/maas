@@ -12,11 +12,11 @@ from socket import gethostname
 
 from django.db.models import CharField, Manager, Model
 from django.db.models.signals import post_save
+
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.events import EVENT_TYPES
-
 
 DEFAULT_OS = UbuntuOS()
 

@@ -11,6 +11,8 @@ import logging.handlers
 import os
 import sys
 
+from twisted import logger as twistedModern
+
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_FORMAT_DATE,
@@ -19,7 +21,6 @@ from provisioningserver.logger._common import (
     LoggingMode,
 )
 from provisioningserver.utils import typed
-from twisted import logger as twistedModern
 
 # Map verbosity numbers to `logging` levels.
 DEFAULT_LOGGING_VERBOSITY_LEVELS = {

@@ -6,6 +6,7 @@
 __all__ = ["StaticRouteHandler"]
 
 from django.core.exceptions import PermissionDenied
+
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
 from maasserver.websockets.handlers.timestampedmodel import (

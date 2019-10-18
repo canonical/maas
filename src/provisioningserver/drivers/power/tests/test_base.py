@@ -9,6 +9,11 @@ import random
 from unittest.mock import call, sentinel
 
 from jsonschema import validate
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, succeed
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -32,10 +37,6 @@ from provisioningserver.drivers.power import (
     PowerToolError,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, succeed
 
 
 class FakePowerDriverBase(PowerDriverBase):

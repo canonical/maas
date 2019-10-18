@@ -13,6 +13,8 @@ import textwrap
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from testtools.matchers import Contains, Equals, FileContains, Not
+
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -24,8 +26,6 @@ from provisioningserver.utils.isc import (
     parse_isc_string,
     read_isc_file,
 )
-from testtools.matchers import Contains, Equals, FileContains, Not
-
 
 OPTIONS_FILE = textwrap.dedent(
     """\

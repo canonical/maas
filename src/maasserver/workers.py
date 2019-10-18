@@ -6,11 +6,11 @@
 import os
 import sys
 
-from provisioningserver.logger import LegacyLogger
 from twisted.application import service
 from twisted.internet import protocol
 from twisted.internet.process import ProcessExitedAlready
 
+from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
 

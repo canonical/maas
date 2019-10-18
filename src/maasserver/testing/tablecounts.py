@@ -6,8 +6,9 @@
 __all__ = ["check_table_row_counts", "get_table_row_counts"]
 
 from django.db import connection
-from maastesting.matchers import GreaterThanOrEqual
 from testtools.matchers import Annotate, Equals, GreaterThan, MatchesDict
+
+from maastesting.matchers import GreaterThanOrEqual
 
 # These are the expected row counts for tables in MAAS; those not mentioned
 # are assumed to have zero rows.

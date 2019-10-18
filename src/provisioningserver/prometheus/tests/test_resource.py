@@ -1,12 +1,13 @@
-from maastesting.testcase import MAASTestCase
 import prometheus_client
+from twisted.web.server import Request
+from twisted.web.test.test_web import DummyChannel
+
+from maastesting.testcase import MAASTestCase
 from provisioningserver.prometheus.utils import (
     create_metrics,
     MetricDefinition,
 )
 from provisioningserver.rackdservices import http
-from twisted.web.server import Request
-from twisted.web.test.test_web import DummyChannel
 
 
 class TestPrometheusMetricsResource(MAASTestCase):

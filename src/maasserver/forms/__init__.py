@@ -81,6 +81,8 @@ from django.forms.models import ModelFormMetaclass
 from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
+from netaddr import IPNetwork, valid_ipv6
+
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.driver_parameters import (
@@ -170,12 +172,10 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_min_hwe_kernel,
 )
-from netaddr import IPNetwork, valid_ipv6
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
-
 
 maaslog = get_maas_logger()
 

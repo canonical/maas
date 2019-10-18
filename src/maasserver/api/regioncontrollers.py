@@ -4,6 +4,8 @@
 __all__ = ["RegionControllerHandler", "RegionControllersHandler"]
 
 from formencode.validators import StringBool
+from piston3.utils import rc
+
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.nodes import NodeHandler, NodesHandler
 from maasserver.api.support import admin_method
@@ -12,7 +14,6 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
 from maasserver.models import RegionController
 from maasserver.permissions import NodePermission
-from piston3.utils import rc
 
 # Region controller's fields exposed on the API.
 DISPLAYED_REGION_CONTROLLER_FIELDS = (

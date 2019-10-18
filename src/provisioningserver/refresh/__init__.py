@@ -26,7 +26,6 @@ from provisioningserver.utils.snappy import get_snap_path, running_in_snap
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.version import get_maas_version
 
-
 maaslog = get_maas_logger("refresh")
 
 

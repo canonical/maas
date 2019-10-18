@@ -9,15 +9,16 @@ from os import getcwd
 import os.path
 
 from fixtures import EnvironmentVariableFixture
+from testtools.matchers import DirExists, Not, StartsWith
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver.path
 from provisioningserver.path import (
-    get_path,
     get_data_path,
+    get_path,
     get_tentative_data_path,
 )
-from testtools.matchers import DirExists, Not, StartsWith
 
 
 class TestGetPathFunctions(MAASTestCase):

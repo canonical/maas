@@ -17,6 +17,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import Model
 from django.utils.encoding import is_protected_type
+
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
 from maasserver.prometheus.middleware import wrap_query_counter_cursor
@@ -26,7 +27,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous, IAsynchronous
-
 
 DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
 

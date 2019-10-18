@@ -252,20 +252,36 @@ class OperatingSystemRegistry(Registry):
     """Registry for operating system classes."""
 
 
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS  # noqa: E402
-from provisioningserver.drivers.osystem.ubuntucore import (
-    UbuntuCoreOS,
-)  # noqa: E402
-from provisioningserver.drivers.osystem.bootloader import (
+from provisioningserver.drivers.osystem.bootloader import (  # noqa:E402 isort:skip
     BootLoaderOS,
-)  # noqa: E402
-from provisioningserver.drivers.osystem.centos import CentOS  # noqa: E402
-from provisioningserver.drivers.osystem.rhel import RHELOS  # noqa: E402
-from provisioningserver.drivers.osystem.custom import CustomOS  # noqa: E402
-from provisioningserver.drivers.osystem.windows import WindowsOS  # noqa: E402
-from provisioningserver.drivers.osystem.suse import SUSEOS  # noqa: E402
-from provisioningserver.drivers.osystem.caringo import CaringoOS  # noqa: E402
-from provisioningserver.drivers.osystem.esxi import ESXi  # noqa: E402
+)
+from provisioningserver.drivers.osystem.caringo import (  # noqa:E402 isort:skip
+    CaringoOS,
+)
+from provisioningserver.drivers.osystem.centos import (  # noqa:E402 isort:skip
+    CentOS,
+)
+from provisioningserver.drivers.osystem.custom import (  # noqa:E402 isort:skip
+    CustomOS,
+)
+from provisioningserver.drivers.osystem.esxi import (  # noqa:E402 isort:skip
+    ESXi,
+)
+from provisioningserver.drivers.osystem.rhel import (  # noqa:E402 isort:skip
+    RHELOS,
+)
+from provisioningserver.drivers.osystem.suse import (  # noqa:E402 isort:skip
+    SUSEOS,
+)
+from provisioningserver.drivers.osystem.ubuntu import (  # noqa:E402 isort:skip
+    UbuntuOS,
+)
+from provisioningserver.drivers.osystem.ubuntucore import (  # noqa:E402 isort:skip
+    UbuntuCoreOS,
+)
+from provisioningserver.drivers.osystem.windows import (  # noqa:E402 isort:skip
+    WindowsOS,
+)
 
 builtin_osystems = [
     UbuntuOS(),

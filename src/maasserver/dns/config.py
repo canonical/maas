@@ -8,6 +8,8 @@ __all__ = ["dns_force_reload", "dns_update_all_zones"]
 from collections import defaultdict
 
 from django.conf import settings
+from netaddr import IPAddress
+
 from maasserver.dns.zonegenerator import (
     InternalDomain,
     InternalDomainResourse,
@@ -20,7 +22,6 @@ from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
-from netaddr import IPAddress
 from provisioningserver.dns.actions import (
     bind_reload,
     bind_reload_with_retries,
@@ -29,7 +30,6 @@ from provisioningserver.dns.actions import (
     bind_write_zones,
 )
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("dns")
 

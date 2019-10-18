@@ -13,18 +13,6 @@ import unittest
 from unittest.mock import ANY, sentinel
 
 import crochet as crochet_module
-from maastesting import noseplug
-from maastesting.factory import factory
-from maastesting.matchers import IsCallable, MockCalledOnceWith, MockNotCalled
-from maastesting.noseplug import (
-    Crochet,
-    Resources,
-    Scenarios,
-    Select,
-    SelectBucket,
-    Subunit,
-)
-from maastesting.testcase import MAASTestCase
 import nose.case
 from subunit import TestProtocolClient
 from testresources import OptimisingTestSuite
@@ -40,6 +28,19 @@ from testtools.matchers import (
     Not,
 )
 from twisted.python.filepath import FilePath
+
+from maastesting import noseplug
+from maastesting.factory import factory
+from maastesting.matchers import IsCallable, MockCalledOnceWith, MockNotCalled
+from maastesting.noseplug import (
+    Crochet,
+    Resources,
+    Scenarios,
+    Select,
+    SelectBucket,
+    Subunit,
+)
+from maastesting.testcase import MAASTestCase
 
 
 class TestCrochet(MAASTestCase):

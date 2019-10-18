@@ -5,6 +5,7 @@ from pathlib import Path
 import pstats
 
 from fixtures import EnvironmentVariableFixture, TempDir
+
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import debug
 from provisioningserver.utils.debug import (

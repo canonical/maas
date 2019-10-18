@@ -25,6 +25,11 @@ from django.conf import settings
 from django.db import connections, transaction
 from django.http import StreamingHttpResponse
 from fixtures import FakeLogger, Fixture
+from testtools.matchers import Contains, ContainsAll, Equals, HasLength, Not
+from twisted.application.internet import TimerService
+from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
+from twisted.protocols.amp import UnhandledCommand
+
 from maasserver import __version__, bootresources
 from maasserver.bootresources import (
     BootResourceRepoWriter,
@@ -92,11 +97,6 @@ from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.cluster import ListBootImages, ListBootImagesV2
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous, DeferredValue
-from testtools.matchers import Contains, ContainsAll, Equals, HasLength, Not
-from twisted.application.internet import TimerService
-from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
-from twisted.protocols.amp import UnhandledCommand
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

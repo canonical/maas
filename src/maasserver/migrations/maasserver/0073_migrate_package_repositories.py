@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from django.db import migrations
+
 from maasserver.models import timestampedmodel
+
 
 # Copied from Node model.
 def move_package_repositories(apps, schema_editor):

@@ -6,13 +6,13 @@
 __all__ = ["Switch"]
 
 from django.db.models import CASCADE, CharField, Manager, OneToOneField
+
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("switch")
 

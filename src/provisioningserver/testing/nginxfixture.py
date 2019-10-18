@@ -13,12 +13,12 @@ import subprocess
 from textwrap import dedent
 
 import fixtures
-from maastesting.fixtures import TempDirectory
-from provisioningserver.utils.fs import atomic_write
 import tempita
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
 
+from maastesting.fixtures import TempDirectory
+from provisioningserver.utils.fs import atomic_write
 
 GENERATED_HEADER = dedent(
     """\

@@ -9,6 +9,8 @@ import random
 import threading
 from unittest.mock import call
 
+from testtools.matchers import Contains, Not
+
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models import Controller, Interface
 from maasserver.models.config import Config, NetworkDiscoveryConfig
@@ -20,7 +22,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCallsMatch
-from testtools.matchers import Contains, Not
 
 
 def _mock_ensure_link_up(self):

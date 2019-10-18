@@ -6,6 +6,7 @@
 __all__ = ["Service"]
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
+
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
 from maasserver.models.cleansave import CleanSave

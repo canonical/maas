@@ -2,7 +2,6 @@
 
 from django.db import migrations
 
-
 sql_ntp_server_to_ntp_servers = """\
 UPDATE maasserver_config
    SET name = 'ntp_servers'

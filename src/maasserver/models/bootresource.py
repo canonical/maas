@@ -17,6 +17,7 @@ from django.db.models import (
     Prefetch,
     Sum,
 )
+
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,

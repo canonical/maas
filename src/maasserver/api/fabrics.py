@@ -3,14 +3,14 @@
 
 """API handlers: `Fabric`."""
 
+from piston3.utils import rc
+
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fabric import FabricForm
 from maasserver.models import Fabric
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
-from piston3.utils import rc
-
 
 DISPLAYED_FABRIC_FIELDS = ("id", "name", "class_type", "vlans")
 

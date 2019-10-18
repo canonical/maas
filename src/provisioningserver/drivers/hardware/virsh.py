@@ -7,12 +7,12 @@ from tempfile import NamedTemporaryFile
 
 from lxml import etree
 import pexpect
+
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
-
 
 maaslog = get_maas_logger("drivers.virsh")
 

@@ -6,6 +6,8 @@
 __all__ = []
 
 from django.db import connection
+from twisted.internet import reactor
+
 from maasserver.bootsources import cache_boot_sources
 from maasserver.models import BootSource, signals
 from maasserver.models.config import Config
@@ -16,7 +18,6 @@ from maastesting.matchers import (
     MockCalledWith,
     MockNotCalled,
 )
-from twisted.internet import reactor
 
 
 class TestBootSourceSignals(MAASServerTestCase):

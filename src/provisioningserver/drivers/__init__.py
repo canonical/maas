@@ -6,6 +6,7 @@
 __all__ = ["Architecture", "ArchitectureRegistry"]
 
 from jsonschema import validate
+
 from provisioningserver.utils import typed
 from provisioningserver.utils.registry import Registry
 

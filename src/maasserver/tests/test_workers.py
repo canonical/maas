@@ -11,6 +11,9 @@ import sys
 from unittest.mock import call
 
 from crochet import wait_for
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver.workers import (
     set_max_workers_count,
     WorkerProcess,
@@ -19,9 +22,6 @@ from maasserver.workers import (
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import DeferredValue
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

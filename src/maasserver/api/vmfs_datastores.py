@@ -4,6 +4,8 @@
 """API handlers: `VMFS Datastore`."""
 
 __all__ = ["VmfsDatastoreHandler", "VmfsDatastoresHandler"]
+from piston3.utils import rc
+
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import MAASAPIValidationError, NodeStateViolation
@@ -11,8 +13,6 @@ from maasserver.forms import CreateVMFSForm, UpdateVMFSForm
 from maasserver.models import Machine, VMFS
 from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
-from piston3.utils import rc
-
 
 DISPLAYED_VMFS_DATASTORE_FIELDS = (
     "id",

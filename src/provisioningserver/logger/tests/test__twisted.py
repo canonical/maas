@@ -7,6 +7,21 @@ __all__ = []
 
 import io
 
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    ContainsDict,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    StartsWith,
+)
+from twisted import logger
+from twisted.python.failure import Failure
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
@@ -27,20 +42,6 @@ from provisioningserver.logger.testing import (
     make_event,
     pick_log_time,
 )
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    ContainsDict,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    StartsWith,
-)
-from twisted import logger
-from twisted.python.failure import Failure
 
 
 def ContainsDictByEquality(expected):

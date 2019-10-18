@@ -7,6 +7,10 @@ __all__ = ["ActiveDiscoveryService"]
 
 from datetime import datetime, timedelta
 
+from twisted.application.internet import TimerService
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, maybeDeferred
+
 from maasserver import locks
 from maasserver.api.discoveries import (
     get_scan_result_string_for_humans,
@@ -17,10 +21,6 @@ from maasserver.utils.dblocks import DatabaseLockNotHeld
 from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
-from twisted.application.internet import TimerService
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, maybeDeferred
-
 
 log = LegacyLogger()
 

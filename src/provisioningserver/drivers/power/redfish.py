@@ -11,14 +11,6 @@ from io import BytesIO
 import json
 from os.path import basename, join
 
-from provisioningserver.drivers import (
-    make_ip_extractor,
-    make_setting_field,
-    SETTING_SCOPE,
-)
-from provisioningserver.drivers.power import PowerActionError, PowerDriver
-from provisioningserver.drivers.power.utils import WebClientContextFactory
-from provisioningserver.utils.twisted import asynchronous
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import (
@@ -29,6 +21,15 @@ from twisted.web.client import (
     RedirectAgent,
 )
 from twisted.web.http_headers import Headers
+
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
+from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power.utils import WebClientContextFactory
+from provisioningserver.utils.twisted import asynchronous
 
 # no trailing slashes
 REDFISH_POWER_CONTROL_ENDPOINT = (

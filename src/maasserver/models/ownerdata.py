@@ -14,6 +14,7 @@ from django.db.models import (
     Model,
     TextField,
 )
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 

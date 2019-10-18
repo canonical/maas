@@ -17,6 +17,10 @@ from django.forms import (
     IntegerField,
     ModelChoiceField,
 )
+import petname
+from twisted.internet.defer import inlineCallbacks
+from twisted.python.threadable import isInIOThread
+
 from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
     get_driver_parameters_from_json,
@@ -55,7 +59,6 @@ from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -69,9 +72,6 @@ from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import inlineCallbacks
-from twisted.python.threadable import isInIOThread
-
 
 log = LegacyLogger()
 

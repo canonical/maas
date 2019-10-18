@@ -10,12 +10,13 @@ import json
 import random
 
 from django.conf import settings
+from testtools.matchers import ContainsDict, Equals, Is, Not
+
 from maasserver.models import Space
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from testtools.matchers import ContainsDict, Equals, Is, Not
 
 
 def get_vlans_uri(fabric):

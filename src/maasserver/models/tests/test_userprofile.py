@@ -6,6 +6,8 @@
 __all__ = []
 
 from django.contrib.auth.models import User
+from piston3.models import Consumer, Token
+
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models import FileStorage, UserProfile
 from maasserver.models.user import (
@@ -16,7 +18,6 @@ from maasserver.models.user import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from piston3.models import Consumer, Token
 
 
 class UserProfileTest(MAASServerTestCase):

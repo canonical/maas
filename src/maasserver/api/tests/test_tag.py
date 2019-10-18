@@ -9,8 +9,10 @@ import http.client
 import json
 from unittest.mock import ANY, call
 
-from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
+from testtools.matchers import MatchesStructure
+
+from apiclient.creds import convert_tuple_to_string
 from maasserver import middleware
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Node, Tag
@@ -27,7 +29,6 @@ from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
-from testtools.matchers import MatchesStructure
 
 
 def extract_system_ids(parsed_result):

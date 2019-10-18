@@ -9,16 +9,16 @@ from collections import deque
 import json
 import os
 
-from provisioningserver.logger import get_maas_logger
-from provisioningserver.path import get_data_path
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.region import UpdateLease
-from provisioningserver.utils.twisted import pause, retries
 from twisted.application.service import Service
 from twisted.internet import reactor, task
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import DatagramProtocol
 
+from provisioningserver.logger import get_maas_logger
+from provisioningserver.path import get_data_path
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.region import UpdateLease
+from provisioningserver.utils.twisted import pause, retries
 
 maaslog = get_maas_logger("lease_socket_service")
 

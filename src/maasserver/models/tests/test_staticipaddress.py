@@ -12,6 +12,21 @@ from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from netaddr import IPAddress
+from psycopg2.errorcodes import FOREIGN_KEY_VIOLATION
+from testtools import ExpectedException
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Contains,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    Not,
+)
+from twisted.python.failure import Failure
+
 from maasserver import locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -42,20 +57,6 @@ from maasserver.utils import orm
 from maasserver.utils.dns import get_ip_based_hostname
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.websockets.base import dehydrate_datetime
-from netaddr import IPAddress
-from psycopg2.errorcodes import FOREIGN_KEY_VIOLATION
-from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    Not,
-)
-from twisted.python.failure import Failure
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):

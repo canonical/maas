@@ -11,6 +11,9 @@ import random
 from unittest import skip
 from unittest.mock import ANY, MagicMock
 
+from requests.exceptions import ConnectionError
+from testtools.matchers import HasLength
+
 from maasserver import bootsources
 from maasserver.bootsources import (
     cache_boot_sources,
@@ -51,8 +54,6 @@ from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
 )
 from provisioningserver.import_images.helpers import ImageSpec
-from requests.exceptions import ConnectionError
-from testtools.matchers import HasLength
 
 
 def patch_and_capture_env_for_download_all_image_descriptions(testcase):

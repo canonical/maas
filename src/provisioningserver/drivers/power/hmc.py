@@ -12,6 +12,7 @@ __all__ = []
 from socket import error as SOCKETError
 
 from paramiko import AutoAddPolicy, SSHClient, SSHException
+
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,

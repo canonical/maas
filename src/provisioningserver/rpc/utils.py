@@ -7,6 +7,10 @@ __all__ = ["create_node", "commission_node"]
 
 import json
 
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.protocols.amp import UnhandledCommand, UnknownRemoteError
+
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
@@ -17,10 +21,6 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.region import CreateNode
 from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import asynchronous, pause, retries
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.protocols.amp import UnhandledCommand, UnknownRemoteError
-
 
 maaslog = get_maas_logger("region")
 

@@ -9,9 +9,10 @@ from copy import deepcopy
 from functools import wraps
 
 from fixtures import Fixture
+from testtools import monkey
+
 from maasserver.clusterrpc import driver_parameters
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
-from testtools import monkey
 
 
 class StaticDriverTypesFixture(Fixture):

@@ -2,13 +2,14 @@ import asyncio
 import os
 import sys
 
+from twisted.internet import asyncioreactor, error, reactor
+import uvloop
+
 from maasserver import execute_from_command_line
 from maasserver.utils import orm, threads
 from maastesting.noseplug import main as test_main
 from maastesting.parallel import main as test_parallel_main
 from provisioningserver import logger
-from twisted.internet import asyncioreactor, error, reactor
-import uvloop
 
 
 def init_asyncio_reactor():

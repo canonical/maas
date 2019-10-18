@@ -6,6 +6,7 @@
 __all__ = []
 
 from django.contrib.auth.models import AnonymousUser
+
 from maasserver.models.event import Event
 from maasserver.utils import get_remote_ip
 from provisioningserver.events import AUDIT, EVENT_DETAILS

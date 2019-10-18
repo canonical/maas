@@ -14,7 +14,6 @@ from maasserver.api.support import (
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
 
-
 DISPLAYED_ZONE_FIELDS = ("id", "name", "description")
 
 

@@ -13,13 +13,14 @@ from textwrap import dedent
 import time
 from unittest.mock import MagicMock
 
+import netifaces
+from testtools.matchers import Contains, Not
+
 from maascli import snappy
 from maascli.parser import ArgumentParser
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-import netifaces
-from testtools.matchers import Contains, Not
 
 
 class TestHelpers(MAASTestCase):

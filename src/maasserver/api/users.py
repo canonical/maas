@@ -8,6 +8,10 @@ __all__ = ["UserHandler", "UsersHandler"]
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from piston3.handler import BaseHandler
+from piston3.models import Consumer
+from piston3.utils import rc
+
 from maasserver.api.ssh_keys import SSHKeysHandler
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import extract_bool, get_mandatory_param
@@ -21,9 +25,6 @@ from maasserver.forms import DeleteUserForm
 from maasserver.models import User, UserProfile
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.orm import get_one
-from piston3.handler import BaseHandler
-from piston3.models import Consumer
-from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
 
 

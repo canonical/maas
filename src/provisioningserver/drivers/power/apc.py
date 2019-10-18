@@ -21,7 +21,6 @@ from provisioningserver.drivers.power import PowerActionError, PowerDriver
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import get_env_with_locale
 
-
 COMMON_ARGS = "-c private -v1 %s .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s"
 
 

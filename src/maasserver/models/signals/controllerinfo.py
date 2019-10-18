@@ -6,11 +6,11 @@
 __all__ = ["signals"]
 
 from django.db.models.signals import post_delete, post_save
+
 from maasserver.models import ControllerInfo, RackController, RegionController
 from maasserver.models.controllerinfo import update_version_notifications
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.logger import LegacyLogger
-
 
 log = LegacyLogger()
 signals = SignalsManager()

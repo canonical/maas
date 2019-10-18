@@ -8,14 +8,15 @@ __all__ = ["DNSResourceForm"]
 from collections import Iterable
 
 from django import forms
+from netaddr import IPAddress
+from netaddr.core import AddrFormatError
+
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.forms import APIEditMixin, MAASModelForm
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
-from netaddr import IPAddress
-from netaddr.core import AddrFormatError
 
 
 class DNSResourceForm(MAASModelForm):

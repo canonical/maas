@@ -12,10 +12,15 @@ from unittest.mock import ANY, call, MagicMock, sentinel
 from uuid import uuid4
 
 from lxml import etree
+import pexpect
+from testtools.matchers import Contains, Equals
+from testtools.testcase import ExpectedException
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-import pexpect
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPodStoragePool,
@@ -25,7 +30,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
     virsh,
-    virsh as virsh_module,
 )
 from provisioningserver.drivers.pod.virsh import (
     ARCH_FIX_REVERSE,
@@ -45,11 +49,6 @@ from provisioningserver.utils.shell import (
     has_command_available,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Contains, Equals
-from testtools.testcase import ExpectedException
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
-
 
 SAMPLE_DOMBLKINFO = dedent(
     """
@@ -1279,7 +1278,7 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh("")
         mock_get_machine_xml = self.patch(virsh.VirshSSH, "get_machine_xml")
         mock_get_machine_xml.return_value = SAMPLE_DUMPXML
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -1899,7 +1898,7 @@ class TestVirshSSH(MAASTestCase):
             attach_options=factory.pick_choice(MACVLAN_MODE_CHOICES),
         )
         self.patch(virsh, "generate_mac_address").return_value = fake_mac
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -1942,7 +1941,7 @@ class TestVirshSSH(MAASTestCase):
             attach_options=factory.pick_choice(MACVLAN_MODE_CHOICES),
         )
         self.patch(virsh, "generate_mac_address").return_value = fake_mac
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -2081,14 +2080,14 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
         ).return_value = domain_params
-        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
         domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -2157,14 +2156,14 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
         ).return_value = domain_params
-        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
         domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -2233,14 +2232,14 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
         ).return_value = domain_params
-        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
         domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -2309,14 +2308,14 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
         ).return_value = domain_params
-        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
         domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
@@ -2598,14 +2597,14 @@ class TestVirshPodDriver(MAASTestCase):
     def test_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = False
-        driver = virsh_module.VirshPodDriver()
+        driver = virsh.VirshPodDriver()
         missing = driver.detect_missing_packages()
         self.assertItemsEqual(["libvirt-clients"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
-        driver = virsh_module.VirshPodDriver()
+        driver = virsh.VirshPodDriver()
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 

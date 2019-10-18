@@ -8,6 +8,9 @@ __all__ = []
 from collections import defaultdict, OrderedDict
 from operator import attrgetter
 
+from netaddr import IPNetwork
+import yaml
+
 from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
     BRIDGE_TYPE,
@@ -18,13 +21,11 @@ from maasserver.enum import (
 )
 from maasserver.models import Interface
 from maasserver.models.staticroute import StaticRoute
-from netaddr import IPNetwork
 from provisioningserver.utils.netplan import (
     get_netplan_bond_parameters,
     get_netplan_bridge_parameters,
 )
 from provisioningserver.utils.network import get_source_address
-import yaml
 
 
 def _is_link_up(addresses):

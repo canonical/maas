@@ -48,7 +48,6 @@ import zipfile
 
 import yaml
 
-
 try:
     from maas_api_helper import (
         geturl,

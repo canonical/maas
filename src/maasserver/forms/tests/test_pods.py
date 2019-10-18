@@ -11,6 +11,20 @@ from unittest.mock import ANY, call, MagicMock
 import crochet
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesListwise,
+    MatchesSetwise,
+    MatchesStructure,
+    Not,
+)
+from twisted.internet.defer import fail, inlineCallbacks, succeed
+
 from maasserver.enum import (
     BMC_TYPE,
     INTERFACE_TYPE,
@@ -57,20 +71,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesListwise,
-    MatchesSetwise,
-    MatchesStructure,
-    Not,
-)
-from twisted.internet.defer import fail, inlineCallbacks, succeed
-
 
 wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
 

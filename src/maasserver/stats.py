@@ -16,27 +16,33 @@ import json
 
 from django.db.models import Count, Sum, Value
 from django.db.models.functions import Coalesce
-from maasserver.enum import IPRANGE_TYPE
-from maasserver.models import Config
+import requests
+from twisted.application.internet import TimerService
+
+from maasserver.enum import (
+    BMC_TYPE,
+    IPADDRESS_TYPE,
+    IPRANGE_TYPE,
+    NODE_STATUS,
+    NODE_TYPE,
+)
+from maasserver.models import (
+    BMC,
+    Config,
+    Fabric,
+    Machine,
+    Node,
+    Pod,
+    Space,
+    StaticIPAddress,
+    Subnet,
+    VLAN,
+)
+from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import IPRangeStatistics
-from twisted.application.internet import TimerService
-from maasserver.enum import IPADDRESS_TYPE, NODE_TYPE, NODE_STATUS, BMC_TYPE
-from maasserver.models import (
-    Machine,
-    Node,
-    Fabric,
-    VLAN,
-    Space,
-    StaticIPAddress,
-    Subnet,
-    BMC,
-    Pod,
-)
-from maasserver.utils import get_maas_user_agent
-import requests
 
 log = LegacyLogger()
 

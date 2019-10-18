@@ -11,9 +11,10 @@ from pipes import quote
 from subprocess import PIPE, Popen, STDOUT
 from unittest import skipUnless
 
+from testtools.content import Content, UTF8_TEXT
+
 from maastesting import root
 from maastesting.testcase import MAASTestCase
-from testtools.content import Content, UTF8_TEXT
 
 
 class TestCompiledSCSS(MAASTestCase):

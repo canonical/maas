@@ -10,6 +10,9 @@ import json
 from unittest.mock import call, Mock
 import urllib.parse
 
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -20,8 +23,8 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import seamicro
 from provisioningserver.drivers.hardware.seamicro import (
     find_seamicro15k_servers,
-    power_control_seamicro15k_v09,
     power_control_seamicro15k_v2,
+    power_control_seamicro15k_v09,
     power_query_seamicro15k_v2,
     POWER_STATUS,
     probe_seamicro15k_and_enlist,
@@ -31,8 +34,6 @@ from provisioningserver.drivers.hardware.seamicro import (
     select_seamicro15k_api_version,
 )
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 class FakeResponse:

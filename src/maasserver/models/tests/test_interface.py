@@ -16,6 +16,18 @@ from django.db import transaction
 from django.db.utils import IntegrityError
 from django.http import Http404
 from fixtures import FakeLogger
+from netaddr import EUI, IPAddress, IPNetwork
+from testtools import ExpectedException
+from testtools.matchers import (
+    Contains,
+    Equals,
+    Is,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+    Not,
+)
+
 from maasserver.enum import (
     BRIDGE_TYPE,
     BRIDGE_TYPE_CHOICES,
@@ -28,8 +40,6 @@ from maasserver.exceptions import (
     StaticIPAddressUnavailable,
 )
 from maasserver.models import (
-    Fabric,
-    interface as interface_module,
     MDNS,
     Neighbour,
     Space,
@@ -37,6 +47,8 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.models import Fabric
+from maasserver.models import interface as interface_module
 from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.interface import (
     BondInterface,
@@ -62,22 +74,11 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from netaddr import EUI, IPAddress, IPNetwork
 from provisioningserver.utils.ipaddr import (
     get_first_and_last_usable_host_in_network,
 )
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
-)
-from testtools import ExpectedException
-from testtools.matchers import (
-    Contains,
-    Equals,
-    Is,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
-    Not,
 )
 
 

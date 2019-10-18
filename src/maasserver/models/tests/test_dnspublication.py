@@ -9,9 +9,6 @@ from datetime import datetime, timedelta
 from random import randint
 
 from django.db import connection
-from maasserver.models.dnspublication import DNSPublication, zone_serial
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -20,6 +17,10 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+
+from maasserver.models.dnspublication import DNSPublication, zone_serial
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestZoneSerial(MAASServerTestCase):

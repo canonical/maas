@@ -5,10 +5,11 @@
 
 __all__ = []
 
+from testtools.matchers import HasLength
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeKey
-from testtools.matchers import HasLength
 
 
 class TestNodeKeyManager(MAASServerTestCase):

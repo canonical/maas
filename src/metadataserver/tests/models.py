@@ -6,6 +6,7 @@
 __all__ = ["BinaryFieldModel"]
 
 from django.db.models import Model
+
 from metadataserver.fields import BinaryField
 
 

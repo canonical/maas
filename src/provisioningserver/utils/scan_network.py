@@ -17,13 +17,13 @@ import time
 
 from netaddr import IPNetwork, IPSet
 from netaddr.core import AddrFormatError
+
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.shell import (
     get_env_with_locale,
     has_command_available,
 )
-
 
 PingParameters = namedtuple("PingParameters", ("interface", "ip"))
 

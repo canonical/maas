@@ -8,9 +8,10 @@ __all__ = ["PostCommitHooksTestMixin", "reload_objects", "rollback"]
 from contextlib import contextmanager
 
 from django.db import transaction
-from maasserver.utils.orm import gen_description_of_hooks, post_commit_hooks
 import testtools
 from testtools.matchers import HasLength
+
+from maasserver.utils.orm import gen_description_of_hooks, post_commit_hooks
 
 
 def reload_objects(model_class, model_objects):

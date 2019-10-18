@@ -9,6 +9,8 @@ from collections import Counter
 
 from django import forms
 from django.core.exceptions import ValidationError
+from netaddr import IPAddress
+
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_LINK_TYPE_CHOICES,
@@ -22,7 +24,6 @@ from maasserver.fields import (
 from maasserver.models import BondInterface, Interface, StaticIPAddress, Subnet
 from maasserver.utils.forms import compose_invalid_choice_text, set_form_error
 from maasserver.utils.orm import get_one
-from netaddr import IPAddress
 
 # Link modes that support the default_gateway option.
 GATEWAY_OPTION_MODES = [INTERFACE_LINK_TYPE.AUTO, INTERFACE_LINK_TYPE.STATIC]

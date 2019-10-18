@@ -6,6 +6,7 @@
 __all__ = ["global_options"]
 
 from django.conf import settings
+
 from maasserver.config import RegionConfiguration
 from maasserver.models import Config, RegionController
 from provisioningserver.utils.version import (

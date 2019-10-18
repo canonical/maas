@@ -7,8 +7,9 @@ __all__ = []
 
 import http.client
 
-from apiclient.creds import convert_tuple_to_string
 from lxml.html import fromstring
+
+from apiclient.creds import convert_tuple_to_string
 from maasserver.models import Config, Event, SSLKey
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing import get_data, get_prefixed_form_data

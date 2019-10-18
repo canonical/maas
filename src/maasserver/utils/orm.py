@@ -50,12 +50,6 @@ from django.db.models import Q
 from django.db.transaction import TransactionManagementError
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
 from django.http import Http404
-from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
-from maasserver.utils.asynchronous import DeferredHooks
-from provisioningserver.utils import flatten
-from provisioningserver.utils.backoff import exponential_growth, full_jitter
-from provisioningserver.utils.network import parse_integer
-from provisioningserver.utils.twisted import callOut
 import psycopg2
 from psycopg2.errorcodes import (
     DEADLOCK_DETECTED,
@@ -64,6 +58,13 @@ from psycopg2.errorcodes import (
     UNIQUE_VIOLATION,
 )
 from twisted.internet.defer import Deferred
+
+from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
+from maasserver.utils.asynchronous import DeferredHooks
+from provisioningserver.utils import flatten
+from provisioningserver.utils.backoff import exponential_growth, full_jitter
+from provisioningserver.utils.network import parse_integer
+from provisioningserver.utils.twisted import callOut
 
 
 def get_exception_class(items):

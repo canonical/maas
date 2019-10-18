@@ -9,6 +9,7 @@ import http.client
 import json
 
 from django.conf import settings
+
 from maasserver.models import Zone
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory

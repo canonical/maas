@@ -12,18 +12,19 @@ from unittest.mock import Mock
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
+from paramiko import SSHException
+from testtools.matchers import Equals
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from paramiko import SSHException
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
     PowerFatalError,
-    wedge as wedge_module,
 )
+from provisioningserver.drivers.power import wedge as wedge_module
 from provisioningserver.drivers.power.wedge import WedgePowerDriver, WedgeState
-from testtools.matchers import Equals
 
 
 def make_context():

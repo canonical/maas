@@ -8,6 +8,7 @@ __all__ = ["VersionedTextFile"]
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, TextField
+
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

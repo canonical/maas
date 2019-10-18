@@ -7,6 +7,7 @@ import http.client
 from unittest.mock import call
 
 from django.utils.http import urlencode
+
 from maasserver.api import rackcontrollers
 from maasserver.models.bmc import Pod
 from maasserver.testing.api import (

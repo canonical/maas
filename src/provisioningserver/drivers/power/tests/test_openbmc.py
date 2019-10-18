@@ -8,16 +8,16 @@ import json
 from os.path import join
 import random
 
-from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCalledWith
-from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
-import provisioningserver.drivers.power.openbmc as openbmc_module
-from provisioningserver.drivers.power.utils import WebClientContextFactory
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import FileBodyProducer
 
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith, MockCalledWith
+from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+import provisioningserver.drivers.power.openbmc as openbmc_module
+from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
+from provisioningserver.drivers.power.utils import WebClientContextFactory
 
 SAMPLE_JSON_HOSTOFF = {
     "data": "xyz.openbmc_project.State.Host.HostState.Off",

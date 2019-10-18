@@ -9,6 +9,9 @@ import random
 from unittest import skip
 
 from django.core.exceptions import ValidationError
+from testtools import ExpectedException
+from testtools.matchers import MatchesStructure
+
 from maasserver.enum import BRIDGE_TYPE_CHOICES, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.forms.interface import (
     AcquiredBridgeInterfaceForm,
@@ -27,8 +30,6 @@ from maasserver.models.interface import build_vlan_interface_name
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
 
 
 class GetInterfaceFormTests(MAASServerTestCase):

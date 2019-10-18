@@ -9,6 +9,8 @@ import http.client
 import json
 
 from django.conf import settings
+from testtools.matchers import Equals
+
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -17,7 +19,6 @@ from maasserver.exceptions import (
 from maasserver.testing import extract_redirect
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals
 
 
 class TestExceptions(MAASTestCase):

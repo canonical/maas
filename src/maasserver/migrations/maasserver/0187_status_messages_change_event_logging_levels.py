@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 from logging import DEBUG
 
 from django.db import migrations
-from provisioningserver.events import EVENT_TYPES
 
+from provisioningserver.events import EVENT_TYPES
 
 CHANGED_EVENTS_INFO_TO_DEBUG = [
     EVENT_TYPES.NODE_POWERED_ON,

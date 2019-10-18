@@ -11,16 +11,6 @@ from unittest.mock import ANY, call
 
 from crochet import wait_for
 from django.db import transaction
-from maasserver.fields import LargeObjectFile
-from maasserver.models import largefile as largefile_module, signals
-from maasserver.models.largefile import LargeFile
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
-from maasserver.utils.orm import post_commit_hooks
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 import psycopg2
 from testtools.matchers import (
     Equals,
@@ -30,6 +20,18 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from twisted.internet.task import Clock
+
+from maasserver.fields import LargeObjectFile
+from maasserver.models import largefile as largefile_module
+from maasserver.models import signals
+from maasserver.models.largefile import LargeFile
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.orm import post_commit_hooks
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 
 
 class TestLargeFileManager(MAASServerTestCase):

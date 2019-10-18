@@ -11,12 +11,12 @@ import socket
 import sys
 from urllib.parse import urlparse
 
+import tempita
+
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import locate_template, snappy
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
-import tempita
-
 
 maaslog = get_maas_logger("proxy")
 MAAS_PROXY_CONF_NAME = "maas-proxy.conf"

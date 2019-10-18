@@ -10,20 +10,6 @@ from socket import AF_INET, AF_INET6
 from time import time
 
 from netaddr import IPAddress
-from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.drivers import ArchitectureRegistry
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
-from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
-from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.rpc.boot_images import list_boot_images
-from provisioningserver.rpc.exceptions import BootConfigNoResponse
-from provisioningserver.rpc.region import GetBootConfig, MarkNodeFailed
-from provisioningserver.utils import network, tftp, typed
-from provisioningserver.utils.network import get_all_interface_addresses
-from provisioningserver.utils.tftp import TFTPPath
-from provisioningserver.utils.twisted import deferred, RPCFetcher
 from tftp.backend import FilesystemSynchronousBackend
 from tftp.errors import BackendError, FileNotFound
 from tftp.protocol import TFTP
@@ -41,6 +27,20 @@ from twisted.internet.defer import (
 from twisted.internet.task import deferLater
 from twisted.python.filepath import FilePath
 
+from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.drivers import ArchitectureRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
+from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.rpc.boot_images import list_boot_images
+from provisioningserver.rpc.exceptions import BootConfigNoResponse
+from provisioningserver.rpc.region import GetBootConfig, MarkNodeFailed
+from provisioningserver.utils import network, tftp, typed
+from provisioningserver.utils.network import get_all_interface_addresses
+from provisioningserver.utils.tftp import TFTPPath
+from provisioningserver.utils.twisted import deferred, RPCFetcher
 
 maaslog = get_maas_logger("tftp")
 log = LegacyLogger()

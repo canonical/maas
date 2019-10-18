@@ -9,6 +9,9 @@ import http
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
+import requests as requests_module
+from testtools.matchers import Equals
+
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import Config
 from maasserver.models.signals.bootsources import (
@@ -17,6 +20,7 @@ from maasserver.models.signals.bootsources import (
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+import maasserver.utils.keys as keys_module
 from maasserver.utils.keys import (
     get_github_ssh_keys,
     get_launchpad_ssh_keys,
@@ -24,10 +28,7 @@ from maasserver.utils.keys import (
     get_proxies,
     ImportSSHKeysError,
 )
-import maasserver.utils.keys as keys_module
 from maastesting.matchers import MockCalledOnceWith
-import requests as requests_module
-from testtools.matchers import Equals
 
 
 class TestKeys(MAASServerTestCase):

@@ -5,12 +5,13 @@
 
 __all__ = ["StaticRouteForm"]
 
+from netaddr import IPAddress
+
 from maasserver.fields import SpecifierOrModelChoiceField
 from maasserver.forms import MAASModelForm
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.utils.forms import set_form_error
-from netaddr import IPAddress
 
 
 class StaticRouteForm(MAASModelForm):

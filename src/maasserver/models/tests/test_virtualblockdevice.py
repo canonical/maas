@@ -10,6 +10,9 @@ import re
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
+from testtools import ExpectedException
+from testtools.matchers import MatchesStructure
+
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import RAID_SUPERBLOCK_OVERHEAD
@@ -18,8 +21,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import reload_object
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
 
 
 class TestVirtualBlockDeviceManager(MAASServerTestCase):

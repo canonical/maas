@@ -16,6 +16,7 @@ import sys
 from textwrap import dedent
 
 from netaddr import EUI, IPAddress
+
 from provisioningserver.path import get_path
 from provisioningserver.utils import sudo
 from provisioningserver.utils.ethernet import Ethernet, ETHERTYPE

@@ -18,13 +18,34 @@ from textwrap import dedent
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 import crochet
-from crochet import wait_for, TimeoutError
+from crochet import TimeoutError, wait_for
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models.deletion import Collector
 from django.db.models.query import QuerySet
 from fixtures import LoggerFixture
-from maasserver import bootresources, preseed as preseed_module, server_address
+from netaddr import IPAddress, IPNetwork
+from testscenarios import multiply_scenarios
+from testtools import ExpectedException
+from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesSetwise,
+    MatchesStructure,
+    Not,
+)
+from twisted.internet import defer
+from twisted.internet.error import ConnectionClosed, ConnectionDone
+import yaml
+
+from maasserver import bootresources
+from maasserver import preseed as preseed_module
+from maasserver import server_address
 from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.clusterrpc.power import (
@@ -58,8 +79,6 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.models import (
-    Bcache,
-    bmc as bmc_module,
     BondInterface,
     BootResource,
     BridgeInterface,
@@ -73,7 +92,8 @@ from maasserver.models import (
     LicenseKey,
     Machine,
     Node,
-    node as node_module,
+)
+from maasserver.models import (
     OwnerData,
     PhysicalInterface,
     RackController,
@@ -88,6 +108,9 @@ from maasserver.models import (
     VLANInterface,
     VolumeGroup,
 )
+from maasserver.models import Bcache
+from maasserver.models import bmc as bmc_module
+from maasserver.models import node as node_module
 from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.event import Event
@@ -118,7 +141,6 @@ from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
-import maasserver.server_address as server_address_module
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
@@ -165,7 +187,6 @@ from metadataserver.models import (
     ScriptResult,
     ScriptSet,
 )
-from netaddr import IPAddress, IPNetwork
 from provisioningserver.drivers.pod import Capabilities, DiscoveredPodHints
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
@@ -195,24 +216,6 @@ from provisioningserver.utils.enum import map_enum, map_enum_reverse
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.testing import MAASIDFixture
-from testscenarios import multiply_scenarios
-from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesSetwise,
-    MatchesStructure,
-    Not,
-)
-from twisted.internet import defer
-from twisted.internet.error import ConnectionClosed, ConnectionDone
-import yaml
-
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -7766,9 +7769,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             elif ip_version == 6:
                 return {IPAddress(rack_v6)} if rack_v6 else set()
 
-        resolve_hostname = self.patch(
-            server_address_module, "resolve_hostname"
-        )
+        resolve_hostname = self.patch(server_address, "resolve_hostname")
         resolve_hostname.side_effect = get_address
         rack.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=vlan, node=rack)

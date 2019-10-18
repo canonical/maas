@@ -23,7 +23,6 @@ import re
 import sys
 from urllib.parse import urlparse
 
-
 re_paragraph_splitter = re.compile(r"(?:\r\n){2,}|\r{2,}|\n{2,}", re.MULTILINE)
 
 paragraph_split = re_paragraph_splitter.split

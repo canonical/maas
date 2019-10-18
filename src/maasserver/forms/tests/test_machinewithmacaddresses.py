@@ -6,6 +6,8 @@
 __all__ = []
 
 from django.http import QueryDict
+from testtools.matchers import Contains
+
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.forms import MachineWithMACAddressesForm
 from maasserver.testing.architecture import (
@@ -14,7 +16,6 @@ from maasserver.testing.architecture import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Contains
 
 
 class MachineWithMACAddressesFormTest(MAASServerTestCase):

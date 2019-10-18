@@ -9,11 +9,23 @@ from collections import OrderedDict
 import os
 import re
 
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+    IsInstance,
+    MatchesAll,
+    MatchesRegex,
+    Not,
+    StartsWith,
+)
+from twisted.python.filepath import FilePath
+
 from maastesting.factory import factory
 from maastesting.matchers import MockAnyCall, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
-from provisioningserver.boot import BytesReader, pxe as pxe_module
+from provisioningserver.boot import BytesReader
+from provisioningserver.boot import pxe as pxe_module
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     maaslog,
@@ -27,16 +39,6 @@ from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink, tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    IsInstance,
-    MatchesAll,
-    MatchesRegex,
-    Not,
-    StartsWith,
-)
-from twisted.python.filepath import FilePath
 
 
 @typed

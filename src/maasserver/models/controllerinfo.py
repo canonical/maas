@@ -8,6 +8,7 @@ __all__ = ["ControllerInfo"]
 from collections import namedtuple
 
 from django.db.models import CASCADE, CharField, Manager, OneToOneField
+
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import JSONObjectField
@@ -16,7 +17,6 @@ from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.version import get_version_tuple
-
 
 maaslog = get_maas_logger("controllerinfo")
 

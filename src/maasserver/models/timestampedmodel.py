@@ -8,6 +8,7 @@ __all__ = ["now", "TimestampedModel"]
 
 from django.db.models import DateTimeField, Model
 from django.utils import timezone
+
 from maasserver import DefaultMeta
 
 

@@ -17,8 +17,18 @@ import itertools
 from os import path
 from unittest.mock import Mock
 
-from apiclient.utils import ascii_url
 import fixtures
+from testtools.matchers import AllMatch, IsInstance, MatchesAll, MatchesDict
+from twisted.internet import defer, endpoints, reactor, ssl
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.protocol import Factory
+from twisted.internet.task import Clock
+from twisted.protocols import amp
+from twisted.python import reflect
+from twisted.python.failure import Failure
+from twisted.test import iosim
+
+from apiclient.utils import ascii_url
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.twisted import always_succeed_with
@@ -36,15 +46,6 @@ from provisioningserver.security import (
     set_shared_secret_on_filesystem,
 )
 from provisioningserver.utils.twisted import asynchronous, callOut
-from testtools.matchers import AllMatch, IsInstance, MatchesAll, MatchesDict
-from twisted.internet import defer, endpoints, reactor, ssl
-from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.internet.protocol import Factory
-from twisted.internet.task import Clock
-from twisted.protocols import amp
-from twisted.python import reflect
-from twisted.python.failure import Failure
-from twisted.test import iosim
 
 
 def call_responder(protocol, command, arguments):

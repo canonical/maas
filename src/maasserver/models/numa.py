@@ -5,6 +5,7 @@ from datetime import datetime
 
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import CASCADE, ForeignKey, IntegerField
+
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 

@@ -8,6 +8,15 @@ __all__ = []
 import os
 import re
 
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesRegex,
+    Not,
+    StartsWith,
+)
+from twisted.python.filepath import FilePath
+
 from maastesting.factory import factory
 from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
@@ -24,14 +33,6 @@ from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
-from testtools.matchers import (
-    IsInstance,
-    MatchesAll,
-    MatchesRegex,
-    Not,
-    StartsWith,
-)
-from twisted.python.filepath import FilePath
 
 
 @typed

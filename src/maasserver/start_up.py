@@ -9,6 +9,9 @@ import logging
 
 from django.db import connection
 from django.db.utils import DatabaseError
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
 from maasserver import locks, security
 from maasserver.fields import register_mac_type
 from maasserver.models.config import Config
@@ -27,9 +30,6 @@ from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-
 
 maaslog = get_maas_logger("start-up")
 logger = logging.getLogger(__name__)

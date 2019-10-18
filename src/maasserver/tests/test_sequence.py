@@ -10,10 +10,11 @@ import random
 
 from django.db import connection, transaction
 from django.db.utils import DatabaseError, DataError, ProgrammingError
+from testtools import ExpectedException
+
 from maasserver.sequence import Sequence
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools import ExpectedException
 
 
 class TestSequence(MAASServerTestCase):

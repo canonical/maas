@@ -14,12 +14,19 @@ import sys
 from unittest.mock import ANY, call, sentinel
 from weakref import WeakSet
 
-from apiclient.multipart import encode_multipart_data
 from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler, WSGIRequest
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
 from fixtures import FakeLogger
+from piston3.authentication import initialize_server_request
+from piston3.models import Nonce
+from testtools.matchers import Contains, Equals, HasLength, Is, IsInstance, Not
+from testtools.testcase import ExpectedException
+from twisted.internet.task import Clock
+from twisted.web import wsgi
+
+from apiclient.multipart import encode_multipart_data
 from maasserver.exceptions import MAASAPIException
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -39,12 +46,6 @@ from maasserver.utils.views import HttpResponseConflict
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
-from piston3.authentication import initialize_server_request
-from piston3.models import Nonce
-from testtools.matchers import Contains, Equals, HasLength, Is, IsInstance, Not
-from testtools.testcase import ExpectedException
-from twisted.internet.task import Clock
-from twisted.web import wsgi
 
 
 def make_request(env=None, oauth_env=None, missing_oauth_param=None):

@@ -20,7 +20,6 @@ from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.network import get_all_interfaces_definition
 
-
 all_arguments = ("--networking", "--config", "--images")
 
 

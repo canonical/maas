@@ -8,6 +8,7 @@ __all__ = ["NodeResultHandler"]
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
+
 from maasserver.models.node import Node
 from maasserver.websockets.base import (
     dehydrate_datetime,

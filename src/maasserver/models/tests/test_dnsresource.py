@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from testtools import ExpectedException
+from testtools.matchers import Contains, Equals, Is, MatchesStructure, Not
+
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
 from maasserver.models.dnsresource import DNSResource, separate_fqdn
@@ -16,8 +19,6 @@ from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools import ExpectedException
-from testtools.matchers import Contains, Equals, Is, MatchesStructure, Not
 
 
 class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):

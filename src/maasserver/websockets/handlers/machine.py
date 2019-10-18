@@ -11,6 +11,7 @@ from operator import itemgetter
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import OuterRef, Subquery
+
 from maasserver.enum import (
     BMC_TYPE,
     INTERFACE_LINK_TYPE,
@@ -79,7 +80,6 @@ from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import asynchronous
-
 
 log = LegacyLogger()
 

@@ -8,6 +8,8 @@ __all__ = ["DeviceHandler"]
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
+from netaddr import EUI
+
 from maasserver.enum import (
     DEVICE_IP_ASSIGNMENT_TYPE,
     INTERFACE_LINK_TYPE,
@@ -25,9 +27,7 @@ from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerError, HandlerValidationError
 from maasserver.websockets.handlers.node import NodeHandler
-from netaddr import EUI
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("websockets.device")
 

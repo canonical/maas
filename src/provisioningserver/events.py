@@ -15,6 +15,8 @@ __all__ = [
 from collections import namedtuple
 from logging import DEBUG, ERROR, INFO, WARN
 
+from twisted.internet.defer import maybeDeferred, succeed
+
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchEventType, NoSuchNode
@@ -32,8 +34,6 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     suppress,
 )
-from twisted.internet.defer import maybeDeferred, succeed
-
 
 maaslog = get_maas_logger("events")
 log = LegacyLogger()

@@ -7,6 +7,7 @@ __all__ = ["NodeUserData"]
 
 
 from django.db.models import CASCADE, Manager, Model, OneToOneField
+
 from maasserver.models.cleansave import CleanSave
 from metadataserver import DefaultMeta
 from metadataserver.fields import Bin, BinaryField

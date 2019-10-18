@@ -6,6 +6,8 @@
 __all__ = []
 
 from django.forms import CharField
+from testtools.matchers import Equals
+
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
     AdminMachineForm,
@@ -28,7 +30,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
 )
 from maasserver.tests.models import GenericTestModel
-from testtools.matchers import Equals
 
 
 class TestHelpers(MAASServerTestCase):

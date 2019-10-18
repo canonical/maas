@@ -9,6 +9,7 @@ __all__ = []
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import user_passes_test
 from django.http import HttpResponse
+
 from maasserver import urls_api, urls_combo
 from maasserver.bootresources import (
     simplestreams_file_handler,

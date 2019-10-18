@@ -9,6 +9,7 @@ from itertools import product
 import random
 
 from distro_info import UbuntuDistroInfo
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE

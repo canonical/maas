@@ -8,12 +8,12 @@ __all__ = ["GlobalDefault"]
 from datetime import datetime
 
 from django.db.models import ForeignKey, Manager, PROTECT
+
 from maasserver.enum import ALLOCATED_NODE_STATUSES, NODE_STATUS
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.domain import Domain
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("default")
 
