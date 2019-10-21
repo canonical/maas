@@ -5,6 +5,7 @@
 
 __all__ = ["CacheSet"]
 
+from itertools import chain
 
 from django.core.exceptions import PermissionDenied
 from django.db.models import Manager, Q
@@ -13,6 +14,7 @@ from django.http import Http404
 from maasserver import DefaultMeta
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.numa import NUMANode
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -188,3 +190,24 @@ class CacheSet(CleanSave, TimestampedModel):
             return None
         else:
             return filesystem.get_parent()
+
+    def get_numa_node_indexes(self):
+        """Return NUMA node indexes for physical devices making up the cacheset."""
+        numa_node_indexes = set(
+            chain(
+                *(
+                    fsgroup.get_numa_node_indexes()
+                    for fsgroup in self.filesystemgroup_set.all()
+                )
+            )
+        )
+        filesystem = self.get_filesystem()
+        if filesystem:
+            block_devices = filesystem.get_physical_block_devices()
+            numa_ids = set(device.numa_node_id for device in block_devices)
+            numa_node_indexes.update(
+                NUMANode.objects.filter(id__in=numa_ids)
+                .values_list("index", flat=True)
+                .order_by("index")
+            )
+        return sorted(numa_node_indexes)

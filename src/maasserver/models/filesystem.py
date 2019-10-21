@@ -29,6 +29,7 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.partition import Partition
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -169,6 +170,21 @@ class Filesystem(CleanSave, TimestampedModel):
         else:
             # XXX: Explode instead?
             return None
+
+    def get_physical_block_devices(self):
+        """Return PhysicalBlockDevices backing the filesystem."""
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
+
+        devices = []
+        parent = self.get_parent()
+        if isinstance(parent, PhysicalBlockDevice):
+            devices.append(parent)
+        elif isinstance(parent, VirtualBlockDevice):
+            for grandparent in parent.get_parents():
+                device = grandparent.actual_instance
+                if isinstance(device, PhysicalBlockDevice):
+                    devices.append(device)
+        return devices
 
     def get_size(self):
         """Size of filesystem."""

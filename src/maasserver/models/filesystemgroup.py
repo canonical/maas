@@ -6,6 +6,7 @@ a virtual block device. E.g. LVM Volume Group."""
 
 __all__ = ["Bcache", "FilesystemGroup", "RAID", "VMFS", "VolumeGroup"]
 
+from itertools import chain
 from uuid import uuid4
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -24,6 +25,7 @@ from maasserver.enum import (
 )
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.numa import NUMANode
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
 
@@ -391,6 +393,21 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # Using 'all()' instead of 'first()' so that if it was precached
             # that cache will be used.
             return get_one(self.virtual_devices.all())
+
+    def get_numa_node_indexes(self):
+        """Return NUMA node indexes for physical devices making the volume group."""
+        block_devices = chain(
+            *(
+                filesystem.get_physical_block_devices()
+                for filesystem in self.filesystems.all()
+            )
+        )
+        numa_ids = set(device.numa_node_id for device in block_devices)
+        return list(
+            NUMANode.objects.filter(id__in=numa_ids)
+            .values_list("index", flat=True)
+            .order_by("index")
+        )
 
     def get_node(self):
         """`Node` this filesystem group belongs to."""

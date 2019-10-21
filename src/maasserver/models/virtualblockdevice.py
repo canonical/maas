@@ -153,13 +153,12 @@ class VirtualBlockDevice(BlockDevice):
                     return False
             else:
                 return False
-            for virtual_device in fs_group.virtual_devices.all():
-                if virtual_device.id == self.id:
-                    return True
-            return False
+
+            # whether the device is part of the filesystem group
+            return fs_group.virtual_devices.filter(id=self.id).exists()
 
         parents = []
-        # We need to check all of the nodes block devices incase
+        # We need to check all of the nodes block devices in case
         # we have nested virtual block devices.
         for block_device in self.node.blockdevice_set.all():
             if block_device.id == self.id:

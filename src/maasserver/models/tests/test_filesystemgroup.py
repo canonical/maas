@@ -684,6 +684,91 @@ class TestFilesystemGroup(MAASServerTestCase):
             fsgroup.virtual_device,
         )
 
+    def test_get_numa_node_indexes_all_same(self):
+        fsgroup = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6
+            )
+        )
+        self.assertEqual(fsgroup.get_numa_node_indexes(), [0])
+
+    def test_get_numa_node_indexes_multiple(self):
+        node = factory.make_Node()
+        numa_nodes = [
+            node.default_numanode,
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+        ]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(numa_node=numa_node)
+            for numa_node in numa_nodes
+        ]
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device
+            )
+            for block_device in block_devices
+        ]
+        fsgroup = factory.make_FilesystemGroup(
+            node=node,
+            filesystems=filesystems,
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+        )
+        self.assertEqual(fsgroup.get_numa_node_indexes(), [0, 1, 2])
+
+    def test_get_numa_node_indexes_nested(self):
+        node = factory.make_Node()
+        numa_nodes = [
+            node.default_numanode,
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+        ]
+        # 2 physical disks have filesystems on them directly
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                block_device=factory.make_PhysicalBlockDevice(
+                    numa_node=numa_node
+                ),
+            )
+            for numa_node in numa_nodes[:2]
+        ]
+
+        # the 3 remaining disks are part of another filesystem group which gets
+        # added to the first
+        nested_filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                block_device=factory.make_PhysicalBlockDevice(
+                    numa_node=numa_node
+                ),
+            )
+            for numa_node in numa_nodes[2:]
+        ]
+        nested_group = factory.make_FilesystemGroup(
+            node=node,
+            filesystems=nested_filesystems,
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+        )
+        virtual_block_device = factory.make_VirtualBlockDevice(
+            filesystem_group=nested_group
+        )
+        filesystems.append(
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV,
+                block_device=virtual_block_device,
+            )
+        )
+
+        fsgroup = factory.make_FilesystemGroup(
+            node=node,
+            filesystems=filesystems,
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+        )
+        self.assertEqual(fsgroup.get_numa_node_indexes(), [0, 1, 2, 3, 4])
+
     def test_get_node_returns_first_filesystem_node(self):
         fsgroup = factory.make_FilesystemGroup()
         self.assertEqual(

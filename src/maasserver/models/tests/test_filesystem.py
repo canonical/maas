@@ -15,7 +15,11 @@ from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 
-from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES_DICT
+from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+)
 from maasserver.models.filesystem import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -70,6 +74,42 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_node_returns_None_when_no_substrate(self):
         fs = Filesystem()
         self.assertIsNone(fs.get_node())
+
+    def test_get_physical_block_devices_single(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device
+        )
+        self.assertEqual(
+            filesystem.get_physical_block_devices(), [block_device]
+        )
+
+    def test_get_physical_block_devices_multiple(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(3)
+        ]
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device
+            )
+            for block_device in block_devices
+        ]
+        fsgroup = factory.make_FilesystemGroup(
+            node=node,
+            filesystems=filesystems,
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+        )
+        virtual_block_device = factory.make_VirtualBlockDevice(
+            filesystem_group=fsgroup
+        )
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=virtual_block_device
+        )
+        self.assertEqual(
+            filesystem.get_physical_block_devices(), block_devices
+        )
 
     def test_get_size_returns_partition_size(self):
         partition = factory.make_Partition()

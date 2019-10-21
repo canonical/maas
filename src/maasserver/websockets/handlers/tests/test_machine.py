@@ -989,8 +989,38 @@ class TestMachineHandler(MAASServerTestCase):
                 "used_for": "volume group",
                 "filesystem": None,
                 "partitions": None,
+                "numa_nodes": [0],
             },
             handler.dehydrate_volume_group(volume_group),
+        )
+
+    def test_dehydrate_volume_group_multiple_numa_nodes(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        numa_nodes = [
+            node.default_numanode,
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+        ]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(numa_node=numa_node)
+            for numa_node in numa_nodes
+        ]
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device
+            )
+            for block_device in block_devices
+        ]
+        volume_group = factory.make_FilesystemGroup(
+            node=node,
+            filesystems=filesystems,
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+        )
+        handler = MachineHandler(owner, {}, None)
+        self.assertEqual(
+            handler.dehydrate_volume_group(volume_group)["numa_nodes"],
+            [0, 1, 2],
         )
 
     def test_dehydrate_cache_set(self):
@@ -1041,8 +1071,33 @@ class TestMachineHandler(MAASServerTestCase):
                 ),
                 "filesystem": None,
                 "partitions": None,
+                "numa_nodes": [0],
             },
             handler.dehydrate_cache_set(cache_set),
+        )
+
+    def test_dehydrate_cache_set_multiple_numa_nodes(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        numa_nodes = [
+            node.default_numanode,
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+        ]
+        cache_set = factory.make_CacheSet(node=node)
+        for numa_node in numa_nodes:
+            backing = factory.make_PhysicalBlockDevice(numa_node=numa_node)
+            fs = factory.make_Filesystem(
+                block_device=backing, fstype=FILESYSTEM_TYPE.BCACHE_BACKING
+            )
+            factory.make_FilesystemGroup(
+                group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+                filesystems=[fs],
+                cache_set=cache_set,
+            )
+        handler = MachineHandler(owner, {}, None)
+        self.assertEqual(
+            handler.dehydrate_cache_set(cache_set)["numa_nodes"], [0, 1, 2]
         )
 
     def test_dehydrate_partitions_returns_None(self):

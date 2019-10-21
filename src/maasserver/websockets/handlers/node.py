@@ -553,6 +553,7 @@ class NodeHandler(TimestampedModelHandler):
             "used_for": "volume group",
             "filesystem": None,
             "partitions": None,
+            "numa_nodes": volume_group.get_numa_node_indexes(),
         }
 
     def dehydrate_cache_set(self, cache_set):
@@ -582,6 +583,7 @@ class NodeHandler(TimestampedModelHandler):
             "used_for": ", ".join(bcache_devices),
             "filesystem": None,
             "partitions": None,
+            "numa_nodes": cache_set.get_numa_node_indexes(),
         }
 
     def dehydrate_partitions(self, partition_table):

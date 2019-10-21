@@ -10,6 +10,7 @@ import random
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
+from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import CacheSet
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
@@ -283,3 +284,36 @@ class TestCacheSet(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice()
         cache_set = factory.make_CacheSet(block_device=block_device)
         self.assertEqual(block_device, cache_set.get_device())
+
+    def test_get_numa_nodes_indexes_only_own_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        cache_set = factory.make_CacheSet(block_device=block_device)
+        self.assertEqual(cache_set.get_numa_node_indexes(), [0])
+
+    def test_get_numa_nodes_indexes_many_devices(self):
+        node = factory.make_Node()
+        numa_nodes = [
+            node.default_numanode,
+            factory.make_NUMANode(node=node),
+            factory.make_NUMANode(node=node),
+        ]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(numa_node=numa_node)
+            for numa_node in numa_nodes
+        ]
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device
+            )
+            for block_device in block_devices
+        ]
+        fsgroup = factory.make_FilesystemGroup(
+            node=node,
+            filesystems=filesystems,
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+        )
+        virtual_block_device = factory.make_VirtualBlockDevice(
+            filesystem_group=fsgroup
+        )
+        cache_set = factory.make_CacheSet(block_device=virtual_block_device)
+        self.assertEqual(cache_set.get_numa_node_indexes(), [0, 1, 2])
