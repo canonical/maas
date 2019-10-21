@@ -1472,39 +1472,19 @@ function NodeDetailsController(
     }
   };
 
-  $scope.powerParametersValid = function(power_parameters) {
-    if (!angular.isObject(power_parameters)) {
+  $scope.powerParametersValid = power => {
+    const { parameters, type } = power;
+    if (!angular.isObject(parameters) || !angular.isObject(type)) {
       return false;
     }
 
-    // If no keys in obj
-    if (Object.keys(power_parameters).length === 0) {
-      return false;
-    }
-
-    // Keys which are optional
-    const optionalKeys = ["mac_address"];
-
-    // If keys but no values in obj
-    var hasParameters = false;
-
-    Object.keys(power_parameters).forEach(function(key) {
-      if (optionalKeys.includes(key)) {
-        return true;
+    const fields = type.fields || [];
+    return fields.every(field => {
+      if (field.required) {
+        return !!parameters[field.name];
       }
-
-      if (power_parameters[key] !== "") {
-        hasParameters = true;
-      } else {
-        hasParameters = false;
-      }
+      return true;
     });
-
-    if (!hasParameters) {
-      return false;
-    }
-
-    return true;
   };
 
   $scope.toggleNumaExpanded = numaIndex => {

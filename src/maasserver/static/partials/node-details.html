@@ -386,7 +386,7 @@
                     <h2 data-ng-if="!isController" class="p-heading--four">{$ node.node_type_display $} configuration</h2>
                     <h2 data-ng-if="isController" class="p-heading--four">Controller configuration</h2>
                 </div>
-                <div class="col-2" data-ng-if="!summary.editing">
+                <div class="col-2 u-align--right" data-ng-if="!summary.editing">
                     <button class="p-button--neutral u-float--right u-no-margin--bottom"
                         data-ng-if="canEdit()"
                         data-ng-click="editSummary()">Edit</button>
@@ -564,7 +564,7 @@
                         <button class="p-button--positive"
                             data-ng-class="{ secondary: invalidPowerType() }"
                             data-ng-click="saveEditPower()"
-                            data-ng-disabled="!powerParametersValid(power.parameters)">Save changes</button>
+                            data-ng-disabled="!powerParametersValid(power)">Save changes</button>
                     </div>
                 </div>
             </form>

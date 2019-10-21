@@ -34,7 +34,10 @@ export function cachePowerParameters($templateCache) {
                 && (field.scope !== 'bmc' || !ngModel.in_pod)">
             <label for="{$ field.name $}"
                 class="p-form__label col-2"
-                data-ng-class="{'is-disabled': !ngModel.editing }">
+                data-ng-class="{
+                  'is-disabled': !ngModel.editing,
+                  'is-required': field.required
+                }">
                 {$ field.label $}
             </label>
             <div class="p-form__control col-4">

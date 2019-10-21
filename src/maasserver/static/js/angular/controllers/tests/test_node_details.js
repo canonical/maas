@@ -2569,36 +2569,53 @@ describe("NodeDetailsController", function() {
     }
   );
 
-  describe("powerParametersValid", function() {
-    it("returns false if no power_parameters", function() {
-      makeController();
-      expect($scope.powerParametersValid()).toBe(false);
-    });
-
-    it("returns false if power_parameters are empty", function() {
+  describe("powerParametersValid", () => {
+    it("returns false if no power or type", () => {
       makeController();
       expect($scope.powerParametersValid({})).toBe(false);
     });
 
-    it("returns true if power_parameters have values", function() {
+    it("returns false if required field is empty", () => {
       makeController();
-      expect(
-        $scope.powerParametersValid({
-          power_address: "qemu+ssh://ubuntu@172.16.3.247/system",
-          power_id: 26
-        })
-      ).toBe(true);
+      const power = {
+        parameters: {
+          power_address: ""
+        },
+        type: {
+          fields: [{ name: "power_address", required: true }]
+        }
+      };
+      expect($scope.powerParametersValid(power)).toBe(false);
     });
 
-    it("returns true if optional power_parameters are empty", function() {
+    it("returns true if field is not required", () => {
       makeController();
-      expect(
-        $scope.powerParametersValid({
+      const power = {
+        parameters: {
+          power_address: ""
+        },
+        type: {
+          fields: [{ name: "power_address", required: false }]
+        }
+      };
+      expect($scope.powerParametersValid(power)).toBe(true);
+    });
+
+    it("returns true if required field is not empty", () => {
+      makeController();
+      const power = {
+        parameters: {
           power_address: "qemu+ssh://ubuntu@172.16.3.247/system",
-          power_id: 26,
           mac_address: ""
-        })
-      ).toBe(true);
+        },
+        type: {
+          fields: [
+            { name: "power_address", required: true },
+            { name: "mac_address", required: false }
+          ]
+        }
+      };
+      expect($scope.powerParametersValid(power)).toBe(true);
     });
   });
 

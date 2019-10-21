@@ -38749,7 +38749,7 @@ cachePowerParameters.$inject = ["$templateCache"];
 /* @ngInject */
 function cachePowerParameters($templateCache) {
   // Inject the power-parameters.html into the template cache.
-  $templateCache.put("directive/templates/power-parameters.html", "<div class=\"p-form__group row\">\n            <label for=\"power-type\"\n                class=\"p-form__label col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                Power type\n            </label>\n            <div class=\"p-form__control col-4\">\n                <select name=\"power-type\" id=\"power-type\"\n                    data-ng-disabled=\"ngDisabled || ngModel.in_pod\"\n                    data-ng-class=\"{ invalid: !ngModel.type }\"\n                    data-ng-model=\"ngModel.type\"\n                    data-ng-options=\"type as type.description\n                        for type in maasPowerParameters track by type.name\">\n                    <option value=\"\" disabled selected>\n                        Select your power type\n                    </option>\n                </select>\n            </div>\n        </div>\n        <div class=\"p-form__group row\"\n            data-ng-repeat=\"field in ngModel.type.fields\"\n            data-ng-if=\"field.name !== 'default_storage_pool'\n                && (field.scope !== 'bmc' || !ngModel.in_pod)\">\n            <label for=\"{$ field.name $}\"\n                class=\"p-form__label col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                {$ field.label $}\n            </label>\n            <div class=\"p-form__control col-4\">\n                <maas-power-input field=\"field\"\n                    data-ng-disabled=\"ngDisabled ||\n                        (field.scope === 'bmc' && ngModel.in_pod)\"\n                    data-ng-model=\"ngModel.parameters[field.name]\">\n            </div>\n        </div>");
+  $templateCache.put("directive/templates/power-parameters.html", "<div class=\"p-form__group row\">\n            <label for=\"power-type\"\n                class=\"p-form__label col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                Power type\n            </label>\n            <div class=\"p-form__control col-4\">\n                <select name=\"power-type\" id=\"power-type\"\n                    data-ng-disabled=\"ngDisabled || ngModel.in_pod\"\n                    data-ng-class=\"{ invalid: !ngModel.type }\"\n                    data-ng-model=\"ngModel.type\"\n                    data-ng-options=\"type as type.description\n                        for type in maasPowerParameters track by type.name\">\n                    <option value=\"\" disabled selected>\n                        Select your power type\n                    </option>\n                </select>\n            </div>\n        </div>\n        <div class=\"p-form__group row\"\n            data-ng-repeat=\"field in ngModel.type.fields\"\n            data-ng-if=\"field.name !== 'default_storage_pool'\n                && (field.scope !== 'bmc' || !ngModel.in_pod)\">\n            <label for=\"{$ field.name $}\"\n                class=\"p-form__label col-2\"\n                data-ng-class=\"{\n                  'is-disabled': !ngModel.editing,\n                  'is-required': field.required\n                }\">\n                {$ field.label $}\n            </label>\n            <div class=\"p-form__control col-4\">\n                <maas-power-input field=\"field\"\n                    data-ng-disabled=\"ngDisabled ||\n                        (field.scope === 'bmc' && ngModel.in_pod)\"\n                    data-ng-model=\"ngModel.parameters[field.name]\">\n            </div>\n        </div>");
 }
 /* @ngInject */
 
@@ -55760,37 +55760,22 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     }
   };
 
-  $scope.powerParametersValid = function (power_parameters) {
-    if (!angular.isObject(power_parameters)) {
-      return false;
-    } // If no keys in obj
+  $scope.powerParametersValid = function (power) {
+    var parameters = power.parameters,
+        type = power.type;
 
-
-    if (Object.keys(power_parameters).length === 0) {
-      return false;
-    } // Keys which are optional
-
-
-    var optionalKeys = ["mac_address"]; // If keys but no values in obj
-
-    var hasParameters = false;
-    Object.keys(power_parameters).forEach(function (key) {
-      if (optionalKeys.includes(key)) {
-        return true;
-      }
-
-      if (power_parameters[key] !== "") {
-        hasParameters = true;
-      } else {
-        hasParameters = false;
-      }
-    });
-
-    if (!hasParameters) {
+    if (!angular.isObject(parameters) || !angular.isObject(type)) {
       return false;
     }
 
-    return true;
+    var fields = type.fields || [];
+    return fields.every(function (field) {
+      if (field.required) {
+        return !!parameters[field.name];
+      }
+
+      return true;
+    });
   };
 
   $scope.toggleNumaExpanded = function (numaIndex) {
