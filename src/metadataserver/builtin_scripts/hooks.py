@@ -658,8 +658,11 @@ def update_node_physical_block_devices(node, data, numa_nodes):
             # this is a virtual disk, so it's unlikely that the device_path
             # would work.)
             id_path = "/dev/" + block_info.get("id")
-        size = block_info.get("size", 0)
-        block_size = block_info.get("block_size", 0)
+        size = block_info.get("size")
+        block_size = block_info.get("block_size")
+        # If block_size is 0, set it to minimum default of 512.
+        if not block_size:
+            block_size = 512
         firmware_version = block_info.get("firmware_version")
         numa_index = block_info.get("numa_node")
         tags = get_tags_from_block_info(block_info)

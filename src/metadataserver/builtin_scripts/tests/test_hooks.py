@@ -1619,6 +1619,35 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ),
         )
 
+    def test__creates_physical_block_device_with_default_block_size(self):
+        SAMPLE_LXD_DEFAULT_BLOCK_SIZE = deepcopy(SAMPLE_LXD_JSON)
+        # Set block_size to zero.
+        SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]["block_size"] = 0
+        device = SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]
+        name = device["id"]
+        id_path = device["device_path"]
+        size = device["size"]
+        block_size = 512
+        model = device["model"]
+        serial = device["serial"]
+        firmware_version = device["firmware_version"]
+        node = factory.make_Node()
+        update_node_physical_block_devices(
+            node, SAMPLE_LXD_DEFAULT_BLOCK_SIZE, create_numa_nodes(node)
+        )
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first(),
+            MatchesStructure.byEquality(
+                name=name,
+                id_path=id_path,
+                size=size,
+                block_size=block_size,
+                model=model,
+                serial=serial,
+                firmware_version=firmware_version,
+            ),
+        )
+
     def test__creates_physical_block_device_with_path(self):
         NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_JSON)
         NO_DEVICE_PATH["storage"]["disks"][0]["device_path"] = ""
