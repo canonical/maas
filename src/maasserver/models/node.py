@@ -1475,6 +1475,7 @@ class Node(CleanSave, TimestampedModel):
         any_bcache,
         any_zfs,
         any_vmfs,
+        any_btrfs,
     ):
         """Create and retrieve storage layout issues error messages."""
         issues = []
@@ -1547,6 +1548,15 @@ class Node(CleanSave, TimestampedModel):
                     "This node cannot be deployed because the selected "
                     "deployment OS, %s, does not support ZFS." % self.osystem
                 )
+            # Upstream has completely removed support for BTRFS in
+            # CentOS/RHEL 8. Check if '8' is in the distro_series so
+            # this catches custom images as well.
+            if any_btrfs and "8" in self.distro_series:
+                issues.append(
+                    "This node cannot be deployed because the selected "
+                    "deployment OS release, %s %s, does not support BTRFS."
+                    % (self.osystem, self.distro_series)
+                )
         if any_vmfs:
             issues.append(
                 "This node cannot be deployed because the selected "
@@ -1582,6 +1592,7 @@ class Node(CleanSave, TimestampedModel):
         any_bcache = False
         any_zfs = False
         any_vmfs = False
+        any_btrfs = False
         boot_mounted = False
         arch, _ = self.split_arch()
 
@@ -1608,6 +1619,7 @@ class Node(CleanSave, TimestampedModel):
                     )
                     any_zfs |= fs.fstype == FILESYSTEM_TYPE.ZFSROOT
                     any_vmfs |= fs.fstype == FILESYSTEM_TYPE.VMFS6
+                    any_btrfs |= fs.fstype == FILESYSTEM_TYPE.BTRFS
             else:
                 fs = block_device.get_effective_filesystem()
                 if fs is None:
@@ -1624,6 +1636,7 @@ class Node(CleanSave, TimestampedModel):
                 )
                 any_zfs |= fs.fstype == FILESYSTEM_TYPE.ZFSROOT
                 any_vmfs |= fs.fstype == FILESYSTEM_TYPE.VMFS6
+                any_btrfs |= fs.fstype == FILESYSTEM_TYPE.BTRFS
 
         return self.retrieve_storage_layout_issues(
             has_boot,
@@ -1634,6 +1647,7 @@ class Node(CleanSave, TimestampedModel):
             any_bcache,
             any_zfs,
             any_vmfs,
+            any_btrfs,
         )
 
     def on_network(self):

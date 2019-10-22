@@ -5284,6 +5284,22 @@ class TestNode(MAASServerTestCase):
             node.storage_layout_issues(),
         )
 
+    def test_storage_layout_issues_is_invalid_when_btrfs_on_centos8(self):
+        osystem = random.choice(["centos", "rhel"])
+        node = factory.make_Node(
+            osystem=osystem, distro_series=factory.make_name("8")
+        )
+        bd = factory.make_BlockDevice(node=node)
+        factory.make_Filesystem(block_device=bd, fstype=FILESYSTEM_TYPE.BTRFS)
+        self.assertItemsEqual(
+            [
+                "This node cannot be deployed because the selected deployment "
+                "OS release, %s %s, does not support BTRFS."
+                % (node.osystem, node.distro_series)
+            ],
+            node.storage_layout_issues(),
+        )
+
     def test_start_rescue_mode_raises_PermissionDenied_if_no_edit(self):
         user = factory.make_User()
         node = factory.make_Node(
