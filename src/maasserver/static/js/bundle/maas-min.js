@@ -37346,7 +37346,8 @@ function configureMaas($interpolateProvider, $routeProvider, $httpProvider, $com
       controller: "NodeEventsController"
     }).when("/machine/:system_id", {
       templateUrl: versionedPath("static/partials/node-details.html"),
-      controller: "NodeDetailsController"
+      controller: "NodeDetailsController",
+      reloadOnSearch: false
     }).when("/devices", {
       templateUrl: versionedPath("static/partials/nodes-list.html"),
       controller: "NodesListController"
@@ -37358,7 +37359,8 @@ function configureMaas($interpolateProvider, $routeProvider, $httpProvider, $com
       controller: "NodeEventsController"
     }).when("/device/:system_id", {
       templateUrl: versionedPath("static/partials/node-details.html"),
-      controller: "NodeDetailsController"
+      controller: "NodeDetailsController",
+      reloadOnSearch: false
     }).when("/controllers", {
       templateUrl: versionedPath("static/partials/nodes-list.html"),
       controller: "NodesListController"
@@ -37370,7 +37372,8 @@ function configureMaas($interpolateProvider, $routeProvider, $httpProvider, $com
       controller: "NodeEventsController"
     }).when("/controller/:system_id", {
       templateUrl: versionedPath("static/partials/node-details.html"),
-      controller: "NodeDetailsController"
+      controller: "NodeDetailsController",
+      reloadOnSearch: false
     }).when("/nodes", {
       redirectTo: "/machines"
     }).when("/node/machine/:system_id", {
@@ -39518,7 +39521,7 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
     name: IP_ASSIGNMENT.STATIC,
     text: "Static"
   }];
-  $scope.section = {
+  $scope.networkSection = {
     area: angular.isString($routeParams.area) ? $routeParams.area : "summary"
   }; // Set the initial values for this scope.
 
@@ -39922,7 +39925,7 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
       $scope.$watch("subnets", updateInterfaces, true);
     }
 
-    $scope.nodeResultsManager = NodeResultsManagerFactory.getManager($scope.node, $scope.section.area);
+    $scope.nodeResultsManager = NodeResultsManagerFactory.getManager($scope.node, $scope.networkSection.area);
     $scope.nodeResultsManager.loadItems().then(function () {
       var testingResults = $scope.nodeResultsManager.testing_results;
       $scope.networkTestingResults = testingResults.find(function (res) {
@@ -55441,16 +55444,17 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     }
 
     $scope.summary.editing = true;
+  }; // Shortcut to open configuration tab and have editing ready
+
+
+  $scope.openEditConfig = function () {
+    $scope.openSection("configuration");
+    $scope.editSummary();
   }; // Called to cancel editing in the summary section.
 
 
   $scope.cancelEditSummary = function () {
-    // Leave edit mode only if node has valid architecture.
-    if ($scope.isDevice || $scope.isController) {
-      $scope.summary.editing = false;
-    } else if (!$scope.hasInvalidArchitecture()) {
-      $scope.summary.editing = false;
-    }
+    $scope.summary.editing = false;
   }; // Called to save the changes made in the summary section.
 
 

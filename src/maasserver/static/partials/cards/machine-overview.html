@@ -153,25 +153,29 @@
     </div>
     <div>
       <div>
-        <a ng-click="openSection('configuration')">Zone&nbsp;&rsaquo;</a>
+        <a ng-click="openEditConfig()" ng-if="canEdit()">Zone&nbsp;&rsaquo;</a>
+        <span class="p-text--muted" ng-if="!canEdit()">Zone</span>
       </div>
       <span title="{$ summary.zone.selected.name $}">{$ summary.zone.selected.name $}</span>
     </div>
     <div>
       <div>
-        <a ng-click="openSection('configuration')">Resource pool&nbsp;&rsaquo;</a>
+        <a ng-click="openEditConfig()" ng-if="canEdit()">Resource pool&nbsp;&rsaquo;</a>
+        <span class="p-text--muted" ng-if="!canEdit()">Resource pool</span>
       </div>
       <span title="{$ node.pool.name $}">{$ node.pool.name $}</span>
     </div>
     <div>
       <div>
-        <a ng-click="openSection('configuration')">Power type&nbsp;&rsaquo;</a>
+        <a ng-click="openEditConfig()" ng-if="canEdit()">Power type&nbsp;&rsaquo;</a>
+        <span class="p-text--muted" ng-if="!canEdit()">Power type</span>
       </div>
       <span title="{$ node.power_type $}">{$ node.power_type $}</span>
     </div>
     <div class="u-text-overflow">
       <div>
-        <a ng-click="openSection('configuration')">Tags&nbsp;&rsaquo;</a>
+        <a ng-click="openEditConfig()" ng-if="canEdit()">Tags&nbsp;&rsaquo;</a>
+        <span class="p-text--muted" ng-if="!canEdit()">Tags</span>
       </div>
       <em ng-if="!node.tags.length">No tags</em>
       <span ng-if="node.tags.length" title="{$ node.tags.join(', ') $}">{$ node.tags.join(', ') $}</span>

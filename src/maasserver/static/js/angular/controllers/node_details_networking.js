@@ -292,7 +292,7 @@ export function NodeNetworkingController(
     }
   ];
 
-  $scope.section = {
+  $scope.networkSection = {
     area: angular.isString($routeParams.area) ? $routeParams.area : "summary"
   };
 
@@ -703,7 +703,7 @@ export function NodeNetworkingController(
     }
     $scope.nodeResultsManager = NodeResultsManagerFactory.getManager(
       $scope.node,
-      $scope.section.area
+      $scope.networkSection.area
     );
 
     $scope.nodeResultsManager.loadItems().then(() => {

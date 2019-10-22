@@ -1875,14 +1875,6 @@ describe("NodeDetailsController", function() {
       expect($scope.summary.editing).toBe(false);
     });
 
-    it("doesnt set editing to false if invalid architecture", function() {
-      makeController();
-      $scope.node = node;
-      $scope.summary.editing = true;
-      $scope.cancelEditSummary();
-      expect($scope.summary.editing).toBe(true);
-    });
-
     it("does set editing to true if device", function() {
       makeController();
       $scope.isDevice = true;

@@ -298,7 +298,8 @@ function configureMaas(
       })
       .when("/machine/:system_id", {
         templateUrl: versionedPath("static/partials/node-details.html"),
-        controller: "NodeDetailsController"
+        controller: "NodeDetailsController",
+        reloadOnSearch: false
       })
       .when("/devices", {
         templateUrl: versionedPath("static/partials/nodes-list.html"),
@@ -314,7 +315,8 @@ function configureMaas(
       })
       .when("/device/:system_id", {
         templateUrl: versionedPath("static/partials/node-details.html"),
-        controller: "NodeDetailsController"
+        controller: "NodeDetailsController",
+        reloadOnSearch: false
       })
       .when("/controllers", {
         templateUrl: versionedPath("static/partials/nodes-list.html"),
@@ -330,7 +332,8 @@ function configureMaas(
       })
       .when("/controller/:system_id", {
         templateUrl: versionedPath("static/partials/node-details.html"),
-        controller: "NodeDetailsController"
+        controller: "NodeDetailsController",
+        reloadOnSearch: false
       })
       .when("/nodes", {
         redirectTo: "/machines"

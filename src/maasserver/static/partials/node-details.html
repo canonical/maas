@@ -475,11 +475,19 @@
                 </div>
                 <div class="row">
                     <div class="col-12 u-align--right" data-ng-if="summary.editing">
-                        <button class="p-button--base"
-                        data-ng-click="cancelEditSummary()">Cancel</button>
-                        <button class="p-button--positive"
-                            data-ng-class="{ secondary: invalidArchitecture() }"
-                            data-ng-click="saveEditSummary()">Save changes</button>
+                        <button
+                            class="p-button--base u-no-margin--bottom"
+                            ng-click="cancelEditSummary()"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            class="p-button--positive u-no-margin--bottom"
+                            ng-click="saveEditSummary()"
+                            ng-disabled="invalidArchitecture()"
+                        >
+                            Save changes
+                        </button>
                     </div>
                 </div>
             </form>

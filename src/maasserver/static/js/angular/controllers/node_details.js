@@ -1147,21 +1147,22 @@ function NodeDetailsController(
   };
 
   // Called to enter edit mode in the summary section.
-  $scope.editSummary = function() {
+  $scope.editSummary = () => {
     if (!$scope.canEdit()) {
       return;
     }
     $scope.summary.editing = true;
   };
 
+  // Shortcut to open configuration tab and have editing ready
+  $scope.openEditConfig = () => {
+    $scope.openSection("configuration");
+    $scope.editSummary();
+  };
+
   // Called to cancel editing in the summary section.
-  $scope.cancelEditSummary = function() {
-    // Leave edit mode only if node has valid architecture.
-    if ($scope.isDevice || $scope.isController) {
-      $scope.summary.editing = false;
-    } else if (!$scope.hasInvalidArchitecture()) {
-      $scope.summary.editing = false;
-    }
+  $scope.cancelEditSummary = () => {
+    $scope.summary.editing = false;
   };
 
   // Called to save the changes made in the summary section.
