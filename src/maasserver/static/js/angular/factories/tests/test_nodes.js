@@ -863,4 +863,53 @@ describe("NodesManager", function() {
       });
     });
   });
+
+  describe("urlValuesValid", () => {
+    it("returns true if passed a valid URL", () => {
+      const url = "https://example.com";
+      expect(MachinesManager.urlValuesValid(url)).toBe(true);
+    });
+
+    it("returns true if passed a valid domain", () => {
+      const domain = "example.com";
+      expect(MachinesManager.urlValuesValid(domain)).toBe(true);
+    });
+
+    it("returns true if passed a valid IP address", () => {
+      const ip = "127.0.0.1";
+      expect(MachinesManager.urlValuesValid(ip)).toBe(true);
+    });
+
+    it("returns false if passed an invalid URL, domain or IP address", () => {
+      const url = "foobarbaz";
+      expect(MachinesManager.urlValuesValid(url)).toBe(false);
+    });
+
+    it("returns true if passed a comma separated list of URLs", () => {
+      const urls = "https://example.com,http://foobar.com,http://hello.com";
+      expect(MachinesManager.urlValuesValid(urls)).toBe(true);
+    });
+
+    it("returns true if passed a comma separated list of domains", () => {
+      const domains = "example.com,foobar.com,hello.com";
+      expect(MachinesManager.urlValuesValid(domains)).toBe(true);
+    });
+
+    it("returns true if passed a comma separated list of IPs", () => {
+      const ips = "127.0.0.1,198.64.0.43,198.64.33.25";
+      expect(MachinesManager.urlValuesValid(ips)).toBe(true);
+    });
+
+    it(`returns true if passed a comma separated list of URLS,
+      domains and IPs`, () => {
+      const values = "http://example.com,foobar.com,127.0.0.1";
+      expect(MachinesManager.urlValuesValid(values)).toBe(true);
+    });
+
+    it(`returns false if passed a comma separated list
+      that contains an invalid URL, domain or IP`, () => {
+      const values = "http://example.com,google";
+      expect(MachinesManager.urlValuesValid(values)).toBe(false);
+    });
+  });
 });

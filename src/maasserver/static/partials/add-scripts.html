@@ -6,8 +6,8 @@
   <div class="p-form__group">
     <label class="p-form__label" for="script-url-{$ script.id $}">For <strong>{$ script.name $}</strong> script, use URL(s)</label>
     <div class="p-form__control">
-      <input type="text" name="script-url-{$ script.id $}" id="script-url-{$ script.id $}" data-ng-model="script.parameters.url.value" data-ng-change="onParameterChange()" data-ng-required="script.parameters.url.required">
-      <p class="p-form-help-text" style="max-width: 100%">{$ script.parameters.url.description $}</p>
+      <input type="text" name="script-url-{$ script.id $}" id="script-url-{$ script.id $}" data-ng-model="script.parameters[script.paramName].value" data-ng-change="onParameterChange()" data-ng-required="script.parameters[script.paramName].required">
+      <p class="p-form-help-text" style="max-width: 100%">{$ script.parameters[script.paramName].description $}</p>
     </div>
   </div>
 </div>

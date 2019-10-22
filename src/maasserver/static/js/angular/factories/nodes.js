@@ -403,6 +403,18 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist, $log) {
     ).then(results => results, error => error);
   };
 
+  NodesManager.prototype.urlValuesValid = value => {
+    const values = value.split(",");
+    const validUrls = [];
+    const urlRegexp = /^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w.-]+)+[\w\-._~:/?#[\]@!$&'()*+,;=.]+$/gm;
+    values.forEach(v => {
+      if (v.match(urlRegexp)) {
+        validUrls.push(v);
+      }
+    });
+    return validUrls.length === values.length;
+  };
+
   return NodesManager;
 }
 

@@ -895,6 +895,7 @@ export function NodeNetworkingController(
   $scope.isInterfaceNameInvalid = function(nic) {
     if (
       !angular.isObject(nic) ||
+      // eslint-disable-next-line no-prototype-builtins
       !nic.hasOwnProperty("name") ||
       nic.name.length === 0
     ) {

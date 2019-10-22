@@ -150,6 +150,7 @@ function nodesFilter($filter, SearchService) {
           var value;
           if (angular.isFunction(mapFunc)) {
             value = mapFunc(node);
+            // eslint-disable-next-line no-prototype-builtins
           } else if (node.hasOwnProperty(attr)) {
             value = node[attr];
           }

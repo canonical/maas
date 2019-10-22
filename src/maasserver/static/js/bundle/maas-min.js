@@ -39001,8 +39001,9 @@ maasScriptSelect.$inject = ["ScriptsManager", "ManagerHelperService"];
  */
 function filterScriptsByParam(scripts, param) {
   return scripts.filter(function (script) {
-    var hasParam = Object.values(script.parameters).filter(function (value) {
-      return value.type === param;
+    var hasParam = Object.keys(script.parameters).filter(function (key) {
+      script.paramName = key;
+      return script.parameters[key].type === param;
     });
     return hasParam.length > 0;
   });
@@ -40097,7 +40098,8 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
 
 
   $scope.isInterfaceNameInvalid = function (nic) {
-    if (!angular.isObject(nic) || !nic.hasOwnProperty("name") || nic.name.length === 0) {
+    if (!angular.isObject(nic) || // eslint-disable-next-line no-prototype-builtins
+    !nic.hasOwnProperty("name") || nic.name.length === 0) {
       return true;
     } else if (angular.isArray($scope.node.interfaces)) {
       var i;
@@ -45678,7 +45680,7 @@ function nodesFilter($filter, SearchService) {
           var value;
 
           if (angular.isFunction(mapFunc)) {
-            value = mapFunc(node);
+            value = mapFunc(node); // eslint-disable-next-line no-prototype-builtins
           } else if (node.hasOwnProperty(attr)) {
             value = node[attr];
           } // Unable to get value for this node. So skip it.
@@ -50822,6 +50824,18 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist, $log) {
     });
   };
 
+  NodesManager.prototype.urlValuesValid = function (value) {
+    var values = value.split(",");
+    var validUrls = [];
+    var urlRegexp = /^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w.-]+)+[\w\-._~:/?#[\]@!$&'()*+,;=.]+$/gm;
+    values.forEach(function (v) {
+      if (v.match(urlRegexp)) {
+        validUrls.push(v);
+      }
+    });
+    return validUrls.length === values.length;
+  };
+
   return NodesManager;
 }
 
@@ -54522,8 +54536,16 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
       var params = test.parameters;
 
       for (var key in params) {
-        if (params[key].type === "url" && !disableButton && !params[key].value) {
+        var isTypeOfUrl = params[key].type === "url";
+
+        if (isTypeOfUrl && !disableButton && !params[key].value) {
           disableButton = true;
+          return;
+        }
+
+        if (isTypeOfUrl && params[key].value) {
+          disableButton = !$scope.nodesManager.urlValuesValid(params[key].value);
+          return;
         }
       }
     });
@@ -56877,8 +56899,16 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
       var params = test.parameters;
 
       for (var key in params) {
-        if (params[key].type === "url" && !disableButton && !params[key].value) {
+        var isTypeOfUrl = params[key].type === "url";
+
+        if (isTypeOfUrl && !disableButton && !params[key].value) {
           disableButton = true;
+          return;
+        }
+
+        if (isTypeOfUrl && params[key].value) {
+          disableButton = !$scope.nodesManager.urlValuesValid(params[key].value);
+          return;
         }
       }
     });

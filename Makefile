@@ -331,10 +331,6 @@ lint-py-linefeeds:
 # doubling the speed, but it may need tuning for slower systems or cold caches.
 lint-js: sources = src/maasserver/static/js
 lint-js:
-	@find $(sources) -type f -not -path '*/angular/3rdparty/*' -a \
-		-not -path '*-min.js' -a \
-	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
-		| xargs -r0 -n20 -P4 $(pocketlint)
 		bin/yarn lint
 		bin/yarn prettier-check
 .PHONY: lint-js
