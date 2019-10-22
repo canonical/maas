@@ -53,7 +53,7 @@
           <span class="p-tooltip--top-left">
             <button
               class="p-button--link"
-              ng-click="validateNetworkConfiguration()"
+              ng-click="openTestDropdown('cpu')"
               ng-disabled="!node.actions.includes('test')"
             >
               Test CPU...
@@ -88,7 +88,7 @@
         <span class="p-tooltip--top-left">
           <button
             class="p-button--link"
-            ng-click="validateNetworkConfiguration()"
+            ng-click="openTestDropdown('memory')"
             ng-disabled="!node.actions.includes('test')"
           >
             Test memory...
@@ -131,7 +131,7 @@
         <span class="p-tooltip--top-left">
           <button
             class="p-button--link"
-            ng-click="validateNetworkConfiguration()"
+            ng-click="openTestDropdown('storage')"
             ng-disabled="!node.actions.includes('test')"
           >
             Test storage...

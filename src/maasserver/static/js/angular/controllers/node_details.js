@@ -4,7 +4,7 @@
  * MAAS Node Details Controller
  */
 
-import { NodeTypes } from "../enum";
+import { HardwareType, NodeTypes } from "../enum";
 
 /* @ngInject */
 function NodeDetailsController(
@@ -1507,13 +1507,19 @@ function NodeDetailsController(
   });
 
   // Event has to be broadcast from here so cta directive can listen for it
-  $scope.validateNetworkConfiguration = () => {
+  $scope.openTestDropdown = type => {
     const testAction = $scope.action.availableOptions.find(action => {
       return action.name === "test";
     });
-    $scope.testSelection = $scope.scripts.filter(script => {
-      return script.apply_configured_networking;
-    });
+    if (type === "validateNetwork") {
+      $scope.testSelection = $scope.scripts.filter(
+        script => script.apply_configured_networking
+      );
+    } else if (type) {
+      $scope.testSelection = $scope.scripts.filter(
+        script => script.hardware_type === HardwareType[type.toUpperCase()]
+      );
+    }
     $scope.$broadcast("validate", testAction, $scope.testSelection);
   };
 

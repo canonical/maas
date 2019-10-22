@@ -41396,7 +41396,7 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
 
 
   $scope.validateNetworkConfiguration = function () {
-    $scope.$parent.validateNetworkConfiguration();
+    $scope.$parent.openTestDropdown("validateNetwork");
   }; // Return true if cannot add the interface.
 
 
@@ -55821,13 +55821,21 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     GeneralManager.loadItems(["osinfo", "architectures", "min_hwe_kernels"]);
   }); // Event has to be broadcast from here so cta directive can listen for it
 
-  $scope.validateNetworkConfiguration = function () {
+  $scope.openTestDropdown = function (type) {
     var testAction = $scope.action.availableOptions.find(function (action) {
       return action.name === "test";
     });
-    $scope.testSelection = $scope.scripts.filter(function (script) {
-      return script.apply_configured_networking;
-    });
+
+    if (type === "validateNetwork") {
+      $scope.testSelection = $scope.scripts.filter(function (script) {
+        return script.apply_configured_networking;
+      });
+    } else if (type) {
+      $scope.testSelection = $scope.scripts.filter(function (script) {
+        return script.hardware_type === _enum.HardwareType[type.toUpperCase()];
+      });
+    }
+
     $scope.$broadcast("validate", testAction, $scope.testSelection);
   };
 

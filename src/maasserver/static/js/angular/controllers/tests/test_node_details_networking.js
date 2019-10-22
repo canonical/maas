@@ -5227,12 +5227,14 @@ describe("NodeNetworkingController", function() {
   });
 
   describe("validateNetworkConfiguration", () => {
-    it("calls $parent.validateNetworkConfiguration", () => {
+    it("calls $parent.openTestDropdown", () => {
       makeController();
-      $scope.$parent.validateNetworkConfiguration = () => true;
-      spyOn($scope.$parent, "validateNetworkConfiguration");
+      $scope.$parent.openTestDropdown = () => true;
+      spyOn($scope.$parent, "openTestDropdown");
       $scope.validateNetworkConfiguration();
-      expect($scope.$parent.validateNetworkConfiguration).toHaveBeenCalled();
+      expect($scope.$parent.openTestDropdown).toHaveBeenCalledWith(
+        "validateNetwork"
+      );
     });
   });
 

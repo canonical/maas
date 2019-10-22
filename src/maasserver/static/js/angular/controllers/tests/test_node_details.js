@@ -2677,12 +2677,12 @@ describe("NodeDetailsController", function() {
     });
   });
 
-  describe("validateNetworkConfiguration", () => {
+  describe("openTestDropdown", () => {
     it("broadcasts validate event with test action", () => {
       makeController();
       spyOn($rootScope, "$broadcast");
       $scope.action.availableOptions = [{ name: "test" }];
-      $scope.validateNetworkConfiguration();
+      $scope.openTestDropdown();
       expect($rootScope.$broadcast).toHaveBeenCalledWith(
         "validate",
         {
@@ -2692,37 +2692,85 @@ describe("NodeDetailsController", function() {
       );
     });
 
-    it("adds network tests to testSelection", () => {
+    it(`adds network tests to testSelection if type is
+      'validateNetwork'`, () => {
       makeController();
       $scope.testSelection = [];
       $scope.scripts = [
         {
           apply_configured_networking: false,
-          hardware_type: 4,
           name: "smartctl-validate"
         },
         {
           apply_configured_networking: true,
-          hardware_type: 4,
           name: "internet-connectivity"
         },
         {
           apply_configured_networking: true,
-          hardware_type: 4,
           name: "gateway-connectivity"
         }
       ];
-      $scope.validateNetworkConfiguration();
+      $scope.openTestDropdown("validateNetwork");
       expect($scope.testSelection).toEqual([
         {
           apply_configured_networking: true,
-          hardware_type: 4,
           name: "internet-connectivity"
         },
         {
           apply_configured_networking: true,
-          hardware_type: 4,
           name: "gateway-connectivity"
+        }
+      ]);
+    });
+
+    it(`adds hardware tests to testSelection if type is
+      a hardware type`, () => {
+      makeController();
+      $scope.testSelection = [];
+      $scope.scripts = [
+        {
+          hardware_type: 1,
+          name: "cpu-test"
+        },
+        {
+          hardware_type: 2,
+          name: "memory-test"
+        },
+        {
+          hardware_type: 3,
+          name: "storage-test"
+        },
+        {
+          hardware_type: 4,
+          name: "network-test"
+        }
+      ];
+      $scope.openTestDropdown("cpu");
+      expect($scope.testSelection).toEqual([
+        {
+          hardware_type: 1,
+          name: "cpu-test"
+        }
+      ]);
+      $scope.openTestDropdown("memory");
+      expect($scope.testSelection).toEqual([
+        {
+          hardware_type: 2,
+          name: "memory-test"
+        }
+      ]);
+      $scope.openTestDropdown("storage");
+      expect($scope.testSelection).toEqual([
+        {
+          hardware_type: 3,
+          name: "storage-test"
+        }
+      ]);
+      $scope.openTestDropdown("network");
+      expect($scope.testSelection).toEqual([
+        {
+          hardware_type: 4,
+          name: "network-test"
         }
       ]);
     });
@@ -2732,19 +2780,17 @@ describe("NodeDetailsController", function() {
       $scope.testSelection = [];
       $scope.scripts = [
         {
-          apply_configured_networking: true,
           hardware_type: 4,
           name: "internet-connectivity"
         },
         {
-          apply_configured_networking: true,
           hardware_type: 4,
           name: "gateway-connectivity"
         }
       ];
       // Call twice to make sure deduped
-      $scope.validateNetworkConfiguration();
-      $scope.validateNetworkConfiguration();
+      $scope.openTestDropdown("network");
+      $scope.openTestDropdown("network");
       expect($scope.testSelection.length).toBe(2);
     });
   });

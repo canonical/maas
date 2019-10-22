@@ -2226,7 +2226,7 @@ export function NodeNetworkingController(
 
   // Has to call parent so event can be broadcast
   $scope.validateNetworkConfiguration = () => {
-    $scope.$parent.validateNetworkConfiguration();
+    $scope.$parent.openTestDropdown("validateNetwork");
   };
 
   // Return true if cannot add the interface.
