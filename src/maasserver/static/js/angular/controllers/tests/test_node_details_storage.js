@@ -155,7 +155,8 @@ describe("NodeStorageController", function() {
         filesystem: null,
         partitions: null,
         test_status: 0,
-        firmware_version: makeName("firmware_version")
+        firmware_version: makeName("firmware_version"),
+        numa_node: 0
       },
       {
         // Disk with filesystem, no mount point
@@ -183,7 +184,8 @@ describe("NodeStorageController", function() {
         },
         partitions: null,
         test_status: 1,
-        firmware_version: makeName("firmware_version")
+        firmware_version: makeName("firmware_version"),
+        numa_node: 0
       },
       {
         // Disk with mounted filesystem
@@ -211,7 +213,8 @@ describe("NodeStorageController", function() {
         },
         partitions: null,
         test_status: 2,
-        firmware_version: makeName("firmware_version")
+        firmware_version: makeName("firmware_version"),
+        numa_node: 1
       },
       {
         // Partitioned disk, one partition free one used
@@ -255,7 +258,8 @@ describe("NodeStorageController", function() {
           }
         ],
         test_status: 3,
-        firmware_version: makeName("firmware_version")
+        firmware_version: makeName("firmware_version"),
+        numa_node: 0
       },
       {
         // Disk that is a cache set.
@@ -277,7 +281,8 @@ describe("NodeStorageController", function() {
         filesystem: null,
         partitions: null,
         test_status: 4,
-        firmware_version: makeName("firmware_version")
+        firmware_version: makeName("firmware_version"),
+        numa_node: 0
       }
     ];
   }
@@ -334,7 +339,8 @@ describe("NodeStorageController", function() {
         filesystem_id: disks[2].filesystem.id,
         original_type: disks[2].type,
         original: disks[2],
-        $selected: false
+        $selected: false,
+        numa_nodes: [disks[2].numa_node]
       },
       {
         type: "filesystem",
@@ -348,7 +354,8 @@ describe("NodeStorageController", function() {
         filesystem_id: disks[3].partitions[1].filesystem.id,
         original_type: "partition",
         original: disks[3].partitions[1],
-        $selected: false
+        $selected: false,
+        numa_nodes: [disks[3].numa_node]
       }
     ];
     var cachesets = [
@@ -358,7 +365,8 @@ describe("NodeStorageController", function() {
         size_human: disks[4].size_human,
         cache_set_id: disks[4].id,
         used_by: disks[4].used_for,
-        $selected: false
+        $selected: false,
+        numa_nodes: [disks[4].numa_node]
       }
     ];
     var available = [
@@ -383,7 +391,8 @@ describe("NodeStorageController", function() {
         test_status: disks[0].test_status,
         firmware_version: disks[0].firmware_version,
         $selected: false,
-        $options: {}
+        $options: {},
+        numa_nodes: [disks[0].numa_node]
       },
       {
         name: disks[1].name,
@@ -406,7 +415,8 @@ describe("NodeStorageController", function() {
         test_status: disks[1].test_status,
         firmware_version: disks[1].firmware_version,
         $selected: false,
-        $options: {}
+        $options: {},
+        numa_nodes: [disks[1].numa_node]
       },
       {
         name: disks[3].partitions[0].name,
@@ -427,7 +437,8 @@ describe("NodeStorageController", function() {
         has_partitions: false,
         original: disks[3].partitions[0],
         $selected: false,
-        $options: {}
+        $options: {},
+        numa_nodes: [disks[3].numa_node]
       }
     ];
     var used = [
@@ -442,7 +453,8 @@ describe("NodeStorageController", function() {
         used_for: disks[2].used_for,
         has_partitions: false,
         test_status: disks[2].test_status,
-        firmware_version: disks[2].firmware_version
+        firmware_version: disks[2].firmware_version,
+        numa_nodes: [disks[2].numa_node]
       },
       {
         name: disks[3].name,
@@ -455,7 +467,8 @@ describe("NodeStorageController", function() {
         used_for: disks[3].used_for,
         has_partitions: true,
         test_status: disks[3].test_status,
-        firmware_version: disks[3].firmware_version
+        firmware_version: disks[3].firmware_version,
+        numa_nodes: [disks[3].numa_node]
       },
       {
         name: disks[3].partitions[1].name,
@@ -465,7 +478,8 @@ describe("NodeStorageController", function() {
         serial: "",
         size_human: disks[3].partitions[1].size_human,
         tags: [],
-        used_for: disks[3].partitions[1].used_for
+        used_for: disks[3].partitions[1].used_for,
+        numa_nodes: [disks[3].numa_node]
       }
     ];
     makeController();

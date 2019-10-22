@@ -171,19 +171,6 @@
         padding-left: $sph-inner--large;
       }
 
-      .numa-tooltip {
-        padding-left: $sph-inner--large;
-
-        &.show-warning::after {
-          @include vf-icon-size(map-get($icon-sizes, default));
-          @include vf-icon-warning($color-warning);
-          content: "";
-          left: 0;
-          position: absolute;
-          top: #{$sp-unit / 2};
-        }
-      }
-
       &.indented-border {
         border-color: transparent;
         position: relative;
@@ -231,19 +218,6 @@
 
     th:nth-child(4) {
       padding-left: $sph-inner--large;
-    }
-
-    .numa-tooltip {
-      padding-left: $sph-inner--large;
-
-      &.show-warning::after {
-        @include vf-icon-size(map-get($icon-sizes, default));
-        @include vf-icon-warning($color-warning);
-        content: "";
-        left: 0;
-        position: absolute;
-        top: #{$sp-unit / 2};
-      }
     }
   }
 

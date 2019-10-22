@@ -42061,7 +42061,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
           partition_id: null,
           filesystem_id: disk.filesystem.id,
           original_type: disk.type,
-          original: disk
+          original: disk,
+          numa_nodes: disk.numa_nodes || [disk.numa_node]
         };
 
         if (disk.type === "virtual") {
@@ -42084,7 +42085,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
             partition_id: partition.id,
             filesystem_id: partition.filesystem.id,
             original_type: "partition",
-            original: partition
+            original: partition,
+            numa_nodes: disk.numa_nodes || [disk.numa_node]
           });
         }
       });
@@ -42138,7 +42140,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
           name: disk.name,
           size_human: disk.size_human,
           cache_set_id: disk.id,
-          used_by: disk.used_for
+          used_by: disk.used_for,
+          numa_nodes: disk.numa_nodes || [disk.numa_node]
         });
       }
     }); // Update the selected cache sets with the currently selected
@@ -42195,7 +42198,7 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
           original: disk,
           test_status: disk.test_status,
           firmware_version: disk.firmware_version,
-          numa_node: disk.numa_node
+          numa_nodes: disk.numa_nodes || [disk.numa_node]
         };
 
         if (disk.type === "virtual") {
@@ -42224,7 +42227,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
             partition_id: partition.id,
             has_partitions: false,
             is_boot: false,
-            original: partition
+            original: partition,
+            numa_nodes: disk.numa_nodes || [disk.numa_node]
           });
         }
       });
@@ -42298,7 +42302,7 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
           has_partitions: has_partitions,
           test_status: disk.test_status,
           firmware_version: disk.firmware_version,
-          numa_node: disk.numa_node
+          numa_nodes: disk.numa_nodes || [disk.numa_node]
         };
 
         if (disk.type === "virtual") {
@@ -42318,7 +42322,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
             size_human: partition.size_human,
             tags: [],
             used_for: partition.used_for,
-            is_boot: false
+            is_boot: false,
+            numa_nodes: disk.numa_nodes || [disk.numa_node]
           });
         }
       });
@@ -42980,7 +42985,8 @@ function NodeStorageController($scope, MachinesManager, ConverterService, UsersM
         mount_point: disk.mount_point,
         mount_options: disk.mount_options,
         block_id: disk.block_id,
-        partition_id: disk.partition_id
+        partition_id: disk.partition_id,
+        numa_nodes: disk.numa_nodes || [disk.numa_node]
       }); // Remove the selected disk from available.
 
       var idx = $scope.available.indexOf(disk);
