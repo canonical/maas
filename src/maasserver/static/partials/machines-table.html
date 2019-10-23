@@ -414,7 +414,7 @@
                         <span class="p-tooltip--left">
                             <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status.status" data-ng-if="node.cpu_test_status.status !== -1 && node.cpu_test_status.status !== 2 && !hideFailedTests" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
                             <span class="u-text-overflow">{$ node.cpu_count $}</span>
-                            <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status.status !== -1 && node.cpu_test_status.status !== 2 && !hideFailedTests">{$ node.cpu_test_status.status_tooltip $}</span>
+                            <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status.status !== -1 && node.cpu_test_status.status !== 2 && !hideFailedTests">Machine has failed CPU tests</span>
                         </span>
                     </div>
                     <div class="p-double-row__muted-row u-align--right" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
@@ -432,7 +432,7 @@
                         <span>{$ formatMemoryUnit(node.memory).value $}</span>
                         <span class="p-muted-text">{$ formatMemoryUnit(node.memory).unit $}</span>
                     </span>
-                    <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status.status !== -1 && node.memory_test_status.status !== 2 && !hideFailedTests">{$ node.memory_test_status.status_tooltip $}</span>
+                    <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status.status !== -1 && node.memory_test_status.status !== 2 && !hideFailedTests">Machine has failed memory tests</span>
                 </span>
             </td>
             <td class="p-table__col--disks p-table--action-cell u-align--right" aria-label="Disks">
@@ -440,7 +440,7 @@
                     <span data-maas-script-status="script-status" data-script-status="node.storage_test_status.status" data-ng-if="node.storage_test_status.status !== -1 && node.storage_test_status.status !== 2 && !hideFailedTests" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
                     </span>
                     <span class="u-text-overflow">{$ node.physical_disk_count $}</span>
-                    <span class="p-tooltip__message" role="tooltip" id="disk-count-tooltip-{$ node.fqdn $}" data-ng-if="node.storage_test_status.status !== -1 && node.storage_test_status.status !== 2 && !hideFailedTests">{$ node.storage_test_status.status_tooltip $}</span>
+                    <span class="p-tooltip__message" role="tooltip" id="disk-count-tooltip-{$ node.fqdn $}" data-ng-if="node.storage_test_status.status !== -1 && node.storage_test_status.status !== 2 && !hideFailedTests">Machine has failed storage tests</span>
                 </span>
             </td>
             <td class="p-table__col--storage u-align--right" aria-label="Storage">
