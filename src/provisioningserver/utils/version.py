@@ -88,27 +88,13 @@ def get_maas_repo_hash():
 
 
 def get_maas_version_track_channel():
-    """Returns the track/channel where a snap of this version can be found"""
-    version = get_maas_version()
-    if version:
-        # If running from the snap or the package.
-        series, _ = extract_version_subversion(version)
-    else:
-        # If running from source, we simply get the default version.
-        series = DEFAULT_VERSION
-    # If the version is a devel version, then we always assume we can
-    # get the snap from the latest edge channel; else, we return
-    # the stable channel for such series.
-    if "alpha" in series or "beta" in series or "rc" in series:
-        return "latest/edge"
-    else:
-        # XXX - The snap store doesn't make it easy to create tracks
-        # for projects. As such, MAAS will continue to use the latest
-        # stable channel for the snap publishing regardless of the
-        # version. As such, use the stable channel instead. This needs
-        # to be reverted once tracks are easily supported by the store.
-        # return "%s/stable" % '.'.join(series.split('.')[0:2])
-        return "latest/stable"
+    """Returns the track/channel where a snap of this version can be found."""
+    # if running from source, default to current version
+    maas_version = get_maas_version() or DEFAULT_VERSION
+    version = get_version_tuple(maas_version)
+    risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
+    risk = risk_map.get(version.qualifier_type, "stable")
+    return f"{version.major}.{version.minor}/{risk}"
 
 
 MAASVersion = namedtuple(

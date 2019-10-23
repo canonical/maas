@@ -108,10 +108,10 @@ def generate_rack_controller_configuration(node, proxy):
                 "snap",
                 "set",
                 "system",
-                "proxy.http=%s" % proxy,
-                "proxy.https=%s" % proxy,
+                f"proxy.http={proxy}",
+                f"proxy.https={proxy}",
             ],
-            ["snap", "install", "maas", "--devmode", "--channel=%s" % source],
+            ["snap", "install", "maas", f"--channel={source}"],
             ["systemctl", "restart", "snapd"],
             ["export", "PATH=$PATH"],
             [
@@ -120,9 +120,9 @@ def generate_rack_controller_configuration(node, proxy):
                 "--mode",
                 "rack",
                 "--maas-url",
-                "%s" % maas_url,
+                maas_url,
                 "--secret",
-                "%s" % secret,
+                secret,
             ],
         ]
 

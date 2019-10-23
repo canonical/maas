@@ -238,7 +238,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
             KeysEqual(
                 {
                     "runcmd": [
-                        "snap install maas --devmode --channel=%s" % channel,
+                        f"snap install maas --channel={channel}",
                         "%s --maas-url %s --secret %s"
                         % (cmd, maas_url, secret),
                     ]
@@ -276,7 +276,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                     "runcmd": [
                         "snap set system proxy.http=%s proxy.https=%s"
                         % (proxy, proxy),
-                        "snap install maas --devmode --channel=%s" % channel,
+                        f"snap install maas --channel={channel}",
                         "%s --maas-url %s --secret %s"
                         % (cmd, maas_url, secret),
                     ]

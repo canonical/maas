@@ -525,39 +525,23 @@ class TestGetMAASVersionTrackChannel(TestVersionTestCase):
         (
             "alpha",
             {
-                "version": "2.3.0~alpha1-6192-g10a4565-0ubuntu1",
-                "output": "latest/edge",
+                "version": "2.7.0~alpha1-6192-g.10a4565-0ubuntu1",
+                "output": "2.7/edge",
             },
         ),
         (
             "beta",
-            {
-                "version": "2.3.0~beta1-6192-g10a4565-snap",
-                "output": "latest/edge",
-            },
+            {"version": "2.7.0~beta1-6192-g.10a4565", "output": "2.7/beta"},
         ),
         (
-            "rc4",
-            {"version": "2.3.0~rc1-6192-g10a4565", "output": "latest/edge"},
+            "rc",
+            {"version": "2.7.0~rc1-6192-g10a4565", "output": "2.7/candidate"},
         ),
         (
-            "stable",
+            "final",
             {
-                "version": "2.3.0-6192-g10a4565-0ubuntu1",
-                # XXX - revert this once snap store easily supports tracks
-                # for MAAS snap.
-                # "output": ("2.3/stable"),
-                "output": "latest/stable",
-            },
-        ),
-        (
-            "stable",
-            {
-                "version": "",
-                # XXX - revert this once snap store easily supports tracks
-                # for MAAS snap.
-                # "output": ("%s/stable" % '.'.join(old_version.split('.')[0:2])),
-                "output": "latest/stable",
+                "version": "2.7.0-6192-g10a4565-0ubuntu1",
+                "output": "2.7/stable",
             },
         ),
     ]
