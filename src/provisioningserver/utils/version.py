@@ -173,12 +173,13 @@ def get_version_tuple(maas_version: str) -> MAASVersion:
     # If we find a '-g' or '.g', that means the extended info indicates a
     # git revision.
     if "-g" in extended_info or ".g" in extended_info:
-        revno, git_rev = re.split(r"[-|.|+]", extended_info)[0:2]
+        # unify separators
+        revisions = extended_info.replace("-g.", "-g")
+        revno, git_rev = re.split(r"[-|.|+]", revisions)[0:2]
         # Strip any non-numeric characters from the revno, just in case.
         revno = _coerce_to_int(revno)
         # Remove anything that doesn't look like a hexadecimal character.
         git_rev = re.sub(r"[^0-9a-f]+", "", git_rev)
-    is_snap = maas_version.endswith("-snap")
     extended_info = re.sub(r"-*snap$", "", extended_info)
     # Remove unnecessary garbage from the extended info string.
     if "-" in extended_info:
@@ -194,7 +195,7 @@ def get_version_tuple(maas_version: str) -> MAASVersion:
         short_version,
         extended_info,
         qualifier_type,
-        is_snap,
+        snappy.running_in_snap(),
     )
 
 

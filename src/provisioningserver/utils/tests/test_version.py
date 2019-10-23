@@ -10,6 +10,7 @@ import os.path
 from unittest import skipUnless
 from unittest.mock import MagicMock, sentinel
 
+from fixtures import EnvironmentVariableFixture
 from testtools.matchers import Equals, Is
 
 from maastesting import root
@@ -246,6 +247,25 @@ class TestGetVersionTuple(MAASTestCase):
             },
         ),
         (
+            "full version with dotted git hash prefix",
+            {
+                "version": "2.3.0~alpha3-6202-g.54f83de-0ubuntu1~16.04.1",
+                "expected_tuple": (
+                    2,
+                    3,
+                    0,
+                    -3,
+                    3,
+                    6202,
+                    "54f83de",
+                    "2.3.0~alpha3",
+                    "6202-g.54f83de",
+                    "alpha",
+                    False,
+                ),
+            },
+        ),
+        (
             "full version with garbage revisions",
             {
                 "version": "2.3.0~experimental3-xxxxxxx-xxxxxx",
@@ -305,13 +325,17 @@ class TestGetVersionTuple(MAASTestCase):
     )
 
     def test__returns_expected_tuple(self):
+        self.useFixture(EnvironmentVariableFixture("SNAP", None))
         version = self.version
         actual_tuple = get_version_tuple(version)
         self.assertThat(actual_tuple, Equals(self.expected_tuple), version)
+
+        self.useFixture(
+            EnvironmentVariableFixture("SNAP", "/var/snap/maas/123")
+        )
         expected_tuple__snap = list(self.expected_tuple)
         expected_tuple__snap[-1] = True
         expected_tuple__snap = tuple(expected_tuple__snap)
-        version += "-snap"
         actual_tuple__snap = get_version_tuple(version)
         self.assertThat(
             actual_tuple__snap, Equals(expected_tuple__snap), version
@@ -468,6 +492,8 @@ class TestVersionMethodsCached(TestVersionTestCase):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
         cached_method = getattr(version, self.method)
+        cached_method.cache_clear()
+
         first_return_value = cached_method()
         second_return_value = cached_method()
         # The return value is not empty (full unit tests have been performed
