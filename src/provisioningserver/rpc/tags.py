@@ -31,9 +31,14 @@ def evaluate_tag(
     """
     with ClusterConfiguration.open() as config:
         maas_url = config.maas_url
+
+    # Turn off proxy detection, since the rack should talk directly to
+    # the region, even if a system-wide proxy is configured.
     client = MAASClient(
-        auth=MAASOAuth(*credentials), dispatcher=MAASDispatcher(),
-        base_url=maas_url)
+        auth=MAASOAuth(*credentials),
+        dispatcher=MAASDispatcher(autodetect_proxies=False),
+        base_url=maas_url,
+    )
     process_node_tags(
         rack_id=system_id, nodes=nodes,
         tag_name=tag_name, tag_definition=tag_definition,
