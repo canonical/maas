@@ -306,6 +306,17 @@ class MachineHandler(NodeHandler):
             memory_script_results
         )
 
+        network_script_results = [
+            script_result
+            for script_result in self._script_results.get(obj.id, {}).get(
+                HARDWARE_TYPE.NETWORK, []
+            )
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
+        data["network_test_status"] = self.dehydrate_test_statuses(
+            network_script_results
+        )
+
         storage_script_results = [
             script_result
             for script_result in self._script_results.get(obj.id, {}).get(

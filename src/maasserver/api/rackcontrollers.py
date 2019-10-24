@@ -60,6 +60,8 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
     "cpu_test_status_name",
     "memory_test_status",
     "memory_test_status_name",
+    "network_test_status",
+    "network_test_status_name",
     "storage_test_status",
     "storage_test_status_name",
     "other_test_status",

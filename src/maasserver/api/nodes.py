@@ -415,6 +415,21 @@ class NodeHandler(OperationsHandler):
         return get_script_status_name(handler.memory_test_status(node))
 
     @classmethod
+    def network_test_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs(
+            [
+                script_result
+                for script_result in node._cached_testing_script_results
+                if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK
+            ]
+        )
+
+    @classmethod
+    def network_test_status_name(handler, node):
+        return get_script_status_name(handler.network_test_status(node))
+
+    @classmethod
     def storage_test_status(handler, node):
         get_cached_script_results(node)
         return get_status_from_qs(

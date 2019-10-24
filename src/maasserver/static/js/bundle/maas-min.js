@@ -39219,7 +39219,7 @@ function maasScriptStatus() {
 
         case -1:
           // No scripts have been run.
-          $scope.show = false;
+          $scope.icon = "false";
           break;
 
         default:

@@ -397,6 +397,17 @@ class TestMachineHandler(MAASServerTestCase):
             memory_script_results
         )
 
+        network_script_results = [
+            script_result
+            for script_result in handler._script_results.get(node.id, {}).get(
+                HARDWARE_TYPE.NETWORK, []
+            )
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
+        data["network_test_status"] = handler.dehydrate_test_statuses(
+            network_script_results
+        )
+
         storage_script_results = [
             script_result
             for script_result in handler._script_results.get(node.id, {}).get(

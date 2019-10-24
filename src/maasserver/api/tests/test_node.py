@@ -218,6 +218,12 @@ class TestNodeAPI(APITestCase.ForUser):
                 hardware_type=HARDWARE_TYPE.MEMORY,
             )
         )
+        network_script_result = make_script_result(
+            script=factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING,
+                hardware_type=HARDWARE_TYPE.NETWORK,
+            )
+        )
         storage_script_result = make_script_result(
             script=factory.make_Script(
                 script_type=SCRIPT_TYPE.TESTING,
@@ -277,6 +283,13 @@ class TestNodeAPI(APITestCase.ForUser):
         self.assertEquals(
             status_name(memory_script_result),
             parsed_result["memory_test_status_name"],
+        )
+        self.assertEquals(
+            status(network_script_result), parsed_result["network_test_status"]
+        )
+        self.assertEquals(
+            status_name(network_script_result),
+            parsed_result["network_test_status_name"],
         )
         self.assertEquals(
             status(storage_script_result), parsed_result["storage_test_status"]
