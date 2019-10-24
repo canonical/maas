@@ -130,4 +130,18 @@
       top: #{$sp-unit / 2};
     }
   }
+
+  .p-table--grouped {
+    tr:not(:first-of-type) {
+      border-top: 0;
+    }
+
+    td {
+      border-top: 1px solid $color-light-new;
+
+      &.no-border {
+        border-color: transparent;
+      }
+    }
+  }
 }

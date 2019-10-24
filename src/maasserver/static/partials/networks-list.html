@@ -171,99 +171,97 @@
     </div>
 
     <div class="row">
-        <div class="ng-hide" data-ng-show="!loading">
+        <div ng-if="!loading">
             <!-- Spaces grouped table -->
-            <table class="ng-hide" data-ng-show="groupBy === 'space'">
+            <table class="p-table--subnets p-table--grouped" ng-if="groupBy === 'space'">
                 <thead>
                     <tr>
-                        <th>Space</th>
-                        <th>VLAN</th>
-                        <th>DHCP</th>
-                        <th>Fabric</th>
-                        <th>Subnet</th>
-                        <th><div class="u-align--right">Available IPs</div></th>
+                        <th class="p-table__cell--space">Space</th>
+                        <th class="p-table__cell--vlan">VLAN</th>
+                        <th class="p-table__cell--dhcp">DHCP</th>
+                        <th class="p-table__cell--fabric">Fabric</th>
+                        <th class="p-table__cell--subnet">Subnet</th>
+                        <th class="p-table__cell--ips u-align--right">Available IPs</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
-                    <tr data-ng-repeat="row in group.spaces.rows">
-                        <td aria-label="Space" title="{$ row.space_name $}">
+                <tbody>
+                    <tr ng-repeat="row in group.spaces.rows">
+                        <td aria-label="Space" class="p-table__cell--space" ng-class="{ 'no-border': !row.space_name }" title="{$ row.space_name $}">
                             <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                         </td>
-                        <td aria-label="VLAN">
-                            <a href="#/vlan/{$ row.vlan.id $}" title="{$ row.vlan_name $}">{$ row.vlan_name $}</a>
+                        <td aria-label="VLAN" class="p-table__cell--vlan" title="{$ row.vlan_name $}">
+                            <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
-                        <td aria-label="DHCP">
-                            <div data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null">Enabled</div>
-                            <div data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</div>
+                        <td aria-label="DHCP" class="p-table__cell--dhcp" title="{$ row.dhcp $}">
+                            {$ row.dhcp $}
                         </td>
-                        <td aria-label="Fabric">
-                            <a href="#/fabric/{$ row.fabric.id $}" title="{$ row.fabric.name $}">{$ row.fabric.name $}</a>
+                        <td aria-label="Fabric" class="p-table__cell--fabric" title="{$ row.fabric.name $}">
+                            <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
-                        <td aria-label="Subnet">
-                            <a href="#/subnet/{$ row.subnet.id $}" title="{$ row.subnet_name $}">{$ row.subnet_name $}</a>
+                        <td aria-label="Subnet" class="p-table__cell--subnet" title="{$ row.subnet_name $}">
+                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td class="u-align--right" aria-label="Available IPs" title="{$ row.subnet.statistics.available_string $}">
+                        <td aria-label="Available IPs" class="p-table__cell--ips u-align--right" title="{$ row.subnet.statistics.available_string $}">
                             {$ row.subnet.statistics.available_string $}
                         </td>
                     </tr>
-                    <tr data-ng-repeat="row in group.spaces.orphanVLANs">
-                        <td aria-label="Space">
-                            <a data-ng-if="$index === 0" href="#/space/{$ row.space.id $}">(undefined)</a>
-                            <span data-ng-if="$index === 0" class="p-icon--warning tooltip tooltip--right u-margin--left-small u-display--desktop"
-                              aria-label="MAAS integrations require a space in order to determine the purpose of a network.&#xa;Define a space for each subnet by selecting the space on the VLAN details page.&#xa;If an approprate space does not exist, one may be created on this page."></span>
+                    <tr ng-repeat="row in group.spaces.orphanVLANs">
+                        <td aria-label="Space" class="p-table__cell--space p-table--action-cell" ng-class="{ 'no-border': $index !== 0 }">
+                            <span class="p-tooltip--top-left" ng-if="$index === 0">
+                                <span>(undefined)&nbsp;</span>
+                                <i class="p-icon--warning">No space</i>
+                                <span class="p-tooltip__message">MAAS integrations require a space in order to determine the purpose of a network.&#xa;Define a space for each subnet by selecting the space on the VLAN details page.</span>
+                            </span>
                         </td>
-                        <td title="{$ row.vlan_name $}">
+                        <td aria-label="VLAN" class="p-table__cell--vlan" title="{$ row.vlan_name $}">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
-                        <td aria-label="DHCP">
-                            <div data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true" title="Enabled">Enabled</div>
-                            <div data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null" title="Disabled">Disabled</div>
+                        <td aria-label="DHCP" class="p-table__cell--dhcp" title="{$ row.dhcp $}">
+                            {$ row.dhcp $}
                         </td>
-                        <td title="{$ row.fabric.name $}">
+                        <td aria-label="Fabric" class="p-table__cell--fabric" title="{$ row.fabric.name $}">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
-                        <td title="{$ row.subnet_name $}">
+                        <td aria-label="Subnet" class="p-table__cell--subnet" title="{$ row.subnet_name $}">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td>
-                            <div class="u-align--right">
+                        <td aria-label="Available IPs" class="p-table__cell--ips u-align--right" title="{$ row.subnet.statistics.available_string $}">
                             {$ row.subnet.statistics.available_string $}
                         </td>
                     </tr>
                 </tbody>
             </table>
             <!-- Fabric grouped table -->
-            <table class="u-no-margin--top ng-hide" data-ng-show="groupBy === 'fabric'">
+            <table class="p-table--subnets p-table--grouped u-no-margin--top" ng-if="groupBy === 'fabric'">
                 <thead>
                     <tr>
-                        <th>Fabric</th>
-                        <th>VLAN</th>
-                        <th>DHCP</th>
-                        <th>Subnet</th>
-                        <th>Available IPs</th>
-                        <th>Space</th>
+                        <th class="p-table__cell--fabric">Fabric</th>
+                        <th class="p-table__cell--vlan">VLAN</th>
+                        <th class="p-table__cell--dhcp">DHCP</th>
+                        <th class="p-table__cell--subnet">Subnet</th>
+                        <th class="p-table__cell--ips">Available IPs</th>
+                        <th class="p-table__cell--space">Space</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
-                    <tr data-ng-repeat="row in group.fabrics.rows">
-                        <td aria-label="Fabric" title="{$ row.fabric_name $}">
+                <tbody>
+                    <tr ng-repeat="row in group.fabrics.rows">
+                        <td aria-label="Fabric" class="p-table__cell--fabric" ng-class="{ 'no-border': !row.fabric_name }" title="{$ row.fabric_name $}">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                         </td>
-                        <td aria-label="VLAN" title="{$ row.vlan_name $}">
+                        <td aria-label="VLAN" class="p-table__cell--vlan" ng-class="{ 'no-border': !row.vlan_name }" title="{$ row.vlan_name $}">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
-                        <td aria-label="DHCP">
-                            {$ getDHCPStatus(row.vlan) $}
+                        <td aria-label="DHCP" class="p-table__cell--dhcp" title="{$ row.dhcp $}">
+                            {$ row.dhcp $}
                         </td>
-                        <td aria-label="Subnet" title="{$ row.subnet_name $}">
+                        <td aria-label="Subnet" class="p-table__cell--subnet" title="{$ row.subnet_name $}">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td aria-label="Available IPs" title="{$ row.subnet.statistics.available_string $}">
+                        <td aria-label="Available IPs" class="p-table__cell--ips" title="{$ row.subnet.statistics.available_string $}">
                             {$ row.subnet.statistics.available_string $}
                         </td>
-                        <td aria-label="Space">
-                            <a data-ng-if="row.space !== null" href="#/space/{$ row.space.id $}" title="{$ row.space.name $}">{$ row.space.name $}</a>
-                            <span data-ng-if="row.space === null" title="(undefined)">(undefined)</span>
+                        <td aria-label="Space" class="p-table__cell--space" title="{$ row.space ? row.space.name : '(undefined)' $}">
+                            <a href="#/space/{$ row.space.id $}" ng-if="row.space">{$ row.space.name $}</a>
                         </td>
                     </tr>
                 </tbody>

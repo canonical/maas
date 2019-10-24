@@ -16,6 +16,7 @@
 @import "tables/patterns_table-sortable";
 @import "tables/patterns_table-static-routes";
 @import "tables/patterns_table-storage";
+@import "tables/patterns_table-subnets";
 @import "tables/patterns_table-testing";
 @import "tables/patterns_table-zones";
 @import "tables/patterns_table-dhcp-snippets";
@@ -37,6 +38,7 @@
 @include maas-table-ssh-keys;
 @include maas-table-static-routes;
 @include maas-table-storage;
+@include maas-table-subnets;
 @include maas-table-testing;
 @include maas-table-zones;
 @include maas-table-dhcp-snippets;

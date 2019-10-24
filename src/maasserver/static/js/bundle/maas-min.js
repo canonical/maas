@@ -54010,23 +54010,23 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
       id: -1
     };
     var fabrics = $filter("orderBy")($scope.fabrics, ["name"]);
-    angular.forEach(fabrics, function (fabric) {
-      var vlans = filterByFabric($scope.vlans, fabric);
-      vlans = $filter("orderBy")(vlans, ["vid"]);
-      angular.forEach(vlans, function (vlan) {
+    fabrics.forEach(function (fabric) {
+      var vlans = $filter("orderBy")(filterByFabric($scope.vlans, fabric), ["vid"]);
+      vlans.forEach(function (vlan) {
         var subnets = filterByVLAN($scope.subnets, vlan);
 
-        if (subnets.length > 0) {
-          angular.forEach(subnets, function (subnet) {
+        if (subnets.length) {
+          subnets.forEach(function (subnet) {
             var space = SpacesManager.getItemFromList(subnet.space);
             var row = {
+              dhcp: $scope.getDHCPStatus(vlan),
               fabric: fabric,
               fabric_name: "",
-              vlan: vlan,
-              vlan_name: "",
               space: space,
               subnet: subnet,
-              subnet_name: getSubnetName(subnet)
+              subnet_name: getSubnetName(subnet),
+              vlan: vlan,
+              vlan_name: ""
             };
 
             if (fabric.id !== previous_fabric.id) {
@@ -54042,9 +54042,12 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
             rows.push(row);
           });
         } else {
+          var space = SpacesManager.getItemFromList(vlan.space);
           var row = {
+            dhcp: $scope.getDHCPStatus(vlan),
             fabric: fabric,
             fabric_name: "",
+            space: space,
             vlan: vlan,
             vlan_name: $scope.getVLANName(vlan)
           };
@@ -54082,6 +54085,7 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
         var vlan = VLANsManager.getItemFromList(subnet.vlan);
         var fabric = FabricsManager.getItemFromList(vlan.fabric);
         var row = {
+          dhcp: $scope.getDHCPStatus(vlan),
           fabric: fabric,
           vlan: vlan,
           vlan_name: $scope.getVLANName(vlan),
@@ -54117,6 +54121,7 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
       var vlan = VLANsManager.getItemFromList(subnet.vlan);
       var fabric = FabricsManager.getItemFromList(vlan.fabric);
       var row = {
+        dhcp: $scope.getDHCPStatus(vlan),
         fabric: fabric,
         vlan: vlan,
         vlan_name: $scope.getVLANName(vlan),

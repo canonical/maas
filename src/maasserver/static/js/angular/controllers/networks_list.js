@@ -115,26 +115,31 @@ function NetworksListController(
   // fabrics and VLANs' names are identical, they can be hidden from
   // the table cell.
   function updateFabricsGroupBy() {
-    var rows = [];
-    var previous_fabric = { id: -1 };
-    var previous_vlan = { id: -1 };
-    var fabrics = $filter("orderBy")($scope.fabrics, ["name"]);
-    angular.forEach(fabrics, function(fabric) {
-      var vlans = filterByFabric($scope.vlans, fabric);
-      vlans = $filter("orderBy")(vlans, ["vid"]);
-      angular.forEach(vlans, function(vlan) {
-        var subnets = filterByVLAN($scope.subnets, vlan);
-        if (subnets.length > 0) {
-          angular.forEach(subnets, function(subnet) {
-            var space = SpacesManager.getItemFromList(subnet.space);
-            var row = {
-              fabric: fabric,
+    const rows = [];
+    const previous_fabric = { id: -1 };
+    const previous_vlan = { id: -1 };
+    const fabrics = $filter("orderBy")($scope.fabrics, ["name"]);
+
+    fabrics.forEach(fabric => {
+      const vlans = $filter("orderBy")(filterByFabric($scope.vlans, fabric), [
+        "vid"
+      ]);
+
+      vlans.forEach(vlan => {
+        const subnets = filterByVLAN($scope.subnets, vlan);
+
+        if (subnets.length) {
+          subnets.forEach(subnet => {
+            const space = SpacesManager.getItemFromList(subnet.space);
+            const row = {
+              dhcp: $scope.getDHCPStatus(vlan),
+              fabric,
               fabric_name: "",
-              vlan: vlan,
-              vlan_name: "",
-              space: space,
-              subnet: subnet,
-              subnet_name: getSubnetName(subnet)
+              space,
+              subnet,
+              subnet_name: getSubnetName(subnet),
+              vlan,
+              vlan_name: ""
             };
             if (fabric.id !== previous_fabric.id) {
               previous_fabric.id = fabric.id;
@@ -147,10 +152,13 @@ function NetworksListController(
             rows.push(row);
           });
         } else {
-          var row = {
-            fabric: fabric,
+          const space = SpacesManager.getItemFromList(vlan.space);
+          const row = {
+            dhcp: $scope.getDHCPStatus(vlan),
+            fabric,
             fabric_name: "",
-            vlan: vlan,
+            space,
+            vlan,
             vlan_name: $scope.getVLANName(vlan)
           };
           if (fabric.id !== previous_fabric.id) {
@@ -183,6 +191,7 @@ function NetworksListController(
         var vlan = VLANsManager.getItemFromList(subnet.vlan);
         var fabric = FabricsManager.getItemFromList(vlan.fabric);
         var row = {
+          dhcp: $scope.getDHCPStatus(vlan),
           fabric: fabric,
           vlan: vlan,
           vlan_name: $scope.getVLANName(vlan),
@@ -215,6 +224,7 @@ function NetworksListController(
       var vlan = VLANsManager.getItemFromList(subnet.vlan);
       var fabric = FabricsManager.getItemFromList(vlan.fabric);
       var row = {
+        dhcp: $scope.getDHCPStatus(vlan),
         fabric: fabric,
         vlan: vlan,
         vlan_name: $scope.getVLANName(vlan),
