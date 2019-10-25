@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `Filesystem`."""
@@ -21,6 +21,7 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
 )
 from maasserver.models.filesystem import Filesystem
+from maasserver.models.filesystemgroup import RAID
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -110,6 +111,22 @@ class TestFilesystem(MAASServerTestCase):
         self.assertEqual(
             filesystem.get_physical_block_devices(), block_devices
         )
+
+    def test_get_physical_block_device_raid_on_part(self):
+        # Regression test for LP:1849580
+        node = factory.make_Node(with_boot_disk=False)
+        block_devices = []
+        partitions = []
+        for _ in range(2):
+            block_device = factory.make_PhysicalBlockDevice(node=node)
+            block_devices.append(block_device)
+            pt = factory.make_PartitionTable(block_device=block_device)
+            partitions.append(factory.make_Partition(partition_table=pt))
+        fs_group = RAID.objects.create_raid(
+            level=FILESYSTEM_GROUP_TYPE.RAID_1, partitions=partitions
+        )
+        fs = factory.make_Filesystem(block_device=fs_group.virtual_device)
+        self.assertItemsEqual(fs.get_physical_block_devices(), block_devices)
 
     def test_get_size_returns_partition_size(self):
         partition = factory.make_Partition()

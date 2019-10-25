@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a filesystem on a partition or a block device."""
@@ -181,6 +181,8 @@ class Filesystem(CleanSave, TimestampedModel):
             devices.append(parent)
         elif isinstance(parent, VirtualBlockDevice):
             for grandparent in parent.get_parents():
+                if isinstance(grandparent, Partition):
+                    grandparent = grandparent.partition_table.block_device
                 device = grandparent.actual_instance
                 if isinstance(device, PhysicalBlockDevice):
                     devices.append(device)
