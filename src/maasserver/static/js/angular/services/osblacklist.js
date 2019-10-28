@@ -11,7 +11,10 @@ function KVMDeployOSBlacklist() {
     "ubuntu/xenial",
     "ubuntu/yakkety",
     "ubuntu/zesty",
-    "ubuntu/artful"
+    "ubuntu/artful",
+    "ubuntu/cosmic",
+    "ubuntu/disco",
+    "ubuntu/eoan"
   ];
 }
 

@@ -87,47 +87,39 @@
                                 <label for="configureHBA">Configure HBA</label>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-12" data-ng-show="action.option.name === 'deploy' || action.option.name === 'release'">
-                                <div class="p-form--stacked" >
-                                    <div class="ng-hide" data-ng-show="action.option.name === 'deploy'">
-                                        <div class="p-strip is-shallow u-no-padding--top">
-                                            <div class="p-form__group">
-                                                <div data-maas-os-select="osinfo" data-ng-model="osSelection" style="width: 100%"></div>
-                                            </div>
-                                        </div>
-                                        <div data-ng-if="isSuperUser()" class="p-strip is-shallow u-no-padding--top">
-                                            <div class="p-form__group">
-                                                <label class="p-form__label u-no-padding--top">Additional installs</label>
-                                                <div class="p-form__control" style="width: 70%">
-                                                    <input id="installKVM" type="checkbox" data-ng-model="deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(osSelection)">
-                                                    <label for="installKVM" class="u-float--left" style="width: auto; margin-right: 1rem;">
-                                                        Register as MAAS KVM host
-                                                    </label>
-                                                    <span data-ng-if="!nodesManager.isModernUbuntu(osSelection)">
-                                                        <i class="p-icon--warning"></i>
-                                                        <strong>Warning:</strong> Ubuntu 18.04 is the minimum required. <a target="_blank"
-                                                        class="p-link--external"
-                                                        href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>
-                                                    </span>
-                                                    <span data-ng-if="nodesManager.isModernUbuntu(osSelection)">
-                                                        <i class="p-icon--information">Information:</i>
-                                                        <a target="_blank" class="p-link--external"
-                                                            href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                        <div ng-if="action.option.name === 'deploy'">
+                            <div class="row">
+                                <div class="col-6 col-medium-6 col-small-4">
+                                    <div class="u-sv2">
+                                        <div data-maas-os-select="osinfo" data-ng-model="osSelection"></div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 u-no-margin--left" data-ng-show="action.option.name === 'deploy' || action.option.name === 'release'">
-                                <div data-ng-if="action.option.name === 'release'" class="u-no-margin--top">
-                                    <div data-maas-release-options="releaseOptions"></div>
+                            <div class="row" ng-if="isSuperUser()">
+                                <div class="u-sv1">
+                                    <p class="u-no-margin--bottom">
+                                        Additional installs
+                                    </p>
+                                    <input
+                                        id="installKVM"
+                                        ng-disabled="!nodesManager.canBeKvmHost(osSelection)"
+                                        ng-model="deployOptions.installKVM"
+                                        type="checkbox"
+                                    >
+                                    <label class="u-no-margin--bottom" for="installKVM">Register as MAAS KVM host</label>
+                                    <p class="u-sv-1 u-no-max-width" ng-if="!nodesManager.canBeKvmHost(osSelection)">
+                                        <i class="p-icon--warning"></i>&nbsp;Ubuntu 18.04 is required to create a KVM host.
+                                    </p>
+                                    <p class="u-no-max-width u-no-margin--bottom">
+                                        <a class="p-link--external" href="https://maas.io/docs/kvm-introduction" target="_blank">
+                                            About MAAS KVM hosts
+                                        </a>
+                                    </p>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row" ng-if="action.option.name === 'release'">
+                            <div data-maas-release-options="releaseOptions"></div>
                         </div>
                         <div class="row">
                             <div class="col-12 u-align--right">

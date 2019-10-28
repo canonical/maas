@@ -47598,7 +47598,7 @@ exports.default = void 0;
  * There is a launchpad issue for this (LP: #1802307)
  */
 function KVMDeployOSBlacklist() {
-  return ["ubuntu/precise", "ubuntu/trusty", "ubuntu/xenial", "ubuntu/yakkety", "ubuntu/zesty", "ubuntu/artful"];
+  return ["ubuntu/precise", "ubuntu/trusty", "ubuntu/xenial", "ubuntu/yakkety", "ubuntu/zesty", "ubuntu/artful", "ubuntu/cosmic", "ubuntu/disco", "ubuntu/eoan"];
 }
 
 var _default = KVMDeployOSBlacklist;
@@ -50787,20 +50787,12 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist, $log) {
     });
   };
 
-  NodesManager.prototype.isModernUbuntu = function (osSelection) {
-    if (!osSelection) {
-      return false;
+  NodesManager.prototype.canBeKvmHost = function (osSelection) {
+    if (osSelection && osSelection.osystem === "ubuntu" && !KVMDeployOSBlacklist.includes(osSelection.release)) {
+      return true;
     }
 
-    if (osSelection.osystem !== "ubuntu") {
-      return false;
-    }
-
-    if (KVMDeployOSBlacklist.includes(osSelection.release)) {
-      return false;
-    }
-
-    return true;
+    return false;
   };
 
   NodesManager.prototype.suppressTests = function (node, scripts) {

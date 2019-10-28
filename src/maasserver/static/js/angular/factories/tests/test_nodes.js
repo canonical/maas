@@ -298,59 +298,36 @@ describe("NodesManager", function() {
     });
   });
 
-  describe("isModernUbuntu", function() {
-    it("returns false when not ubuntu", function() {
-      var osSelection = {
+  describe("canBeKvmHost", () => {
+    it("returns false if no osSelection arg", () => {
+      expect(MachinesManager.canBeKvmHost()).toBe(false);
+    });
+
+    it("returns false when not ubuntu", () => {
+      const osSelection = {
         osystem: "centos",
         release: "CentOS 7"
       };
 
-      expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
+      expect(MachinesManager.canBeKvmHost(osSelection)).toBe(false);
     });
 
-    it("returns false when ubuntu and precise", function() {
-      var osSelection = {
+    it("returns false when ubuntu and not bionic", () => {
+      const osSelection = {
         osystem: "ubuntu",
-        release: "ubuntu/precise"
+        release: "ubuntu/cosmic"
       };
 
-      expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
+      expect(MachinesManager.canBeKvmHost(osSelection)).toBe(false);
     });
 
-    it("returns false when ubuntu and trusty", function() {
-      var osSelection = {
-        osystem: "ubuntu",
-        release: "ubuntu/trusty"
-      };
-
-      expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
-    });
-
-    it("returns false when ubuntu and xenial", function() {
-      var osSelection = {
-        osystem: "ubuntu",
-        release: "ubuntu/xenial"
-      };
-
-      expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
-    });
-
-    it("returns true when ubuntu and bionic", function() {
-      var osSelection = {
+    it("returns true when ubuntu and bionic", () => {
+      const osSelection = {
         osystem: "ubuntu",
         release: "ubuntu/bionic"
       };
 
-      expect(MachinesManager.isModernUbuntu(osSelection)).toBe(true);
-    });
-
-    it("returns true when ubuntu and cosmic", function() {
-      var osSelection = {
-        osystem: "ubuntu",
-        release: "cosmic"
-      };
-
-      expect(MachinesManager.isModernUbuntu(osSelection)).toBe(true);
+      expect(MachinesManager.canBeKvmHost(osSelection)).toBe(true);
     });
   });
 

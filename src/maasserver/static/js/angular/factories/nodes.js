@@ -358,20 +358,15 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist, $log) {
     });
   };
 
-  NodesManager.prototype.isModernUbuntu = function(osSelection) {
-    if (!osSelection) {
-      return false;
+  NodesManager.prototype.canBeKvmHost = function(osSelection) {
+    if (
+      osSelection &&
+      osSelection.osystem === "ubuntu" &&
+      !KVMDeployOSBlacklist.includes(osSelection.release)
+    ) {
+      return true;
     }
-
-    if (osSelection.osystem !== "ubuntu") {
-      return false;
-    }
-
-    if (KVMDeployOSBlacklist.includes(osSelection.release)) {
-      return false;
-    }
-
-    return true;
+    return false;
   };
 
   NodesManager.prototype.suppressTests = function(node, scripts) {

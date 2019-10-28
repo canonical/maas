@@ -184,50 +184,50 @@
                             </div>
                         </form>
                     </div>
-                    <div class="ng-hide col-8" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
+                    <div class="col-8" ng-if="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
                         <form class="p-form">
-                            <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
+                            <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left" ng-if="tabs[tab].actionOption.name === 'test'">
                                 <li class="p-inline-list__item">
                                     <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH">
                                     <label for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
                                 </li>
                             </ul>
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
-                                <div class="row p-form--stacked">
-                                    <div class="col-6">
-                                        <div class="p-strip is-shallow u-no-padding--top">
-                                            <div class="p-form__group" data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection" style="width: 100%"></div>
-                                        </div>
-                                        <div class="p-strip is-shallow u-no-padding--top" data-ng-if="isSuperUser()">
-                                            <div class="p-form__group">
-                                                <label class="p-form__label u-no-padding--top">Additional install</label>
-                                                <div class="p-form__control" style="width: 70%">
-                                                    <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                                    <label for="{$ tab $}-installKVM" style="width:auto; margin-right: 1rem; float: left;">
-                                                        Register as MAAS KVM host
-                                                    </label>
-                                                    <span style="display: inline-block; margin-top: .4rem;">
-                                                        <span data-ng-if="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                                                <i class="p-icon--warning"></i>
-                                                                <strong>Warning:</strong> Ubuntu 18.04 is the minimum required to create a KVM host. <a class="p-link--external" target="_blank" href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>.
-                                                        </span>
-                                                        <span data-ng-if="nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                                            <i class="p-icon--information">Information:</i>
-                                                            <a target="_blank" class="p-link--external"
-                                                            href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div data-ng-if="isSSHKeyWarning(tab)" class="p-strip is-shallow u-no-padding--top">
-                                            <p class="u-remove-max-width">
-                                                <i class="p-icon--warning">Warning:</i> Login will not be possible because no SSH keys have been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
-                                            </p>
+                            <div ng-if="tabs[tab].actionOption.name === 'deploy'">
+                                <div class="row">
+                                    <div class="col-8 col-medium-6 col-small-4">
+                                        <div class="u-sv2">
+                                            <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
                                         </div>
                                     </div>
                                 </div>
-                                <div data-ng-if="tabs[tab].actionOption.name === 'release'">
+                                <div class="row" ng-if="isSuperUser()">
+                                    <div class="u-sv1">
+                                        <p class="u-no-margin--bottom">
+                                            Additional installs
+                                        </p>
+                                        <input
+                                            id="installKVM"
+                                            ng-disabled="!nodesManager.canBeKvmHost(tabs[tab].osSelection)"
+                                            ng-model="deployOptions.installKVM"
+                                            type="checkbox"
+                                        >
+                                        <label class="u-no-margin--bottom" for="installKVM">Register as MAAS KVM host</label>
+                                        <p class="u-sv-1 u-no-max-width" ng-if="!nodesManager.canBeKvmHost(tabs[tab].osSelection)">
+                                            <i class="p-icon--warning"></i>&nbsp;Ubuntu 18.04 is required to create a KVM host.
+                                        </p>
+                                        <p class="u-no-max-width u-no-margin--bottom">
+                                            <a class="p-link--external" href="https://maas.io/docs/kvm-introduction" target="_blank">
+                                                About MAAS KVM hosts
+                                            </a>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="row" ng-if="isSSHKeyWarning(tab)">
+                                    <i class="p-icon--warning">Warning:</i> Login will not be possible because no SSH keys have been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                                </div>
+                            </div>
+                            <div ng-if="tabs[tab].actionOption.name === 'release'">
+                                <div class="row">
                                     <div data-maas-release-options="tabs[tab].releaseOptions"></div>
                                 </div>
                             </div>
