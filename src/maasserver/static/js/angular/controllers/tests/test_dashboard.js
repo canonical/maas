@@ -24,6 +24,7 @@ describe("DashboardController", function() {
   // Load any injected managers and services.
   var DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager;
   var SubnetsManager, VLANsManager, ConfigsManager, ManagerHelperService;
+  var FabricsManager;
   let SearchService, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     DiscoveriesManager = $injector.get("DiscoveriesManager");
@@ -33,6 +34,7 @@ describe("DashboardController", function() {
     SubnetsManager = $injector.get("SubnetsManager");
     VLANsManager = $injector.get("VLANsManager");
     ConfigsManager = $injector.get("ConfigsManager");
+    FabricsManager = $injector.get("FabricsManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
     SearchService = $injector.get("SearchService");
     RegionConnection = $injector.get("RegionConnection");
@@ -61,6 +63,7 @@ describe("DashboardController", function() {
       MachinesManager: MachinesManager,
       DevicesManager: DevicesManager,
       SubnetsManager: SubnetsManager,
+      FabricsManager: FabricsManager,
       VLANsManager: VLANsManager,
       ConfigsManager: ConfigsManager,
       ManagerHelperService: ManagerHelperService
@@ -83,6 +86,7 @@ describe("DashboardController", function() {
       MachinesManager,
       DevicesManager,
       SubnetsManager,
+      FabricsManager,
       VLANsManager,
       ConfigsManager
     ]);
@@ -647,6 +651,18 @@ describe("DashboardController", function() {
       $scope.updateFilters();
       expect($scope.filters).toEqual(SearchService.getEmptyFilter());
       expect($scope.searchValid).toBe(false);
+    });
+  });
+
+  describe("getSubnetFabric", () => {
+    it("correctly returns the fabric obj associated with a subnet", () => {
+      makeController();
+      const vlan = { id: 0 };
+      const subnet = { vlan: 0 };
+      const fabric = { vlan: 0 };
+      spyOn(VLANsManager, "getItemFromList").and.returnValue(vlan);
+      spyOn(FabricsManager, "getItemFromList").and.returnValue(fabric);
+      expect($scope.getSubnetFabric(subnet)).toEqual(fabric);
     });
   });
 });

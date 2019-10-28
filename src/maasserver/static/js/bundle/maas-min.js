@@ -52869,7 +52869,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-DashboardController.$inject = ["$scope", "$rootScope", "$location", "DiscoveriesManager", "DomainsManager", "MachinesManager", "DevicesManager", "SubnetsManager", "VLANsManager", "ConfigsManager", "ManagerHelperService", "SearchService", "GeneralManager"];
+DashboardController.$inject = ["$scope", "$rootScope", "$location", "DiscoveriesManager", "DomainsManager", "MachinesManager", "DevicesManager", "SubnetsManager", "FabricsManager", "VLANsManager", "ConfigsManager", "ManagerHelperService", "SearchService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -52878,7 +52878,7 @@ DashboardController.$inject = ["$scope", "$rootScope", "$location", "Discoveries
  */
 
 /* @ngInject */
-function DashboardController($scope, $rootScope, $location, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService, GeneralManager) {
+function DashboardController($scope, $rootScope, $location, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, FabricsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService, GeneralManager) {
   // Default device IP options.
   var deviceIPOptions = [["static", "Static"], ["dynamic", "Dynamic"], ["external", "External"]]; // Set title and page.
 
@@ -52886,12 +52886,16 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
   $rootScope.page = "dashboard"; // Set initial values.
 
   $scope.loaded = false;
+  $scope.currentTab = "discoveries";
   $scope.discoveredDevices = DiscoveriesManager.getItems();
   $scope.domains = DomainsManager.getItems();
   $scope.machines = MachinesManager.getItems();
   $scope.devices = DevicesManager.getItems();
+  $scope.subnets = SubnetsManager.getItems();
   $scope.configManager = ConfigsManager;
+  $scope.subnetsManager = SubnetsManager;
   $scope.networkDiscovery = null;
+  $scope.activeDiscoveryInterval = null;
   $scope.column = "mac";
   $scope.selectedDevice = null;
   $scope.convertTo = null;
@@ -52905,12 +52909,14 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
   $scope.metadata = {};
   $scope.filteredDevices = [];
 
+  $scope.changeTab = function (tabName) {
+    $scope.currentTab = tabName;
+  };
+
   $scope.clearSearch = function () {
     $scope.search = "";
     $scope.updateFilters();
   };
-
-  $scope.filteredDevices = [];
 
   $scope.updateFilters = function () {
     var searchQuery = $scope.search;
@@ -53151,10 +53157,17 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
         $location.path("/devices/");
       }
     }
+  };
+
+  $scope.getSubnetFabric = function (subnet) {
+    var vlan = VLANsManager.getItemFromList(subnet.vlan) || {};
+    var fabricID = vlan.fabric;
+    var fabric = FabricsManager.getItemFromList(fabricID) || {};
+    return fabric;
   }; // Load all the managers and get the network discovery config item.
 
 
-  ManagerHelperService.loadManagers($scope, [DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, VLANsManager, ConfigsManager]).then(function () {
+  ManagerHelperService.loadManagers($scope, [DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, FabricsManager, VLANsManager, ConfigsManager]).then(function () {
     $scope.loaded = true; // Set flag for RSD navigation item.
 
     if (!$rootScope.showRSDLink) {
@@ -53164,6 +53177,7 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
     }
 
     $scope.networkDiscovery = ConfigsManager.getItemFromList("network_discovery");
+    $scope.activeDiscoveryInterval = ConfigsManager.getItemFromList("active_discovery_interval");
     $scope.setMetadata();
     $scope.discoveredDevices.forEach(function (device) {
       var date = new Date(device.last_seen);
@@ -63083,7 +63097,7 @@ function maasObjField($compile) {
         }; // Construct the on and off switch toggle.
 
 
-        inputElement = angular.element(['<div class="maas-p-switch">', '<input type="checkbox" name="' + attrs.key + '" ', 'class="maas-p-switch--input" ', 'id="' + attrs.key + '" ', 'data-ng-model="_toggle" ', 'data-ng-change="_changed()">', '<div class="maas-p-switch--mask"></div>', "</div>"].join(""));
+        inputElement = angular.element(['<div class="maas-p-switch">', '<input type="checkbox" name="' + attrs.key + '" ', 'class="maas-p-switch--input" ', 'id="' + attrs.key + '" ', 'data-ng-disabled="ngDisabled()" ', 'data-ng-model="_toggle" ', 'data-ng-change="_changed()">', '<div class="maas-p-switch--mask"></div>', "</div>"].join(""));
         inputElement = $compile(inputElement)(switchScope); // Called by controller to update the value.
 
         scope.updateValue = function (newValue) {
@@ -63217,7 +63231,11 @@ function maasObjField($compile) {
       }, function (value) {
         if (value) {
           inputWrapper.children(":first").addClass("u-border--information");
-          labelElement.prepend('<i class="obj-saving icon ' + 'p-icon--spinner u-animation--spin"></i>');
+
+          if (!attrs.disableLabel && !attrs.disableSpinner) {
+            labelElement.prepend('<i class="obj-saving icon ' + 'p-icon--spinner u-animation--spin"></i>');
+          }
+
           inputWrapper.addClass("p-tooltip");
           inputWrapper.addClass("p-tooltip--bottom");
           inputWrapper.addClass("u-no-margin--top");

@@ -915,6 +915,7 @@ export function maasObjField($compile) {
             '<input type="checkbox" name="' + attrs.key + '" ',
             'class="maas-p-switch--input" ',
             'id="' + attrs.key + '" ',
+            'data-ng-disabled="ngDisabled()" ',
             'data-ng-model="_toggle" ',
             'data-ng-change="_changed()">',
             '<div class="maas-p-switch--mask"></div>',
@@ -1083,10 +1084,12 @@ export function maasObjField($compile) {
         function(value) {
           if (value) {
             inputWrapper.children(":first").addClass("u-border--information");
-            labelElement.prepend(
-              '<i class="obj-saving icon ' +
-                'p-icon--spinner u-animation--spin"></i>'
-            );
+            if (!attrs.disableLabel && !attrs.disableSpinner) {
+              labelElement.prepend(
+                '<i class="obj-saving icon ' +
+                  'p-icon--spinner u-animation--spin"></i>'
+              );
+            }
             inputWrapper.addClass("p-tooltip");
             inputWrapper.addClass("p-tooltip--bottom");
             inputWrapper.addClass("u-no-margin--top");

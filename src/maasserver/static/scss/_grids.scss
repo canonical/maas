@@ -1,7 +1,9 @@
 @import "grids/base_grids";
 @import "grids/patterns_machine-overview";
 @import "grids/patterns_machine-summary-cards";
+@import "grids/patterns_network-discovery-config";
 
 @include maas-b-grids;
 @include maas-machine-overview;
 @include maas-machine-summary-cards;
+@include maas-network-discovery-config;
