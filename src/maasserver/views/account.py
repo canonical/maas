@@ -50,9 +50,12 @@ class LoginJSONView(LoginView):
     """A `LoginView` that conditionally returns JSON instead of a HTML view."""
 
     def form_valid(self, form):
+        resp = super().form_valid(form)
         if wants_json_response(self.request):
-            return HttpResponse(status=204)
-        return super().form_valid(form)
+            resp204 = HttpResponse(status=204)
+            resp204.cookies = resp.cookies
+            resp = resp204
+        return resp
 
     def form_invalid(self, form):
         if wants_json_response(self.request):

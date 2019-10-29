@@ -11,7 +11,7 @@ import http.client
 from django.conf import settings
 from django.contrib.auth import REDIRECT_FIELD_NAME, SESSION_KEY
 from lxml.html import fromstring, tostring
-from testtools.matchers import ContainsDict, Equals
+from testtools.matchers import ContainsDict, Equals, MatchesSetwise
 
 from maasserver.models.config import Config
 from maasserver.models.event import Event
@@ -121,6 +121,10 @@ class TestLogin(MAASServerTestCase):
             HTTP_ACCEPT="application/json",
         )
         self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertThat(
+            response.cookies.keys(),
+            MatchesSetwise(Equals("csrftoken"), Equals("sessionid")),
+        )
 
     def test_login_json_returns_400_on_bad_authentication(self):
         password = factory.make_string()
