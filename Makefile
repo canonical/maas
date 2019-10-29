@@ -361,7 +361,7 @@ format-js: bin/yarn
 .PHONY: format-js
 
 format-go:
-	@find src/ -name '*.go' -execdir go fmt {} +
+	@find src/machine-resources/src/ -name vendor -prune -o -name '*.go' -execdir go fmt {} +
 .PHONY: format-go
 
 check: clean test
