@@ -469,8 +469,12 @@ def process_lxd_results(node, output, exit_status):
         for numa_index, numa_data in numa_nodes.items()
     ]
 
-    # Network interfaces.
-    update_node_network_information(node, data, numa_nodes)
+    # Network interfaces
+    # LP: #1849355 -- Don't update the node network information
+    # for controllers during commissioning as this conflicts with
+    # maassesrver.models.node:Controller.update_interfaces().
+    if not node.is_controller:
+        update_node_network_information(node, data, numa_nodes)
     # Storage.
     update_node_physical_block_devices(node, data, numa_nodes)
 

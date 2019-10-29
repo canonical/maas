@@ -39,6 +39,7 @@ from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
@@ -1309,6 +1310,26 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
 
 class TestProcessLXDResults(MAASServerTestCase):
+    def test__does_not_update_node_network_information_if_rack(self):
+        rack = factory.make_RackController()
+        mock_update_node_network_information = self.patch(
+            hooks_module, "update_node_network_information"
+        )
+        process_lxd_results(
+            rack, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
+        )
+        self.assertThat(mock_update_node_network_information, MockNotCalled())
+
+    def test__does_not_update_node_network_information_if_region(self):
+        region = factory.make_RegionController()
+        mock_update_node_network_information = self.patch(
+            hooks_module, "update_node_network_information"
+        )
+        process_lxd_results(
+            region, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
+        )
+        self.assertThat(mock_update_node_network_information, MockNotCalled())
+
     def test__updates_memory(self):
         node = factory.make_Node()
         node.memory = random.randint(4096, 8192)
