@@ -7,9 +7,10 @@ __all__ = []
 
 import random
 
+from django.core.exceptions import ValidationError
 from testtools import ExpectedException
 
-from maasserver.forms.settings import CONFIG_ITEMS, get_config_field
+from maasserver.forms.settings import get_config_field
 from maasserver.models.config import Config, get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -19,7 +20,7 @@ from maasserver.websockets.base import (
     HandlerPKError,
     HandlerValidationError,
 )
-from maasserver.websockets.handlers.config import ConfigHandler
+from maasserver.websockets.handlers.config import CONFIG_ITEMS, ConfigHandler
 
 
 class TestConfigHandler(MAASServerTestCase):
@@ -40,9 +41,12 @@ class TestConfigHandler(MAASServerTestCase):
             for key in config_keys
         ]
         for config_key in config_keys:
-            config_field = get_config_field(config_key["name"])
-            if hasattr(config_field, "choices"):
-                config_key["choices"] = config_field.choices
+            try:
+                config_field = get_config_field(config_key["name"])
+                if hasattr(config_field, "choices"):
+                    config_key["choices"] = config_field.choices
+            except ValidationError:
+                pass
         return config_keys
 
     def test_get(self):
@@ -120,6 +124,15 @@ class TestConfigHandler(MAASServerTestCase):
         updated = handler.update({"name": "curtin_verbose", "value": True})
         self.assertEquals({"name": "curtin_verbose", "value": True}, updated)
         self.assertTrue(Config.objects.get_config("curtin_verbose"))
+
+    def test_update_cannot_update_maas_uuid(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.update,
+            {"name": "maas_uuid", "value": "uuid"},
+        )
 
     def test_update_handles_bad_value(self):
         user = factory.make_admin()

@@ -9,11 +9,8 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
 from maasserver.enum import ENDPOINT
-from maasserver.forms.settings import (
-    CONFIG_ITEMS,
-    get_config_field,
-    get_config_form,
-)
+from maasserver.forms.settings import CONFIG_ITEMS as FORM_CONFIG_ITEMS
+from maasserver.forms.settings import get_config_field, get_config_form
 from maasserver.models.config import Config, get_default_config
 from maasserver.websockets.base import (
     Handler,
@@ -23,6 +20,9 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 
+CONFIG_ITEMS = dict(FORM_CONFIG_ITEMS)
+CONFIG_ITEMS.update({"maas_uuid": None})
+
 
 class ConfigHandler(Handler):
     class Meta:
@@ -30,9 +30,12 @@ class ConfigHandler(Handler):
         listen_channels = ["config"]
 
     def _include_choice(self, config_key):
-        config_field = get_config_field(config_key["name"])
-        if hasattr(config_field, "choices"):
-            config_key["choices"] = config_field.choices
+        try:
+            config_field = get_config_field(config_key["name"])
+            if hasattr(config_field, "choices"):
+                config_key["choices"] = config_field.choices
+        except ValidationError:
+            pass
         return config_key
 
     def _include_choices(self, config_keys):
@@ -88,7 +91,10 @@ class ConfigHandler(Handler):
             raise HandlerValidationError("Missing value in params")
         name = params["name"]
         value = params["value"]
-        form = get_config_form(name, {name: value})
+        try:
+            form = get_config_form(name, {name: value})
+        except ValidationError:
+            raise HandlerDoesNotExistError(name)
         if form.is_valid():
             try:
                 request = HttpRequest()
