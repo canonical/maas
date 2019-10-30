@@ -21,7 +21,7 @@ from maasserver.websockets.base import (
 )
 
 CONFIG_ITEMS = dict(FORM_CONFIG_ITEMS)
-CONFIG_ITEMS.update({"maas_uuid": None})
+CONFIG_ITEMS.update({"uuid": None})
 
 
 class ConfigHandler(Handler):

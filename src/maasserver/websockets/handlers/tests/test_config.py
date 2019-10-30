@@ -125,13 +125,13 @@ class TestConfigHandler(MAASServerTestCase):
         self.assertEquals({"name": "curtin_verbose", "value": True}, updated)
         self.assertTrue(Config.objects.get_config("curtin_verbose"))
 
-    def test_update_cannot_update_maas_uuid(self):
+    def test_update_cannot_update_uuid(self):
         user = factory.make_admin()
         handler = ConfigHandler(user, {}, None)
         self.assertRaises(
             HandlerDoesNotExistError,
             handler.update,
-            {"name": "maas_uuid", "value": "uuid"},
+            {"name": "uuid", "value": "uuid"},
         )
 
     def test_update_handles_bad_value(self):
