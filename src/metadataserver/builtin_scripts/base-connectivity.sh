@@ -37,7 +37,7 @@ function test_bond() {
     slaves_path="/sys/devices/virtual/net/$BOND/bonding/slaves"
     slaves=$(cat $slaves_path)
     cmd_failed=0
-    for test_slave in $(echo $slaves); do
+    for test_slave in $slaves; do
         # Remove all other interfaces from the bond
         for remove_slave in $(echo $slaves | grep -v $test_slave); do
             echo "-$remove_slave" > $slaves_path
@@ -61,9 +61,9 @@ function test_interface() {
     if [ -n "$INTERFACE" ] && [ -d /sys/class/net/$INTERFACE/bridge ]; then
         cmd_failed=0
         found_bond=0
-        for i in /sys/devices/virtual/net/$INTERFACE/lower_*/bonding; do
+        for i in $(ls /sys/devices/virtual/net/$INTERFACE/lower_*/bonding/slaves 2>/dev/null); do
             found_bond=1
-            bond=$(basename $(dirname $i) | cut -d '_' -f2)
+            bond=$(echo $i | sed -E 's|.+/lower_([[:alnum:]]+)/.+|\1|')
             echo "$INTERFACE is backed by bond $bond, each slave will be tested individually..."
             echo
             test_bond "$bond" "$URL" "$INTERFACE"
