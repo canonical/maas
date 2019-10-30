@@ -249,6 +249,12 @@ class NodeHandler(TimestampedModelHandler):
             data["description"] = obj.description
             data["status_code"] = obj.status
 
+        if for_list:
+            for attr in ("numa_nodes_count", "sriov_support"):
+                value = getattr(obj, attr, None)
+                if value is not None:
+                    data[attr] = value
+
         # Filters are only available on machines and devices.
         if not obj.is_controller:
             # For filters

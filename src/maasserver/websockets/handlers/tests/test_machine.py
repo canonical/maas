@@ -324,6 +324,11 @@ class TestMachineHandler(MAASServerTestCase):
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data["pod"] = {"id": bmc.id, "name": bmc.name}
         if for_list:
+            if node.node_type == NODE_TYPE.MACHINE:
+                data["numa_nodes_count"] = len(data["numa_nodes"])
+                data["sriov_support"] = any(
+                    iface["sriov_max_vf"] > 0 for iface in data["interfaces"]
+                )
             allowed_fields = MachineHandler.Meta.list_fields + [
                 "actions",
                 "architecture",
@@ -339,6 +344,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "link_type",
                 "metadata",
                 "node_type_display",
+                "numa_nodes_count",
                 "osystem",
                 "permissions",
                 "physical_disk_count",
@@ -346,6 +352,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "pxe_mac",
                 "pxe_mac_vendor",
                 "spaces",
+                "sriov_support",
                 "status",
                 "status_code",
                 "status_message",
@@ -611,14 +618,15 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
+        expected_query_count = 23
         self.assertEqual(
             queries_one,
-            23,
+            expected_query_count,
             "Number of queries has changed; make sure this is expected.",
         )
         self.assertEqual(
             queries_total,
-            23,
+            expected_query_count,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2059,6 +2067,18 @@ class TestMachineHandler(MAASServerTestCase):
             {node.id: {script_result.script.hardware_type: [script_result]}},
             handler._script_results,
         )
+
+    def test_list_includes_numa_node_info(self):
+        user = factory.make_User()
+        machine = factory.make_Machine(owner=user)
+        memory_cores = ((512, [0, 1]), (1024, [2, 3]), (2048, [4, 5]))
+        for memory, cores in memory_cores:
+            factory.make_NUMANode(node=machine, memory=memory, cores=cores)
+        handler = MachineHandler(user, {}, None)
+        [result] = handler.list({})
+        self.assertEqual(result["numa_nodes_count"], 4)
+        # the listing is not included in the result
+        self.assertNotIn("numa_nodes", result)
 
     def test_list_ignores_devices(self):
         owner = factory.make_User()

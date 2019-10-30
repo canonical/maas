@@ -10,7 +10,7 @@ import logging
 from operator import itemgetter
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db.models import OuterRef, Subquery
+from django.db.models import Count, Exists, OuterRef, Subquery
 
 from maasserver.enum import (
     BMC_TYPE,
@@ -144,6 +144,12 @@ class MachineHandler(NodeHandler):
                     )
                     .order_by("-created", "-id")
                     .values("description")[:1]
+                ),
+                numa_nodes_count=Count("numanode"),
+                sriov_support=Exists(
+                    Interface.objects.filter(
+                        node=OuterRef("pk"), sriov_max_vf__gt=0
+                    )
                 ),
             )
         )
