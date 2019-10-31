@@ -648,9 +648,9 @@ def update_node_physical_block_devices(node, data, numa_nodes):
         PhysicalBlockDevice.objects.filter(node=node).all()
     )
     for block_info in blockdevs:
-        # Skip the read-only devices. We keep them in the output for
-        # the user to view but they do not get an entry in the database.
-        if block_info["read_only"]:
+        # Skip the read-only devices or cdroms. We keep them in the output
+        # for the user to view but they do not get an entry in the database.
+        if block_info["read_only"] or block_info["type"] == "cdrom":
             continue
         name = block_info["id"]
         model = block_info.get("model", "")

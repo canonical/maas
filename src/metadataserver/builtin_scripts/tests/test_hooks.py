@@ -1490,6 +1490,20 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertItemsEqual(device_names, created_names)
 
+    def test__skips_read_only_and_cdroms(self):
+        node = factory.make_Node()
+        READ_ONLY_AND_CDROM = deepcopy(SAMPLE_LXD_JSON)
+        READ_ONLY_AND_CDROM["storage"]["disks"][0]["read_only"] = "true"
+        READ_ONLY_AND_CDROM["storage"]["disks"][1]["type"] = "cdrom"
+        update_node_physical_block_devices(
+            node, READ_ONLY_AND_CDROM, create_numa_nodes(node)
+        )
+        created_names = [
+            device.name
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+        ]
+        self.assertItemsEqual([], created_names)
+
     def test__handles_renamed_block_device(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
