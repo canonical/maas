@@ -2080,6 +2080,15 @@ class TestMachineHandler(MAASServerTestCase):
         # the listing is not included in the result
         self.assertNotIn("numa_nodes", result)
 
+    def test_list_includes_sriov_support_flag(self):
+        user = factory.make_User()
+        machine = factory.make_Machine(owner=user)
+        factory.make_Interface(node=machine)
+        factory.make_Interface(node=machine, sriov_max_vf=16)
+        handler = MachineHandler(user, {}, None)
+        [result] = handler.list({})
+        self.assertTrue(result["sriov_support"])
+
     def test_list_ignores_devices(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)
