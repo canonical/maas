@@ -103,6 +103,7 @@ describe("DashboardController", function() {
     expect($scope.column).toBe("mac");
     expect($scope.selectedDevice).toBeNull();
     expect($scope.convertTo).toBeNull();
+    expect($scope.tempNotifications).toEqual([]);
   });
 
   describe("proxyManager", function() {
@@ -663,6 +664,61 @@ describe("DashboardController", function() {
       spyOn(VLANsManager, "getItemFromList").and.returnValue(vlan);
       spyOn(FabricsManager, "getItemFromList").and.returnValue(fabric);
       expect($scope.getSubnetFabric(subnet)).toEqual(fabric);
+    });
+  });
+
+  describe("closeTempNotification", () => {
+    it("removes notification with id", () => {
+      makeController();
+      $scope.tempNotifications = [
+        {
+          id: 0,
+          text: "notification1"
+        },
+        {
+          id: 1,
+          text: "notification2"
+        }
+      ];
+      $scope.closeTempNotification(1);
+      expect($scope.tempNotifications).toEqual([
+        {
+          id: 0,
+          text: "notification1"
+        }
+      ]);
+    });
+  });
+
+  describe("createSubnetNotification", () => {
+    it(`creates a temp notification about enabling
+      a subnet's active discovery`, () => {
+      makeController();
+      const subnet = { active_discovery: true, cidr: "192.168.1.1" };
+      const fabric = { name: "fabric-x" };
+      spyOn($scope, "getSubnetFabric").and.returnValue(fabric);
+      $scope.createSubnetNotification(subnet);
+      expect($scope.tempNotifications).toEqual([
+        {
+          id: 0,
+          text: `Active discovery enabled on ${subnet.cidr} on ${fabric.name}.`
+        }
+      ]);
+    });
+
+    it(`creates a temp notification about disabling
+      a subnet's active discovery`, () => {
+      makeController();
+      const subnet = { active_discovery: false, cidr: "192.168.1.1" };
+      const fabric = { name: "fabric-x" };
+      spyOn($scope, "getSubnetFabric").and.returnValue(fabric);
+      $scope.createSubnetNotification(subnet);
+      expect($scope.tempNotifications).toEqual([
+        {
+          id: 0,
+          text: `Active discovery disabled on ${subnet.cidr} on ${fabric.name}.`
+        }
+      ]);
     });
   });
 });

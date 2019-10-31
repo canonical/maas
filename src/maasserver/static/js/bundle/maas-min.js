@@ -52880,7 +52880,8 @@ DashboardController.$inject = ["$scope", "$rootScope", "$location", "Discoveries
 /* @ngInject */
 function DashboardController($scope, $rootScope, $location, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, FabricsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService, GeneralManager) {
   // Default device IP options.
-  var deviceIPOptions = [["static", "Static"], ["dynamic", "Dynamic"], ["external", "External"]]; // Set title and page.
+  var deviceIPOptions = [["static", "Static"], ["dynamic", "Dynamic"], ["external", "External"]];
+  var notificationId = 0; // Set title and page.
 
   $rootScope.title = "Dashboard";
   $rootScope.page = "dashboard"; // Set initial values.
@@ -52907,7 +52908,7 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
   $scope.actionOption = null;
   $scope.filters = SearchService.getEmptyFilter();
   $scope.metadata = {};
-  $scope.filteredDevices = [];
+  $scope.tempNotifications = [];
 
   $scope.changeTab = function (tabName) {
     $scope.currentTab = tabName;
@@ -53164,6 +53165,27 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
     var fabricID = vlan.fabric;
     var fabric = FabricsManager.getItemFromList(fabricID) || {};
     return fabric;
+  };
+
+  $scope.closeTempNotification = function (id) {
+    var notifications = $scope.tempNotifications.filter(function (notification) {
+      return notification.id !== id;
+    });
+    $scope.tempNotifications = notifications;
+  };
+
+  $scope.createSubnetNotification = function (subnet) {
+    var fabric = $scope.getSubnetFabric(subnet);
+    var status = subnet.active_discovery ? "enabled" : "disabled";
+    var notification = {
+      id: notificationId,
+      text: "Active discovery ".concat(status, " on ").concat(subnet.cidr, " on ").concat(fabric.name, ".")
+    };
+    $scope.tempNotifications.push(notification);
+    notificationId += 1;
+    setTimeout(function () {
+      return $scope.closeTempNotification(notification.id);
+    }, 30000);
   }; // Load all the managers and get the network discovery config item.
 
 

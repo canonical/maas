@@ -106,8 +106,20 @@
             <maas-notifications></maas-notifications>
             <div class="p-notification--caution" data-ng-if="networkDiscovery.value === 'disabled'">
                 <p class="p-notification__response">
-                <span class="p-notification__status">Warning:</span> List of devices will not update as discovery is turned off.
+                    <span class="p-notification__status">Warning:</span> List of devices will not update as discovery is turned off.
                 </p>
+            </div>
+            <div class="p-notification--information" ng-repeat="notification in tempNotifications">
+                <p class="p-notification__response">
+                    {$ notification.text $}
+                </p>
+                <button
+                    class="p-icon--close"
+                    ng-click="closeTempNotification(notification.id)"
+                    style="position: relative; top: -1px;"
+                >
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -446,6 +458,7 @@
                             </div>
                             <div class="col-6 col-medium-3 col-small-4">
                                 <maas-obj-form
+                                    after-save="createSubnetNotification"
                                     manager="subnetsManager"
                                     ng-disabled="networkDiscovery.value !== 'enabled'"
                                     obj="subnet"
