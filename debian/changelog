@@ -1,8 +1,18 @@
-maas (2.4.3-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.4.4-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 10 Dec 2018 18:27:01 -0500
+ -- Blake Rouse <blake.rouse@canonical>  Fri, 1 Nov 2019 09:09:16 -0400
+
+maas (2.4.3-7049-g000f1aa-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release:
+    - Notice when bind9 is hung, force kill the service, ensure it starts
+      again, then perform a reload. (LP: #1710278)
+    - MAAS sometimes get in a state where machine tags aren't updated from
+      their definitions. (LP: #1845351)
+
+ -- Blake Rouse <blake.rouse@canonical>  Fri, 31 Oct 2019 14:22:04 -0400
 
 maas (2.4.2-7034-g2f5deb8b8-0ubuntu1) bionic; urgency=medium
 
