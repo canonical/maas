@@ -37,7 +37,7 @@ import threading
 from time import sleep
 
 from twisted.python.filepath import FilePath
-from twisted.python.lockfile import FilesystemLock
+from twisted.python.lockfile import FilesystemLock as TwistedFilesystemLock
 
 from provisioningserver.path import get_data_path, get_path
 from provisioningserver.utils import snappy, sudo
@@ -388,6 +388,35 @@ def write_text_file(path, text, encoding="utf-8"):
     """
     with open(path, "w", encoding=encoding) as outfile:
         outfile.write(text)
+
+
+class FilesystemLock(TwistedFilesystemLock):
+    """Patch Twisted's FilesystemLock.lock to handle
+    PermissionError when trying to lock."""
+
+    def lock(self):
+        try:
+            return super().lock()
+        except PermissionError:
+            # LP: #1847794
+            # The issue seems to be that the networking monitoring services
+            # has a lock file to ensure that only one processes updates the
+            # networking information. If the processes gets killed, the lock
+            # file stays, pointing to the PID the killed regiond process had.
+
+            # Now what normally happens is that another process tries to
+            # acquire the lock, sees that the lock points to a killed PID,
+            # and recreates the lock.
+
+            # This normally works, but what can happen is that the killed PID
+            # gets recycled, so that the lock now points to a PID which the
+            # maas user isn't allowed to kill. Now a PermissionError is raised,
+            # that the lock file implementation doesn't handle this case, and
+            # the networking monitoring service can never start.
+
+            # Remove the current lock file and retry.
+            os.remove(self.name)
+            return super().lock()
 
 
 class SystemLock:
