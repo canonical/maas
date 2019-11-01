@@ -80,7 +80,7 @@
                     </div>
                 </td>
                 <td class="p-double-row p-table__cell" aria-label="Size">
-                    <div class="p-double-rows__container" ng-hide="availableMode === 'edit' && item.$selected">
+                    <div class="p-double-row" ng-hide="availableMode === 'edit' && item.$selected">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 <span title="{$ item.size_human $}">
@@ -115,7 +115,7 @@
                     </div>
                 </td>
                 <td class="p-table__cell" aria-label="Health, Tags">
-                    <div class="p-double-rows__container">
+                    <div class="p-double-row">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
@@ -1072,7 +1072,7 @@
             </tr>
             <tr data-ng-repeat="item in used" class="table__row details__used p-table__row">
                 <td class="p-double-row p-table__cell" aria-label="Name">
-                    <div class="p-double-rows__container">
+                    <div class="p-double-row">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 {$ item.name $}
@@ -1086,7 +1086,7 @@
                     </div>
                 </td>
                 <td class="p-double-row p-table__cell">
-                    <div class="p-double-rows__container">
+                    <div class="p-double-row">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 {$ item.model $}
@@ -1131,7 +1131,7 @@
                     </div>
                 </td>
                 <td aria-label="Health, Tags" class="p-double-row p-table__cell">
-                    <div class="p-double-rows__container">
+                    <div class="p-double-row">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 <span data-ng-if="item.type === 'physical'">
@@ -1156,7 +1156,7 @@
                     </div>
                 </td>
                 <td class="p-double-row p-table__cell" aria-label="Used for" title="{$ item.used_for $}">
-                    <div class="p-double-rows__container">
+                    <div class="p-double-row">
                         <div class="p-double-row__main-row">
                             <div class="u-text-overflow">
                                 {$ item.used_for $}

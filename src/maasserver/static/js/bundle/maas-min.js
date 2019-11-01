@@ -45604,6 +45604,30 @@ function nodesFilter($filter, SearchService) {
     },
     subnet: function subnet(node) {
       return node.subnet_cidr;
+    },
+    numa_nodes_count: function numa_nodes_count(node) {
+      var count;
+
+      if (node.numa_nodes_count) {
+        count = node.numa_nodes_count;
+      } else {
+        count = node.numa_nodes && node.numa_nodes.length;
+      }
+
+      return "".concat(count, " node").concat(count !== 1 ? "s" : "");
+    },
+    sriov_support: function sriov_support(node) {
+      var supported;
+
+      if (node.sriov_support) {
+        supported = node.sriov_support;
+      } else {
+        supported = node.interfaces && node.interfaces.some(function (iface) {
+          return iface.sriov_max_vf >= 1;
+        });
+      }
+
+      return supported ? "Supported" : "Not supported";
     }
   }; // Return true when value is an integer.
 
@@ -50046,6 +50070,30 @@ function MachinesManager(RegionConnection, NodesManager) {
         } else {
           return "";
         }
+      },
+      numa_nodes_count: function numa_nodes_count(machine) {
+        var count;
+
+        if (machine.numa_nodes_count) {
+          count = machine.numa_nodes_count;
+        } else {
+          count = machine.numa_nodes && machine.numa_nodes.length;
+        }
+
+        return "".concat(count, " node").concat(count !== 1 ? "s" : "");
+      },
+      sriov_support: function sriov_support(machine) {
+        var supported;
+
+        if (machine.sriov_support) {
+          supported = machine.sriov_support;
+        } else {
+          supported = machine.interfaces && machine.interfaces.some(function (iface) {
+            return iface.sriov_max_vf >= 1;
+          });
+        }
+
+        return supported ? "Supported" : "Not supported";
       }
     }; // Listen for notify events for the machine object.
 
@@ -56563,7 +56611,7 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
   $scope.tabs.machines.failedTests = [];
   $scope.tabs.machines.loadingFailedTests = false;
   $scope.tabs.machines.suppressFailedTestsChecked = false;
-  $scope.tabs.machines.filterOrder = ["status", "owner", "pool", "architecture", "release", "tags", "storage_tags", "pod", "subnets", "fabrics", "zone"]; // Pools tab.
+  $scope.tabs.machines.filterOrder = ["status", "owner", "pool", "architecture", "release", "tags", "storage_tags", "pod", "subnets", "fabrics", "zone", "numa_nodes_count", "sriov_support"]; // Pools tab.
 
   $scope.tabs.pools = {}; // The Pools tab is actually a sub tab of Machines.
 
@@ -60493,7 +60541,7 @@ nodesListFilter.$inject = ["$document"];
  *
  */
 // Map of names displayed in the UI for each metadata option
-var displayNames = new Map([["architecture", "Architecture"], ["fabric", "Fabric"], ["fabrics", "Fabric"], ["owner", "Owner"], ["pod", "KVM"], ["pool", "Resource pool"], ["rack", "Rack"], ["release", "OS/Release"], ["spaces", "Space"], ["status", "Status"], ["storage_tags", "Storage tags"], ["subnet", "Subnet"], ["subnets", "Subnet"], ["tags", "Tags"], ["vlan", "VLAN"], ["zone", "Zone"]]); // Map of metadata names that use a different name for filtering
+var displayNames = new Map([["architecture", "Architecture"], ["fabric", "Fabric"], ["fabrics", "Fabric"], ["numa_nodes_count", "NUMA nodes"], ["owner", "Owner"], ["pod", "KVM"], ["pool", "Resource pool"], ["rack", "Rack"], ["release", "OS/Release"], ["spaces", "Space"], ["sriov_support", "SR-IOV support"], ["status", "Status"], ["storage_tags", "Storage tags"], ["subnet", "Subnet"], ["subnets", "Subnet"], ["tags", "Tags"], ["vlan", "VLAN"], ["zone", "Zone"]]); // Map of metadata names that use a different name for filtering
 
 var metadataNames = new Map([["fabric", "fabric_name"], ["rack", "observer_hostname"], ["subnet", "subnet_cidr"]]);
 /* @ngInject */

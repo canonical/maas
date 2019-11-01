@@ -239,7 +239,7 @@
                             class="p-table__cell p-double-row"
                             title="{$ getPowerTypeTitle(pod.type) $}"
                         >
-                            <div class="p-double-rows__container">
+                            <div class="p-double-row">
                                 <div class="p-double-row__main-row">
                                     <span class="u-text-overflow">{$ getPowerTypeTitle(pod.type) $}</span>
                                 </div>
@@ -249,7 +249,7 @@
                             </div>
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="VMs" title="{$ pod.composed_machines_count $}">
-                            <div class="p-double-rows__container">
+                            <div class="p-double-row">
                                 <div class="p-double-row__main-row u-align--right">
                                     {$ pod.composed_machines_count $}
                                 </div>
@@ -260,7 +260,7 @@
                         </td>
                         <td class="p-table__cell" aria-label="Status" title="Status">&ndash;</td>
                         <td class="p-table__cell p-double-row" aria-label="Resource pool" title="Resource pool">
-                            <div class="p-double-rows__container">
+                            <div class="p-double-row">
                                 <div class="p-double-row__main-row">
                                     {$ getItemName(pod.pool, pools) $}
                                 </div>
@@ -271,7 +271,7 @@
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="Cores" title="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} CPU cores {$ pod.cpu_over_commit_ratio !== 1 ? 'x ' + pod.cpu_over_commit_ratio + ' overcommit' : '' $} available">
                             <div class="p-popover--left">
-                                <div class="p-double-rows__container">
+                                <div class="p-double-row">
                                     <div class="p-double-row__main-row">
                                         <maas-cores-chart used="pod.used.cores" total="pod.total.cores" overcommit="pod.cpu_over_commit_ratio"></maas-cores-chart>
                                     </div>
@@ -309,7 +309,7 @@
                             </div>
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="RAM (GiB)" title="{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} {$ pod.memory_over_commit_ratio !== 1 ? 'x ' + pod.total.memory_gb + ' overcommit' : '' $}">
-                            <div class="p-double-rows__container">
+                            <div class="p-double-row">
                                 <div class="p-double-row__main-row">
                                     <meter class="p-meter p-meter--thin" max="{$ pod.total.memory * pod.memory_over_commit_ratio $}" value="{$ getMeterValue(pod.total.memory * pod.memory_over_commit_ratio, pod.used.memory) $}" ng-class="{'is-over': pod.used.memory > pod.total.memory * pod.memory_over_commit_ratio}"></meter>
                                 </div>
@@ -320,7 +320,7 @@
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="Storage" style="overflow: visible">
                             <div class="p-popover--left">
-                                <div class="p-double-rows__container">
+                                <div class="p-double-row">
                                     <div class="p-double-row__main-row">
                                         <meter class="p-meter p-meter--thin" max="{$ pod.total.local_storage $}" value="{$ getMeterValue(pod.total.local_storage, pod.used.local_storage) $}" ng-class="{'is-over': pod.used.local_storage > pod.total.local_storage}">
                                         </meter>
@@ -358,7 +358,7 @@
                                                 <tbody>
                                                     <tr>
                                                         <td class="p-double-row u-no-padding--left">
-                                                            <div class="p-double-rows__container">
+                                                            <div class="p-double-row">
                                                                 <div class="p-double-row__main-row">
                                                                     {$ pod.default_pool_data.name $}
                                                                 </div>
@@ -368,7 +368,7 @@
                                                             </div>
                                                         </td>
                                                         <td class="p-double-row">
-                                                            <div class="p-double-rows__container">
+                                                            <div class="p-double-row">
                                                                 <div class="p-double-row__main-row u-align--right">
                                                                     {$ pod.default_pool_data.type $}
                                                                 </div>
@@ -377,7 +377,7 @@
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td class="p-double-rows__container">
+                                                        <td class="p-double-row">
                                                             <div class="p-double-row__main-row">
                                                                 <meter class="p-meter" max="{$ pod.total.local_storage $}"
                                                                     value="{$ getMeterValue(pod.total.local_storage, pod.used.local_storage) $}"
@@ -415,7 +415,7 @@
                                                 <tbody>
                                                     <tr data-ng-repeat="pool in pod.storage_pools" data-ng-if="pool.id !== pod.default_storage_pool">
                                                         <td class="p-double-row u-no-padding--left">
-                                                            <div class="p-double-rows__container">
+                                                            <div class="p-double-row">
                                                                 <div class="p-double-row__main-row">
                                                                     {$ pool.name $}
                                                                 </div>
@@ -425,7 +425,7 @@
                                                             </div>
                                                         </td>
                                                         <td class="p-double-row">
-                                                            <div class="p-double-rows__container">
+                                                            <div class="p-double-row">
                                                                 <div class="p-double-row__main-row u-align--right">
                                                                     {$ pool.type $}
                                                                 </div>
@@ -435,7 +435,7 @@
                                                             </div>
                                                         </td>
                                                         <td class="p-double-row u-align--right">
-                                                            <div class="p-double-rows__container">
+                                                            <div class="p-double-row">
                                                                 <div class="p-double-row__main-row">
                                                                     <meter class="p-meter" max="{$ pool.total $}" value="{$ getMeterValue(pool.total, pool.used) $}" ng-class="{'is-over': pool.used > pool.total}">
                                                                 </div>

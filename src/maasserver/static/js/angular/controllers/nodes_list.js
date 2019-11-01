@@ -138,7 +138,9 @@ function NodesListController(
     "pod",
     "subnets",
     "fabrics",
-    "zone"
+    "zone",
+    "numa_nodes_count",
+    "sriov_support"
   ];
 
   // Pools tab.

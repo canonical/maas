@@ -43,6 +43,26 @@ function MachinesManager(RegionConnection, NodesManager) {
         } else {
           return "";
         }
+      },
+      numa_nodes_count: machine => {
+        let count;
+        if (machine.numa_nodes_count) {
+          count = machine.numa_nodes_count;
+        } else {
+          count = machine.numa_nodes && machine.numa_nodes.length;
+        }
+        return `${count} node${count !== 1 ? "s" : ""}`;
+      },
+      sriov_support: machine => {
+        let supported;
+        if (machine.sriov_support) {
+          supported = machine.sriov_support;
+        } else {
+          supported =
+            machine.interfaces &&
+            machine.interfaces.some(iface => iface.sriov_max_vf >= 1);
+        }
+        return supported ? "Supported" : "Not supported";
       }
     };
 

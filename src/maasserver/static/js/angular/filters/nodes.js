@@ -61,6 +61,26 @@ function nodesFilter($filter, SearchService) {
     },
     subnet: function(node) {
       return node.subnet_cidr;
+    },
+    numa_nodes_count: node => {
+      let count;
+      if (node.numa_nodes_count) {
+        count = node.numa_nodes_count;
+      } else {
+        count = node.numa_nodes && node.numa_nodes.length;
+      }
+      return `${count} node${count !== 1 ? "s" : ""}`;
+    },
+    sriov_support: node => {
+      let supported;
+      if (node.sriov_support) {
+        supported = node.sriov_support;
+      } else {
+        supported =
+          node.interfaces &&
+          node.interfaces.some(iface => iface.sriov_max_vf >= 1);
+      }
+      return supported ? "Supported" : "Not supported";
     }
   };
 

@@ -49,7 +49,9 @@ describe("MachinesManager", function() {
       "fabrics",
       "spaces",
       "storage_tags",
-      "release"
+      "release",
+      "numa_nodes_count",
+      "sriov_support"
     ]);
   });
 
