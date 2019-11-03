@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for filesystem-related utilities."""
@@ -50,6 +50,7 @@ from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
     FileLock,
+    FilesystemLock,
     get_library_script_path,
     get_maas_common_command,
     incremental_write,
@@ -82,6 +83,28 @@ from testtools.testcase import ExpectedException
 from twisted import internet
 from twisted.internet.task import Clock
 from twisted.python import lockfile
+
+
+class TestFilesystemLock(MAASTestCase):
+    """Test `FilesystemLock.lock`."""
+
+    def test_removes_lock_file_on_permission_error_before_retry(self):
+        target_dir = self.make_dir()
+        name = factory.make_name("link")
+        sym_link_path = os.path.join(target_dir, name)
+        # Create a lock file.  Twisted's FilesystemLock creates
+        # a symlink lock file for the current PID.
+        fs_lock = FilesystemLock(sym_link_path)
+        locked = fs_lock.lock()
+        self.assertTrue(locked)
+        # Now that we have a lock file for the current PID, if we try to
+        # lock the file again and we mock the readlink method, this will
+        # cause kill to raise a PermissionError identitical to the error
+        # seen with this bug. To verify this, run this unittest without
+        # the fix.
+        self.patch(lockfile, "readlink")
+        locked = fs_lock.lock()
+        self.assertTrue(locked)
 
 
 class TestAtomicWrite(MAASTestCase):
