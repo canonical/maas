@@ -265,6 +265,15 @@ class NodeHandler(TimestampedModelHandler):
             data["extra_macs"] = [
                 "%s" % mac_address for mac_address in obj.get_extra_macs()
             ]
+            data["link_speeds"] = sorted(
+                set(
+                    [
+                        interface.link_speed
+                        for interface in obj.interface_set.all()
+                        if interface.link_speed > 0
+                    ]
+                )
+            )
 
         if not for_list:
             data["on_network"] = obj.on_network()

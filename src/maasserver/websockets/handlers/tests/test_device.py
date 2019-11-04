@@ -141,6 +141,15 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
             ],
+            "link_speeds": sorted(
+                set(
+                    [
+                        interface.link_speed
+                        for interface in node.interface_set.all()
+                        if interface.link_speed > 0
+                    ]
+                )
+            ),
             "fqdn": node.fqdn,
             "hostname": node.hostname,
             "description": node.description,
@@ -193,6 +202,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "primary_mac",
                 "spaces",
                 "subnets",
+                "link_speeds",
                 "tags",
                 "interface_speed",
                 "link_connected",

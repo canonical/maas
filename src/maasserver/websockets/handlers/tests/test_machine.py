@@ -251,6 +251,15 @@ class TestMachineHandler(MAASServerTestCase):
             "extra_macs": [
                 "%s" % mac_address for mac_address in node.get_extra_macs()
             ],
+            "link_speeds": sorted(
+                set(
+                    [
+                        interface.link_speed
+                        for interface in node.interface_set.all()
+                        if interface.link_speed > 0
+                    ]
+                )
+            ),
             "fqdn": node.fqdn,
             "hwe_kernel": make_hwe_kernel_ui_text(node.hwe_kernel),
             "hostname": node.hostname,
@@ -337,6 +346,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "dhcp_on",
                 "distro_series",
                 "extra_macs",
+                "link_speeds",
                 "fabrics",
                 "fqdn",
                 "has_logs",
@@ -2283,6 +2293,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.expectThat(created_node["hostname"], Equals(hostname))
         self.expectThat(created_node["pxe_mac"], Equals(mac))
         self.expectThat(created_node["extra_macs"], Equals([]))
+        self.expectThat(created_node["link_speeds"], Equals([]))
         self.expectThat(created_node["architecture"], Equals(architecture))
         self.expectThat(created_node["description"], Equals(description))
         self.expectThat(created_node["zone"]["id"], Equals(zone.id))
