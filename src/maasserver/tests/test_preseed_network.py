@@ -1480,6 +1480,98 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
+    def test__multiple_ethernet_interfaces_without_dns(self):
+        node = factory.make_Node()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/24",
+            gateway_ip="10.0.0.1",
+            dns_servers=["10.0.0.2"],
+            allow_dns=False,
+        )
+        subnet2 = factory.make_Subnet(
+            cidr="10.0.1.0/24",
+            gateway_ip="10.0.1.1",
+            dns_servers=["10.0.1.2"],
+            allow_dns=False,
+        )
+        eth0 = factory.make_Interface(
+            node=node, name="eth0", mac_address="00:01:02:03:04:05", vlan=vlan
+        )
+        eth1 = factory.make_Interface(
+            node=node, name="eth1", mac_address="02:01:02:03:04:05"
+        )
+        node.boot_interface = eth0
+        node.save()
+        factory.make_StaticIPAddress(
+            interface=eth0,
+            subnet=subnet,
+            ip="10.0.0.4",
+            alloc_type=IPADDRESS_TYPE.DHCP,
+        )
+        factory.make_StaticIPAddress(
+            interface=eth1,
+            subnet=subnet2,
+            ip="10.0.1.4",
+            alloc_type=IPADDRESS_TYPE.DHCP,
+        )
+        # Make sure we know when and where the default DNS server will be used.
+        get_default_dns_servers_mock = self.patch(
+            node, "get_default_dns_servers"
+        )
+        get_default_dns_servers_mock.return_value = []
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            "network": OrderedDict(
+                [
+                    ("version", 2),
+                    (
+                        "ethernets",
+                        {
+                            "eth0": {
+                                "match": {"macaddress": "00:01:02:03:04:05"},
+                                "mtu": 1500,
+                                "set-name": "eth0",
+                                "dhcp4": True,
+                            },
+                            "eth1": {
+                                "match": {"macaddress": "02:01:02:03:04:05"},
+                                "mtu": 1500,
+                                "set-name": "eth1",
+                                "dhcp4": True,
+                            },
+                        },
+                    ),
+                ]
+            )
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+        v1 = self._render_v1_dict(node)
+        expected_v1 = {
+            "network": {
+                "version": 1,
+                "config": [
+                    {
+                        "id": "eth0",
+                        "mac_address": "00:01:02:03:04:05",
+                        "mtu": 1500,
+                        "name": "eth0",
+                        "subnets": [{"type": "dhcp4"}],
+                        "type": "physical",
+                    },
+                    {
+                        "id": "eth1",
+                        "mac_address": "02:01:02:03:04:05",
+                        "mtu": 1500,
+                        "name": "eth1",
+                        "subnets": [{"type": "dhcp4"}],
+                        "type": "physical",
+                    },
+                ],
+            }
+        }
+        self.expectThat(v1, Equals(expected_v1))
+
     def test__ha__default_dns(self):
         node = factory.make_Node()
         mock_get_source_address = self.patch(

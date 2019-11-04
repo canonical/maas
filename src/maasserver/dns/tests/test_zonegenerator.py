@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `ZoneGenerator` and supporting cast."""
@@ -122,6 +122,17 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         result = get_dns_server_address(rack_controller)
         self.expectThat(ip, Equals(result))
         self.expectThat(resolver, MockAnyCall(hostname, 0))
+
+    def test_get_dns_server_address_ignores_unallowed_dns(self):
+        # Regression test for LP:1847537
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24", allow_dns=False)
+        ip = factory.make_StaticIPAddress(subnet=subnet)
+        resolver = self.patch(server_address, "resolve_hostname")
+        resolver.return_value = {IPAddress(ip.ip)}
+        rack_controller = factory.make_RackController(
+            subnet=subnet, url="http://%s" % ip.ip
+        )
+        self.assertIsNone(get_dns_server_address(rack_controller))
 
 
 class TestGetDNSSearchPaths(MAASServerTestCase):

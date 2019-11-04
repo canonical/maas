@@ -615,13 +615,14 @@ class NodeNetworkConfiguration:
             ipv6=self.addr_family_present[6],
             default_region_ip=default_source_ip,
         )
-        self.v1_config.append(
-            {
-                "type": "nameserver",
-                "address": self.default_dns_servers,
-                "search": self.default_search_list,
-            }
-        )
+        if self.default_dns_servers:
+            self.v1_config.append(
+                {
+                    "type": "nameserver",
+                    "address": self.default_dns_servers,
+                    "search": self.default_search_list,
+                }
+            )
         if version == 1:
             network_config = {
                 "network": {"version": 1, "config": self.v1_config}

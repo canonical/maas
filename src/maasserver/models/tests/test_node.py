@@ -7991,6 +7991,12 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             rack_ips.append(rack_ip)
         self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
 
+    def test__ignores_dns_servers_on_unallowed_subnets(self):
+        # Regression test for LP:1847537
+        rack_v4, rack_v6, node = self.make_Node_with_RackController()
+        Subnet.objects.update(allow_dns=False)
+        self.assertThat(node.get_default_dns_servers(), Equals([]))
+
 
 class TestNode_Start(MAASTransactionServerTestCase):
     """Tests for Node.start()."""
