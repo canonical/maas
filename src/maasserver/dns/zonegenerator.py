@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS zone generator."""
@@ -118,7 +118,10 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
 
     """
     iplist = get_dns_server_addresses(rack_controller, ipv4, ipv6)
-    return min(iplist).format()
+    if iplist:
+        return min(iplist).format()
+    else:
+        return None
 
 
 def get_dns_server_addresses(
@@ -157,13 +160,22 @@ def get_dns_server_addresses(
             "local_config_set --maas-url' command."
             % e.strerror)
 
-    non_loop = [ip for ip in iplist if not ip.is_loopback()]
+    # LP:1847537 - Filter out MAAS DNS servers running on subnets which do not
+    # allow DNS to be provided from MAAS.
+    filtered_list = [
+        ip
+        for ip in iplist
+        if getattr(
+            Subnet.objects.get_best_subnet_for_ip(ip), "allow_dns", True
+        )
+    ]
+    non_loop = [ip for ip in filtered_list if not ip.is_loopback()]
     if len(non_loop) > 0:
         return non_loop
     else:
-        for ip in iplist:
+        for ip in filtered_list:
             warn_loopback(ip)
-        return iplist
+        return filtered_list
 
 
 def get_dns_search_paths():

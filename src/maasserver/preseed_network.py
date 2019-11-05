@@ -567,13 +567,18 @@ class NodeNetworkConfiguration:
         if not self.addr_family_present[6]:
             self.addr_family_present[4] = True
         self.default_dns_servers = self.node.get_default_dns_servers(
-            ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6],
-            default_region_ip=default_source_ip)
-        self.v1_config.append({
-            "type": "nameserver",
-            "address": self.default_dns_servers,
-            "search": self.default_search_list,
-        })
+            ipv4=self.addr_family_present[4],
+            ipv6=self.addr_family_present[6],
+            default_region_ip=default_source_ip,
+        )
+        if self.default_dns_servers:
+            self.v1_config.append(
+                {
+                    "type": "nameserver",
+                    "address": self.default_dns_servers,
+                    "search": self.default_search_list,
+                }
+            )
         if version == 1:
             network_config = {
                 "network": {

@@ -4151,9 +4151,24 @@ class Node(CleanSave, TimestampedModel):
         # Get the routable addresses between the node and all rack controllers,
         # when the rack proxy should be used (default).
         routable_addrs_map = {}
-        if Config.objects.get_config('use_rack_proxy'):
-            routable_addrs_map = get_routable_address_map(
-                RackController.objects.all(), self)
+        if Config.objects.get_config("use_rack_proxy"):
+            # LP:1847537 - Filter out MAAS DNS servers running on subnets
+            # which do not allow DNS to be provided from MAAS.
+            routable_addrs_map = {}
+            for node, addresses in get_routable_address_map(
+                RackController.objects.all(), self
+            ).items():
+                filtered_addresses = [
+                    address
+                    for address in addresses
+                    if getattr(
+                        Subnet.objects.get_best_subnet_for_ip(address),
+                        "allow_dns",
+                        True,
+                    )
+                ]
+                if filtered_addresses:
+                    routable_addrs_map[node] = filtered_addresses
 
         # No default gateway subnet has specific DNS servers defined, so
         # use MAAS for the default DNS server.
