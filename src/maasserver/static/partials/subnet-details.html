@@ -557,60 +557,62 @@
             </div>
         </div>
         <div class="row">
-            <table class="p-table">
-                <thead>
-                    <tr>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable(ipSort)" data-ng-class="{'is-sorted': predicate === ipSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP Address</span>
-                        </th>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable(allocTypeSort)" data-ng-class="{'is-sorted': predicate === allocTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</span>
-                        </th>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable('node_summary.hostname')" data-ng-class="{'is-sorted': predicate === 'node_summary.hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Node</span>
-                        </th>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable('node_summary.via')" data-ng-class="{'is-sorted': predicate === 'node_summary.via', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Interface</span>
-                        </th>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable(nodeTypeSort)" data-ng-class="{'is-sorted': predicate === nodeTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Usage</span>
-                        </th>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable(ownerSort)" data-ng-class="{'is-sorted': predicate === ownerSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Owner</span>
-                        </th>
-                        <th>
-                            <span role="columnheader" data-ng-click="sortIPTable('updated')" data-ng-class="{'is-sorted': predicate === 'updated', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</span>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
-                    <tr data-ng-repeat="ip in subnet.ip_addresses | orderBy:predicate:reverse track by ip.ip">
-                        <td aria-label="IP Address">{$ ip.ip $}</td>
-                        <td aria-label="Type">{$ getAllocType(ip.alloc_type) $}</td>
-                        <td aria-label="Node" data-ng-switch="ip.node_summary.node_type">
-                            <span data-ng-switch-when="0"><a href="#/machine/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
-                            <span data-ng-switch-when="1">{$ ip.node_summary.hostname $}</span>
-                            <span data-ng-switch-when="2"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
-                            <span data-ng-switch-when="3"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
-                            <span data-ng-switch-when="4"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
-                            <span data-ng-switch-default>{$ ip.node_summary.hostname $}</span>
-                        </td>
-                        <td aria-label="Interface" data-ng-switch="ip.node_summary.node_type">
-                            <span data-ng-switch-when="0">{$ ip.node_summary.via $}</span>
-                            <span data-ng-switch-when="1">{$ ip.node_summary.via $}</span>
-                            <span data-ng-switch-when="2">{$ ip.node_summary.via $}</span>
-                            <span data-ng-switch-when="3">{$ ip.node_summary.via $}</span>
-                            <span data-ng-switch-when="4">{$ ip.node_summary.via $}</span>
-                            <span data-ng-switch-default>Unknown</span>
-                        </td>
-                        <td aria-label="Usage">{$ getUsageForIP(ip) $}</td>
-                        <td aria-label="Owner">{$ ip.user ? ip.user : "MAAS" $}</td>
-                        <td aria-label="Last seen">
-                            <time>{$ ip.updated $}</time>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="col-12">
+                <table class="p-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable(ipSort)" data-ng-class="{'is-sorted': predicate === ipSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP Address</span>
+                            </th>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable(allocTypeSort)" data-ng-class="{'is-sorted': predicate === allocTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</span>
+                            </th>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable('node_summary.hostname')" data-ng-class="{'is-sorted': predicate === 'node_summary.hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Node</span>
+                            </th>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable('node_summary.via')" data-ng-class="{'is-sorted': predicate === 'node_summary.via', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Interface</span>
+                            </th>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable(nodeTypeSort)" data-ng-class="{'is-sorted': predicate === nodeTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Usage</span>
+                            </th>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable(ownerSort)" data-ng-class="{'is-sorted': predicate === ownerSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Owner</span>
+                            </th>
+                            <th>
+                                <span role="columnheader" data-ng-click="sortIPTable('updated')" data-ng-class="{'is-sorted': predicate === 'updated', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody vs-repeat vs-scroll-parent="window">
+                        <tr data-ng-repeat="ip in subnet.ip_addresses | orderBy:predicate:reverse track by ip.ip">
+                            <td aria-label="IP Address" title="{$ ip.ip $}">{$ ip.ip $}</td>
+                            <td aria-label="Type" title="{$ getAllocType(ip.alloc_type) $}">{$ getAllocType(ip.alloc_type) $}</td>
+                            <td aria-label="Node" data-ng-switch="ip.node_summary.node_type">
+                                <span data-ng-switch-when="0"><a href="#/machine/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                                <span data-ng-switch-when="1">{$ ip.node_summary.hostname $}</span>
+                                <span data-ng-switch-when="2"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                                <span data-ng-switch-when="3"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                                <span data-ng-switch-when="4"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                                <span data-ng-switch-default>{$ ip.node_summary.hostname $}</span>
+                            </td>
+                            <td aria-label="Interface" data-ng-switch="ip.node_summary.node_type">
+                                <span data-ng-switch-when="0">{$ ip.node_summary.via $}</span>
+                                <span data-ng-switch-when="1">{$ ip.node_summary.via $}</span>
+                                <span data-ng-switch-when="2">{$ ip.node_summary.via $}</span>
+                                <span data-ng-switch-when="3">{$ ip.node_summary.via $}</span>
+                                <span data-ng-switch-when="4">{$ ip.node_summary.via $}</span>
+                                <span data-ng-switch-default>Unknown</span>
+                            </td>
+                            <td aria-label="Usage" title="{$ getUsageForIP(ip) $}">{$ getUsageForIP(ip) $}</td>
+                            <td aria-label="Owner" title="{$ ip.user ? ip.user : 'MAAS' $}">{$ ip.user ? ip.user : "MAAS" $}</td>
+                            <td aria-label="Last seen" title="{$ ip.updated $}">
+                                <time>{$ ip.updated $}</time>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </section>
 </div>
