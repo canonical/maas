@@ -63,7 +63,8 @@ function MachinesManager(RegionConnection, NodesManager) {
             machine.interfaces.some(iface => iface.sriov_max_vf >= 1);
         }
         return supported ? "Supported" : "Not supported";
-      }
+      },
+      link_speeds: machine => machine.link_speeds.sort()
     };
 
     // Listen for notify events for the machine object.

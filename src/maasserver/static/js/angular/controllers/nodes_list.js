@@ -140,7 +140,8 @@ function NodesListController(
     "fabrics",
     "zone",
     "numa_nodes_count",
-    "sriov_support"
+    "sriov_support",
+    "link_speeds"
   ];
 
   // Pools tab.

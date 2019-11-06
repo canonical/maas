@@ -34,7 +34,7 @@
                   ng-click="toggleFilter(option.name, entry.name, currentPage)"
                   ng-class="{ 'is-active': isFilterActive(option.name, entry.name, currentPage) }"
                 >
-                  {{ entry.name }} ({{ entry.count }})
+                  {$ formatFilterLabel(entry, option) $}
                 </a>
               </li>
             </ul>

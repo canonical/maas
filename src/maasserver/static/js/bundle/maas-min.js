@@ -50094,6 +50094,9 @@ function MachinesManager(RegionConnection, NodesManager) {
         }
 
         return supported ? "Supported" : "Not supported";
+      },
+      link_speeds: function link_speeds(machine) {
+        return machine.link_speeds.sort();
       }
     }; // Listen for notify events for the machine object.
 
@@ -56611,7 +56614,7 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
   $scope.tabs.machines.failedTests = [];
   $scope.tabs.machines.loadingFailedTests = false;
   $scope.tabs.machines.suppressFailedTestsChecked = false;
-  $scope.tabs.machines.filterOrder = ["status", "owner", "pool", "architecture", "release", "tags", "storage_tags", "pod", "subnets", "fabrics", "zone", "numa_nodes_count", "sriov_support"]; // Pools tab.
+  $scope.tabs.machines.filterOrder = ["status", "owner", "pool", "architecture", "release", "tags", "storage_tags", "pod", "subnets", "fabrics", "zone", "numa_nodes_count", "sriov_support", "link_speeds"]; // Pools tab.
 
   $scope.tabs.pools = {}; // The Pools tab is actually a sub tab of Machines.
 
@@ -60541,10 +60544,26 @@ nodesListFilter.$inject = ["$document"];
  *
  */
 // Map of names displayed in the UI for each metadata option
-var displayNames = new Map([["architecture", "Architecture"], ["fabric", "Fabric"], ["fabrics", "Fabric"], ["numa_nodes_count", "NUMA nodes"], ["owner", "Owner"], ["pod", "KVM"], ["pool", "Resource pool"], ["rack", "Rack"], ["release", "OS/Release"], ["spaces", "Space"], ["sriov_support", "SR-IOV support"], ["status", "Status"], ["storage_tags", "Storage tags"], ["subnet", "Subnet"], ["subnets", "Subnet"], ["tags", "Tags"], ["vlan", "VLAN"], ["zone", "Zone"]]); // Map of metadata names that use a different name for filtering
+var displayNames = new Map([["architecture", "Architecture"], ["fabric", "Fabric"], ["fabrics", "Fabric"], ["numa_nodes_count", "NUMA nodes"], ["owner", "Owner"], ["pod", "KVM"], ["pool", "Resource pool"], ["rack", "Rack"], ["release", "OS/Release"], ["spaces", "Space"], ["sriov_support", "SR-IOV support"], ["status", "Status"], ["storage_tags", "Storage tags"], ["subnet", "Subnet"], ["subnets", "Subnet"], ["tags", "Tags"], ["vlan", "VLAN"], ["zone", "Zone"], ["link_speeds", "Link speed"]]); // Map of metadata names that use a different name for filtering
 
 var metadataNames = new Map([["fabric", "fabric_name"], ["rack", "observer_hostname"], ["subnet", "subnet_cidr"]]);
+
+function formatSpeedUnits(speedInMbytes) {
+  var megabytesInGigabyte = 1000;
+  var gigabytesInTerabyte = 1000;
+
+  if (speedInMbytes >= megabytesInGigabyte && speedInMbytes < megabytesInGigabyte * gigabytesInTerabyte) {
+    return "".concat(Math.round(speedInMbytes / megabytesInGigabyte), " Gbps");
+  }
+
+  if (speedInMbytes >= megabytesInGigabyte * gigabytesInTerabyte) {
+    return "".concat(Math.round(speedInMbytes / megabytesInGigabyte / gigabytesInTerabyte), " Tbps");
+  }
+
+  return "".concat(speedInMbytes, " Mbps");
+}
 /* @ngInject */
+
 
 function nodesListFilter($document) {
   return {
@@ -60569,6 +60588,14 @@ function nodesListFilter($document) {
         scope.$apply(function () {
           return scope.openFilter = false;
         });
+      };
+
+      scope.formatFilterLabel = function (entry, option) {
+        if (option.name === "link_speeds") {
+          return "".concat(formatSpeedUnits(entry.name), " (").concat(entry.count, ")");
+        }
+
+        return "".concat(entry.name, " (").concat(entry.count, ")");
       };
 
       $document.on("click", scope.clickHandler);

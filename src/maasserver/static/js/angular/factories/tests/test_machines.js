@@ -51,7 +51,8 @@ describe("MachinesManager", function() {
       "storage_tags",
       "release",
       "numa_nodes_count",
-      "sriov_support"
+      "sriov_support",
+      "link_speeds"
     ]);
   });
 
