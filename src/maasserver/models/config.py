@@ -53,6 +53,7 @@ def get_default_config():
         "default_min_hwe_kernel": "",
         "default_storage_layout": "flat",
         # Network section configuration.
+        "maas_url": "http://localhost:5240/MAAS",
         "maas_name": gethostname(),
         "default_osystem": DEFAULT_OS.name,
         "default_distro_series": DEFAULT_OS.get_default_release(),

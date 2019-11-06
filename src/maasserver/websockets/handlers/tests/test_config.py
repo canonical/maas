@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.config`"""
@@ -132,6 +132,24 @@ class TestConfigHandler(MAASServerTestCase):
             HandlerDoesNotExistError,
             handler.update,
             {"name": "uuid", "value": "uuid"},
+        )
+
+    def test_update_cannot_update_rpc_shared_secret(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.update,
+            {"name": "rpc_shared_secret", "value": "rpc_shared_secret"},
+        )
+
+    def test_update_cannot_update_maas_url(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.update,
+            {"name": "maas_url", "value": "maas_url"},
         )
 
     def test_update_handles_bad_value(self):

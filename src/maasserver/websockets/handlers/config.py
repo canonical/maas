@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The config handler for the WebSocket connection."""
@@ -8,6 +8,7 @@ __all__ = ["ConfigHandler"]
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
+from maasserver.config import RegionConfiguration
 from maasserver.enum import ENDPOINT
 from maasserver.forms.settings import CONFIG_ITEMS as FORM_CONFIG_ITEMS
 from maasserver.forms.settings import get_config_field, get_config_form
@@ -21,7 +22,10 @@ from maasserver.websockets.base import (
 )
 
 CONFIG_ITEMS = dict(FORM_CONFIG_ITEMS)
-CONFIG_ITEMS.update({"uuid": None})
+for name in ("uuid", "rpc_shared_secret"):
+    CONFIG_ITEMS[name] = None
+with RegionConfiguration.open() as config:
+    CONFIG_ITEMS["maas_url"] = config.maas_url
 
 
 class ConfigHandler(Handler):

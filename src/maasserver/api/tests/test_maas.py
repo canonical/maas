@@ -50,6 +50,7 @@ FORBIDDEN_NAMES = {
     "external_auth_admin_group",
     "macaroon_private_key",
     "rbac_url",
+    "maas_url",
 }
 
 
