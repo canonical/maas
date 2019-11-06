@@ -973,6 +973,12 @@ class TestCustomNetworking(MAASTestCase):
         self.patch(maas_run_remote_scripts.sys.stdout, "write")
         self.patch(maas_run_remote_scripts.sys.stderr, "write")
         self.patch(maas_run_remote_scripts.time, "sleep")
+        # Mock out dbus so unit tests don't touch the running system.
+        # This causes _wait_for_networkd to return False but doesn't
+        # effect unit tests.
+        self.mock_systembus = self.patch(
+            maas_run_remote_scripts.dbus, "SystemBus"
+        )
 
     def test_enter_does_nothing_if_not_required(self):
         custom_networking = CustomNetworking(
@@ -1469,6 +1475,92 @@ class TestCustomNetworking(MAASTestCase):
                 ]
             ),
         )
+
+    def test_wait_for_networkd_makes_dbus_connection(self):
+        # Clear cache for test
+        maas_run_remote_scripts._dbus = None
+        maas_run_remote_scripts._systemd_interface = None
+        maas_run_remote_scripts.networkd_interface = None
+        maas_run_remote_scripts._networkd_properties_interface = None
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True
+        )
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        # Returns False as mock prevents connection to dbus
+        self.assertFalse(custom_networking._wait_for_networkd(1))
+        self.assertThat(self.mock_systembus, MockCalledOnce())
+        self.assertIsNotNone(maas_run_remote_scripts._dbus)
+        self.assertIsNotNone(maas_run_remote_scripts._systemd_interface)
+        self.assertIsNotNone(maas_run_remote_scripts._networkd_interface)
+        self.assertIsNotNone(
+            maas_run_remote_scripts._networkd_properties_interface
+        )
+
+    def test_wait_for_networkd_loads_from_cache(self):
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True
+        )
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        # Returns False as mock prevents connection to dbus
+        self.assertFalse(custom_networking._wait_for_networkd(1))
+        self.assertThat(self.mock_systembus, MockNotCalled())
+
+    def test_wait_for_networkd_restarts_networkd(self):
+        self.patch(maas_run_remote_scripts, "_dbus")
+        mock_systemd_interface = self.patch(
+            maas_run_remote_scripts, "_systemd_interface"
+        )
+        mock_networkd_interface = self.patch(
+            maas_run_remote_scripts, "_networkd_interface"
+        )
+        mock_networkd_properties_interface = self.patch(
+            maas_run_remote_scripts, "_networkd_properties_interface"
+        )
+        mock_networkd_properties_interface.Get.return_value = random.choice(
+            ["failed", "inactive", "deactivating"]
+        )
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True
+        )
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        custom_networking._wait_for_networkd(1)
+
+        self.assertThat(
+            mock_systemd_interface.ResetFailedUnit,
+            MockCalledOnceWith("systemd-networkd.service"),
+        )
+        self.assertThat(
+            mock_networkd_interface.Restart, MockCalledOnceWith("fail")
+        )
+
+    def test_wait_for_networkd_waits_for_networkd(self):
+        self.patch(maas_run_remote_scripts, "_dbus")
+        mock_systemd_interface = self.patch(
+            maas_run_remote_scripts, "_systemd_interface"
+        )
+        mock_networkd_interface = self.patch(
+            maas_run_remote_scripts, "_networkd_interface"
+        )
+        mock_networkd_properties_interface = self.patch(
+            maas_run_remote_scripts, "_networkd_properties_interface"
+        )
+        mock_networkd_properties_interface.Get.return_value = random.choice(
+            ["reloading", "activating"]
+        )
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True
+        )
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        custom_networking._wait_for_networkd(1)
+
+        self.assertThat(
+            mock_systemd_interface.ResetFailedUnit, MockNotCalled()
+        )
+        self.assertThat(mock_networkd_interface.Restart, MockNotCalled())
 
 
 class TestParseParameters(MAASTestCase):

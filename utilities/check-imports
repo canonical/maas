@@ -254,6 +254,7 @@ RegionControllerRule = Rule(
     Allow("convoy|convoy.**"),
     Allow("crochet|crochet.**"),
     Allow("curtin|curtin.**"),
+    Allow("dbus"),
     Allow("distro_info|distro_info.*"),
     Allow("django|django.**"),
     Allow("docutils.core"),

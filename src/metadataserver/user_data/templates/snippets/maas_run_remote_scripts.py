@@ -46,6 +46,7 @@ import time
 import traceback
 import zipfile
 
+import dbus
 import yaml
 
 try:
@@ -347,6 +348,13 @@ def install_dependencies(scripts, send_result=True):
     return True
 
 
+# Cache the dbus connection so its only opened once.
+_dbus = None
+_systemd_interface = None
+_networkd_interface = None
+_networkd_properties_interface = None
+
+
 class CustomNetworking:
     def __init__(self, scripts, config_dir, send_result=True):
         self.scripts = scripts
@@ -395,6 +403,63 @@ class CustomNetworking:
                     # this which may restore networking.
                     pass
 
+    def _wait_for_networkd(self, tries=10):
+        """Wait for networkd to come up after applying netplan."""
+        global _dbus
+        global _systemd_interface
+        global _networkd_interface
+        global _networkd_properties_interface
+        if tries == 0:
+            sys.stderr.write(
+                "WARNING: systemd-networkd did not come back up!\n"
+            )
+            return False
+        elif _dbus is None:
+            # Only open a dbus connection to systemd when its needed and keep
+            # it open till maas-run-remote-scripts completes.
+            _dbus = dbus.SystemBus()
+            systemd_proxy = _dbus.get_object(
+                "org.freedesktop.systemd1", "/org/freedesktop/systemd1"
+            )
+            _systemd_interface = dbus.Interface(
+                systemd_proxy, "org.freedesktop.systemd1.Manager"
+            )
+            networkd_path = _systemd_interface.LoadUnit(
+                "systemd-networkd.service"
+            )
+            networkd_proxy = _dbus.get_object(
+                "org.freedesktop.systemd1", networkd_path
+            )
+            _networkd_interface = dbus.Interface(
+                networkd_proxy, "org.freedesktop.systemd1.Unit"
+            )
+            _networkd_properties_interface = dbus.Interface(
+                networkd_proxy, "org.freedesktop.DBus.Properties"
+            )
+
+        state = _networkd_properties_interface.Get(
+            _networkd_interface.dbus_interface, "ActiveState"
+        )
+        if state == "active":
+            return True
+        # Start the service if it's failed.
+        if state in ["failed", "inactive", "deactivating"]:
+            # If the service has failed to come up to many times systemd will
+            # stop trying. This may happen when maas-run-remote-scripts is
+            # frequently resetting systemd-networkd via netplan. Reset the
+            # counter to ensure systemd-networkd is reset everytime netplan
+            # is applied.
+            _systemd_interface.ResetFailedUnit("systemd-networkd.service")
+            try:
+                # fail tells systemd to fail the call if systemd-networkd is
+                # already queued to be started.
+                _networkd_interface.Restart("fail")
+            except dbus.DBusException:
+                pass
+        # Give systemd-networkd some time to come up.
+        time.sleep(0.5)
+        return self._wait_for_networkd(tries - 1)
+
     def _apply_ephemeral_netplan(self):
         """Apply netplan config from ephemeral boot."""
         # If there is no backup_dir the ephemeral network configuration
@@ -410,6 +475,7 @@ class CustomNetworking:
         os.removedirs(self.backup_dir)
 
         self._bring_down_networking()
+
         try:
             check_call(["netplan", "apply", "--debug"], timeout=60)
         except TimeoutExpired:
@@ -418,6 +484,9 @@ class CustomNetworking:
         except CalledProcessError:
             sys.stderr.write("WARNING: netplan apply --debug failed!\n")
             sys.stderr.flush()
+
+        self._wait_for_networkd()
+
         if self.send_result:
             # Confirm we can still communicate with MAAS.
             signal_wrapper(
@@ -473,6 +542,8 @@ class CustomNetworking:
             lambda: self._apply_ephemeral_netplan(),
         ):
             raise OSError("netplan failed to apply!")
+
+        self._wait_for_networkd()
 
         # The new network configuration may change what devices are available.
         # Clear the cache and reload.
