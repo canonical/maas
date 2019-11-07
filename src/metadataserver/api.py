@@ -60,7 +60,10 @@ from maasserver.models import (
 from maasserver.models.event import Event
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import now
-from maasserver.node_status import NODE_TESTING_RESET_READY_TRANSITIONS
+from maasserver.node_status import (
+    FAILED_STATUSES,
+    NODE_TESTING_RESET_READY_TRANSITIONS,
+)
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
     get_curtin_userdata,
@@ -815,6 +818,15 @@ class VersionIndexHandler(MetadataViewHandler):
         if target_status in (None, node.status):
             # No status change.  Nothing to be done.
             return rc.ALL_OK
+        elif target_status in FAILED_STATUSES:
+            ScriptResult.objects.filter(
+                script_set__in=[
+                    node.current_commissioning_script_set,
+                    node.current_testing_script_set,
+                    node.current_installation_script_set,
+                ],
+                status__in=SCRIPT_STATUS_RUNNING_OR_PENDING,
+            ).update(status=SCRIPT_STATUS.ABORTED, updated=now())
 
         # Only machines can change their status. This is to allow controllers
         # to send refresh data without having their status changed to READY.

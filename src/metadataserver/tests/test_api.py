@@ -2931,6 +2931,12 @@ class TestTestingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_TESTING, reload_object(node).status
         )
         self.assertEqual(event.type.name, EVENT_TYPES.FAILED_TESTING)
+        self.assertEquals(
+            SCRIPT_STATUS.ABORTED, node.current_commissioning_script_set.status
+        )
+        self.assertEquals(
+            SCRIPT_STATUS.ABORTED, node.current_testing_script_set.status
+        )
 
     def test_signaling_testing_testing_transitions_to_testing(self):
         node = factory.make_Node(
