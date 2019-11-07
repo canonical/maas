@@ -86,7 +86,7 @@
                     <button class="p-button--base u-no-margin--bottom" data-ng-click="closeClearDiscoveriesPanel()">
                         Cancel
                     </button>
-                    <button class="p-button--negative u-no-margin--bottom" data-ng-click="removeAllDevices()" data-ng-if="!removingDevices">
+                    <button class="p-button--negative u-no-margin--bottom" data-ng-click="removeAllDevices(); sendAnalyticsEvent('Network discovery', 'Clear network discoveries', 'Clear network discoveries button')" data-ng-if="!removingDevices">
                         Clear all discoveries
                     </button>
                     <button class="p-button--negative u-no-margin--bottom" data-ng-if="removingDevices">

@@ -1,6 +1,9 @@
 <div class="p-card">
   <strong class="p-muted-heading u-sv1">
-    <a ng-click="openSection('network')">Network&nbsp;&rsaquo;</a>
+    <a
+      ng-click="openSection('network'); sendAnalyticsEvent('Machine details', 'Card heading click: Network', 'Machine summary tab')"
+      >Network&nbsp;&rsaquo;</a
+    >
   </strong>
   <div
     ng-class="{ 'u-sv-1': $index === groupedInterfaces.length - 1}"
@@ -13,7 +16,10 @@
       <li class="p-inline-list__item p-text--muted" ng-if="group.product">
         {$ group.product $}
       </li>
-      <li class="p-inline-list__item p-text--muted" ng-if="group.firmware_version">
+      <li
+        class="p-inline-list__item p-text--muted"
+        ng-if="group.firmware_version"
+      >
         {$ group.firmware_version $}
       </li>
     </ul>
@@ -26,14 +32,31 @@
           <th class="p-table__cell--mac" role="columnheader" title="MAC">
             MAC
           </th>
-          <th class="p-table__cell--link-speed" role="columnheader" title="Link speed">
+          <th
+            class="p-table__cell--link-speed"
+            role="columnheader"
+            title="Link speed"
+          >
             Link speed
           </th>
-          <th class="p-table__cell--fabric" role="columnheader" style="overflow: visible;"title="Fabric">
+          <th
+            class="p-table__cell--fabric"
+            role="columnheader"
+            style="overflow: visible;"
+            title="Fabric"
+          >
             <span>Fabric</span>
             <span class="p-tooltip--top-right">
-              <i class="p-icon--help" style="height:1rem; width:1rem; position:absolute; left:.25rem; top: -2px;">Help: </i>
-              <span class="p-tooltip__message" style="text-transform: none; right:-2rem">Untagged traffic only.</span>
+              <i
+                class="p-icon--help"
+                style="height:1rem; width:1rem; position:absolute; left:.25rem; top: -2px;"
+                >Help:
+              </i>
+              <span
+                class="p-tooltip__message"
+                style="text-transform: none; right:-2rem"
+                >Untagged traffic only.</span
+              >
             </span>
           </th>
           <th class="p-table__cell--dhcp" role="columnheader" title="DHCP">
@@ -45,15 +68,23 @@
         </tr>
       </thead>
       <tbody>
-        <tr class="p-table__row" ng-repeat="iface in group.interfaces" role="row">
+        <tr
+          class="p-table__row"
+          ng-repeat="iface in group.interfaces"
+          role="row"
+        >
           <td class="p-table__cell--name" title="{$ iface.name $}">
             {$ iface.name $}
           </td>
           <td class="p-table__cell--mac" title="{$ iface.mac_address $}">
             {$ iface.mac_address $}
           </td>
-          <td class="p-table__cell--link-speed" title="{$ iface.link_speed >= 1000 ? iface.link_speed / 1000 + ' Gbps' : iface.link_speed + ' Mbps' $}">
-            {$ iface.link_speed >= 1000 ? iface.link_speed / 1000 + " Gbps" : iface.link_speed + " Mbps" $}
+          <td
+            class="p-table__cell--link-speed"
+            title="{$ iface.link_speed >= 1000 ? iface.link_speed / 1000 + ' Gbps' : iface.link_speed + ' Mbps' $}"
+          >
+            {$ iface.link_speed >= 1000 ? iface.link_speed / 1000 + " Gbps" :
+            iface.link_speed + " Mbps" $}
           </td>
           <td class="p-table__cell--fabric" title="{$ getFabricName(iface) $}">
             {$ getFabricName(iface) $}
@@ -61,28 +92,57 @@
           <td class="p-table__cell--dhcp" title="{$ getDHCPStatus(iface) $}">
             {$ getDHCPStatus(iface) $}
           </td>
-          <td class="p-table__cell--sriov" title="{$ !iface.sriov_max_vf ? 'No' : 'Yes' $}">
+          <td
+            class="p-table__cell--sriov"
+            title="{$ !iface.sriov_max_vf ? 'No' : 'Yes' $}"
+          >
             {$ !iface.sriov_max_vf ? 'No' : 'Yes' $}
           </td>
         </tr>
       </tbody>
     </table>
   </div>
-  <p class="u-sv-1">Information about tagged traffic can be seen in the <a ng-click="openSection('network')">Network tab</a>.</p>
+  <p class="u-sv-1">
+    Information about tagged traffic can be seen in the
+    <a ng-click="openSection('network')">Network tab</a>.
+  </p>
   <ul class="p-inline-list u-no-margin--bottom">
-    <li class="p-inline-list__item--compact" ng-if="node.interface_test_status.passed > 0">
-      <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.interface_test_status.passed $}</a>
+    <li
+      class="p-inline-list__item--compact"
+      ng-if="node.interface_test_status.passed > 0"
+    >
+      <a ng-click="openSection('testing')"
+        ><i class="p-icon--success"></i>{$ node.interface_test_status.passed
+        $}</a
+      >
     </li>
-    <li class="p-inline-list__item--compact" ng-if="node.interface_test_status.pending + node.interface_test_status.running > 0">
-      <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.interface_test_status.pending + node.interface_test_status.running $}</a>
+    <li
+      class="p-inline-list__item--compact"
+      ng-if="node.interface_test_status.pending + node.interface_test_status.running > 0"
+    >
+      <a ng-click="openSection('testing')"
+        ><i class="p-icon--pending"></i>{$ node.interface_test_status.pending +
+        node.interface_test_status.running $}</a
+      >
     </li>
-    <li class="p-inline-list__item--compact" ng-if="node.interface_test_status.failed > 0">
-      <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.interface_test_status.failed $}</a>
+    <li
+      class="p-inline-list__item--compact"
+      ng-if="node.interface_test_status.failed > 0"
+    >
+      <a ng-click="openSection('testing')"
+        ><i class="p-icon--error"></i>{$ node.interface_test_status.failed $}</a
+      >
     </li>
-    <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'interface')">
+    <li
+      class="p-inline-list__item--compact"
+      ng-if="hasTestsRun(node, 'interface')"
+    >
       <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
     </li>
-    <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'interface')">
+    <li
+      class="p-inline-list__item--compact"
+      ng-if="!hasTestsRun(node, 'interface')"
+    >
       <span class="p-tooltip--top-left">
         <button
           class="p-button--link"
@@ -91,7 +151,9 @@
         >
           Test network...
         </button>
-        <span class="p-tooltip__message" ng-if="!node.actions.includes('test')">Machine cannot run tests at this time.</span>
+        <span class="p-tooltip__message" ng-if="!node.actions.includes('test')"
+          >Machine cannot run tests at this time.</span
+        >
       </span>
     </li>
   </ul>

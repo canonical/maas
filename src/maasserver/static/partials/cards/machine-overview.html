@@ -38,22 +38,22 @@
     <div>
       <ul class="p-inline-list u-no-margin--bottom">
         <li class="p-inline-list__item--compact" ng-if="node.cpu_test_status.passed > 0">
-          <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.cpu_test_status.passed $}</a>
+          <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'CPU tests passed link', 'Machine summary tab')"><i class="p-icon--success"></i>{$ node.cpu_test_status.passed $}</a>
         </li>
         <li class="p-inline-list__item--compact" ng-if="node.cpu_test_status.pending + node.cpu_test_status.running > 0">
-          <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.cpu_test_status.pending + node.cpu_test_status.running $}</a>
+          <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'CPU tests running link', 'Machine summary tab')"><i class="p-icon--pending"></i>{$ node.cpu_test_status.pending + node.cpu_test_status.running $}</a>
         </li>
         <li class="p-inline-list__item--compact" ng-if="node.cpu_test_status.failed > 0">
-          <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.cpu_test_status.failed $}</a>
+          <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'CPU tests failed', 'Machine summary tab')"><i class="p-icon--error"></i>{$ node.cpu_test_status.failed $}</a>
         </li>
         <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'cpu')">
-          <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
+          <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'View CPU test results', 'Machine summary tab')">View&nbsp;results&nbsp;&rsaquo;</a>
         </li>
         <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'cpu')">
           <span class="p-tooltip--top-left">
             <button
               class="p-button--link"
-              ng-click="openTestDropdown('cpu')"
+              ng-click="openTestDropdown('cpu'); sendAnalyticsEvent('Machine details', 'Test CPU', 'Machine summary tab')"
               ng-disabled="!node.actions.includes('test')"
             >
               Test CPU...
@@ -73,22 +73,22 @@
   <div class="memory-tests u-flex-bottom">
     <ul class="p-inline-list u-no-margin--bottom">
       <li class="p-inline-list__item--compact" ng-if="node.memory_test_status.passed > 0">
-        <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.memory_test_status.passed $}</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'Memory tests passed link', 'Machine summary tab')"><i class="p-icon--success"></i>{$ node.memory_test_status.passed $}</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="node.memory_test_status.pending + node.memory_test_status.running > 0">
-        <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.memory_test_status.pending + node.memory_test_status.running $}</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'Memory tests running link', 'Machine summary tab')"><i class="p-icon--pending"></i>{$ node.memory_test_status.pending + node.memory_test_status.running $}</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="node.memory_test_status.failed > 0">
-        <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.memory_test_status.failed $}</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'Memory tests failed link', 'Machine summary tab')"><i class="p-icon--error"></i>{$ node.memory_test_status.failed $}</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'memory')">
-        <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'View memory test results'), 'Machine summary tab'">View&nbsp;results&nbsp;&rsaquo;</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'memory')">
         <span class="p-tooltip--top-left">
           <button
             class="p-button--link"
-            ng-click="openTestDropdown('memory')"
+            ng-click="openTestDropdown('memory'); sendAnalyticsEvent('Machine details', 'Test memory', 'Machine summary tab')"
             ng-disabled="!node.actions.includes('test')"
           >
             Test memory...
@@ -101,7 +101,7 @@
 
   <div class="storage">
     <strong class="p-muted-heading u-sv1">
-      <a ng-click="openSection('storage')">Storage&nbsp;&rsaquo;</a>
+      <a ng-click="openSection('storage'); sendAnalyticsEvent('Machine details', 'Card heading click: Storage', 'Machine summary tab')">Storage&nbsp;&rsaquo;</a>
     </strong>
     <h4>
       <span>{$ node.storage ? node.storage + " GB" : "Unknown" $}</span>
@@ -116,22 +116,22 @@
   <div class="storage-tests u-flex-bottom">
     <ul class="p-inline-list u-no-margin--bottom">
       <li class="p-inline-list__item--compact" ng-if="node.storage_test_status.passed > 0">
-        <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.storage_test_status.passed $}</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'Storage tests passed link', 'Machine summary tab')"><i class="p-icon--success"></i>{$ node.storage_test_status.passed $}</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="node.storage_test_status.pending + node.storage_test_status.running > 0">
-        <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.storage_test_status.pending + node.storage_test_status.running $}</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'Storage tests running link', 'Machine summary tab')"><i class="p-icon--pending"></i>{$ node.storage_test_status.pending + node.storage_test_status.running $}</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="node.storage_test_status.failed > 0">
-        <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.storage_test_status.failed $}</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'Storage tests failed link', 'Machine summary tab')"><i class="p-icon--error"></i>{$ node.storage_test_status.failed $}</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'storage')">
-        <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
+        <a ng-click="openSection('testing'); sendAnalyticsEvent('Machine details', 'View storage test results', 'Machine summary tab')">View&nbsp;results&nbsp;&rsaquo;</a>
       </li>
       <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'storage')">
         <span class="p-tooltip--top-left">
           <button
             class="p-button--link"
-            ng-click="openTestDropdown('storage')"
+            ng-click="openTestDropdown('storage'); sendAnalyticsEvent('Machine details', 'Test storage', 'Machine summary tab')"
             ng-disabled="!node.actions.includes('test')"
           >
             Test storage...

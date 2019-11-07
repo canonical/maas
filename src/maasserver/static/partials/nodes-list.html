@@ -806,7 +806,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             </div>
         </div>
         <div class="col-small-4 col-medium-3 col-3">
-            <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'">
+            <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'" data-ng-change="sendAnalyticsEvent('Machines list', 'Group by: ' + tabs.machines.groupByLabel), 'Machines table'">
                 <option value="status" selected="selected">Group by status</option>
                 <option value="owner">Group by owner</option>
                 <option value="none">No grouping</option>

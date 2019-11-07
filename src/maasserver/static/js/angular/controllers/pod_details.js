@@ -11,6 +11,7 @@ function PodDetailsController(
   $location,
   $routeParams,
   $filter,
+  $window,
   PodsManager,
   GeneralManager,
   UsersManager,
@@ -102,6 +103,8 @@ function PodDetailsController(
     editing: false,
     value: ""
   };
+
+  $scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
 
   // Return true if at least a rack controller is connected to the
   // region controller.

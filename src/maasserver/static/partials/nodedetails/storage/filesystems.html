@@ -35,9 +35,9 @@
                         <i class="p-icon--contextual-menu">Actions</i>
                     </button>
                     <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
-                        <button class="p-contextual-menu__link" aria-label="Unmount" data-ng-click="toggleMenu(); quickFilesystemUnmount(filesystem)"
+                        <button class="p-contextual-menu__link" aria-label="Unmount" data-ng-click="toggleMenu(); quickFilesystemUnmount(filesystem); sendAnalyticsEvent('Machine details', 'Unmount filesystem', 'Filesystems table')"
                             data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype) && filesystemMode !== 'unmount'">Unmount</button>
-                        <button class="p-contextual-menu__link" aria-label="Remove" data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem)"
+                        <button class="p-contextual-menu__link" aria-label="Remove" data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem); sendAnalyticsEvent('Machine details', 'Remove filesystem', 'Filesystems table')"
                             data-ng-show="!isAllStorageDisabled() && canDeleteFilesystem(filesystem) && filesystemMode !== 'delete'">Remove&hellip;</button>
                     </div>
                 </div>
@@ -110,7 +110,7 @@
     </tbody>
 </table>
 <button class="p-button--neutral p-tooltip--top-left" data-ng-disabled="dropdown !== null" data-ng-class="{ 'p-tooltip': dropdown === null}"
-    data-ng-if="canEdit()" data-ng-click="addSpecialFilesystem()">
+    data-ng-if="canEdit()" data-ng-click="addSpecialFilesystem(); sendAnalyticsEvent('Machine details', 'Add special filesystem', 'Filesystems')">
     Add special filesystem
     <span class="p-tooltip__message" role="tooltip">Create a tmpfs or ramfs filesystem</span>
 </button>

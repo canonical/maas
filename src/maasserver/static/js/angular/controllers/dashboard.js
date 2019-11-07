@@ -9,6 +9,8 @@ function DashboardController(
   $scope,
   $rootScope,
   $location,
+  $window,
+  $filter,
   DiscoveriesManager,
   DomainsManager,
   MachinesManager,
@@ -57,6 +59,7 @@ function DashboardController(
   $scope.filters = SearchService.getEmptyFilter();
   $scope.metadata = {};
   $scope.tempNotifications = [];
+  $scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
 
   $scope.changeTab = tabName => {
     $scope.currentTab = tabName;
@@ -381,6 +384,14 @@ function DashboardController(
     $scope.discoveredDevices.forEach(function(device) {
       var date = new Date(device.last_seen);
       device.last_seen_timestamp = date.getTime();
+    });
+
+    $scope.$watch("networkDiscovery.value", () => {
+      $scope.sendAnalyticsEvent(
+        "Network discovery",
+        `Toggle network discovery to ${$scope.networkDiscovery.value}`,
+        "Network discovery toggle switch"
+      );
     });
 
     $scope.$watchCollection("discoveredDevices", function() {

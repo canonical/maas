@@ -304,7 +304,7 @@
                                 <tr class="p-table__row" data-ng-repeat="storage in compose.obj.storage">
                                     <td>
                                         <div data-ng-if="!storage.boot">
-                                            <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeRemoveDisk(storage)">
+                                            <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeRemoveDisk(storage); sendAnalyticsEvent('KVM details', 'Remove storage', 'KVM compose')">
                                                 <i class="p-icon--close"></i>
                                                 <span class="u-off-screen">Remove</span>
                                             </button>
@@ -315,6 +315,7 @@
                                             <input type="number" min="0" class="u-no-margin--bottom" placeholder="Enter capacity" ng-keypress="numberOnly($event)"
                                                 data-ng-model="storage.size"
                                                 data-ng-change="updateRequests(storage)"
+                                                data-ng-click="sendAnalyticsEvent('KVM details', 'Change capacity value: ' + storage.size + ' GB', 'KVM compose')"
                                                 ng-class="{'in-warning': !storage.size || storage.size < 8}">
                                             <span class="p-tooltip--top-left u-float--right"
                                                 style="position: absolute; top: 8px; right: 8px;"
@@ -350,7 +351,7 @@
                                 </tr>
                                 <tr class="p-table__row">
                                     <td colspan="5">
-                                        <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeAddStorage()">
+                                        <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeAddStorage(); sendAnalyticsEvent('KVM details', 'Add storage', 'KVM compose')">
                                             <i class="p-icon--plus"></i>
                                             <span class="u-off-screen">Add another device</span>
                                         </button>
@@ -367,7 +368,7 @@
                         <p maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
                         <div class="u-align--right u-no-margin--top" maas-obj-hide-saving>
                             <button class="p-button--base" type="button" data-ng-click="cancelCompose()">Cancel</button>
-                            <button class="p-button--positive u-no-margin--top" maas-obj-save ng-disabled="!validateMachineCompose()">Compose machine</button>
+                            <button class="p-button--positive u-no-margin--top" maas-obj-save ng-disabled="!validateMachineCompose()" data-ng-click="sendAnalyticsEvent('KVM details', 'Submit form', 'KVM compose')">Compose machine</button>
                         </div>
                     </div>
                 </div>

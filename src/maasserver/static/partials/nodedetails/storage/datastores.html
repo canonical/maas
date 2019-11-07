@@ -33,7 +33,7 @@
             </button>
             <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
               <button class="p-contextual-menu__link" aria-label="Remove"
-                data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem)"
+                data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem); sendAnalyticsEvent('Machine details', 'Remove filesystem', 'Datastores table')"
                 data-ng-show="!isAllStorageDisabled() && filesystemMode !== 'delete'">Remove&hellip;</button>
             </div>
           </div>

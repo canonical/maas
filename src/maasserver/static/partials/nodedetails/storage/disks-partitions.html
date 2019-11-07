@@ -148,15 +148,15 @@
                                 <button class="p-contextual-menu__link"
                                     aria-label="Partition"
                                     data-ng-show="canAddPartition(item) && availableMode != 'partition'"
-                                    data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</button>
+                                    data-ng-click="toggleMenu(); availableQuickPartition(item); sendAnalyticsEvent('Machine details', 'Add partition', 'Disks and partitions table')">Add partition</button>
                                 <button class="p-contextual-menu__link"
                                     aria-label="Edit"
                                     data-ng-show="canEdit(item)"
-                                    data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit {$ getDeviceTypeLower(item) $}</button>
+                                    data-ng-click="toggleMenu(); availableQuickEdit(item); sendAnalyticsEvent('Machine details', 'Edit ' + getDeviceTypeLower(item), 'Disks and partitions table')">Edit {$ getDeviceTypeLower(item) $}</button>
                                 <button class="p-contextual-menu__link"
                                     aria-label="Remove"
                                     data-ng-show="canDelete(item)"
-                                    data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</button>
+                                    data-ng-click="toggleMenu(); availableQuickDelete(item); sendAnalyticsEvent('Machine details', 'Remove disk', 'Disks and partitions table')">Remove disk&hellip;</button>
                             </div>
                         </div>
                     </div>
@@ -758,7 +758,7 @@
                                 data-ng-click="availableCancel()">Cancel</button>
                             <button class="p-button--positive"
                                 data-ng-disabled="!createRAIDCanSave()"
-                                data-ng-click="availableConfirmCreateRAID()">Create RAID</button>
+                                data-ng-click="availableConfirmCreateRAID(); sendAnalyticsEvent('Machine details', 'Create RAID', 'Disks and partitions')">Create RAID</button>
                         </div>
                     </div>
                 </td>
@@ -836,7 +836,7 @@
                                 data-ng-click="availableCancel()">Cancel</button>
                             <button class="p-button--positive"
                                 data-ng-disabled="!createVolumeGroupCanSave()"
-                                data-ng-click="availableConfirmCreateVolumeGroup()">Create volume group</button>
+                                data-ng-click="availableConfirmCreateVolumeGroup(); sendAnalyticsEvent('Machine details', 'Create volume group', 'Disks and partitions')">Create volume group</button>
                         </div>
                     </div>
                 </td>
@@ -987,7 +987,7 @@
             <button class="p-button--neutral"
                 data-ng-disabled="!canCreateCacheSet() || storageLayout.id === 'vmfs6'"
                 data-ng-hide="isAllStorageDisabled() || !canEdit()"
-                data-ng-click="createCacheSet()">
+                data-ng-click="createCacheSet(); sendAnalyticsEvent('Machine details', 'Create cache set', 'Disks and partitions')">
                 Create cache Set
             </button>
             <span data-ng-if="!canCreateCacheSet()">
@@ -1000,7 +1000,7 @@
                 data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
                 data-ng-disabled="!canCreateBcache() || storageLayout.id === 'vmfs6'"
                 data-ng-hide="isAllStorageDisabled() || !canEdit()"
-                data-ng-click="createBcache()">
+                data-ng-click="createBcache(); sendAnalyticsEvent('Machine details', 'Create bcache', 'Disks and partitions')">
                 Create bcache
             </button>
             <span data-ng-if="!canCreateBcache()">
@@ -1010,7 +1010,7 @@
         </span>
         <span class="p-tooltip--top-center">
             <button class="p-button--neutral"
-                data-ng-click="openNewDatastorePanel()"
+                data-ng-click="openNewDatastorePanel(); sendAnalyticsEvent('Machine details', 'Create new datastore', 'Disks and partitions')"
                 data-ng-hide="isAllStorageDisabled() || !canEdit()"
                 data-ng-disabled="!canPerformActionOnDatastoreSet()">
                 Create new datastore
@@ -1175,5 +1175,5 @@
 </div>
 
 
-<p>Learn more about deploying <a href="https://docs.maas.io/en/installconfig-images" class="p-link--external" target="_blank">Windows</a></p>
-<p>Change the default layout in <a href="/MAAS/settings/storage/">Settings &rsaquo; Storage</a></p>
+<p>Learn more about deploying <a href="https://docs.maas.io/en/installconfig-images" class="p-link--external" target="_blank" data-ng-click="sendAnalyticsEvent('Machine details', 'Link to Windows docs', 'Disks and partitions')">Windows</a></p>
+<p>Change the default layout in <a href="/MAAS/settings/storage/" data-ng-click="sendAnalyticsEvent('Machine details', 'Link to storage settings', 'Disks and partitions')">Settings &rsaquo; Storage</a></p>

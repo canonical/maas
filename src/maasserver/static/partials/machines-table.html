@@ -88,7 +88,7 @@
                 </span>
             </th>
             <th class="p-table__col--power" role="columnheader">
-                <button class="p-table__group-toggle p-button--base p-button--narrow" data-ng-click="toggleOpenGroup(group.label)">
+                <button class="p-table__group-toggle p-button--base p-button--narrow" data-ng-click="toggleOpenGroup(group.label); sendAnalyticsEvent('Machines list', 'Expand/collapse machine group: ' + closedGroups.includes(group.label) ? 'collapse' : 'expand', 'Machines table')">
                     <i data-ng-class="{
                         'p-icon--minus': !closedGroups.includes(group.label),
                         'p-icon--plus': closedGroups.includes(group.label)
@@ -190,20 +190,20 @@
                         <div class="p-table-menu__title--icon">Take action:</div>
                         <button
                             class="p-table-menu__power-on"
-                            data-ng-click="changePowerState(node, 'on')"
+                            data-ng-click="changePowerState(node, 'on'); sendAnalyticsEvent('Machines list', 'Change power state: on', 'Machines table')"
                             data-ng-if="node.actions.indexOf('on') !== -1 && node.power_state !== 'on'"
                         >
                             Turn on
                         </button>
                         <button
                             class="p-table-menu__power-off"
-                            data-ng-click="changePowerState(node, 'off')"
+                            data-ng-click="changePowerState(node, 'off'); sendAnalyticsEvent('Machines list', 'Change power state: off', 'Machines table')"
                             data-ng-if="node.actions.indexOf('off') !== -1 && node.power_state !== 'off'"
                         >
                             Turn off
                         </button>
                         <button
-                            data-ng-click="changePowerState(node, 'check')"
+                            data-ng-click="changePowerState(node, 'check'); sendAnalyticsEvent('Machines list', 'Change power state: check', 'Machines table')"
                             class="p-table-menu__check-power"
                             data-ng-if="node.power_state !== 'unknown'"
                         >
@@ -256,7 +256,7 @@
                         <div class="p-contextual-menu__group" data-ng-if="getStatusActions(node).length">
                             <button
                                 data-ng-repeat="action in getStatusActions(node)"
-                                data-ng-click="performAction(node, action)"
+                                data-ng-click="performAction(node, action); sendAnalyticsEvent('Machines list', 'In-table action: ' + action, 'Machines table')"
                                 class="p-table-menu__link"
                             >
                                 {$ getActionTitle(action) $}
@@ -300,14 +300,14 @@
                         <div class="p-table-menu__title">Take action:</div>
                         <button
                             data-ng-if="node.actions.indexOf('acquire') !== -1"
-                            data-ng-click="performAction(node, 'acquire')"
+                            data-ng-click="performAction(node, 'acquire'); sendAnalyticsEvent('Machines list', 'Change status to acquire', 'Machines table')"
                             class="p-table-menu__link"
                         >
                             {$ getActionTitle('acquire') $}
                         </button>
                         <button
                             data-ng-if="node.actions.indexOf('release') !== -1"
-                            data-ng-click="performAction(node, 'release')"
+                            data-ng-click="performAction(node, 'release'); sendAnalyticsEvent('Machines list', 'Change status to release', 'Machines table')"
                             class="p-table-menu__link"
                         >
                             {$ getActionTitle('release') $}
@@ -345,7 +345,7 @@
                         <button
                             data-ng-repeat="pool in pools | orderBy:'name'"
                             data-ng-if="node.pool.id !== pool.id && pools.length > 1 && node.actions.indexOf('set-pool') !== -1"
-                            data-ng-click="performAction(node, 'set-pool', { pool_id: pool.id })"
+                            data-ng-click="performAction(node, 'set-pool', { pool_id: pool.id }); sendAnalyticsEvent('Machines list', 'Set pool', 'Machines table')"
                             class="p-table-menu__link"
                         >
                             {$ pool.name $}
@@ -391,7 +391,7 @@
                         <button
                             data-ng-repeat="zone in zones | orderBy:'name'"
                             data-ng-if="node.zone.id !== zone.id && zones.length > 1 && node.actions.indexOf('set-zone') !== -1"
-                            data-ng-click="performAction(node, 'set-zone', { zone_id: zone.id })"
+                            data-ng-click="performAction(node, 'set-zone', { zone_id: zone.id }); sendAnalyticsEvent('Machines list', 'Set zone', 'Machines table')"
                             class="p-table-menu__link"
                         >
                             {$ zone.name $}
@@ -472,7 +472,7 @@
         <tr data-ng-if="group.machines && group.machines.length > getLimit(group)">
             <td colspan="12">
                 <div class="p-table__group-label" style="padding: .25rem 0 .3rem">
-                    <a class="p-muted-text" data-ng-click="loadAll(group)">
+                    <a class="p-muted-text" data-ng-click="loadAll(group); sendAnalyticsEvent('Machines list', 'Show machines: ' + group.label, 'Machines table')">
                         <span>Show all</span>
                         <span data-ng-if="group.label === 'none'">machines&hellip;</span>
                         <span data-ng-if="group.label === 'No owner'">unowned&hellip;</span>

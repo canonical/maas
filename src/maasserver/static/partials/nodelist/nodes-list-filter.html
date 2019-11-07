@@ -31,7 +31,7 @@
                 <button
                   class="p-button--base"
                   ng-disabled="isDisabled"
-                  ng-click="toggleFilter(option.name, entry.name, currentPage)"
+                  ng-click="toggleFilter(option.name, entry.name, currentPage); sendAnalyticsEvent('Machines list', option.name + ': ' + entry.name, 'Machines list filter')"
                   ng-class="{ 'is-active': isFilterActive(option.name, entry.name, currentPage) }"
                 >
                   {$ formatFilterLabel(entry, option) $}

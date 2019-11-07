@@ -57,6 +57,7 @@ import { filterBySpace, filterByNullSpace } from "./filters/by_space";
 import { filterBySubnet, filterBySubnetOrVlan } from "./filters/by_subnet";
 import { filterByVLAN, filterControllersByVLAN } from "./filters/by_vlan";
 import { formatBytes, convertGigabyteToBytes } from "./filters/format_bytes";
+import { sendAnalyticsEvent } from "./filters/send_analytics_event";
 import formatStorageType from "./filters/format_storage_type";
 import nodesFilter from "./filters/nodes";
 import orderByDate from "./filters/order_by_date";
@@ -544,6 +545,7 @@ angular
   .filter("filterByVLAN", filterByVLAN)
   .filter("filterControllersByVLAN", filterControllersByVLAN)
   .filter("formatBytes", formatBytes)
+  .filter("sendAnalyticsEvent", sendAnalyticsEvent)
   .filter("convertGigabyteToBytes", convertGigabyteToBytes)
   .filter("formatStorageType", formatStorageType)
   .filter("nodesFilter", nodesFilter)

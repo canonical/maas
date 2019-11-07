@@ -37073,217 +37073,219 @@ var _by_vlan = __webpack_require__(524);
 
 var _format_bytes = __webpack_require__(525);
 
-var _format_storage_type = _interopRequireDefault(__webpack_require__(526));
+var _send_analytics_event = __webpack_require__(526);
 
-var _nodes = _interopRequireDefault(__webpack_require__(527));
+var _format_storage_type = _interopRequireDefault(__webpack_require__(527));
 
-var _order_by_date = _interopRequireDefault(__webpack_require__(528));
+var _nodes = _interopRequireDefault(__webpack_require__(528));
 
-var _range = _interopRequireDefault(__webpack_require__(529));
+var _order_by_date = _interopRequireDefault(__webpack_require__(529));
 
-var _remove_default_vlan = _interopRequireDefault(__webpack_require__(530));
+var _range = _interopRequireDefault(__webpack_require__(530));
 
-var _browser = _interopRequireDefault(__webpack_require__(531));
+var _remove_default_vlan = _interopRequireDefault(__webpack_require__(531));
 
-var _controller_image_status = __webpack_require__(532);
+var _browser = _interopRequireDefault(__webpack_require__(532));
 
-var _converter = _interopRequireDefault(__webpack_require__(533));
+var _controller_image_status = __webpack_require__(533);
 
-var _error = _interopRequireDefault(__webpack_require__(534));
+var _converter = _interopRequireDefault(__webpack_require__(534));
 
-var _json = _interopRequireDefault(__webpack_require__(535));
+var _error = _interopRequireDefault(__webpack_require__(535));
 
-var _log = _interopRequireDefault(__webpack_require__(536));
+var _json = _interopRequireDefault(__webpack_require__(536));
 
-var _manager = _interopRequireDefault(__webpack_require__(537));
+var _log = _interopRequireDefault(__webpack_require__(537));
 
-var _managerhelper = _interopRequireDefault(__webpack_require__(538));
+var _manager = _interopRequireDefault(__webpack_require__(538));
 
-var _pollingmanager = _interopRequireDefault(__webpack_require__(539));
+var _managerhelper = _interopRequireDefault(__webpack_require__(539));
 
-var _osblacklist = _interopRequireDefault(__webpack_require__(540));
+var _pollingmanager = _interopRequireDefault(__webpack_require__(540));
 
-var _region = _interopRequireDefault(__webpack_require__(541));
+var _osblacklist = _interopRequireDefault(__webpack_require__(541));
 
-var _search = _interopRequireDefault(__webpack_require__(542));
+var _region = _interopRequireDefault(__webpack_require__(542));
 
-var _validation = _interopRequireDefault(__webpack_require__(543));
+var _search = _interopRequireDefault(__webpack_require__(543));
 
-var _bootresources = _interopRequireDefault(__webpack_require__(544));
+var _validation = _interopRequireDefault(__webpack_require__(544));
 
-var _configs = _interopRequireDefault(__webpack_require__(545));
+var _bootresources = _interopRequireDefault(__webpack_require__(545));
 
-var _controllers = _interopRequireDefault(__webpack_require__(546));
+var _configs = _interopRequireDefault(__webpack_require__(546));
 
-var _devices = _interopRequireDefault(__webpack_require__(547));
+var _controllers = _interopRequireDefault(__webpack_require__(547));
 
-var _dhcpsnippets = _interopRequireDefault(__webpack_require__(548));
+var _devices = _interopRequireDefault(__webpack_require__(548));
 
-var _discoveries = _interopRequireDefault(__webpack_require__(549));
+var _dhcpsnippets = _interopRequireDefault(__webpack_require__(549));
 
-var _domains = _interopRequireDefault(__webpack_require__(550));
+var _discoveries = _interopRequireDefault(__webpack_require__(550));
 
-var _events = _interopRequireDefault(__webpack_require__(551));
+var _domains = _interopRequireDefault(__webpack_require__(551));
 
-var _fabrics = _interopRequireDefault(__webpack_require__(552));
+var _events = _interopRequireDefault(__webpack_require__(552));
 
-var _login = __webpack_require__(553);
+var _fabrics = _interopRequireDefault(__webpack_require__(553));
 
-var _general = _interopRequireDefault(__webpack_require__(554));
+var _login = __webpack_require__(554);
 
-var _ipranges = _interopRequireDefault(__webpack_require__(555));
+var _general = _interopRequireDefault(__webpack_require__(555));
 
-var _machines = _interopRequireDefault(__webpack_require__(556));
+var _ipranges = _interopRequireDefault(__webpack_require__(556));
 
-var _node_results = _interopRequireDefault(__webpack_require__(557));
+var _machines = _interopRequireDefault(__webpack_require__(557));
 
-var _nodes2 = _interopRequireDefault(__webpack_require__(558));
+var _node_results = _interopRequireDefault(__webpack_require__(558));
 
-var _notifications2 = _interopRequireDefault(__webpack_require__(559));
+var _nodes2 = _interopRequireDefault(__webpack_require__(559));
 
-var _packagerepositories = _interopRequireDefault(__webpack_require__(560));
+var _notifications2 = _interopRequireDefault(__webpack_require__(560));
 
-var _pods = _interopRequireDefault(__webpack_require__(561));
+var _packagerepositories = _interopRequireDefault(__webpack_require__(561));
 
-var _resourcepools = _interopRequireDefault(__webpack_require__(562));
+var _pods = _interopRequireDefault(__webpack_require__(562));
 
-var _scripts = _interopRequireDefault(__webpack_require__(563));
+var _resourcepools = _interopRequireDefault(__webpack_require__(563));
 
-var _services = _interopRequireDefault(__webpack_require__(564));
+var _scripts = _interopRequireDefault(__webpack_require__(564));
 
-var _spaces = _interopRequireDefault(__webpack_require__(565));
+var _services = _interopRequireDefault(__webpack_require__(565));
 
-var _sshkeys = _interopRequireDefault(__webpack_require__(566));
+var _spaces = _interopRequireDefault(__webpack_require__(566));
 
-var _staticroutes = _interopRequireDefault(__webpack_require__(567));
+var _sshkeys = _interopRequireDefault(__webpack_require__(567));
 
-var _subnets = _interopRequireDefault(__webpack_require__(568));
+var _staticroutes = _interopRequireDefault(__webpack_require__(568));
 
-var _switches = _interopRequireDefault(__webpack_require__(569));
+var _subnets = _interopRequireDefault(__webpack_require__(569));
 
-var _tags = _interopRequireDefault(__webpack_require__(570));
+var _switches = _interopRequireDefault(__webpack_require__(570));
 
-var _users = _interopRequireDefault(__webpack_require__(571));
+var _tags = _interopRequireDefault(__webpack_require__(571));
 
-var _vlans = _interopRequireDefault(__webpack_require__(572));
+var _users = _interopRequireDefault(__webpack_require__(572));
 
-var _zones = _interopRequireDefault(__webpack_require__(573));
+var _vlans = _interopRequireDefault(__webpack_require__(573));
 
-var _add_device = _interopRequireDefault(__webpack_require__(574));
+var _zones = _interopRequireDefault(__webpack_require__(574));
 
-var _add_domain = _interopRequireDefault(__webpack_require__(575));
+var _add_device = _interopRequireDefault(__webpack_require__(575));
 
-var _add_hardware = _interopRequireDefault(__webpack_require__(576));
+var _add_domain = _interopRequireDefault(__webpack_require__(576));
 
-var _dashboard = _interopRequireDefault(__webpack_require__(577));
+var _add_hardware = _interopRequireDefault(__webpack_require__(577));
 
-var _domain_details = _interopRequireDefault(__webpack_require__(578));
+var _dashboard = _interopRequireDefault(__webpack_require__(578));
 
-var _domains_list = _interopRequireDefault(__webpack_require__(579));
+var _domain_details = _interopRequireDefault(__webpack_require__(579));
 
-var _fabric_details = _interopRequireDefault(__webpack_require__(580));
+var _domains_list = _interopRequireDefault(__webpack_require__(580));
 
-var _images = _interopRequireDefault(__webpack_require__(581));
+var _fabric_details = _interopRequireDefault(__webpack_require__(581));
 
-var _intro_user = _interopRequireDefault(__webpack_require__(582));
+var _images = _interopRequireDefault(__webpack_require__(582));
 
-var _intro = _interopRequireDefault(__webpack_require__(583));
+var _intro_user = _interopRequireDefault(__webpack_require__(583));
 
-var _networks_list = _interopRequireDefault(__webpack_require__(584));
+var _intro = _interopRequireDefault(__webpack_require__(584));
 
-var _node_details_storage_filesystems = __webpack_require__(585);
+var _networks_list = _interopRequireDefault(__webpack_require__(585));
 
-var _node_details = _interopRequireDefault(__webpack_require__(586));
+var _node_details_storage_filesystems = __webpack_require__(586);
 
-var _node_events = _interopRequireDefault(__webpack_require__(587));
+var _node_details = _interopRequireDefault(__webpack_require__(587));
 
-var _node_result = _interopRequireDefault(__webpack_require__(588));
+var _node_events = _interopRequireDefault(__webpack_require__(588));
 
-var _node_results2 = _interopRequireDefault(__webpack_require__(589));
+var _node_result = _interopRequireDefault(__webpack_require__(589));
 
-var _nodes_list = _interopRequireDefault(__webpack_require__(590));
+var _node_results2 = _interopRequireDefault(__webpack_require__(590));
 
-var _pod_details = _interopRequireDefault(__webpack_require__(591));
+var _nodes_list = _interopRequireDefault(__webpack_require__(591));
 
-var _pods_list = _interopRequireDefault(__webpack_require__(592));
+var _pod_details = _interopRequireDefault(__webpack_require__(592));
 
-var _prefs = _interopRequireDefault(__webpack_require__(593));
+var _pods_list = _interopRequireDefault(__webpack_require__(593));
 
-var _settings = _interopRequireDefault(__webpack_require__(594));
+var _prefs = _interopRequireDefault(__webpack_require__(594));
 
-var _space_details = _interopRequireDefault(__webpack_require__(595));
+var _settings = _interopRequireDefault(__webpack_require__(595));
 
-var _zone_details = _interopRequireDefault(__webpack_require__(596));
+var _space_details = _interopRequireDefault(__webpack_require__(596));
 
-var _zones_list = _interopRequireDefault(__webpack_require__(597));
+var _zone_details = _interopRequireDefault(__webpack_require__(597));
 
-var _storage_disks_partitions = _interopRequireDefault(__webpack_require__(598));
+var _zones_list = _interopRequireDefault(__webpack_require__(598));
 
-var _storage_filesystems = _interopRequireDefault(__webpack_require__(599));
+var _storage_disks_partitions = _interopRequireDefault(__webpack_require__(599));
 
-var _storage_datastores = _interopRequireDefault(__webpack_require__(600));
+var _storage_filesystems = _interopRequireDefault(__webpack_require__(600));
 
-var _machines_table = _interopRequireDefault(__webpack_require__(601));
+var _storage_datastores = _interopRequireDefault(__webpack_require__(601));
 
-var _dhcp_snippets_table = _interopRequireDefault(__webpack_require__(602));
+var _machines_table = _interopRequireDefault(__webpack_require__(602));
 
-var _add_machine = _interopRequireDefault(__webpack_require__(603));
+var _dhcp_snippets_table = _interopRequireDefault(__webpack_require__(603));
 
-var _kvm_storage_dropdown = _interopRequireDefault(__webpack_require__(604));
+var _add_machine = _interopRequireDefault(__webpack_require__(604));
 
-var _nodes_list_filter = _interopRequireDefault(__webpack_require__(605));
+var _kvm_storage_dropdown = _interopRequireDefault(__webpack_require__(605));
 
-var _accordion = _interopRequireDefault(__webpack_require__(606));
+var _nodes_list_filter = _interopRequireDefault(__webpack_require__(606));
 
-var _boot_images = __webpack_require__(607);
+var _accordion = _interopRequireDefault(__webpack_require__(607));
 
-var _card_loader = _interopRequireDefault(__webpack_require__(608));
+var _boot_images = __webpack_require__(608);
 
-var _code_lines = _interopRequireDefault(__webpack_require__(609));
+var _card_loader = _interopRequireDefault(__webpack_require__(609));
 
-var _contenteditable = _interopRequireDefault(__webpack_require__(610));
+var _code_lines = _interopRequireDefault(__webpack_require__(610));
 
-var _default_os_select = _interopRequireDefault(__webpack_require__(611));
+var _contenteditable = _interopRequireDefault(__webpack_require__(611));
 
-var _enter_blur = _interopRequireDefault(__webpack_require__(612));
+var _default_os_select = _interopRequireDefault(__webpack_require__(612));
 
-var _enter = _interopRequireDefault(__webpack_require__(613));
+var _enter_blur = _interopRequireDefault(__webpack_require__(613));
 
-var _error_toggle = _interopRequireDefault(__webpack_require__(614));
+var _enter = _interopRequireDefault(__webpack_require__(614));
 
-var _ipranges2 = _interopRequireDefault(__webpack_require__(615));
+var _error_toggle = _interopRequireDefault(__webpack_require__(615));
 
-var _maas_obj_form = __webpack_require__(616);
+var _ipranges2 = _interopRequireDefault(__webpack_require__(616));
 
-var _mac_address = _interopRequireDefault(__webpack_require__(617));
+var _maas_obj_form = __webpack_require__(617);
 
-var _navigation_dropdown = _interopRequireDefault(__webpack_require__(618));
+var _mac_address = _interopRequireDefault(__webpack_require__(618));
 
-var _navigation_mobile = _interopRequireDefault(__webpack_require__(619));
+var _navigation_dropdown = _interopRequireDefault(__webpack_require__(619));
 
-var _placeholder = _interopRequireDefault(__webpack_require__(620));
+var _navigation_mobile = _interopRequireDefault(__webpack_require__(620));
 
-var _pref_keys = __webpack_require__(621);
+var _placeholder = _interopRequireDefault(__webpack_require__(621));
 
-var _proxy_settings = _interopRequireDefault(__webpack_require__(622));
+var _pref_keys = __webpack_require__(622);
 
-var _release_name = _interopRequireDefault(__webpack_require__(623));
+var _proxy_settings = _interopRequireDefault(__webpack_require__(623));
 
-var _script_expander = _interopRequireDefault(__webpack_require__(624));
+var _release_name = _interopRequireDefault(__webpack_require__(624));
 
-var _script_results_list = _interopRequireDefault(__webpack_require__(625));
+var _script_expander = _interopRequireDefault(__webpack_require__(625));
 
-var _ssh_keys = _interopRequireDefault(__webpack_require__(626));
+var _script_results_list = _interopRequireDefault(__webpack_require__(626));
 
-var _switches_table = _interopRequireDefault(__webpack_require__(627));
+var _ssh_keys = _interopRequireDefault(__webpack_require__(627));
 
-var _toggle_control = _interopRequireDefault(__webpack_require__(628));
+var _switches_table = _interopRequireDefault(__webpack_require__(628));
 
-var _type = _interopRequireDefault(__webpack_require__(629));
+var _toggle_control = _interopRequireDefault(__webpack_require__(629));
 
-var _version_reloader = _interopRequireDefault(__webpack_require__(630));
+var _type = _interopRequireDefault(__webpack_require__(630));
 
-var _window_width = _interopRequireDefault(__webpack_require__(631));
+var _version_reloader = _interopRequireDefault(__webpack_require__(631));
+
+var _window_width = _interopRequireDefault(__webpack_require__(632));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -37518,7 +37520,7 @@ function unhideRSDLinks() {
 angular.module("MAAS", ["ngRoute", "ngCookies", "ngSanitize", "ngTagsInput", "vs-repeat"]).config(configureMaas).run(introRedirect).run(setupGA) // template caches
 .run(_action_button.cacheActionButton).run(_call_to_action.cacheCta).run(_controller_status.cacheControllerStatus).run(_dbl_click_overlay.cacheDoubleClickOverlay).run(_error_overlay.cacheErrorOverlay).run(_notifications.cacheNotifications).run(_os_select.cacheOsSelect).run(_pod_parameters.cachePodParameters).run(_cores_chart.cacheCoresChart).run(_power_parameters.cachePowerParameters).run(_release_options.cacheReleaseOptions).run(_script_runtime.cacheScriptRuntime).run(_script_select.cacheScriptSelect).run(_script_status.cacheScriptStatus).run(unhideRSDLinks) // Registration
 // filters
-.filter("filterByUnusedForInterface", _node_details_networking.filterByUnusedForInterface).filter("removeInterfaceParents", _node_details_networking.removeInterfaceParents).filter("removeDefaultVLANIfVLAN", _node_details_networking.removeDefaultVLANIfVLAN).filter("filterLinkModes", _node_details_networking.filterLinkModes).filter("removeAvailableByNew", _node_details_storage.removeAvailableByNew).filter("datastoresOnly", _node_details_storage.datastoresOnly).filter("filterSource", _subnet_details.filterSource).filter("ignoreSelf", _vlan_details.ignoreSelf).filter("removeNoDHCP", _vlan_details.removeNoDHCP).filter("filterByFabric", _by_fabric.default).filter("filterBySpace", _by_space.filterBySpace).filter("filterByNullSpace", _by_space.filterByNullSpace).filter("filterBySubnet", _by_subnet.filterBySubnet).filter("filterBySubnetOrVlan", _by_subnet.filterBySubnetOrVlan).filter("filterByVLAN", _by_vlan.filterByVLAN).filter("filterControllersByVLAN", _by_vlan.filterControllersByVLAN).filter("formatBytes", _format_bytes.formatBytes).filter("convertGigabyteToBytes", _format_bytes.convertGigabyteToBytes).filter("formatStorageType", _format_storage_type.default).filter("nodesFilter", _nodes.default).filter("orderByDate", _order_by_date.default).filter("range", _range.default).filter("removeDefaultVLAN", _remove_default_vlan.default).filter("filterEditInterface", _node_details_networking.filterEditInterface).filter("filterSelectedInterfaces", _node_details_networking.filterSelectedInterfaces).filter("filterVLANNotOnFabric", _node_details_networking.filterVLANNotOnFabric) // factories
+.filter("filterByUnusedForInterface", _node_details_networking.filterByUnusedForInterface).filter("removeInterfaceParents", _node_details_networking.removeInterfaceParents).filter("removeDefaultVLANIfVLAN", _node_details_networking.removeDefaultVLANIfVLAN).filter("filterLinkModes", _node_details_networking.filterLinkModes).filter("removeAvailableByNew", _node_details_storage.removeAvailableByNew).filter("datastoresOnly", _node_details_storage.datastoresOnly).filter("filterSource", _subnet_details.filterSource).filter("ignoreSelf", _vlan_details.ignoreSelf).filter("removeNoDHCP", _vlan_details.removeNoDHCP).filter("filterByFabric", _by_fabric.default).filter("filterBySpace", _by_space.filterBySpace).filter("filterByNullSpace", _by_space.filterByNullSpace).filter("filterBySubnet", _by_subnet.filterBySubnet).filter("filterBySubnetOrVlan", _by_subnet.filterBySubnetOrVlan).filter("filterByVLAN", _by_vlan.filterByVLAN).filter("filterControllersByVLAN", _by_vlan.filterControllersByVLAN).filter("formatBytes", _format_bytes.formatBytes).filter("sendAnalyticsEvent", _send_analytics_event.sendAnalyticsEvent).filter("convertGigabyteToBytes", _format_bytes.convertGigabyteToBytes).filter("formatStorageType", _format_storage_type.default).filter("nodesFilter", _nodes.default).filter("orderByDate", _order_by_date.default).filter("range", _range.default).filter("removeDefaultVLAN", _remove_default_vlan.default).filter("filterEditInterface", _node_details_networking.filterEditInterface).filter("filterSelectedInterfaces", _node_details_networking.filterSelectedInterfaces).filter("filterVLANNotOnFabric", _node_details_networking.filterVLANNotOnFabric) // factories
 .factory("PollingManager", _pollingmanager.default).factory("BootResourcesManager", _bootresources.default).factory("ConfigsManager", _configs.default).factory("ControllersManager", _controllers.default).factory("DevicesManager", _devices.default).factory("DHCPSnippetsManager", _dhcpsnippets.default).factory("DiscoveriesManager", _discoveries.default).factory("DomainsManager", _domains.default).factory("EventsManagerFactory", _events.default).factory("FabricsManager", _fabrics.default).factory("GeneralManager", _general.default).factory("getBakery", _login.getBakery).factory("IPRangesManager", _ipranges.default).factory("MachinesManager", _machines.default).factory("NodeResultsManagerFactory", _node_results.default).factory("NotificationsManager", _notifications2.default).factory("PackageRepositoriesManager", _packagerepositories.default).factory("ResourcePoolsManager", _resourcepools.default).factory("ScriptsManager", _scripts.default).factory("ServicesManager", _services.default).factory("SpacesManager", _spaces.default).factory("SSHKeysManager", _sshkeys.default).factory("StaticRoutesManager", _staticroutes.default).factory("SubnetsManager", _subnets.default).factory("SwitchesManager", _switches.default).factory("TagsManager", _tags.default).factory("UsersManager", _users.default).factory("VLANsManager", _vlans.default).factory("ZonesManager", _zones.default) // services
 .service("BrowserService", _browser.default).service("ControllerImageStatusService", _controller_image_status.ControllerImageStatusService).service("ConverterService", _converter.default).service("ErrorService", _error.default).service("JSONService", _json.default).service("LogService", _log.default).service("Manager", _manager.default).service("ManagerHelperService", _managerhelper.default).service("NodesManager", _nodes2.default).service("KVMDeployOSBlacklist", _osblacklist.default).service("PodsManager", _pods.default).service("RegionConnection", _region.default).service("SearchService", _search.default).service("ValidationService", _validation.default) // controllers
 .controller("AddDeviceController", _add_device.default).controller("AddDomainController", _add_domain.default).controller("AddHardwareController", _add_hardware.default).controller("DashboardController", _dashboard.default).controller("DomainDetailsController", _domain_details.default).controller("DomainsListController", _domains_list.default).controller("FabricDetailsController", _fabric_details.default).controller("ImagesController", _images.default).controller("IntroUserController", _intro_user.default).controller("IntroController", _intro.default).controller("NetworksListController", _networks_list.default).controller("NodeNetworkingController", _node_details_networking.NodeNetworkingController).controller("NodeFilesystemsController", _node_details_storage_filesystems.NodeFilesystemsController).controller("NodeAddSpecialFilesystemController", _node_details_storage_filesystems.NodeAddSpecialFilesystemController).controller("NodeStorageController", _node_details_storage.NodeStorageController).controller("NodeDetailsController", _node_details.default).controller("NodeEventsController", _node_events.default).controller("NodeResultController", _node_result.default).controller("NodeResultsController", _node_results2.default).controller("NodesListController", _nodes_list.default).controller("PodDetailsController", _pod_details.default).controller("PodsListController", _pods_list.default).controller("PreferencesController", _prefs.default).controller("SettingsController", _settings.default).controller("SpaceDetailsController", _space_details.default).controller("SubnetDetailsController", _subnet_details.SubnetDetailsController).controller("VLANDetailsController", _vlan_details.VLANDetailsController).controller("ZoneDetailsController", _zone_details.default).controller("ZonesListController", _zones_list.default) // directives
@@ -45503,6 +45505,29 @@ function convertGigabyteToBytes() {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.sendAnalyticsEvent = sendAnalyticsEvent;
+
+/* Copyright 2019 Canonical Ltd. This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Sends events to Google Analytics
+ */
+function sendAnalyticsEvent() {
+  return function (eventCategory, eventAction, eventLabel) {
+    window.ga("send", "event", eventCategory, eventAction, eventLabel);
+  };
+}
+
+/***/ }),
+/* 527 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 exports.default = void 0;
 
 /* Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
@@ -45530,7 +45555,7 @@ var _default = formatStorageType;
 exports.default = _default;
 
 /***/ }),
-/* 527 */
+/* 528 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -45797,7 +45822,7 @@ var _default = nodesFilter;
 exports.default = _default;
 
 /***/ }),
-/* 528 */
+/* 529 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -45834,7 +45859,7 @@ var _default = orderByDate;
 exports.default = _default;
 
 /***/ }),
-/* 529 */
+/* 530 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -45870,7 +45895,7 @@ var _default = range;
 exports.default = _default;
 
 /***/ }),
-/* 530 */
+/* 531 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -45902,7 +45927,7 @@ var _default = removeDefaultVLAN;
 exports.default = _default;
 
 /***/ }),
-/* 531 */
+/* 532 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -45959,7 +45984,7 @@ var _default = BrowserService;
 exports.default = _default;
 
 /***/ }),
-/* 532 */
+/* 533 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -46133,7 +46158,7 @@ function maasControllerImageStatus(ControllerImageStatusService) {
 }
 
 /***/ }),
-/* 533 */
+/* 534 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -46303,7 +46328,7 @@ var _default = ConverterService;
 exports.default = _default;
 
 /***/ }),
-/* 534 */
+/* 535 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -46336,7 +46361,7 @@ var _default = ErrorService;
 exports.default = _default;
 
 /***/ }),
-/* 535 */
+/* 536 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -46377,7 +46402,7 @@ var _default = JSONService;
 exports.default = _default;
 
 /***/ }),
-/* 536 */
+/* 537 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -46485,7 +46510,7 @@ var _default = LogService;
 exports.default = _default;
 
 /***/ }),
-/* 537 */
+/* 538 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -47302,7 +47327,7 @@ var _default = Manager;
 exports.default = _default;
 
 /***/ }),
-/* 538 */
+/* 539 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -47496,7 +47521,7 @@ var _default = ManagerHelperService;
 exports.default = _default;
 
 /***/ }),
-/* 539 */
+/* 540 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -47605,7 +47630,7 @@ var _default = PollingManager;
 exports.default = _default;
 
 /***/ }),
-/* 540 */
+/* 541 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -47629,7 +47654,7 @@ var _default = KVMDeployOSBlacklist;
 exports.default = _default;
 
 /***/ }),
-/* 541 */
+/* 542 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48145,7 +48170,7 @@ var _default = RegionConnection;
 exports.default = _default;
 
 /***/ }),
-/* 542 */
+/* 543 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48355,7 +48380,7 @@ var _default = SearchService;
 exports.default = _default;
 
 /***/ }),
-/* 543 */
+/* 544 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48558,7 +48583,7 @@ var _default = ValidationService;
 exports.default = _default;
 
 /***/ }),
-/* 544 */
+/* 545 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48770,7 +48795,7 @@ var _default = BootResourcesManager;
 exports.default = _default;
 
 /***/ }),
-/* 545 */
+/* 546 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48810,7 +48835,7 @@ var _default = ConfigsManager;
 exports.default = _default;
 
 /***/ }),
-/* 546 */
+/* 547 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48869,7 +48894,7 @@ var _default = ControllersManager;
 exports.default = _default;
 
 /***/ }),
-/* 547 */
+/* 548 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -48950,7 +48975,7 @@ var _default = DevicesManager;
 exports.default = _default;
 
 /***/ }),
-/* 548 */
+/* 549 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49015,7 +49040,7 @@ var _default = DHCPSnippetsManager;
 exports.default = _default;
 
 /***/ }),
-/* 549 */
+/* 550 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49077,7 +49102,7 @@ var _default = DiscoveriesManager;
 exports.default = _default;
 
 /***/ }),
-/* 550 */
+/* 551 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49205,7 +49230,7 @@ var _default = DomainsManager;
 exports.default = _default;
 
 /***/ }),
-/* 551 */
+/* 552 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49360,7 +49385,7 @@ var _default = EventsManagerFactory;
 exports.default = _default;
 
 /***/ }),
-/* 552 */
+/* 553 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49429,7 +49454,7 @@ var _default = FabricsManager;
 exports.default = _default;
 
 /***/ }),
-/* 553 */
+/* 554 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49499,7 +49524,7 @@ function externalLogin($window, getBakery) {
 }
 
 /***/ }),
-/* 554 */
+/* 555 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -49977,7 +50002,7 @@ var _default = GeneralManager;
 exports.default = _default;
 
 /***/ }),
-/* 555 */
+/* 556 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -50018,7 +50043,7 @@ var _default = IPRangesManager;
 exports.default = _default;
 
 /***/ }),
-/* 556 */
+/* 557 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -50151,7 +50176,7 @@ var _default = MachinesManager;
 exports.default = _default;
 
 /***/ }),
-/* 557 */
+/* 558 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -50516,7 +50541,7 @@ var _default = NodeResultsManagerFactory;
 exports.default = _default;
 
 /***/ }),
-/* 558 */
+/* 559 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -50896,7 +50921,7 @@ var _default = NodesManager;
 exports.default = _default;
 
 /***/ }),
-/* 559 */
+/* 560 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -50941,7 +50966,7 @@ var _default = NotificationsManager;
 exports.default = _default;
 
 /***/ }),
-/* 560 */
+/* 561 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -50987,7 +51012,7 @@ var _default = PackageRepositoriesManager;
 exports.default = _default;
 
 /***/ }),
-/* 561 */
+/* 562 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51062,7 +51087,7 @@ var _default = PodsManager;
 exports.default = _default;
 
 /***/ }),
-/* 562 */
+/* 563 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51112,7 +51137,7 @@ var _default = ResourcePoolsManager;
 exports.default = _default;
 
 /***/ }),
-/* 563 */
+/* 564 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51153,7 +51178,7 @@ var _default = ScriptsManager;
 exports.default = _default;
 
 /***/ }),
-/* 564 */
+/* 565 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51193,7 +51218,7 @@ var _default = ServicesManager;
 exports.default = _default;
 
 /***/ }),
-/* 565 */
+/* 566 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51247,7 +51272,7 @@ var _default = SpacesManager;
 exports.default = _default;
 
 /***/ }),
-/* 566 */
+/* 567 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51296,7 +51321,7 @@ var _default = SSHKeysManager;
 exports.default = _default;
 
 /***/ }),
-/* 567 */
+/* 568 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51337,7 +51362,7 @@ var _default = StaticRoutesManager;
 exports.default = _default;
 
 /***/ }),
-/* 568 */
+/* 569 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51444,7 +51469,7 @@ var _default = SubnetsManager;
 exports.default = _default;
 
 /***/ }),
-/* 569 */
+/* 570 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51515,7 +51540,7 @@ var _default = SwitchesManager;
 exports.default = _default;
 
 /***/ }),
-/* 570 */
+/* 571 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51584,7 +51609,7 @@ var _default = TagsManager;
 exports.default = _default;
 
 /***/ }),
-/* 571 */
+/* 572 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51751,7 +51776,7 @@ var _default = UsersManager;
 exports.default = _default;
 
 /***/ }),
-/* 572 */
+/* 573 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51850,7 +51875,7 @@ var _default = VLANsManager;
 exports.default = _default;
 
 /***/ }),
-/* 573 */
+/* 574 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -51914,7 +51939,7 @@ var _default = ZonesManager;
 exports.default = _default;
 
 /***/ }),
-/* 574 */
+/* 575 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52191,7 +52216,7 @@ var _default = AddDeviceController;
 exports.default = _default;
 
 /***/ }),
-/* 575 */
+/* 576 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52310,7 +52335,7 @@ var _default = AddDomainController;
 exports.default = _default;
 
 /***/ }),
-/* 576 */
+/* 577 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52910,7 +52935,7 @@ var _default = AddHardwareController;
 exports.default = _default;
 
 /***/ }),
-/* 577 */
+/* 578 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52920,7 +52945,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-DashboardController.$inject = ["$scope", "$rootScope", "$location", "DiscoveriesManager", "DomainsManager", "MachinesManager", "DevicesManager", "SubnetsManager", "FabricsManager", "VLANsManager", "ConfigsManager", "ManagerHelperService", "SearchService", "GeneralManager"];
+DashboardController.$inject = ["$scope", "$rootScope", "$location", "$window", "$filter", "DiscoveriesManager", "DomainsManager", "MachinesManager", "DevicesManager", "SubnetsManager", "FabricsManager", "VLANsManager", "ConfigsManager", "ManagerHelperService", "SearchService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -52929,7 +52954,7 @@ DashboardController.$inject = ["$scope", "$rootScope", "$location", "Discoveries
  */
 
 /* @ngInject */
-function DashboardController($scope, $rootScope, $location, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, FabricsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService, GeneralManager) {
+function DashboardController($scope, $rootScope, $location, $window, $filter, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, FabricsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService, GeneralManager) {
   // Default device IP options.
   var deviceIPOptions = [["static", "Static"], ["dynamic", "Dynamic"], ["external", "External"]];
   var notificationId = 0; // Set title and page.
@@ -52960,6 +52985,7 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
   $scope.filters = SearchService.getEmptyFilter();
   $scope.metadata = {};
   $scope.tempNotifications = [];
+  $scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
 
   $scope.changeTab = function (tabName) {
     $scope.currentTab = tabName;
@@ -53256,6 +53282,9 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
       var date = new Date(device.last_seen);
       device.last_seen_timestamp = date.getTime();
     });
+    $scope.$watch("networkDiscovery.value", function () {
+      $scope.sendAnalyticsEvent("Network discovery", "Toggle network discovery to ".concat($scope.networkDiscovery.value), "Network discovery toggle switch");
+    });
     $scope.$watchCollection("discoveredDevices", function () {
       $scope.removingDevices = false;
       $scope.closeClearDiscoveriesPanel();
@@ -53267,7 +53296,7 @@ var _default = DashboardController;
 exports.default = _default;
 
 /***/ }),
-/* 578 */
+/* 579 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53452,7 +53481,7 @@ var _default = DomainDetailsController;
 exports.default = _default;
 
 /***/ }),
-/* 579 */
+/* 580 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53530,7 +53559,7 @@ var _default = DomainsListController;
 exports.default = _default;
 
 /***/ }),
-/* 580 */
+/* 581 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53723,7 +53752,7 @@ var _default = FabricDetailsController;
 exports.default = _default;
 
 /***/ }),
-/* 581 */
+/* 582 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53779,7 +53808,7 @@ var _default = ImagesController;
 exports.default = _default;
 
 /***/ }),
-/* 582 */
+/* 583 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53850,7 +53879,7 @@ var _default = IntroUserController;
 exports.default = _default;
 
 /***/ }),
-/* 583 */
+/* 584 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53971,7 +54000,7 @@ var _default = IntroController;
 exports.default = _default;
 
 /***/ }),
-/* 584 */
+/* 585 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -54309,7 +54338,7 @@ var _default = NetworksListController;
 exports.default = _default;
 
 /***/ }),
-/* 585 */
+/* 586 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -54460,7 +54489,7 @@ function NodeAddSpecialFilesystemController($scope, MachinesManager) {
 }
 
 /***/ }),
-/* 586 */
+/* 587 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -54473,7 +54502,7 @@ exports.default = void 0;
 
 var _enum = __webpack_require__(68);
 
-NodeDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DevicesManager", "MachinesManager", "ControllersManager", "ZonesManager", "GeneralManager", "UsersManager", "TagsManager", "DomainsManager", "ManagerHelperService", "ServicesManager", "ErrorService", "ValidationService", "ScriptsManager", "ResourcePoolsManager", "VLANsManager", "FabricsManager", "$log", "$window"];
+NodeDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "$filter", "DevicesManager", "MachinesManager", "ControllersManager", "ZonesManager", "GeneralManager", "UsersManager", "TagsManager", "DomainsManager", "ManagerHelperService", "ServicesManager", "ErrorService", "ValidationService", "ScriptsManager", "ResourcePoolsManager", "VLANsManager", "FabricsManager", "$log", "$window"];
 
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
 
@@ -54484,7 +54513,7 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 /* @ngInject */
-function NodeDetailsController($scope, $rootScope, $routeParams, $location, DevicesManager, MachinesManager, ControllersManager, ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ManagerHelperService, ServicesManager, ErrorService, ValidationService, ScriptsManager, ResourcePoolsManager, VLANsManager, FabricsManager, $log, $window) {
+function NodeDetailsController($scope, $rootScope, $routeParams, $location, $filter, DevicesManager, MachinesManager, ControllersManager, ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ManagerHelperService, ServicesManager, ErrorService, ValidationService, ScriptsManager, ResourcePoolsManager, VLANsManager, FabricsManager, $log, $window) {
   // Mapping of device.ip_assignment to viewable text.
   var DEVICE_IP_ASSIGNMENT = {
     external: "External",
@@ -54644,6 +54673,8 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     });
     $scope.disableTestButton = disableButton;
   };
+
+  $scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
 
   $scope.shallowCompare = function (obj1, obj2) {
     return Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(function (key) {
@@ -55999,7 +56030,7 @@ var _default = NodeDetailsController;
 exports.default = _default;
 
 /***/ }),
-/* 587 */
+/* 588 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -56109,7 +56140,7 @@ var _default = NodeEventsController;
 exports.default = _default;
 
 /***/ }),
-/* 588 */
+/* 589 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -56221,7 +56252,7 @@ var _default = NodeResultController;
 exports.default = _default;
 
 /***/ }),
-/* 589 */
+/* 590 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -56497,7 +56528,7 @@ var _default = NodeResultsController;
 exports.default = _default;
 
 /***/ }),
-/* 590 */
+/* 591 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -56507,7 +56538,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-NodesListController.$inject = ["$q", "$scope", "$interval", "$rootScope", "$routeParams", "$route", "$location", "$window", "$log", "MachinesManager", "DevicesManager", "ControllersManager", "GeneralManager", "ManagerHelperService", "SearchService", "ZonesManager", "UsersManager", "ServicesManager", "ScriptsManager", "SwitchesManager", "ResourcePoolsManager", "VLANsManager", "TagsManager", "NotificationsManager"];
+NodesListController.$inject = ["$q", "$scope", "$interval", "$rootScope", "$routeParams", "$route", "$location", "$window", "$log", "$filter", "MachinesManager", "DevicesManager", "ControllersManager", "GeneralManager", "ManagerHelperService", "SearchService", "ZonesManager", "UsersManager", "ServicesManager", "ScriptsManager", "SwitchesManager", "ResourcePoolsManager", "VLANsManager", "TagsManager", "NotificationsManager"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -56516,7 +56547,7 @@ NodesListController.$inject = ["$q", "$scope", "$interval", "$rootScope", "$rout
  */
 
 /* @ngInject */
-function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $route, $location, $window, $log, MachinesManager, DevicesManager, ControllersManager, GeneralManager, ManagerHelperService, SearchService, ZonesManager, UsersManager, ServicesManager, ScriptsManager, SwitchesManager, ResourcePoolsManager, VLANsManager, TagsManager, NotificationsManager) {
+function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $route, $location, $window, $log, $filter, MachinesManager, DevicesManager, ControllersManager, GeneralManager, ManagerHelperService, SearchService, ZonesManager, UsersManager, ServicesManager, ScriptsManager, SwitchesManager, ResourcePoolsManager, VLANsManager, TagsManager, NotificationsManager) {
   // Mapping of device.ip_assignment to viewable text.
   var DEVICE_IP_ASSIGNMENT = {
     external: "External",
@@ -57703,10 +57734,11 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
     // VLANsManager is used during controller delete to see if its
     // managing a VLAN when confirming delete.
     page_managers.push(VLANsManager);
-  } // Load the required managers for this controller. The ServicesManager
+  }
+
+  $scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent"); // Load the required managers for this controller. The ServicesManager
   // is required by the maasControllerStatus directive that is used
   // in the partial for this controller.
-
 
   ManagerHelperService.loadManagers($scope, page_managers.concat([GeneralManager, ZonesManager, UsersManager, ResourcePoolsManager, ServicesManager, TagsManager])).then(function () {
     $scope.loading = false; // Set flag for RSD navigation item.
@@ -57767,7 +57799,7 @@ var _default = NodesListController;
 exports.default = _default;
 
 /***/ }),
-/* 591 */
+/* 592 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -57777,7 +57809,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-PodDetailsController.$inject = ["$scope", "$rootScope", "$location", "$routeParams", "$filter", "PodsManager", "GeneralManager", "UsersManager", "DomainsManager", "ZonesManager", "MachinesManager", "ManagerHelperService", "ErrorService", "ResourcePoolsManager", "SubnetsManager", "VLANsManager", "FabricsManager", "SpacesManager", "ValidationService", "$log", "$document"];
+PodDetailsController.$inject = ["$scope", "$rootScope", "$location", "$routeParams", "$filter", "$window", "PodsManager", "GeneralManager", "UsersManager", "DomainsManager", "ZonesManager", "MachinesManager", "ManagerHelperService", "ErrorService", "ResourcePoolsManager", "SubnetsManager", "VLANsManager", "FabricsManager", "SpacesManager", "ValidationService", "$log", "$document"];
 
 /* Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -57786,7 +57818,7 @@ PodDetailsController.$inject = ["$scope", "$rootScope", "$location", "$routePara
  */
 
 /* @ngInject */
-function PodDetailsController($scope, $rootScope, $location, $routeParams, $filter, PodsManager, GeneralManager, UsersManager, DomainsManager, ZonesManager, MachinesManager, ManagerHelperService, ErrorService, ResourcePoolsManager, SubnetsManager, VLANsManager, FabricsManager, SpacesManager, ValidationService, $log, $document) {
+function PodDetailsController($scope, $rootScope, $location, $routeParams, $filter, $window, PodsManager, GeneralManager, UsersManager, DomainsManager, ZonesManager, MachinesManager, ManagerHelperService, ErrorService, ResourcePoolsManager, SubnetsManager, VLANsManager, FabricsManager, SpacesManager, ValidationService, $log, $document) {
   // Checks if on RSD page
   $scope.onRSDSection = PodsManager.onRSDSection;
   $rootScope.title = "Loading...";
@@ -57853,7 +57885,8 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
   $scope.name = {
     editing: false,
     value: ""
-  }; // Return true if at least a rack controller is connected to the
+  };
+  $scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent"); // Return true if at least a rack controller is connected to the
   // region controller.
 
   $scope.isRackControllerConnected = function () {
@@ -58450,7 +58483,7 @@ var _default = PodDetailsController;
 exports.default = _default;
 
 /***/ }),
-/* 592 */
+/* 593 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58876,7 +58909,7 @@ var _default = PodsListController;
 exports.default = _default;
 
 /***/ }),
-/* 593 */
+/* 594 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58906,7 +58939,7 @@ var _default = PreferencesController;
 exports.default = _default;
 
 /***/ }),
-/* 594 */
+/* 595 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59055,7 +59088,7 @@ var _default = SettingsController;
 exports.default = _default;
 
 /***/ }),
-/* 595 */
+/* 596 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59203,7 +59236,7 @@ var _default = SpaceDetailsController;
 exports.default = _default;
 
 /***/ }),
-/* 596 */
+/* 597 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59333,7 +59366,7 @@ var _default = ZoneDetailsController;
 exports.default = _default;
 
 /***/ }),
-/* 597 */
+/* 598 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59398,7 +59431,7 @@ var _default = ZonesListController;
 exports.default = _default;
 
 /***/ }),
-/* 598 */
+/* 599 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59421,7 +59454,7 @@ var _default = storageDisksPartitions;
 exports.default = _default;
 
 /***/ }),
-/* 599 */
+/* 600 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59444,7 +59477,7 @@ var _default = storageFilesystems;
 exports.default = _default;
 
 /***/ }),
-/* 600 */
+/* 601 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59467,7 +59500,7 @@ var _default = storageDatastores;
 exports.default = _default;
 
 /***/ }),
-/* 601 */
+/* 602 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59536,6 +59569,7 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
       scope.$on("$destroy", function () {
         return $document.off("click", scope.clickHandler);
       });
+      scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
     },
     controller: MachinesTableController
   };
@@ -60207,7 +60241,7 @@ var _default = maasMachinesTable;
 exports.default = _default;
 
 /***/ }),
-/* 602 */
+/* 603 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60376,7 +60410,7 @@ var _default = maasDhcpSnippetsTable;
 exports.default = _default;
 
 /***/ }),
-/* 603 */
+/* 604 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60400,7 +60434,7 @@ var _default = addMachine;
 exports.default = _default;
 
 /***/ }),
-/* 604 */
+/* 605 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60524,7 +60558,7 @@ var _default = kvmStorageDropdown;
 exports.default = _default;
 
 /***/ }),
-/* 605 */
+/* 606 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60535,7 +60569,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 NodesListFilterController.$inject = ["$scope"];
-nodesListFilter.$inject = ["$document"];
+nodesListFilter.$inject = ["$document", "$window", "$filter"];
 
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -60565,7 +60599,7 @@ function formatSpeedUnits(speedInMbytes) {
 /* @ngInject */
 
 
-function nodesListFilter($document) {
+function nodesListFilter($document, $window, $filter) {
   return {
     restrict: "E",
     scope: {
@@ -60602,6 +60636,7 @@ function nodesListFilter($document) {
       scope.$on("$destroy", function () {
         return $document.off("click", scope.clickHandler);
       });
+      scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
     },
     controller: NodesListFilterController
   };
@@ -60644,7 +60679,7 @@ var _default = nodesListFilter;
 exports.default = _default;
 
 /***/ }),
-/* 606 */
+/* 607 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60698,7 +60733,7 @@ var _default = maasAccordion;
 exports.default = _default;
 
 /***/ }),
-/* 607 */
+/* 608 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61701,7 +61736,7 @@ function maasBootImages($timeout, BootResourcesManager, UsersManager, ManagerHel
 }
 
 /***/ }),
-/* 608 */
+/* 609 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61736,7 +61771,7 @@ var _default = maasCardLoader;
 exports.default = _default;
 
 /***/ }),
-/* 609 */
+/* 610 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61812,7 +61847,7 @@ var _default = maasCodeLines;
 exports.default = _default;
 
 /***/ }),
-/* 610 */
+/* 611 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61884,7 +61919,7 @@ var _default = contenteditable;
 exports.default = _default;
 
 /***/ }),
-/* 611 */
+/* 612 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62000,7 +62035,7 @@ var _default = maasDefaultOsSelect;
 exports.default = _default;
 
 /***/ }),
-/* 612 */
+/* 613 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62036,7 +62071,7 @@ var _default = maasEnterBlur;
 exports.default = _default;
 
 /***/ }),
-/* 613 */
+/* 614 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62070,7 +62105,7 @@ var _default = maasEnter;
 exports.default = _default;
 
 /***/ }),
-/* 614 */
+/* 615 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62151,7 +62186,7 @@ var _default = maasErrorToggle;
 exports.default = _default;
 
 /***/ }),
-/* 615 */
+/* 616 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62325,7 +62360,7 @@ var _default = maasIpRanges;
 exports.default = _default;
 
 /***/ }),
-/* 616 */
+/* 617 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63471,7 +63506,7 @@ function maasObjHideSaving() {
 }
 
 /***/ }),
-/* 617 */
+/* 618 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63532,7 +63567,7 @@ var _default = macAddress;
 exports.default = _default;
 
 /***/ }),
-/* 618 */
+/* 619 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63572,7 +63607,7 @@ var _default = maasNavigationDropdown;
 exports.default = _default;
 
 /***/ }),
-/* 619 */
+/* 620 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63607,7 +63642,7 @@ var _default = maasNavigationMobile;
 exports.default = _default;
 
 /***/ }),
-/* 620 */
+/* 621 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63643,7 +63678,7 @@ var _default = ngPlaceholder;
 exports.default = _default;
 
 /***/ }),
-/* 621 */
+/* 622 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63816,7 +63851,7 @@ function maasPrefKeyCopy() {
 }
 
 /***/ }),
-/* 622 */
+/* 623 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63874,7 +63909,7 @@ var _default = maasProxySettings;
 exports.default = _default;
 
 /***/ }),
-/* 623 */
+/* 624 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63938,7 +63973,7 @@ var _default = maasReleaseName;
 exports.default = _default;
 
 /***/ }),
-/* 624 */
+/* 625 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63975,7 +64010,7 @@ var _default = pScriptExpander;
 exports.default = _default;
 
 /***/ }),
-/* 625 */
+/* 626 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64002,7 +64037,7 @@ var _default = maasScriptResultsList;
 exports.default = _default;
 
 /***/ }),
-/* 626 */
+/* 627 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64187,7 +64222,7 @@ var _default = maasSshKeys;
 exports.default = _default;
 
 /***/ }),
-/* 627 */
+/* 628 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64365,7 +64400,7 @@ var _default = maasSwitchesTable;
 exports.default = _default;
 
 /***/ }),
-/* 628 */
+/* 629 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64416,7 +64451,7 @@ var _default = toggleCtrl;
 exports.default = _default;
 
 /***/ }),
-/* 629 */
+/* 630 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64456,7 +64491,7 @@ var _default = ngType;
 exports.default = _default;
 
 /***/ }),
-/* 630 */
+/* 631 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64511,7 +64546,7 @@ var _default = maasVersionReloader;
 exports.default = _default;
 
 /***/ }),
-/* 631 */
+/* 632 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

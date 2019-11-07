@@ -32,7 +32,7 @@
                 <button class="p-button--positive ng-hide"
                     data-ng-show="header.editing || header.editing_domain"
                     data-ng-disabled="editHeaderInvalid()"
-                    data-ng-click="saveEditHeader()">Save</button>
+                    data-ng-click="saveEditHeader(); sendAnalyticsEvent('Machine details', 'Edited name', 'Machine summary tab')">Save</button>
 
                 <ul class="p-inline-list page-header__status u-no-margin--top" data-ng-if="!isController && !isDevice && !header.editing && !header.editing_domain">
                     <li class="p-inline-list__item">
@@ -44,7 +44,7 @@
                     </li>
                     <li class="p-inline-list__item u-no-wrap">
                         <i class="p-icon--power-{$ getPowerStateClass() $}"></i> {$ getPowerStateText() $}
-                        <button class="p-button--base" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
+                        <button class="p-button--base" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState(); sendAnalyticsEvent('Machine details', 'Check power state', 'Machine summary tab')">check now</button>
                     </li>
                 </ul>
             </div>
@@ -774,20 +774,20 @@
                         data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
                         <div class="col-8">
                             <button class="p-button--neutral" data-ng-disabled="selectedMode !== null"
-                                data-ng-click="showCreatePhysical()">Add interface</button>
-                            <button class="p-button--neutral" data-ng-disabled="!canCreateBond()" data-ng-click="showCreateBond()">Create
+                                data-ng-click="showCreatePhysical(); sendAnalyticsEvent('Machine details, 'Add interface', 'Network tab')">Add interface</button>
+                            <button class="p-button--neutral" data-ng-disabled="!canCreateBond(); sendAnalyticsEvent('Machine details', 'Create bond', 'Network tab')" data-ng-click="showCreateBond()">Create
                                 bond</button>
                             <button class="p-button--neutral" data-ng-disabled="!canCreateBridge()"
-                                data-ng-click="showCreateBridge()">Create bridge</button>
+                                data-ng-click="showCreateBridge(); sendAnalyticsEvent('Machine details', 'Create bridge', 'Network tab')">Create bridge</button>
                         </div>
                         <div class="col-4 u-align--right">
-                            <button class="p-button--neutral" data-ng-click="validateNetworkConfiguration()">Validate network configuration</button>
+                            <button class="p-button--neutral" data-ng-click="validateNetworkConfiguration(); sendAnalyticsEvent('Machine details', 'Validate network configuration', 'Network tab')">Validate network configuration</button>
                         </div>
                     </div>
                     <div data-ng-if="isDevice" class="row"
                         data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
                         <div class="col-8">
-                            <button class="p-button--neutral" data-ng-disabled="selectedMode !== null" data-ng-click="showCreatePhysical()">Add interface</button>
+                            <button class="p-button--neutral" data-ng-disabled="selectedMode !== null" data-ng-click="showCreatePhysical(); sendAnalyticsEvent('Machine details', 'Add interface', 'Network tab')">Add interface</button>
                         </div>
                     </div>
                 </div>
@@ -1530,7 +1530,7 @@
 
                         <button class="p-button--neutral" data-ng-click="toggleInterfaces()" data-ng-if="showEditButton(editInterface, interfaces)">
                             <span data-ng-if="isShowingInterfaces">Hide interfaces</span>
-                            <span data-ng-if="!isShowingInterfaces">Edit bond members</span>
+                            <span data-ng-if="!isShowingInterfaces" data-ng-click="sendAnalyticsEvent('Machine details', 'Edit bond members', 'Network tab')">Edit bond members</span>
                         </button>
 
                         <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
@@ -2250,7 +2250,7 @@
 
                         <button class="p-button--neutral" data-ng-click="toggleInterfaces()" data-ng-if="showCreateEditButton()">
                             <span data-ng-if="isShowingInterfaces">Hide interfaces</span>
-                            <span data-ng-if="!isShowingInterfaces">Edit bond members</span>
+                            <span data-ng-if="!isShowingInterfaces" data-ng-click="Network table', Edit bond')">Edit bond members</span>
                         </button>
 
                         <div class="p-strip is-shallow">
@@ -2509,11 +2509,11 @@
                                                 <button class="p-contextual-menu__link"
                                                     data-ng-if="!cannotEditInterface(interface)"
                                                     aria-label="Edit"
-                                                    data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                                    data-ng-click="toggleMenu(); edit(interface); sendAnalyticsEvent('Machine details', 'Edit interface', 'Network tab')">Edit {$ getInterfaceTypeText(interface) $}</button>
                                                 <button class="p-contextual-menu__link"
                                                     data-ng-if="canBeRemoved()"
                                                     aria-label="Remove"
-                                                    data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                                    data-ng-click="toggleMenu(); quickRemove(interface); sendAnalyticsEvent('Machine details', 'Remove interface', 'Network tab')">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
                                             </div>
                                         </div>
                                     </div>
@@ -2693,24 +2693,24 @@
                                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">
                                         <button class="p-button--base is-small p-contextual-menu__toggle u-no-margin--right" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
                                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="canMarkAsConnected(interface)" aria-label="Mark as connected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
+                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="canMarkAsConnected(interface)" aria-label="Mark as connected" data-ng-click="toggleMenu(); changeConnectionStatus(interface); sendAnalyticsEvent('Machine details', 'Mark interface as connected', 'Network tab')">
                                                 Mark as connected
                                             </button>
-                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="canMarkAsDisconnected(interface)" aria-label="Mark as disconnected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
+                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="canMarkAsDisconnected(interface)" aria-label="Mark as disconnected" data-ng-click="toggleMenu(); changeConnectionStatus(interface); sendAnalyticsEvent('Machine details', 'Mark interface as disconnected', 'Network tab')">
                                                 Mark as disconnected
                                             </button>
                                             <button class="p-contextual-menu__link"
                                                 aria-label="Add Alias or VLAN"
                                                 data-ng-if="canAddAliasOrVLAN(interface)"
-                                                data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
+                                                data-ng-click="toggleMenu(); quickAdd(interface); sendAnalyticsEvent('Machine details', 'Add alias or VLAN', 'Network tab')">Add alias or VLAN</button>
                                             <button class="p-contextual-menu__link"
                                                 data-ng-if="!cannotEditInterface(interface)"
                                                 aria-label="Edit"
-                                                data-ng-click="toggleMenu(); handleEdit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                                data-ng-click="toggleMenu(); handleEdit(interface); sendAnalyticsEvent('Machine details', 'Edit interface', 'Network tab')">Edit {$ getInterfaceTypeText(interface) $}</button>
                                             <button class="p-contextual-menu__link"
                                                 data-ng-if="canBeRemoved()"
                                                 aria-label="Remove"
-                                                data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                                data-ng-click="toggleMenu(); quickRemove(interface); sendAnalyticsEvent('Machine details', 'Remove interface', 'Network tab')">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
                                         </div>
                                     </div>
                                 </td>
@@ -3435,7 +3435,7 @@
                             <button class="p-button--base u-no-margin--bottom"
                                 data-ng-click="closeStorageLayoutConfirm()">Cancel</button>
                             <button class="p-button--negative u-no-margin--bottom"
-                                data-ng-click="updateStorageLayout(storageLayout)">
+                                data-ng-click="updateStorageLayout(storageLayout); sendAnalyticsEvent('Machine details', 'Change storage layout to ' + storageLayout.name, 'Storage tab')">
                                 Change storage layout
                             </button>
                         </div>

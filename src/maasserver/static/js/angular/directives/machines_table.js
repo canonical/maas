@@ -58,6 +58,8 @@ function maasMachinesTable(
 
       $document.on("click", scope.clickHandler);
       scope.$on("$destroy", () => $document.off("click", scope.clickHandler));
+
+      scope.sendAnalyticsEvent = $filter("sendAnalyticsEvent");
     },
     controller: MachinesTableController
   };
