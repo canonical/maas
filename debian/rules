@@ -33,12 +33,8 @@ override_dh_auto_install:
 	dh_auto_install
 
 	# Move static files
-	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/web/static
-	mv $(CURDIR)/debian/tmp/usr/lib/$(PYTHON3)/*-packages/maasserver/static \
-                $(CURDIR)/debian/tmp/usr/share/maas/web/
-
-	# Remove scss directory from static files
-	rm -rf $(CURDIR)/debian/tmp/usr/share/maas/web/scss
+	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/web/
+	mv $(CURDIR)/src/maasui/build $(CURDIR)/debian/tmp/usr/share/maas/web/static
 
 	# Build and move lxd commissioning binaries
 	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/machine-resources

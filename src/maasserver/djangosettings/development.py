@@ -59,9 +59,10 @@ DEBUG_QUERIES_LOG_ALL = (
 TEMPLATES[0]["OPTIONS"]["string_if_invalid"] = "#### INVALID STRING ####"
 TEMPLATES[0]["OPTIONS"]["debug"] = DEBUG
 YUI_DEBUG = DEBUG
-STATIC_LOCAL_SERVE = True
 STATIC_ROOT = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "static"
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "maasui",
+    "build",
 )
 
 DATABASES = {
@@ -74,12 +75,6 @@ DATABASES = {
         "HOST": abspath("db"),
     }
 }
-
-# Absolute filesystem path to the directory that will hold user-uploaded files.
-# Example: "/home/media/media.lawrence.com/media/"
-# To allow tests to run in parallel the current process's PID is part of this
-# path. See MediaRootFixture for details.
-MEDIA_ROOT = abspath("media/development.%d" % os.getpid())
 
 INTERNAL_IPS = ("127.0.0.1", "::1")
 

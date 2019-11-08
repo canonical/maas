@@ -9,14 +9,11 @@ from http import HTTPStatus
 import http.client
 
 from django.conf import settings
-from django.contrib.auth import REDIRECT_FIELD_NAME, SESSION_KEY
-from lxml.html import fromstring, tostring
+from django.contrib.auth import SESSION_KEY
 from testtools.matchers import ContainsDict, Equals, MatchesSetwise
 
-from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
-from maasserver.testing import extract_redirect, get_content_links
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
@@ -25,100 +22,26 @@ from maasserver.utils.django_urls import reverse
 from provisioningserver.events import AUDIT
 
 
-class TestLoginLegacy(MAASServerTestCase):
-    def test_login_contains_input_tags_if_user(self):
-        factory.make_User()
-        response = self.client.get(reverse("login"))
-        doc = fromstring(response.content)
-        self.assertFalse(response.context_data["no_users"])
-        self.assertEqual(1, len(doc.cssselect("input#id_username")))
-        self.assertEqual(1, len(doc.cssselect("input#id_password")))
-
-    def test_login_displays_createadmin_message_if_no_user(self):
-        path = factory.make_string()
-        self.patch(settings, "MAAS_CLI", path)
-        response = self.client.get(reverse("login"))
-        self.assertTrue(response.context_data["no_users"])
-        self.assertEqual(path, response.context_data["create_command"])
-
-
 class TestLogin(MAASServerTestCase):
-    def test_login_redirects_when_authenticated(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
+    def test_login_GET_returns_302(self):
         self.client.handler.enforce_csrf_checks = True
-        self.client.login(username=user.username, password=password)
         response = self.client.get(reverse("login"))
-        self.assertEqual(reverse("index"), extract_redirect(response))
+        self.assertThat(response, HasStatusCode(http.client.FOUND))
 
-    def test_login_json_returns_204_when_already_authenticated(self):
+    def test_login_returns_204_when_already_authenticated(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
-        response = self.client.get(
-            reverse("login"), HTTP_ACCEPT="application/json"
-        )
+        response = self.client.post(reverse("login"))
         self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
 
-    def test_login_doesnt_redirect_to_logout_GET(self):
+    def test_login_returns_204_on_authentication(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
         response = self.client.post(
-            reverse("login")
-            + "?%s=%s" % (REDIRECT_FIELD_NAME, reverse("logout")),
-            {"username": user.username, "password": password},
-        )
-        self.assertEqual(reverse("index"), extract_redirect(response))
-
-    def test_login_redirects_GET(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        self.client.handler.enforce_csrf_checks = True
-        response = self.client.post(
-            reverse("login")
-            + "?%s=%s" % (REDIRECT_FIELD_NAME, reverse("prefs")),
-            {"username": user.username, "password": password},
-        )
-        self.assertEqual(reverse("prefs"), extract_redirect(response))
-
-    def test_login_doesnt_redirect_to_logout_POST(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        self.client.handler.enforce_csrf_checks = True
-        response = self.client.post(
-            reverse("login"),
-            {
-                "username": user.username,
-                "password": password,
-                REDIRECT_FIELD_NAME: reverse("logout"),
-            },
-        )
-        self.assertEqual(reverse("index"), extract_redirect(response))
-
-    def test_login_redirects_POST(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        self.client.handler.enforce_csrf_checks = True
-        response = self.client.post(
-            reverse("login"),
-            {
-                "username": user.username,
-                "password": password,
-                REDIRECT_FIELD_NAME: reverse("prefs"),
-            },
-        )
-        self.assertEqual(reverse("prefs"), extract_redirect(response))
-
-    def test_login_json_returns_204_on_authentication(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        self.client.handler.enforce_csrf_checks = True
-        response = self.client.post(
-            reverse("login"),
-            {"username": user.username, "password": password},
-            HTTP_ACCEPT="application/json",
+            reverse("login"), {"username": user.username, "password": password}
         )
         self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
         self.assertThat(
@@ -126,7 +49,7 @@ class TestLogin(MAASServerTestCase):
             MatchesSetwise(Equals("csrftoken"), Equals("sessionid")),
         )
 
-    def test_login_json_returns_400_on_bad_authentication(self):
+    def test_login_returns_400_on_bad_authentication(self):
         password = factory.make_string()
         factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
@@ -136,104 +59,38 @@ class TestLogin(MAASServerTestCase):
                 "username": factory.make_name("username"),
                 "password": factory.make_name("password"),
             },
-            HTTP_ACCEPT="application/json",
         )
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
-
-    def test_login_sets_autocomplete_off_in_production(self):
-        self.patch(settings, "DEBUG", False)
-        factory.make_User()
-        response = self.client.get(reverse("login"))
-        doc = fromstring(response.content)
-        form = doc.cssselect("form")[0]
-        self.assertIn(b'autocomplete="off"', tostring(form))
-
-    def test_login_sets_autocomplete_on_in_debug_mode(self):
-        self.patch(settings, "DEBUG", True)
-        factory.make_User()
-        response = self.client.get(reverse("login"))
-        doc = fromstring(response.content)
-        form = doc.cssselect("form")[0]
-        self.assertNotIn(b'autocomplete="off"', tostring(form))
 
     def test_login_creates_audit_event(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.post(
-            reverse("login"),
-            {
-                "username": user.username,
-                "password": password,
-                REDIRECT_FIELD_NAME: reverse("prefs"),
-            },
+            reverse("login"), {"username": user.username, "password": password}
         )
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEquals(event.description, "Logged in user.")
 
-    def test_login_external_auth(self):
-        self.patch(settings, "DEBUG", False)
-        Config.objects.set_config(
-            "external_auth_url", "http://candid.example.com"
-        )
-        factory.make_User()
-        response = self.client.get(reverse("login"))
-        doc = fromstring(response.content)
-        # no login form is presented (as login button is js-based)
-        self.assertEqual(len(doc.cssselect("form")), 0)
-
 
 class TestLogout(MAASServerTestCase):
-    def test_logout_doesnt_redirect_when_intro_not_completed(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password, completed_intro=False)
-        self.client.login(username=user.username, password=password)
-        response = self.client.get(reverse("logout"))
-        self.assertEqual(http.client.OK, response.status_code)
-
-    def test_logout_link_present_on_homepage(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        self.client.login(username=user.username, password=password)
-        response = self.client.get(reverse("index"))
-        logout_link = reverse("logout")
-        self.assertIn(
-            logout_link, get_content_links(response, element="#user-options")
-        )
-
-    def test_logout_uses_POST(self):
-        # Using POST for logging out, along with Django's csrf_token
-        # tag, guarantees that we're protected against CSRF attacks on
-        # the logout page.
+    def test_logout_returns_204(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
         self.client.handler.enforce_csrf_checks = False
-        self.client.post(reverse("logout"))
-        self.assertNotIn(SESSION_KEY, self.client.session)
-
-    def test_logout_json_returns_204(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        self.client.handler.enforce_csrf_checks = True
-        self.client.login(username=user.username, password=password)
-        self.client.handler.enforce_csrf_checks = False
-        response = self.client.post(
-            reverse("logout"), HTTP_ACCEPT="application/json"
-        )
+        response = self.client.post(reverse("logout"))
         self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
         self.assertNotIn(SESSION_KEY, self.client.session)
 
-    def test_logout_json_GET_returns_405(self):
+    def test_logout_GET_returns_405(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
         self.client.handler.enforce_csrf_checks = False
-        response = self.client.get(
-            reverse("logout"), HTTP_ACCEPT="application/json"
-        )
+        response = self.client.get(reverse("logout"))
         self.assertThat(
             response, HasStatusCode(http.client.METHOD_NOT_ALLOWED)
         )

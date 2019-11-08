@@ -36,7 +36,7 @@ class LoginLogoutTest(MAASServerTestCase):
             reverse("login"), {"username": name, "password": password}
         )
 
-        self.assertEqual(http.client.FOUND, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertEqual(user.id, int(self.client.session["_auth_user_id"]))
 
     def test_login_failed(self):
@@ -48,7 +48,7 @@ class LoginLogoutTest(MAASServerTestCase):
             },
         )
 
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_logout(self):

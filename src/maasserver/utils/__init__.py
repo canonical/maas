@@ -73,7 +73,10 @@ def absolute_reverse(
     if not base_url.endswith("/"):
         # Add trailing '/' to get urljoin to behave.
         base_url = base_url + "/"
-    reverse_link = reverse(view_name, *args, **kwargs)
+    if view_name.startswith("/"):
+        reverse_link = view_name
+    else:
+        reverse_link = reverse(view_name, *args, **kwargs)
     if reverse_link.startswith("/"):
         # Drop the leading '/'.
         reverse_link = reverse_link[1:]

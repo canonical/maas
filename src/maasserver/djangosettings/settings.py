@@ -51,7 +51,6 @@ DEBUG_HTTP = False
 
 # The following specify named URL patterns.
 LOGOUT_URL = "logout"
-LOGIN_REDIRECT_URL = "index"
 LOGIN_URL = "login"
 
 # Always use X-Forwarded-Host when possible. This is needed
@@ -89,8 +88,6 @@ JQUERY_LOCATION = "/usr/share/javascript/jquery/"
 
 # Set this to where AngularJS files can be found.
 ANGULARJS_LOCATION = "/usr/share/javascript/angular.js/"
-
-STATIC_LOCAL_SERVE = DEBUG
 
 AUTHENTICATION_BACKENDS = (
     "maasserver.models.MAASAuthorizationBackend",
@@ -155,21 +152,13 @@ USE_I18N = True
 DATETIME_FORMAT = "D, d M. o H:i:s"
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
-# Example: "/home/media/media.lawrence.com/media/"
+# Unset as media is stored in the database.
 MEDIA_ROOT = ""
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_URL = ""
-
-# URL prefix for static files.
-# Example: "http://media.lawrence.com/static/"
-STATIC_URL_PREFIX = "/static/"
-# Serving of static files doesn't seem to grok how to compose a URL when a
-# application is being served from a non-empty prefix (i.e. when request.path
-# is not empty), so we have to hack this.
-STATIC_URL = "/MAAS" + STATIC_URL_PREFIX
 
 # Path to the root of the static files.
 STATIC_ROOT = "/usr/share/maas/web/static"

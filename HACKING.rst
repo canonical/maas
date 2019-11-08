@@ -65,14 +65,8 @@ tests though.
 Python development dependencies are pulled automatically from `PyPI`_ in a
 virtualenv located under ``.ve``.
 
-Javascript development dependencies are pulled automatically from `npm`_ when
-``make`` runs. (``npm`` will be automatically configured to use a cache, in
-order to improve build times.)
-
 .. _PyPI:
   http://pypi.python.org/
-.. _npm:
-  https://www.npmjs.com/
 
 
 Git Workflow
@@ -162,57 +156,6 @@ a test run. The optional ``--subunit-fd`` flag can be used to direct the
 results to a different file descriptor, to ensure a clean stream.
 
 .. _subunit: https://launchpad.net/subunit/
-
-
-Running JavaScript tests
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-The JavaScript tests are run using Jest_.::
-
-    $ make test-js
-
-Jest tests can be run on change with:::
-
-    $ make test-js-watch
-
-.. _Jest: https://jestjs.io/
-
-
-Frontend development
-====================
-
-For faster development, Webpack watch mode can be run with::
-
-    $ make watch-assets
-
-JavaScript debugging
-^^^^^^^^^^^^^^^^^^^^
-
-Angularjs debugInfo, which provides hooks for browser debugging tools
-like Batarang, is disabled by default. To re-enable debugInfo,
-run ``angular.reloadWithDebugInfo();`` in the browser console.
-
-See https://docs.angularjs.org/guide/production#disabling-debug-data for details.
-
-
-JavaScript linting and formatting
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-JSLint can be run with::
-
-    $ make lint-js
-
-This will also run `prettier-check` which will notify you
-if there are formatting issues.
-
-Prettier can be run in write mode to correct formatting with::
-
-    $ make format
-
-ESLint is also available (the intention is to eventually replace JSLint),
-and can be run with::
-
-    $ ./bin/yarn lint
 
 
 Production MAAS server debugging
@@ -334,10 +277,8 @@ target again:
 
     $ make sync-dev-snap
 
-You should now see that you files were synced to the prime directory. If
-you changed JS and HTML files only, you should see that changes straight
-away by just reloading the browser. If you changed Python files, you
-need to restart MAAS:
+You should now see that you files were synced to the prime directory. Restart
+the supervisor service to use the synced code:
 
     $ sudo service snap.maas.supervisor restart
 

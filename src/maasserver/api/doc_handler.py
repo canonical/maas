@@ -52,7 +52,7 @@ you want to do.
 For example, to list all machines, you might GET "/MAAS/api/2.0/machines".
 """
 
-__all__ = ["api_doc", "api_doc_title", "describe", "render_api_docs"]
+__all__ = ["api_doc_title", "describe", "render_api_docs"]
 
 from functools import partial
 from inspect import getdoc
@@ -63,8 +63,6 @@ import sys
 from textwrap import dedent
 
 from django.http import HttpResponse
-from django.shortcuts import render
-from docutils import core
 
 from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.doc import (
@@ -208,23 +206,6 @@ def render_api_docs():
     line(generate_pod_types_doc())
 
     return output.getvalue()
-
-
-def reST_to_html_fragment(a_str):
-    parts = core.publish_parts(source=a_str, writer_name="html")
-    return parts["body_pre_docinfo"] + parts["fragment"]
-
-
-def api_doc(request):
-    """Get ReST documentation for the REST API."""
-    # Generate the documentation and keep it cached.  Note that we can't do
-    # that at the module level because the API doc generation needs Django
-    # fully initialized.
-    return render(
-        request,
-        "maasserver/api_doc.html",
-        {"doc": reST_to_html_fragment(render_api_docs())},
-    )
 
 
 def describe(request):

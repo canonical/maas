@@ -44,7 +44,6 @@ from maasserver.rbac import rbac
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     make_deadlock_failure,
     make_serialization_failure,
@@ -62,12 +61,6 @@ class IsPublicPathTest(MAASServerTestCase):
     def test_public_path(self):
         self.assertTrue(is_public_path("/MAAS/accounts/login/"))
         self.assertTrue(is_public_path("/MAAS/rpc/someurl"))
-
-    def test_public_path_static_files(self):
-        self.assertTrue(is_public_path("/MAAS/combo/angular.js"))
-        self.assertTrue(is_public_path("/MAAS/combo/jquery.js"))
-        self.assertTrue(is_public_path("/MAAS/static/js/bundle/maas-min.js"))
-        self.assertTrue(is_public_path("/MAAS/static/js/bundle/vendor-min.js"))
 
     def test_path_not_public(self):
         self.assertFalse(is_public_path("/"))
@@ -154,10 +147,10 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             type(exception), self.process_exception, request, exception
         )
 
-    def test_ignores_404_errors(self):
+    def test_Http404_returns_302(self):
         request = self.make_fake_request()
         response = self.process_exception(request, Http404())
-        self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
 
     def test_unknown_exception_generates_internal_server_error(self):
         # An unknown exception generates an internal server error with the
@@ -629,9 +622,9 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
             "One rack controller is not yet connected to the region. Visit "
-            'the <a href="%s#/controllers">'
+            'the <a href="/MAAS/#/controllers">'
             "rack controllers page</a> for more "
-            "information." % (reverse("index")),
+            "information.",
             error,
         )
 
@@ -652,9 +645,9 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
             "2 rack controllers are not yet connected to the region. Visit "
-            'the <a href="%s#/controllers">'
+            'the <a href="/MAAS/#/controllers">'
             "rack controllers page</a> for more "
-            "information." % reverse("index"),
+            "information.",
             error,
         )
 

@@ -24,8 +24,7 @@ import time
 
 from django.db import connection, connections
 from django.db.utils import load_backend
-from django.http import Http404, HttpResponse, StreamingHttpResponse
-from django.shortcuts import get_object_or_404
+from django.http import HttpResponse, StreamingHttpResponse
 from simplestreams import util as sutil
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import ObjectStore
@@ -54,6 +53,7 @@ from maasserver.enum import (
     COMPONENT,
 )
 from maasserver.eventloop import services
+from maasserver.exceptions import MAASAPINotFound
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
@@ -336,7 +336,7 @@ class SimpleStreamsHandler:
             return self.get_product_index()
         elif filename == "maas:v2:download.json":
             return self.get_product_download()
-        raise Http404()
+        raise MAASAPINotFound()
 
     def files_handler(
         self, request, os, arch, subarch, series, version, filename
@@ -347,17 +347,18 @@ class SimpleStreamsHandler:
         else:
             name = "%s/%s" % (os, series)
         arch = "%s/%s" % (arch, subarch)
-        resource = get_object_or_404(
-            BootResource, name=name, architecture=arch
-        )
+        try:
+            resource = BootResource.objects.get(name=name, architecture=arch)
+        except BootResource.DoesNotExist:
+            raise MAASAPINotFound()
         try:
             resource_set = resource.sets.get(version=version)
         except BootResourceSet.DoesNotExist:
-            raise Http404()
+            raise MAASAPINotFound()
         try:
             rfile = resource_set.files.get(filename=filename)
         except BootResourceFile.DoesNotExist:
-            raise Http404()
+            raise MAASAPINotFound()
         response = StreamingHttpResponse(
             ConnectionWrapper(rfile.largefile.content),
             content_type="application/octet-stream",
@@ -1593,7 +1594,7 @@ class ImportResourcesProgressService(TimerService, object):
 
     @transactional
     def set_import_warning(self, warning):
-        warning %= {"images_link": absolute_reverse("index") + "#/images"}
+        warning %= {"images_link": absolute_reverse("/") + "#/images"}
         register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
     @transactional

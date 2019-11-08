@@ -44,7 +44,6 @@ from maasserver.rbac import rbac
 from maasserver.rpc import getAllClients
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import is_retryable_failure
-from maasserver.views.combo import MERGE_VIEWS
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
@@ -66,7 +65,6 @@ PUBLIC_URL_PREFIXES = [
     reverse("csrf"),
     # The combo loaders are publicly accessible.
     reverse("robots"),
-    reverse("api-doc"),
     # Metadata service is for use by nodes; no login.
     reverse("metadata"),
     # RPC information is for use by rack controllers; no login.
@@ -78,11 +76,9 @@ PUBLIC_URL_PREFIXES = [
     reverse("api_v1_error"),
     # API calls are protected by piston.
     settings.API_URL_PREFIX,
-    # Static resources are publicly visible.
-    settings.STATIC_URL,
     # Boot resources simple streams endpoint; no login.
     settings.SIMPLESTREAMS_URL_PREFIX,
-] + [reverse("merge", args=[filename]) for filename in MERGE_VIEWS]
+]
 
 
 def is_public_path(path):
@@ -118,11 +114,8 @@ class AccessMiddleware:
             completed_intro = True
 
         if not completed_intro or not request.user.userprofile.completed_intro:
-            index_path = reverse("index")
-            if request.path != index_path and request.path != reverse(
-                "logout"
-            ):
-                return HttpResponseRedirect(index_path)
+            if request.path != "/MAAS/" and request.path != reverse("logout"):
+                return HttpResponseRedirect("/MAAS/")
 
         return self.get_response(request)
 
@@ -158,9 +151,9 @@ class ExternalComponentsMiddleware:
                     % len(disconnected_controllers)
                 )
             message = (
-                '%s. Visit the <a href="%s#/controllers">'
+                '%s. Visit the <a href="/MAAS/#/controllers">'
                 "rack controllers page</a> for "
-                "more information." % (message, reverse("index"))
+                "more information." % message
             )
             register_persistent_error(COMPONENT.RACK_CONTROLLERS, message)
 

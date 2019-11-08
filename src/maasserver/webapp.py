@@ -7,6 +7,7 @@ __all__ = ["WebApplicationService"]
 
 import copy
 from functools import partial
+import os
 import re
 import socket
 
@@ -142,6 +143,36 @@ class ResourceOverlay(Resource, object):
         return self.basis.render(request)
 
 
+class DefaultFile(File):
+    """
+    A `File` resource that always returns the same file no matter the
+    path.
+    """
+
+    def getChild(self, path, request):
+        return self
+
+
+class NoListingFile(File):
+    """
+    A `File` resource that returns childNotFound instead of listing the directory contents.
+    """
+
+    def directoryListing(self):
+        return self.childNotFound
+
+
+class DefaultFallbackFile(NoListingFile):
+    """
+    A `NoListingFile` that returns the fallback file when a path is not found.
+    """
+
+    def __init__(self, *args, **kwargs):
+        fallback = kwargs.pop("fallback", "index.html")
+        super().__init__(*args, **kwargs)
+        self.childNotFound = DefaultFile(self.child(fallback).path)
+
+
 class WebApplicationService(StreamServerEndpointService):
     """Service encapsulating the Django web application.
 
@@ -199,9 +230,31 @@ class WebApplicationService(StreamServerEndpointService):
 
         maas = Resource()
         maas.putChild(b"metadata", metadata)
-        maas.putChild(b"static", File(settings.STATIC_ROOT))
         maas.putChild(
             b"ws", WebSocketsResource(lookupProtocolForFactory(self.websocket))
+        )
+
+        # Setup static resources
+        # /MAAS/r/{path} are all resolved by the new MAAS UI section of code.
+        # If any paths do not match then its routed to index.html in the new
+        # UI code as it uses HTML 5 routing.
+        maas.putChild(
+            b"r", DefaultFallbackFile(os.path.join(settings.STATIC_ROOT, "ui"))
+        )
+        # /MAAS/{path} are resolved by the old MAAS UI section of code, but
+        # only for the specific content in the legacy folder as it overlays
+        # all other URL's under the /MAAS prefix.
+        maas.putChild(
+            b"assets",
+            NoListingFile(
+                os.path.join(settings.STATIC_ROOT, "legacy", "assets")
+            ),
+        )
+        maas.putChild(
+            b"",
+            DefaultFile(
+                os.path.join(settings.STATIC_ROOT, "legacy", "index.html")
+            ),
         )
 
         root = Resource()

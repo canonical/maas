@@ -5,11 +5,8 @@
 
 __all__ = []
 
-import http.client
 from inspect import getdoc
-from io import StringIO
 import random
-import sys
 import types
 from unittest.mock import sentinel
 
@@ -52,11 +49,8 @@ from maasserver.api.support import (
     OperationsHandler,
     OperationsResource,
 )
-from maasserver.testing.api import APITestCase
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
-from maasserver.utils.django_urls import reverse
 from maastesting.matchers import IsCallable, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
@@ -65,9 +59,6 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 class TestFindingResources(MAASTestCase):
     """Tests for API inspection support: finding resources."""
-
-    def test_handler_path(self):
-        self.assertEqual("/MAAS/api/2.0/doc/", reverse("api-doc"))
 
     @staticmethod
     def make_module():
@@ -128,17 +119,6 @@ class TestFindingResources(MAASTestCase):
         from maasserver import urls_api as urlconf
 
         self.assertNotEqual(set(), find_api_resources(urlconf))
-
-
-class TestFindingResourcesAPI(APITestCase.ForAnonymousAndUserAndAdmin):
-    """The documentation is available to all comers."""
-
-    def test_api_doc_accessibility(self):
-        self.patch(sys, "stderr", StringIO())
-        response = self.client.get(reverse("api-doc"))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        # No error or warning are emitted by docutils.
-        self.assertEqual("", sys.stderr.getvalue())
 
 
 class TestGeneratingDocs(MAASTestCase):

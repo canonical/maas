@@ -1,5 +1,0 @@
-This folder contains somewhat ephemeral things: subfolders serve as
-``MEDIA_ROOT`` for `demo` and `development` environments. The ``media/demo``
-directory should always exist and not be deleted, though its contents can
-be. The ``media/development.$$`` (where ``$$`` is the PID of the running process)
-directories are created and destroyed by tests, as needed.

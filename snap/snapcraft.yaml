@@ -93,8 +93,6 @@ parts:
       - isc-dhcp-client
       - isc-dhcp-server
       - libatm1
-      - libjs-angularjs
-      - libjs-jquery
       - libpq5
       - libxtables12
       - lshw
@@ -159,7 +157,6 @@ parts:
         - -lib/python3/dist-packages/maastesting
         - -share
         - -usr/bin/xdg-*
-        - -usr/include/libjs-angularjs
         - -usr/share/applications
         - -usr/share/bug
         - -usr/share/debhelper
@@ -187,15 +184,32 @@ parts:
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
     override-prime: |
       set -e
+      cwd=$(pwd)
+      cd $SNAPCRAFT_PART_SRC
       snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version)
+      cd $cwd
       snapcraftctl prime
 
-  region-static:
-    plugin: dump
-    source: src/maasserver/static
-    organize:
-      '*': usr/share/maas/web/static/
+  ui:
+    plugin: nodejs
+    source: src/maasui/src
+    nodejs-version: "12.13.0"
+    nodejs-yarn-version: "v1.19.1"
+    override-build: |
+      set -e
 
+      PATH="$PATH:$SNAPCRAFT_PART_BUILD/../npm/bin"
+      yarn install
+      yarn build-shared
+      PUBLIC_URL=/MAAS/r/ yarn build-ui
+      PUBLIC_URL=/MAAS/ yarn build-legacy
+      yarn copy-build
+
+      INSTALL_DIR="$SNAPCRAFT_PART_INSTALL/usr/share/maas/web"
+      mkdir -p "$INSTALL_DIR"
+      cp -a build "$INSTALL_DIR/static"
+    prime:
+      - usr/share/maas/web/static
 
   machine-resources:
     plugin: make

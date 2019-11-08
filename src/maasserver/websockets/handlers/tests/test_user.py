@@ -22,12 +22,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.views.tests.test_settings import (
-    make_password_params,
-    make_user_attribute_params,
-    subset_dict,
-    user_attributes,
-)
 from maasserver.websockets.base import (
     DATETIME_FORMAT,
     dehydrate_datetime,
@@ -38,6 +32,31 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.user import UserHandler
 from maastesting.djangotestcase import count_queries
 from provisioningserver.events import AUDIT
+
+# Settable attributes on User.
+user_attributes = ["email", "is_superuser", "last_name", "username"]
+
+
+def make_user_attribute_params(user):
+    """Compose a dict of form parameters for a user's account data.
+
+    By default, each attribute in the dict maps to the user's existing value
+    for that atrribute.
+    """
+    return {attr: getattr(user, attr) for attr in user_attributes}
+
+
+def make_password_params(password):
+    """Create a dict of parameters for setting a given password."""
+    return {"password1": password, "password2": password}
+
+
+def subset_dict(input_dict, keys_subset):
+    """Return a subset of `input_dict` restricted to `keys_subset`.
+
+    All keys in `keys_subset` must be in `input_dict`.
+    """
+    return {key: input_dict[key] for key in keys_subset}
 
 
 class TestUserHandler(MAASServerTestCase):

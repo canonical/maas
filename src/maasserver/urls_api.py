@@ -37,7 +37,7 @@ from maasserver.api.dnsresourcerecords import (
     DNSResourceRecordsHandler,
 )
 from maasserver.api.dnsresources import DNSResourceHandler, DNSResourcesHandler
-from maasserver.api.doc_handler import api_doc, describe
+from maasserver.api.doc_handler import describe
 from maasserver.api.domains import DomainHandler, DomainsHandler
 from maasserver.api.events import EventsHandler
 from maasserver.api.fabrics import FabricHandler, FabricsHandler
@@ -310,7 +310,6 @@ license_keys_handler = AdminRestrictedResource(
 
 # API URLs accessible to anonymous users.
 urlpatterns = [
-    url(r"doc/$", api_doc, name="api-doc"),
     url(r"describe/$", describe, name="describe"),
     url(r"version/$", version_handler, name="version_handler"),
 ]

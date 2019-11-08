@@ -15,31 +15,13 @@ export http_proxy := broken
 export https_proxy := broken
 endif
 
-asset_deps := \
-  $(shell find src -name '*.js' -not -path '*/maasserver/static/js/bundle/*') \
-  $(shell find src -name '*.scss') \
-  package.json \
-  webpack.config.js \
-  yarn.lock
-
-asset_output := \
-  src/maasserver/static/css/build.css \
-  src/maasserver/static/js/bundle/maas-min.js \
-  src/maasserver/static/js/bundle/maas-min.js.map \
-  src/maasserver/static/js/bundle/vendor-min.js \
-  src/maasserver/static/js/bundle/vendor-min.js.map
-
 # Prefix commands with this when they need access to the database.
 # Remember to add a dependency on bin/database from the targets in
 # which those commands appear.
 dbrun := bin/database --preserve run --
 
-# Path to install local nodejs.
-mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-nodejs_path := $(mkfile_dir)/include/nodejs/bin
-
 export GOPATH := $(shell go env GOPATH)
-export PATH := $(GOPATH)/bin:$(nodejs_path):$(PATH)
+export PATH := $(GOPATH)/bin:$(PATH)
 
 # For anything we start, we want to hint as to its root directory.
 export MAAS_ROOT := $(CURDIR)/.run
@@ -77,17 +59,24 @@ bin/test.region.legacy \
 bin/test.testing
 endef
 
+define PY_SOURCES
+src/apiclient \
+src/maascli \
+src/maasserver \
+src/maastesting \
+src/metadataserver \
+src/provisioningserver
+endef
 
 build: \
   .run \
   $(VENV) \
   $(BIN_SCRIPTS) \
   bin/py \
-  machine-resources \
   pycharm
 .PHONY: build
 
-all: build doc
+all: build ui machine-resources doc
 .PHONY: all
 
 REQUIRED_DEPS_FILES = base build dev doc
@@ -123,29 +112,12 @@ $(BIN_SCRIPTS): $(VENV)
 bin/py:
 	ln -sf ../$(VENV)/bin/ipython $@
 
-# bin/node-sass is needed for checking css.
-bin/test.testing: bin/node-sass
-
 bin/database: bin/postgresfixture
 	ln -sf $(notdir $<) $@
 
-include/nodejs/bin/node:
-	mkdir -p include/nodejs
-	wget -O include/nodejs/nodejs.tar.gz https://nodejs.org/dist/v8.10.0/node-v8.10.0-linux-x64.tar.gz
-	tar -C include/nodejs/ -xf include/nodejs/nodejs.tar.gz --strip-components=1
-
-include/nodejs/yarn.tar.gz:
-	mkdir -p include/nodejs
-	wget -O include/nodejs/yarn.tar.gz https://yarnpkg.com/latest.tar.gz
-
-include/nodejs/bin/yarn: include/nodejs/yarn.tar.gz
-	tar -C include/nodejs/ -xf include/nodejs/yarn.tar.gz --strip-components=1
-	@touch --no-create $@
-
-bin/yarn: include/nodejs/bin/yarn
-	@mkdir -p bin
-	ln -sf ../include/nodejs/bin/yarn $@
-	@touch --no-create $@
+ui:
+	$(MAKE) -C src/maasui build
+.PHONY: ui
 
 machine-resources-vendor:
 	$(MAKE) -C src/machine-resources vendor
@@ -154,47 +126,6 @@ machine-resources-vendor:
 machine-resources: machine-resources-vendor
 	$(MAKE) -C src/machine-resources build
 .PHONY: machine-resources
-
-node_modules: include/nodejs/bin/node bin/yarn
-	bin/yarn --frozen-lockfile
-	@touch --no-create $@
-
-define js_bins
-  bin/node-sass
-  bin/webpack
-endef
-
-$(strip $(js_bins)): node_modules
-	ln -sf ../node_modules/.bin/$(notdir $@) $@
-	@touch --no-create $@
-
-define node_packages
-  @babel/core
-  @babel/preset-react
-  @babel/preset-es2015
-  @types/prop-types
-  @types/react
-  @types/react-dom
-  babel-polyfill
-  babel-loader@^8.0.0-beta.0
-  glob
-  jasmine-core@=2.99.1
-  macaroon-bakery
-  node-sass
-  prop-types
-  react
-  react-dom
-  react2angular
-  vanilla-framework
-  webpack
-  webpack-cli
-  webpack-merge
-endef
-
-force-yarn-update: bin/yarn
-	$(RM) package.json yarn.lock
-	bin/yarn add -D $(strip $(node_packages))
-.PHONY: force-yarn-update
 
 define test-scripts
   bin/test.cli
@@ -209,7 +140,7 @@ lxd:
 	utilities/create-lxd-bionic-image
 .PHONY: lxd
 
-test: test-js test-py
+test: test-py
 .PHONY: test
 
 test-py: bin/test.parallel bin/coverage
@@ -217,14 +148,6 @@ test-py: bin/test.parallel bin/coverage
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine
 .PHONY: test-py
-
-test-js: assets
-	bin/yarn test
-.PHONY: test-js
-
-test-js-watch: assets
-	bin/yarn test --watch
-.PHONY: test-js-watch
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
@@ -291,19 +214,10 @@ coverage/index.html: bin/coverage .coverage
 .coverage:
 	@$(error Use `$(MAKE) test` to generate coverage)
 
-lint: lint-py lint-py-imports lint-py-linefeeds lint-js lint-go
+lint: lint-py lint-py-imports lint-py-linefeeds lint-go
 .PHONY: lint
 
-pocketlint = $(call available,pocketlint,python-pocket-lint)
-
-# XXX jtv 2014-02-25: Clean up this lint, then make it part of "make lint".
-lint-css: sources = src/maasserver/static/css
-lint-css:
-	@find $(sources) -type f \
-	    -print0 | xargs -r0 $(pocketlint) --max-length=120
-.PHONY: lint-css
-
-lint-py: sources = $(wildcard *.py contrib/*.py) src utilities etc
+lint-py: sources = $(wildcard *.py contrib/*.py) $(PY_SOURCES) utilities etc
 lint-py: bin/flake8 bin/black bin/isort
 	@bin/isort --check-only --diff --recursive $(sources)
 	@bin/black $(sources) --check
@@ -311,7 +225,7 @@ lint-py: bin/flake8 bin/black bin/isort
 .PHONY: lint-py
 
 # Statically check imports against policy.
-lint-py-imports: sources = setup.py src
+lint-py-imports: sources = setup.py $(PY_SOURCES)
 lint-py-imports:
 	@utilities/check-imports
 	@find $(sources) -type f -name '*.py' \
@@ -326,15 +240,6 @@ lint-py-linefeeds:
 	    (echo "Lint check failed; run make format to fix DOS linefeeds."; false)
 .PHONY: lint-py-linefeeds
 
-# JavaScript lint is checked in parallel for speed.  The -n20 -P4 setting
-# worked well on a multicore SSD machine with the files cached, roughly
-# doubling the speed, but it may need tuning for slower systems or cold caches.
-lint-js: sources = src/maasserver/static/js
-lint-js:
-		bin/yarn lint
-		bin/yarn prettier-check
-.PHONY: lint-js
-
 # Go fmt
 lint-go:
 	@find src/ \( -name pkg -o -name vendor \) -prune -o -name '*.go' -exec gofmt -l {} + | \
@@ -347,18 +252,14 @@ format.parallel:
 .PHONY: format.parallel
 
 # Apply automated formatting to all Python, Sass and Javascript files.
-format: format-py format-js format-go
+format: format-py format-go
 .PHONY: format
 
-format-py: sources = $(wildcard *.py contrib/*.py) src utilities etc
+format-py: sources = $(wildcard *.py contrib/*.py) $(PY_SOURCES) utilities etc
 format-py: bin/black bin/isort
 	@bin/isort --recursive $(sources)
 	@bin/black -q $(sources)
 .PHONY: format-py
-
-format-js: bin/yarn
-	@bin/yarn -s prettier --loglevel warn
-.PHONY: format-js
 
 format-go:
 	@find src/machine-resources/src/ -name vendor -prune -o -name '*.go' -execdir go fmt {} +
@@ -386,48 +287,29 @@ doc: api-docs.rst
 pycharm: .idea
 .PHONY: pycharm
 
-assets: node_modules $(asset_output)
-.PHONY: assets
+clean-ui:
+	$(MAKE) -C src/maasui clean
+.PHONY: clean-ui
 
-force-assets: clean-assets node_modules $(asset_output)
-.PHONY: force-assets
+clean-ui-build:
+	$(MAKE) -C src/maasui clean-build
+.PHONY: clean-build
 
-lander-javascript: force-assets
-	git update-index -q --no-assume-unchanged $(strip $(asset_output)) 2> /dev/null || true
-	git add -f $(strip $(asset_output)) 2> /dev/null || true
-.PHONY: lander-javascript
+clean-machine-resources:
+	$(MAKE) -C src/machine-resources clean
+.PHONY: clean-machine-resources
 
-lander-styles: lander-javascript
-.PHONY: lander-styles
-
-# The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
-# even if all four output files are out-of-date.
-$(subst .,%,$(asset_output)): node_modules $(asset_deps)
-	bin/yarn build
-	@touch --no-create $(strip $(asset_output))
-	@git update-index -q --assume-unchanged $(strip $(asset_output)) 2> /dev/null || true
-
-clean-assets:
-	$(RM) -r src/maasserver/static/js/bundle
-	$(RM)  -r src/maasserver/static/css
-.PHONY: clean-assets
-
-watch-assets:
-	bin/yarn watch
-.PHONY: watch-assets
-
-clean: stop clean-failed clean-assets
+clean: stop clean-failed clean-ui clean-machine-resources
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
-	$(RM) -r media/demo/* media/development media/development.*
 	$(RM) src/maasserver/data/templates.py
 	$(RM) *.log
 	$(RM) api-docs.rst
 	$(RM) .coverage .coverage.* coverage.xml
 	$(RM) -r coverage
 	$(RM) -r .hypothesis
-	$(RM) -r bin include lib local node_modules
+	$(RM) -r bin include lib local
 	$(RM) -r eggs develop-eggs
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
@@ -437,7 +319,6 @@ clean: stop clean-failed clean-assets
 	$(RM) -r .idea
 	$(RM) xunit.*.xml
 	$(RM) .failed
-	$(MAKE) -C src/machine-resources clean
 	$(RM) -r $(VENV)
 .PHONY: clean
 
@@ -571,6 +452,7 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
+ui_build := src/maasui/build
 machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 
 -packaging-clean:
@@ -582,6 +464,9 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	git archive --format=tar $(packaging-export-extra) \
             --prefix=$(packaging-dir)/ \
 	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
+	$(MAKE) ui
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(ui_build) \
+		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) machine-resources-vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
@@ -591,6 +476,9 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 -packaging-export-orig-uncommitted: $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
+	$(MAKE) ui
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(ui_build) \
+		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) machine-resources-vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
@@ -609,7 +497,7 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
 .PHONY: -package-tree
 
-package-tree: assets -packaging-clean -package-tree
+package-tree: -packaging-clean -package-tree
 
 package: package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
@@ -618,7 +506,7 @@ package: package-tree
 
 # To build binary packages from uncommitted changes call "make package-dev".
 package-dev:
-	make export-uncommitted=yes package
+	$(MAKE) export-uncommitted=yes package
 .PHONY: package-dev
 
 source-package: -package-tree
@@ -628,7 +516,7 @@ source-package: -package-tree
 
 # To build source packages from uncommitted changes call "make package-dev".
 source-package-dev:
-	make export-uncommitted=yes source-package
+	$(MAKE) export-uncommitted=yes source-package
 .PHONY: source-package-dev
 
 # To rebuild packages (i.e. from a clean slate):
@@ -688,10 +576,10 @@ build/dev-snap/prime: build/dev-snap
 sync-dev-snap: RSYNC=rsync -v -r -u -l -t -W -L
 sync-dev-snap: build/dev-snap/prime
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude 'machine-resources' --exclude '*.pyc' \
+		--exclude 'maasui' --exclude 'machine-resources' --exclude '*.pyc' \
 		--exclude '__pycache__' \
 		src/ build/dev-snap/prime/lib/python3.6/site-packages/
 	$(RSYNC) \
-		src/maasserver/static/ build/dev-snap/prime/usr/share/maas/web/static/
+		src/maasui/build/ build/dev-snap/prime/usr/share/maas/web/static/
 	$(RSYNC) snap/local/tree/ build/dev-snap/prime
 .PHONY: sync-dev-snap

@@ -46,26 +46,26 @@ class TestAbsoluteReverse(MAASServerTestCase):
     def test_absolute_reverse_uses_maas_url_by_default(self):
         maas_url = factory.make_simple_http_url(path="")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        absolute_url = absolute_reverse("settings")
+        absolute_url = absolute_reverse("login")
         expected_url = self.expected_from_maas_url_and_reverse(
-            maas_url, reverse("settings")
+            maas_url, reverse("login")
         )
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_handles_base_url_without_ending_slash(self):
         maas_url = factory.make_simple_http_url()
         maas_url = maas_url.rstrip("/")
-        absolute_url = absolute_reverse("settings", base_url=maas_url)
+        absolute_url = absolute_reverse("login", base_url=maas_url)
         expected_url = self.expected_from_maas_url_and_reverse(
-            maas_url, reverse("settings")
+            maas_url, reverse("login")
         )
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_given_base_url(self):
         maas_url = factory.make_simple_http_url()
-        absolute_url = absolute_reverse("settings", base_url=maas_url)
+        absolute_url = absolute_reverse("login", base_url=maas_url)
         expected_url = self.expected_from_maas_url_and_reverse(
-            maas_url, reverse("settings")
+            maas_url, reverse("login")
         )
         self.assertEqual(expected_url, absolute_url)
 
@@ -74,8 +74,8 @@ class TestAbsoluteReverse(MAASServerTestCase):
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
 
         parameters = {factory.make_string(): factory.make_string()}
-        absolute_url = absolute_reverse("settings", query=parameters)
-        reversed_url = "%s?%s" % (reverse("settings"), urlencode(parameters))
+        absolute_url = absolute_reverse("login", query=parameters)
+        reversed_url = "%s?%s" % (reverse("login"), urlencode(parameters))
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reversed_url
         )
@@ -83,12 +83,12 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_kwargs(self):
         maas_url = factory.make_simple_http_url()
-        user = factory.make_User()
+        filename = factory.make_name("file")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         absolute_url = absolute_reverse(
-            "accounts-edit", kwargs={"username": user.username}
+            "simplestreams_stream_handler", kwargs={"filename": filename}
         )
-        reversed_url = reverse("accounts-edit", args=[user.username])
+        reversed_url = reverse("simplestreams_stream_handler", args=[filename])
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reversed_url
         )
@@ -96,14 +96,14 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_args(self):
         maas_url = factory.make_simple_http_url()
-        user = factory.make_User()
+        filename = factory.make_name("file")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
 
         observed_url = absolute_reverse(
-            "accounts-edit", kwargs={"username": user.username}
+            "simplestreams_stream_handler", kwargs={"filename": filename}
         )
 
-        reversed_url = reverse("accounts-edit", args=[user.username])
+        reversed_url = reverse("simplestreams_stream_handler", args=[filename])
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reversed_url
         )

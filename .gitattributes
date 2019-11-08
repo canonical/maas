@@ -7,8 +7,3 @@
 /services export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
-
-# Don't include generated JavaScript or CSS in diff output.
-# (They will still show up as binary files that differ.)
-/src/maasserver/static/js/bundle/** -diff
-/src/maasserver/static/css/build.css -diff

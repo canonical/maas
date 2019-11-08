@@ -161,7 +161,6 @@ TestingLibraries = Pattern(
     "maastesting|maastesting.**",
     "nose|nose.**",
     "postgresfixture|postgresfixture.**",
-    "selenium|selenium.**",
     "subunit|subunit.**",
     "testresources|testresources.**",
     "testscenarios|testscenarios.**",

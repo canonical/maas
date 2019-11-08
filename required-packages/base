@@ -11,8 +11,6 @@ go-dep
 iputils-ping
 isc-dhcp-common
 isc-dhcp-server
-libjs-angularjs
-libjs-jquery
 libpq-dev
 lshw
 nginx-core

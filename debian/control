@@ -72,8 +72,6 @@ Architecture: all
 Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          bind9utils,
          iproute2,
-         libjs-angularjs,
-         libjs-jquery,
          maas-cli (=${binary:Version}),
          maas-common (= ${binary:Version}),
          maas-proxy (= ${binary:Version}),

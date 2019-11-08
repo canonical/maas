@@ -7,11 +7,7 @@ __all__ = []
 
 from base64 import b64decode
 import http.client
-import os
-import shutil
 
-from django.conf import settings
-from fixtures import Fixture
 from testtools.matchers import Contains, Equals, MatchesListwise
 
 from maasserver.models import FileStorage
@@ -22,28 +18,7 @@ from maasserver.utils.django_urls import reverse
 from maastesting.utils import sample_binary_data
 
 
-class MediaRootFixture(Fixture):
-    """Create and clear-down a `settings.MEDIA_ROOT` directory.
-
-    The directory must not previously exist.
-    """
-
-    def setUp(self):
-        super(MediaRootFixture, self).setUp()
-        self.path = settings.MEDIA_ROOT
-        if os.path.exists(self.path):
-            raise AssertionError("See media/README.rst")
-        self.addCleanup(shutil.rmtree, self.path, ignore_errors=True)
-        os.mkdir(self.path)
-
-
 class FileStorageAPITestMixin:
-    def setUp(self):
-        super(FileStorageAPITestMixin, self).setUp()
-        media_root = self.useFixture(MediaRootFixture()).path
-        self.tmpdir = os.path.join(media_root, "testing")
-        os.mkdir(self.tmpdir)
-
     def _create_API_params(self, op=None, filename=None, fileObj=None):
         params = {}
         if op is not None:

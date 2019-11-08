@@ -4,16 +4,11 @@ avahi-utils
 bash
 build-essential
 bzr
-chromium-browser
-chromium-chromedriver
 curl
 dos2unix
-firefox
 git
 gjs
 ipython
-libjs-jquery
-libjs-jquery-hotkeys
 libnss-wrapper
 make
 psmisc
@@ -36,4 +31,3 @@ python-tempita
 python-twisted
 python-yaml
 socat
-xvfb

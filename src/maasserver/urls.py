@@ -10,41 +10,16 @@ from django.conf.urls import include, url
 from django.contrib.auth.decorators import user_passes_test
 from django.http import HttpResponse
 
-from maasserver import urls_api, urls_combo
+from maasserver import urls_api
 from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
 )
 from maasserver.macaroon_auth import MacaroonDischargeRequest
 from maasserver.prometheus.stats import prometheus_stats_handler
-from maasserver.views import settings, TextTemplateView
+from maasserver.views import TextTemplateView
 from maasserver.views.account import authenticate, csrf, login, logout
-from maasserver.views.index import IndexView
-from maasserver.views.prefs import (
-    SSLKeyCreateView,
-    SSLKeyDeleteView,
-    userprefsview,
-)
 from maasserver.views.rpc import info
-from maasserver.views.settings import (
-    AccountsAdd,
-    AccountsDelete,
-    AccountsEdit,
-    AccountsView,
-)
-from maasserver.views.settings_commissioning_scripts import (
-    CommissioningScriptCreate,
-    CommissioningScriptDelete,
-)
-from maasserver.views.settings_license_keys import (
-    LicenseKeyCreate,
-    LicenseKeyDelete,
-    LicenseKeyEdit,
-)
-from maasserver.views.settings_test_scripts import (
-    TestScriptCreate,
-    TestScriptDelete,
-)
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -52,12 +27,8 @@ def adminurl(regexp, view, *args, **kwargs):
     return url(regexp, view, *args, **kwargs)
 
 
-# # URLs accessible to anonymous users.
-# Combo URLs.
-urlpatterns = [url(r"combo/", include(urls_combo))]
-
 # Anonymous views.
-urlpatterns += [
+urlpatterns = [
     url(r"^accounts/login/$", login, name="login"),
     url(r"^accounts/authenticate/$", authenticate, name="authenticate"),
     url(
@@ -86,101 +57,9 @@ urlpatterns += [
 
 # # URLs for logged-in users.
 # Preferences views.
-urlpatterns += [
-    url(r"^account/csrf/$", csrf, name="csrf"),
-    url(r"^account/prefs/$", userprefsview, name="prefs"),
-    url(
-        r"^account/prefs/sslkey/add/$",
-        SSLKeyCreateView.as_view(),
-        name="prefs-add-sslkey",
-    ),
-    url(
-        r"^account/prefs/sslkey/delete/(?P<keyid>\d*)/$",
-        SSLKeyDeleteView.as_view(),
-        name="prefs-delete-sslkey",
-    ),
-]
+urlpatterns += [url(r"^account/csrf/$", csrf, name="csrf")]
 # Logout view.
 urlpatterns += [url(r"^accounts/logout/$", logout, name="logout")]
-
-
-# Index view.
-urlpatterns += [url(r"^$", IndexView.as_view(), name="index")]
-
-# # URLs for admin users.
-# Settings views.
-urlpatterns += [
-    adminurl(r"^settings/$", settings.settings, name="settings"),
-    adminurl(r"^settings/users/$", settings.users, name="settings_users"),
-    adminurl(
-        r"^settings/general/$", settings.general, name="settings_general"
-    ),
-    adminurl(
-        r"^settings/scripts/$", settings.scripts, name="settings_scripts"
-    ),
-    adminurl(
-        r"^settings/storage/$", settings.storage, name="settings_storage"
-    ),
-    adminurl(
-        r"^settings/network/$", settings.network, name="settings_network"
-    ),
-    adminurl(
-        r"^settings/license-keys/$",
-        settings.license_keys,
-        name="settings_license_keys",
-    ),
-    adminurl(r"^accounts/add/$", AccountsAdd.as_view(), name="accounts-add"),
-    adminurl(
-        r"^accounts/(?P<username>[^/]+)/edit/$",
-        AccountsEdit.as_view(),
-        name="accounts-edit",
-    ),
-    adminurl(
-        r"^accounts/(?P<username>[^/]+)/view/$",
-        AccountsView.as_view(),
-        name="accounts-view",
-    ),
-    adminurl(
-        r"^accounts/(?P<username>[^/]+)/del/$",
-        AccountsDelete.as_view(),
-        name="accounts-del",
-    ),
-    adminurl(
-        r"^commissioning-scripts/(?P<id>[\w\-]+)/delete/$",
-        CommissioningScriptDelete.as_view(),
-        name="commissioning-script-delete",
-    ),
-    adminurl(
-        r"^commissioning-scripts/add/$",
-        CommissioningScriptCreate.as_view(),
-        name="commissioning-script-add",
-    ),
-    adminurl(
-        r"^test-scripts/(?P<id>[\w\-]+)/delete/$",
-        TestScriptDelete.as_view(),
-        name="test-script-delete",
-    ),
-    adminurl(
-        r"^test-scripts/add/$",
-        TestScriptCreate.as_view(),
-        name="test-script-add",
-    ),
-    adminurl(
-        r"^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)/delete/$",
-        LicenseKeyDelete.as_view(),
-        name="license-key-delete",
-    ),
-    adminurl(
-        r"^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)/edit/$",
-        LicenseKeyEdit.as_view(),
-        name="license-key-edit",
-    ),
-    adminurl(
-        r"^license-key/add/$",
-        LicenseKeyCreate.as_view(),
-        name="license-key-add",
-    ),
-]
 
 # API URLs. If old API requested, provide error message directing to new API.
 urlpatterns += [
