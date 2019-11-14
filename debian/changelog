@@ -1,8 +1,8 @@
-maas (2.6.2~rc1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.6.2-0ubuntu1) UNRELEASED; urgency=medium
 
-  * New upstream release, MAAS 2.6.2 RC1.
+  * New upstream release, MAAS 2.6.2.
 
- -- Adam Collard <adam.collard@canonical.com>  Thu, 07 Nov 2019 11:15:46 +0000
+ -- Adam Collard <adam.collard@canonical.com>  Wed, 13 Nov 2019 15:59:58 -0800
 
 maas (2.6.1-0ubuntu2) eoan; urgency=medium
 
