@@ -725,9 +725,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             NodePermission.admin, machine
         ):
             raise PermissionDenied()
-        if options.install_kvm and (
-            machine.ephemeral_deployment or options.ephemeral_deploy
-        ):
+        if options.install_kvm and machine.ephemeral_deployment:
             raise MAASAPIBadRequest(
                 "Cannot install KVM host for ephemeral deployments."
             )

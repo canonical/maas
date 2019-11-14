@@ -384,7 +384,11 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
         self.assertThat(dict(configuration), Equals({}))
 
     def test_yields_configuration_when_node_is_ephemeral_deployment(self):
-        node = factory.make_Node(with_boot_disk=False)
+        node = factory.make_Node(
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            status=NODE_STATUS.DEPLOYING,
+        )
         configuration = get_vendor_data(node, None)
         config = dict(configuration)
         self.assertThat(

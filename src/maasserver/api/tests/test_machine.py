@@ -554,9 +554,8 @@ class TestMachineAPI(APITestCase.ForUser):
             distro_series=distro_series,
             osystem=osystem,
             architecture=make_usable_architecture(self),
+            ephemeral_deploy=True,
         )
-        for bd in machine.blockdevice_set.all():
-            bd.delete()
         response = self.client.post(
             self.get_machine_uri(machine),
             {"op": "deploy", "install_kvm": True},

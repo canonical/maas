@@ -16,7 +16,7 @@ from collections import defaultdict, namedtuple, OrderedDict
 import copy
 from datetime import datetime, timedelta
 from functools import partial
-from itertools import count
+from itertools import chain, count
 import json
 import logging
 from operator import attrgetter
@@ -1463,6 +1463,16 @@ class Node(CleanSave, TimestampedModel):
         # Devices should always local boot.
         if self.is_device:
             return False
+        # Only machines which are deploying can be deployed ephemerally. Allow
+        # ALLOCATED and READY as this is checked before transitioning in the
+        # API.
+        if self.status not in {
+            NODE_STATUS.DEPLOYING,
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.READY,
+        }:
+            return False
         return self.is_diskless or self.ephemeral_deploy
 
     def retrieve_storage_layout_issues(
@@ -2216,20 +2226,54 @@ class Node(CleanSave, TimestampedModel):
         )
 
         # Create a new ScriptSet for this commissioning run.
-        script_set = ScriptSet.objects.create_commissioning_script_set(
+        commis_script_set = ScriptSet.objects.create_commissioning_script_set(
             self, commissioning_scripts, script_input
         )
-        self.current_commissioning_script_set = script_set
 
         # Create a new ScriptSet for any tests to be run after commissioning.
         try:
-            script_set = ScriptSet.objects.create_testing_script_set(
+            testing_script_set = ScriptSet.objects.create_testing_script_set(
                 self, testing_scripts, script_input
             )
-            self.current_testing_script_set = script_set
         except NoScriptsFound:
             # Commissioning can run without running tests after.
+            testing_script_set = []
             pass
+
+        config = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "default_osystem",
+                "default_distro_series",
+                "default_min_hwe_kernel",
+            ]
+        )
+
+        # Testing configured networking requires netplan which is only
+        # available in 18.04+
+        if config["commissioning_distro_series"] == "xenial":
+            apply_configured_networking_found = False
+            for script_result in chain(commis_script_set, testing_script_set):
+                if (
+                    script_result.script
+                    and script_result.script.apply_configured_networking
+                ):
+                    apply_configured_networking_found = True
+                    break
+            if apply_configured_networking_found:
+                commis_script_set.delete()
+                if testing_script_set:
+                    testing_script_set.delete()
+                raise ValidationError(
+                    "Unable to run script which configures custom networking "
+                    "when using Ubuntu Xenial 16.04 as the ephemeral "
+                    "operating system."
+                )
+
+        self.current_commissioning_script_set = commis_script_set
+        if testing_script_set:
+            self.current_testing_script_set = testing_script_set
 
         # Clear the current storage configuration if networking is not being
         # skipped during commissioning.
@@ -2247,15 +2291,7 @@ class Node(CleanSave, TimestampedModel):
         old_status = self.status
         self.status = NODE_STATUS.COMMISSIONING
         self.owner = user
-        config = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "default_osystem",
-                "default_distro_series",
-                "default_min_hwe_kernel",
-            ]
-        )
+
         # Set min_hwe_kernel to default_min_hwe_kernel.
         # This makes sure that the min_hwe_kernel is up to date
         # with what is stored in the settings.
@@ -2377,6 +2413,9 @@ class Node(CleanSave, TimestampedModel):
         script_set = ScriptSet.objects.create_testing_script_set(
             self, testing_scripts, script_input
         )
+        commissioning_distro_series = Config.objects.get_config(
+            "commissioning_distro_series"
+        )
         # Additional validation for when starting testing and not
         # commissioning + testing.
         for script_result in script_set:
@@ -2400,6 +2439,17 @@ class Node(CleanSave, TimestampedModel):
                 script_set.delete()
                 raise ValidationError(
                     "Unable to run destructive test while deployed!"
+                )
+            if (
+                commissioning_distro_series == "xenial"
+                and script_result.script
+                and script_result.script.apply_configured_networking
+            ):
+                script_set.delete()
+                raise ValidationError(
+                    "Unable to run script which configures custom networking "
+                    "when using Ubuntu Xenial 16.04 as the ephemeral "
+                    "operating system."
                 )
 
         self.current_testing_script_set = script_set
@@ -3612,13 +3662,13 @@ class Node(CleanSave, TimestampedModel):
 
     def set_ephemeral_deploy(self, on=False):
         """Set ephermal deploy on or off."""
+        # self.ephemeral_deployment returns True when the system is diskless.
+        self.ephemeral_deploy = on or self.is_diskless
         log.info(
             "{hostname}: Turning ephemeral deploy %s for node"
-            % ("off" if on is False else "on"),
+            % ("on" if self.ephemeral_deploy else "off"),
             hostname=self.hostname,
         )
-        self.ephemeral_deploy = on
-        self.save()
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
@@ -4986,6 +5036,7 @@ class Node(CleanSave, TimestampedModel):
                     # If ephemeral is in purposes, this comes from Caringo OS.
                     # Set the ephemeral_deploy field on the node.
                     self.set_ephemeral_deploy(True)
+                    self.save()
                     return "ephemeral"
                 else:
                     return "xinstall"
@@ -5160,6 +5211,9 @@ class Node(CleanSave, TimestampedModel):
         bridge_stp=None,
         bridge_fd=None,
     ):
+        # Avoid circular imports
+        from maasserver.utils.osystems import release_a_newer_than_b
+
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
@@ -5226,6 +5280,12 @@ class Node(CleanSave, TimestampedModel):
         if self.ephemeral_deployment and self.install_kvm:
             raise ValidationError(
                 "Cannot install KVM host for ephemeral deployments."
+            )
+        if self.ephemeral_deployment and not release_a_newer_than_b(
+            self.distro_series, "bionic"
+        ):
+            raise ValidationError(
+                "Ephemeral deployments only supported on Ubuntu Bionic 18.04+"
             )
         self._register_request_event(
             user, event, action="start", comment=comment

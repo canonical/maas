@@ -1096,32 +1096,61 @@ class TestNode(MAASServerTestCase):
         self.assertFalse(node.is_diskless)
 
     def test_no_ephemeral_deploy(self):
-        node = factory.make_Node(ephemeral_deploy=False)
+        node = factory.make_Node(
+            ephemeral_deploy=False, status=NODE_STATUS.DEPLOYING
+        )
         self.assertFalse(node.ephemeral_deploy)
 
     def test_ephemeral_deploy(self):
-        node = factory.make_Node(ephemeral_deploy=True)
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
         self.assertTrue(node.ephemeral_deploy)
 
     def test_ephemeral_deployment_checks_diskless(self):
-        node = factory.make_Node(with_boot_disk=True)
+        node = factory.make_Node(
+            with_boot_disk=True, status=NODE_STATUS.DEPLOYING
+        )
         self.assertFalse(node.ephemeral_deployment)
 
     def test_ephemeral_deployment_checks_not_diskless(self):
-        node = factory.make_Node(with_boot_disk=False)
+        node = factory.make_Node(
+            with_boot_disk=False, status=NODE_STATUS.DEPLOYING
+        )
         self.assertTrue(node.ephemeral_deployment)
 
     def test_ephemeral_deployment_checks_ephemeral_deploy(self):
-        node = factory.make_Node(ephemeral_deploy=True)
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
         self.assertTrue(node.ephemeral_deployment)
 
     def test_ephemeral_deployment_checks_no_ephemeral_deploy(self):
-        node = factory.make_Node(ephemeral_deploy=False)
+        node = factory.make_Node(
+            ephemeral_deploy=False, status=NODE_STATUS.DEPLOYING
+        )
         self.assertFalse(node.ephemeral_deployment)
 
     def test_ephemeral_deployment_checks_is_device(self):
-        device = factory.make_Device()
+        device = factory.make_Device(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
         self.assertFalse(device.ephemeral_deployment)
+
+    def test_ephemeral_deployment_no_if_not_deploying(self):
+        node = factory.make_Node(
+            status=factory.pick_choice(
+                NODE_STATUS_CHOICES,
+                but_not=[
+                    NODE_STATUS.DEPLOYING,
+                    NODE_STATUS.DEPLOYED,
+                    NODE_STATUS.ALLOCATED,
+                    NODE_STATUS.READY,
+                ],
+            ),
+            ephemeral_deploy=True,
+        )
+        self.assertFalse(node.ephemeral_deployment)
 
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
@@ -3456,6 +3485,39 @@ class TestNode(MAASServerTestCase):
         )
         self.assertEqual(events[1].type.name, EVENT_TYPES.COMMISSIONING)
 
+    def test_start_commissioning_fails_on_xenial_with_network_testing_c(self):
+        Config.objects.set_config("commissioning_distro_series", "xenial")
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        admin = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            apply_configured_networking=True,
+        )
+        self.assertRaises(
+            ValidationError,
+            node.start_commissioning,
+            user=admin,
+            commissioning_scripts=[script.name],
+        )
+        self.assertEquals(0, ScriptSet.objects.count())
+        self.assertEquals(0, ScriptResult.objects.count())
+
+    def test_start_commissioning_fails_on_xenial_with_network_testing_t(self):
+        Config.objects.set_config("commissioning_distro_series", "xenial")
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        admin = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, apply_configured_networking=True
+        )
+        self.assertRaises(
+            ValidationError,
+            node.start_commissioning,
+            user=admin,
+            testing_scripts=[script.name],
+        )
+        self.assertEquals(0, ScriptSet.objects.count())
+        self.assertEquals(0, ScriptResult.objects.count())
+
     def test_abort_commissioning_reverts_to_sane_state_on_error(self):
         # If abort commissioning hits an error when trying to stop the
         # node, it will revert the node to the state it was in before
@@ -3919,6 +3981,21 @@ class TestNode(MAASServerTestCase):
             testing_scripts=[script.name],
         )
         self.assertFalse(ScriptSet.objects.filter(node=node).exists())
+
+    def test_start_testing_prevents_network_testing_with_xenial(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, apply_configured_networking=True
+        )
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        self.assertRaises(
+            ValidationError,
+            node.start_testing,
+            admin,
+            testing_scripts=[script.name],
+        )
+        self.assertEquals(0, ScriptSet.objects.count())
+        self.assertEquals(0, ScriptResult.objects.count())
 
     def test_save_logs_node_status_transition(self):
         self.disable_node_query()
@@ -5212,7 +5289,11 @@ class TestNode(MAASServerTestCase):
 
     def test_storage_layout_issues_is_valid_when_ephemeral_deployment(self):
         # A diskless node is one that it is ephemerally deployed.
-        node = factory.make_Node(with_boot_disk=False, osystem="ubuntu")
+        node = factory.make_Node(
+            with_boot_disk=False,
+            osystem="ubuntu",
+            status=NODE_STATUS.DEPLOYING,
+        )
         self.assertEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_is_invalid_when_no_disks_non_ubuntu(self):
@@ -6395,6 +6476,11 @@ class NodeManagerTest(MAASServerTestCase):
     def test_ephemeral_deploy_on(self):
         node = factory.make_Node(ephemeral_deploy=False)
         node.set_ephemeral_deploy(True)
+        self.assertTrue(node.ephemeral_deploy)
+
+    def test_ephemeral_deploy_auto_on_when_diskless(self):
+        node = factory.make_Node(ephemeral_deploy=False, with_boot_disk=False)
+        node.set_ephemeral_deploy(False)
         self.assertTrue(node.ephemeral_deploy)
 
     def test_ephemeral_deploy_off(self):
@@ -8013,6 +8099,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
         power_state=POWER_STATE.OFF,
         network=None,
         with_boot_disk=True,
+        install_kvm=False,
+        ephemeral_deploy=False,
     ):
         if network is None:
             network = factory.make_ip4_or_6_network()
@@ -8041,6 +8129,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             cidr=cidr,
             osystem=osystem,
             distro_series=distro_series,
+            install_kvm=install_kvm,
+            ephemeral_deploy=ephemeral_deploy,
         )
         node.acquire(user)
         return node
@@ -8073,10 +8163,24 @@ class TestNode_Start(MAASTransactionServerTestCase):
     def test__raises_ValidationError_if_ephemeral_deploy_and_install_kvm(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
-            admin, power_type="manual", with_boot_disk=False
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            install_kvm=True,
         )
-        node.install_kvm = True
-        node.save()
+        with ExpectedException(ValidationError):
+            node.start(admin)
+
+    def test__raises_ValidationError_if_ephemeral_deployment_less_bionic(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+        )
+        node.distro_series = "xenial"
         with ExpectedException(ValidationError):
             node.start(admin)
 
