@@ -646,6 +646,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         base64-encoded user-data to be made available to the machines through
         the metadata service.
 
+        @param (string) "osystem" [required=false] If present, this parameter
+        specifies the OS the machine will use.
+
         @param (string) "distro_series" [required=false] If present, this
         parameter specifies the OS release the machine will use.
 
