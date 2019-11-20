@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import os
 import random
 
 from maastesting.factory import factory
@@ -18,59 +17,17 @@ from provisioningserver.drivers.osystem.windows import (
     WINDOWS_DEFAULT,
     WindowsOS,
 )
-from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestWindowsOS(MAASTestCase):
-    def make_resource_path(self, files=[]):
-        tmpdir = self.make_dir()
+    def test_get_boot_image_purposes_xinstall(self):
+        osystem = WindowsOS()
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
         release = factory.make_name("release")
         label = factory.make_name("label")
-        dirpath = os.path.join(
-            tmpdir, "windows", arch, subarch, release, label
-        )
-        os.makedirs(dirpath)
-        for fname in files:
-            factory.make_file(dirpath, fname)
-        self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
-        return arch, subarch, release, label
-
-    def test_get_boot_image_purposes_neither(self):
-        osystem = WindowsOS()
-        arch, subarch, release, label = self.make_resource_path()
-        self.assertItemsEqual(
-            [], osystem.get_boot_image_purposes(arch, subarch, release, label)
-        )
-
-    def test_get_boot_image_purposes_both(self):
-        osystem = WindowsOS()
-        arch, subarch, release, label = self.make_resource_path(
-            files=["root-dd", "pxeboot.0"]
-        )
-        self.assertItemsEqual(
-            [BOOT_IMAGE_PURPOSE.XINSTALL, BOOT_IMAGE_PURPOSE.INSTALL],
-            osystem.get_boot_image_purposes(arch, subarch, release, label),
-        )
-
-    def test_get_boot_image_purposes_xinstall_only(self):
-        osystem = WindowsOS()
-        arch, subarch, release, label = self.make_resource_path(
-            files=["root-dd"]
-        )
         self.assertItemsEqual(
             [BOOT_IMAGE_PURPOSE.XINSTALL],
-            osystem.get_boot_image_purposes(arch, subarch, release, label),
-        )
-
-    def test_get_boot_image_purposes_install_only(self):
-        osystem = WindowsOS()
-        arch, subarch, release, label = self.make_resource_path(
-            files=["pxeboot.0"]
-        )
-        self.assertItemsEqual(
-            [BOOT_IMAGE_PURPOSE.INSTALL],
             osystem.get_boot_image_purposes(arch, subarch, release, label),
         )
 

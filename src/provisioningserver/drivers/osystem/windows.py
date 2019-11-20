@@ -5,10 +5,8 @@
 
 __all__ = ["WindowsOS"]
 
-import os
 import re
 
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -61,21 +59,7 @@ class WindowsOS(OperatingSystem):
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image. Windows only allows install."""
-        # Windows can support both xinstall and install, but the correct files
-        # need to be available before it is enabled. This way if only xinstall
-        # is available the node will boot correctly, even if fast-path
-        # installer is not selected.
-        purposes = []
-        with ClusterConfiguration.open() as config:
-            resources = config.tftp_root
-        path = os.path.join(
-            resources, "windows", arch, subarch, release, label
-        )
-        if os.path.exists(os.path.join(path, "root-dd")):
-            purposes.append(BOOT_IMAGE_PURPOSE.XINSTALL)
-        if os.path.exists(os.path.join(path, "pxeboot.0")):
-            purposes.append(BOOT_IMAGE_PURPOSE.INSTALL)
-        return purposes
+        return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
