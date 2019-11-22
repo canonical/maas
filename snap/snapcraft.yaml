@@ -28,7 +28,6 @@ apps:
       LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
     plugs:
         - avahi-observe # network discovery
-        - block-devices # allows writing, but we need only reading.
         - hardware-observe
         - kernel-module-observe
         - mount-observe

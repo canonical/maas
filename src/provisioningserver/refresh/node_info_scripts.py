@@ -233,42 +233,14 @@ SUPPORT_SCRIPT = dedent(
     if [ -x "$(which lsblk)" ]; then
         echo ""
         echo "-----BEGIN BLOCK DEVICE SUMMARY-----"
-        lsblk
+        # Note: excluding ramdisks, floppy drives, and loopback devices.
+        lsblk --exclude 1,2,7 -o NAME,MAJ:MIN,FSTYPE,PHY-SEC,SIZE,VENDOR,MODEL
         echo "-----END BLOCK DEVICE SUMMARY-----"
     fi
     # The remainder of this script only runs as root (during commissioning).
     if [ "$(id -u)" != "0" ]; then
         # Do not fail commissioning if this fails.
         exit 0
-    fi
-    if [ -x "$(which lsblk)" ]; then
-        echo ""
-        echo "-----BEGIN DETAILED BLOCK DEVICE INFO-----"
-        # Note: excluding ramdisks, floppy drives, and loopback devices.
-        lsblk --exclude 1,2,7 -d -P -x MAJ:MIN
-        echo ""
-        for dev in $(lsblk -n --exclude 1,2,7 --output KNAME); do
-            if [ ! -e "/dev/$dev" ]; then
-                # disk devices are not present in LXD containers
-                echo "$dev device node not found, skipping"
-                continue
-            fi
-            echo "$dev:"
-            udevadm info -q all -n $dev
-            size64="$(blockdev --getsize64 /dev/$dev 2> /dev/null || echo ?)"
-            bsz="$(blockdev --getbsz /dev/$dev 2> /dev/null || echo ?)"
-            echo ""
-            echo "    size64: $size64"
-            echo "       bsz: $bsz"
-        done
-        echo ""
-        # Enumerate the mappings that were generated (by device).
-        # (/dev/disk is not present in LXD containers, so skip in that case)
-        if [ -d /dev/disk ]; then
-            find /dev/disk -type l | xargs ls -ln \
-                | awk '{ print $9, $10, $11 }' | sort -k2
-        fi
-        echo "-----END DETAILED BLOCK DEVICE INFO-----"
     fi
     if [ -x "$(which dmidecode)" ]; then
         DMI_OUTFILE=/root/dmi.bin
