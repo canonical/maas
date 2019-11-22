@@ -57,7 +57,6 @@ class UserHandler(Handler):
         fields = [
             "id",
             "username",
-            "first_name",
             "last_name",
             "email",
             "is_superuser",
