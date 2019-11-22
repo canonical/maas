@@ -569,6 +569,7 @@ snap:
 
 build/dev-snap: ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix build/dev-snap/
+	git submodule foreach --recursive 'git checkout-index -a --prefix $(PWD)/build/dev-snap/$$sm_path/'
 
 build/dev-snap/prime: build/dev-snap
 	cd build/dev-snap && $(snapcraft) prime --destructive-mode
