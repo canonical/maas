@@ -28,6 +28,7 @@ from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 from provisioningserver.drivers.power.wedge import WedgePowerDriver
+from provisioningserver.drivers.power.ssh import SSHPowerDriver
 from provisioningserver.utils.registry import Registry
 
 
@@ -69,6 +70,7 @@ power_drivers = [
     VirshPowerDriver(),
     VMwarePowerDriver(),
     WedgePowerDriver(),
+    SSHPowerDriver(),
 ]
 for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
