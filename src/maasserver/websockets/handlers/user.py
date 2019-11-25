@@ -49,9 +49,6 @@ class UserHandler(Handler):
             "update",
             "auth_user",
             "mark_intro_complete",
-            "create_authorisation_token",
-            "update_token_name",
-            "delete_authorisation_token",
             "change_password",
         ]
         fields = [
@@ -199,49 +196,6 @@ class UserHandler(Handler):
         self.user.userprofile.completed_intro = True
         self.user.userprofile.save()
         return self.full_dehydrate(self.user)
-
-    def create_authorisation_token(self, params):
-        """Create an authorisation token for the user.
-
-        This is only for the authenticated user. This cannot be performed on
-        a different user.
-        """
-        request = HttpRequest()
-        request.user = self.user
-        profile = self.user.userprofile
-        consumer, token = profile.create_authorisation_token()
-        create_audit_event(
-            EVENT_TYPES.AUTHORISATION,
-            ENDPOINT.UI,
-            request,
-            None,
-            "Created token.",
-        )
-        return {
-            "key": token.key,
-            "secret": token.secret,
-            "consumer": {"key": consumer.key, "name": consumer.name},
-        }
-
-    def update_token_name(self, params):
-        """Modify the consumer name of an existing token"""
-        profile = self.user.userprofile
-        profile.modify_consumer_name(params["key"], params["name"])
-        self.create_audit_event(
-            EVENT_TYPES.AUTHORISATION, "Modified consumer name of token."
-        )
-        return {}
-
-    def delete_authorisation_token(self, params):
-        """Delete an authorisation token for the user.
-
-        This is only for the authenticated user. This cannot be performed on
-        a different user.
-        """
-        profile = self.user.userprofile
-        profile.delete_authorisation_token(params["key"])
-        self.create_audit_event(EVENT_TYPES.AUTHORISATION, "Deleted token.")
-        return {}
 
     def change_password(self, params):
         """Update the authenticated user password."""

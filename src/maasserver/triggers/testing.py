@@ -8,6 +8,7 @@ __all__ = []
 
 from crochet import wait_for
 from django.contrib.auth.models import User
+from piston3.models import Token
 from testtools.matchers import GreaterThan, Is, Not
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -48,6 +49,7 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
+from maasserver.models.user import create_auth_token
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
@@ -602,6 +604,24 @@ class TransactionalHelpersMixin:
     @transactional
     def update_cacheset(self, id, params, **kwargs):
         return apply_update_to_model(CacheSet, id, params, **kwargs)
+
+    @transactional
+    def create_token(self, params=None):
+        if params is None:
+            params = {}
+        return create_auth_token(**params)
+
+    @transactional
+    def update_token(self, id, name=None):
+        token = Token.objects.get(id=id)
+        token.consumer.name = name
+        token.consumer.save()
+        return token
+
+    @transactional
+    def delete_token(self, id):
+        token = Token.objects.get(id=id)
+        token.delete()
 
     @transactional
     def create_sshkey(self, params=None):

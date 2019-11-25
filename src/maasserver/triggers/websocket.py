@@ -1136,6 +1136,30 @@ POOL_NODE_UPDATE_NOTIFY = dedent(
 )
 
 
+# Procedure that is called when a consumer is updated triggering a notification
+# to the related tokens of the consumer.
+CONSUMER_TOKEN_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION {}() RETURNS trigger AS $$
+    DECLARE
+        token RECORD;
+    BEGIN
+      IF OLD.name != NEW.name THEN
+        FOR token IN (
+          SELECT id
+          FROM piston3_token
+          WHERE piston3_token.consumer_id = NEW.id)
+        LOOP
+          PERFORM pg_notify('token_update',CAST(token.id AS text));
+        END LOOP;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent(
         """\
@@ -2492,6 +2516,46 @@ def register_websocket_triggers():
     )
     register_trigger(
         "maasserver_cacheset", "nd_cacheset_unlink_notify", "delete"
+    )
+
+    # Token table, update to linked user.
+    register_procedure(
+        render_notification_procedure(
+            "user_token_link_notify", "user_update", "NEW.user_id"
+        )
+    )
+    register_procedure(
+        render_notification_procedure(
+            "user_token_unlink_notify", "user_update", "OLD.user_id"
+        )
+    )
+    register_trigger("piston3_token", "user_token_link_notify", "insert")
+    register_trigger("piston3_token", "user_token_unlink_notify", "delete")
+
+    # Token/Consumer table.
+    register_procedure(
+        render_notification_procedure(
+            "token_create_notify", "token_create", "NEW.id"
+        )
+    )
+    register_procedure(
+        render_notification_procedure(
+            "token_delete_notify", "token_delete", "OLD.id"
+        )
+    )
+    register_procedure(
+        CONSUMER_TOKEN_NOTIFY.format("consumer_token_update_notify")
+    )
+    register_triggers(
+        "piston3_token",
+        "token",
+        events=[("insert", "create", "NEW"), ("delete", "delete", "OLD")],
+    )
+    register_trigger(
+        "piston3_consumer",
+        "consumer_token_update_notify",
+        event="update",
+        fields=["name"],
     )
 
     # SSH key table, update to linked user.

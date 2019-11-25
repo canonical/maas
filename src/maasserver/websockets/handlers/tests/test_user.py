@@ -8,7 +8,6 @@ __all__ = []
 import datetime
 
 from django.contrib.auth.models import User
-from piston3.models import Token
 from testtools.testcase import TestCase
 
 from maasserver.models.event import Event
@@ -170,46 +169,6 @@ class TestUserHandler(MAASServerTestCase):
         self.assertEqual(
             self.dehydrate_user(user, for_self=True), handler.auth_user({})
         )
-
-    def test_create_authorisation_token(self):
-        user = factory.make_User()
-        handler = UserHandler(user, {}, None)
-        observed = handler.create_authorisation_token({})
-        self.assertItemsEqual(["key", "secret", "consumer"], observed.keys())
-        self.assertItemsEqual(["key", "name"], observed["consumer"].keys())
-        event = Event.objects.get(type__level=AUDIT)
-        self.assertIsNotNone(event)
-        self.assertEqual(event.description, "Created token.")
-
-    def test_update_token_name(self):
-        user = factory.make_User()
-        handler = UserHandler(user, {}, None)
-        new_token_name = factory.make_string()
-        observed = handler.create_authorisation_token({})
-        handler.update_token_name(
-            {"key": observed["key"], "name": new_token_name}
-        )
-        auth_token = user.userprofile.get_authorisation_tokens().get(
-            key=observed["key"]
-        )
-        self.assertEqual(auth_token.consumer.name, new_token_name)
-        event = (
-            Event.objects.filter(type__level=AUDIT)
-            .order_by("-created")
-            .first()
-        )
-        self.assertIsNotNone(event)
-        self.assertEqual(event.description, "Modified consumer name of token.")
-
-    def test_delete_authorisation_token(self):
-        user = factory.make_User()
-        handler = UserHandler(user, {}, None)
-        observed = handler.create_authorisation_token({})
-        handler.delete_authorisation_token({"key": observed["key"]})
-        self.assertIsNone(Token.objects.filter(key=observed["key"]).first())
-        event = Event.objects.filter(type__level=AUDIT).last()
-        self.assertIsNotNone(event)
-        self.assertEqual(event.description, "Deleted token.")
 
     def test_create_as_unprivileged(self):
         unpriv_user = factory.make_User()
