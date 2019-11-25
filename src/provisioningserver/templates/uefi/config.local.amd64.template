@@ -9,6 +9,8 @@ menuentry 'Local' {
             ubuntu/grubx64.efi \
             centos/shimx64.efi \
             centos/grubx64.efi \
+            redhat/shimx64.efi \
+            redhat/grubx64.efi \
             rhel/shimx64.efi \
             rhel/grubx64.efi \
             red/grubx64.efi \
