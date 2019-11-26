@@ -13,7 +13,6 @@ from django.contrib.auth import login as auth_login
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import logout as dj_logout
 from django.http import (
-    Http404,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
@@ -51,7 +50,14 @@ def login(request):
         return HttpResponseBadRequest(
             json.dumps(form.errors), content_type="application/json"
         )
-    raise Http404()
+    return JsonResponse(
+        {
+            "authenticated": request.user.is_authenticated,
+            "external_auth_url": request.external_auth_info.url
+            if request.external_auth_info
+            else None,
+        }
+    )
 
 
 class LogoutForm(forms.Form):

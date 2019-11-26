@@ -12,6 +12,7 @@ from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from testtools.matchers import ContainsDict, Equals, MatchesSetwise
 
+from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.testing.factory import factory
@@ -23,10 +24,36 @@ from provisioningserver.events import AUDIT
 
 
 class TestLogin(MAASServerTestCase):
-    def test_login_GET_returns_302(self):
+    def test_login_GET_returns_not_authenticated(self):
         self.client.handler.enforce_csrf_checks = True
         response = self.client.get(reverse("login"))
-        self.assertThat(response, HasStatusCode(http.client.FOUND))
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals({"authenticated": False, "external_auth_url": None}),
+        )
+
+    def test_login_GET_returns_authenticated(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
+        self.client.login(username=user.username, password=password)
+        response = self.client.get(reverse("login"))
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals({"authenticated": True, "external_auth_url": None}),
+        )
+
+    def test_login_GET_returns_external_auth_url(self):
+        auth_url = "http://candid.example.com"
+        Config.objects.set_config("external_auth_url", auth_url)
+        response = self.client.get(reverse("login"))
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals({"authenticated": False, "external_auth_url": auth_url}),
+        )
 
     def test_login_returns_204_when_already_authenticated(self):
         password = factory.make_string()
