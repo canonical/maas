@@ -27,6 +27,10 @@ SYSTEM_USERS = [
 
 GENERIC_CONSUMER = "MAAS consumer"
 
+# Used for testing to prevent the creation of automatic authorisation token
+# when a user is created.
+SKIP_CREATE_AUTHORISATION_TOKEN = False
+
 
 def create_auth_token(user, consumer_name=None):
     """Create new Token and Consumer (OAuth authorisation) for `user`.
@@ -86,7 +90,8 @@ def create_user(sender, instance, created, **kwargs):
         profile = UserProfile.objects.create(user=instance, is_local=is_local)
 
         # Create initial authorisation token.
-        profile.create_authorisation_token()
+        if not SKIP_CREATE_AUTHORISATION_TOKEN:
+            profile.create_authorisation_token()
 
 
 def get_creds_tuple(token):

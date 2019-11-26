@@ -36,9 +36,9 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.switch import Switch
-from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import UserSkipCreateAuthorisationTokenFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.triggers.websocket import (
@@ -1094,6 +1094,10 @@ class TestUserListener(
     """End-to-end test of both the listeners code and the user
     triggers code."""
 
+    def setUp(self):
+        super().setUp()
+        self.useFixture(UserSkipCreateAuthorisationTokenFixture())
+
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
@@ -1135,11 +1139,7 @@ class TestUserListener(
     def test__calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
-
-        # Create user and ensure they have no authentication tokens, so on
-        # delete only the delete notify is sent.
         user = yield deferToDatabase(self.create_user)
-        yield deferToDatabase(lambda: get_auth_tokens(user).delete())
 
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))

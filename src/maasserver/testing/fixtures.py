@@ -11,6 +11,7 @@ import logging
 from django.db import connection
 import fixtures
 
+from maasserver.models import user
 from maasserver.models.config import Config
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.testing.factory import factory
@@ -129,5 +130,17 @@ class RBACEnabled(fixtures.Fixture):
         def cleanup():
             rbac._store.client = None
             rbac.clear()
+
+        self.addCleanup(cleanup)
+
+
+class UserSkipCreateAuthorisationTokenFixture(fixtures.Fixture):
+    """Prevents the automatic authorisation token creation on user create."""
+
+    def _setUp(self):
+        user.SKIP_CREATE_AUTHORISATION_TOKEN = True
+
+        def cleanup():
+            user.SKIP_CREATE_AUTHORISATION_TOKEN = False
 
         self.addCleanup(cleanup)
