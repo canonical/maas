@@ -5,11 +5,24 @@
 # Create the required directories for services to run.
 mkdir -p "$SNAP_COMMON/log/"{proxy,http}
 mkdir -p "$SNAP_COMMON/proxy/"{cache,spool}
-chmod 775 "$SNAP_COMMON/log"
-chown snap_daemon "$SNAP_COMMON/log"
-chown -R root:root "$SNAP_COMMON/log/http"
-chown -R snap_daemon:snap_daemon "$SNAP_COMMON/log/proxy"
-chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/"{cache,spool}
+
+# once we've transitioned to fully confined snap (and bumped the epoch), this
+# check can be dropped. The chown below won't need to be run recursively, as we
+# can assume any file below the dir has been created with the right owner (from
+# the owning app). We only need to change mode/ownership when dirs are created.
+migration_done() {
+    local user
+    user=$(stat -C '%U' "$SNAP_COMMON/log")
+    [ "$user" = snap_daemon ] && echo 1 || echo 0
+}
+user_migration_done=$(migration_done)
+if [ "$user_migration_done" -ne 1 ]; then
+    chmod 775 "$SNAP_COMMON/log"
+    chown snap_daemon "$SNAP_COMMON/log"
+    chown -R root:root "$SNAP_COMMON/log/http"
+    chown -R snap_daemon:snap_daemon "$SNAP_COMMON/log/proxy"
+    chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/"{cache,spool}
+fi
 mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"
 mkdir -p "$SNAP_DATA/proxy"
@@ -19,7 +32,7 @@ mkdir -p "$SNAP_DATA/var/lib/maas"
 mkdir -p "$SNAP_DATA/var/lib/chrony"
 
 # XXX this should be dropped once we have transitioned to a fully confined snap
-if  [ -n "$(compgen -G '/dev/shm/snap.maas.*.shm')" ]; then
+if [ "$user_migration_done" -ne 1 ] && [ -n "$(compgen -G '/dev/shm/snap.maas.*.shm')" ]; then
     chown -R snap_daemon:snap_daemon /dev/shm/snap.maas.*.shm
 fi
 
