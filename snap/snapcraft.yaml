@@ -323,3 +323,5 @@ hooks:
 layout:
   /etc/libvirt:
     bind: $SNAP/etc/libvirt
+  /etc/freeipmi:
+    bind: $SNAP/etc/freeipmi
