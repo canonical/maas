@@ -637,7 +637,7 @@ class NodeHandler(OperationsHandler):
             Not Found
         """
         node = Node.objects.get_node_or_404(
-            system_id, request.user, NodePermission.admin
+            system_id, request.user, NodePermission.admin_read
         )
         return node.power_parameters
 

@@ -319,6 +319,7 @@ ADMIN_PERMISSIONS = (
     NodePermission.view,
     NodePermission.edit,
     NodePermission.admin,
+    NodePermission.admin_read,
 )
 
 
@@ -434,6 +435,8 @@ class MAASAuthorizationBackend(ModelBackend):
                     rbac_enabled, user, obj, deploy_pools, admin_pools
                 )
                 return obj.pool_id is not None and can_edit
+            elif perm == NodePermission.admin_read:
+                return self._can_admin(rbac_enabled, user, obj, admin_pools)
             elif perm == NodePermission.admin:
                 return not obj.locked and self._can_admin(
                     rbac_enabled, user, obj, admin_pools

@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for API testing."""
@@ -195,7 +195,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
 
     @transactional
     def become_non_local(self):
-        """Promote `self.user` to admin."""
+        """Promote `self.user` to non local."""
         if Config.objects.get_config(
             "external_auth_url"
         ) or Config.objects.get_config("rbac_url"):

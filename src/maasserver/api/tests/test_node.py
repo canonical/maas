@@ -550,6 +550,21 @@ class TestPowerParameters(APITestCase.ForUser):
         parsed_params = json_load_bytes(response.content)
         self.assertEqual(node.power_parameters, parsed_params)
 
+    def test_get_power_parameters_view_lock(self):
+        self.become_admin()
+        power_parameters = {factory.make_string(): factory.make_string()}
+        node = factory.make_Node(
+            owner=self.user, power_parameters=power_parameters, locked=True
+        )
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "power_parameters"}
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed_params = json_load_bytes(response.content)
+        self.assertEqual(node.power_parameters, parsed_params)
+
 
 class TestSetOwnerData(APITestCase.ForUser):
     """Tests for op=set_owner_data for both machines and devices."""

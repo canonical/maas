@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Permission enumerations."""
@@ -15,6 +15,7 @@ class NodePermission(enum.Enum):
     edit = "edit"
     lock = "lock"
     admin = "admin"
+    admin_read = "admin_read"
 
 
 class PodPermission(enum.Enum):
