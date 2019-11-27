@@ -247,11 +247,18 @@ parts:
 
   postgres-95:
     plugin: autotools
-    source: .  # Ignored because of override-pull.
+    source: snap/local/postgres-9.5
+    source-type: local
+    # Get the postgres 9.5 source from Launchpad and put it in
+    # snap/local/postgres-9.5 and let snapcraft pull the source from there.
+    # That way snapcraft properly detects that the source hasn't changed, and
+    # won't try to pull the source every time snapcraft is invoked.
     override-pull: |
       set -e
       pull-lp-source postgresql-9.5 xenial
-      mv postgresql-9.5*/* .
+      rm -rf $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
+      mv postgresql-9.5*/ $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
+      snapcraftctl pull
       echo "all:\ninstall:" > doc/Makefile  # Skips doc building.
     build-packages:
       - ubuntu-dev-tools

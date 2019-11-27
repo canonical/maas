@@ -47,6 +47,7 @@
 /prime
 /services/*/supervise
 /snap/.snapcraft
+/snap/local/postgres-9.5
 /src/maasui/build
 /src/maasui/nodejs
 /src/machine-resources/bin
