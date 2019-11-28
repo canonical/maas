@@ -71,7 +71,7 @@ done
 if [ $DO_PYTHON -gt 0 ]; then
     src_directories="maascli maasserver provisioningserver metadataserver maas.egg-info"
 else
-    src_directories="maasserver/static"
+    src_directories=""
 fi
 
 remote_src_base=/usr/lib/python3/dist-packages
@@ -161,12 +161,9 @@ ssh_run "chown -R maas:maas /etc/maas"
 
 echo ""
 echo "Synchronizing static web content..."
-echo " - Removing /usr/share/maas/web/static/*..."
-ssh_run rm -rf /usr/share/maas/web/static/*
-echo " - Moving /usr/lib/python3/dist-packages/maasserver/static/*"
-echo "          -> /usr/share/maas/web/static/"
-ssh_run mv /usr/lib/python3/dist-packages/maasserver/static/* /usr/share/maas/web/static/
-
+try rsync -${rsync_options} --delete-after src/maasui/build/ \
+        root@${hostname}:/usr/share/maas/web/static
+    
 if [ $DO_RESTART -gt 0 ]; then
 echo ""
 echo "Restarting services and ensuring migrations are up to date..."
