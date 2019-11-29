@@ -1,4 +1,3 @@
-
 mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 nodejs_path := $(mkfile_dir)/nodejs
 
@@ -31,7 +30,10 @@ nodejs/bin/yarn: nodejs/bin/node nodejs/yarn.tar.gz
 	tar -C nodejs/ -xf nodejs/yarn.tar.gz --strip-components=1
 	@touch --no-create $@
 
-src/shared/dist/index.js: nodejs/bin/yarn
+src/yarn.lock:
+	git submodule update --init --remote
+
+src/shared/dist/index.js: nodejs/bin/yarn src/yarn.lock
 	yarn --cwd src build-shared
 
 src/ui/build/index.html: src/shared/dist/index.js
