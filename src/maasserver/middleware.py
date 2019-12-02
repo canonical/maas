@@ -104,18 +104,8 @@ class AccessMiddleware:
 
         if request.user.is_anonymous:
             return HttpResponseRedirect(
-                "%s?next=%s" % (reverse("login"), urlquote_plus(request.path))
+                "/MAAS/?next=%s" % urlquote_plus(request.path)
             )
-
-        completed_intro = Config.objects.get_config("completed_intro")
-        if not completed_intro and not request.user.is_superuser:
-            # Only administrators can completed the main intro, normal users
-            # cannot complete it so to them it has been done.
-            completed_intro = True
-
-        if not completed_intro or not request.user.userprofile.completed_intro:
-            if request.path != "/MAAS/" and request.path != reverse("logout"):
-                return HttpResponseRedirect("/MAAS/")
 
         return self.get_response(request)
 

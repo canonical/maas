@@ -84,35 +84,9 @@ class TestAccessMiddleware(MAASServerTestCase):
             http.client.OK, self.process_request(request).status_code
         )
 
-    def test_return_redirect_login(self):
+    def test_return_redirect_index(self):
         request = factory.make_fake_request("/MAAS/")
         request.user = AnonymousUser()
-        self.assertEqual(
-            "/MAAS/accounts/login/",
-            extract_redirect(self.process_request(request)),
-        )
-
-    def test_return_redirect_to_index_on_admin_not_completed_intro(self):
-        Config.objects.set_config("completed_intro", False)
-        request = factory.make_fake_request("/MAAS/account/prefs")
-        request.user = factory.make_admin()
-        self.assertEqual(
-            "/MAAS/", extract_redirect(self.process_request(request))
-        )
-
-    def test_return_request_on_user_not_completed_intro(self):
-        Config.objects.set_config("completed_intro", False)
-        request = factory.make_fake_request("/MAAS/account/prefs")
-        request.user = factory.make_User()
-        self.assertEqual(
-            http.client.OK, self.process_request(request).status_code
-        )
-
-    def test_return_redirect_to_index_on_user_not_completed_user_intro(self):
-        Config.objects.set_config("completed_intro", False)
-        request = factory.make_fake_request("/MAAS/account/prefs")
-        request.user = factory.make_admin()
-        request.user.userprofile.completed_intro = False
         self.assertEqual(
             "/MAAS/", extract_redirect(self.process_request(request))
         )

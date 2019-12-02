@@ -14,7 +14,7 @@ def handler404(request, *args, **kwargs):
 
     Index is handled by the static content loaded by the twisted WebApp.
     """
-    return redirect("/")
+    return redirect("/MAAS/")
 
 
 class TextTemplateView(TemplateView):

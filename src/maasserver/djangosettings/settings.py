@@ -50,8 +50,8 @@ DEBUG_QUERIES = False
 DEBUG_HTTP = False
 
 # The following specify named URL patterns.
-LOGOUT_URL = "logout"
-LOGIN_URL = "login"
+LOGOUT_URL = "/MAAS/"
+LOGIN_URL = "/MAAS/"
 
 # Always use X-Forwarded-Host when possible. This is needed
 # when MAAS is setup behind a reverse proxy.
