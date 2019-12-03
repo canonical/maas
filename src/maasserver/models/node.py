@@ -6190,11 +6190,14 @@ class Controller(Node):
             and hint.get("related_vid") is None
         )
         existing_vlan = None
+        related_interface = None
         for hint in relevant_hints:
             hint_type = hint.get("hint")
             related_mac = hint.get("related_mac")
             related_ifname = hint.get("related_ifname")
-            if hint_type == "on_remote_network" and related_mac is not None:
+            if hint_type in ("on_remote_network", "routable_to") and (
+                related_mac is not None
+            ):
                 related_interface = self._find_related_interface(
                     False, related_ifname, related_mac
                 )

@@ -12931,6 +12931,12 @@ class TestUpdateInterfacesWithHints(
                 "related_mac": "52:54:00:77:15:e3",
             },
             {
+                "hint": "routable_to",
+                "ifname": "eth0",
+                "related_ifname": "eth0",
+                "related_mac": "52:54:00:77:15:e3",
+            },
+            {
                 "hint": "rx_own_beacon_on_other_interface",
                 "ifname": "eth1",
                 "related_ifname": "eth0",
@@ -13006,6 +13012,12 @@ class TestUpdateInterfacesWithHints(
             },
             {
                 "hint": "on_remote_network",
+                "ifname": "eth0",
+                "related_ifname": "br0",
+                "related_mac": "52:54:00:77:15:e3",
+            },
+            {
+                "hint": "routable_to",
                 "ifname": "eth0",
                 "related_ifname": "br0",
                 "related_mac": "52:54:00:77:15:e3",
