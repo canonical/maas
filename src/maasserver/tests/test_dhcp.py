@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP management."""
@@ -1280,14 +1280,13 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         )
         self.expectThat(config["ntp_servers"], Equals([a2.ip, a1.ip]))
 
-    def test__overrides_ipv4_dns_from_subnet(self):
+    def test__ipv4_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan, version=4)
-        maas_dns = factory.make_ipv4_address()
-        subnet_dns_servers = ["8.8.8.8", "8.8.4.4"]
-        subnet.dns_servers = subnet_dns_servers
-        subnet.save()
+        subnet = factory.make_Subnet(
+            vlan=vlan, version=4, dns_servers=["8.8.8.8", "8.8.4.4"]
+        )
+        maas_dns = IPAddress(factory.make_ipv4_address())
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
         )
@@ -1298,17 +1297,34 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         )
         self.assertThat(
             config["dns_servers"],
-            Equals([IPAddress(addr) for addr in subnet_dns_servers]),
+            Equals([maas_dns, IPAddress("8.8.8.8"), IPAddress("8.8.4.4")]),
         )
 
-    def test__overrides_ipv6_dns_from_subnet(self):
+    def test__ipv4_rack_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan, version=6)
-        maas_dns = factory.make_ipv6_address()
-        subnet_dns_servers = ["2001:db8::1", "2001:db8::2"]
-        subnet.dns_servers = subnet_dns_servers
-        subnet.save()
+        subnet = factory.make_Subnet(vlan=vlan, version=4, dns_servers=[])
+        maas_dns = IPAddress(factory.make_ipv4_address())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, [maas_dns], ntp_servers, default_domain
+        )
+        self.assertThat(config["dns_servers"], Equals([maas_dns]))
+
+    def test__ipv4_user_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan,
+            version=4,
+            allow_dns=False,
+            dns_servers=["8.8.8.8", "8.8.4.4"],
+        )
+        maas_dns = IPAddress(factory.make_ipv4_address())
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
         )
@@ -1319,8 +1335,102 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         )
         self.assertThat(
             config["dns_servers"],
-            Equals([IPAddress(addr) for addr in subnet_dns_servers]),
+            Equals([IPAddress("8.8.8.8"), IPAddress("8.8.4.4")]),
         )
+
+    def test__ipv4_no_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, version=4, allow_dns=False, dns_servers=[]
+        )
+        maas_dns = IPAddress(factory.make_ipv4_address())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, [maas_dns], ntp_servers, default_domain
+        )
+        self.assertThat(config["dns_servers"], Equals([]))
+
+    def test__ipv6_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, version=6, dns_servers=["2001:db8::1", "2001:db8::2"]
+        )
+        maas_dns = IPAddress(factory.make_ipv6_address())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, [maas_dns], ntp_servers, default_domain
+        )
+        self.assertThat(
+            config["dns_servers"],
+            Equals(
+                [maas_dns, IPAddress("2001:db8::1"), IPAddress("2001:db8::2")]
+            ),
+        )
+
+    def test__ipv6_rack_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, version=6, dns_servers=[])
+        maas_dns = IPAddress(factory.make_ipv6_address())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, [maas_dns], ntp_servers, default_domain
+        )
+        self.assertThat(config["dns_servers"], Equals([maas_dns]))
+
+    def test__ipv6_user_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan,
+            version=6,
+            allow_dns=False,
+            dns_servers=["2001:db8::1", "2001:db8::2"],
+        )
+        maas_dns = IPAddress(factory.make_ipv6_address())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, [maas_dns], ntp_servers, default_domain
+        )
+        self.assertThat(
+            config["dns_servers"],
+            Equals([IPAddress("2001:db8::1"), IPAddress("2001:db8::2")]),
+        )
+
+    def test__ipv6_no_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, version=6, allow_dns=False, dns_servers=[]
+        )
+        maas_dns = IPAddress(factory.make_ipv6_address())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, [maas_dns], ntp_servers, default_domain
+        )
+        self.assertThat(config["dns_servers"], Equals([]))
 
     def test__sets_domain_name_from_passed_domain(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1928,7 +2038,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             secondary_rack=secondary_rack,
         )
         ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(
-            vlan=ha_vlan, dns_servers=["127.0.0.1"]
+            vlan=ha_vlan, allow_dns=False, dns_servers=["127.0.0.1"]
         )
         ha_network = ha_subnet.get_ipnetwork()
         ha_dhcp_snippets = [
@@ -1952,7 +2062,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             interface=secondary_interface,
         )
         other_subnet = factory.make_ipv4_Subnet_with_IPRanges(
-            vlan=ha_vlan, dns_servers=["127.0.0.1"]
+            vlan=ha_vlan, allow_dns=False, dns_servers=["127.0.0.1"]
         )
         other_network = other_subnet.get_ipnetwork()
         other_dhcp_snippets = [

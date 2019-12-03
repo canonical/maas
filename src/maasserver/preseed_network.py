@@ -11,7 +11,10 @@ from operator import attrgetter
 from netaddr import IPNetwork
 import yaml
 
-from maasserver.dns.zonegenerator import get_dns_search_paths
+from maasserver.dns.zonegenerator import (
+    get_dns_search_paths,
+    get_dns_server_addresses,
+)
 from maasserver.enum import (
     BRIDGE_TYPE,
     INTERFACE_TYPE,
@@ -334,9 +337,7 @@ class InterfaceConfiguration:
                         subnet.dns_servers is not None
                         and len(subnet.dns_servers) > 0
                     ):
-                        v1_subnet_operation[
-                            "dns_nameservers"
-                        ] = subnet.dns_servers
+                        v1_subnet_operation["dns_nameservers"] = []
                         v1_subnet_operation[
                             "dns_search"
                         ] = self.node_config.default_search_list
@@ -347,9 +348,30 @@ class InterfaceConfiguration:
                             ] = self.node_config.default_search_list
                             if "addresses" not in v2_nameservers:
                                 v2_nameservers["addresses"] = []
-                        v2_nameservers["addresses"].extend(
-                            [server for server in subnet.dns_servers]
-                        )
+                        for rack in {
+                            subnet.vlan.primary_rack,
+                            subnet.vlan.secondary_rack,
+                        }:
+                            if rack is None:
+                                continue
+                            for ip in get_dns_server_addresses(
+                                rack_controller=rack,
+                                ipv4=(subnet.get_ip_version() == 4),
+                                ipv6=(subnet.get_ip_version() == 6),
+                                include_alternates=True,
+                            ):
+                                if ip.is_loopback():
+                                    continue
+                                ip_str = str(ip)
+                                v1_subnet_operation["dns_nameservers"].append(
+                                    ip_str
+                                )
+                                v2_nameservers["addresses"].append(ip_str)
+                        v1_subnet_operation[
+                            "dns_nameservers"
+                        ] += subnet.dns_servers
+                        v2_nameservers["addresses"] += subnet.dns_servers
+
                     matching_subnet_routes = self._get_matching_routes(subnet)
                     if len(matching_subnet_routes) > 0 and version == 1:
                         # For the v1 YAML, the list of routes is rendered
@@ -615,7 +637,24 @@ class NodeNetworkConfiguration:
             ipv6=self.addr_family_present[6],
             default_region_ip=default_source_ip,
         )
-        if self.default_dns_servers:
+        # LP:1847537 - V1 network config only allows global DNS configuration
+        # while V1 allows DNS configuration per interface. If interfaces are
+        # only being manually configured or use DHCP do not include DNS servers
+        # in the configuration. The DHCP server will provide them.
+        dhcp_only = True
+        for i in self.v1_config:
+            for subnet in i.get("subnets", []):
+                if subnet.get("type", "manual") not in [
+                    "manual",
+                    "dhcp",
+                    "dhcp4",
+                    "dhcp6",
+                ]:
+                    dhcp_only = False
+                    break
+            if not dhcp_only:
+                break
+        if self.default_dns_servers and not dhcp_only:
             self.v1_config.append(
                 {
                     "type": "nameserver",
@@ -655,10 +694,7 @@ class NodeNetworkConfiguration:
         """
         # See also:
         # https://git.launchpad.net/cloud-init/commit/?id=d29eeccd
-        if (
-            len(self.default_dns_servers) > 0
-            or len(self.default_search_list) > 0
-        ):
+        if len(self.default_dns_servers) > 0:
             v2_default_nameservers = {}
             if len(self.default_search_list) > 0:
                 v2_default_nameservers.update(

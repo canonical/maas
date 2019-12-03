@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 import json
+from unittest import skip
 from unittest.mock import ANY, call
 
 from django.conf import settings
@@ -370,6 +371,7 @@ class TestTagAPI(APITestCase.ForUser):
             [rack.system_id], [r["system_id"] for r in parsed_result]
         )
 
+    @skip("XXX: ltrager 2919-11-29 bug=1854546")
     def test_GET_rack_controllers_query_count(self):
         # Patch middleware so it does not affect query counting.
         self.patch(

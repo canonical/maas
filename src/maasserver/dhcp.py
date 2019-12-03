@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DHCP management module."""
@@ -435,13 +435,13 @@ def make_subnet_config(
         the output from `get_ntp_server_addresses_for_rack`.
     """
     ip_network = subnet.get_ipnetwork()
-    if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
-        # Replace MAAS DNS with the servers defined on the subnet.
-        dns_servers = [IPAddress(server) for server in subnet.dns_servers]
-    elif default_dns_servers is not None and len(default_dns_servers) > 0:
-        dns_servers = default_dns_servers
-    else:
-        dns_servers = []
+    dns_servers = []
+    if subnet.allow_dns and default_dns_servers:
+        # If the MAAS DNS server is enabled make sure that is used first.
+        dns_servers += default_dns_servers
+    if subnet.dns_servers:
+        # Add DNS user defined DNS servers
+        dns_servers += [IPAddress(server) for server in subnet.dns_servers]
     if subnets_dhcp_snippets is None:
         subnets_dhcp_snippets = []
 

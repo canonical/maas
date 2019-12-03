@@ -9,7 +9,7 @@ from collections import OrderedDict
 import random
 from textwrap import dedent
 
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPAddress
 from testtools import ExpectedException
 from testtools.matchers import (
     ContainsDict,
@@ -37,6 +37,7 @@ from maasserver.preseed_network import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.utils.network import get_source_address
 
 
 class AssertNetworkConfigMixin:
@@ -291,8 +292,23 @@ class AssertNetworkConfigMixin:
         return ret
 
     def collect_dns_config(self, node, ipv4=True, ipv6=True):
+        gateways = node.get_default_gateways()
+        if ipv4 and gateways.ipv4 is not None:
+            dest_ip = gateways.ipv4.gateway_ip
+        elif ipv6 and gateways.ipv6 is not None:
+            dest_ip = gateways.ipv6.gateway_ip
+        else:
+            dest_ip = None
+        if dest_ip is not None:
+            default_source_ip = get_source_address(dest_ip)
+        else:
+            default_source_ip = None
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
-            repr(node.get_default_dns_servers(ipv4=ipv4, ipv6=ipv6))
+            repr(
+                node.get_default_dns_servers(
+                    ipv4=ipv4, ipv6=ipv6, default_region_ip=default_source_ip
+                )
+            )
         )
         domain_name = node.domain.name
         dns_searches = self.get_dns_search_list(domain_name)
@@ -460,11 +476,13 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
     scenarios = (("ipv4", {"ip_version": 4}), ("ipv6", {"ip_version": 6}))
 
     def test__dhcp_configurations_rendered(self):
+        subnet = factory.make_Subnet(
+            version=self.ip_version, allow_dns=True, dns_servers=["8.8.8.8"]
+        )
         node = factory.make_Node_with_Interface_on_Subnet(
-            ip_version=self.ip_version
+            ip_version=self.ip_version, subnet=subnet
         )
         iface = node.interface_set.first()
-        subnet = iface.vlan.subnet_set.first()
         factory.make_StaticIPAddress(
             ip=None,
             alloc_type=IPADDRESS_TYPE.DHCP,
@@ -480,9 +498,59 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             resolve_hostname.return_value = {IPAddress("::1")}
         config = compose_curtin_network_config(node)
         config_yaml = yaml.safe_load(config[0])
-        self.assertThat(
-            config_yaml["network"]["config"][0]["subnets"][0]["type"],
-            Equals("dhcp" + str(IPNetwork(subnet.cidr).version)),
+        self.assertDictEqual(
+            {
+                "version": 1,
+                "config": [
+                    {
+                        "id": iface.name,
+                        "mac_address": iface.mac_address.raw,
+                        "mtu": iface.get_effective_mtu(),
+                        "name": iface.name,
+                        "type": "physical",
+                        "subnets": [
+                            {
+                                "type": "dhcp4"
+                                if self.ip_version == 4
+                                else "dhcp6"
+                            }
+                        ],
+                    }
+                ],
+            },
+            config_yaml["network"],
+        )
+
+    def test__dhcp_configurations_rendered_includes_dns_with_static(self):
+        subnet = factory.make_Subnet(
+            version=self.ip_version, allow_dns=True, dns_servers=["8.8.8.8"]
+        )
+        node = factory.make_Node_with_Interface_on_Subnet(
+            ip_version=self.ip_version, subnet=subnet
+        )
+        iface = node.interface_set.first()
+        factory.make_StaticIPAddress(
+            ip=None,
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            interface=iface,
+            subnet=subnet,
+        )
+        # Interface with sticky IP.
+        factory.make_Interface(
+            node=node, subnet=subnet, ip=subnet.get_next_ip_for_allocation()
+        )
+        # Patch resolve_hostname() to return the appropriate network version
+        # IP address for MAAS hostname.
+        resolve_hostname = self.patch(server_address, "resolve_hostname")
+        if self.ip_version == 4:
+            resolve_hostname.return_value = {IPAddress("127.0.0.1")}
+        else:
+            resolve_hostname.return_value = {IPAddress("::1")}
+        config = compose_curtin_network_config(node)
+        config_yaml = yaml.safe_load(config[0])
+        self.assertDictEqual(
+            {"address": ["8.8.8.8"], "search": ["maas"], "type": "nameserver"},
+            config_yaml["network"]["config"][2],
         )
 
 
@@ -1655,7 +1723,7 @@ class TestNetplan(MAASServerTestCase):
                         "previous_status": NODE_STATUS.COMMISSIONING,
                     },
                 ]
-            )
+            ),
         )
         node.set_initial_networking_configuration()
         v2 = self._render_netplan_dict(node)

@@ -312,7 +312,7 @@ class Factory(maastesting.factory.Factory):
         vlan=None,
         fabric=None,
         owner_data={},
-        **kwargs
+        **kwargs,
     ):
         if hostname is None:
             hostname = self.make_string(20)
@@ -428,7 +428,7 @@ class Factory(maastesting.factory.Factory):
         with_empty_script_sets=False,
         bmc=None,
         ephemeral_deploy=False,
-        **kwargs
+        **kwargs,
     ):
         """Make a :class:`Node`.
 
@@ -479,7 +479,7 @@ class Factory(maastesting.factory.Factory):
             bmc=bmc,
             hardware_uuid=hardware_uuid,
             ephemeral_deploy=ephemeral_deploy,
-            **kwargs
+            **kwargs,
         )
         if bmc is None:
             # These setters will overwrite the BMC, so don't use them if the
@@ -610,7 +610,7 @@ class Factory(maastesting.factory.Factory):
             owner=owner,
             with_dhcp_rack_primary=False,
             with_dhcp_rack_secondary=False,
-            **kwargs
+            **kwargs,
         )
         if last_image_sync is undefined:
             node.last_image_sync = timezone.now() - timedelta(
@@ -661,7 +661,7 @@ class Factory(maastesting.factory.Factory):
             power_type=power_type,
             power_parameters=power_parameters,
             ip_address=ip_address,
-            **kwargs
+            **kwargs,
         )
         bmc.save()
         return bmc
@@ -703,7 +703,7 @@ class Factory(maastesting.factory.Factory):
             power_type=pod_type,
             power_parameters=parameters,
             ip_address=ip_address,
-            **kwargs
+            **kwargs,
         )
         pod.save()
         return pod
@@ -790,7 +790,7 @@ class Factory(maastesting.factory.Factory):
         name=None,
         address_ttl=None,
         no_ip_addresses=False,
-        **kwargs
+        **kwargs,
     ):
         if "name" in kwargs:
             name = kwargs["name"]
@@ -842,7 +842,7 @@ class Factory(maastesting.factory.Factory):
         recommission=None,
         for_hardware=None,
         apply_configured_networking=False,
-        **kwargs
+        **kwargs,
     ):
         if for_hardware is None:
             for_hardware = []
@@ -888,7 +888,7 @@ class Factory(maastesting.factory.Factory):
             recommission=recommission,
             for_hardware=for_hardware,
             apply_configured_networking=apply_configured_networking,
-            **kwargs
+            **kwargs,
         )
 
     def make_ScriptSet(self, last_ping=None, node=None, result_type=None):
@@ -917,7 +917,7 @@ class Factory(maastesting.factory.Factory):
         started=None,
         ended=None,
         suppressed=False,
-        **kwargs
+        **kwargs,
     ):
         if script_set is None:
             if script is not None:
@@ -989,7 +989,7 @@ class Factory(maastesting.factory.Factory):
             started=started,
             ended=ended,
             suppressed=suppressed,
-            **kwargs
+            **kwargs,
         )
 
     def make_MAC(self):
@@ -1013,7 +1013,7 @@ class Factory(maastesting.factory.Factory):
         link_connected=True,
         interface_speed=None,
         link_speed=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a Node that has a Interface which is on a Subnet.
 
@@ -1067,6 +1067,10 @@ class Factory(maastesting.factory.Factory):
             NODE_STATUS.NEW,
             NODE_STATUS.COMMISSIONING,
             NODE_STATUS.FAILED_COMMISSIONING,
+        ] or node.node_type in [
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         ]
         if should_have_default_link_configuration:
             self.make_StaticIPAddress(
@@ -1152,7 +1156,7 @@ class Factory(maastesting.factory.Factory):
         dnsresource=None,
         cidr=None,
         hostname=None,
-        **kwargs
+        **kwargs,
     ):
         """Create and return a StaticIPAddress model object.
 
@@ -1207,7 +1211,7 @@ class Factory(maastesting.factory.Factory):
                     ip=ip,
                     alloc_type=IPADDRESS_TYPE.DISCOVERED,
                     subnet=subnet,
-                    **kwargs
+                    **kwargs,
                 )
                 ipaddress.save()
                 ip = None
@@ -1348,6 +1352,7 @@ class Factory(maastesting.factory.Factory):
         managed=True,
         space=RANDOM_OR_NONE,
         description=None,
+        **kwargs,
     ):
         if name is None:
             name = factory.make_name("name")
@@ -1380,6 +1385,7 @@ class Factory(maastesting.factory.Factory):
             allow_proxy=allow_proxy,
             managed=managed,
             description="",
+            **kwargs,
         )
         subnet.save()
         if subnet.vlan.space != space and space not in (undefined, None):
@@ -1810,7 +1816,7 @@ class Factory(maastesting.factory.Factory):
         with_static_range=True,
         dns_servers=None,
         with_router=True,
-        **kwargs
+        **kwargs,
     ):
         if cidr is not None:
             network = IPNetwork(cidr)
@@ -1839,7 +1845,7 @@ class Factory(maastesting.factory.Factory):
             cidr=str(network),
             gateway_ip=str(router_address),
             dns_servers=dns_servers,
-            **kwargs
+            **kwargs,
         )
         # Create a "dynamic range" for this Subnet.
         if with_dynamic_range:
@@ -3012,7 +3018,7 @@ class Factory(maastesting.factory.Factory):
         components=None,
         disabled_pockets=None,
         disabled_components=None,
-        **kwargs
+        **kwargs,
     ):
         if name is None:
             name = self.make_name("name")
@@ -3035,7 +3041,7 @@ class Factory(maastesting.factory.Factory):
             key=key,
             default=default,
             disabled_components=disabled_components,
-            **kwargs
+            **kwargs,
         )
 
     def make_Notification(
@@ -3047,7 +3053,7 @@ class Factory(maastesting.factory.Factory):
         users=False,
         admins=False,
         context=None,
-        category=None
+        category=None,
     ):
 
         if context is None:

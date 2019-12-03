@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest import skip
+
 from fixtures import EnvironmentVariableFixture
 from testscenarios import multiply_scenarios
 from testtools.matchers import ContainsDict, Equals
@@ -117,6 +119,7 @@ class TestControllerHandler(MAASServerTestCase):
             "Number of queries has changed; make sure this is expected.",
         )
 
+    @skip("XXX: ltrager 2919-11-29 bug=1854546")
     def test_get_num_queries_is_the_expected_number(self):
         owner = factory.make_admin()
         node = factory.make_RegionRackController(owner=owner)

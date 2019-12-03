@@ -7971,7 +7971,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
         self.assertThat(
-            node.get_default_dns_servers(), Equals([ipv4_subnet_dns])
+            node.get_default_dns_servers(), Equals([rack_v4, ipv4_subnet_dns])
         )
 
     def test__uses_rack_ipv6_if_dual_stack_with_ipv6_gateway(self):
@@ -7992,7 +7992,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
         self.assertThat(
-            node.get_default_dns_servers(), Equals([ipv6_subnet_dns])
+            node.get_default_dns_servers(), Equals([rack_v6, ipv6_subnet_dns])
         )
 
     def test__uses_rack_ipv4_if_ipv4_with_ipv4_gateway(self):
@@ -8013,7 +8013,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
         self.assertThat(
-            node.get_default_dns_servers(), Equals([ipv4_subnet_dns])
+            node.get_default_dns_servers(), Equals([rack_v4, ipv4_subnet_dns])
         )
 
     def test__uses_rack_ipv6_if_ipv6_with_ipv6_gateway(self):
@@ -8034,7 +8034,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
         self.assertThat(
-            node.get_default_dns_servers(), Equals([ipv6_subnet_dns])
+            node.get_default_dns_servers(), Equals([rack_v6, ipv6_subnet_dns])
         )
 
     def test__uses_other_routeable_rack_controllers_ipv4(self):
@@ -8082,6 +8082,28 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         rack_v4, rack_v6, node = self.make_Node_with_RackController()
         Subnet.objects.update(allow_dns=False)
         self.assertThat(node.get_default_dns_servers(), Equals([]))
+
+    def test__uses_subnet_ipv4_dns_only(self):
+        # Regression test for LP:1847537
+        ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv6=False, ipv4_subnet_dns=[ipv4_subnet_dns]
+        )
+        Subnet.objects.update(allow_dns=False)
+        self.assertItemsEqual(
+            node.get_default_dns_servers(), [ipv4_subnet_dns]
+        )
+
+    def test__uses_subnet_ipv6_dns_only(self):
+        # Regression test for LP:1847537
+        ipv6_subnet_dns = factory.make_ipv6_address()
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=False, ipv6_subnet_dns=[ipv6_subnet_dns]
+        )
+        Subnet.objects.update(allow_dns=False)
+        self.assertItemsEqual(
+            node.get_default_dns_servers(), [ipv6_subnet_dns]
+        )
 
 
 class TestNode_Start(MAASTransactionServerTestCase):

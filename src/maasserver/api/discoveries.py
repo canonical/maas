@@ -452,9 +452,7 @@ def scan_all_rack_networks(
         kwargs["scan_all"] = scan_all
     if cidrs is not None:
         kwargs["cidrs"] = cidrs
-        controllers = list(
-            RackController.objects.filter_by_subnet_cidrs(cidrs)
-        )
+        controllers = set(RackController.objects.filter_by_subnet_cidrs(cidrs))
     if ping is not None:
         kwargs["force_ping"] = ping
     if threads is not None:

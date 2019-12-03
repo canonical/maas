@@ -4903,16 +4903,56 @@ class Node(CleanSave, TimestampedModel):
         # Try first to use DNS servers from default gateway subnets.
         if ipv4 and gateways.ipv4 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv4.subnet_id)
-            if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
+            if subnet.dns_servers:
+                rack_dns = []
+                for rack in {
+                    self.get_boot_primary_rack_controller(),
+                    self.get_boot_secondary_rack_controller(),
+                }:
+                    if rack is None:
+                        continue
+                    rack_dns += [
+                        str(ip)
+                        for ip in get_dns_server_addresses(
+                            rack_controller=rack,
+                            ipv4=True,
+                            ipv6=False,
+                            include_alternates=True,
+                            default_region_ip=default_region_ip,
+                        )
+                        if not ip.is_loopback()
+                    ]
                 # An IPv4 subnet is hosting the default gateway and has DNS
                 # servers defined. IPv4 DNS servers take first-priority.
-                return list(OrderedDict.fromkeys(subnet.dns_servers))
+                return list(
+                    OrderedDict.fromkeys(rack_dns + subnet.dns_servers)
+                )
         if ipv6 and gateways.ipv6 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv6.subnet_id)
-            if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
+            if subnet.dns_servers:
+                rack_dns = []
+                for rack in {
+                    self.get_boot_primary_rack_controller(),
+                    self.get_boot_secondary_rack_controller(),
+                }:
+                    if rack is None:
+                        continue
+                    rack_dns += [
+                        str(ip)
+                        for ip in get_dns_server_addresses(
+                            rack_controller=rack,
+                            ipv4=False,
+                            ipv6=True,
+                            include_alternates=True,
+                            default_region_ip=default_region_ip,
+                        )
+                        if not ip.is_loopback()
+                    ]
                 # An IPv6 subnet is hosting the default gateway and has DNS
                 # servers defined. IPv6 DNS servers take second-priority.
-                return list(OrderedDict.fromkeys(subnet.dns_servers))
+                return list(
+                    OrderedDict.fromkeys(rack_dns + subnet.dns_servers)
+                )
 
         # Get the routable addresses between the node and all rack controllers,
         # when the rack proxy should be used (default).
