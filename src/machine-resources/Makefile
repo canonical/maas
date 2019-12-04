@@ -10,14 +10,14 @@ BINDIR := bin
 BINARIES := $(addprefix $(BINDIR)/,$(ARCHES))
 PACKAGE_DIR := src/machine-resources
 PACKAGE_VENDOR_DIR := $(PACKAGE_DIR)/vendor
-
+GO_CACHE_DIR := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d $(TMPDIR)tmp.go-cacheXXX)
 .DEFAULT_GOAL: build
 
 build: $(BINARIES)
 .PHONY: build
 
 $(BINARIES): $(PACKAGE_VENDOR_DIR)
-	GOARCH=$(notdir $@) go build -ldflags '-s -w' -o $@ machine-resources
+	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(notdir $@) go build -ldflags '-s -w' -o $@ machine-resources
 .PHONY: $(ARCHES)
 
 $(PACKAGE_VENDOR_DIR) vendor:
