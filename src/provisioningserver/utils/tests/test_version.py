@@ -509,16 +509,6 @@ class TestVersionMethodsCached(TestVersionTestCase):
         )
 
 
-class TestGetMAASVersionTuple(TestVersionTestCase):
-    def test_get_maas_version_tuple(self):
-        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
-        mock_repo_hash.return_value = None
-        self.assertEqual(
-            ".".join([str(i) for i in version.get_maas_version_tuple()]),
-            version.get_maas_version_subversion()[0],
-        )
-
-
 class TestGetMAASVersionTrackChannel(TestVersionTestCase):
 
     scenarios = [

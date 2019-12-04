@@ -1,8 +1,8 @@
-maas (2.7.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.7.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release, MAAS 2.7.0 beta 1.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 30 May 2019 16:31:03 -0400
+ -- Adam Collard <adam.collard@canonical.com>  Wed, 04 Dec 2019 09:38:37 +0000
 
 maas (2.6.0~rc1-7799-g70b0fe161-0ubuntu1) eoan; urgency=medium
 

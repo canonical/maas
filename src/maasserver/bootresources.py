@@ -25,6 +25,7 @@ import time
 from django.db import connection, connections
 from django.db.utils import load_backend
 from django.http import HttpResponse, StreamingHttpResponse
+from pkg_resources import parse_version
 from simplestreams import util as sutil
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import ObjectStore
@@ -102,7 +103,7 @@ from provisioningserver.utils.twisted import (
     pause,
     synchronous,
 )
-from provisioningserver.utils.version import get_maas_version_tuple
+from provisioningserver.utils.version import DEFAULT_PARSED_VERSION
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()
@@ -1121,10 +1122,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         # If the item requires a specific version of MAAS check the running
         # version meets or exceeds that requirement.
         if maas_supported is not None:
-            supported_version = tuple(
-                int(x) for x in maas_supported.split(".")
-            )
-            if supported_version > get_maas_version_tuple():
+            supported_version = parse_version(maas_supported)
+            if supported_version > DEFAULT_PARSED_VERSION:
                 maaslog.warning(
                     "Ignoring %s, requires a newer version of MAAS(%s)"
                     % (product_name, supported_version)

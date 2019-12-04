@@ -22,7 +22,10 @@ from provisioningserver.utils import shell, snappy
 maaslog = get_maas_logger("version")
 
 # the first requirement is always the required package itself
-DEFAULT_VERSION = pkg_resources.require("maas")[0].version
+DEFAULT_PARSED_VERSION = pkg_resources.require("maas")[0].parsed_version
+
+DEFAULT_VERSION = str(DEFAULT_PARSED_VERSION)
+
 
 # Only import apt_pkg and initialize when not running in a snap.
 if not snappy.running_in_snap():
@@ -240,8 +243,3 @@ def get_maas_doc_version():
         return ".".join(version.split("~")[0].split(".")[:2])
     else:
         return ""
-
-
-def get_maas_version_tuple():
-    """Returns a tuple of the MAAS version without the svn rev."""
-    return tuple(int(x) for x in DEFAULT_VERSION.split("."))

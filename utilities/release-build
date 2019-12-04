@@ -6,9 +6,9 @@ PACKAGE_BUILD_AREA="$ROOTDIR/../build-area"
 
 declare -A SUPPORTED_RELEASES
 SUPPORTED_RELEASES=(
+    [focal]=20.04
     [eoan]=19.10
     [disco]=19.04
-    [cosmic]=18.10
     [bionic]=18.04
 )
 
@@ -68,7 +68,7 @@ cp -a "$PACKAGE_BUILD_AREA"/* "$BUILDDIR"
 (
     cd "$package_dir"
     ensure_changelog_author
-    deb_version=$(sed '1 s/.*(\(.*\)).*/\1/; q'  debian/changelog)
+    deb_version=$(dpkg-parsechangelog -S version)
 
     for release in $releases; do
         update_changelog_version "$deb_version" "$release"
