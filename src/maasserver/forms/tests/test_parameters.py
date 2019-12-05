@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.forms.parameters import ParametersForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -612,6 +612,27 @@ class TestParametersForm(MAASServerTestCase):
         self.assertDictEqual(
             {"interface": {"type": "interface", "value": "all"}},
             form.cleaned_data["input"][0],
+        )
+
+    def test__input_interface_defaults_boot_interface_during_commiss(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.COMMISSIONING
+        )
+        script = factory.make_Script(
+            parameters={"interface": {"type": "interface"}}
+        )
+        form = ParametersForm(data={}, script=script, node=node)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEquals(1, len(form.cleaned_data["input"]))
+        self.assertDictEqual(
+            {
+                "name": node.boot_interface.name,
+                "mac_address": str(node.boot_interface.mac_address),
+                "vendor": node.boot_interface.vendor,
+                "product": node.boot_interface.product,
+                "interface": node.boot_interface,
+            },
+            form.cleaned_data["input"][0]["interface"]["value"],
         )
 
     def test__input_interface_all(self):

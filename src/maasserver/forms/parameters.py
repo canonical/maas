@@ -13,6 +13,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Q
 from django.forms import Field, Form
 
+from maasserver.enum import NODE_STATUS
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.mac import is_mac
@@ -36,13 +37,25 @@ class ParametersForm(Form):
 
     def _get_interfaces(self, *args, **kwargs):
         """Return a list of configured interfaces."""
-        return [
+        ifaces = [
             interface
             for interface in self._node.interface_set.filter(
                 children_relationships=None, enabled=True, *args, **kwargs
             ).prefetch_related("ip_addresses")
             if interface.is_configured()
         ]
+        if (
+            not ifaces
+            and self._node.status == NODE_STATUS.COMMISSIONING
+            and self._node.boot_interface
+        ):
+            # During commissioning no interface will have a configured IP
+            # address if network information wasn't kept. The netplan
+            # configuration will use DHCP on the boot_interface. Allow it
+            # to be selected for a ScriptResult during commissioning so
+            # regeneration works.
+            ifaces = [self._node.boot_interface]
+        return ifaces
 
     def clean_parameters(self):
         """Validate the parameters set in the embedded YAML within the script.
