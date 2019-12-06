@@ -79,15 +79,21 @@ the repository and making your changes in branches.
 First you will want to rename the origin remote to upstream and create a new
 origin in your namespace.
 
+::
+
     $ git remote rename origin upstream
     $ git remote add origin git+ssh://{launchpad-id}@git.launchpad.net/~{launchpad-id}/maas
 
 Now you can make a branch and start making changes.
 
+::
+
     $ git checkout -b new-branch
 
 Once you have made the changes you want, you should commit and push the branch
 to your origin.
+
+::
 
     $ git commit -m "My change" -a
     $ git push origin new-branch
@@ -97,6 +103,8 @@ repository.
 
 Once the branch has been merged and your done with it you can update your
 git repository to remove the branch.
+
+::
 
     $ git fetch upstream
     $ git checkout master
@@ -246,6 +254,8 @@ change the files in there and not rebuild the snap.
 
 There's a ``sync-dev-snap`` make target to automate this:
 
+::
+
     $ make sync-dev-snap
 
 The ``sync-dev-snap`` target creates a clean copy of your working tree (so
@@ -254,10 +264,14 @@ build/dev-snap and creates the snap directory in build/dev-snap/prime.
 
 You can now install the snap:
 
+::
+
     $ sudo snap try build/dev-snap/prime
 
 Note that 'snap try' is used instead of 'snap install'. The maas snap
 should now be installed:
+
+::
 
     $ snap list
     Name          Version                 Rev   Tracking  Publisher   Notes
@@ -275,10 +289,14 @@ And now you're ready to make changes to the code. After you've change
 some source files and want to test them out, run the ``sync-dev-snap``
 target again:
 
+::
+
     $ make sync-dev-snap
 
 You should now see that you files were synced to the prime directory. Restart
 the supervisor service to use the synced code:
+
+::
 
     $ sudo service snap.maas.supervisor restart
 
@@ -288,6 +306,8 @@ do some simple testing, the easiest is to create a networking in
 virt-manager that has NAT, but doesn't provide DHCP. If the name of
 the bridge that got created is `virbr1`, you can expose it to your
 container as eth1 using the following config:
+
+::
 
     eth1:
       name: eth1
