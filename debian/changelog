@@ -1,4 +1,10 @@
-maas (2.7.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.7.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
+
+  * New upstream release, MAAS 2.7.0 beta 2.
+
+ -- Adam Collard <adam.collard@canonical.com>  Mon, 09 Dec 2019 11:01:36 +0000
+
+maas (2.7.0~beta1-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.7.0 beta 1.
 
