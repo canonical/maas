@@ -529,6 +529,66 @@ class TestScriptResult(MAASServerTestCase):
             script_result.parameters,
         )
 
+    def test_save_purges_orphaned_script_results_storage(self):
+        node = factory.make_Machine()
+        physical_blockdevice = node.physicalblockdevice_set.first()
+        script = factory.make_Script(
+            parameters={"storage": {"type": "storage"}}
+        )
+        old_script_set = factory.make_ScriptSet(node=node)
+        old_script_result = factory.make_ScriptResult(
+            script=script,
+            script_set=old_script_set,
+            status=factory.pick_choice(
+                SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PASSED]
+            ),
+            parameters={"storage": {"type": "storage", "value": "all"}},
+        )
+        new_script_set = factory.make_ScriptSet(node=node)
+        new_script_result = factory.make_ScriptResult(
+            script=script,
+            script_set=new_script_set,
+            status=SCRIPT_STATUS.PENDING,
+            parameters={
+                "storage": {
+                    "type": "storage",
+                    "value": {"physical_blockdevice": physical_blockdevice},
+                }
+            },
+        )
+        self.assertIsNone(reload_object(old_script_result))
+        self.assertIsNotNone(reload_object(new_script_result))
+
+    def test_save_purges_orphaned_script_results_interface(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        iface = node.interface_set.first()
+        script = factory.make_Script(
+            parameters={"interface": {"type": "interface"}}
+        )
+        old_script_set = factory.make_ScriptSet(node=node)
+        old_script_result = factory.make_ScriptResult(
+            script=script,
+            script_set=old_script_set,
+            status=factory.pick_choice(
+                SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PASSED]
+            ),
+            parameters={"interface": {"type": "interface", "value": "all"}},
+        )
+        new_script_set = factory.make_ScriptSet(node=node)
+        new_script_result = factory.make_ScriptResult(
+            script=script,
+            script_set=new_script_set,
+            status=SCRIPT_STATUS.PENDING,
+            parameters={
+                "interface": {
+                    "type": "interface",
+                    "value": {"interface": iface},
+                }
+            },
+        )
+        self.assertIsNone(reload_object(old_script_result))
+        self.assertIsNotNone(reload_object(new_script_result))
+
     def test_get_runtime(self):
         runtime_seconds = random.randint(1, 59)
         now = datetime.now()

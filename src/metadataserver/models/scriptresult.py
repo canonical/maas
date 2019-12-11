@@ -444,6 +444,8 @@ class ScriptResult(CleanSave, TimestampedModel):
                     kwargs["update_fields"].append("started")
 
         if self.id is None:
+            purge_unlinked_blockdevice = False
+            purge_unlinked_interface = False
             for param in self.parameters.values():
                 if "value" in param and isinstance(param["value"], dict):
                     if "physical_blockdevice" in param["value"]:
@@ -453,8 +455,27 @@ class ScriptResult(CleanSave, TimestampedModel):
                         param["value"][
                             "physical_blockdevice_id"
                         ] = self.physical_blockdevice.id
+                        purge_unlinked_blockdevice = True
                     elif "interface" in param["value"]:
                         self.interface = param["value"].pop("interface")
                         param["value"]["interface_id"] = self.interface.id
+                        purge_unlinked_interface = True
+            if True in {purge_unlinked_blockdevice, purge_unlinked_interface}:
+                # Cleanup previous ScriptResults which failed to map to a
+                # required device in a previous run. This may happen due to an
+                # issue during commissioning such as not finding devices.
+                qs = ScriptResult.objects.filter(
+                    script=self.script, script_set__node=self.script_set.node
+                )
+                # Exclude passed results as they must of been from a previous
+                # version of the script which did not require parameters. 2.7
+                # adds interface support and the internet-connectivity test
+                # has been extended to support interface parameters.
+                qs = qs.exclude(status=SCRIPT_STATUS.PASSED)
+                if purge_unlinked_blockdevice:
+                    qs = qs.filter(physical_blockdevice=None)
+                if purge_unlinked_interface:
+                    qs = qs.filter(interface=None)
+                qs.delete()
 
         return super().save(*args, **kwargs)
