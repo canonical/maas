@@ -2144,6 +2144,19 @@ class TestPodDelete(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_delete_async_deletes_empty_pod_with_shared_bmc_on_rack(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        bmc = pod.as_bmc()
+        rack = yield deferToDatabase(factory.make_RackController, bmc=bmc)
+        self.assertIsNotNone(rack)
+        yield pod.async_delete()
+        pod = yield deferToDatabase(reload_object, pod)
+        rack = yield deferToDatabase(reload_object, rack)
+        self.assertIsNone(pod)
+        self.assertIsNotNone(rack)
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_decomposes_and_deletes_machines_and_pod(self):
         pod = yield deferToDatabase(factory.make_Pod)
         decomposable_machine = yield deferToDatabase(

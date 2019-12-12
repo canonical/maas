@@ -1580,8 +1580,20 @@ class Pod(BMC):
                 # We loop and call delete to ensure the `delete` method
                 # on the machine object is actually called.
                 machine.delete()
-            # Call delete by bypassing the override that prevents its call.
-            super(BMC, pod).delete()
+
+            # Circular imports.
+            from maasserver.models.node import RackController
+
+            # Update bmc types for any matches.  Only delete the BMC
+            # when no controllers are using the same BMC.
+            racks_with_matching_bmc = RackController.objects.filter(bmc=pod)
+            if len(racks_with_matching_bmc) > 0:
+                for rack in racks_with_matching_bmc:
+                    rack.bmc.bmc_type = BMC_TYPE.BMC
+                    rack.bmc.save()
+            else:
+                # Call delete by bypassing the override that prevents its call.
+                super(BMC, pod).delete()
 
         # Don't catch any errors here they are raised to the caller.
         d = deferToDatabase(gather_clients_and_machines, self)
