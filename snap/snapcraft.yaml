@@ -80,7 +80,6 @@ parts:
       - wsmancli                # AMT
       - snmp                    # APC
       - wget                    # DLI
-      - fence-agents            # Fence CDU
       - freeipmi-tools          # IPMI
       - ipmitool                # Moonshot
       - libvirt-clients         # Virsh

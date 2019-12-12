@@ -12,7 +12,6 @@ from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.dli import DLIPowerDriver
-from provisioningserver.drivers.power.fence_cdu import FenceCDUPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
 from provisioningserver.drivers.power.manual import ManualPowerDriver
@@ -53,7 +52,6 @@ power_drivers = [
     AMTPowerDriver(),
     APCPowerDriver(),
     DLIPowerDriver(),
-    FenceCDUPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
     ManualPowerDriver(),

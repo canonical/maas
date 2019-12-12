@@ -5741,13 +5741,13 @@ class TestNodePowerParameters(MAASServerTestCase):
             node_parameters = dict(power_id=factory.make_string())
             parameters = {**bmc_parameters, **node_parameters}
             node = factory.make_Node()
-            node.set_power_config("fence_cdu", parameters)
+            node.set_power_config("apc", parameters)
             node.save()
             node = reload_object(node)
             self.assertEqual(parameters, node.power_parameters)
             self.assertEqual(node_parameters, node.instance_power_parameters)
             self.assertEqual(bmc_parameters, node.bmc.power_parameters)
-            self.assertEqual("fence_cdu", node.bmc.power_type)
+            self.assertEqual("apc", node.bmc.power_type)
             nodes.append(node)
 
         # Make sure there are now 3 different BMC's.
