@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the VersionedTextFile model."""
@@ -229,3 +229,18 @@ class VersionedTextFileTest(MAASServerTestCase):
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
         self.assertThat(gc_hook, MockCalledOnceWith(textfile))
+
+    def test_converts_dos_formatted_to_unix_formatted(self):
+        textfile = VersionedTextFile.objects.create(
+            data='#!/bin/sh\r\necho "Created on Windows!"\r\n'
+        )
+        self.assertEquals(
+            '#!/bin/sh\necho "Created on Windows!"\n', textfile.data
+        )
+        updated_textfile = textfile.update(
+            '#!/bin/sh\r\necho "Updated on Windows!"\r\n'
+        )
+        self.assertNotEquals(textfile, updated_textfile)
+        self.assertEquals(
+            '#!/bin/sh\necho "Updated on Windows!"\n', updated_textfile.data
+        )

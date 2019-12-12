@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """VersionedTextFile objects."""
@@ -50,11 +50,26 @@ class VersionedTextFile(CleanSave, TimestampedModel):
         help_text="Description of this version",
     )
 
+    def _dostounix(self, data):
+        """Convert DOS/(CRLF) formatted text to Unix/LF formatted text.
+
+        Make sure all data is is Unix formatted. All data used in this
+        model will be written to an Ubuntu installation where most
+        applications expect LF only.
+        """
+        # Django converts bytes to string on save, keep type for now.
+        if isinstance(data, str):
+            return data.replace("\r\n", "\n")
+        elif isinstance(data, bytes):
+            return data.replace(b"\r\n", b"\n")
+        return data
+
     def update(self, new_data, comment=None):
         """Updates this `VersionedTextFile` with the specified `new_data` and
         returns a newly-created `VersionedTextFile`. If the file has changed,
         it will be updated with the specified `comment`, if supplied.
         """
+        new_data = self._dostounix(new_data)
         if new_data == self.data:
             return self
         else:
@@ -127,3 +142,8 @@ class VersionedTextFile(CleanSave, TimestampedModel):
                     return textfile
 
         return VersionedTextFileIterator(self)
+
+    def save(self, *args, **kwargs):
+        if self.id is None:
+            self.data = self._dostounix(self.data)
+        return super().save(*args, **kwargs)
