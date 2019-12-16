@@ -5,9 +5,6 @@
 
 __all__ = []
 
-from subprocess import PIPE
-from unittest.mock import Mock
-
 from testtools.matchers import Equals
 
 from maastesting.factory import factory
@@ -15,12 +12,9 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import apc as apc_module
 from provisioningserver.drivers.power import PowerActionError
-from provisioningserver.utils.shell import (
-    get_env_with_locale,
-    has_command_available,
-)
+from provisioningserver.utils.shell import has_command_available, ProcessResult
 
-COMMON_ARGS = "-c private -v1 %s .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s"
+COMMON_ARGS = "-c private -v1 {} .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.{}"
 COMMON_OUTPUT = "iso.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s = INTEGER: 1\n"
 
 
@@ -46,47 +40,37 @@ class TestAPCPowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def patch_popen(self, return_value=(None, None), returncode=0):
-        process = Mock()
-        process.returncode = returncode
-        process.communicate = Mock(return_value=return_value)
-        self.patch(apc_module, "Popen", Mock(return_value=process))
-        return process
+    def patch_run_command(self, stdout="", stderr="", returncode=0):
+        mock_run_command = self.patch(apc_module.shell, "run_command")
+        mock_run_command.return_value = ProcessResult(
+            stdout=stdout, stderr=stderr, returncode=returncode
+        )
+        return mock_run_command
 
     def test_run_process_calls_command_and_returns_output(self):
         driver = apc_module.APCPowerDriver()
         context = self.make_context()
-        env = get_env_with_locale()
-        command = "snmpget " + COMMON_ARGS % (
-            context["power_address"],
-            context["node_outlet"],
+        command = ["snmpget"] + COMMON_ARGS.format(
+            context["power_address"], context["node_outlet"]
+        ).split()
+        mock_run_command = self.patch_run_command(
+            stdout=COMMON_OUTPUT % context["node_outlet"],
+            stderr="error_output",
         )
-        self.patch_popen(
-            return_value=(
-                (COMMON_OUTPUT % context["node_outlet"]).encode("utf-8"),
-                b"error_output",
-            )
-        )
-        output = driver.run_process(command)
-
-        self.expectThat(
-            apc_module.Popen,
-            MockCalledOnceWith(
-                command.split(), stdout=PIPE, stderr=PIPE, env=env
-            ),
-        )
+        output = driver.run_process(*command)
+        mock_run_command.assert_called_once_with(*command)
         self.expectThat(output, Equals(apc_module.APCState.ON))
 
     def test_run_process_crashes_on_external_process_error(self):
         driver = apc_module.APCPowerDriver()
-        self.patch_popen(return_value=(b"", b""), returncode=1)
+        self.patch_run_command(returncode=1)
         self.assertRaises(
             PowerActionError, driver.run_process, factory.make_name("command")
         )
 
     def test_run_process_crashes_on_no_power_state_match_found(self):
         driver = apc_module.APCPowerDriver()
-        self.patch_popen(return_value=(b"Error", b""))
+        self.patch_run_command(stdout="Error")
         self.assertRaises(
             PowerActionError, driver.run_process, factory.make_name("command")
         )
@@ -108,15 +92,14 @@ class TestAPCPowerDriver(MAASTestCase):
         self.expectThat(
             mock_sleep, MockCalledOnceWith(float(context["power_on_delay"]))
         )
-        self.expectThat(
-            mock_run_process,
-            MockCalledOnceWith(
-                "snmpset "
-                + COMMON_ARGS
-                % (context["power_address"], context["node_outlet"])
-                + " i 1"
-            ),
+        command = (
+            ["snmpset"]
+            + COMMON_ARGS.format(
+                context["power_address"], context["node_outlet"]
+            ).split()
+            + ["i", "1"]
         )
+        mock_run_process.assert_called_once_with(*command)
 
     def test_power_off_calls_run_process(self):
         driver = apc_module.APCPowerDriver()
@@ -124,15 +107,14 @@ class TestAPCPowerDriver(MAASTestCase):
         context = self.make_context()
         mock_run_process = self.patch(driver, "run_process")
         driver.power_off(system_id, context)
-        self.assertThat(
-            mock_run_process,
-            MockCalledOnceWith(
-                "snmpset "
-                + COMMON_ARGS
-                % (context["power_address"], context["node_outlet"])
-                + " i 2"
-            ),
+        command = (
+            ["snmpset"]
+            + COMMON_ARGS.format(
+                context["power_address"], context["node_outlet"]
+            ).split()
+            + ["i", "2"]
         )
+        mock_run_process.assert_called_once_with(*command)
 
     def test_power_query_returns_power_state_on(self):
         driver = apc_module.APCPowerDriver()
@@ -141,15 +123,10 @@ class TestAPCPowerDriver(MAASTestCase):
         mock_run_process = self.patch(driver, "run_process")
         mock_run_process.return_value = apc_module.APCState.ON
         result = driver.power_query(system_id, context)
-
-        self.expectThat(
-            mock_run_process,
-            MockCalledOnceWith(
-                "snmpget "
-                + COMMON_ARGS
-                % (context["power_address"], context["node_outlet"])
-            ),
-        )
+        command = ["snmpget"] + COMMON_ARGS.format(
+            context["power_address"], context["node_outlet"]
+        ).split()
+        mock_run_process.assert_called_once_with(*command)
         self.expectThat(result, Equals("on"))
 
     def test_power_query_returns_power_state_off(self):
@@ -159,15 +136,10 @@ class TestAPCPowerDriver(MAASTestCase):
         mock_run_process = self.patch(driver, "run_process")
         mock_run_process.return_value = apc_module.APCState.OFF
         result = driver.power_query(system_id, context)
-
-        self.expectThat(
-            mock_run_process,
-            MockCalledOnceWith(
-                "snmpget "
-                + COMMON_ARGS
-                % (context["power_address"], context["node_outlet"])
-            ),
-        )
+        command = ["snmpget"] + COMMON_ARGS.format(
+            context["power_address"], context["node_outlet"]
+        ).split()
+        mock_run_process.assert_called_once_with(*command)
         self.expectThat(result, Equals("off"))
 
     def test_power_query_crashes_for_uknown_power_state(self):

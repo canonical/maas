@@ -8,6 +8,8 @@ __all__ = []
 import os
 import random
 from subprocess import CalledProcessError
+from tempfile import NamedTemporaryFile
+from textwrap import dedent
 
 from fixtures import EnvironmentVariable
 from testtools.matchers import ContainsDict, Equals, Is, IsInstance, Not
@@ -22,6 +24,7 @@ from provisioningserver.utils.shell import (
     get_env_with_bytes_locale,
     get_env_with_locale,
     has_command_available,
+    run_command,
 )
 
 
@@ -360,3 +363,30 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
                     {name.encode("ascii"): Equals(value.encode("ascii"))}
                 ),
             )
+
+
+class TestRunCommand(MAASTestCase):
+    def test_stdout_stderr(self):
+        with NamedTemporaryFile(
+            "w", encoding="utf-8", delete=False
+        ) as executable:
+            executable.write(
+                dedent(
+                    """\
+                    #!/bin/sh
+                    echo "$@"
+                    echo stderr >&2
+                    return 3
+                    """
+                )
+            )
+            executable.close()
+            os.chmod(executable.name, 0o755)
+            result = run_command(executable.name, "some", "args")
+            self.assertEqual(result.stdout, "some args")
+            self.assertEqual(result.stderr, "stderr")
+            self.assertEqual(result.returncode, 3)
+
+    def test_environ(self):
+        result = run_command("env", extra_environ={"FOO": "bar"})
+        self.assertIn("FOO=bar", result.stdout)

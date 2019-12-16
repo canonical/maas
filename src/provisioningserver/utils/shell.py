@@ -14,6 +14,7 @@ import os
 from pipes import quote
 from string import printable
 from subprocess import CalledProcessError, PIPE, Popen
+from typing import Mapping, NamedTuple, Optional
 
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question
@@ -166,3 +167,29 @@ def get_env_with_bytes_locale(environ=os.environb, locale=b"C.UTF-8"):
     }
     environ.update({b"LC_ALL": locale, b"LANG": locale, b"LANGUAGE": locale})
     return environ
+
+
+class ProcessResult(NamedTuple):
+    """Result of a process execution."""
+
+    stdout: str = ""
+    stderr: str = ""
+    returncode: int = 0
+
+
+def run_command(
+    *command: str,
+    stdin: Optional[bytes] = None,
+    extra_environ: Optional[Mapping[str, str]] = None
+) -> ProcessResult:
+    """Execute a command."""
+    env = get_env_with_locale()
+    if extra_environ:
+        env.update(extra_environ)
+    process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
+    stdout, stderr = process.communicate(stdin)
+    return ProcessResult(
+        stdout=stdout.decode("utf8", "replace").strip(),
+        stderr=stderr.decode("utf8", "replace").strip(),
+        returncode=process.returncode,
+    )

@@ -6,7 +6,6 @@
 __all__ = []
 
 import re
-from subprocess import PIPE, Popen
 from tempfile import NamedTemporaryFile
 
 from provisioningserver.drivers import (
@@ -243,7 +242,6 @@ class IPMIPowerDriver(PowerDriver):
     def _issue_ipmi_chassis_config_command(
         command, power_change, power_address, power_boot_type=None
     ):
-        env = shell.get_env_with_locale()
         with NamedTemporaryFile("w+", encoding="utf-8") as tmp_config:
             # Write out the chassis configuration.
             if (
@@ -261,9 +259,7 @@ class IPMIPowerDriver(PowerDriver):
             # XXX: Not using call_and_check here because we
             # need to check stderr.
             command = tuple(command) + ("--filename", tmp_config.name)
-            process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
-            _, stderr = process.communicate()
-        stderr = stderr.decode("utf-8").strip()
+            result = shell.run_command(*command)
         # XXX newell 2016-11-21 bug=1516065: Some IPMI hardware have timeout
         # issues when trying to set the boot order to PXE.  We want to
         # continue and not raise an error here.
@@ -273,32 +269,28 @@ class IPMIPowerDriver(PowerDriver):
             if IPMI_ERRORS[key]["exception"] == PowerAuthError
         }
         for error, error_info in ipmi_errors.items():
-            if error in stderr:
+            if error in result.stderr:
                 raise error_info.get("exception")(error_info.get("message"))
-        if process.returncode != 0:
+        if result.returncode != 0:
             maaslog.warning(
                 "Failed to change the boot order to PXE %s: %s"
-                % (power_address, stderr)
+                % (power_address, result.stderr)
             )
 
     @staticmethod
     def _issue_ipmipower_command(command, power_change, power_address):
-        env = shell.get_env_with_locale()
-        command = tuple(command)  # For consistency when testing.
-        process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
-        stdout, _ = process.communicate()
-        stdout = stdout.decode("utf-8").strip()
+        result = shell.run_command(*command)
         for error, error_info in IPMI_ERRORS.items():
             # ipmipower dumps errors to stdout
-            if error in stdout:
+            if error in result.stdout:
                 raise error_info.get("exception")(error_info.get("message"))
-        if process.returncode != 0:
+        if result.returncode != 0:
             raise PowerError(
                 "Failed to power %s %s: %s"
-                % (power_change, power_address, stdout)
+                % (power_change, power_address, result.stdout)
             )
-        match = re.search(r":\s*(on|off)", stdout)
-        return stdout if match is None else match.group(1)
+        match = re.search(r":\s*(on|off)", result.stdout)
+        return result.stdout if match is None else match.group(1)
 
     def _issue_ipmi_command(
         self,

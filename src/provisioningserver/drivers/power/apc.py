@@ -9,7 +9,6 @@ Support for managing American Power Conversion (APC) PDU outlets via SNMP.
 __all__ = []
 
 import re
-from subprocess import PIPE, Popen
 from time import sleep
 
 from provisioningserver.drivers import (
@@ -19,9 +18,6 @@ from provisioningserver.drivers import (
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
 from provisioningserver.utils import shell
-from provisioningserver.utils.shell import get_env_with_locale
-
-COMMON_ARGS = "-c private -v1 %s .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s"
 
 
 class APCState:
@@ -55,27 +51,19 @@ class APCPowerDriver(PowerDriver):
             return [package]
         return []
 
-    def run_process(self, command):
+    def run_process(self, *command):
         """Run SNMP command in subprocess."""
-        proc = Popen(
-            command.split(),
-            stdout=PIPE,
-            stderr=PIPE,
-            env=get_env_with_locale(),
-        )
-        stdout, stderr = proc.communicate()
-        stdout = stdout.decode("utf-8")
-        stderr = stderr.decode("utf-8")
-        if proc.returncode != 0:
+        result = shell.run_command(*command)
+        if result.returncode != 0:
             raise PowerActionError(
                 "APC Power Driver external process error for command %s: %s"
-                % (command, stderr)
+                % ("".join(command), result.stderr)
             )
-        match = re.search(r"INTEGER:\s*([1-2])", stdout)
+        match = re.search(r"INTEGER:\s*([1-2])", result.stdout)
         if match is None:
             raise PowerActionError(
                 "APC Power Driver unable to extract outlet power state"
-                " from: %s" % stdout
+                " from: %s" % result.stdout
             )
         else:
             return match.group(1)
@@ -86,24 +74,32 @@ class APCPowerDriver(PowerDriver):
             self.power_off(system_id, context)
         sleep(float(context["power_on_delay"]))
         self.run_process(
-            "snmpset "
-            + COMMON_ARGS % (context["power_address"], context["node_outlet"])
-            + " i 1"
+            "snmpset",
+            *_get_common_args(
+                context["power_address"], context["node_outlet"]
+            ),
+            "i",
+            "1",
         )
 
     def power_off(self, system_id, context):
         """Power off APC outlet."""
         self.run_process(
-            "snmpset "
-            + COMMON_ARGS % (context["power_address"], context["node_outlet"])
-            + " i 2"
+            "snmpset",
+            *_get_common_args(
+                context["power_address"], context["node_outlet"]
+            ),
+            "i",
+            "2",
         )
 
     def power_query(self, system_id, context):
         """Power query APC outlet."""
         power_state = self.run_process(
-            "snmpget "
-            + COMMON_ARGS % (context["power_address"], context["node_outlet"])
+            "snmpget",
+            *_get_common_args(
+                context["power_address"], context["node_outlet"]
+            ),
         )
         if power_state == APCState.OFF:
             return "off"
@@ -114,3 +110,13 @@ class APCPowerDriver(PowerDriver):
                 "APC Power Driver retrieved unknown power state: %r"
                 % power_state
             )
+
+
+def _get_common_args(address, outlet):
+    return [
+        "-c",
+        "private",
+        "-v1",
+        address,
+        f".1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.{outlet}",
+    ]
