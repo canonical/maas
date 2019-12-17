@@ -1,24 +1,19 @@
-#!/bin/sh
+#!/bin/bash -e
+#
+# Connect interfaces for the MAAS snap.
+#
+# This is needed for local installs (`snap try` or ` snap install --dangerous`)
+# where autoconnect is not performed.
 
-interfaces="
-    avahi-observe
-    hardware-observe
-    kernel-module-observe
-    mount-observe
-    network-control
-    network-observe
-    system-observe
-    time-control
- "
+set -o pipefail
 
-if [ -z "$(snap list | awk '$1 == "maas"')" ]; then
-    echo "The maas snap is not installed"
+if ! snap connections maas 2>/dev/null; then
+    echo "The maas snap is not installed" >&2
     exit 1
-fi
+fi | \
+    awk '$1 != "content" && $3 == "-" {print $2}' | \
+    xargs -r -n1 sudo snap connect
 
-for interface in $interfaces; do
-    sudo snap connect "maas:$interface"
-done
 # connect content interface too
 sudo snap connect maas:maas-cli maas-cli
 
