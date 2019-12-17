@@ -180,7 +180,8 @@ class ProcessResult(NamedTuple):
 def run_command(
     *command: str,
     stdin: Optional[bytes] = None,
-    extra_environ: Optional[Mapping[str, str]] = None
+    extra_environ: Optional[Mapping[str, str]] = None,
+    decode: bool = True,
 ) -> ProcessResult:
     """Execute a command."""
     env = get_env_with_locale()
@@ -188,8 +189,11 @@ def run_command(
         env.update(extra_environ)
     process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
     stdout, stderr = process.communicate(stdin)
+    if decode:
+        stdout = stdout.decode("utf8", "replace")
+        stderr = stderr.decode("utf8", "replace")
     return ProcessResult(
-        stdout=stdout.decode("utf8", "replace").strip(),
-        stderr=stderr.decode("utf8", "replace").strip(),
+        stdout=stdout.strip(),
+        stderr=stderr.strip(),
         returncode=process.returncode,
     )

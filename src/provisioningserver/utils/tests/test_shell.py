@@ -387,6 +387,25 @@ class TestRunCommand(MAASTestCase):
             self.assertEqual(result.stderr, "stderr")
             self.assertEqual(result.returncode, 3)
 
+    def test_no_decode(self):
+        with NamedTemporaryFile(
+            "w", encoding="utf-8", delete=False
+        ) as executable:
+            executable.write(
+                dedent(
+                    """\
+                    #!/bin/sh
+                    echo "$@"
+                    echo stderr >&2
+                    """
+                )
+            )
+            executable.close()
+            os.chmod(executable.name, 0o755)
+            result = run_command(executable.name, "some", "args", decode=False)
+            self.assertEqual(result.stdout, b"some args")
+            self.assertEqual(result.stderr, b"stderr")
+
     def test_environ(self):
         result = run_command("env", extra_environ={"FOO": "bar"})
         self.assertIn("FOO=bar", result.stdout)

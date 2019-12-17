@@ -8,7 +8,6 @@ __all__ = []
 from itertools import chain
 from os.path import dirname, join
 import re
-from subprocess import PIPE, Popen
 from time import sleep
 
 from lxml import etree
@@ -114,12 +113,6 @@ class AMTPowerDriver(PowerDriver):
         )
         return state
 
-    def _get_amt_environment(self, power_pass):
-        """Set and return environment for AMT."""
-        env = shell.get_env_with_locale()
-        env["AMT_PASSWORD"] = power_pass
-        return env
-
     def _set_pxe_boot(self, ip_address, power_pass):
         """Set to PXE for next boot."""
         wsman_pxe_options = {
@@ -167,15 +160,18 @@ class AMTPowerDriver(PowerDriver):
         self, command: tuple, power_pass: str, stdin: bytes = None
     ) -> bytes:
         """Run a subprocess with stdin."""
-        env = self._get_amt_environment(power_pass)
-        process = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
-        stdout, stderr = process.communicate(stdin)
-        if process.returncode != 0:
+        result = shell.run_command(
+            *command,
+            stdin=stdin,
+            extra_environ={"AMT_PASSWORD": power_pass},
+            decode=False,
+        )
+        if result.returncode != 0:
             raise PowerActionError(
                 "Failed to run command: %s with error: %s"
-                % (command, stderr.decode("utf-8", "replace"))
+                % (command, result.stderr.decode("utf-8", "replace"))
             )
-        return stdout
+        return result.stdout
 
     @typed
     def _issue_amttool_command(
@@ -240,19 +236,18 @@ class AMTPowerDriver(PowerDriver):
     def amttool_query_state(self, ip_address, power_pass):
         """Ask for node's power state: 'on' or 'off', via amttool."""
         # Retry the state if it fails because it often fails the first time
-        output = None
         for _ in range(10):
             output = self._issue_amttool_command(
                 "info", ip_address, power_pass
             )
-            if output is not None and len(output) > 0:
+            if output:
                 break
             # Wait 1 second between retries.  AMT controllers are generally
             # very light and may not be comfortable with more frequent
             # queries.
             sleep(1)
 
-        if output is None:
+        if not output:
             raise PowerActionError("amttool power querying failed.")
 
         # Ensure that from this point forward that output is a str.
@@ -270,17 +265,16 @@ class AMTPowerDriver(PowerDriver):
     def wsman_query_state(self, ip_address, power_pass):
         """Ask for node's power state: 'on' or 'off', via wsman."""
         # Retry the state if it fails because it often fails the first time.
-        output = None
         for _ in range(10):
             output = self._issue_wsman_command("query", ip_address, power_pass)
-            if output is not None and len(output) > 0:
+            if output:
                 break
             # Wait 1 second between retries.  AMT controllers are generally
             # very light and may not be comfortable with more frequent
             # queries.
             sleep(1)
 
-        if output is None:
+        if not output:
             raise PowerActionError("wsman power querying failed.")
         else:
             state = self.get_power_state(output)
@@ -381,40 +375,33 @@ class AMTPowerDriver(PowerDriver):
         # XXX bug=1331214
         # Check if the AMT ver > 8
         # If so, we need wsman, not amttool
-        env = self._get_amt_environment(power_pass)
-        process = Popen(
-            (
-                "wsman",
-                "identify",
-                "--port",
-                "16992",
-                "--hostname",
-                ip_address,
-                "--username",
-                "admin",
-                "--password",
-                power_pass,
-            ),
-            stdout=PIPE,
-            stderr=PIPE,
-            env=env,
+        result = shell.run_command(
+            "wsman",
+            "identify",
+            "--port",
+            "16992",
+            "--hostname",
+            ip_address,
+            "--username",
+            "admin",
+            "--password",
+            power_pass,
         )
-        stdout, stderr = process.communicate()
-        stdout = stdout.decode("utf-8")
-        stderr = stderr.decode("utf-8")
-        if stdout == "" or stdout.isspace():
+        if not result.stdout:
             for error, error_info in AMT_ERRORS.items():
-                if error in stderr:
+                if error in result.stderr:
                     raise error_info.get("exception")(
                         error_info.get("message")
                     )
-            raise PowerConnError("Unable to retrieve AMT version: %s" % stderr)
+            raise PowerConnError(
+                f"Unable to retrieve AMT version: {result.stderr}"
+            )
         else:
-            match = re.search(r"ProductVersion>AMT\s*([0-9]+)", stdout)
+            match = re.search(r"ProductVersion>AMT\s*([0-9]+)", result.stdout)
             if match is None:
                 raise PowerActionError(
                     "Unable to extract AMT version from "
-                    "amttool output: %s" % stdout
+                    f"amttool output: {result.stdout}"
                 )
             else:
                 version = match.group(1)
