@@ -6,13 +6,14 @@
 mkdir -p "$SNAP_COMMON/log/"{proxy,http}
 mkdir -p "$SNAP_COMMON/proxy/"{cache,spool}
 
-# once we've transitioned to fully confined snap (and bumped the epoch), this
-# check can be dropped. The chown below won't need to be run recursively, as we
-# can assume any file below the dir has been created with the right owner (from
-# the owning app). We only need to change mode/ownership when dirs are created.
+# XXX once we've transitioned to fully confined snap (and bumped the epoch),
+# this check can be dropped. The chown below won't need to be run recursively,
+# as we can assume any file below the dir has been created with the right owner
+# (from the owning app). We only need to change mode/ownership when dirs are
+# created.
 migration_done() {
     local user
-    user=$(stat -C '%U' "$SNAP_COMMON/log")
+    user=$(stat -c '%U' "$SNAP_COMMON/log")
     [ "$user" = snap_daemon ] && echo 1 || echo 0
 }
 user_migration_done=$(migration_done)
@@ -69,7 +70,11 @@ if [ -d "$SNAP_COMMON/postgres/sockets" ]; then
     chown snap_daemon.snap_daemon "$SNAP_COMMON/postgres/sockets"
 fi
 if [ -d "$SNAP_COMMON/postgres/data" ]; then
-    chown -R snap_daemon.snap_daemon "$SNAP_COMMON/postgres/data"
+    if [ "$user_migration_done" -eq 1 ]; then
+        chown snap_daemon.snap_daemon "$SNAP_COMMON/postgres/data"
+    else
+        chown -R snap_daemon.snap_daemon "$SNAP_COMMON/postgres/data"
+    fi
 fi
 
 # Upgrade from PostgreSQL 9.5 to 10.
