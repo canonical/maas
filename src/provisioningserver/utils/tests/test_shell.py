@@ -383,9 +383,9 @@ class TestRunCommand(MAASTestCase):
             executable.close()
             os.chmod(executable.name, 0o755)
             result = run_command(executable.name, "some", "args")
-            self.assertEqual(result.stdout, "some args")
-            self.assertEqual(result.stderr, "stderr")
-            self.assertEqual(result.returncode, 3)
+        self.assertEqual(result.stdout, "some args")
+        self.assertEqual(result.stderr, "stderr")
+        self.assertEqual(result.returncode, 3)
 
     def test_no_decode(self):
         with NamedTemporaryFile(
@@ -403,9 +403,16 @@ class TestRunCommand(MAASTestCase):
             executable.close()
             os.chmod(executable.name, 0o755)
             result = run_command(executable.name, "some", "args", decode=False)
-            self.assertEqual(result.stdout, b"some args")
-            self.assertEqual(result.stderr, b"stderr")
+        self.assertEqual(result.stdout, b"some args")
+        self.assertEqual(result.stderr, b"stderr")
 
     def test_environ(self):
         result = run_command("env", extra_environ={"FOO": "bar"})
         self.assertIn("FOO=bar", result.stdout)
+
+    def test_stdin(self):
+        # The timeout here is to prevent hanging of the test suite
+        # should it fail (since failure scenario is inheriting stdin
+        # from parent process, i.e. this one!)
+        result = run_command("cat", stdin=b"foo", decode=False, timeout=0.2)
+        self.assertEqual(result.stdout, b"foo")
