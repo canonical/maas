@@ -62,14 +62,7 @@ SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
 def _create_default_physical_interface(
-    node,
-    ifname,
-    mac,
-    link_connected,
-    interface_speed,
-    link_speed,
-    numa_node,
-    **kwargs,
+    node, ifname, mac, link_connected, **kwargs
 ):
     """Assigns the specified interface to the specified Node.
 
@@ -86,12 +79,7 @@ def _create_default_physical_interface(
     fabric = Fabric.objects.get_default_fabric()
     vlan = fabric.get_default_vlan()
     interface = PhysicalInterface.objects.create(
-        mac_address=mac,
-        name=ifname,
-        node=node,
-        numa_node=numa_node,
-        vlan=vlan,
-        **kwargs,
+        mac_address=mac, name=ifname, node=node, vlan=vlan, **kwargs
     )
 
     return interface
@@ -99,13 +87,14 @@ def _create_default_physical_interface(
 
 def _parse_interface_speed(port):
     supported_modes = port.get("supported_modes")
-    if supported_modes is not None:
-        # Iterate over supported modes and choose the highest
-        # supported speed.
-        speeds = []
-        for supported_mode in supported_modes:
-            speeds.append(int(supported_mode.split("base")[0]))
-        return max(speeds)
+    if supported_modes is None:
+        return 0
+
+    # Return the highest supported speed.
+    return max(
+        int(supported_mode.split("base")[0])
+        for supported_mode in supported_modes
+    )
 
 
 def _parse_interfaces(node, data):
@@ -139,7 +128,7 @@ def _parse_interfaces(node, data):
                 "name": port.get("id"),
                 "link_connected": port.get("link_detected"),
                 "interface_speed": _parse_interface_speed(port),
-                "link_speed": port.get("link_speed"),
+                "link_speed": port.get("link_speed", 0),
                 "numa_node": card.get("numa_node", 0),
                 "vendor": card.get("vendor"),
                 "product": card.get("product"),
@@ -185,7 +174,14 @@ def update_interface_details(interface, details):
         return
 
     update_fields = []
-    for field in ("name", "vendor", "product", "firmware_version"):
+    for field in (
+        "name",
+        "vendor",
+        "product",
+        "firmware_version",
+        "link_speed",
+        "interface_speed",
+    ):
         value = iface_details.get(field, "")
         if getattr(interface, field) != value:
             setattr(interface, field, value)
@@ -276,9 +272,9 @@ def update_node_network_information(node, data, numa_nodes):
                     ifname,
                     mac,
                     link_connected,
-                    interface_speed,
-                    link_speed,
-                    numa_nodes[numa_index],
+                    interface_speed=interface_speed,
+                    link_speed=link_speed,
+                    numa_node=numa_nodes[numa_index],
                     vendor=vendor,
                     product=product,
                     firmware_version=firmware_version,
@@ -294,9 +290,9 @@ def update_node_network_information(node, data, numa_nodes):
                 ifname,
                 mac,
                 link_connected,
-                interface_speed,
-                link_speed,
-                numa_nodes[numa_index],
+                interface_speed=interface_speed,
+                link_speed=link_speed,
+                numa_node=numa_nodes[numa_index],
                 vendor=vendor,
                 product=product,
                 firmware_version=firmware_version,

@@ -1439,6 +1439,33 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
 
+    def test__updates_interfaces_speed(self):
+        node = factory.make_Node()
+        iface = factory.make_Interface(
+            node=node,
+            mac_address="00:00:00:00:00:01",
+            interface_speed=0,
+            link_speed=0,
+        )
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        process_lxd_results(
+            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
+        )
+        # the existing interface gets updated
+        iface1 = reload_object(iface)
+        self.assertEqual(1000, iface1.link_speed)
+        self.assertEqual(1000, iface1.interface_speed)
+        # other interfaces get created
+        iface2, iface3 = (
+            Interface.objects.filter(node=node)
+            .exclude(mac_address=iface.mac_address)
+            .order_by("mac_address")
+        )
+        self.assertEqual(0, iface2.link_speed)
+        self.assertEqual(1000, iface2.interface_speed)
+        self.assertEqual(0, iface3.link_speed)
+        self.assertEqual(0, iface3.interface_speed)
+
     def test__ipaddr_script_before(self):
         self.assertLess(
             IPADDR_OUTPUT_NAME,
