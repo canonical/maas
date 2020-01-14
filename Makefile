@@ -68,6 +68,8 @@ src/metadataserver \
 src/provisioningserver
 endef
 
+UI_BUILD := src/maasui/build
+
 build: \
   .run \
   $(VENV) \
@@ -115,9 +117,11 @@ bin/py:
 bin/database: bin/postgresfixture
 	ln -sf $(notdir $<) $@
 
-ui:
-	$(MAKE) -C src/maasui build
+ui: $(UI_BUILD)
 .PHONY: ui
+
+$(UI_BUILD):
+	$(MAKE) -C src/maasui build
 
 machine-resources-vendor:
 	$(MAKE) -C src/machine-resources vendor
@@ -452,7 +456,6 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
-ui_build := src/maasui/build
 machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 
 -packaging-clean:
@@ -460,12 +463,11 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	mkdir -p $(packaging-build-area)
 .PHONY: -packaging-clean
 
--packaging-export-orig: $(packaging-build-area)
+-packaging-export-orig: $(UI_BUILD) $(packaging-build-area)
 	git archive --format=tar $(packaging-export-extra) \
             --prefix=$(packaging-dir)/ \
 	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
-	$(MAKE) ui
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(ui_build) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) machine-resources-vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
@@ -473,11 +475,10 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 .PHONY: -packaging-export-orig
 
--packaging-export-orig-uncommitted: $(packaging-build-area)
+-packaging-export-orig-uncommitted: $(UI_BUILD) $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
-	$(MAKE) ui
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(ui_build) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) machine-resources-vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
@@ -556,11 +557,11 @@ print-%:
 #
 
 snap-clean:
-	$(snapcraft) clean
+	$(snapcraft) clean --use-lxd
 .PHONY: snap-clean
 
 snap:
-	$(snapcraft)
+	$(snapcraft) --use-lxd
 .PHONY: snap
 
 #
@@ -574,13 +575,13 @@ build/dev-snap: ## Check out a clean version of the working tree.
 build/dev-snap/prime: build/dev-snap
 	cd build/dev-snap && $(snapcraft) prime --destructive-mode
 
-sync-dev-snap: RSYNC=rsync -v -r -u -l -t -W -L
-sync-dev-snap: build/dev-snap/prime
+sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
+sync-dev-snap: $(UI_BUILD) build/dev-snap/prime
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'machine-resources' --exclude '*.pyc' \
 		--exclude '__pycache__' \
 		src/ build/dev-snap/prime/lib/python3.6/site-packages/
 	$(RSYNC) \
-		src/maasui/build/ build/dev-snap/prime/usr/share/maas/web/static/
+		$(UI_BUILD) build/dev-snap/prime/usr/share/maas/web/static/
 	$(RSYNC) snap/local/tree/ build/dev-snap/prime
 .PHONY: sync-dev-snap
