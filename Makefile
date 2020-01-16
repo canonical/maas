@@ -583,5 +583,7 @@ sync-dev-snap: $(UI_BUILD) build/dev-snap/prime
 		src/ build/dev-snap/prime/lib/python3.6/site-packages/
 	$(RSYNC) \
 		$(UI_BUILD) build/dev-snap/prime/usr/share/maas/web/static/
-	$(RSYNC) snap/local/tree/ build/dev-snap/prime
+	$(RSYNC) snap/local/tree/ build/dev-snap/prime/
+	$(RSYNC) src/machine-resources/bin/ \
+		build/dev-snap/prime/usr/share/maas/machine-resources/
 .PHONY: sync-dev-snap

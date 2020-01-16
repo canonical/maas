@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/lxc/lxd"
   packages = ["lxd/resources","shared/api","shared/units"]
-  revision = "bd7e2ec94c4f44ad96edf09cc4a3125c24e5301c"
+  revision = "7ecfb00b4838f666f4208067733e78a7da9421f1"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"

@@ -651,7 +651,9 @@ def update_node_physical_block_devices(node, data, numa_nodes):
         name = block_info["id"]
         model = block_info.get("model", "")
         serial = block_info.get("serial", "")
-        id_path = block_info.get("device_path", "")
+        id_path = block_info.get("device_id", "")
+        if id_path:
+            id_path = f"/dev/disk/by-id/{id_path}"
         if not id_path or not serial:
             # Fallback to the dev path if device_path missing or there is
             # no serial number. (No serial number is a strong indicator that

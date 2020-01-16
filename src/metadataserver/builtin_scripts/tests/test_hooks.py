@@ -300,6 +300,7 @@ SAMPLE_LXD_JSON = {
                 "removable": False,
                 "numa_node": 0,
                 "device_path": "pci-0000:00:1f.2-ata-1",
+                "device_id": "wwn-0x12345",
                 "block_size": 4096,
                 "rpm": 0,
                 "firmware_version": "MU01",
@@ -1658,7 +1659,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         # Check first device from SAMPLE_LXD_JSON
         device = SAMPLE_LXD_JSON["storage"]["disks"][0]
         name = device["id"]
-        id_path = device["device_path"]
+        id_path = f"/dev/disk/by-id/{device['device_id']}"
         size = device["size"]
         block_size = device["block_size"]
         model = device["model"]
@@ -1687,7 +1688,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]["block_size"] = 0
         device = SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]
         name = device["id"]
-        id_path = device["device_path"]
+        id_path = f"/dev/disk/by-id/{device['device_id']}"
         size = device["size"]
         block_size = 512
         model = device["model"]
@@ -1712,7 +1713,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_path(self):
         NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_JSON)
-        NO_DEVICE_PATH["storage"]["disks"][0]["device_path"] = ""
+        NO_DEVICE_PATH["storage"]["disks"][0]["device_id"] = ""
         device = NO_DEVICE_PATH["storage"]["disks"][0]
         name = device["id"]
         size = device["size"]
@@ -1898,7 +1899,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 "storage": {
                     "type": "storage",
                     "value": {
-                        "id_path": device["device_path"],
+                        "id_path": "/dev/disk/by-id/wwn-0x12345",
                         "physical_blockdevice_id": (
                             node.physicalblockdevice_set.first().id
                         ),
