@@ -568,22 +568,25 @@ snap:
 # Helpers for using the snap for development testing.
 #
 
-build/dev-snap: ## Check out a clean version of the working tree.
-	git checkout-index -a --prefix build/dev-snap/
-	git submodule foreach --recursive 'git checkout-index -a --prefix $(PWD)/build/dev-snap/$$sm_path/'
+DEV_SNAP_DIR ?=  build/dev-snap
+DEV_SNAP_PRIME_DIR = $(DEV_SNAP_DIR)/prime
 
-build/dev-snap/prime: build/dev-snap
-	cd build/dev-snap && $(snapcraft) prime --destructive-mode
+$(DEV_SNAP_DIR): ## Check out a clean version of the working tree.
+	git checkout-index -a --prefix $(DEV_SNAP_DIR)/
+	git submodule foreach --recursive 'git checkout-index -a --prefix $(PWD)/$(DEV_SNAP_DIR)/$$sm_path/'
+
+$(DEV_SNAP_PRIME_DIR): $(DEV_SNAP_DIR)
+	cd $(DEV_SNAP_DIR) && $(snapcraft) prime --destructive-mode
 
 sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
-sync-dev-snap: $(UI_BUILD) build/dev-snap/prime
+sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_DIR)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'machine-resources' --exclude '*.pyc' \
 		--exclude '__pycache__' \
-		src/ build/dev-snap/prime/lib/python3.6/site-packages/
+		src/ $(DEV_SNAP_PRIME_DIR)/lib/python3.6/site-packages/
 	$(RSYNC) \
-		$(UI_BUILD) build/dev-snap/prime/usr/share/maas/web/static/
-	$(RSYNC) snap/local/tree/ build/dev-snap/prime/
+		$(UI_BUILD) $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/
+	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/
 	$(RSYNC) src/machine-resources/bin/ \
-		build/dev-snap/prime/usr/share/maas/machine-resources/
+		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/
 .PHONY: sync-dev-snap
