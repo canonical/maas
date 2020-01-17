@@ -122,4 +122,4 @@ fi
 snapctl start "${SNAP_INSTANCE_NAME}.supervisor"
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
-exec "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" migrate --configure
+exec "$SNAP/bin/maas-wrapper" migrate --configure

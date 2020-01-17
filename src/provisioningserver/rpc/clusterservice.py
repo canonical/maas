@@ -962,7 +962,7 @@ class Cluster(RPCProtocol):
         maaslog.info("Attempting to disable the rackd service.")
         try:
             if running_in_snap():
-                cmd = os.path.join(get_snap_path(), "command-maas.wrapper")
+                cmd = os.path.join(get_snap_path(), "bin", "maas-wrapper")
                 call_and_check([cmd, "config", "--mode", "none"])
             else:
                 # We can't use the --now flag as if the maas-rackd service is
