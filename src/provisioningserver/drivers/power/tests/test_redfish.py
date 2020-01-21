@@ -195,6 +195,50 @@ class TestRedfishPowerDriver(MAASTestCase):
         self.assertEquals(headers, Headers(attributes))
 
     @inlineCallbacks
+    def test_get_node_id_trailing_slash(self):
+        driver = RedfishPowerDriver()
+        url = driver.get_url(make_context())
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.OK
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+        mock_readBody.return_value = succeed(
+            json.dumps(
+                {"Members": [{"@odata.id": "/redfish/v1/Systems/1/"}]}
+            ).encode("utf-8")
+        )
+
+        node_id = yield driver.get_node_id(url, {})
+        self.assertEquals(b"1", node_id)
+
+    @inlineCallbacks
+    def test_get_node_id_no_trailing_slash(self):
+        driver = RedfishPowerDriver()
+        url = driver.get_url(make_context())
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.OK
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+        mock_readBody.return_value = succeed(
+            json.dumps(
+                {"Members": [{"@odata.id": "/redfish/v1/Systems/1"}]}
+            ).encode("utf-8")
+        )
+
+        node_id = yield driver.get_node_id(url, {})
+        self.assertEquals(b"1", node_id)
+
+    @inlineCallbacks
     def test_redfish_request_renders_response(self):
         driver = RedfishPowerDriver()
         context = make_context()

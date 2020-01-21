@@ -180,7 +180,8 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         uri = join(url, REDFISH_SYSTEMS_ENDPOINT)
         systems, _ = yield self.redfish_request(b"GET", uri, headers)
         members = systems.get("Members")
-        member = members[0].get("@odata.id")
+        # remove trailing slashes. basename('...Systems/1/) = ''
+        member = members[0].get("@odata.id").rstrip("/")
         return basename(member).encode("utf-8")
 
     @inlineCallbacks
@@ -208,11 +209,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         """Issue `power` command."""
         endpoint = REDFISH_POWER_CONTROL_ENDPOINT % node_id
         payload = FileBodyProducer(
-            BytesIO(
-                json.dumps(
-                    {"Action": "Reset", "ResetType": "%s" % power_change}
-                ).encode("utf-8")
-            )
+            BytesIO(json.dumps({"ResetType": power_change}).encode("utf-8"))
         )
         yield self.redfish_request(
             b"POST", join(url, endpoint), headers, payload
@@ -237,12 +234,12 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     def power_off(self, node_id, context):
         """Power off machine."""
         url, node_id, headers = yield self.process_redfish_context(context)
-        # Set to PXE boot.
-        yield self.set_pxe_boot(url, node_id, headers)
         # Power off the machine if it is not already off
         power_state = yield self.power_query(node_id, context)
         if power_state != "off":
             yield self.power("ForceOff", url, node_id, headers)
+        # Set to PXE boot.
+        yield self.set_pxe_boot(url, node_id, headers)
 
     @asynchronous
     @inlineCallbacks
