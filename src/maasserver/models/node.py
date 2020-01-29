@@ -6828,7 +6828,8 @@ class Controller(Node):
             )
             if interface is not None:
                 interface.update_discovery_state(discovery_mode, settings)
-                update_interface_details(interface, interfaces_details)
+                if interface.type == INTERFACE_TYPE.PHYSICAL:
+                    update_interface_details(interface, interfaces_details)
                 if interface.id in current_interfaces:
                     del current_interfaces[interface.id]
 

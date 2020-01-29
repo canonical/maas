@@ -11680,6 +11680,65 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesSetwise(Equals("eth0"), Equals("eth1")),
         )
 
+    def test__bridge_with_mac_as_phyisical_not_updated(self):
+        controller = self.create_empty_controller(with_empty_script_sets=True)
+        controller = self.create_empty_controller()
+        mac_address = factory.make_mac_address()
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=controller, mac_address=mac_address
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[eth0], mac_address=mac_address
+        )
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": mac_address,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "br0": {
+                "type": "bridge",
+                "mac_address": mac_address,
+                "parents": ["eth0"],
+                "links": [],
+                "enabled": True,
+            },
+        }
+
+        vendor = factory.make_name("vendor")
+        product = factory.make_name("product")
+        firmware_version = factory.make_name("firmware_version")
+        test_hooks.create_IPADDR_OUTPUT_NAME_script(
+            controller, test_hooks.IP_ADDR_OUTPUT
+        )
+        lxd_script = controller.current_commissioning_script_set.find_script_result(
+            script_name=LXD_OUTPUT_NAME
+        )
+        lxd_script_output = {
+            "network": {
+                "cards": [
+                    {
+                        "ports": [
+                            {"id": "eth0", "address": mac_address, "port": 0}
+                        ],
+                        "vendor": vendor,
+                        "product": product,
+                        "firmware_version": firmware_version,
+                    }
+                ]
+            }
+        }
+        lxd_script.store_result(
+            0, stdout=json.dumps(lxd_script_output).encode("utf-8")
+        )
+        self.update_interfaces(controller, interfaces)
+        br0 = Interface.objects.get(name="br0", node=controller)
+        self.assertNotEqual(vendor, br0.vendor)
+        self.assertNotEqual(product, br0.product)
+        self.assertNotEqual(firmware_version, br0.firmware_version)
+
     def test__removes_missing_interfaces(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
