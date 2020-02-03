@@ -1,10 +1,11 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.pod.virsh`."""
 
 __all__ = []
 
+from math import floor
 import os
 import random
 from textwrap import dedent
@@ -1581,6 +1582,37 @@ class TestVirshSSH(MAASTestCase):
                     used_pool,
                     volume_name,
                     str(disk.size),
+                    "--format",
+                    "raw",
+                ]
+            ),
+        )
+        self.assertEqual(pool, used_pool)
+        self.assertIsNotNone(volume_name)
+
+    def test_create_local_volume_makes_call_returns_pool_and_volume_zfs(self):
+        conn = self.configure_virshssh("")
+        pool = factory.make_name("pool")
+        self.patch(virsh.VirshSSH, "get_usable_pool").return_value = (
+            "zfs",
+            pool,
+        )
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        disk = RequestedMachineBlockDevice(
+            size=random.randint(1000, 2000), tags=[]
+        )
+        used_pool, volume_name = conn.create_local_volume(disk)
+        size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "vol-create-as",
+                    used_pool,
+                    volume_name,
+                    str(size),
+                    "--allocation",
+                    "0",
                     "--format",
                     "raw",
                 ]

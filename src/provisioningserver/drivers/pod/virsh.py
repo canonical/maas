@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Virsh pod driver."""
@@ -6,6 +6,7 @@
 __all__ = ["probe_virsh_and_enlist", "VirshPodDriver"]
 
 from collections import namedtuple
+from math import floor
 import os
 import string
 from tempfile import NamedTemporaryFile
@@ -917,6 +918,23 @@ class VirshSSH(pexpect.spawn):
                     usable_pool,
                     volume,
                     str(disk.size),
+                    "--format",
+                    "raw",
+                ]
+            )
+        elif usable_pool_type == "zfs":
+            # LP: #1858201
+            # Round down to the nearest MiB for zfs.
+            # See bug comments for more details.
+            size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
+            self.run(
+                [
+                    "vol-create-as",
+                    usable_pool,
+                    volume,
+                    str(size),
+                    "--allocation",
+                    "0",
                     "--format",
                     "raw",
                 ]
