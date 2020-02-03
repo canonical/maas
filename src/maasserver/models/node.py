@@ -5807,7 +5807,8 @@ class Controller(Node):
             if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
             extra_info = extended_nic_info.get(settings.get('mac_address'), {})
-            if interface is not None:
+            if (interface is not None and
+                    interface.type == INTERFACE_TYPE.PHYSICAL):
                 for k, v in extra_info.items():
                     if getattr(interface, k, v) != v:
                         setattr(interface, k, v)

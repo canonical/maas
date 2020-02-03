@@ -9612,6 +9612,53 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             [parent.name for parent in br0.parents.all()],
             MatchesSetwise(Equals("eth0"), Equals("eth1")))
 
+    def test__bridge_with_mac_as_phyisical_not_updated(self):
+        controller = self.create_empty_controller(with_empty_script_sets=True)
+        mac_address = factory.make_mac_address()
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=controller, mac_address=mac_address)
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[eth0], mac_address=mac_address)
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": mac_address,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "br0": {
+                "type": "bridge",
+                "mac_address": mac_address,
+                "parents": ["eth0"],
+                "links": [],
+                "enabled": True,
+            },
+        }
+
+        vendor = factory.make_name("vendor")
+        product = factory.make_name("product")
+        firmware_version = factory.make_name("firmware_version")
+        lshw = controller.current_commissioning_script_set.find_script_result(
+            script_name=LSHW_OUTPUT_NAME)
+        lshw_xml = dedent("""\
+        <node class="network">
+            <serial>%s</serial>
+            <vendor>%s</vendor>
+            <product>%s</product>
+            <configuration>
+                <setting id="firmware" value="%s" />
+            </configuration>
+        </node>
+        """ % (mac_address, vendor, product, firmware_version)).encode()
+        lshw.store_result(0, stdout=lshw_xml)
+
+        self.update_interfaces(controller, interfaces)
+        br0 = Interface.objects.get(name="br0", node=controller)
+        self.assertNotEqual(vendor, br0.vendor)
+        self.assertNotEqual(product, br0.product)
+        self.assertNotEqual(firmware_version, br0.firmware_version)
+
     def test__removes_missing_interfaces(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
