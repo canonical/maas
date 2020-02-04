@@ -84,11 +84,12 @@ ARGUMENTS = OrderedDict(
         (
             "database-port",
             {
+                "type": int,
                 "help": (
                     "Optional option to set the port that should be used to "
                     "communicate to the database. Only used when in "
                     "'region+rack' or 'region' mode."
-                )
+                ),
             },
         ),
         (
