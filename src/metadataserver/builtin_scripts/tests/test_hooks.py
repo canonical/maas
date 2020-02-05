@@ -2171,20 +2171,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test whether we can assign interfaces previously connected to a
         different node to the current one"""
         node1 = factory.make_Node()
-        script = factory.make_Script(
-            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
-        )
-        commissioning_script_set_node1 = ScriptSet.objects.create_commissioning_script_set(
-            node1, scripts=[script.name]
-        )
-        node1.current_commissioning_script_set = commissioning_script_set_node1
-        factory.make_ScriptResult(
-            script_set=commissioning_script_set_node1,
-            script=script,
-            exit_status=0,
-            status=SCRIPT_STATUS.PASSED,
-            output=IP_ADDR_OUTPUT,
-        )
+        create_IPADDR_OUTPUT_NAME_script(node1, IP_ADDR_OUTPUT)
+
         update_node_network_information(
             node1, SAMPLE_LXD_JSON, create_numa_nodes(node1)
         )
@@ -2197,17 +2185,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Now make sure the second node has them all.
         node2 = factory.make_Node()
-        commissioning_script_set_node2 = ScriptSet.objects.create_commissioning_script_set(
-            node2, scripts=[script.name]
-        )
-        node2.current_commissioning_script_set = commissioning_script_set_node2
-        factory.make_ScriptResult(
-            script_set=commissioning_script_set_node2,
-            script=script,
-            exit_status=0,
-            status=SCRIPT_STATUS.PASSED,
-            output=IP_ADDR_OUTPUT,
-        )
+        create_IPADDR_OUTPUT_NAME_script(node2, IP_ADDR_OUTPUT)
         update_node_network_information(
             node2, SAMPLE_LXD_JSON, create_numa_nodes(node2)
         )
