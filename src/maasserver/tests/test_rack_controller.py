@@ -6,7 +6,7 @@
 __all__ = []
 
 import random
-from unittest.mock import call, create_autospec, Mock, sentinel
+from unittest.mock import call, create_autospec, sentinel
 
 from crochet import wait_for
 from testtools import ExpectedException
@@ -16,6 +16,7 @@ from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
 
 from maasserver import rack_controller
 from maasserver.ipc import IPCWorkerService
+from maasserver.listener import PostgresListenerService
 from maasserver.rack_controller import RackControllerService
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -64,16 +65,17 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(regionProcessId)
 
-        listener = Mock()
+        listener = PostgresListenerService()
+        yield listener.startService()
         service = RackControllerService(ipcWorker, listener)
         yield service.startService()
-        self.assertThat(
-            listener.register,
-            MockCalledOnceWith(
-                "sys_core_%d" % regionProcessId, service.coreHandler
-            ),
-        )
+        yield listener.channelRegistrarDone
+        sys_channel = f"sys_core_{regionProcessId}"
+        self.assertIn(sys_channel, listener.listeners)
+        self.assertIn(sys_channel, listener.registeredChannels)
+        self.assertIn(service.coreHandler, listener.listeners[sys_channel])
         self.assertEqual(regionProcessId, service.processId)
+        yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -83,7 +85,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(regionProcessId)
 
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(ipcWorker, listener)
         yield service.startService()
         self.assertIsNone(service.starting)
@@ -92,7 +94,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_startService_handles_cancel(self):
         ipcWorker = IPCWorkerService(sentinel.reactor)
 
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(ipcWorker, listener)
         starting = service.startService()
         self.assertIs(starting, service.starting)
@@ -119,7 +121,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(process.id)
 
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(ipcWorker, listener)
         mock_coreHandler = self.patch(service, "coreHandler")
         yield service.startService()
@@ -132,89 +134,73 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_handles_canceling_startup(self):
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = random.randint(0, 100)
         service.starting = Deferred()
+        listener.register(f"sys_core_{service.processId}", service.coreHandler)
         yield service.stopService()
-        self.assertThat(
-            listener.unregister,
-            MockCalledOnceWith(
-                "sys_core_%d" % service.processId, service.coreHandler
-            ),
-        )
+        self.assertNotIn(f"sys_core_{service.processId}", listener.listeners)
         self.assertIsNone(service.starting)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_stopService_calls_unregister_for_the_process(self):
-        processId = random.randint(0, 100)
-        listener = Mock()
-        service = RackControllerService(sentinel.ipcWorker, listener)
-        service.processId = processId
-        yield service.stopService()
-        self.assertThat(
-            listener.unregister,
-            MockCalledOnceWith("sys_core_%d" % processId, service.coreHandler),
-        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_calls_unregister_for_all_watching(self):
         processId = random.randint(0, 100)
         watching = {random.randint(0, 100) for _ in range(3)}
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = watching
-        yield service.stopService()
-        self.assertThat(
-            listener.unregister,
-            MockAnyCall("sys_core_%d" % processId, service.coreHandler),
-        )
+        listener.register(f"sys_core_{processId}", service.coreHandler)
         for watch_id in watching:
-            self.assertThat(
-                listener.unregister,
-                MockAnyCall("sys_dhcp_%d" % watch_id, service.dhcpHandler),
-            )
+            listener.register(f"sys_dhcp_{watch_id}", service.dhcpHandler)
+
+        yield service.stopService()
+
+        self.assertNotIn(f"sys_core_{processId}", listener.listeners)
+        for watch_id in watching:
+            self.assertNotIn(f"sys_dhcp_{watch_id}", listener.listeners)
 
     def test_coreHandler_unwatch_calls_unregister(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = {rack_id}
         service.needsDHCPUpdate = {rack_id}
+        listener.register(f"sys_dhcp_{rack_id}", service.dhcpHandler)
         service.coreHandler("sys_core_%d" % processId, "unwatch_%d" % rack_id)
-        self.assertThat(
-            listener.unregister,
-            MockCalledOnceWith("sys_dhcp_%d" % rack_id, service.dhcpHandler),
-        )
+        self.assertNotIn(f"sys_dhcp_{rack_id}", listener.listeners)
         self.assertEquals(set(), service.watching)
         self.assertEquals(set(), service.needsDHCPUpdate)
 
     def test_coreHandler_unwatch_doesnt_call_unregister(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
+        self.assertNotIn(rack_id, service.watching)
+        listener.register(f"sys_dhcp_{rack_id}", service.dhcpHandler)
         service.processId = processId
         service.coreHandler("sys_core_%d" % processId, "unwatch_%d" % rack_id)
-        self.assertThat(listener.unregister, MockNotCalled())
+        self.assertEqual(
+            {f"sys_dhcp_{rack_id}": [service.dhcpHandler]}, listener.listeners
+        )
 
     def test_coreHandler_watch_calls_register_and_startProcessing(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         mock_startProcessing = self.patch(service, "startProcessing")
-        service.coreHandler("sys_core_%d" % processId, "watch_%d" % rack_id)
-        self.assertThat(
-            listener.register,
-            MockCalledOnceWith("sys_dhcp_%d" % rack_id, service.dhcpHandler),
-        )
+        sys_channel = f"sys_core_{processId}"
+        service.coreHandler(sys_channel, "watch_%d" % rack_id)
+        dhcp_channel = f"sys_dhcp_{rack_id}"
+        self.assertIn(dhcp_channel, listener.listeners)
+        self.assertIn(service.dhcpHandler, listener.listeners[dhcp_channel])
         self.assertEquals(set([rack_id]), service.watching)
         self.assertEquals(set([rack_id]), service.needsDHCPUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
@@ -222,13 +208,15 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_watch_doesnt_call_register(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = set([rack_id])
         mock_startProcessing = self.patch(service, "startProcessing")
-        service.coreHandler("sys_core_%d" % processId, "watch_%d" % rack_id)
-        self.assertThat(listener.register, MockNotCalled())
+        sys_channel = f"sys_core_{processId}"
+        service.coreHandler(sys_channel, "watch_%d" % rack_id)
+        self.assertNotIn(sys_channel, listener.listeners)
+        self.assertNotIn(sys_channel, listener.registeredChannels)
         self.assertEquals(set([rack_id]), service.watching)
         self.assertEquals(set([rack_id]), service.needsDHCPUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
@@ -236,7 +224,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_raises_ValueError_for_unknown_action(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         with ExpectedException(ValueError):
@@ -246,7 +234,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_dhcpHandler_adds_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.watching = set([rack_id])
         mock_startProcessing = self.patch(service, "startProcessing")
@@ -256,7 +244,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_dhcpHandler_doesnt_add_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
-        listener = Mock()
+        listener = PostgresListenerService()
         service = RackControllerService(sentinel.ipcWorker, listener)
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
