@@ -13,7 +13,12 @@ from django.db import connections
 from django.db.utils import load_backend
 from twisted.application.service import Service
 from twisted.internet import defer, error, interfaces, reactor, task
-from twisted.internet.defer import CancelledError, Deferred, succeed
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    ensureDeferred,
+    succeed,
+)
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.logger import Logger
@@ -69,6 +74,7 @@ class PostgresListenerService(Service, object):
     # is empty it will wait this amount of time to check again for new
     # notifications.
     HANDLE_NOTIFY_DELAY = 0.5
+    CHANNEL_REGISTRAR_DELAY = 0.5
 
     def __init__(self, alias="default"):
         self.alias = alias
@@ -81,7 +87,11 @@ class PostgresListenerService(Service, object):
         self.notifierDone = None
         self.connecting = None
         self.disconnecting = None
-        self.registeredChannels = False
+        self.registeredChannels = set()
+        self.channelRegistrar = task.LoopingCall(
+            lambda: ensureDeferred(self.registerChannels())
+        )
+        self.channelRegistrarDone = None
         self.log = Logger(__name__, self)
         self.events = EventGroup("connected", "disconnected")
 
@@ -211,10 +221,7 @@ class PostgresListenerService(Service, object):
             )
         else:
             handlers.append(handler)
-        if self.registeredChannels and self.connection:
-            # Channels have already been registered. Register the
-            # new channel on the already existing connection.
-            self.registerChannel(channel)
+        self.runChannelRegistrar()
 
     def unregister(self, channel, handler):
         """Unregister listening for notifications from a channel.
@@ -232,9 +239,10 @@ class PostgresListenerService(Service, object):
             raise PostgresListenerUnregistrationError(
                 "Handler is not registered on that channel '%s'." % channel
             )
-        if self.registeredChannels and self.connection and len(handlers) == 0:
+        if len(handlers) == 0:
             # Channels have already been registered. Unregister the channel.
-            self.unregisterChannel(channel)
+            del self.listeners[channel]
+        self.runChannelRegistrar()
 
     @synchronous
     def createConnection(self):
@@ -248,7 +256,6 @@ class PostgresListenerService(Service, object):
     @synchronous
     def startConnection(self):
         """Start the database connection."""
-        self.registeredChannels = False
         self.connection = self.createConnection()
         self.connection.connect()
         self.connection.set_autocommit(True)
@@ -264,7 +271,6 @@ class PostgresListenerService(Service, object):
             if connection is not None and not connection.closed:
                 connection_wrapper.commit()
                 connection_wrapper.close()
-        self.registeredChannels = False
 
     def tryConnection(self):
         """Keep retrying to make the connection."""
@@ -292,7 +298,8 @@ class PostgresListenerService(Service, object):
 
             def connect(interval=self.HANDLE_NOTIFY_DELAY):
                 d = deferToThread(self.startConnection)
-                d.addCallback(callOut, deferToThread, self.registerChannels)
+                d.addCallback(callOut, self.runChannelRegistrar)
+                d.addCallback(lambda result: self.channelRegistrarDone)
                 d.addCallback(callOut, self.events.connected.fire)
                 d.addCallback(callOut, self.startReading)
                 d.addCallback(callOut, self.runHandleNotify, interval)
@@ -311,8 +318,10 @@ class PostgresListenerService(Service, object):
     def loseConnection(self, reason=Failure(error.ConnectionDone())):
         """Request that the connection be dropped."""
         if self.disconnecting is None:
+            self.registeredChannels.clear()
             d = self.disconnecting = Deferred()
             d.addBoth(callOut, self.stopReading)
+            d.addBoth(callOut, self.cancelChannelRegistrar)
             d.addBoth(callOut, self.cancelHandleNotify)
             d.addBoth(callOut, deferToThread, self.stopConnection)
             d.addBoth(callOut, self.connectionLost, reason)
@@ -368,11 +377,39 @@ class PostgresListenerService(Service, object):
                 for action in sorted(map_enum(ACTIONS).values()):
                     cursor.execute("UNLISTEN %s_%s;" % (channel, action))
 
-    def registerChannels(self):
-        """Register the all the channels."""
-        for channel in self.listeners.keys():
-            self.registerChannel(channel)
-        self.registeredChannels = True
+    async def registerChannels(self):
+        """Listen/unlisten to channels that were registered/unregistered.
+
+        When a call to register() or unregister() is made, the listeners
+        dict is updated, and the keys of that dict represents all the
+        channels that we should listen to.
+
+        The service keeps a list of channels that it already listens to
+        in the registeredChannels dict. We issue a call to postgres to
+        listen to all channels that are in listeners but not in
+        registeredChannels, and a call to unlisten for all channels that
+        are in registeredChannels but not in listeners.
+        """
+        to_register = set(self.listeners.keys()).difference(
+            self.registeredChannels
+        )
+        to_unregister = self.registeredChannels.difference(
+            set(self.listeners.keys())
+        )
+        # If there's nothing to do, we can stop the loop. If there is
+        # any work to be done, we do the work, and then check
+        # whether we should stop at the beginning of the next loop
+        # iteration. The reason is that every time we yield, another
+        # deferred might call register() or unregister().
+        if not to_register and not to_unregister:
+            self.channelRegistrar.stop()
+        else:
+            for channel in to_register:
+                await deferToThread(self.registerChannel, channel)
+                self.registeredChannels.add(channel)
+            for channel in to_unregister:
+                await deferToThread(self.unregisterChannel, channel)
+                self.registeredChannels.remove(channel)
 
     def convertChannel(self, channel):
         """Convert the postgres channel to a registered channel and action.
@@ -390,6 +427,24 @@ class PostgresListenerService(Service, object):
                 "%s action is not supported." % action
             )
         return channel, action
+
+    def runChannelRegistrar(self):
+        """Start the loop for listening to channels in postgres.
+
+        It will only start if the service is connected to postgres.
+        """
+        if self.connection is not None and not self.channelRegistrar.running:
+            self.channelRegistrarDone = self.channelRegistrar.start(
+                self.CHANNEL_REGISTRAR_DELAY, now=True
+            )
+
+    def cancelChannelRegistrar(self):
+        """Stop the loop for listening to channels in postgres."""
+        if self.channelRegistrar.running:
+            self.channelRegistrar.stop()
+            return self.channelRegistrarDone
+        else:
+            return succeed(None)
 
     def runHandleNotify(self, delay=0, clock=reactor):
         """Defer later the `handleNotify`."""
