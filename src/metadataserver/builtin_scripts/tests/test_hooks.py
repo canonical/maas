@@ -1396,7 +1396,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(
             node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
         )
-        numa_nodes = NUMANode.objects.filter(node=node)
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         for numa_node in numa_nodes:
             self.assertEqual(expected_memory, numa_node.memory)
@@ -1408,7 +1408,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(
             node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
         )
-        numa_nodes = NUMANode.objects.filter(node=node)
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual([0, 1], numa_nodes[0].cores)
         self.assertEqual([2, 3], numa_nodes[1].cores)
@@ -1420,8 +1420,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(
             node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
         )
-        numa_nodes = NUMANode.objects.filter(node=node)
-        node_interfaces = list(Interface.objects.filter(node=node))
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
+        node_interfaces = list(
+            Interface.objects.filter(node=node).order_by("name")
+        )
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
@@ -1434,8 +1436,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(
             node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
         )
-        numa_nodes = NUMANode.objects.filter(node=node)
-        node_interfaces = list(PhysicalBlockDevice.objects.filter(node=node))
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
+        node_interfaces = list(
+            PhysicalBlockDevice.objects.filter(node=node).order_by("name")
+        )
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
