@@ -1,0 +1,78 @@
+#!/bin/bash -e
+#
+# Copyright 2020 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+#
+#
+# Perform migration from a deb setup to the snap.
+#
+
+SNAP_COMMON="/var/snap/maas/common"
+SNAP_CURRENT="/var/snap/maas/current"
+
+
+is_installed() {
+    dpkg-query -W -f'${Status}\n' "$1"  2>/dev/null | grep -q ^install
+}
+
+set_snap_mode() {
+    local mode=""
+    if is_installed maas-region-api; then
+        mode="region"
+    fi
+    if is_installed maas-rack-controller; then
+        [ -z "$mode" ] && mode="rack" || mode="region+rack"
+    fi
+    if  [ -n "$mode" ]; then
+        echo "$mode" > "$SNAP_COMMON/snap_mode"
+    fi
+}
+
+
+clear_services() {
+    local services="dhcpd dhcpd6 http proxy rackd regiond syslog"
+    local service
+    for service in $services; do
+        deb-systemd-invoke unmask "maas-$service.service" || true
+        deb-systemd-invoke stop "maas-$service.service" || true
+        deb-systemd-invoke disable "maas-$service.service" || true
+    done
+}
+
+migrate_data() {
+    if [ -d /etc/maas ]; then
+        cp -a /etc/maas/* "$SNAP_CURRENT"
+    fi
+
+    mkdir -p "$SNAP_CURRENT/var/lib"
+    if [ -d /var/lib/maas ]; then
+        cp -a /var/lib/maas "$SNAP_CURRENT/var/lib"
+        chown -R root:root "$SNAP_CURRENT/var/lib/maas"
+    fi
+    if [ -d /var/spool/maas-proxy ]; then
+        cp -a /var/spool/maas-proxy/* /var/snap/maas/common/proxy/spool/
+        chown -R snap_daemon:snap_daemon /var/snap/maas/common/proxy/spool
+    fi
+}
+
+cleanup_data() {
+    rm -rf \
+       /etc/chrony/maas.conf \
+       /run/lock/maas:* \
+       /run/maas/
+}
+
+configure_supervisord() {
+    cat <<EOF | snap run --shell maas -c '/usr/bin/env python3 -'
+from maascli import snappy 
+current_mode = snappy.get_current_mode()
+snappy.render_supervisord(current_mode)
+snappy.sighup_supervisord()
+EOF
+}
+
+set_snap_mode
+clear_services
+migrate_data
+cleanup_data
+configure_supervisord
