@@ -33,9 +33,9 @@ clear_services() {
     local services="dhcpd dhcpd6 http proxy rackd regiond syslog"
     local service
     for service in $services; do
-        deb-systemd-invoke unmask "maas-$service.service" || true
         deb-systemd-invoke stop "maas-$service.service" || true
         deb-systemd-invoke disable "maas-$service.service" || true
+        deb-systemd-invoke purge "maas-$service.service" || true
     done
 }
 
@@ -46,20 +46,23 @@ migrate_data() {
 
     mkdir -p "$SNAP_CURRENT/var/lib"
     if [ -d /var/lib/maas ]; then
-        cp -a /var/lib/maas "$SNAP_CURRENT/var/lib"
+        mv /var/lib/maas "$SNAP_CURRENT/var/lib"
         chown -R root:root "$SNAP_CURRENT/var/lib/maas"
     fi
     if [ -d /var/spool/maas-proxy ]; then
-        cp -a /var/spool/maas-proxy/* /var/snap/maas/common/proxy/spool/
+        mv /var/spool/maas-proxy/* /var/snap/maas/common/proxy/spool/
         chown -R snap_daemon:snap_daemon /var/snap/maas/common/proxy/spool
     fi
 }
 
 cleanup_data() {
     rm -rf \
+       /etc/bind/maas \
+       /etc/maas \
        /etc/chrony/maas.conf \
        /run/lock/maas:* \
-       /run/maas/
+       /run/maas/ \
+       /var/spool/maas-proxy
 }
 
 configure_supervisord() {
