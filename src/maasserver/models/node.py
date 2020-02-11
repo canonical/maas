@@ -4534,7 +4534,7 @@ class Node(CleanSave, TimestampedModel):
             script_name=LXD_OUTPUT_NAME
         )
         update_node_network_information(
-            self, json.loads(script.output), NUMANode.objects.filter(node=self)
+            self, json.loads(script.stdout), NUMANode.objects.filter(node=self)
         )
 
     def set_initial_networking_configuration(self):

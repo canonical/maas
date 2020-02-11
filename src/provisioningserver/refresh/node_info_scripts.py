@@ -120,12 +120,12 @@ LXD_SCRIPT = dedent(
     url=$(echo "$url" | awk -F '/' ' { print $1 "//" $3 } ')
 
     if [ -z "$url" ] || $(echo "$url" | grep -vq "://"); then
-        echo "ERROR: Unable to find rack controller URL!"
+        echo "ERROR: Unable to find rack controller URL!" >&2
         exit 1
     fi
 
     BINARY="$(archdetect | cut -d '/' -f1 | sed 's/i386/386/g')"
-    wget $url/machine-resources/$BINARY -O $DOWNLOAD_PATH/$BINARY 1>&2
+    wget $url/machine-resources/$BINARY -O $DOWNLOAD_PATH/$BINARY >&2
     chmod +x $DOWNLOAD_PATH/$BINARY
     $DOWNLOAD_PATH/$BINARY
     """

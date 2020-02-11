@@ -7295,11 +7295,58 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             node, scripts=[lxd_script.name, ip_addr_script.name]
         )
         node.current_commissioning_script_set = commissioning_script_set
+        output = json.dumps(XENIAL_NETWORK).encode("utf-8")
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
             script=lxd_script,
             exit_status=0,
-            output=json.dumps(XENIAL_NETWORK).encode("utf-8"),
+            output=output,
+            stdout=output,
+        )
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set,
+            script=ip_addr_script,
+            exit_status=0,
+            output=IP_ADDR_OUTPUT_XENIAL,
+        )
+        # Create NUMA nodes.
+        test_hooks.create_numa_nodes(node)
+        # restore_network_interfaces() will set up the network intefaces
+        # specified in ip_addr_results_xenial.txt
+        node.restore_network_interfaces()
+        self.assertEqual(
+            ["ens10", "ens11", "ens12", "ens3"],
+            sorted(interface.name for interface in node.interface_set.all()),
+        )
+
+    def test_restore_network_interfaces_ignores_stderr(self):
+        node = factory.make_Node()
+        IP_ADDR_OUTPUT_FILE = os.path.join(
+            os.path.dirname(test_hooks.__file__), "ip_addr_results_xenial.txt"
+        )
+        with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
+            IP_ADDR_OUTPUT_XENIAL = fd.read()
+        lxd_script = factory.make_Script(
+            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+        )
+        ip_addr_script = factory.make_Script(
+            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+        )
+        XENIAL_NETWORK = deepcopy(test_hooks.SAMPLE_LXD_JSON)
+        XENIAL_NETWORK["network"] = test_hooks.SAMPLE_LXD_XENIAL_NETWORK_JSON
+        commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, scripts=[lxd_script.name, ip_addr_script.name]
+        )
+        node.current_commissioning_script_set = commissioning_script_set
+        output = json.dumps(XENIAL_NETWORK).encode("utf-8")
+        error_message = b"some error message"
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=error_message + output,
+            stdout=output,
+            stderr=error_message,
         )
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
@@ -7336,11 +7383,13 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             node, scripts=[lxd_script.name, ip_addr_script.name]
         )
         node.current_commissioning_script_set = commissioning_script_set
+        output = json.dumps(XENIAL_NETWORK).encode("utf-8")
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
             script=lxd_script,
             exit_status=0,
-            output=json.dumps(XENIAL_NETWORK).encode("utf-8"),
+            output=output,
+            stdout=output,
         )
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
