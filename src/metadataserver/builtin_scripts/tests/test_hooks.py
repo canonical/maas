@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test hooks."""
@@ -2239,10 +2239,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__interface_names_changed(self):
-        # Note: the MACs here are swapped compared to their expected values.
+    def test__interface_name_changed(self):
         ETH0_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
-        ETH1_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
@@ -2252,18 +2250,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             mac_address=ETH0_MAC,
             node=node,
         )
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL,
-            name="eth1",
-            mac_address=ETH1_MAC,
-            node=node,
-        )
-
         update_node_network_information(
             node, SAMPLE_LXD_JSON, create_numa_nodes(node)
         )
 
-        # This will ensure that the interfaces were renamed appropriately.
+        # This will ensure that the interface was renamed appropriately.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__mac_id_is_preserved(self):

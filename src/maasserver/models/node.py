@@ -6323,10 +6323,10 @@ class Controller(Node):
         specified.
         """
         interface, created = VLANInterface.objects.get_or_create(
-            node=self, vlan=vlan, parents=[parent], defaults={"name": name}
+            node=self, name=name, parents=[parent], defaults={"vlan": vlan}
         )
-        if interface.name != name:
-            interface.name = name
+        if interface.vlan != vlan:
+            interface.vlan = vlan
             interface.save()
         return interface, created
 

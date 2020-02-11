@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for interfaces."""
@@ -305,7 +305,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
             return qs.filter(type=interface_type)
 
     def get_interfaces_on_node_by_name(self, node, interface_names):
-        """Returns a list of Inteface objects on the specified node whose
+        """Returns a list of Interface objects on the specified node whose
         names match the specified list of interface names.
         """
         return list(self.filter(node=node, name__in=interface_names))
@@ -313,7 +313,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
     def get_interface_dict_for_node(
         self, node, names=None, fetch_fabric_vlan=False, by_id=False
     ):
-        """Returns a list of Inteface objects on the specified node whose
+        """Returns a list of Interface objects on the specified node whose
         names match the specified list of interface names.
 
         Optionally select related VLANs and Fabrics.
@@ -431,6 +431,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         interface, created = super(InterfaceManager, self).get_or_create(
             *args, **kwargs
         )
+
         if created:
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
@@ -460,9 +461,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
             )
             interface = interfaces.first()
         else:
-            interfaces = self.get_queryset().filter(
-                Q(name=name) & Q(node=node) & Q(type=self.model.get_type())
-            )
+            # First see if we can find an interface with the given type.
+            interfaces = Interface.objects.filter(Q(name=name) & Q(node=node))
             interface = interfaces.first()
         if interface is not None:
             if (
@@ -506,6 +506,7 @@ class Interface(CleanSave, TimestampedModel):
         verbose_name = "Interface"
         verbose_name_plural = "Interfaces"
         ordering = ("created",)
+        unique_together = [("node", "name")]
 
     objects = InterfaceManager()
 

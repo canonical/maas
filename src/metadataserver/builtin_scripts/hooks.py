@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
@@ -257,9 +257,9 @@ def update_node_network_information(node, data, numa_nodes):
         product = iface.get("product")
         firmware_version = iface.get("firmware_version")
         sriov_max_vf = iface.get("sriov_max_vf")
+
         try:
             interface = PhysicalInterface.objects.get(mac_address=mac)
-            ifname = iface["name"]
             if interface.node is not None and interface.node != node:
                 logger.warning(
                     "Interface with MAC %s moved from node %s to %s. "
@@ -285,6 +285,10 @@ def update_node_network_information(node, data, numa_nodes):
                 # the NIC info.
                 update_interface_details(interface, interfaces_info)
         except PhysicalInterface.DoesNotExist:
+            # Since MAC addresses didn't match, delete any interface that
+            # has a matching (name, node) pair and create a new interface
+            # with the supplied information.
+            PhysicalInterface.objects.filter(name=ifname, node=node).delete()
             interface = _create_default_physical_interface(
                 node,
                 ifname,

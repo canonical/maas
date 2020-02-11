@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Interface model."""
@@ -1609,6 +1609,35 @@ class TestPhysicalInterface(MAASServerTestCase):
             },
             error.message_dict,
         )
+
+    def test_create_raises_error_on_not_unique(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        self.assertRaises(
+            ValidationError,
+            factory.make_Interface,
+            INTERFACE_TYPE.PHYSICAL,
+            name=interface.name,
+            node=node,
+        )
+
+    def test_update_raises_error_on_not_unique(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface_to_update = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node
+        )
+        interface_to_update.name = interface.name
+        self.assertRaises(IntegrityError, interface_to_update.save)
+
+    def test_update_does_not_raise_error_on_unique(self):
+        node = factory.make_Node()
+        name = factory.make_name("eth")
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface.name = name
+        interface.save()
+        interface = reload_object(interface)
+        self.assertEqual(interface.name, name)
 
     def test_cannot_have_parents(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

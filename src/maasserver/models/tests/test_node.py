@@ -11251,11 +11251,14 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan
+            INTERFACE_TYPE.PHYSICAL, node=controller, name="eth0", vlan=vlan
         )
         new_vlan = factory.make_VLAN(fabric=fabric)
         vlan_interface = factory.make_Interface(
-            INTERFACE_TYPE.VLAN, vlan=new_vlan, parents=[interface]
+            INTERFACE_TYPE.VLAN,
+            name=f"eth0.{new_vlan.vid}",
+            vlan=new_vlan,
+            parents=[interface],
         )
         wrong_subnet = factory.make_Subnet()
         ip = factory.pick_ip_in_Subnet(wrong_subnet)
