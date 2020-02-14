@@ -98,6 +98,7 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers import machine as machine_module
+from maasserver.websockets.handlers import node as node_module
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.machine import Node as node_model
@@ -316,16 +317,17 @@ class TestMachineHandler(MAASServerTestCase):
             "system_id": node.system_id,
             "hardware_uuid": node.hardware_uuid,
             "tags": [tag.name for tag in node.tags.all()],
-            "third_party_driver": {
-                "module": driver["module"] if "module" in driver else "",
-                "comment": driver["comment"] if "comment" in driver else "",
-            },
             "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
             "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
         }
+        if "module" in driver and "comment" in driver:
+            data["third_party_driver"] = {
+                "module": driver["module"],
+                "comment": driver["comment"],
+            }
         if boot_interface:
             data["vlan"] = handler.dehydrate_vlan(node, boot_interface)
             data["ip_addresses"] = handler.dehydrate_all_ip_addresses(node)
@@ -1937,6 +1939,25 @@ class TestMachineHandler(MAASServerTestCase):
             MatchesDict(
                 {name: Equals(value) for name, value in expected.items()}
             ),
+        )
+
+    def test_get_driver_for_series(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            with_empty_script_sets=True
+        )
+        node.distro_series = "bionic"
+        node.save()
+        Config.objects.set_config(
+            name="enable_third_party_drivers", value=True
+        )
+        mock_get_third_party_driver = self.patch(
+            node_module, "get_third_party_driver"
+        )
+        handler.dehydrate(node, {})
+        mock_get_third_party_driver.assert_called_with(
+            node, detected_aliases=[], series="bionic"
         )
 
     def test_get_numa_node_only_physical_interfaces(self):

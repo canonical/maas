@@ -84,7 +84,7 @@ class TestPopulateKernelOpts(MAASServerTestCase):
         self.assertNotIn("kernel_opts", driver)
 
 
-class TestGetThirdPartyCode(MAASServerTestCase):
+class TestGetThirdPartyDriver(MAASServerTestCase):
     def test_finds_match(self):
         node = factory.make_Node()
         mock = self.patch(third_party_drivers, "match_aliases_to_driver")
@@ -105,6 +105,32 @@ class TestGetThirdPartyCode(MAASServerTestCase):
         driver = get_third_party_driver(node)
         self.assertEqual({}, driver)
 
+    def test_matching_series(self):
+        node = factory.make_Node()
+        driver = {"series": ["xenial", "bionic"], "name": "somedriver"}
+        self.patch(
+            third_party_drivers, "match_aliases_to_driver"
+        ).return_value = driver
+        self.assertEqual(get_third_party_driver(node, series="bionic"), driver)
+
+    def test_not_matching_series(self):
+        node = factory.make_Node()
+        driver = {"series": ["xenial", "bionic"], "name": "somedriver"}
+        self.patch(
+            third_party_drivers, "match_aliases_to_driver"
+        ).return_value = driver
+        self.assertEqual(get_third_party_driver(node, series="precise"), {})
+
+    def test_series_without_available_series(self):
+        node = factory.make_Node()
+        driver = {"name": "somedriver"}
+        self.patch(
+            third_party_drivers, "match_aliases_to_driver"
+        ).return_value = driver
+        self.assertEqual(
+            get_third_party_driver(node, series="precise"), driver
+        )
+
 
 class TestDriversConfig(MAASServerTestCase):
     def test_get_defaults_returns_empty_drivers_list(self):
@@ -123,6 +149,7 @@ class TestDriversConfig(MAASServerTestCase):
                     "module",
                     "repository",
                     "package",
+                    "series",
                 ],
                 entry.keys(),
             )

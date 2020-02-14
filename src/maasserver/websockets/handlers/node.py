@@ -397,7 +397,11 @@ class NodeHandler(TimestampedModelHandler):
                                 modaliases = script_result.stdout.decode(
                                     "utf-8"
                                 ).splitlines()
-                    driver = get_third_party_driver(obj, modaliases)
+                    driver = get_third_party_driver(
+                        obj,
+                        detected_aliases=modaliases,
+                        series=obj.distro_series,
+                    )
                     if "module" in driver and "comment" in driver:
                         data["third_party_driver"] = {
                             "module": driver["module"],

@@ -518,7 +518,7 @@ def get_config(
         # Add any extra options from a third party driver.
         use_driver = configs["enable_third_party_drivers"]
         if use_driver:
-            driver = get_third_party_driver(machine)
+            driver = get_third_party_driver(machine, series=series)
             driver_kernel_opts = driver.get("kernel_opts", "")
 
             combined_opts = (

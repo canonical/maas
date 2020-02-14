@@ -854,7 +854,7 @@ def get_node_preseed_context(request, node, osystem="", release=""):
         reverse("metadata-node-by-id", args=["latest", node.system_id])
     )
     node_disable_pxe_data = urlencode({"op": "netboot_off"})
-    driver = get_third_party_driver(node)
+    driver = get_third_party_driver(node, series=release)
     return {
         "third_party_drivers": (
             Config.objects.get_config("enable_third_party_drivers")

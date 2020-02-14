@@ -74,6 +74,8 @@ module - The name of the kernel module to load on the target system.
 repository - The URL of the repository to load packages from. The should
 repository contain both deb and udeb packages for the driver.
 
+series - List of Ubuntu series codenames to install the driver for.
+
 packages - The name of the deb package to retrieve from the repository.
 """
 
@@ -90,6 +92,7 @@ class ConfigDriver(Schema):
     module = String()
     package = String()
     repository = String()
+    series = ForEach(String)
 
 
 class DriversConfigMeta(ConfigMeta):
@@ -127,11 +130,13 @@ def populate_kernel_opts(driver):
     return driver
 
 
-def get_third_party_driver(node, detected_aliases=None):
+def get_third_party_driver(node, detected_aliases=None, series=""):
     """Determine which, if any, third party driver is required.
 
     Use the node's modaliases strings to determine if a third party
     driver is required.
+
+    Drivers are filtered for the specified series.
     """
     if detected_aliases is None:
         detected_aliases = node.modaliases
@@ -144,9 +149,12 @@ def get_third_party_driver(node, detected_aliases=None):
     )
 
     if matched_driver is None:
-        return dict()
+        return {}
+
+    available_series = matched_driver.get("series", [])
+    if available_series and series not in available_series:
+        return {}
 
     driver = deepcopy(matched_driver)
     driver = populate_kernel_opts(driver)
-
     return driver

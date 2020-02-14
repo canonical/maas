@@ -160,6 +160,26 @@ class TestGetConfig(MAASServerTestCase):
             hardware_uuid=node.hardware_uuid,
         )
 
+    def test__gets_drivers_for_series(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(status=NODE_STATUS.DEPLOYING)
+        mac = node.get_boot_interface().mac_address
+        mock_get_third_party_driver = self.patch(
+            boot_module, "get_third_party_driver"
+        )
+        Config.objects.set_config("default_distro_series", "focal")
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        get_config(
+            rack_controller.system_id,
+            local_ip,
+            remote_ip,
+            mac=mac,
+            hardware_uuid=node.hardware_uuid,
+        )
+        mock_get_third_party_driver.assert_called_with(node, series="focal")
+
     def test__returns_success_for_known_node_mac(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()

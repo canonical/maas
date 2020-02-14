@@ -19,6 +19,8 @@ drivers:
   module: hpvsa
   package: hpvsa
   repository: http://ppa.launchpad.net/hp-iss-team/hpvsa-update/ubuntu
+  series:
+    - trusty
 - comment: Cisco snic DKMS driver
   key_binary: !!binary |
          mQINBFRjf2EBEADVD60xGOaZj8ahKJNRoi6rtzfjzwzTLzntzeXj8rLM99cca9mxsObGMKfHz9PP
@@ -46,6 +48,8 @@ drivers:
   module: snic
   package: snic-dkms
   repository: http://ppa.launchpad.net/cisco-ucs-team/snic-stable/ubuntu
+  series:
+    - trusty
 - blacklist: ahci
   comment: HPDSA driver
   key_binary: !!binary |
@@ -76,3 +80,5 @@ drivers:
   module: hpdsa
   package: hpdsa-dkms
   repository: http://downloads.linux.hpe.com/SDR/repo/ubuntu-hpdsa
+  series:
+    - trusty
