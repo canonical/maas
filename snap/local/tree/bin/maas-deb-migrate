@@ -9,7 +9,7 @@
 
 SNAP_COMMON="/var/snap/maas/common"
 SNAP_CURRENT="/var/snap/maas/current"
-
+SNAP_MODE_FILE="$SNAP_COMMON/snap_mode"
 
 is_installed() {
     dpkg-query -W -f'${Status}\n' "$1"  2>/dev/null | grep -q ^install
@@ -24,18 +24,28 @@ set_snap_mode() {
         [ -z "$mode" ] && mode="rack" || mode="region+rack"
     fi
     if  [ -n "$mode" ]; then
-        echo "$mode" > "$SNAP_COMMON/snap_mode"
+        echo "$mode" > "$SNAP_MODE_FILE"
     fi
 }
 
+get_snap_mode() {
+    if [ -f "$SNAP_MODE_FILE" ]; then
+        cat "$SNAP_MODE_FILE"
+    fi
+}
+
+snap_run() {
+    snap run --shell maas -c "$1"
+}
 
 clear_services() {
     local services="dhcpd dhcpd6 http proxy rackd regiond syslog"
     local service
     for service in $services; do
-        deb-systemd-invoke stop "maas-$service.service" || true
-        deb-systemd-invoke disable "maas-$service.service" || true
-        deb-systemd-invoke purge "maas-$service.service" || true
+        service="maas-$service.service"
+        deb-systemd-invoke stop "$service" || true
+        deb-systemd-helper purge "$service" || true
+        deb-systemd-helper unmask "$service" || true
     done
 }
 
@@ -55,6 +65,12 @@ migrate_data() {
     fi
 }
 
+migrate_db() {
+    if get_snap_mode | grep -q "region"; then
+        snap_run "maas-region migrate"
+    fi
+}
+
 cleanup_data() {
     rm -rf \
        /etc/bind/maas \
@@ -66,7 +82,7 @@ cleanup_data() {
 }
 
 configure_supervisord() {
-    cat <<EOF | snap run --shell maas -c '/usr/bin/env python3 -'
+    cat <<EOF | snap_run "/usr/bin/env python3 -"
 from maascli import snappy 
 current_mode = snappy.get_current_mode()
 snappy.render_supervisord(current_mode)
@@ -78,4 +94,5 @@ set_snap_mode
 clear_services
 migrate_data
 cleanup_data
+migrate_db
 configure_supervisord
