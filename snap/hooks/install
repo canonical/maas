@@ -24,6 +24,7 @@ if [ "$user_migration_done" -ne 1 ]; then
     chown -R snap_daemon:snap_daemon "$SNAP_COMMON/log/proxy"
     chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/"{cache,spool}
 fi
+mkdir -p "$SNAP_DATA/root"
 mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"
 mkdir -p "$SNAP_DATA/proxy"
