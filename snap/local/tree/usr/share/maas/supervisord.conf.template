@@ -1,7 +1,7 @@
-[inet_http_server]
-port=127.0.0.1:9001
-username=maas
-password=maas
+[unix_http_server]
+file=%(ENV_SNAP_DATA)s/supervisord/sock
+chown=root
+chmod=600
 
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
@@ -10,11 +10,10 @@ supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
 directory=%(here)s
 logfile=%(here)s/supervisord.log
 pidfile=%(here)s/supervisord.pid
+user=root
 
 [supervisorctl]
-serverurl=http://localhost:9001
-username=maas
-password=maas
+serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
 
 
 {{if postgresql}}
@@ -36,7 +35,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/regiond.log
-serverurl=http://localhost:9001
+serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
 {{endif}}
 
 
@@ -48,7 +47,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/rackd.log
-serverurl=http://localhost:9001
+serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
 
 [program:dhcpd]
 process_name=dhcpd
