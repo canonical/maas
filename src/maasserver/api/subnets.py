@@ -17,6 +17,7 @@ from provisioningserver.utils.network import IPRangeStatistics
 DISPLAYED_SUBNET_FIELDS = (
     "id",
     "name",
+    "description",
     "vlan",
     "space",
     "cidr",

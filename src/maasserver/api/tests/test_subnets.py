@@ -65,6 +65,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
         allow_dns = factory.pick_bool()
         gateway_ip = factory.pick_ip_in_network(network)
         managed = factory.pick_bool()
+        description = factory.make_string()
         dns_servers = []
         for _ in range(2):
             dns_servers.append(
@@ -85,6 +86,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
                 "allow_proxy": allow_proxy,
                 "allow_dns": allow_dns,
                 "managed": managed,
+                "description": description,
             },
         )
         self.assertEqual(
@@ -102,6 +104,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.assertEqual(allow_proxy, created_subnet["allow_proxy"])
         self.assertEqual(allow_dns, created_subnet["allow_dns"])
         self.assertEqual(managed, created_subnet["managed"])
+        self.assertEqual(description, created_subnet["description"])
 
     def test_create_defaults_to_allow_dns(self):
         self.become_admin()
@@ -280,6 +283,16 @@ class TestSubnetAPI(APITestCase.ForUser):
                 }
             ),
         )
+
+    def test_read_includes_description(self):
+        description = factory.make_string()
+        subnet = factory.make_Subnet(space=RANDOM, description=description)
+        uri = get_subnet_uri(subnet)
+        response = self.client.get(uri)
+        parsed_subnet = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        self.assertEqual(description, parsed_subnet["description"])
 
     def test_read_404_when_bad_id(self):
         uri = reverse("subnet_handler", args=[random.randint(100, 1000)])

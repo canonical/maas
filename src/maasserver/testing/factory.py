@@ -1351,7 +1351,7 @@ class Factory(maastesting.factory.Factory):
         allow_proxy=True,
         managed=True,
         space=RANDOM_OR_NONE,
-        description=None,
+        description="",
         **kwargs,
     ):
         if name is None:
@@ -1384,7 +1384,7 @@ class Factory(maastesting.factory.Factory):
             allow_dns=allow_dns,
             allow_proxy=allow_proxy,
             managed=managed,
-            description="",
+            description=description,
             **kwargs,
         )
         subnet.save()
