@@ -2774,7 +2774,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (string) "source" [required=true] The system_id of the machine
         that is the source of the configuration.
 
-        @param (string) "destination" [required=true] A list of system_ids to
+        @param (string) "destinations" [required=true] A list of system_ids to
         clone the configuration to.
 
         @param (boolean) "interfaces" [required=True] Whether to clone
