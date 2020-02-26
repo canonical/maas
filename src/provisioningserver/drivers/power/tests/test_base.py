@@ -164,12 +164,14 @@ class TestPowerDriverBase(MAASTestCase):
         fake_name = factory.make_name("name")
         fake_description = factory.make_name("description")
         fake_setting = factory.make_name("setting")
+        fake_chassis = factory.pick_bool()
         fake_settings = [
             make_setting_field(fake_setting, fake_setting.title())
         ]
         fake_driver = make_power_driver_base(
             name=fake_name,
             description=fake_description,
+            chassis=fake_chassis,
             settings=fake_settings,
         )
         self.assertEqual(
@@ -177,6 +179,7 @@ class TestPowerDriverBase(MAASTestCase):
                 "driver_type": "power",
                 "name": fake_name,
                 "description": fake_description,
+                "chassis": fake_chassis,
                 "fields": fake_settings,
                 "queryable": fake_driver.queryable,
                 "missing_packages": fake_driver.detect_missing_packages(),

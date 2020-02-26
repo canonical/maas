@@ -48,6 +48,7 @@ JSON_POWER_DRIVER_SCHEMA = {
     "properties": {
         "driver_type": {"type": "string"},
         "name": {"type": "string"},
+        "chassis": {"type": "boolean"},
         "description": {"type": "string"},
         "fields": {"type": "array", "items": SETTING_PARAMETER_FIELD_SCHEMA},
         "ip_extractor": IP_EXTRACTOR_SCHEMA,
@@ -218,6 +219,7 @@ class PowerDriverBase(metaclass=ABCMeta):
             driver_type="power",
             name=self.name,
             description=self.description,
+            chassis=self.chassis,
             fields=self.settings,
             queryable=self.queryable,
             missing_packages=(

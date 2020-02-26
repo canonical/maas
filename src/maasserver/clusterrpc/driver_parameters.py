@@ -93,6 +93,7 @@ def add_power_driver_parameters(
     driver_type,
     name,
     description,
+    chassis,
     fields,
     missing_packages,
     parameters_set,
@@ -108,6 +109,8 @@ def add_power_driver_parameters(
     :param description: A longer description of the power type. This
         will be displayed in the UI.
     :type description: string
+    :param chassis: Whether the power driver is for a chassis
+    :type chassis: bool
     :param fields: The fields that make up the parameters for the power
         type. Will be validated against
         SETTING_PARAMETER_FIELD_SCHEMA.
@@ -133,6 +136,7 @@ def add_power_driver_parameters(
         "description": description,
         "fields": fields,
         "missing_packages": missing_packages,
+        "chassis": chassis,
     }
     if queryable is not None:
         params["queryable"] = queryable
@@ -243,12 +247,14 @@ def get_all_power_types(controllers=None, ignore_errors=True):
         name = power_type["name"]
         fields = power_type.get("fields", [])
         description = power_type["description"]
+        chassis = power_type["chassis"]
         missing_packages = power_type["missing_packages"]
         queryable = power_type.get("queryable")
         add_power_driver_parameters(
             driver_type,
             name,
             description,
+            chassis,
             fields,
             missing_packages,
             merged_types,

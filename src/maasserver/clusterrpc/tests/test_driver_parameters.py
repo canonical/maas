@@ -288,6 +288,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
                 "driver_type": "power",
                 "name": "blah",
                 "description": "baz",
+                "chassis": True,
                 "fields": {},
             }
         ]
@@ -295,6 +296,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             driver_type="power",
             name="blah",
             description="baz",
+            chassis=True,
             fields=[self.make_field()],
             missing_packages=[],
             parameters_set=existing_parameters,
@@ -305,6 +307,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
                     "driver_type": "power",
                     "name": "blah",
                     "description": "baz",
+                    "chassis": True,
                     "fields": {},
                 }
             ],
@@ -319,6 +322,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             driver_type="power",
             name="blah",
             description="baz",
+            chassis=False,
             fields=fields,
             missing_packages=missing_packages,
             parameters_set=existing_parameters,
@@ -329,6 +333,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
                     "driver_type": "power",
                     "name": "blah",
                     "description": "baz",
+                    "chassis": False,
                     "fields": fields,
                     "missing_packages": missing_packages,
                 }
@@ -343,6 +348,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             driver_type="power",
             name="blah",
             description="baz",
+            chassis=False,
             fields=[{}],
             missing_packages=[],
             parameters_set=[],
@@ -355,6 +361,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             driver_type="power",
             name="blah",
             description="baz",
+            chassis=False,
             fields=fields,
             missing_packages=[],
             parameters_set=parameters_set,
