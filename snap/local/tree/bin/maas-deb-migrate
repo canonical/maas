@@ -58,6 +58,11 @@ migrate_data() {
     if [ -d /var/lib/maas ]; then
         mv /var/lib/maas "$SNAP_CURRENT/var/lib"
         chown -R root:root "$SNAP_CURRENT/var/lib/maas"
+
+        mkdir -p "$SNAP_CURRENT/root"
+        if [ -d "$SNAP_CURRENT/var/lib/maas/.ssh" ]; then
+           mv "$SNAP_CURRENT/var/lib/maas/.ssh" "$SNAP_CURRENT/root"
+        fi
     fi
     if [ -d /var/spool/maas-proxy ]; then
         mv /var/spool/maas-proxy/* /var/snap/maas/common/proxy/spool/

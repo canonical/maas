@@ -331,3 +331,5 @@ layout:
     bind: $SNAP/etc/libvirt
   /etc/freeipmi:
     bind: $SNAP/etc/freeipmi
+  /root:
+    bind: $SNAP_DATA/root
