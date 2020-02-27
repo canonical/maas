@@ -6,36 +6,12 @@
 #
 
 #### script setup ######
-export TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
+export TEMP_D
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
 export BIN_D="${TEMP_D}/bin"
 export PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 mkdir -p "$BIN_D"
-
-#### FIXME: Remove work around when the issue is fixed in resolvconf ###
-#
-# LP: #1711760
-# Work around issue where resolv.conf is not set on the  ephemeral environment
-#
-# First check if a nameserver is set in resolv.conf
-if ! grep -qs nameserver /etc/resolv.conf; then
-    # If it is not, obtain the MAC address of the PXE boot interface
-    bootif=$(cat /proc/cmdline | grep -o -E 'BOOTIF=01-([[:xdigit:]]{1,2}-){5}[[:xdigit:]]{1,2}')
-    mac_address=$(echo $bootif | awk -F'=01-' '{print $NF}' | sed -r 's/-/:/g')
-
-    # Search for the NIC name of the PXE boot interface
-    for nic in /sys/class/net/*; do
-        nic_mac=$(cat $nic/address)
-        if [ "$nic_mac" == "$mac_address" ]; then
-            # Get the interface name and ask dhclient to refresh the lease
-            interface=$(echo $nic | cut -d'/' -f5)
-            dhclient $interface || true
-            break
-        fi
-    done
-fi
-
-######################
 
 # Ensure that invocations of apt-get are not interactive by default,
 # here and in all subprocesses.
@@ -54,7 +30,7 @@ fail() {
 }
 
 find_creds_cfg() {
-    local config="" file="" found=""
+    local file="" found=""
 
     # If the config location is set in environment variable, trust it.
     [ -n "${COMMISSIONING_CREDENTIALS_URL}" ] &&
@@ -66,7 +42,8 @@ find_creds_cfg() {
     done
 
     local opt="" cmdline=""
-    if [ -f /proc/cmdline ] && read cmdline < /proc/cmdline; then
+    if [ -r /proc/cmdline ]; then
+        cmdline=$(< /proc/cmdline)
         # Search through /proc/cmdline arguments:
         # cloud-config-url trumps url=
         for opt in $cmdline; do
@@ -95,7 +72,7 @@ prep_maas_api_helper() {
     case "$creds" in
         http://*|https://*)
             wget "$creds" -O "${TEMP_D}/my.creds" ||
-              fail "failed to get credentials from $cred_cfg"
+              fail "failed to get credentials from $creds"
             creds="${TEMP_D}/my.creds"
             ;;
     esac
@@ -119,17 +96,18 @@ prep_maas_api_helper() {
 load_ipmi_modules() {
     modprobe ipmi_msghandler
     modprobe ipmi_devintf
-    modprobe ipmi_si ${IPMI_SI_PARAMS}
+    modprobe ipmi_si "${IPMI_SI_PARAMS}"
     modprobe ipmi_ssif
     udevadm settle
 }
 
 get_power_type() {
+    local power_type
     power_type=$(maas-ipmi-autodetect-tool)
-    if [ -z $power_type ]; then
+    if [ -z "$power_type" ]; then
         power_type=$(maas-wedge-autodetect --check) || power_type=""
     fi
-    echo $power_type
+    echo "$power_type"
 }
 
 # Invoke the "signal()" API call to report progress.
