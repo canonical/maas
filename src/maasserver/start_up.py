@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Start-up utilities for the MAAS server."""
@@ -29,6 +29,7 @@ from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.maas_certificates import generate_certificate_if_needed
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 
 maaslog = get_maas_logger("start-up")
@@ -141,6 +142,9 @@ def inner_start_up(master=False):
 
         # Refresh soon after this transaction is in.
         post_commit_do(reactor.callLater, 0, refreshRegion, region)
+
+        # Create a certificate for the region.
+        post_commit_do(reactor.callLater, 0, generate_certificate_if_needed)
 
 
 def refreshRegion(region):

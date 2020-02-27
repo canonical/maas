@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the ``maasrackd`` TAP."""
@@ -83,6 +83,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(provisioningserver, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")
+        self.patch(plugin_module, "generate_certificate_if_needed")
 
     def get_unused_pid(self):
         """Return a PID for a process that has just finished running."""

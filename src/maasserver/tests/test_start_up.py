@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the start up utility."""
@@ -151,18 +151,23 @@ class TestInnerStartUp(MAASServerTestCase):
             ).exists()
         )
 
-    def test__refreshes_if_master(self):
+    def test__calls_refresh_and_generates_certificate_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         region = RegionController.objects.first()
         self.assertThat(
             start_up.post_commit_do,
-            MockCalledOnceWith(
-                reactor.callLater, 0, start_up.refreshRegion, region
+            MockCallsMatch(
+                call(reactor.callLater, 0, start_up.refreshRegion, region),
+                call(
+                    reactor.callLater,
+                    0,
+                    start_up.generate_certificate_if_needed,
+                ),
             ),
         )
 
-    def test__does_refresh_if_not_master(self):
+    def test__does_not_call_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.post_commit_do, MockNotCalled())

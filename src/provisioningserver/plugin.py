@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
@@ -16,6 +16,7 @@ from zope.interface import implementer
 
 from provisioningserver import logger, settings
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
+from provisioningserver.maas_certificates import generate_certificate_if_needed
 from provisioningserver.monkey import (
     add_patches_to_twisted,
     add_patches_to_txtftp,
@@ -255,4 +256,5 @@ class ProvisioningServiceMaker:
         for service in self._makeServices(tftp_root, tftp_port, clock=clock):
             service.setServiceParent(services)
 
+        reactor.callInThread(generate_certificate_if_needed)
         return services

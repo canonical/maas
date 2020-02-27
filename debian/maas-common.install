@@ -13,3 +13,4 @@ debian/tmp/usr/lib/maas/dhcp-monitor
 debian/tmp/usr/lib/maas/unverified-ssh
 
 usr/bin/maas-common /usr/lib/maas
+etc/maas/certificates

@@ -218,6 +218,7 @@ RackControllerRule = Rule(
     Allow("netaddr|netaddr.**"),
     Allow("netifaces|netifaces.*"),
     Allow("oauthlib.oauth1"),
+    Allow("OpenSSL|OpenSSL.**"),
     Allow("paramiko.**"),
     Allow("pexpect"),
     Allow("prometheus_client|prometheus_client.multiprocess"),

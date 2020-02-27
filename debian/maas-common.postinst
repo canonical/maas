@@ -16,6 +16,7 @@ configure_lib_dir() {
     # Ensure lib dir has correct permissions
     chown maas:maas /var/lib/maas/
     chown maas:maas /var/lib/maas/prometheus
+    chown -R maas:maas /etc/maas/certificates
 
     if [ -d /var/lib/maas/gnupg ]; then
         chown -R maas:maas /var/lib/maas/gnupg
