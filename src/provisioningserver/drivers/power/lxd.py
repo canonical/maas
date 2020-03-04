@@ -56,9 +56,7 @@ class LXDPowerDriver(PowerDriver):
     )
 
     def detect_missing_packages(self):
-        # python3-pylxd is a MAAS dependency so
-        # nothing to check.
-        return []
+        return ["python3-pylxd"]
 
     @typed
     def get_url(self, context: dict):

@@ -116,6 +116,7 @@ parts:
       - python3-petname
       - python3-pexpect
       - python3-psycopg2
+      - python3-pylxd
       - python3-pyparsing
       - python3-requests
       - python3-sphinx

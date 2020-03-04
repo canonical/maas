@@ -22,10 +22,9 @@ from provisioningserver.maas_certificates import (
 
 class TestLXDPowerDriver(MAASTestCase):
     def test_no_missing_packages(self):
-        # there's nothing to check for, just confirm it returns []
         driver = lxd_module.LXDPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertItemsEqual(["python3-pylxd"], missing)
 
     def make_parameters_context(self):
         return {
