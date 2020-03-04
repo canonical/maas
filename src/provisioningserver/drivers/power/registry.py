@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Load all power drivers."""
@@ -14,6 +14,7 @@ from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.dli import DLIPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
+from provisioningserver.drivers.power.lxd import LXDPowerDriver
 from provisioningserver.drivers.power.manual import ManualPowerDriver
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
@@ -54,6 +55,7 @@ power_drivers = [
     DLIPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
+    LXDPowerDriver(),
     ManualPowerDriver(),
     MoonshotIPMIPowerDriver(),
     MSCMPowerDriver(),

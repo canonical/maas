@@ -22,6 +22,7 @@ from maascli.auth import UnexpectedResponse
 from maascli.parser import ArgumentParser
 from maascli.tests.test_auth import make_options
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 
@@ -90,6 +91,18 @@ class TestRegisterCommands(MAASTestCase):
             self.assertEqual(help_text, subparser.description)
 
     def test_load_init_command_snap(self):
+        from provisioningserver import maas_certificates
+
+        certificates_dir = self.useFixture(TempDirectory()).path
+        maas_certificates.MAAS_PRIVATE_KEY = os.path.join(
+            certificates_dir, "maas.key"
+        )
+        maas_certificates.MAAS_PUBLIC_KEY = os.path.join(
+            certificates_dir, "maas.pub"
+        )
+        maas_certificates.MAAS_CERTIFICATE = os.path.join(
+            certificates_dir, "maas.crt"
+        )
         environ = {"SNAP": "snap-path"}
         self.patch(os, "environ", environ)
         parser = ArgumentParser()

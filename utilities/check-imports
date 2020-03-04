@@ -223,6 +223,7 @@ RackControllerRule = Rule(
     Allow("pexpect"),
     Allow("prometheus_client|prometheus_client.multiprocess"),
     Allow("provisioningserver|provisioningserver.**"),
+    Allow("pylxd.**"),
     Allow("seamicroclient|seamicroclient.**"),
     Allow("simplestreams.**"),
     Allow("tempita"),
