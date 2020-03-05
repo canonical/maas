@@ -87,12 +87,7 @@ cleanup_data() {
 }
 
 configure_supervisord() {
-    cat <<EOF | snap_run "/usr/bin/env python3 -"
-from maascli import snappy 
-current_mode = snappy.get_current_mode()
-snappy.render_supervisord(current_mode)
-snappy.sighup_supervisord()
-EOF
+    /snap/bin/maas reconfigure-supervisord
 }
 
 set_snap_mode

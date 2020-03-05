@@ -3,7 +3,13 @@
 
 """Snap management commands."""
 
-__all__ = ["cmd_config", "cmd_init", "cmd_migrate", "cmd_status"]
+__all__ = [
+    "cmd_config",
+    "cmd_init",
+    "cmd_migrate",
+    "cmd_status",
+    "cmd_reconfigure_supervisord",
+]
 
 import argparse
 from collections import OrderedDict
@@ -1237,3 +1243,13 @@ class cmd_migrate(SnappyCommand):
             sys.exit(1)
         else:
             sys.exit(migrate_db())
+
+
+class cmd_reconfigure_supervisord(SnappyCommand):
+    """Rewrite supervisord configuration and signal it to reload."""
+
+    hidden = True
+
+    def handle(self, options):
+        render_supervisord(get_current_mode())
+        sighup_supervisord()

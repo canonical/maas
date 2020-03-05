@@ -123,4 +123,6 @@ fi
 snapctl start "${SNAP_INSTANCE_NAME}.supervisor"
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
-exec "$SNAP/bin/maas-wrapper" migrate --configure
+"$SNAP/bin/maas-wrapper" migrate --configure
+# Force reconfigure of supervisord as config template might have changed
+"$SNAP/bin/maas-wrapper" reconfigure-supervisord

@@ -14,6 +14,12 @@ class Command(metaclass=ABCMeta):
     This adheres to the expectations of `register`.
     """
 
+    # Whether to include the command in help output.
+    #
+    # Note that passing help=argparse.SUPPRESS doesn't work for subparsers,
+    # only for command arguments
+    hidden = False
+
     def __init__(self, parser):
         super(Command, self).__init__()
         self.parser = parser

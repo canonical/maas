@@ -129,6 +129,16 @@ class TestRegisterCommands(MAASTestCase):
         subparser = parser.subparsers.choices.get("init")
         self.assertIsNone(subparser)
 
+    def test_hidden_commands(self):
+        environ = {"SNAP": "snap-path"}
+        self.patch(os, "environ", environ)
+        stdout = self.patch(sys, "stdout", StringIO())
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        error = self.assertRaises(SystemExit, parser.parse_args, ["--help"])
+        self.assertEqual(error.code, 0)
+        self.assertNotIn("reconfigure-supervisord", stdout.getvalue())
+
 
 class TestLogin(MAASTestCase):
     def test_cmd_login_ensures_valid_apikey(self):
@@ -230,3 +240,15 @@ class TestCmdInit(MAASTestCase):
         self.assertEqual({}, kwargs1)
         self.assertEqual(([self.maas_region_path, "createadmin"],), args2)
         self.assertEqual({}, kwargs2)
+
+
+class TestReconfigureSupervisord(MAASTestCase):
+    def test_cmd_configure_supervisord(self):
+        self.patch(snappy, "get_current_mode").return_value = "region+rack"
+        mock_render_supervisord = self.patch(snappy, "render_supervisord")
+        mock_sighup_supervisord = self.patch(snappy, "sighup_supervisord")
+        parser = ArgumentParser()
+        cmd = snappy.cmd_reconfigure_supervisord(parser)
+        cmd(parser.parse_args([]))
+        mock_render_supervisord.assert_called_once_with("region+rack")
+        mock_sighup_supervisord.assert_called_once()
