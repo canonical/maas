@@ -56,7 +56,9 @@ class LXDPowerDriver(PowerDriver):
     )
 
     def detect_missing_packages(self):
-        return ["python3-pylxd"]
+        # python3-pylxd is a required package
+        # for maas and is installed by default.
+        return []
 
     @typed
     def get_url(self, context: dict):

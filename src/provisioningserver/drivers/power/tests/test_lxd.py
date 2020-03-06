@@ -24,7 +24,7 @@ class TestLXDPowerDriver(MAASTestCase):
     def test_no_missing_packages(self):
         driver = lxd_module.LXDPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["python3-pylxd"], missing)
+        self.assertItemsEqual([], missing)
 
     def make_parameters_context(self):
         return {
