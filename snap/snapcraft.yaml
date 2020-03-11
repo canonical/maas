@@ -8,7 +8,11 @@ confinement: strict
 base: core18
 assumes:
   - snapd2.41
-epoch: 1*
+epoch: 1
+# epochs:
+#
+# 0: MAAS 2.5 PostgreSQL 9.5
+# 1: MAAS 2.6+ PostgreSQL 10
 passthrough:
     system-usernames:
       snap_daemon: shared
@@ -245,78 +249,6 @@ parts:
       - on amd64:
           - gcc-multilib
           - g++-multilib
-
-  postgres-95:
-    plugin: autotools
-    source: snap/local/postgres-9.5
-    source-type: local
-    # Get the postgres 9.5 source from Launchpad and put it in
-    # snap/local/postgres-9.5 and let snapcraft pull the source from there.
-    # That way snapcraft properly detects that the source hasn't changed, and
-    # won't try to pull the source every time snapcraft is invoked.
-    override-pull: |
-      set -e
-      pull-lp-source postgresql-9.5 xenial
-      rm -rf $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
-      mv postgresql-9.5*/ $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
-      snapcraftctl pull
-      echo "all:\ninstall:" > doc/Makefile  # Skips doc building.
-    build-packages:
-      - ubuntu-dev-tools
-      - bison
-      - flex
-      - libreadline-dev
-      - zlib1g-dev
-      - python-dev
-      - tcl8.6-dev
-      - libssl-dev
-      - libpam0g-dev
-      - libxml2-dev
-      - libldap2-dev
-      - libxslt1-dev
-      - uuid-dev
-      - libxml2-utils
-      - openjade
-      - opensp
-      - xsltproc
-      - gettext
-      - libperl-dev
-      - dpkg-dev
-    override-build: |
-      set -e
-      HOST_MULTIARCH=$(gcc -print-multiarch)
-      ARCH=$(dpkg-architecture -qDEB_HOST_ARCH_BITS)
-      if [ $ARCH -eq 64 ]; then
-        EXTRA_CFLAGS="-fno-omit-frame-pointer"
-      elif [ $ARCH -eq 32 ]; then
-        EXTRA_CFLAGS="-fPIC -pie"
-      fi
-      ./configure \
-        LDFLAGS="-Wl,--as-needed -L/usr/lib/mit-krb5 -L/usr/lib/$HOST_MULTIARCH/mit-krb5" \
-        CFLAGS="-I/usr/include/mit-krb5 $EXTRA_CFLAGS" \
-        --prefix=/usr/postgresql-9.5 \
-        --localstatedir=/etc/postgresql-9.5 \
-        --sysconfdir=/var/postgresql-9.5 \
-        --enable-nls \
-        --enable-integer-datetimes \
-        --enable-thread-safety \
-        --enable-tap-tests \
-        --enable-debug \
-        --disable-rpath \
-        --with-uuid=e2fs \
-        --with-gnu-ld \
-        --with-pgport=5432 \
-        --with-system-tzdata=/usr/share/zoneinfo \
-        --with-ldap \
-        --with-tcl \
-        --with-tclconfig=/usr/lib/tcl8.6/ \
-        --with-perl \
-        --with-python \
-        --with-pam \
-        --with-openssl \
-        --with-libxml \
-        --with-libxslt && make world
-      make install-world DESTDIR=$SNAPCRAFT_PART_INSTALL
 
 hooks:
   install:

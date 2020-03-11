@@ -3,27 +3,16 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # Create the required directories for services to run.
+if [ ! -d "$SNAP_COMMON/log" ]; then
+    mkdir -m 775 "$SNAP_COMMON/log"
+    chown snap_daemon "$SNAP_COMMON/log"
+fi
 mkdir -p "$SNAP_COMMON/log/"{proxy,http}
 mkdir -p "$SNAP_COMMON/proxy/"{cache,spool}
 
-# XXX once we've transitioned to fully confined snap (and bumped the epoch),
-# this check can be dropped. The chown below won't need to be run recursively,
-# as we can assume any file below the dir has been created with the right owner
-# (from the owning app). We only need to change mode/ownership when dirs are
-# created.
-migration_done() {
-    local user
-    user=$(stat -c '%U' "$SNAP_COMMON/log")
-    [ "$user" = snap_daemon ] && echo 1 || echo 0
-}
-user_migration_done=$(migration_done)
-if [ "$user_migration_done" -ne 1 ]; then
-    chmod 775 "$SNAP_COMMON/log"
-    chown snap_daemon "$SNAP_COMMON/log"
-    chown -R root:root "$SNAP_COMMON/log/http"
-    chown -R snap_daemon:snap_daemon "$SNAP_COMMON/log/proxy"
-    chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/"{cache,spool}
-fi
+chown root:root "$SNAP_COMMON/log/http"
+chown snap_daemon:snap_daemon "$SNAP_COMMON/log/proxy"
+chown snap_daemon:snap_daemon "$SNAP_COMMON/proxy/"{cache,spool}
 mkdir -p "$SNAP_DATA/root"
 mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"
@@ -33,11 +22,6 @@ mkdir -p "$SNAP_DATA/supervisord"
 mkdir -p "$SNAP_DATA/var/lib/maas"
 mkdir -p "$SNAP_DATA/var/lib/chrony"
 
-# XXX this should be dropped once we have transitioned to a fully confined snap
-if [ "$user_migration_done" -ne 1 ] && [ -n "$(compgen -G '/dev/shm/snap.maas.*.shm')" ]; then
-    chown -R snap_daemon:snap_daemon /dev/shm/snap.maas.*.shm
-fi
-
 # Always overwrite sample preseeds to ensure samples are up-to-date in case
 # we do changes that need to be reflected.
 cp "$SNAP/etc/maas/preseeds/curtin_userdata" "$SNAP_DATA/preseeds/curtin_userdata.sample"
@@ -45,78 +29,11 @@ cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
 
-# Upgrade to the new database dirs layout
 if [ ! -e "$SNAP_COMMON/postgres" ]; then
     mkdir -m 770 "$SNAP_COMMON/postgres"
-    mkdir "$SNAP_COMMON/postgres/sockets"
-    # fix database paths in config
-    if [ -f "$SNAP_DATA/supervisord/supervisord.conf" ]; then
-        sed -i '/bin\/postgres/ { s|/db|/postgres/data|; s|/db|/postgres/sockets|}' "$SNAP_DATA/supervisord/supervisord.conf"
-    fi
-    if [ -f "$SNAP_DATA/regiond.conf" ]; then
-        sed -i 's|common/db|common/postgres/sockets|' "$SNAP_DATA/regiond.conf"
-    fi
-fi
-
-if [ -d "$SNAP_COMMON/db" ]; then
-    if  [ -d "$SNAP_COMMON/postgres/data" ]; then
-        echo "Failed to upgrage PostgreSQL layout: $SNAP_COMMON/postgres/data already exists."
-        exit 1
-    fi
-    mv "$SNAP_COMMON/db" "$SNAP_COMMON/postgres/data"
-fi
-
-chgrp snap_daemon "$SNAP_COMMON/postgres"
-if [ -d "$SNAP_COMMON/postgres/sockets" ]; then
-    chown snap_daemon.snap_daemon "$SNAP_COMMON/postgres/sockets"
-fi
-if [ -d "$SNAP_COMMON/postgres/data" ]; then
-    if [ "$user_migration_done" -eq 1 ]; then
-        chown snap_daemon.snap_daemon "$SNAP_COMMON/postgres/data"
-    else
-        chown -R snap_daemon.snap_daemon "$SNAP_COMMON/postgres/data"
-    fi
-fi
-
-# Upgrade from PostgreSQL 9.5 to 10.
-if [ -d "$SNAP_COMMON/postgres/data" ] && [ -e "$SNAP_COMMON/postgres/data/PG_VERSION" ]; then
-    PG_VERSION=$(cat "$SNAP_COMMON/postgres/data/PG_VERSION")
-    if [ "$PG_VERSION" = "9.5" ]; then
-        echo "Upgrading from PostgreSQL 9.5 to 10."
-
-        # Move copy of 9.5 database to data-9.5. On successful upgrade 'data' will
-        # now be a PostgreSQL 10 database.
-        ORIG_DIR=$PWD
-        mv "$SNAP_COMMON/postgres/data" "$SNAP_COMMON/postgres/data-9.5"
-
-        # Make an upgrade folder so upgrade logs can be stored.
-        mkdir "$SNAP_COMMON/pg_upgrade"
-        chown snap_daemon:snap_daemon "$SNAP_COMMON/pg_upgrade"
-        cd "$SNAP_COMMON/pg_upgrade"
-
-        # Initialize the new PostgreSQL 10 database.
-        rm -rf "$SNAP_COMMON/postgres/data-10"
-        mkdir "$SNAP_COMMON/postgres/data-10"
-        chown snap_daemon:snap_daemon "$SNAP_COMMON/postgres/data-10"
-        sudo -u snap_daemon -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/initdb" \
-            -D "$SNAP_COMMON/postgres/data-10" -U postgres -E UTF8 --locale=C
-
-        # Perform the actual upgrade.
-        sudo -u snap_daemon -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/pg_upgrade" \
-            --old-bindir "$SNAP/usr/postgresql-9.5/bin" \
-            --old-datadir "$SNAP_COMMON/postgres/data-9.5" \
-            --new-bindir "$SNAP/usr/lib/postgresql/10/bin" \
-            --new-datadir "$SNAP_COMMON/postgres/data-10" \
-            -U postgres
-
-        # Change back to previous directory and cleanup.
-        cd "$ORIG_DIR"
-        rm -rf "$SNAP_COMMON/pg_upgrade"
-        mv "$SNAP_COMMON/postgres/data-10" "$SNAP_COMMON/postgres/data"
-    elif [ "$PG_VERSION" != "10" ]; then
-        echo "Failed to upgrage PostgreSQL from $PG_VERSION; unknown version."
-        exit 1
-    fi
+    chgrp snap_daemon "$SNAP_COMMON/postgres"
+    mkdir "$SNAP_COMMON/postgres/"{data,sockets}
+    chown snap_daemon.snap_daemon "$SNAP_COMMON/postgres/"{data,sockets}
 fi
 
 # ensure that services are running as migration needs running postgres
