@@ -8,7 +8,7 @@
 #
 
 SNAP_COMMON="/var/snap/maas/common"
-SNAP_CURRENT="/var/snap/maas/current"
+SNAP_DATA="/var/snap/maas/current"
 SNAP_MODE_FILE="$SNAP_COMMON/snap_mode"
 
 is_installed() {
@@ -42,31 +42,42 @@ clear_services() {
     local services="dhcpd dhcpd6 http proxy rackd regiond syslog"
     local service
     for service in $services; do
-        service="maas-$service.service"
+        clean_service "maas-$service.service"
+    done
+}
+
+clean_service() {
+    local service="$1"
+    if [ -z "$DPKG_MAINTSCRIPT_PACKAGE" ]; then
+        systemctl stop "$service" || true
+        systemctl unmask "$service" || true
+        find /etc/systemd /var/lib/systemd -type f -name "$service" -delete || true
+    else
         deb-systemd-invoke stop "$service" || true
         deb-systemd-helper purge "$service" || true
         deb-systemd-helper unmask "$service" || true
-    done
+    fi
+
 }
 
 migrate_data() {
     if [ -d /etc/maas ]; then
-        cp -a /etc/maas/* "$SNAP_CURRENT"
+        cp -a /etc/maas/* "$SNAP_DATA"
     fi
 
-    mkdir -p "$SNAP_CURRENT/var/lib"
+    mkdir -p "$SNAP_DATA/var/lib"
     if [ -d /var/lib/maas ]; then
-        mv /var/lib/maas "$SNAP_CURRENT/var/lib"
-        chown -R root:root "$SNAP_CURRENT/var/lib/maas"
+        mv /var/lib/maas "$SNAP_DATA/var/lib"
+        chown -R root:root "$SNAP_DATA/var/lib/maas"
 
-        mkdir -p "$SNAP_CURRENT/root"
-        if [ -d "$SNAP_CURRENT/var/lib/maas/.ssh" ]; then
-           mv "$SNAP_CURRENT/var/lib/maas/.ssh" "$SNAP_CURRENT/root"
+        mkdir -p "$SNAP_DATA/root"
+        if [ -d "$SNAP_DATA/var/lib/maas/.ssh" ]; then
+           mv "$SNAP_DATA/var/lib/maas/.ssh" "$SNAP_DATA/root"
         fi
     fi
     if [ -d /var/spool/maas-proxy ]; then
-        mv /var/spool/maas-proxy/* /var/snap/maas/common/proxy/spool/
-        chown -R snap_daemon:snap_daemon /var/snap/maas/common/proxy/spool
+        mv /var/spool/maas-proxy/* "$SNAP_COMMON/proxy/spool/"
+        chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/spool"
     fi
 }
 

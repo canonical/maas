@@ -270,7 +270,11 @@ def sighup_supervisord():
     if pid is None:
         return
 
-    os.kill(pid, signal.SIGHUP)
+    try:
+        os.kill(pid, signal.SIGHUP)
+    except ProcessLookupError:
+        return
+
     # Wait for supervisord to be running successfully.
     time.sleep(0.5)
     while True:

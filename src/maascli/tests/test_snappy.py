@@ -274,6 +274,17 @@ class TestSupervisordHelpers(MAASTestCase):
         )
         self.assertThat(mock_process.wait, MockCalledOnceWith())
 
+    def test_sighup_supervisord_nop_if_not_running(self):
+        pid = random.randint(2, 99)
+        snap = self.make_dir()
+        self.patch(os, "environ", {"SNAP": snap})
+        self.patch(snappy, "get_supervisord_pid").return_value = pid
+        mock_kill = self.patch(os, "kill")
+        mock_kill.side_effect = ProcessLookupError()
+        # the command doesn't fail
+        snappy.sighup_supervisord()
+        mock_kill.assert_called_once_with(pid, signal.SIGHUP)
+
     def test_sighup_supervisord_waits_until_no_error(self):
         pid = random.randint(2, 99)
         snap = self.make_dir()
