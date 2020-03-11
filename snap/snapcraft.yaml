@@ -62,7 +62,6 @@ parts:
       - requirements.txt
     build-packages:
       - build-essential
-      - bzr
       - git
       - libffi-dev
       - libpq-dev

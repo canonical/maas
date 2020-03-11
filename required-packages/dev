@@ -3,7 +3,6 @@ authbind
 avahi-utils
 bash
 build-essential
-bzr
 curl
 dos2unix
 git
