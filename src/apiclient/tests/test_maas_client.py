@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from functools import wraps
 import gzip
 from io import BytesIO
 import json
@@ -34,6 +35,18 @@ class TestMAASOAuth(MAASTestCase):
         self.assertIn("Authorization", headers)
 
 
+def no_proxy(fn):
+    @patch.dict(
+        os.environ,
+        dict.fromkeys({"http_proxy", "https_proxy", "no_proxy"}, ""),
+    )
+    @wraps(fn)
+    def with_no_proxy(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    return with_no_proxy
+
+
 class TestMAASDispatcher(MAASTestCase):
     def setUp(self):
         super().setUp()
@@ -52,6 +65,7 @@ class TestMAASDispatcher(MAASTestCase):
         build_opener_mock.side_effect = patch_build_opener
         self.open_func = None
 
+    @no_proxy
     def test_dispatch_query_makes_direct_call(self):
         contents = factory.make_string().encode("ascii")
         url = "file://%s" % self.make_file(contents=contents)
@@ -59,6 +73,7 @@ class TestMAASDispatcher(MAASTestCase):
             contents, MAASDispatcher().dispatch_query(url, {}).read()
         )
 
+    @no_proxy
     def test_dispatch_query_encodes_string_data(self):
         # urllib, used by MAASDispatcher, requires data encoded into bytes. We
         # encode into utf-8 in dispatch_query if necessary.
@@ -70,6 +85,7 @@ class TestMAASDispatcher(MAASTestCase):
         MAASDispatcher().dispatch_query(url, {}, method="POST", data=data)
         request.assert_called_once_with(ANY, url, bytes(data, "utf-8"), ANY)
 
+    @no_proxy
     def test_request_from_http(self):
         # We can't just call self.make_file because HTTPServerFixture will only
         # serve content from the current WD. And we don't want to create random
@@ -84,6 +100,7 @@ class TestMAASDispatcher(MAASTestCase):
             self.assertEqual(200, response.code)
             self.assertEqual(content, response.read())
 
+    @no_proxy
     def test_supports_any_method(self):
         # urllib2, which MAASDispatcher uses, only supports POST and
         # GET. There is some extra code that makes sure the passed
@@ -107,6 +124,7 @@ class TestMAASDispatcher(MAASTestCase):
             )
             self.assertIn("Unsupported method ('PUT')", e.reason)
 
+    @no_proxy
     def test_supports_content_encoding_gzip(self):
         # The client will set the Accept-Encoding: gzip header, and it will
         # also decompress the response if it comes back with Content-Encoding:
@@ -131,6 +149,7 @@ class TestMAASDispatcher(MAASTestCase):
         self.assertEqual([((request,), {})], called)
         self.assertEqual("gzip", request.headers.get("Accept-encoding"))
 
+    @no_proxy
     def test_doesnt_override_accept_encoding_headers(self):
         # If someone passes their own Accept-Encoding header, then dispatch
         # just passes it through.
@@ -150,6 +169,7 @@ class TestMAASDispatcher(MAASTestCase):
         ).read()
         self.assertEqual(content, read_content)
 
+    @no_proxy
     def test_retries_three_times_on_503_service_unavailable(self):
         self.useFixture(TempWDFixture())
         name = factory.make_string()
@@ -174,6 +194,7 @@ class TestMAASDispatcher(MAASTestCase):
             self.assertEqual(200, response.code)
             self.assertEqual(content, response.read())
 
+    @no_proxy
     def test_retries_three_times_raises_503_service_unavailable(self):
         self.useFixture(TempWDFixture())
         name = factory.make_string()
