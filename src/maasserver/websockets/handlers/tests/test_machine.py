@@ -2965,6 +2965,16 @@ class TestMachineHandler(MAASServerTestCase):
                     "disk_type": Equals('iscsi')
                     })]))
 
+    def test_dehydrate_machine_on_pod(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        pod = factory.make_Pod()
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        node.bmc = pod
+        observed = handler.get({"system_id": node.system_id})
+        self.assertEqual(observed['pod'], pod.id)
+
 
 class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
 

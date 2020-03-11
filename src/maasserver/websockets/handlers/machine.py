@@ -260,7 +260,7 @@ class MachineHandler(NodeHandler):
 
         if not for_list:
             if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
-                data['pod'] = self.dehydrate_pod(obj.bmc)
+                data['pod'] = obj.bmc.id
             # Add info specific to a machine.
             data["show_os_info"] = self.dehydrate_show_os_info(obj)
             devices = [
