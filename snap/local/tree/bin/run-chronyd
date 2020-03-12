@@ -1,22 +1,20 @@
-#!/bin/bash
+#!/bin/bash -e
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-set -e
+mkdir -p \
+      "$SNAP_DATA/var/lib/chrony" \
+      "$SNAP_DATA/etc/chrony" \
+      "$SNAP_COMMON/log/ntpstats"
 
-# Create the required directories.
-mkdir -p $SNAP_DATA/etc/chrony
-mkdir -p $SNAP_COMMON/log/ntpstats
-
-# Copy the initial ntp.conf if it doesn't exist.
 if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
     cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"
 fi
 
-# Run ntpd.
 CHRONY_OPTS="-u root -d -f $SNAP_DATA/etc/chrony/chrony.conf"
 if [ -f /run/systemd/container ]; then
     # don't try to set time if running in container
     CHRONY_OPTS="$CHRONY_OPTS -x"
 fi
-exec $SNAP/usr/sbin/chronyd $CHRONY_OPTS
+# shellcheck disable=SC2086
+exec "$SNAP/usr/sbin/chronyd" $CHRONY_OPTS

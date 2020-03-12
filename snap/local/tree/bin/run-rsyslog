@@ -1,16 +1,11 @@
-#!/bin/bash
+#!/bin/bash -e
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-set -e
+mkdir -p \
+      "$SNAP_DATA/syslog/rsyslog" \
+      "$SNAP_COMMON/log/rsyslog"
 
-# Ensure that the work directory is created.
-mkdir -p "$SNAP_DATA/syslog/rsyslog"
-
-# Ensure that the log output directory is created.
-mkdir -p "$SNAP_COMMON/log/rsyslog"
-
-# Do not proceed unless rsyslog.conf exists.
 if [ ! -e "$SNAP_DATA/syslog/rsyslog.conf" ]; then
     echo "Cannot start rsyslog as $SNAP_DATA/syslog/rsyslog.conf does not exist."
     exit 1
@@ -19,5 +14,4 @@ fi
 # Set the modules directory so rsyslogd can find them in the snap.
 export RSYSLOG_MODDIR="$SNAP/usr/lib/x86_64-linux-gnu/rsyslog/"
 
-# Run rsyslog.
-exec $SNAP/usr/sbin/rsyslogd -n -f "$SNAP_DATA/syslog/rsyslog.conf" -i "$SNAP_DATA/syslog/rsyslog.pid"
+exec "$SNAP/usr/sbin/rsyslogd" -n -f "$SNAP_DATA/syslog/rsyslog.conf" -i "$SNAP_DATA/syslog/rsyslog.pid"

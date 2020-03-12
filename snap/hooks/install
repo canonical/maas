@@ -2,28 +2,17 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# Create the required directories for services to run.
+mkdir -p \
+      "$SNAP_DATA/var/lib/maas" \
+      "$SNAP_DATA/root"
 if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"
 fi
-mkdir -p "$SNAP_COMMON/log/"{proxy,http}
-mkdir -p "$SNAP_COMMON/proxy/"{cache,spool}
-
-chown root:root "$SNAP_COMMON/log/http"
-chown snap_daemon:snap_daemon "$SNAP_COMMON/log/proxy"
-chown snap_daemon:snap_daemon "$SNAP_COMMON/proxy/"{cache,spool}
-mkdir -p "$SNAP_DATA/root"
-mkdir -p "$SNAP_DATA/preseeds"
-mkdir -p "$SNAP_DATA/bind"
-mkdir -p "$SNAP_DATA/proxy"
-mkdir -p "$SNAP_DATA/syslog"
-mkdir -p "$SNAP_DATA/supervisord"
-mkdir -p "$SNAP_DATA/var/lib/maas"
-mkdir -p "$SNAP_DATA/var/lib/chrony"
 
 # Always overwrite sample preseeds to ensure samples are up-to-date in case
 # we do changes that need to be reflected.
+mkdir -p "$SNAP_DATA/preseeds"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata" "$SNAP_DATA/preseeds/curtin_userdata.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_userdata_centos.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"

@@ -74,6 +74,7 @@ build: \
   .run \
   $(VENV) \
   $(BIN_SCRIPTS) \
+  bin/shellcheck \
   bin/py \
   pycharm
 .PHONY: build
@@ -116,6 +117,10 @@ bin/py:
 
 bin/database: bin/postgresfixture
 	ln -sf $(notdir $<) $@
+
+bin/shellcheck: URL := "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz"
+bin/shellcheck:
+	curl -s -L --output - $(URL) | tar xJ --strip=1 -C bin shellcheck-stable/shellcheck
 
 ui: $(UI_BUILD)
 .PHONY: ui
@@ -218,7 +223,7 @@ coverage/index.html: bin/coverage .coverage
 .coverage:
 	@$(error Use `$(MAKE) test` to generate coverage)
 
-lint: lint-py lint-py-imports lint-py-linefeeds lint-go
+lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
 
 lint-py: sources = $(wildcard *.py contrib/*.py) $(PY_SOURCES) utilities etc
@@ -250,6 +255,14 @@ lint-go:
 		tee /tmp/gofmt.lint
 	@test ! -s /tmp/gofmt.lint
 .PHONY: lint-go
+
+lint-shell: bin/shellcheck
+# skip files that have a non-shell shebang (e.g. Python files)
+	@bin/shellcheck -e 1071 \
+		snap/hooks/* \
+		snap/local/tree/bin/* \
+		snap/local/tree/sbin/*
+.PHONY: lint-shell
 
 format.parallel:
 	@$(MAKE) -s -j format
