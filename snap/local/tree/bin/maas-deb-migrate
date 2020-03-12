@@ -76,6 +76,7 @@ migrate_data() {
         fi
     fi
     if [ -d /var/spool/maas-proxy ]; then
+        mkdir -p "$SNAP_COMMON/proxy/spool"
         mv /var/spool/maas-proxy/* "$SNAP_COMMON/proxy/spool/"
         chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/spool"
     fi

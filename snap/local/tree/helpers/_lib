@@ -1,0 +1,44 @@
+# -*- mode: sh -*-
+# shellcheck shell=bash
+#
+# Common functions for helper scripts
+#
+
+MAAS_SNAP_COMMON="/var/snap/maas/common"
+
+
+error_exit() {
+    echo "$@" >&2
+    exit 1
+}
+
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        error_exit "This command must be run as root."
+    fi
+}
+
+ask_yes_no() {
+    local response=""
+    while [ -z "$response" ]; do
+        read -r -p "$* [Y/N]: " response
+        case "$response" in
+            Y|y) response="y" ;;
+            N|n) response="n" ;;
+            *) response="" ;;
+        esac
+    done
+    echo "$response"
+}
+
+is_deb_installed() {
+    dpkg-query -W -f'${Status}\n' "$1" 2>/dev/null | grep -q ^install
+}
+
+is_version() {
+    dpkg --compare-versions "$@"
+}
+
+maas_snap_mode() {
+    cat "$MAAS_SNAP_COMMON/snap_mode" 2>/dev/null || echo "none"
+}

@@ -258,10 +258,11 @@ lint-go:
 
 lint-shell: bin/shellcheck
 # skip files that have a non-shell shebang (e.g. Python files)
-	@bin/shellcheck -e 1071 \
+	@bin/shellcheck -x -e 1071 \
 		snap/hooks/* \
 		snap/local/tree/bin/* \
-		snap/local/tree/sbin/*
+		snap/local/tree/sbin/* \
+		snap/local/tree/helpers/*
 .PHONY: lint-shell
 
 format.parallel:
