@@ -197,6 +197,11 @@ parts:
     source: src/maasui/src
     nodejs-version: "12.13.0"
     nodejs-yarn-version: "v1.19.1"
+    build-packages:
+      - on amd64: []
+      - else:
+          # node-sass on non-amd64 needs python 2, see http://pad.lv/1867329
+          - python
     override-build: |
       set -e
 
