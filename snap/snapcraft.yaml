@@ -48,7 +48,7 @@ apps:
         - home
         - mount-observe  # to read /proc/*/mounts
         - network # for external authentication
-        - network-bind # for postgres
+        - network-bind # for connecting to PostgreSQL
         - network-observe # to get default URL
 
 parts:

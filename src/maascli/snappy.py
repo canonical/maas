@@ -17,12 +17,10 @@ from contextlib import contextmanager
 import grp
 import os
 import pwd
-import random
-import shutil
 import signal
-import string
 import subprocess
 import sys
+from textwrap import dedent
 import threading
 import time
 
@@ -35,7 +33,6 @@ from maascli.init import (
     add_candid_options,
     add_create_admin_options,
     add_rbac_options,
-    init_maas,
     print_msg,
     prompt_for_choices,
     read_input,
@@ -43,8 +40,6 @@ from maascli.init import (
 
 OPERATION_MODES = """\
 available modes:
-    all         - full MAAS installation includes database, region
-                  controller, and rack controller.
     region+rack - region controller connected to external database
                   and rack controller.
     region      - only region controller connected to external
@@ -54,18 +49,15 @@ available modes:
     none        - not configured\
 """
 
-DEFAULT_OPERATION_MODE = "all"
+DEFAULT_OPERATION_MODE = "region+rack"
 
 ARGUMENTS = OrderedDict(
     [
         (
             "mode",
             {
-                "choices": ["all", "region+rack", "region", "rack", "none"],
-                "help": (
-                    "Set the mode of the MAAS snap (all, region+rack, region, "
-                    "rack, or none)."
-                ),
+                "choices": ["region+rack", "region", "rack", "none"],
+                "help": "Set the mode for the MAAS installation",
             },
         ),
         (
@@ -490,19 +482,6 @@ def with_postgresql():
     stop_postgres()
 
 
-def create_db(config):
-    """Create the database and user."""
-    run_sql(
-        "CREATE USER %s WITH PASSWORD '%s';"
-        % (config["database_user"], config["database_pass"])
-    )
-    run_sql("CREATE DATABASE %s;" % config["database_name"])
-    run_sql(
-        "GRANT ALL PRIVILEGES ON DATABASE %s to %s;"
-        % (config["database_name"], config["database_user"])
-    )
-
-
 def migrate_db(capture=False):
     """Migrate the database."""
     if capture:
@@ -529,53 +508,6 @@ def migrate_db(capture=False):
                 "dbupgrade",
             ]
         )
-
-
-def init_db():
-    """Initialize the database."""
-    config_data = MAASConfiguration().get()
-    base_db_dir = get_base_db_dir()
-    db_path = os.path.join(base_db_dir, "data")
-    if not os.path.exists(base_db_dir):
-        os.mkdir(base_db_dir)
-        # allow both root and non-root user to create/delete directories under
-        # this one
-        shutil.chown(base_db_dir, group=NON_ROOT_USER)
-        os.chmod(base_db_dir, 0o770)
-    if os.path.exists(db_path):
-        run_with_drop_privileges(shutil.rmtree, db_path)
-    os.mkdir(db_path)
-    shutil.chown(db_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
-    log_path = os.path.join(
-        os.environ["SNAP_COMMON"], "log", "postgresql-init.log"
-    )
-    if not os.path.exists(log_path):
-        open(log_path, "a").close()
-    shutil.chown(log_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
-    socket_path = os.path.join(get_base_db_dir(), "sockets")
-    if not os.path.exists(socket_path):
-        os.mkdir(socket_path)
-        os.chmod(socket_path, 0o775)
-        shutil.chown(socket_path, user=NON_ROOT_USER)  # keep root as group
-
-    def _init_db():
-        subprocess.check_output(
-            [
-                os.path.join(os.environ["SNAP"], "bin", "initdb"),
-                "-D",
-                os.path.join(get_base_db_dir(), "data"),
-                "-U",
-                "postgres",
-                "-E",
-                "UTF8",
-                "--locale=C",
-            ],
-            stderr=subprocess.STDOUT,
-        )
-        with with_postgresql():
-            create_db(config_data)
-
-    run_with_drop_privileges(_init_db)
 
 
 def clear_line():
@@ -733,6 +665,22 @@ class cmd_init(SnappyCommand):
                     sys.exit(0)
 
         if not mode:
+            print_msg(
+                dedent(
+                    """
+            Select the mode the snap should operate in.
+
+            When installing region or rack+region modes, MAAS needs a
+            PostgreSQL database to connect to.
+
+            If you want to set up PostgreSQL on this machine, and configure it
+            for use with MAAS, you can run the following command:
+
+            /snap/maas/current/helpers/maas-database-setup
+
+            """
+                )
+            )
             mode = prompt_for_choices(
                 "Mode ({choices}) [default={default}]? ".format(
                     choices="/".join(ARGUMENTS["mode"]["choices"]),
@@ -742,7 +690,7 @@ class cmd_init(SnappyCommand):
                 default=DEFAULT_OPERATION_MODE,
                 help_text=OPERATION_MODES,
             )
-        if current_mode == "all" and mode != "all" and not options.force:
+        if current_mode == "all" and not options.force:
             print_msg(
                 "This will disconnect your MAAS from the running database."
             )
@@ -754,19 +702,6 @@ class cmd_init(SnappyCommand):
             )
             if disconnect == "no":
                 return 0
-        elif current_mode == "all" and mode == "all" and not options.force:
-            print_msg(
-                "This will re-initialize your entire database and all "
-                "current data will be lost."
-            )
-            reinit_db = prompt_for_choices(
-                "Are you sure you want to re-initialize the database "
-                "(yes/no) [default=no]? ",
-                ["yes", "no"],
-                default="no",
-            )
-            if reinit_db == "no":
-                return 0
 
         maas_url = options.maas_url
         if mode != "none" and not maas_url:
@@ -774,14 +709,6 @@ class cmd_init(SnappyCommand):
         database_host = database_name = None
         database_user = database_pass = None
         rpc_secret = None
-        if mode == "all":
-            database_host = os.path.join(get_base_db_dir(), "sockets")
-            database_name = "maasdb"
-            database_user = "maas"
-            database_pass = "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(10)
-            )
         if mode in ["region", "region+rack"]:
             database_host = options.database_host
             if not database_host:
@@ -845,9 +772,6 @@ class cmd_init(SnappyCommand):
         self._finalize_init(mode, options)
 
     def _finalize_init(self, mode, options):
-        # When in 'all' mode configure the database.
-        if mode == "all":
-            perform_work("Initializing database", init_db)
 
         # Configure mode.
         def start_services():
@@ -860,17 +784,7 @@ class cmd_init(SnappyCommand):
             start_services,
         )
 
-        if mode == "all":
-            # When in 'all' mode configure the database and create admin user.
-            perform_work("Waiting for postgresql", wait_for_postgresql)
-            perform_work(
-                "Performing database migrations",
-                migrate_db,
-                capture=sys.stdout.isatty(),
-            )
-            clear_line()
-            init_maas(options)
-        elif mode in ["region", "region+rack"]:
+        if mode in ["region", "region+rack"]:
             # When in 'region' or 'region+rack' the migrations for the database
             # must be at the same level as this controller.
             perform_work(
@@ -887,7 +801,6 @@ class cmd_config(SnappyCommand):
 
     # Required options based on mode.
     required_options = {
-        "all": ["maas_url"],
         "region+rack": [
             "maas_url",
             "database_host",
@@ -1047,7 +960,6 @@ class cmd_config(SnappyCommand):
             )
         else:
             restart_required = False
-            changed_to_all = False
             current_mode = get_current_mode()
             running_mode = current_mode
             if options.mode is not None:
@@ -1057,9 +969,9 @@ class cmd_config(SnappyCommand):
             self._validate_mode(options)
             self._validate_flags(options, running_mode)
 
-            # Changing the mode to from all requires --force.
+            # Changing the mode from all requires --force.
             if options.mode is not None:
-                if current_mode == "all" and options.mode != "all":
+                if current_mode == "all":
                     if not options.force:
                         print_msg(
                             "Changing mode from 'all' to '%s' will "
@@ -1068,40 +980,6 @@ class cmd_config(SnappyCommand):
                             "to do this." % options.mode
                         )
                         sys.exit(1)
-                elif current_mode != "all" and options.mode == "all":
-                    # Changing mode to all requires services to be stopped and
-                    # a new database to be initialized.
-                    changed_to_all = True
-
-                    def stop_services():
-                        render_supervisord("none")
-                        sighup_supervisord()
-
-                    perform_work("Stopping services", stop_services)
-
-                    # Configure the new database settings.
-                    options.database_host = os.path.join(
-                        get_base_db_dir(), "sockets"
-                    )
-                    options.database_name = "maasdb"
-                    options.database_user = "maas"
-                    options.database_pass = "".join(
-                        random.choice(string.ascii_uppercase + string.digits)
-                        for _ in range(10)
-                    )
-                    MAASConfiguration().write_to_file(
-                        {
-                            "maas_url": options.maas_url,
-                            "database_host": options.database_host,
-                            "database_name": options.database_name,
-                            "database_user": options.database_user,
-                            "database_pass": options.database_pass,
-                        },
-                        "regiond.conf",
-                    )
-
-                    # Initialize the database before starting the services.
-                    perform_work("Initializing database", init_db)
                 if options.mode != current_mode:
                     render_supervisord(options.mode)
                     set_current_mode(options.mode)
@@ -1162,16 +1040,6 @@ class cmd_config(SnappyCommand):
                 )
                 clear_line()
 
-            # Perform migrations when switching to all.
-            if changed_to_all:
-                perform_work("Waiting for postgresql", wait_for_postgresql)
-                perform_work(
-                    "Performing database migrations",
-                    migrate_db,
-                    capture=sys.stdout.isatty(),
-                )
-                clear_line()
-
 
 class cmd_status(SnappyCommand):
     """Status of controller services."""
@@ -1211,9 +1079,8 @@ class cmd_migrate(SnappyCommand):
 
     def __init__(self, parser):
         super(cmd_migrate, self).__init__(parser)
-        # '--configure' is only used from the 'hooks/configure' when the snap
-        # is in 'all' mode. Postgresql is not running when the migrate is
-        # called.
+        # '--configure' is hidden and only called from snap hooks to update the
+        # database when running in "all" mode
         parser.add_argument(
             "--configure", action="store_true", help=argparse.SUPPRESS
         )
@@ -1222,10 +1089,8 @@ class cmd_migrate(SnappyCommand):
         if os.getuid() != 0:
             raise SystemExit("The 'migrate' command must be run by root.")
 
-        # Hidden parameter that is only called from the configure hook. Updates
-        # the database when running in all mode.
+        current_mode = get_current_mode()
         if options.configure:
-            current_mode = get_current_mode()
             if current_mode == "all":
                 wait_for_postgresql()
                 sys.exit(migrate_db())
@@ -1235,11 +1100,10 @@ class cmd_migrate(SnappyCommand):
                 # In 'rack' or 'none' mode, nothing to do.
                 sys.exit(0)
 
-        mode = get_current_mode()
-        if mode == "none":
+        if current_mode == "none":
             print_msg("MAAS is not configured")
             sys.exit(1)
-        elif mode == "rack":
+        elif current_mode == "rack":
             print_msg(
                 "Mode 'rack' is not connected to a database. "
                 "No migrations to perform."

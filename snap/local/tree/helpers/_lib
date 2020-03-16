@@ -35,6 +35,10 @@ is_deb_installed() {
     dpkg-query -W -f'${Status}\n' "$1" 2>/dev/null | grep -q ^install
 }
 
+deb_version() {
+    dpkg-query -W -f'${Version}\n' "$1" 2>/dev/null
+}
+
 is_version() {
     dpkg --compare-versions "$@"
 }
