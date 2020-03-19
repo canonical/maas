@@ -5,12 +5,41 @@
 #
 
 MAAS_SNAP_COMMON="/var/snap/maas/common"
+# shellcheck disable=SC2034
+MAAS_SNAP_DATA="/var/snap/maas/current"
+# shellcheck disable=SC2034
+MAAS_SNAP="/snap/maas/current"
+MAAS_SNAP_MODE_FILE="$MAAS_SNAP_COMMON/snap_mode"
 
+# PostgreSQL settings
+MAAS_DBNAME="maasdb"
+MAAS_DBUSER="maas"
+
+# default logfile name. Can be overridden by scripts
+MAAS_LOGFILE="$(basename "$0").log"
+
+message_step() {
+    echo "* $*"
+}
 
 error_exit() {
     echo "$@" >&2
+    export DO_ERROR_EXIT=1
     exit 1
 }
+
+log_to_file() {
+    "$@" 2>&1 | tee -a "$MAAS_LOGFILE" >/dev/null
+}
+
+exit_log_message() {
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ] && [ -z "$DO_ERROR_EXIT" ] && [ -f "$MAAS_LOGFILE" ]; then
+        error_exit "** An error occurred. Check $MAAS_LOGFILE for more details"
+    fi
+}
+
+trap exit_log_message EXIT
 
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -31,6 +60,12 @@ ask_yes_no() {
     echo "$response"
 }
 
+random_password() {
+    # taken from the dbconfig-common package
+    env LANG=C LC_ALL=C tr -dc "[:alnum:]" < /dev/urandom 2>/dev/null |
+        dd bs=1 count=12 2>/dev/null
+}
+
 is_deb_installed() {
     dpkg-query -W -f'${Status}\n' "$1" 2>/dev/null | grep -q ^install
 }
@@ -43,6 +78,38 @@ is_version() {
     dpkg --compare-versions "$@"
 }
 
+snap_run() {
+    snap run --shell maas -c "$1"
+}
+
 maas_snap_mode() {
-    cat "$MAAS_SNAP_COMMON/snap_mode" 2>/dev/null || echo "none"
+    cat "$MAAS_SNAP_MODE_FILE" 2>/dev/null || echo "none"
+}
+
+maas_snap_mode_set() {
+    local mode=""
+    if is_deb_installed maas-region-api; then
+        mode="region"
+    fi
+    if is_deb_installed maas-rack-controller; then
+        [ -z "$mode" ] && mode="rack" || mode="region+rack"
+    fi
+    if  [ -n "$mode" ]; then
+        echo "$mode" > "$MAAS_SNAP_MODE_FILE"
+    fi
+}
+
+postgres_major_version() {
+    deb_version postgresql | sed 's/^\([0-9]\+\).*/\1/'
+}
+
+postgres_update_hba() {
+    local pg_hba
+    pg_hba="/etc/postgresql/$(postgres_major_version)/main/pg_hba.conf"
+    grep -q "^host[[:space:]]\\+${MAAS_DBNAME}\\b" "$pg_hba" ||
+        printf "host\t%s\t%s\t0/0\tmd5\n" "$MAAS_DBNAME" "$MAAS_DBUSER" >> "$pg_hba"
+}
+
+pg_do() {
+    sudo -iu postgres "$@"
 }

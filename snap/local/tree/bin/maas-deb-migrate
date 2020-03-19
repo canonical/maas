@@ -7,36 +7,9 @@
 # Perform migration from a deb setup to the snap.
 #
 
-SNAP_COMMON="/var/snap/maas/common"
-SNAP_DATA="/var/snap/maas/current"
-SNAP_MODE_FILE="$SNAP_COMMON/snap_mode"
+# shellcheck source=snap/local/tree/helpers/_lib
+. /snap/maas/current/helpers/_lib
 
-is_installed() {
-    dpkg-query -W -f'${Status}\n' "$1"  2>/dev/null | grep -q ^install
-}
-
-set_snap_mode() {
-    local mode=""
-    if is_installed maas-region-api; then
-        mode="region"
-    fi
-    if is_installed maas-rack-controller; then
-        [ -z "$mode" ] && mode="rack" || mode="region+rack"
-    fi
-    if  [ -n "$mode" ]; then
-        echo "$mode" > "$SNAP_MODE_FILE"
-    fi
-}
-
-get_snap_mode() {
-    if [ -f "$SNAP_MODE_FILE" ]; then
-        cat "$SNAP_MODE_FILE"
-    fi
-}
-
-snap_run() {
-    snap run --shell maas -c "$1"
-}
 
 clear_services() {
     local services="dhcpd dhcpd6 http proxy rackd regiond syslog"
@@ -62,29 +35,23 @@ clean_service() {
 
 migrate_data() {
     if [ -d /etc/maas ]; then
-        cp -a /etc/maas/* "$SNAP_DATA"
+        cp -a /etc/maas/* "$MAAS_SNAP_DATA"
     fi
 
-    mkdir -p "$SNAP_DATA/var/lib"
+    mkdir -p "$MAAS_SNAP_DATA/var/lib"
     if [ -d /var/lib/maas ]; then
-        mv /var/lib/maas "$SNAP_DATA/var/lib"
-        chown -R root:root "$SNAP_DATA/var/lib/maas"
+        mv /var/lib/maas "$MAAS_SNAP_DATA/var/lib"
+        chown -R root:root "$MAAS_SNAP_DATA/var/lib/maas"
 
-        mkdir -p "$SNAP_DATA/root"
-        if [ -d "$SNAP_DATA/var/lib/maas/.ssh" ]; then
-           mv "$SNAP_DATA/var/lib/maas/.ssh" "$SNAP_DATA/root"
+        mkdir -p "$MAAS_SNAP_DATA/root"
+        if [ -d "$MAAS_SNAP_DATA/var/lib/maas/.ssh" ]; then
+           mv "$MAAS_SNAP_DATA/var/lib/maas/.ssh" "$MAAS_SNAP_DATA/root"
         fi
     fi
     if [ -d /var/spool/maas-proxy ]; then
-        mkdir -p "$SNAP_COMMON/proxy/spool"
-        mv /var/spool/maas-proxy/* "$SNAP_COMMON/proxy/spool/"
-        chown -R snap_daemon:snap_daemon "$SNAP_COMMON/proxy/spool"
-    fi
-}
-
-migrate_db() {
-    if get_snap_mode | grep -q "region"; then
-        snap_run "maas-region migrate"
+        mkdir -p "$MAAS_SNAP_COMMON/proxy/spool"
+        mv /var/spool/maas-proxy/* "$MAAS_SNAP_COMMON/proxy/spool/"
+        chown -R snap_daemon:snap_daemon "$MAAS_SNAP_COMMON/proxy/spool"
     fi
 }
 
@@ -98,13 +65,19 @@ cleanup_data() {
        /var/spool/maas-proxy
 }
 
+apply_db_patches() {
+    if maas_snap_mode | grep -q "region"; then
+        snap_run "maas-region migrate"
+    fi
+}
+
 configure_supervisord() {
     /snap/bin/maas reconfigure-supervisord
 }
 
-set_snap_mode
+maas_snap_mode_set
 clear_services
 migrate_data
 cleanup_data
-migrate_db
+apply_db_patches
 configure_supervisord

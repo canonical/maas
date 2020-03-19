@@ -13,8 +13,6 @@
 # minimum version supported by the migration script
 MAAS_MIN_DEB_VERSION="2.4.0"
 
-MAAS_SNAP_DATA="/var/snap/maas/current"
-
 
 maas_deb_version() {
     # The version for all MAAS packages is the same, so just grab the first one that
@@ -52,7 +50,7 @@ EOF
     answer=$(ask_yes_no "Proceed?")
     [ "$answer" = "y" ] || exit 0
 
-    snap stop maas
+    log_to_file snap stop maas
     rm -rf \
        "$MAAS_SNAP_DATA/var/lib/maas" \
        "$MAAS_SNAP_DATA/root" \
@@ -62,20 +60,22 @@ EOF
 keep_database() {
     is_deb_installed maas-region-controller || return 0
     rm -f /etc/dbconfig-common/maas-region-controller.conf
-    debconf-communicate maas-region-controller <<EOF
+    log_to_file debconf-communicate maas-region-controller <<EOF
 SET maas-region-controller/dbconfig-remove false
 FSET maas-region-controller/dbconfig-remove seen true
 EOF
 }
 
 migrate_to_snap() {
-    snap stop maas
-    /snap/maas/current/bin/maas-deb-migrate
-    snap start maas
+    message_step "Migrating deb installation to snap"
+    log_to_file snap stop maas
+    log_to_file "$MAAS_SNAP/bin/maas-deb-migrate"
+    log_to_file snap start maas
 }
 
 cleanup_debs() {
-    apt autoremove -y maas maas-region-api maas-rack-controller
+    message_step "Removing unused deb packages"
+    log_to_file apt autoremove -y maas maas-region-api maas-rack-controller
 }
 
 
