@@ -77,7 +77,7 @@ class TestLXDPowerDriver(MAASTestCase):
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extensions.return_value = True
+        client.has_api_extension.return_value = True
         client.trusted = False
         driver = lxd_module.LXDPowerDriver()
         endpoint = driver.get_url(context)
@@ -102,7 +102,7 @@ class TestLXDPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extensions.return_value = False
+        client.has_api_extension.return_value = False
         driver = lxd_module.LXDPowerDriver()
         error = self.assertRaises(
             lxd_module.LXDError, driver.get_machine, system_id, context
@@ -112,7 +112,7 @@ class TestLXDPowerDriver(MAASTestCase):
             str(error),
         )
         self.assertThat(
-            client.has_api_extensions, MockCalledOnceWith("virtual-machines")
+            client.has_api_extension, MockCalledOnceWith("virtual-machines")
         )
 
     def test_get_client_raises_error_when_not_trusted_and_no_password(self):
@@ -121,7 +121,7 @@ class TestLXDPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extensions.return_value = True
+        client.has_api_extension.return_value = True
         client.trusted = False
         driver = lxd_module.LXDPowerDriver()
         error = self.assertRaises(
@@ -132,7 +132,7 @@ class TestLXDPowerDriver(MAASTestCase):
             str(error),
         )
         self.assertThat(
-            client.has_api_extensions, MockCalledOnceWith("virtual-machines")
+            client.has_api_extension, MockCalledOnceWith("virtual-machines")
         )
 
     def test_get_client_raises_error_when_cannot_connect(self):

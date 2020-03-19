@@ -89,7 +89,7 @@ class LXDPowerDriver(PowerDriver):
                 cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
                 verify=False,
             )
-            if not client.has_api_extensions("virtual-machines"):
+            if not client.has_api_extension("virtual-machines"):
                 raise LXDError(
                     "Please upgrade your LXD host to 3.19+ for virtual machine support."
                 )
