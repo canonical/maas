@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Load all pod drivers."""
@@ -8,6 +8,7 @@ __all__ = ["PodDriverRegistry"]
 from jsonschema import validate
 
 from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA
+from provisioningserver.drivers.pod.lxd import LXDPodDriver
 from provisioningserver.drivers.pod.rsd import RSDPodDriver
 from provisioningserver.drivers.pod.virsh import VirshPodDriver
 from provisioningserver.utils.registry import Registry
@@ -27,6 +28,6 @@ class PodDriverRegistry(Registry):
         return schemas
 
 
-pod_drivers = [RSDPodDriver(), VirshPodDriver()]
+pod_drivers = [LXDPodDriver(), RSDPodDriver(), VirshPodDriver()]
 for driver in pod_drivers:
     PodDriverRegistry.register_item(driver.name, driver)
