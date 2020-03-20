@@ -66,6 +66,14 @@ random_password() {
         dd bs=1 count=12 2>/dev/null
 }
 
+backup_name() {
+    local name="$1"
+    while [ -e "$name" ]; do
+        name="$name.bak"
+    done
+    echo "$name"
+}
+
 is_deb_installed() {
     dpkg-query -W -f'${Status}\n' "$1" 2>/dev/null | grep -q ^install
 }
