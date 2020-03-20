@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model that holds hint information for a Pod."""
@@ -10,6 +10,7 @@ from django.db.models import (
     BigIntegerField,
     CASCADE,
     IntegerField,
+    ManyToManyField,
     Model,
     OneToOneField,
 )
@@ -25,6 +26,10 @@ class PodHints(CleanSave, Model):
         """Needed for South to recognize this model."""
 
     pod = OneToOneField("BMC", related_name="hints", on_delete=CASCADE)
+
+    nodes = ManyToManyField(
+        "Node", related_name="pods", related_query_name="pods"
+    )
 
     cores = IntegerField(default=0)
 
