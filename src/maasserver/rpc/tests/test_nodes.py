@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test for RPC utility functions for Nodes."""
@@ -50,7 +50,9 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.twisted import always_succeed_with
+from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
@@ -251,6 +253,73 @@ class TestCreateNode(MAASTransactionServerTestCase):
         node = create_node(arch, "manual", {}, mac_addresses)
 
         self.assertEqual(architecture, node.architecture)
+
+    def test__create_assoicates_with_pod_if_given(self):
+        self.prepare_rack_rpc()
+
+        hostname = factory.make_name("hostname")
+        mac_addresses = [factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        power_parameters = {
+            "power_address": factory.make_ip_address(),  # XXX: URLs break.
+            "power_pass": factory.make_name("power_pass"),
+            "power_id": factory.make_name("power_id"),
+        }
+        pod = factory.make_Pod()
+
+        node = create_node(
+            architecture,
+            "virsh",
+            power_parameters,
+            mac_addresses,
+            hostname=hostname,
+            pod_id=pod.id,
+        )
+
+        self.assertEquals(hostname, node.hostname)
+        self.assertEquals("virsh", node.power_type)
+        self.assertDictEqual(power_parameters, node.power_parameters)
+        self.assertItemsEqual([pod.hints], [pod for pod in node.pods.all()])
+        self.assertIsNotNone(node.current_commissioning_script_set)
+        self.assertEquals(
+            RESULT_TYPE.COMMISSIONING,
+            node.current_commissioning_script_set.result_type,
+        )
+        script_result = node.current_commissioning_script_set.find_script_result(
+            script_name=LXD_OUTPUT_NAME
+        )
+        self.assertEquals(SCRIPT_STATUS.PENDING, script_result.status)
+
+    def test__assoicates_with_existing_node_and_updates_power_and_hostname(
+        self
+    ):
+        self.prepare_rack_rpc()
+
+        node = factory.make_Node_with_Interface_on_Subnet()
+        mac_addresses = [
+            str(iface.mac_address) for iface in node.interface_set.all()
+        ]
+        hostname = factory.make_name("hostname")
+        power_parameters = {
+            "power_address": factory.make_ip_address(),  # XXX: URLs break.
+            "power_pass": factory.make_name("power_pass"),
+            "power_id": factory.make_name("power_id"),
+        }
+        pod = factory.make_Pod()
+
+        node = create_node(
+            node.architecture,
+            "virsh",
+            power_parameters,
+            mac_addresses,
+            hostname=hostname,
+            pod_id=pod.id,
+        )
+
+        self.assertEquals(hostname, node.hostname)
+        self.assertEquals("virsh", node.power_type)
+        self.assertDictEqual(power_parameters, node.power_parameters)
+        self.assertItemsEqual([pod.hints], [pod for pod in node.pods.all()])
 
 
 class TestCommissionNode(MAASTransactionServerTestCase):

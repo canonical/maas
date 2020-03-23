@@ -66,7 +66,9 @@ class NodeKeyManager(Manager):
             uniquely associated with this node.
         :rtype: piston3.models.Token
         """
-        nodekey = get_one(self.filter(node=node))
+        nodekey = get_one(
+            self.filter(node=node).select_related("token__consumer")
+        )
         if nodekey is None:
             return self._create_token(node)
         else:

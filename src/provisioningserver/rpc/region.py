@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for the region.
@@ -469,8 +469,14 @@ class CreateNode(amp.Command):
         (b"mac_addresses", amp.ListOf(amp.Unicode())),
         (b"hostname", amp.Unicode(optional=True)),
         (b"domain", amp.Unicode(optional=True)),
+        (b"pod_id", amp.Integer(optional=True)),
     ]
-    response = [(b"system_id", amp.Unicode())]
+    response = [
+        (b"system_id", amp.Unicode()),
+        (b"consumer_key", amp.Unicode(optional=True)),
+        (b"token_key", amp.Unicode(optional=True)),
+        (b"token_secret", amp.Unicode(optional=True)),
+    ]
     errors = {NodeAlreadyExists: b"NodeAlreadyExists"}
 
 
