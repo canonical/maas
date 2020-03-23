@@ -17,7 +17,8 @@ if [ ! -e "$SNAP_DATA/syslog/rsyslog.conf" ]; then
 fi
 
 # Set the modules directory so rsyslogd can find them in the snap.
-export RSYSLOG_MODDIR="$SNAP/usr/lib/x86_64-linux-gnu/rsyslog/"
+export RSYSLOG_MODDIR
+RSYSLOG_MODDIR="$SNAP/usr/lib/$(uname -m)-linux-gnu/rsyslog/"
 
 # Run rsyslog.
 exec $SNAP/usr/sbin/rsyslogd -n -f "$SNAP_DATA/syslog/rsyslog.conf" -i "$SNAP_DATA/syslog/rsyslog.pid"
