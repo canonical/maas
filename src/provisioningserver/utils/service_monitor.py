@@ -443,7 +443,7 @@ class ServiceMonitor:
         return state
 
     @inlineCallbacks
-    def _execCmd(self, cmd, env, timeout=8, retries=3):
+    def _execCmd(self, cmd, env, timeout=120, retries=3):
         """Execute the `cmd` with the `env`."""
 
         def decode(result):
