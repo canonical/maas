@@ -367,6 +367,222 @@ SAMPLE_LXD_JSON = {
 }
 
 
+# This is sample output from a rpi4
+SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
+    """
+{
+        "cpu": {
+        "architecture": "aarch64",
+        "sockets": [
+            {
+                "socket": 0,
+                "cores": [
+                    {
+                        "core": 0,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 0,
+                                "thread": 0,
+                                "online": true
+                            }
+                        ],
+                        "frequency": 1500
+                    },
+                    {
+                        "core": 1,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 1,
+                                "thread": 0,
+                                "online": true
+                            }
+                        ],
+                        "frequency": 1500
+                    },
+                    {
+                        "core": 2,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 2,
+                                "thread": 0,
+                                "online": true
+                            }
+                        ],
+                        "frequency": 1500
+                    },
+                    {
+                        "core": 3,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 3,
+                                "thread": 0,
+                                "online": true
+                            }
+                        ],
+                        "frequency": 1500
+                    }
+                ],
+                "frequency": 1500,
+                "frequency_minimum": 600,
+                "frequency_turbo": 1500
+            }
+        ],
+        "total": 4
+    },
+    "memory": {
+        "hugepages_total": 0,
+        "hugepages_used": 0,
+        "hugepages_size": 0,
+        "used": 2179518464,
+        "total": 3975593984
+    },
+    "gpu": {
+        "cards": [],
+        "total": 0
+    },
+    "network": {
+        "cards": [
+            {
+                "driver": "bcmgenet",
+                "driver_version": "5.3.0-1019-raspi2",
+                "ports": [
+                    {
+                        "id": "eth0",
+                        "address": "dc:a6:32:52:b2:6c",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "10baseT/Half",
+                            "10baseT/Full",
+                            "100baseT/Half",
+                            "100baseT/Full",
+                            "1000baseT/Half",
+                            "1000baseT/Full"
+                        ],
+                        "supported_ports": [
+                            "twisted pair",
+                            "media-independent"
+                        ],
+                        "port_type": "media-independent",
+                        "transceiver_type": "external",
+                        "auto_negotiation": true,
+                        "link_detected": true,
+                        "link_speed": 1000,
+                        "link_duplex": "full"
+                    }
+                ],
+                "numa_node": 0
+            },
+            {
+                "driver": "brcmfmac",
+                "driver_version": "5.3.0-1019-raspi2",
+                "ports": [
+                    {
+                        "id": "wlan0",
+                        "address": "dc:a6:32:52:b2:6d",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "auto_negotiation": false,
+                        "link_detected": false
+                    }
+                ],
+                "numa_node": 0,
+                "vendor_id": "02d0",
+                "product_id": "a9a6",
+                "firmware_version": "01-6a2c8ad4"
+            }
+        ],
+        "total": 2
+    },
+    "storage": {
+        "disks": [
+            {
+                "id": "mmcblk0",
+                "device": "179:0",
+                "type": "mmc",
+                "read_only": false,
+                "size": 31914983424,
+                "removable": false,
+                "numa_node": 0,
+                "device_path": "platform-fe340000.emmc2",
+                "block_size": 0,
+                "rpm": 0,
+                "device_id": "mmc-SC32G_0xb7dc9460",
+                "partitions": [
+                    {
+                        "id": "mmcblk0p1",
+                        "device": "179:1",
+                        "read_only": false,
+                        "size": 268435456,
+                        "partition": 1
+                    },
+                    {
+                        "id": "mmcblk0p2",
+                        "device": "179:2",
+                        "read_only": false,
+                        "size": 31645482496,
+                        "partition": 2
+                    }
+                ]
+            },
+            {
+                "id": "sda",
+                "device": "8:0",
+                "model": "External USB 3.0",
+                "type": "usb",
+                "read_only": false,
+                "size": 1000204883968,
+                "removable": false,
+                "numa_node": 0,
+                "device_path": "platform-fd500000.pcie-pci-0000:01:00.0-usb-0:2:1.0-scsi-0:0:0:0",
+                "block_size": 0,
+                "firmware_version": "5438",
+                "rpm": 0,
+                "serial": "20190809001990F",
+                "device_id": "usb-TOSHIBA_External_USB_3.0_20190809001990F-0:0",
+                "partitions": [
+                    {
+                        "id": "sda1",
+                        "device": "8:1",
+                        "read_only": false,
+                        "size": 1073741824,
+                        "partition": 1
+                    },
+                    {
+                        "id": "sda2",
+                        "device": "8:2",
+                        "read_only": false,
+                        "size": 21474836480,
+                        "partition": 2
+                    },
+                    {
+                        "id": "sda3",
+                        "device": "8:3",
+                        "read_only": false,
+                        "size": 21474836480,
+                        "partition": 3
+                    },
+                    {
+                        "id": "sda4",
+                        "device": "8:4",
+                        "read_only": false,
+                        "size": 956180420608,
+                        "partition": 4
+                    }
+                ]
+            }
+        ],
+        "total": 8
+    }
+}
+"""
+)
+
+
 # This matches ip_addr_results_xenial.txt for the unit tests
 SAMPLE_LXD_XENIAL_NETWORK_JSON = {
     "cards": [
@@ -1400,6 +1616,19 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(2, len(numa_nodes))
         for numa_node in numa_nodes:
             self.assertEqual(expected_memory, numa_node.memory)
+
+    def test__updates_memory_numa_nodes_missing(self):
+        total_memory = SAMPLE_LXD_NO_MEMORY_NUMA_JSON["memory"]["total"]
+        node = factory.make_Node()
+        self.patch(hooks_module, "update_node_network_information")
+
+        process_lxd_results(
+            node, json.dumps(SAMPLE_LXD_NO_MEMORY_NUMA_JSON).encode("utf-8"), 0
+        )
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
+        self.assertEqual(1, len(numa_nodes))
+        for numa_node in numa_nodes:
+            self.assertEqual(int(total_memory / 1024 / 1024), numa_node.memory)
 
     def test__updates_cpu_numa_nodes(self):
         node = factory.make_Node()

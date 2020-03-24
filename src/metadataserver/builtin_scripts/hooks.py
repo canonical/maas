@@ -546,13 +546,16 @@ def _parse_cpuinfo(data):
 
 def _parse_memory(data, numa_nodes):
 
-    total_memory = data.get("memory", {}).get("total", 0) / 1024 / 1024
-    for memory_node in data.get("memory", {}).get("nodes", []):
+    total_memory = data.get("memory", {}).get("total", 0)
+    default_numa_node = {"numa_node": 0, "total": total_memory}
+    for memory_node in data.get("memory", {}).get(
+        "nodes", [default_numa_node]
+    ):
         numa_nodes[memory_node["numa_node"]]["memory"] = (
             memory_node["total"] / 1024 / 1024
         )
 
-    return total_memory, numa_nodes
+    return total_memory / 1024 / 1024, numa_nodes
 
 
 def set_virtual_tag(node, output, exit_status):
