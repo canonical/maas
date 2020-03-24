@@ -883,13 +883,13 @@ class FakePodDriverBase(PodDriverBase):
         self.settings = settings
         super(FakePodDriverBase, self).__init__()
 
-    def discover(self, system_id, context):
+    def discover(self, context, pod_id=None):
         raise NotImplementedError
 
-    def compose(self, system_id, context, request):
+    def compose(self, pod_id, context, request):
         raise NotImplementedError
 
-    def decompose(self, system_id, context):
+    def decompose(self, pod_id, context):
         raise NotImplementedError
 
     def query(self, system_id, context):
@@ -1008,6 +1008,7 @@ class TestPodDriverBase(MAASTestCase):
                 "fields": fake_settings,
                 "queryable": fake_driver.queryable,
                 "missing_packages": [],
+                "chassis": True,
             },
             fake_driver.get_schema(),
         )

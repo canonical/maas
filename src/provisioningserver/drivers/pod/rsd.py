@@ -822,7 +822,7 @@ class RSDPodDriver(RedfishPowerDriverBase, PodDriverBase):
         return discovered_pod_hints
 
     @inlineCallbacks
-    def discover(self, system_id, context):
+    def discover(self, pod_id, context):
         """Discover all resources.
 
         Returns a defer to a DiscoveredPod object.

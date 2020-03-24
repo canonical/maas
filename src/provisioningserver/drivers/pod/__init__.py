@@ -380,20 +380,20 @@ class PodDriverBase(PowerDriverBase):
     """Base driver for a pod driver."""
 
     @abstractmethod
-    def discover(self, context, system_id=None):
+    def discover(self, pod_id, context):
         """Discover the pod resources.
 
         :param context: Pod settings.
-        :param system_id: Pod system_id.
+        :param pod_id: Pod id.
         :returns: `Deferred` returning `DiscoveredPod`.
         :rtype: `twisted.internet.defer.Deferred`
         """
 
     @abstractmethod
-    def compose(self, system_id, context, request):
+    def compose(self, pod_id, context, request):
         """Compose a node from parameters in context.
 
-        :param system_id: Pod system_id.
+        :param pod_id: Pod id.
         :param context: Pod settings.
         :param request: Requested machine.
         :type request: `RequestedMachine`.
@@ -401,10 +401,10 @@ class PodDriverBase(PowerDriverBase):
         """
 
     @abstractmethod
-    def decompose(self, system_id, context):
+    def decompose(self, pod_id, context):
         """Decompose a node.
 
-        :param system_id: Pod system_id.
+        :param pod_id: Pod id.
         :param context:  Pod settings.
         """
 

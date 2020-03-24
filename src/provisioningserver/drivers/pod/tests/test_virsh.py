@@ -2825,7 +2825,7 @@ class TestVirshPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_discover_errors_on_failed_login(self):
         driver = VirshPodDriver()
-        system_id = factory.make_name("system_id")
+        pod_id = factory.make_name("pod_id")
         context = {
             "power_address": factory.make_name("power_address"),
             "power_pass": factory.make_name("power_pass"),
@@ -2833,12 +2833,12 @@ class TestVirshPodDriver(MAASTestCase):
         mock_login = self.patch(virsh.VirshSSH, "login")
         mock_login.return_value = False
         with ExpectedException(virsh.VirshError):
-            yield driver.discover(system_id, context)
+            yield driver.discover(pod_id, context)
 
     @inlineCallbacks
     def test_discover(self):
         driver = VirshPodDriver()
-        system_id = factory.make_name("system_id")
+        pod_id = factory.make_name("pod_id")
         context = {
             "power_address": factory.make_name("power_address"),
             "power_pass": factory.make_name("power_pass"),
@@ -2864,7 +2864,7 @@ class TestVirshPodDriver(MAASTestCase):
         )
         mock_list_machines.return_value = machines
 
-        discovered_pod = yield driver.discover(system_id, context)
+        discovered_pod = yield driver.discover(pod_id, context)
         self.expectThat(mock_create_storage_pool, MockCalledOnceWith())
         self.expectThat(mock_get_pod_resources, MockCalledOnceWith())
         self.expectThat(mock_get_pod_hints, MockCalledOnceWith())
@@ -2882,7 +2882,7 @@ class TestVirshPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_compose(self):
         driver = VirshPodDriver()
-        system_id = factory.make_name("system_id")
+        pod_id = factory.make_name("pod_id")
         context = {
             "power_address": factory.make_name("power_address"),
             "power_pass": factory.make_name("power_pass"),
@@ -2895,7 +2895,7 @@ class TestVirshPodDriver(MAASTestCase):
         mock_get_pod_hints.return_value = sentinel.hints
 
         discovered, hints = yield driver.compose(
-            system_id, context, make_requested_machine()
+            pod_id, context, make_requested_machine()
         )
         self.assertEquals(sentinel.discovered, discovered)
         self.assertEquals(sentinel.hints, hints)
@@ -2903,7 +2903,7 @@ class TestVirshPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_decompose(self):
         driver = VirshPodDriver()
-        system_id = factory.make_name("system_id")
+        pod_id = factory.make_name("pod_id")
         context = {
             "power_address": factory.make_name("power_address"),
             "power_pass": factory.make_name("power_pass"),
@@ -2915,5 +2915,5 @@ class TestVirshPodDriver(MAASTestCase):
         mock_get_pod_hints = self.patch(virsh.VirshSSH, "get_pod_hints")
         mock_get_pod_hints.return_value = sentinel.hints
 
-        hints = yield driver.decompose(system_id, context)
+        hints = yield driver.decompose(pod_id, context)
         self.assertEquals(sentinel.hints, hints)

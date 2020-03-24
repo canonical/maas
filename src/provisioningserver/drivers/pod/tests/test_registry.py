@@ -40,6 +40,7 @@ class TestPodDriverRegistry(MAASTestCase):
                     "fields": [],
                     "queryable": fake_driver_one.queryable,
                     "missing_packages": fake_driver_one.detect_missing_packages(),
+                    "chassis": True,
                 },
                 {
                     "driver_type": "pod",
@@ -48,6 +49,7 @@ class TestPodDriverRegistry(MAASTestCase):
                     "fields": [],
                     "queryable": fake_driver_two.queryable,
                     "missing_packages": fake_driver_two.detect_missing_packages(),
+                    "chassis": True,
                 },
             ],
             PodDriverRegistry.get_schema(),

@@ -1408,7 +1408,7 @@ class VirshPodDriver(PodDriver):
         return conn
 
     @inlineCallbacks
-    def discover(self, system_id, context):
+    def discover(self, pod_id, context):
         """Discover all resources.
 
         Returns a defer to a DiscoveredPod object.
@@ -1447,7 +1447,7 @@ class VirshPodDriver(PodDriver):
         return discovered_pod
 
     @inlineCallbacks
-    def compose(self, system_id, context, request):
+    def compose(self, pod_id, context, request):
         """Compose machine."""
         conn = yield self.get_virsh_connection(context)
         default_pool = context.get(
@@ -1460,7 +1460,7 @@ class VirshPodDriver(PodDriver):
         return created_machine, hints
 
     @inlineCallbacks
-    def decompose(self, system_id, context):
+    def decompose(self, pod_id, context):
         """Decompose machine."""
         conn = yield self.get_virsh_connection(context)
         yield deferToThread(conn.delete_domain, context["power_id"])
