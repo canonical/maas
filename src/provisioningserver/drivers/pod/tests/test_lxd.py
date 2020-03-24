@@ -84,7 +84,7 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extensions.return_value = True
+        client.has_api_extension.return_value = True
         client.trusted = False
         driver = lxd_module.LXDPowerDriver()
         endpoint = driver.get_url(context)
@@ -110,13 +110,13 @@ class TestLXDPodDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extensions.return_value = False
+        client.has_api_extension.return_value = False
         driver = lxd_module.LXDPowerDriver()
         error_msg = "Please upgrade your LXD host to *."
         with ExpectedException(lxd_module.LXDError, error_msg):
             yield driver.get_machine(system_id, context)
         self.assertThat(
-            client.has_api_extensions, MockCalledOnceWith("virtual-machines")
+            client.has_api_extension, MockCalledOnceWith("virtual-machines")
         )
 
     @inlineCallbacks
@@ -126,14 +126,14 @@ class TestLXDPodDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extensions.return_value = True
+        client.has_api_extension.return_value = True
         client.trusted = False
         driver = lxd_module.LXDPowerDriver()
         error_msg = f"{system_id}: Certificate is not trusted and no password was given."
         with ExpectedException(lxd_module.LXDError, error_msg):
             yield driver.get_machine(system_id, context)
         self.assertThat(
-            client.has_api_extensions, MockCalledOnceWith("virtual-machines")
+            client.has_api_extension, MockCalledOnceWith("virtual-machines")
         )
 
     @inlineCallbacks

@@ -94,7 +94,7 @@ class LXDPodDriver(PodDriver):
                 verify=False,
             )
             supports_virtual_machines = yield deferToThread(
-                client.has_api_extensions, "virtual-machines"
+                client.has_api_extension, "virtual-machines"
             )
             if not supports_virtual_machines:
                 raise LXDError(
