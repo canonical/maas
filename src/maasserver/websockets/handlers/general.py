@@ -10,6 +10,7 @@ from collections import OrderedDict
 import petname
 
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
+from maasserver.deprecations import get_deprecations
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
@@ -58,6 +59,7 @@ class GeneralHandler(Handler):
             "power_types",
             "release_options",
             "navigation_options",
+            "deprecation_notices",
         ]
 
     def architectures(self, params):
@@ -210,3 +212,7 @@ class GeneralHandler(Handler):
         from maasserver.models.bmc import Pod  # circular import
 
         return {"rsd": Pod.objects.have_rsd(self.user, PodPermission.view)}
+
+    def deprecation_notices(self, params):
+        """Return currently active deprecation notices to display to the user."""
+        return get_deprecations()

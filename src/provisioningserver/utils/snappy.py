@@ -11,6 +11,7 @@ __all__ = [
 ]
 
 import os
+from pathlib import Path
 
 import yaml
 
@@ -44,3 +45,14 @@ def get_snap_version():
     with open(meta_path, "r") as fp:
         snap_meta = yaml.safe_load(fp)
     return snap_meta["version"]
+
+
+def get_snap_mode():
+    """Return the snap mode."""
+    path = Path(get_snap_common_path()) / "snap_mode"
+    if not path.exists():
+        return None
+    mode = path.read_text().strip()
+    if mode == "none":
+        return None
+    return mode

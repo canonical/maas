@@ -35,7 +35,6 @@ that are not tied to an HTTP reqoest.
 
 __all__ = ["loop", "reset", "services", "start", "stop"]
 
-from logging import getLogger
 import os
 from socket import gethostname
 
@@ -43,6 +42,7 @@ from twisted.application.service import MultiService, Service
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 
+from maasserver.deprecations import log_deprecations
 from maasserver.utils.orm import disable_all_database_connections
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.prometheus.metrics import set_global_labels
@@ -52,9 +52,6 @@ from provisioningserver.utils.twisted import asynchronous
 DEFAULT_PORT = 5240
 # Default port for the prometheus exporter.
 DEFAULT_PROMETHEUS_EXPORTER_PORT = 5239
-
-logger = getLogger(__name__)
-
 
 reactor.addSystemEventTrigger(
     "before", "startup", disable_all_database_connections
@@ -70,6 +67,7 @@ def make_DatabaseTaskService():
 def make_RegionControllerService(postgresListener):
     from maasserver.region_controller import RegionControllerService
 
+    log_deprecations()
     return RegionControllerService(postgresListener)
 
 

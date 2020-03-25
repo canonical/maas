@@ -5,9 +5,11 @@
 
 __all__ = []
 
+from pathlib import Path
 from unittest.mock import sentinel
 
 from distro_info import UbuntuDistroInfo
+from fixtures import EnvironmentVariable
 import petname
 
 from maasserver.enum import (
@@ -306,3 +308,31 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_navigation_options(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual({"rsd": False}, handler.navigation_options({}))
+
+    def test_deprecation_notices_empty(self):
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        self.assertEqual(handler.deprecation_notices({}), [])
+
+    def test_deprecation_notices_snap_not_all_mode(self):
+        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
+        snap_common_path = Path(self.make_dir())
+        self.useFixture(
+            EnvironmentVariable("SNAP_COMMON", str(snap_common_path))
+        )
+        snap_common_path.joinpath("snap_mode").write_text(
+            "region+rack", "utf-8"
+        )
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        self.assertEqual(handler.deprecation_notices({}), [])
+
+    def test_deprecation_notices_snap_all_mode(self):
+        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
+        snap_common_path = Path(self.make_dir())
+        self.useFixture(
+            EnvironmentVariable("SNAP_COMMON", str(snap_common_path))
+        )
+        snap_common_path.joinpath("snap_mode").write_text("all", "utf-8")
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        [notice] = handler.deprecation_notices({})
+        self.assertEqual(notice["id"], "MD1")
+        self.assertEqual(notice["since"], "2.8")

@@ -81,3 +81,24 @@ class TestSnappyUtils(MAASTestCase):
         self.assertEqual({"version": os.getcwd()}, yaml_load_unsafe(snap_yaml))
         # However, it will not be loaded by get_snap_version.
         self.assertRaises(yaml.YAMLError, self._get_snap_version, snap_yaml)
+
+    def _write_snap_mode(self, mode):
+        snap_common_path = Path(self.make_dir())
+        snap_mode_path = snap_common_path.joinpath("snap_mode")
+        if mode is not None:
+            snap_mode_path.write_text(mode, "utf-8")
+        self.useFixture(
+            EnvironmentVariable("SNAP_COMMON", str(snap_common_path))
+        )
+
+    def test_get_snap_mode_no_mode(self):
+        self._write_snap_mode(None)
+        self.assertIsNone(snappy.get_snap_mode())
+
+    def test_get_snap_mode_mode_none(self):
+        self._write_snap_mode("none")
+        self.assertIsNone(snappy.get_snap_mode())
+
+    def test_get_snap_mode_mode_other(self):
+        self._write_snap_mode("rack+region")
+        self.assertEqual(snappy.get_snap_mode(), "rack+region")
