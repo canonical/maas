@@ -144,11 +144,6 @@ define test-scripts
   bin/test.testing
 endef
 
-lxd:
-	utilities/configure-lxd-profile
-	utilities/create-lxd-bionic-image
-.PHONY: lxd
-
 test: test-py
 .PHONY: test
 
