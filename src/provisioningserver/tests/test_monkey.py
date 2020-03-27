@@ -5,37 +5,17 @@
 
 __all__ = []
 
-from unittest.mock import sentinel
-
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import Equals
-import tftp.datagram
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.monkey import (
-    add_patches_to_txtftp,
     augment_twisted_deferToThreadPool,
     get_patched_URI,
 )
-
-
-class TestAddTermErrorCodeToTFTP(MAASTestCase):
-    def test_adds_error_code_8(self):
-        self.patch(tftp.datagram, "errors", {})
-        add_patches_to_txtftp()
-        self.assertIn(8, tftp.datagram.errors)
-        self.assertEqual(
-            "Terminate transfer due to option negotiation",
-            tftp.datagram.errors.get(8),
-        )
-
-    def test_skips_adding_error_code_if_already_present(self):
-        self.patch(tftp.datagram, "errors", {8: sentinel.error_8})
-        add_patches_to_txtftp()
-        self.assertEqual(sentinel.error_8, tftp.datagram.errors.get(8))
 
 
 class TestAugmentDeferToThreadPool(MAASTestCase):

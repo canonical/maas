@@ -9,20 +9,6 @@ server patching.
 __all__ = ["add_patches_to_txtftp", "add_patches_to_twisted"]
 
 
-def add_term_error_code_to_tftp():
-    """Add error code 8 to TFT server as introduced by RFC 2347.
-
-    Manually apply the fix to python-tx-tftp landed in
-    https://github.com/shylent/python-tx-tftp/pull/20
-    """
-    import tftp.datagram
-
-    if tftp.datagram.errors.get(8) is None:
-        tftp.datagram.errors[
-            8
-        ] = "Terminate transfer due to option negotiation"
-
-
 def fix_tftp_requests():
     """Use intelligence in determining IPv4 vs IPv6 when creatinging a session.
 
@@ -354,7 +340,6 @@ def augment_twisted_deferToThreadPool():
 
 
 def add_patches_to_txtftp():
-    add_term_error_code_to_tftp()
     fix_tftp_requests()
 
 
