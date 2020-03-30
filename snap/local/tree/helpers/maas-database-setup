@@ -47,16 +47,16 @@ ensure_postgres_installed() {
 }
 
 pg_user_exists() {
-    [ -n "$(pg_do psql -tc "\du $MAAS_DBUSER")" ]
+    [ -n "$(pg_query "\du $MAAS_DBUSER")" ]
 }
 
 pg_db_exists() {
-    [ -n "$(pg_do psql -tc "\l $MAAS_DBNAME")" ]
+    [ -n "$(pg_query  "\l $MAAS_DBNAME")" ]
 }
 
 setup_database() {
     message_step "Setting up PostgreSQL database for MAAS..."
-    ! pg_db_exists || error_exit "\
+    ! pg_db_exists || error_exit "
 The PostgreSQL database \"$MAAS_DBNAME\" already exists.
 Please remove it before running the script.
 
@@ -78,9 +78,9 @@ EOF
     fi
 
     if pg_user_exists; then
-        log_to_file pg_do psql -c "ALTER USER \"$MAAS_DBUSER\" WITH ENCRYPTED PASSWORD '$MAAS_DBPASS'"
+        log_to_file pg_query "ALTER USER \"$MAAS_DBUSER\" WITH ENCRYPTED PASSWORD '$MAAS_DBPASS'"
     else
-        log_to_file pg_do psql -c "CREATE USER \"$MAAS_DBUSER\" WITH ENCRYPTED PASSWORD '$MAAS_DBPASS'"
+        log_to_file pg_query "CREATE USER \"$MAAS_DBUSER\" WITH ENCRYPTED PASSWORD '$MAAS_DBPASS'"
     fi
     log_to_file pg_do createdb -O "$MAAS_DBUSER" "$MAAS_DBNAME"
 
@@ -95,9 +95,11 @@ dbname:   $MAAS_DBNAME
 user:     $MAAS_DBUSER
 password: $MAAS_DBPASS
 
-If you proceed, MAAS can now be set up with this configuration.  Otherwise,
-"maas init" can be run later, and configured with these parameters for the
-database configuration.
+If you proceed, MAAS will be configured to run in "region+rack" mode using the
+above database configuration.
+
+If you want a different configuration, you can run "maas init" later, and use
+the details above for database configuration.
 
 EOF
 

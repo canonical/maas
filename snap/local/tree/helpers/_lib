@@ -1,7 +1,7 @@
 # -*- mode: sh -*-
 # shellcheck shell=bash
 #
-# Common functions for helper scripts
+# Common functions for helper scripts.
 #
 
 MAAS_SNAP_COMMON="/var/snap/maas/common"
@@ -120,4 +120,8 @@ postgres_update_hba() {
 
 pg_do() {
     sudo -iu postgres "$@"
+}
+
+pg_query() {
+    pg_do psql -At -c "$@"
 }
