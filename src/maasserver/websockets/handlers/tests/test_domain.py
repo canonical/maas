@@ -515,8 +515,8 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertThat(resource.address_ttl, Equals(ttl))
         self.assertThat(resource.name, Equals(name))
-        self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.1", "127.0.0.2"])
+        self.assertCountEqual(
+            resource.get_addresses(), ["127.0.0.1", "127.0.0.2"]
         )
 
     def test__update_address__updates_single_address(self):
@@ -538,8 +538,8 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
             }
         )
         resource = reload_object(resource)
-        self.assertThat(
-            resource.get_addresses(), Equals(["127.0.0.2", "127.0.0.3"])
+        self.assertCountEqual(
+            resource.get_addresses(), ["127.0.0.2", "127.0.0.3"]
         )
 
     def test__update_address__creates_second_dnsrecord_if_name_changed(self):
