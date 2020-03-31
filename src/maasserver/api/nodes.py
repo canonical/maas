@@ -188,33 +188,35 @@ def store_node_power_parameters(node, request):
 
     The parameters should be JSON, passed with key `power_parameters`.
     """
+    power_type = request.POST.get("power_type", None)
+    if power_type is None:
+        return
     # Don't overwrite redfish power type with ipmi.
     if node.power_type == "redfish":
         power_type = node.power_type
-    else:
-        power_type = request.POST.get("power_type", None)
-    if power_type is None:
-        return
 
-    power_types = get_driver_types(ignore_errors=True)
-    if len(power_types) == 0:
+    power_types = list(get_driver_types(ignore_errors=True))
+    if not power_types:
         raise ClusterUnavailable(
             "No rack controllers connected to validate the power_type."
         )
 
-    if power_type not in list(power_types) + [UNKNOWN_POWER_TYPE]:
+    if power_type not in power_types + [UNKNOWN_POWER_TYPE]:
         raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)
 
     power_parameters = request.POST.get("power_parameters", None)
-    if power_parameters and not power_parameters.isspace():
+    if power_parameters:
         try:
             power_parameters = json.loads(power_parameters)
         except ValueError:
             raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
-        if power_type == "redfish":
-            power_parameters.update(node.instance_power_parameters)
-    if not power_parameters:
-        power_parameters = {}
+    else:
+        power_parameters = node.power_parameters
+    if power_type == "redfish":
+        power_parameters = {
+            **node.instance_power_parameters,
+            **power_parameters,
+        }
     node.set_power_config(power_type, power_parameters)
     node.save()
 

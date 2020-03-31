@@ -197,15 +197,40 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         )
         self.save.assert_has_calls([])
 
+    def test_power_type_redfish_no_parameters(self):
+        self.node.set_power_config("redfish", {"node_id": "1"})
+        self.request.POST = {}
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual("redfish", self.node.power_type)
+        self.assertEqual(
+            self.node.instance_power_parameters, self.node.power_parameters
+        )
+        self.save.assert_has_calls([])
+
+    def test_power_type_redfish_update_parameters_from_ipmi(self):
+        self.node.set_power_config("redfish", {"foo": 1})
+        power_parameters = {"foo": 2, "bar": 3}
+        self.request.POST = {
+            "power_type": "ipmi",
+            "power_parameters": json.dumps(power_parameters),
+        }
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual("redfish", self.node.power_type)
+        self.assertEqual(self.node.power_parameters, power_parameters)
+        self.assertEqual(
+            self.node.instance_power_parameters, self.node.power_parameters
+        )
+        self.save.assert_called_once_with()
+
     def test_power_type_set_but_no_parameters(self):
         # When power_type is valid, it is set. However, if power_parameters is
         # not specified, the node's power_parameters is left alone, and the
         # node is saved.
-        power_type = factory.pick_power_type()
-        self.request.POST = {"power_type": power_type}
+        self.node.set_power_config("ipmi", {"some": "param"})
+        self.request.POST = {"power_type": "virsh"}
         store_node_power_parameters(self.node, self.request)
-        self.assertEqual(power_type, self.node.power_type)
-        self.assertEqual({}, self.node.power_parameters)
+        self.assertEqual(self.node.power_type, "virsh")
+        self.assertEqual({"some": "param"}, self.node.power_parameters)
         self.save.assert_called_once_with()
 
     def test_power_type_set_with_parameters(self):
