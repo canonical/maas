@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for the provisioning server."""
@@ -6,6 +6,7 @@
 __all__ = [
     "CircularDependency",
     "flatten",
+    "kernel_to_debian_architecture",
     "locate_config",
     "locate_template",
     "parse_key_value_file",
@@ -300,3 +301,19 @@ def convert_size_to_bytes(value):
         )
     # Convert value to bytes.
     return int(capacity_value * multiplier)
+
+
+def kernel_to_debian_architecture(kernel_arch):
+    """Map a kernel architecture to Debian architecture."""
+    # https://github.com/lxc/lxd/blob/master/shared/osarch/architectures.go
+    # https://www.debian.org/releases/oldstable/i386/ch02s01.html.en
+    architectures = {
+        "i686": "i386/generic",
+        "x86_64": "amd64/generic",
+        "aarch64": "arm64/generic",
+        "ppc64le": "ppc64el/generic",
+        "s390x": "s390x/generic",
+        "mips": "mips/generic",
+        "mips64": "mips64el/generic",
+    }
+    return architectures[kernel_arch]

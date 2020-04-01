@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """BMC objects."""
@@ -648,12 +648,18 @@ class Pod(BMC):
             hints = self.hints
         except PodHints.DoesNotExist:
             hints = self.hints = PodHints()
-        hints.cores = discovered_hints.cores
-        hints.cpu_speed = discovered_hints.cpu_speed
-        hints.memory = discovered_hints.memory
-        hints.local_storage = discovered_hints.local_storage
-        hints.local_disks = discovered_hints.local_disks
-        hints.iscsi_storage = discovered_hints.iscsi_storage
+        if discovered_hints.cores != -1:
+            hints.cores = discovered_hints.cores
+        if discovered_hints.cpu_speed != -1:
+            hints.cpu_speed = discovered_hints.cpu_speed
+        if discovered_hints.memory != -1:
+            hints.memory = discovered_hints.memory
+        if discovered_hints.local_storage != -1:
+            hints.local_storage = discovered_hints.local_storage
+        if discovered_hints.local_disks != -1:
+            hints.local_disks = discovered_hints.local_disks
+        if discovered_hints.iscsi_storage != -1:
+            hints.iscsi_storage = discovered_hints.iscsi_storage
         hints.save()
 
     def add_tag(self, tag):
@@ -1378,19 +1384,67 @@ class Pod(BMC):
         `discovered_pod` values will be removed.
         """
         self.architectures = discovered_pod.architectures
+        if not self.name and discovered_pod.name:
+            self.name = discovered_pod.name
         self.capabilities = discovered_pod.capabilities
-        self.cores = discovered_pod.cores
-        self.cpu_speed = discovered_pod.cpu_speed
-        self.memory = discovered_pod.memory
-        self.local_storage = discovered_pod.local_storage
-        self.local_disks = discovered_pod.local_disks
-        self.iscsi_storage = discovered_pod.iscsi_storage
+        if discovered_pod.cores != -1:
+            self.cores = discovered_pod.cores
+        if discovered_pod.cpu_speed != -1:
+            self.cpu_speed = discovered_pod.cpu_speed
+        if discovered_pod.memory != -1:
+            self.memory = discovered_pod.memory
+        if discovered_pod.local_storage != -1:
+            self.local_storage = discovered_pod.local_storage
+        if discovered_pod.local_disks != -1:
+            self.local_disks = discovered_pod.local_disks
+        if discovered_pod.iscsi_storage != -1:
+            self.iscsi_storage = discovered_pod.iscsi_storage
         self.tags = list(set(self.tags).union(discovered_pod.tags))
         self.save()
         self.sync_hints(discovered_pod.hints)
         self.sync_storage_pools(discovered_pod.storage_pools)
         self.sync_machines(discovered_pod.machines, commissioning_user)
         podlog.info("%s: finished syncing discovered information" % self.name)
+
+    def sync_hints_from_nodes(self):
+        """Sync the hints based on discovered data from assoicated nodes."""
+        try:
+            hints = self.hints
+        except PodHints.DoesNotExist:
+            hints = self.hints = PodHints()
+        self.cores = hints.cores = 0
+        self.cpu_speed = hints.cpu_speed = 0
+        self.memory = hints.memory = 0
+        self.local_storage = hints.local_storage = 0
+        self.local_disks = hints.local_disks = 0
+        self.iscsi_storage = hints.iscsi_storage = 0
+        # Set the hints for the Pod to the total amount for all nodes in a
+        # cluster.
+        for node in hints.nodes.all().prefetch_related(
+            "numanode_set", "blockdevice_set"
+        ):
+            for numa in node.numanode_set.all():
+                hints.cores += len(numa.cores)
+                self.cores += len(numa.cores)
+                hints.memory += numa.memory
+                self.memory += numa.memory
+            if node.cpu_speed != 0:
+                if hints.cpu_speed != 0:
+                    hints.cpu_speed = (hints.cpu_speed + node.cpu_speed) / 2
+                else:
+                    hints.cpu_speed = node.cpu_speed
+                self.cpu_speed = hints.cpu_speed
+            for bd in node.blockdevice_set.all():
+                if bd.type == "physical":
+                    hints.local_storage += bd.size
+                    self.local_storage += bd.size
+                    hints.local_disks += 1
+                    self.local_disks += 1
+                elif bd.type == "iscsi":
+                    hints.iscsi_storage += bd.size
+                    self.iscsi_storage += bd.size
+        hints.save()
+        self.save()
 
     def get_used_cores(self, machines=None):
         """Get the number of used cores in the pod.

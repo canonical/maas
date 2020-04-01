@@ -27,9 +27,7 @@ class PodHints(CleanSave, Model):
 
     pod = OneToOneField("BMC", related_name="hints", on_delete=CASCADE)
 
-    nodes = ManyToManyField(
-        "Node", related_name="pods", related_query_name="pods"
-    )
+    nodes = ManyToManyField("Node")
 
     cores = IntegerField(default=0)
 

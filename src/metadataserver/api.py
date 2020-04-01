@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -787,7 +787,12 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_STATUS.ENTERING_RESCUE_MODE: self._process_entering_rescue_mode,
                 NODE_STATUS.RESCUE_MODE: self._process_rescue_mode,
             }
-            process = process_status_dict[node.status]
+            if node.status not in process_status_dict and node.pods.exists():
+                # If a machine is also a Pod the RackController may update its
+                # results.
+                process = self._process_commissioning
+            else:
+                process = process_status_dict[node.status]
         else:
             # Non-machine nodes can send testing results when in testing
             # state, otherwise accept all signals as commissioning signals

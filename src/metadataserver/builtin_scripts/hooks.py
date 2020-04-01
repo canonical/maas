@@ -485,6 +485,9 @@ def process_lxd_results(node, output, exit_status):
 
     node.save(update_fields=["cpu_count", "cpu_speed", "memory"])
 
+    for pod in node.pods.all():
+        pod.sync_hints_from_nodes()
+
 
 def _parse_cpuinfo(data):
     """Retrieve cpu_count, cpu_speed, and cpu_model."""

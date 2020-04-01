@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -479,6 +479,7 @@ class Factory(maastesting.factory.Factory):
             bmc=bmc,
             hardware_uuid=hardware_uuid,
             ephemeral_deploy=ephemeral_deploy,
+            cpu_speed=random.randint(1000, 5000),
             **kwargs,
         )
         if bmc is None:
@@ -3123,20 +3124,16 @@ class Factory(maastesting.factory.Factory):
             storage=storage,
         )
 
-    def make_NUMANode(self, node=None, cores=None, memory=1024 * 1024):
+    def make_NUMANode(self, node=None, cores=None, memory=None):
         if node is None:
             node = factory.make_Node()
         index = node.numanode_set.count()
-        now = datetime.utcnow()
         if cores is None:
-            cores = []
+            cores = list(range(2 ** random.randint(0, 4)))
+        if memory is None:
+            memory = 1024 * random.randint(1, 256)
         return NUMANode.objects.create(
-            node=node,
-            index=index,
-            created=now,
-            updated=now,
-            cores=cores,
-            memory=memory,
+            node=node, index=index, cores=cores, memory=memory
         )
 
 

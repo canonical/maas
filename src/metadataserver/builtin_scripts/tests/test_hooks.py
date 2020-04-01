@@ -1707,6 +1707,24 @@ class TestProcessLXDResults(MAASServerTestCase):
             "The LXD script hook depends on the IPADDR script result",
         )
 
+    def test__syncs_pods(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        pod.hints.nodes.add(node)
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+
+        process_lxd_results(
+            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
+        )
+        pod.hints.refresh_from_db()
+
+        self.assertEquals(8, pod.hints.cores)
+        self.assertEquals(2400, pod.hints.cpu_speed)
+        self.assertEquals(15918, pod.hints.memory)
+        self.assertEquals(6513285316608, pod.hints.local_storage)
+        self.assertEquals(2, pod.hints.local_disks)
+        self.assertEquals(0, pod.hints.iscsi_storage)
+
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__idempotent_block_devices(self):

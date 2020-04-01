@@ -314,15 +314,12 @@ class PodForm(MAASModelForm):
         def update_db(result):
             discovered_pod, discovered = result
 
-            # When called with an instance that has no name, be sure to set
-            # it before going any further. If this is a new instance this will
-            # also create it in the database.
-            if not self.instance.name:
-                self.instance.set_random_name()
             if self.request is not None:
                 user = self.request.user
             else:
                 user = self.user
+            # If this is a new instance it will be stored in the database
+            # at the end of sync.
             self.instance.sync(discovered_pod, user)
 
             # Save which rack controllers can route and which cannot.

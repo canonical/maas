@@ -279,7 +279,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
         self.assertEquals(hostname, node.hostname)
         self.assertEquals("virsh", node.power_type)
         self.assertDictEqual(power_parameters, node.power_parameters)
-        self.assertItemsEqual([pod.hints], [pod for pod in node.pods.all()])
+        self.assertItemsEqual([pod], [pod for pod in node.pods.all()])
         self.assertIsNotNone(node.current_commissioning_script_set)
         self.assertEquals(
             RESULT_TYPE.COMMISSIONING,
@@ -319,7 +319,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
         self.assertEquals(hostname, node.hostname)
         self.assertEquals("virsh", node.power_type)
         self.assertDictEqual(power_parameters, node.power_parameters)
-        self.assertItemsEqual([pod.hints], [pod for pod in node.pods.all()])
+        self.assertItemsEqual([pod], [pod for pod in node.pods.all()])
 
 
 class TestCommissionNode(MAASTransactionServerTestCase):

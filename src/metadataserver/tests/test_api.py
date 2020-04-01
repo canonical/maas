@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata API."""
@@ -2188,6 +2188,14 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(nmd, reload_object(nmd))
+
+    def test_signaling_commissioning_when_pod_in_any_state(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node(with_empty_script_sets=True)
+        pod.hints.nodes.add(node)
+        client = make_node_client(node=node)
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
+        self.assertThat(response, HasStatusCode(http.client.OK))
 
     def test_signaling_requires_status_code(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)

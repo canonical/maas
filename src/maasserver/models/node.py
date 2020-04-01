@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -1335,6 +1335,13 @@ class Node(CleanSave, TimestampedModel):
     @property
     def is_device(self):
         return self.node_type == NODE_TYPE.DEVICE
+
+    @property
+    def pods(self):
+        # Avoid circular dependencies
+        from maasserver.models import Pod
+
+        return Pod.objects.filter(hints__nodes=self)
 
     def set_power_config(self, power_type, power_params):
         """Update the power configuration for a node.

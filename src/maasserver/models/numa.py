@@ -1,8 +1,6 @@
 __all__ = ["create_default_numanode"]
 
 
-from datetime import datetime
-
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import CASCADE, ForeignKey, IntegerField
 
@@ -24,10 +22,7 @@ class NUMANode(CleanSave, TimestampedModel):
 
 def create_default_numanode(machine):
     """Create the default "0" NUMA node for a machine."""
-    now = datetime.utcnow()
     return NUMANode.objects.create(
-        created=now,
-        updated=now,
         node=machine,
         memory=machine.memory,
         cores=list(range(machine.cpu_count)),

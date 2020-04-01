@@ -271,10 +271,10 @@ class DiscoveredPodHints(AttrHelperMixin):
     Limiting the maximum cores allow request on a per machine basis.
     """
 
-    cores = attr.ib(converter=int)
-    cpu_speed = attr.ib(converter=int)
-    memory = attr.ib(converter=int)
-    local_storage = attr.ib(converter=int)
+    cores = attr.ib(converter=int, default=-1)
+    cpu_speed = attr.ib(converter=int, default=-1)
+    memory = attr.ib(converter=int, default=-1)
+    local_storage = attr.ib(converter=int, default=-1)
     local_disks = attr.ib(converter=int, default=-1)
     iscsi_storage = attr.ib(converter=int, default=-1)
 
@@ -284,11 +284,15 @@ class DiscoveredPod(AttrHelperMixin):
     """Discovered pod information."""
 
     architectures = attr.ib(converter=converter_list(str))
-    cores = attr.ib(converter=int)
-    cpu_speed = attr.ib(converter=int)
-    memory = attr.ib(converter=int)
-    local_storage = attr.ib(converter=int)
-    hints = attr.ib(converter=converter_obj(DiscoveredPodHints))
+    name = attr.ib(converter=converter_obj(str, optional=True), default=None)
+    cores = attr.ib(converter=int, default=-1)
+    cpu_speed = attr.ib(converter=int, default=-1)
+    memory = attr.ib(converter=int, default=-1)
+    local_storage = attr.ib(converter=int, default=-1)
+    hints = attr.ib(
+        converter=converter_obj(DiscoveredPodHints),
+        default=DiscoveredPodHints(),
+    )
     local_disks = attr.ib(converter=int, default=-1)
     iscsi_storage = attr.ib(converter=int, default=-1)
     capabilities = attr.ib(

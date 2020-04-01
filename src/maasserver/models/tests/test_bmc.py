@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -12,6 +12,7 @@ from crochet import wait_for
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
+import petname
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -846,27 +847,36 @@ class TestPod(MAASServerTestCase):
             path="/var/lib/%s" % name,
         )
 
-    def make_discovered_pod(self, machines=None, storage_pools=None):
-        if storage_pools is None:
-            storage_pools = [
-                self.make_discovered_storage_pool() for _ in range(3)
-            ]
+    def make_discovered_pod(
+        self, name=None, machines=None, storage_pools=None
+    ):
+        if name is None:
+            name = petname.Generate(2, "-")
         if machines is None:
             machines = [
                 self.make_discovered_machine(storage_pools=storage_pools)
                 for _ in range(3)
             ]
+        if storage_pools is None:
+            storage_pools = [
+                self.make_discovered_storage_pool() for _ in range(3)
+            ]
         return DiscoveredPod(
             architectures=["amd64/generic"],
+            name=name,
             cores=random.randint(8, 120),
             cpu_speed=random.randint(2000, 4000),
             memory=random.randint(8192, 8192 * 8),
             local_storage=random.randint(20000, 40000),
+            local_disks=1,
+            iscsi_storage=random.randint(20000, 40000),
             hints=DiscoveredPodHints(
                 cores=random.randint(8, 16),
                 cpu_speed=random.randint(2000, 4000),
                 memory=random.randint(8192, 8192 * 2),
                 local_storage=random.randint(10000, 20000),
+                local_disks=1,
+                iscsi_storage=random.randint(20000, 40000),
             ),
             storage_pools=storage_pools,
             machines=machines,
@@ -922,13 +932,18 @@ class TestPod(MAASServerTestCase):
         discovered.tags = [factory.make_name("tag") for _ in range(3)]
         # Create a subset of the discovered pod's tags
         # to make sure no duplicates are added on sync.
-        pod = factory.make_Pod(tags=[discovered.tags[0]])
+        pod = Pod(
+            power_type="lxd",
+            power_parameters={"power_address": "https://10.0.0.1:8443"},
+            tags=[discovered.tags[0]],
+        )
         self.patch(pod, "sync_machines")
         pod.sync(discovered, factory.make_User())
         self.assertThat(
             pod,
             MatchesStructure(
                 architectures=Equals(discovered.architectures),
+                name=Equals(discovered.name),
                 cores=Equals(discovered.cores),
                 cpu_speed=Equals(discovered.cpu_speed),
                 memory=Equals(discovered.memory),
@@ -1123,6 +1138,32 @@ class TestPod(MAASServerTestCase):
         [iface] = machine.interface_set.all()
         self.assertEqual(bdev.numa_node, machine.default_numanode)
         self.assertEqual(iface.numa_node, machine.default_numanode)
+
+    def test_sync_pod_ignores_unknown_values(self):
+        pod = factory.make_Pod()
+        # Fill Pod with data, factory doesn't do this.
+        discovered_pod = self.make_discovered_pod(
+            machines=[], storage_pools=[]
+        )
+        user = factory.make_User()
+        pod.sync(discovered_pod, user)
+        # Simulate sending unknown data. LXD does this as data
+        # is sent in the form of a commissioning script.
+        pod.sync(
+            DiscoveredPod(architectures=discovered_pod.architectures), user
+        )
+        self.assertNotEquals(-1, pod.cores)
+        self.assertNotEquals(-1, pod.cpu_speed)
+        self.assertNotEquals(-1, pod.memory)
+        self.assertNotEquals(-1, pod.local_storage)
+        self.assertNotEquals(-1, pod.local_disks)
+        self.assertNotEquals(-1, pod.iscsi_storage)
+        self.assertNotEquals(-1, pod.hints.cores)
+        self.assertNotEquals(-1, pod.hints.cpu_speed)
+        self.assertNotEquals(-1, pod.hints.memory)
+        self.assertNotEquals(-1, pod.hints.local_storage)
+        self.assertNotEquals(-1, pod.hints.local_disks)
+        self.assertNotEquals(-1, pod.hints.iscsi_storage)
 
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
@@ -2081,6 +2122,47 @@ class TestPod(MAASServerTestCase):
             ),
         )
         self.assertEqual(new_interface, machine.boot_interface)
+
+    def test_sync_hints_from_nodes(self):
+        pod = factory.make_Pod()
+        nodes = [factory.make_Node() for _ in range(random.randint(1, 3))]
+        for node in nodes:
+            numa = node.default_numanode
+            numa.cores = list(range(2 ** random.randint(0, 4)))
+            numa.memory = 1024 * random.randint(1, 256)
+            numa.save()
+            for _ in range(2 ** random.randint(0, 4) - 1):
+                factory.make_NUMANode(node=node)
+            factory.make_ISCSIBlockDevice(node=node)
+            pod.hints.nodes.add(node)
+
+        pod.sync_hints_from_nodes()
+
+        cores = 0
+        cpu_speed = 0
+        memory = 0
+        local_storage = 0
+        iscsi_storage = 0
+        for node in nodes:
+            for numa in node.numanode_set.all():
+                cores += len(numa.cores)
+                memory += numa.memory
+            if cpu_speed == 0:
+                cpu_speed = node.cpu_speed
+            else:
+                cpu_speed = (cpu_speed + node.cpu_speed) / 2
+            for bd in node.blockdevice_set.all():
+                if bd.type == "physical":
+                    local_storage += bd.size
+                elif bd.type == "iscsi":
+                    iscsi_storage += bd.size
+
+        self.assertEquals(pod.hints.cores, cores)
+        self.assertEquals(pod.hints.cpu_speed, int(cpu_speed))
+        self.assertEquals(pod.hints.memory, memory)
+        self.assertEquals(pod.hints.local_storage, local_storage)
+        self.assertEquals(pod.hints.local_disks, len(nodes))
+        self.assertEquals(pod.hints.iscsi_storage, iscsi_storage)
 
     def test_get_used_cores(self):
         pod = factory.make_Pod()

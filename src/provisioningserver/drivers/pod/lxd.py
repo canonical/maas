@@ -18,12 +18,16 @@ from provisioningserver.drivers import (
     make_setting_field,
     SETTING_SCOPE,
 )
-from provisioningserver.drivers.pod import PodDriver
+from provisioningserver.drivers.pod import (
+    Capabilities,
+    DiscoveredPod,
+    PodDriver,
+)
 from provisioningserver.maas_certificates import (
     MAAS_CERTIFICATE,
     MAAS_PRIVATE_KEY,
 )
-from provisioningserver.utils import typed
+from provisioningserver.utils import kernel_to_debian_architecture, typed
 
 # LXD Status Codes
 LXD_VM_POWER_STATE = {101: "on", 102: "off", 103: "on", 110: "off"}
@@ -93,13 +97,6 @@ class LXDPodDriver(PodDriver):
                 cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
                 verify=False,
             )
-            supports_virtual_machines = yield deferToThread(
-                client.has_api_extension, "virtual-machines"
-            )
-            if not supports_virtual_machines:
-                raise LXDError(
-                    "Please upgrade your LXD host to 3.19+ for virtual machine support."
-                )
             if not client.trusted:
                 if password:
                     yield deferToThread(client.authenticate, password)
@@ -155,10 +152,28 @@ class LXDPodDriver(PodDriver):
             raise LXDError(f"{system_id}: Unknown power status code: {state}")
 
     @inlineCallbacks
-    def discover(self, system_id, context):
+    def discover(self, pod_id, context):
         """Discover all Pod host resources."""
-        # abstract method, will update in subsequent branch.
-        pass
+        client = yield self.get_client(pod_id, context)
+        if not client.has_api_extension("virtual-machines"):
+            raise LXDError(
+                "Please upgrade your LXD host to 3.19+ for virtual machine support."
+            )
+        # After the region creates the Pod object it will sync LXD commissioning
+        # data for all hardware information.
+        return DiscoveredPod(
+            architectures=[
+                kernel_to_debian_architecture(arch)
+                for arch in client.host_info["environment"]["architectures"]
+            ],
+            name=client.host_info["environment"]["server_name"],
+            capabilities=[
+                Capabilities.COMPOSABLE,
+                Capabilities.DYNAMIC_LOCAL_STORAGE,
+                Capabilities.OVER_COMMIT,
+                Capabilities.STORAGE_POOLS,
+            ],
+        )
 
     @inlineCallbacks
     def compose(self, system_id, context, request):

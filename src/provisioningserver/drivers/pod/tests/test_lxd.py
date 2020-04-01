@@ -12,9 +12,13 @@ from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 
+# XXX - Remove provisioningserver.drivers.power from testing in this file
+# and rename lxd_pod_module.
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver.drivers.pod import Capabilities
+from provisioningserver.drivers.pod import lxd as lxd_pod_module
 from provisioningserver.drivers.pod.lxd import LXDPodDriver
 from provisioningserver.drivers.power import lxd as lxd_module
 from provisioningserver.maas_certificates import (
@@ -103,21 +107,6 @@ class TestLXDPodDriver(MAASTestCase):
             client.authenticate, MockCalledOnceWith(context["password"])
         )
         self.assertEquals(client, returned_client)
-
-    @inlineCallbacks
-    def test_get_client_raises_error_when_lxd_does_not_support_vms(self):
-        context = self.make_parameters_context()
-        system_id = factory.make_name("system_id")
-        Client = self.patch(lxd_module, "Client")
-        client = Client.return_value
-        client.has_api_extension.return_value = False
-        driver = lxd_module.LXDPowerDriver()
-        error_msg = "Please upgrade your LXD host to *."
-        with ExpectedException(lxd_module.LXDError, error_msg):
-            yield driver.get_machine(system_id, context)
-        self.assertThat(
-            client.has_api_extension, MockCalledOnceWith("virtual-machines")
-        )
 
     @inlineCallbacks
     def test_get_client_raises_error_when_not_trusted_and_no_password(self):
@@ -213,3 +202,56 @@ class TestLXDPodDriver(MAASTestCase):
         error_msg = f"{system_id}: Unknown power status code: {mock_machine.status_code}"
         with ExpectedException(lxd_module.LXDError, error_msg):
             yield driver.power_query(system_id, context)
+
+    @inlineCallbacks
+    def test__discover_requires_client_to_have_vm_support(self):
+        context = self.make_parameters_context()
+        driver = LXDPodDriver()
+        Client = self.patch(lxd_pod_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = False
+        with ExpectedException(lxd_pod_module.LXDError):
+            yield driver.discover(None, context)
+
+    @inlineCallbacks
+    def test__discover(self):
+        context = self.make_parameters_context()
+        driver = LXDPodDriver()
+        Client = self.patch(lxd_pod_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = True
+        name = factory.make_name("hostname")
+        client.host_info = {
+            "environment": {
+                "architectures": ["x86_64", "i686"],
+                "server_name": name,
+            }
+        }
+        discovered_pod = yield driver.discover(None, context)
+        self.assertItemsEqual(
+            ["amd64/generic", "i386/generic"], discovered_pod.architectures
+        )
+        self.assertEquals(name, discovered_pod.name)
+        self.assertEquals(-1, discovered_pod.cores)
+        self.assertEquals(-1, discovered_pod.cpu_speed)
+        self.assertEquals(-1, discovered_pod.memory)
+        self.assertEquals(-1, discovered_pod.local_storage)
+        self.assertEquals(-1, discovered_pod.local_disks)
+        self.assertEquals(-1, discovered_pod.iscsi_storage)
+        self.assertEquals(-1, discovered_pod.hints.cores)
+        self.assertEquals(-1, discovered_pod.hints.cpu_speed)
+        self.assertEquals(-1, discovered_pod.hints.local_storage)
+        self.assertEquals(-1, discovered_pod.hints.local_disks)
+        self.assertEquals(-1, discovered_pod.hints.iscsi_storage)
+        self.assertItemsEqual(
+            [
+                Capabilities.COMPOSABLE,
+                Capabilities.DYNAMIC_LOCAL_STORAGE,
+                Capabilities.OVER_COMMIT,
+                Capabilities.STORAGE_POOLS,
+            ],
+            discovered_pod.capabilities,
+        )
+        self.assertItemsEqual([], discovered_pod.machines)
+        self.assertItemsEqual([], discovered_pod.tags)
+        self.assertItemsEqual([], discovered_pod.storage_pools)

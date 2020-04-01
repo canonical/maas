@@ -26,6 +26,7 @@ from provisioningserver.utils import (
     convert_size_to_bytes,
     flatten,
     is_instance_or_subclass,
+    kernel_to_debian_architecture,
     locate_config,
     locate_template,
     parse_key_value_file,
@@ -425,3 +426,22 @@ class TestConvertSizeToBytesErrors(MAASTestCase):
 
     def test__empty_value(self):
         self.assertRaises(ValueError, convert_size_to_bytes, " KiB")
+
+
+class TestKernelToDebianArchitecture(MAASTestCase):
+    """Tests for `kernel_to_debian_architecture`."""
+
+    scenarios = (
+        ("i386", {"kernel": "i686", "debian": "i386/generic"}),
+        ("x86_64", {"kernel": "x86_64", "debian": "amd64/generic"}),
+        ("aarch64", {"kernel": "aarch64", "debian": "arm64/generic"}),
+        ("ppc64le", {"kernel": "ppc64le", "debian": "ppc64el/generic"}),
+        ("s390x", {"kernel": "s390x", "debian": "s390x/generic"}),
+        ("mips", {"kernel": "mips", "debian": "mips/generic"}),
+        ("mips64", {"kernel": "mips64", "debian": "mips64el/generic"}),
+    )
+
+    def test__kernel_to_debian_architecture(self):
+        self.assertEquals(
+            self.debian, kernel_to_debian_architecture(self.kernel)
+        )

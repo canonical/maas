@@ -13,10 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="podhints",
             name="nodes",
-            field=models.ManyToManyField(
-                related_name="pods",
-                related_query_name="pods",
-                to="maasserver.Node",
-            ),
+            field=models.ManyToManyField(to="maasserver.Node"),
         )
     ]
