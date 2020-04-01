@@ -500,11 +500,13 @@ def _parse_cpuinfo(data):
         if name is not None:
             names.append(name)
         for core in socket.get("cores", []):
+            thread_ids = [thread["id"] for thread in core.get("threads", [])]
+            # XXX LP:1869990 this should be per-thread
             numa_node = core.get("numa_node")
             if numa_node not in numa_nodes:
-                numa_nodes[numa_node] = {"cores": [core.get("core")]}
+                numa_nodes[numa_node] = {"cores": thread_ids}
             else:
-                numa_nodes[numa_node]["cores"].append(core.get("core"))
+                numa_nodes[numa_node]["cores"].extend(thread_ids)
     if len(names) > 0 and all(name == names[0] for name in names):
         cpu = names[0]
         m = re.search(r"(?P<model_name>.+)", cpu, re.MULTILINE)
