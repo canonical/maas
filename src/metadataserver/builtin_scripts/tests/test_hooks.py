@@ -1639,8 +1639,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         )
         numa_nodes = NUMANode.objects.filter(node=node)
         self.assertEqual(2, len(numa_nodes))
-        self.assertEqual([0, 1], numa_nodes[0].cores)
-        self.assertEqual([2, 3], numa_nodes[1].cores)
+        self.assertEqual([0, 1, 2, 3], numa_nodes[0].cores)
+        self.assertEqual([4, 5, 6, 7], numa_nodes[1].cores)
 
     def test__updates_network_numa_nodes(self):
         node = factory.make_Node()
