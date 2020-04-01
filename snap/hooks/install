@@ -4,7 +4,8 @@
 
 mkdir -p \
       "$SNAP_DATA/var/lib/maas" \
-      "$SNAP_DATA/root"
+      "$SNAP_DATA/root" \
+      "$SNAP_DATA/supervisord"
 if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"
@@ -17,9 +18,6 @@ cp "$SNAP/etc/maas/preseeds/curtin_userdata" "$SNAP_DATA/preseeds/curtin_userdat
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_userdata_centos.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
-
-# ensure that services are running as migration needs running postgres
-snapctl start "${SNAP_INSTANCE_NAME}.supervisor"
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 "$SNAP/bin/maas-wrapper" migrate --configure
