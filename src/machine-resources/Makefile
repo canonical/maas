@@ -13,6 +13,8 @@ PACKAGE_VENDOR_DIR := $(PACKAGE_DIR)/vendor
 GO_CACHE_DIR := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d $(TMPDIR)tmp.go-cacheXXX)
 .DEFAULT_GOAL: build
 
+DEP := cd $(PACKAGE_DIR); dep
+
 build: $(BINARIES)
 .PHONY: build
 
@@ -22,10 +24,14 @@ $(BINARIES): $(PACKAGE_VENDOR_DIR)
 
 $(PACKAGE_VENDOR_DIR) vendor:
 	rm -rf $(PACKAGE_VENDOR_DIR)
-	cd $(PACKAGE_DIR); dep ensure
+	$(DEP) ensure
 .PHONY: vendor
 
 clean: DEP_PACKAGES_DIRS = $(filter-out $(PACKAGE_DIR),$(wildcard src/*))
 clean:
 	rm -rf $(BINDIR) pkg $(DEP_PACKAGES_DIRS) $(PACKAGE_VENDOR_DIR)
 .PHONY: clean
+
+update-deps:
+	$(DEP) ensure -update github.com/lxc/lxd
+.PHONY: update-deps
