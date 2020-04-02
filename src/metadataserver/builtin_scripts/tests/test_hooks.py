@@ -109,37 +109,73 @@ SAMPLE_LXD_JSON = {
                 "cores": [
                     {
                         "core": 0,
-                        "numa_node": 0,
                         "threads": [
-                            {"id": 0, "thread": 0, "online": True},
-                            {"id": 1, "thread": 1, "online": True},
+                            {
+                                "id": 0,
+                                "thread": 0,
+                                "online": True,
+                                "numa_node": 0,
+                            },
+                            {
+                                "id": 1,
+                                "thread": 1,
+                                "online": True,
+                                "numa_node": 0,
+                            },
                         ],
                         "frequency": 3247,
                     },
                     {
                         "core": 1,
-                        "numa_node": 0,
                         "threads": [
-                            {"id": 2, "thread": 0, "online": True},
-                            {"id": 3, "thread": 1, "online": True},
+                            {
+                                "id": 2,
+                                "thread": 0,
+                                "online": True,
+                                "numa_node": 0,
+                            },
+                            {
+                                "id": 3,
+                                "thread": 1,
+                                "online": True,
+                                "numa_node": 0,
+                            },
                         ],
                         "frequency": 3192,
                     },
                     {
                         "core": 2,
-                        "numa_node": 1,
                         "threads": [
-                            {"id": 4, "thread": 0, "online": True},
-                            {"id": 5, "thread": 1, "online": True},
+                            {
+                                "id": 4,
+                                "thread": 0,
+                                "online": True,
+                                "numa_node": 1,
+                            },
+                            {
+                                "id": 5,
+                                "thread": 1,
+                                "online": True,
+                                "numa_node": 1,
+                            },
                         ],
                         "frequency": 3241,
                     },
                     {
                         "core": 3,
-                        "numa_node": 1,
                         "threads": [
-                            {"id": 6, "thread": 0, "online": True},
-                            {"id": 7, "thread": 1, "online": True},
+                            {
+                                "id": 6,
+                                "thread": 0,
+                                "online": True,
+                                "numa_node": 1,
+                            },
+                            {
+                                "id": 7,
+                                "thread": 1,
+                                "online": True,
+                                "numa_node": 1,
+                            },
                         ],
                         "frequency": 3247,
                     },
@@ -368,10 +404,8 @@ SAMPLE_LXD_JSON = {
 
 
 # This is sample output from a rpi4
-SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
-    """
-{
-        "cpu": {
+SAMPLE_LXD_NO_MEMORY_NUMA_JSON = {
+    "cpu": {
         "architecture": "aarch64",
         "sockets": [
             {
@@ -379,71 +413,68 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
                 "cores": [
                     {
                         "core": 0,
-                        "numa_node": 0,
                         "threads": [
                             {
                                 "id": 0,
                                 "thread": 0,
-                                "online": true
+                                "online": True,
+                                "numa_node": 0,
                             }
                         ],
-                        "frequency": 1500
+                        "frequency": 1500,
                     },
                     {
                         "core": 1,
-                        "numa_node": 0,
                         "threads": [
                             {
                                 "id": 1,
                                 "thread": 0,
-                                "online": true
+                                "online": True,
+                                "numa_node": 0,
                             }
                         ],
-                        "frequency": 1500
+                        "frequency": 1500,
                     },
                     {
                         "core": 2,
-                        "numa_node": 0,
                         "threads": [
                             {
                                 "id": 2,
                                 "thread": 0,
-                                "online": true
+                                "online": True,
+                                "numa_node": 0,
                             }
                         ],
-                        "frequency": 1500
+                        "frequency": 1500,
                     },
                     {
                         "core": 3,
-                        "numa_node": 0,
                         "threads": [
                             {
                                 "id": 3,
                                 "thread": 0,
-                                "online": true
+                                "online": True,
+                                "numa_node": 0,
                             }
                         ],
-                        "frequency": 1500
-                    }
+                        "frequency": 1500,
+                    },
                 ],
                 "frequency": 1500,
                 "frequency_minimum": 600,
-                "frequency_turbo": 1500
+                "frequency_turbo": 1500,
             }
         ],
-        "total": 4
+        "total": 4,
     },
     "memory": {
         "hugepages_total": 0,
         "hugepages_used": 0,
         "hugepages_size": 0,
         "used": 2179518464,
-        "total": 3975593984
+        "total": 3975593984,
     },
-    "gpu": {
-        "cards": [],
-        "total": 0
-    },
+    "gpu": {"cards": [], "total": 0},
     "network": {
         "cards": [
             {
@@ -461,21 +492,21 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
                             "100baseT/Half",
                             "100baseT/Full",
                             "1000baseT/Half",
-                            "1000baseT/Full"
+                            "1000baseT/Full",
                         ],
                         "supported_ports": [
                             "twisted pair",
-                            "media-independent"
+                            "media-independent",
                         ],
                         "port_type": "media-independent",
                         "transceiver_type": "external",
-                        "auto_negotiation": true,
-                        "link_detected": true,
+                        "auto_negotiation": True,
+                        "link_detected": True,
                         "link_speed": 1000,
-                        "link_duplex": "full"
+                        "link_duplex": "full",
                     }
                 ],
-                "numa_node": 0
+                "numa_node": 0,
             },
             {
                 "driver": "brcmfmac",
@@ -486,17 +517,17 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
                         "address": "dc:a6:32:52:b2:6d",
                         "port": 0,
                         "protocol": "ethernet",
-                        "auto_negotiation": false,
-                        "link_detected": false
+                        "auto_negotiation": False,
+                        "link_detected": False,
                     }
                 ],
                 "numa_node": 0,
                 "vendor_id": "02d0",
                 "product_id": "a9a6",
-                "firmware_version": "01-6a2c8ad4"
-            }
+                "firmware_version": "01-6a2c8ad4",
+            },
         ],
-        "total": 2
+        "total": 2,
     },
     "storage": {
         "disks": [
@@ -504,9 +535,9 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
                 "id": "mmcblk0",
                 "device": "179:0",
                 "type": "mmc",
-                "read_only": false,
+                "read_only": False,
                 "size": 31914983424,
-                "removable": false,
+                "removable": False,
                 "numa_node": 0,
                 "device_path": "platform-fe340000.emmc2",
                 "block_size": 0,
@@ -516,27 +547,27 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
                     {
                         "id": "mmcblk0p1",
                         "device": "179:1",
-                        "read_only": false,
+                        "read_only": False,
                         "size": 268435456,
-                        "partition": 1
+                        "partition": 1,
                     },
                     {
                         "id": "mmcblk0p2",
                         "device": "179:2",
-                        "read_only": false,
+                        "read_only": False,
                         "size": 31645482496,
-                        "partition": 2
-                    }
-                ]
+                        "partition": 2,
+                    },
+                ],
             },
             {
                 "id": "sda",
                 "device": "8:0",
                 "model": "External USB 3.0",
                 "type": "usb",
-                "read_only": false,
+                "read_only": False,
                 "size": 1000204883968,
-                "removable": false,
+                "removable": False,
                 "numa_node": 0,
                 "device_path": "platform-fd500000.pcie-pci-0000:01:00.0-usb-0:2:1.0-scsi-0:0:0:0",
                 "block_size": 0,
@@ -548,39 +579,37 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = json.loads(
                     {
                         "id": "sda1",
                         "device": "8:1",
-                        "read_only": false,
+                        "read_only": False,
                         "size": 1073741824,
-                        "partition": 1
+                        "partition": 1,
                     },
                     {
                         "id": "sda2",
                         "device": "8:2",
-                        "read_only": false,
+                        "read_only": False,
                         "size": 21474836480,
-                        "partition": 2
+                        "partition": 2,
                     },
                     {
                         "id": "sda3",
                         "device": "8:3",
-                        "read_only": false,
+                        "read_only": False,
                         "size": 21474836480,
-                        "partition": 3
+                        "partition": 3,
                     },
                     {
                         "id": "sda4",
                         "device": "8:4",
-                        "read_only": false,
+                        "read_only": False,
                         "size": 956180420608,
-                        "partition": 4
-                    }
-                ]
-            }
+                        "partition": 4,
+                    },
+                ],
+            },
         ],
-        "total": 8
-    }
+        "total": 8,
+    },
 }
-"""
-)
 
 
 # This matches ip_addr_results_xenial.txt for the unit tests
@@ -1641,6 +1670,22 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual([0, 1, 2, 3], numa_nodes[0].cores)
         self.assertEqual([4, 5, 6, 7], numa_nodes[1].cores)
+
+    def test__updates_cpu_numa_nodes_per_thread(self):
+        node = factory.make_Node()
+        self.patch(hooks_module, "update_node_network_information")
+
+        lxd_json = deepcopy(SAMPLE_LXD_JSON)
+        cores_data = lxd_json["cpu"]["sockets"][0]["cores"]
+        # each core has one thread in each numa node
+        for core in cores_data:
+            core["threads"][0]["numa_node"] = 0
+            core["threads"][1]["numa_node"] = 1
+        process_lxd_results(node, json.dumps(lxd_json).encode("utf-8"), 0)
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
+        self.assertEqual(2, len(numa_nodes))
+        self.assertEqual([0, 2, 4, 6], numa_nodes[0].cores)
+        self.assertEqual([1, 3, 5, 7], numa_nodes[1].cores)
 
     def test__updates_network_numa_nodes(self):
         node = factory.make_Node()

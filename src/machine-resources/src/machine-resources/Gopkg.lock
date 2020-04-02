@@ -10,8 +10,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/lxc/lxd"
-  packages = ["lxd/resources","shared/api","shared/units"]
-  revision = "7ecfb00b4838f666f4208067733e78a7da9421f1"
+  packages = ["lxd/resources","shared/api","shared/units","shared/usbid"]
+  revision = "b85a3ffa846e1ceb9fc091fa9bd5f20f4aa2d7b2"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
