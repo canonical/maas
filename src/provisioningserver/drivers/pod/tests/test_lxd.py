@@ -227,11 +227,16 @@ class TestLXDPodDriver(MAASTestCase):
                 "server_name": name,
             }
         }
+        mac_address = factory.make_mac_address()
+        client.resources = {
+            "network": {"cards": [{"ports": [{"address": mac_address}]}]}
+        }
         discovered_pod = yield driver.discover(None, context)
         self.assertItemsEqual(
             ["amd64/generic", "i386/generic"], discovered_pod.architectures
         )
         self.assertEquals(name, discovered_pod.name)
+        self.assertItemsEqual([mac_address], discovered_pod.mac_addresses)
         self.assertEquals(-1, discovered_pod.cores)
         self.assertEquals(-1, discovered_pod.cpu_speed)
         self.assertEquals(-1, discovered_pod.memory)

@@ -28,6 +28,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_CREATION_TYPE,
+    NODE_STATUS,
     NODE_TYPE,
     POWER_STATE,
 )
@@ -2122,6 +2123,65 @@ class TestPod(MAASServerTestCase):
             ),
         )
         self.assertEqual(new_interface, machine.boot_interface)
+
+    def test_sync_assoicates_existing_node(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        pod.sync(
+            DiscoveredPod(
+                architectures=[node.architecture],
+                name=node.hostname,
+                mac_addresses=[
+                    str(iface.mac_address)
+                    for iface in node.interface_set.all()
+                ],
+            ),
+            factory.make_User(),
+        )
+        node = reload_object(node)
+        self.assertItemsEqual([node], pod.hints.nodes.all())
+        self.assertEquals(NODE_STATUS.DEPLOYED, node.status)
+
+    def test_sync_converts_existing_device(self):
+        pod = factory.make_Pod()
+        device = factory.make_Node_with_Interface_on_Subnet(
+            node_type=NODE_TYPE.DEVICE
+        )
+        pod.sync(
+            DiscoveredPod(
+                architectures=[device.architecture],
+                name=device.hostname,
+                mac_addresses=[
+                    str(iface.mac_address)
+                    for iface in device.interface_set.all()
+                ],
+            ),
+            factory.make_User(),
+        )
+        device = reload_object(device)
+        self.assertItemsEqual([device], pod.hints.nodes.all())
+        self.assertEquals(NODE_STATUS.DEPLOYED, device.status)
+        self.assertEquals(NODE_TYPE.MACHINE, device.node_type)
+
+    def test_sync_creates_machine(self):
+        factory.make_usable_boot_resource(architecture="amd64/generic")
+        pod = factory.make_Pod()
+        mac_addresses = [factory.make_mac_address() for _ in range(3)]
+        pod.sync(
+            DiscoveredPod(
+                architectures=["amd64/generic"], mac_addresses=mac_addresses
+            ),
+            factory.make_User(),
+        )
+        self.assertEquals(1, pod.hints.nodes.count())
+        node = pod.hints.nodes.first()
+        self.assertEquals(pod.name, node.hostname)
+        self.assertEquals(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEquals(NODE_TYPE.MACHINE, node.node_type)
+        self.assertItemsEqual(
+            mac_addresses,
+            [str(iface.mac_address) for iface in node.interface_set.all()],
+        )
 
     def test_sync_hints_from_nodes(self):
         pod = factory.make_Pod()

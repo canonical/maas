@@ -159,6 +159,13 @@ class LXDPodDriver(PodDriver):
             raise LXDError(
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
             )
+        resources = yield deferToThread(lambda: client.resources)
+
+        mac_addresses = []
+        for card in resources["network"]["cards"]:
+            for port in card["ports"]:
+                mac_addresses.append(port["address"])
+
         # After the region creates the Pod object it will sync LXD commissioning
         # data for all hardware information.
         return DiscoveredPod(
@@ -167,6 +174,7 @@ class LXDPodDriver(PodDriver):
                 for arch in client.host_info["environment"]["architectures"]
             ],
             name=client.host_info["environment"]["server_name"],
+            mac_addresses=mac_addresses,
             capabilities=[
                 Capabilities.COMPOSABLE,
                 Capabilities.DYNAMIC_LOCAL_STORAGE,

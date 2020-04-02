@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.pod`."""
@@ -381,12 +381,14 @@ class TestDiscoveredClasses(MAASTestCase):
             MatchesDict(
                 {
                     "architectures": Equals(["amd64/generic"]),
+                    "name": Equals(None),
                     "cores": Equals(cores),
                     "cpu_speed": Equals(cpu_speed),
                     "memory": Equals(memory),
                     "local_storage": Equals(local_storage),
                     "local_disks": Equals(local_disks),
                     "iscsi_storage": Equals(iscsi_storage),
+                    "mac_addresses": Equals([]),
                     "capabilities": Equals(pod.capabilities),
                     "hints": MatchesDict(
                         {

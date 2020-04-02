@@ -295,6 +295,10 @@ class DiscoveredPod(AttrHelperMixin):
     )
     local_disks = attr.ib(converter=int, default=-1)
     iscsi_storage = attr.ib(converter=int, default=-1)
+    # XXX - This should be the hardware UUID but LXD doesn't provide it.
+    mac_addresses = attr.ib(
+        converter=converter_list(str), default=attr.Factory(list)
+    )
     capabilities = attr.ib(
         converter=converter_list(str),
         default=attr.Factory(lambda: [Capabilities.FIXED_LOCAL_STORAGE]),

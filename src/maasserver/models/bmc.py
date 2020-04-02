@@ -41,6 +41,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_CREATION_TYPE,
     NODE_STATUS,
+    NODE_TYPE,
 )
 from maasserver.exceptions import PodProblem
 from maasserver.models.blockdevice import BlockDevice
@@ -1404,6 +1405,36 @@ class Pod(BMC):
         self.sync_hints(discovered_pod.hints)
         self.sync_storage_pools(discovered_pod.storage_pools)
         self.sync_machines(discovered_pod.machines, commissioning_user)
+        if discovered_pod.mac_addresses:
+            node = (
+                Node.objects.filter(
+                    interface__mac_address__in=discovered_pod.mac_addresses
+                )
+                .distinct()
+                .first()
+            )
+            update = {}
+            if node and node.is_device:
+                update["node_type"] = NODE_TYPE.MACHINE
+            elif not node:
+                # Avoid circular dependencies
+                from maasserver.forms import AdminMachineWithMACAddressesForm
+
+                form = AdminMachineWithMACAddressesForm(
+                    data={
+                        "hostname": self.name,
+                        "architecture": sorted(self.architectures)[0],
+                        "mac_addresses": discovered_pod.mac_addresses,
+                    }
+                )
+                assert form.is_valid(), form.errors
+                node = form.save()
+            if node.status != NODE_STATUS.DEPLOYED:
+                update["status"] = NODE_STATUS.DEPLOYED
+            if update:
+                # Use update to allow transitioning from NEW to DEPLOYED.
+                Node.objects.filter(system_id=node.system_id).update(**update)
+            self.hints.nodes.add(node)
         podlog.info("%s: finished syncing discovered information" % self.name)
 
     def sync_hints_from_nodes(self):
