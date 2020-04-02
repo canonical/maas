@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for regions."""
@@ -8,7 +8,6 @@ __all__ = ["RegionService"]
 from collections import defaultdict
 import copy
 from datetime import datetime
-from functools import partial
 from os import urandom
 import random
 from socket import AF_INET, AF_INET6
@@ -56,7 +55,6 @@ from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.models import NodeKey
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import (
     GLOBAL_LABELS,
@@ -393,7 +391,6 @@ class Region(RPCProtocol):
         mac_addresses,
         domain=None,
         hostname=None,
-        pod_id=None,
     ):
         """create_node()
 
@@ -408,22 +405,8 @@ class Region(RPCProtocol):
             mac_addresses,
             domain=domain,
             hostname=hostname,
-            pod_id=pod_id,
         )
-        if pod_id:
-            d.addCallback(
-                partial(deferToDatabase, NodeKey.objects.get_token_for_node)
-            )
-            d.addCallback(
-                lambda token: {
-                    "system_id": token.nodekey.node.system_id,
-                    "consumer_key": token.consumer.key,
-                    "token_key": token.key,
-                    "token_secret": token.secret,
-                }
-            )
-        else:
-            d.addCallback(lambda node: {"system_id": node.system_id})
+        d.addCallback(lambda node: {"system_id": node.system_id})
         return d
 
     @region.CommissionNode.responder

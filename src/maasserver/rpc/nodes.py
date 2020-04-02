@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to nodes."""
@@ -21,13 +21,10 @@ from maasserver import exceptions, ntp
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminMachineWithMACAddressesForm
-from maasserver.models import Node, PhysicalInterface, Pod, RackController
+from maasserver.models import Node, PhysicalInterface, RackController
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
-from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
-from metadataserver.models import ScriptResult, ScriptSet
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
@@ -178,7 +175,6 @@ def create_node(
     mac_addresses,
     domain=None,
     hostname=None,
-    pod_id=None,
 ):
     """Create a new `Node` and return it.
 
@@ -190,27 +186,11 @@ def create_node(
         the node.
     :param domain: The domain the node should join.
     :param hostname: the desired hostname for the new node
-    :param pod_id: The pod which should be assoicated with the node
     """
-    pod = Pod.objects.get(id=pod_id) if pod_id else None
     # Check that there isn't already a node with one of our MAC
     # addresses, and bail out early if there is.
-    try:
-        node = Node.objects.get(interface__mac_address__in=mac_addresses)
-    except Node.DoesNotExist:
-        node = None
-    if pod_id and node:
-        pod.hints.nodes.add(node)
-        if (
-            node.power_type != power_type
-            or node.power_parameters != power_parameters
-        ):
-            node.set_power_config(power_type, power_parameters)
-        if hostname and node.hostname != hostname:
-            node.hostname = hostname
-        node.save()
-        return node
-    elif node:
+    nodes = Node.objects.filter(interface__mac_address__in=mac_addresses)
+    if nodes.count() > 0:
         raise NodeAlreadyExists(
             "One of the MACs %s is already in use by a node." % mac_addresses
         )
@@ -239,16 +219,6 @@ def create_node(
     form = AdminMachineWithMACAddressesForm(data_query_dict)
     if form.is_valid():
         node = form.save()
-        if pod:
-            pod.hints.nodes.add(node)
-        node.current_commissioning_script_set = ScriptSet.objects.create(
-            node=node, result_type=RESULT_TYPE.COMMISSIONING
-        )
-        ScriptResult.objects.create(
-            script_set=node.current_commissioning_script_set,
-            status=SCRIPT_STATUS.PENDING,
-            script_name=LXD_OUTPUT_NAME,
-        )
         return node
     else:
         raise ValidationError(form.errors)

@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the region's remote procedure calls."""
@@ -53,7 +53,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from metadataserver.models import NodeKey
 from provisioningserver.rpc.exceptions import NoSuchCluster, NoSuchNode
 from provisioningserver.rpc.region import (
     Authenticate,
@@ -1172,58 +1171,10 @@ class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
                 params["mac_addresses"],
                 domain=params["domain"],
                 hostname=params["hostname"],
-                pod_id=None,
             ),
         )
         self.assertEqual(
             create_node_function.return_value.system_id, response["system_id"]
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_create_node_function_with_pod_id(self):
-        create_node_function = self.patch(regionservice, "create_node")
-        create_node_function.return_value = yield deferToDatabase(
-            self.create_node
-        )
-        pod = yield deferToDatabase(factory.make_Pod)
-
-        params = {
-            "architecture": factory.make_name("arch"),
-            "power_type": factory.make_name("power_type"),
-            "power_parameters": dumps({}),
-            "mac_addresses": [factory.make_mac_address()],
-            "domain": factory.make_name("domain"),
-            "hostname": None,
-            "pod_id": pod.id,
-        }
-
-        response = yield call_responder(Region(), CreateNode, params)
-        self.assertIsNotNone(response)
-
-        self.assertThat(
-            create_node_function,
-            MockCalledOnceWith(
-                params["architecture"],
-                params["power_type"],
-                params["power_parameters"],
-                params["mac_addresses"],
-                domain=params["domain"],
-                hostname=params["hostname"],
-                pod_id=params["pod_id"],
-            ),
-        )
-        node = create_node_function.return_value
-        token = yield deferToDatabase(NodeKey.objects.get_token_for_node, node)
-
-        self.assertDictEqual(
-            {
-                "system_id": node.system_id,
-                "consumer_key": token.consumer.key,
-                "token_key": token.key,
-                "token_secret": token.secret,
-            },
-            response,
         )
 
 
