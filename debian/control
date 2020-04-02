@@ -250,7 +250,6 @@ Section: python
 Architecture: all
 Depends: python3-apt,
          python3-attr,
-         python3-convoy,
          python3-crochet,
          python3-curtin (>> 0.1.0~bzr515),
          python3-docutils,

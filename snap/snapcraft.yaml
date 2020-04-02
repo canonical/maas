@@ -102,7 +102,6 @@ parts:
       - openssh-client
       - postgresql
       - python3-bson
-      - python3-convoy
       - python3-crochet
       - python3-django
       - python3-django-piston3
