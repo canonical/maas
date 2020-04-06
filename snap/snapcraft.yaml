@@ -8,14 +8,13 @@ confinement: strict
 base: core18
 assumes:
   - snapd2.41
-epoch: 1
+system-usernames:
+  snap_daemon: shared
 # epochs:
 #
 # 0: MAAS 2.5 PostgreSQL 9.5
 # 1: MAAS 2.6+ PostgreSQL 10
-passthrough:
-    system-usernames:
-      snap_daemon: shared
+epoch: 1
 
 plugs:
   maas-cli:
