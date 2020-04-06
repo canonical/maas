@@ -124,10 +124,11 @@ LXD_SCRIPT = dedent(
         exit 1
     fi
 
-    BINARY="$(archdetect | cut -d '/' -f1 | sed 's/i386/386/g')"
-    wget $url/machine-resources/$BINARY -O $DOWNLOAD_PATH/$BINARY >&2
-    chmod +x $DOWNLOAD_PATH/$BINARY
-    $DOWNLOAD_PATH/$BINARY
+    resources_bin="$DOWNLOAD_PATH/machine-resources"
+    wget "$url/machine-resources/$(dpkg --print-architecture)" \
+      -O "$resources_bin" >&2
+    chmod +x "$resources_bin"
+    "$resources_bin"
     """
 )
 
@@ -506,7 +507,6 @@ NODE_INFO_SCRIPTS = OrderedDict(
             {
                 "content": LXD_SCRIPT.encode("ascii"),
                 "hook": null_hook,
-                "packages": {"apt": ["archdetect-deb"]},
                 "timeout": timedelta(minutes=1),
                 "run_on_controller": True,
             },
