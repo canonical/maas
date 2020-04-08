@@ -13180,6 +13180,31 @@ class TestUpdateInterfacesWithHints(
             self.assertThat(alice_br0.vlan, Equals(bob_eth0.vlan))
             self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
 
+    def test_update_interfaces_iface_changed_mac(self):
+        node = self.create_empty_controller()
+        interfaces = {
+            "eth1": {
+                "enabled": True,
+                "links": [],
+                "mac_address": "aa:bb:cc:dd:ee:ff",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            }
+        }
+        self.update_interfaces(node, interfaces)
+        interfaces = {
+            "eth1": {
+                "enabled": True,
+                "links": [],
+                "mac_address": "aa:bb:cc:dd:ee:00",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            }
+        }
+        self.update_interfaces(node, interfaces)
+
 
 class TestRackControllerRefresh(MAASTransactionServerTestCase):
     def setUp(self):

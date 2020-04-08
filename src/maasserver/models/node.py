@@ -6157,6 +6157,13 @@ class Controller(Node):
         mac_address = config["mac_address"]
         update_fields = set()
         is_enabled = config["enabled"]
+        # If an interface with same name and different MAC exists in the
+        # machine, delete it. Interface names are unique on a machine, so this
+        # might be an old interface which was removed and recreated with a
+        # different MAC.
+        PhysicalInterface.objects.filter(node=self, name=name).exclude(
+            mac_address=mac_address
+        ).delete()
         interface, created = PhysicalInterface.objects.get_or_create(
             mac_address=mac_address,
             defaults={"node": self, "name": name, "enabled": is_enabled},
@@ -6777,10 +6784,9 @@ class Controller(Node):
     def update_interfaces(
         self, interfaces, topology_hints=None, create_fabrics=True
     ):
-        """Update the interfaces attached to the controller.
+        """Update the interfaces attached to the node
 
-        :param interfaces: Interfaces dictionary that was parsed from
-            /etc/network/interfaces on the controller.
+        :param interfaces: a dict with interface details.
         :param topology_hints: List of dictionaries representing hints
             about fabric/VLAN connectivity.
         :param create_fabrics: If True, creates fabrics associated with each
@@ -6793,7 +6799,7 @@ class Controller(Node):
             update_interface_details,
         )
 
-        # Get all of the current interfaces on this controller.
+        # Get all of the current interfaces on this node.
         current_interfaces = {
             interface.id: interface
             for interface in self.interface_set.all().order_by("id")
