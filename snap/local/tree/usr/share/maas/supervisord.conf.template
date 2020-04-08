@@ -24,6 +24,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/postgresql.log
+startsecs=10
 {{endif}}
 
 
@@ -36,6 +37,7 @@ killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/regiond.log
 serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
+startsecs=10
 {{endif}}
 
 
@@ -48,6 +50,7 @@ killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/rackd.log
 serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
+startsecs=10
 
 [program:dhcpd]
 process_name=dhcpd
@@ -57,6 +60,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd.log
+startsecs=10
 
 [program:dhcpd6]
 process_name=dhcpd6
@@ -66,6 +70,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd6.log
+startsecs=10
 
 [program:http]
 process_name=http
@@ -74,6 +79,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/nginx.log
+startsecs=10
 {{endif}}
 
 {{if rackd or regiond}}
@@ -84,6 +90,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/named.log
+startsecs=10
 
 [program:ntp]
 process_name=ntp
@@ -92,6 +99,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/chrony.log
+startsecs=10
 
 [program:proxy]
 process_name=proxy
@@ -101,6 +109,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/proxy.log
+startsecs=10
 
 [program:syslog]
 process_name=syslog
@@ -110,4 +119,5 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/rsyslog.log
+startsecs=10
 {{endif}}

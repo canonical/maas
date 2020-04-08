@@ -1248,6 +1248,33 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
+    def test___loadSupervisorServiceState_backoff_returns_dead(self):
+        service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([service])
+        supervisor_status_output = (
+            dedent(
+                """\
+            %s              BACKOFF   Respawning too fast
+            """
+            )
+            % (service.snap_service_name)
+        )
+
+        mock_execSupervisorServiceAction = self.patch(
+            service_monitor, "_execSupervisorServiceAction"
+        )
+        mock_execSupervisorServiceAction.return_value = (
+            1,
+            supervisor_status_output,
+            "",
+        )
+        active_state, process_state = yield (
+            service_monitor._loadSupervisorServiceState(service)
+        )
+        self.assertEqual(SERVICE_STATE.DEAD, active_state)
+        self.assertEqual("Result: exit-code", process_state)
+
+    @inlineCallbacks
     def test___ensureService_logs_warning_in_mismatch_process_state(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
