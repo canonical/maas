@@ -243,6 +243,7 @@ class ServiceMonitor:
     # Used to convert the supervisor state to the `SERVICE_STATE` enum.
     SUPERVISOR_TO_STATE = {
         "STARTING": SERVICE_STATE.ON,
+        "BACKOFF": SERVICE_STATE.DEAD,
         "RUNNING": SERVICE_STATE.ON,
         "STOPPED": SERVICE_STATE.OFF,
         "FATAL": SERVICE_STATE.DEAD,
