@@ -17,6 +17,7 @@ import signal
 import string
 import subprocess
 import sys
+from textwrap import dedent
 import threading
 import time
 
@@ -721,6 +722,19 @@ class cmd_init(SnappyCommand):
                 )
                 if initialize == "no":
                     sys.exit(0)
+
+        if not mode or mode == "all":
+            print_msg(
+                dedent(
+                    """
+                    Note: Configuring the MAAS snap in "all" mode will be
+                    deprecated in MAAS 2.8.0 and removed in 2.9.0.
+
+                    See https://maas.io/deprecations/MD1 for details.
+
+                    """
+                )
+            )
 
         if not mode:
             mode = prompt_for_choices(
