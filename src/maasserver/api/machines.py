@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -40,7 +40,6 @@ from maasserver.api.nodes import (
 from maasserver.api.support import admin_method, operation
 from maasserver.api.utils import (
     get_mandatory_param,
-    get_oauth_token,
     get_optional_list,
     get_optional_param,
 )
@@ -746,7 +745,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 )
                 machine.acquire(
                     request.user,
-                    get_oauth_token(request),
                     agent_name=options.agent_name,
                     comment=options.comment,
                     bridge_all=options.bridge_all,
@@ -2139,7 +2137,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
     @operation(idempotent=True)
     def list_allocated(self, request):
         """@description-title List allocated
-        @description List machines that were allocated to the User/oauth token.
+        @description List machines that were allocated to the User.
 
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing a list of
@@ -2149,7 +2147,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
         """
         # limit to machines that the user can view
         machines = Machine.objects.get_nodes(request.user, NodePermission.view)
-        machines = machines.filter(token=get_oauth_token(request))
+        machines = machines.filter(
+            owner=request.user, status=NODE_STATUS.ALLOCATED
+        )
         system_ids = get_optional_list(request.GET, "id")
         if system_ids:
             machines = machines.filter(system_id__in=system_ids)
@@ -2472,7 +2472,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
             if not dry_run:
                 machine.acquire(
                     request.user,
-                    get_oauth_token(request),
                     agent_name=options.agent_name,
                     comment=options.comment,
                     bridge_all=options.bridge_all,

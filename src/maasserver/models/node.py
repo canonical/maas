@@ -61,7 +61,6 @@ from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from netaddr import IPAddress, IPNetwork
 import petname
-from piston3.models import Token
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -1090,15 +1089,6 @@ class Node(CleanSave, TimestampedModel):
     # Updated each time a rack controller finishes syncing boot images.
     last_image_sync = DateTimeField(
         null=True, blank=False, default=None, editable=False
-    )
-
-    token = ForeignKey(
-        Token,
-        db_index=True,
-        null=True,
-        editable=False,
-        unique=False,
-        on_delete=CASCADE,
     )
 
     error = CharField(max_length=255, blank=True, default="")
@@ -3203,7 +3193,6 @@ class Node(CleanSave, TimestampedModel):
     def acquire(
         self,
         user,
-        token=None,
         agent_name="",
         comment=None,
         bridge_all=False,
@@ -3211,9 +3200,8 @@ class Node(CleanSave, TimestampedModel):
         bridge_stp=None,
         bridge_fd=None,
     ):
-        """Mark commissioned node as acquired by the given user and token."""
+        """Mark commissioned node as acquired by the given user."""
         assert self.owner is None or self.owner == user
-        assert token is None or token.user == user
 
         self._create_acquired_filesystems()
         self._register_request_event(
@@ -3225,7 +3213,6 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
         self.agent_name = agent_name
-        self.token = token
         if bridge_all:
             self._create_acquired_bridges(
                 bridge_type=bridge_type,
@@ -3559,7 +3546,6 @@ class Node(CleanSave, TimestampedModel):
             finalize_release = True
 
         self.status = NODE_STATUS.RELEASING
-        self.token = None
         self.agent_name = ""
         self.set_netboot()
         self.set_ephemeral_deploy()

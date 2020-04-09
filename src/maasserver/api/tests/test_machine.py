@@ -911,7 +911,6 @@ class TestMachineAPI(APITestCase.ForUser):
             machine_method,
             MockCalledOnceWith(
                 ANY,
-                ANY,
                 agent_name=ANY,
                 bridge_all=False,
                 bridge_type=BRIDGE_TYPE.STANDARD,
@@ -946,7 +945,6 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertThat(
             machine_method,
             MockCalledOnceWith(
-                ANY,
                 ANY,
                 agent_name=ANY,
                 bridge_all=True,
@@ -1386,7 +1384,6 @@ class TestMachineAPI(APITestCase.ForUser):
             machine_method,
             MockCalledOnceWith(
                 ANY,
-                ANY,
                 agent_name=ANY,
                 bridge_all=False,
                 bridge_type=BRIDGE_TYPE.STANDARD,
@@ -1408,7 +1405,6 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertThat(
             machine_method,
             MockCalledOnceWith(
-                ANY,
                 ANY,
                 agent_name=ANY,
                 bridge_all=False,

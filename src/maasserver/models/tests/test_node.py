@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -125,7 +125,6 @@ from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
-from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
     get_node_timeout,
@@ -1358,12 +1357,6 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(bios_boot_method=factory.make_name("boot"))
         self.assertEqual("pxe", node.get_bios_boot_method())
 
-    def test_add_node_with_token(self):
-        user = factory.make_User()
-        token = create_auth_token(user)
-        node = factory.make_Node(token=token)
-        self.assertEqual(token, node.token)
-
     def test_add_physical_interface(self):
         mac = factory.make_mac_address()
         node = factory.make_Node()
@@ -1885,9 +1878,8 @@ class TestNode(MAASServerTestCase):
     def test_acquire(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
         agent_name = factory.make_name("agent-name")
-        node.acquire(user, token, agent_name)
+        node.acquire(user, agent_name)
         self.assertEqual(
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name),
@@ -1896,21 +1888,19 @@ class TestNode(MAASServerTestCase):
     def test_acquire_calls__create_acquired_filesystems(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
         agent_name = factory.make_name("agent-name")
         mock_create_acquired_filesystems = self.patch_autospec(
             node, "_create_acquired_filesystems"
         )
-        node.acquire(user, token, agent_name)
+        node.acquire(user, agent_name)
         self.assertThat(mock_create_acquired_filesystems, MockCalledOnceWith())
 
     def test_acquire_logs_user_request(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
         agent_name = factory.make_name("agent-name")
         register_event = self.patch(node, "_register_request_event")
-        node.acquire(user, token, agent_name)
+        node.acquire(user, agent_name)
         self.assertThat(
             register_event,
             MockCalledOnceWith(
@@ -1924,7 +1914,6 @@ class TestNode(MAASServerTestCase):
     def test_acquire_calls__create_acquired_bridges(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
         agent_name = factory.make_name("agent-name")
         mock_create_acquired_bridges = self.patch_autospec(
             node, "_create_acquired_bridges"
@@ -1934,7 +1923,6 @@ class TestNode(MAASServerTestCase):
         bridge_fd = random.randint(0, 500)
         node.acquire(
             user,
-            token,
             agent_name,
             bridge_all=True,
             bridge_type=bridge_type,
@@ -2546,7 +2534,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(""))
-        self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
         self.expectThat(node.ephemeral_deploy, Is(False))
         self.expectThat(node.osystem, Equals(""))
@@ -2592,7 +2579,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(""))
-        self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
         self.expectThat(node.ephemeral_deploy, Is(False))
         self.expectThat(node.osystem, Equals(""))
@@ -2625,7 +2611,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Equals(None))
         self.expectThat(node.agent_name, Equals(""))
-        self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
         self.expectThat(node.ephemeral_deploy, Is(False))
         self.expectThat(node.osystem, Equals(""))
