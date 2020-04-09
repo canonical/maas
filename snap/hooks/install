@@ -119,5 +119,21 @@ if [ -d "$SNAP_COMMON/postgres/data" ] && [ -e "$SNAP_COMMON/postgres/data/PG_VE
     fi
 fi
 
+maas_snap_mode() {
+    cat "$SNAP_COMMON/snap_mode" 2>/dev/null || echo "none"
+}
+
+if [ "$(maas_snap_mode)" = "all" ]; then
+    # When running in all mode and not disabled, start services to ensure
+    # PostgreSQL is running to perform migrations
+    service="${SNAP_INSTANCE_NAME}.supervisor"
+    if snapctl services "$service" | grep -q disabled; then
+        echo "Can't refresh snap in 'all' mode while disabled." >&2
+        exit 1
+    else
+        snapctl start "$service"
+    fi
+fi
+
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 exec "$SNAP/bin/maas-wrapper" migrate --configure
