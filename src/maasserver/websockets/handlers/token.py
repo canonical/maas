@@ -1,4 +1,4 @@
-# Copyright 2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2019-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The Token handler for the WebSocket connection."""
@@ -10,6 +10,7 @@ from piston3.models import Token
 
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
+from maasserver.models import Node
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.websockets.base import Handler, HandlerDoesNotExistError
 from provisioningserver.events import EVENT_TYPES
@@ -78,3 +79,13 @@ class TokenHandler(Handler):
                 "Modified consumer name of token.",
             )
         return self.full_dehydrate(token)
+
+    def delete(self, params):
+        """Delete a token."""
+        # LP:1870171 - Make sure the key being deleted isn't assoicated with
+        # any node. In MAAS 2.8+ Node.token has been removed.
+        token = self.get_object(
+            params, permission=self._meta.delete_permission
+        )
+        Node.objects.filter(token=token).update(token=None)
+        token.delete()

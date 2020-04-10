@@ -3196,7 +3196,6 @@ class Node(CleanSave, TimestampedModel):
     def acquire(
         self,
         user,
-        token=None,
         agent_name="",
         comment=None,
         bridge_all=False,
@@ -3204,9 +3203,8 @@ class Node(CleanSave, TimestampedModel):
         bridge_stp=None,
         bridge_fd=None,
     ):
-        """Mark commissioned node as acquired by the given user and token."""
+        """Mark commissioned node as acquired by the given user."""
         assert self.owner is None or self.owner == user
-        assert token is None or token.user == user
 
         self._create_acquired_filesystems()
         self._register_request_event(
@@ -3218,7 +3216,6 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
         self.agent_name = agent_name
-        self.token = token
         if bridge_all:
             self._create_acquired_bridges(
                 bridge_type=bridge_type,
@@ -3552,7 +3549,6 @@ class Node(CleanSave, TimestampedModel):
             finalize_release = True
 
         self.status = NODE_STATUS.RELEASING
-        self.token = None
         self.agent_name = ""
         self.set_netboot()
         self.set_ephemeral_deploy()

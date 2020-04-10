@@ -1,4 +1,4 @@
-# Copyright 2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2019-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.token`"""
@@ -11,7 +11,7 @@ from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import get_one, reload_object
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.token import TokenHandler
 from provisioningserver.events import AUDIT
@@ -99,3 +99,12 @@ class TestTokenHandler(MAASServerTestCase):
         handler = TokenHandler(user, {}, None)
         handler.delete({"id": token.id})
         self.assertIsNone(get_one(get_auth_tokens(user).filter(id=token.id)))
+
+    def test_delete_doesnt_delete_node(self):
+        user = factory.make_User()
+        token = create_auth_token(user)
+        node = factory.make_Node(owner=user, token=token)
+        handler = TokenHandler(user, {}, None)
+        handler.delete({"id": token.id})
+        self.assertIsNone(get_one(get_auth_tokens(user).filter(id=token.id)))
+        self.assertIsNotNone(reload_object(node))
