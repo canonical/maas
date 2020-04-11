@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -112,7 +112,6 @@ from maasserver.models.node import (
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
-from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
     NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
@@ -1194,12 +1193,6 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(bios_boot_method=factory.make_name("boot"))
         self.assertEqual("pxe", node.get_bios_boot_method())
 
-    def test_add_node_with_token(self):
-        user = factory.make_User()
-        token = create_auth_token(user)
-        node = factory.make_Node(token=token)
-        self.assertEqual(token, node.token)
-
     def test_add_physical_interface(self):
         mac = factory.make_mac_address()
         node = factory.make_Node()
@@ -1664,9 +1657,8 @@ class TestNode(MAASServerTestCase):
     def test_acquire(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
-        agent_name = factory.make_name('agent-name')
-        node.acquire(user, token, agent_name)
+        agent_name = factory.make_name("agent-name")
+        node.acquire(user, agent_name)
         self.assertEqual(
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name))
@@ -1674,36 +1666,44 @@ class TestNode(MAASServerTestCase):
     def test_acquire_calls__create_acquired_filesystems(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
-        agent_name = factory.make_name('agent-name')
+        agent_name = factory.make_name("agent-name")
         mock_create_acquired_filesystems = self.patch_autospec(
-            node, "_create_acquired_filesystems")
-        node.acquire(user, token, agent_name)
+            node, "_create_acquired_filesystems"
+        )
+        node.acquire(user, agent_name)
         self.assertThat(mock_create_acquired_filesystems, MockCalledOnceWith())
 
     def test_acquire_logs_user_request(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
-        agent_name = factory.make_name('agent-name')
-        register_event = self.patch(node, '_register_request_event')
-        node.acquire(user, token, agent_name)
-        self.assertThat(register_event, MockCalledOnceWith(
-            user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, action='acquire',
-            comment=None))
+        agent_name = factory.make_name("agent-name")
+        register_event = self.patch(node, "_register_request_event")
+        node.acquire(user, agent_name)
+        self.assertThat(
+            register_event,
+            MockCalledOnceWith(
+                user,
+                EVENT_TYPES.REQUEST_NODE_ACQUIRE,
+                action="acquire",
+                comment=None,
+            ),
+        )
 
     def test_acquire_calls__create_acquired_bridges(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
-        token = create_auth_token(user)
-        agent_name = factory.make_name('agent-name')
+        agent_name = factory.make_name("agent-name")
         mock_create_acquired_bridges = self.patch_autospec(
             node, "_create_acquired_bridges")
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 500)
         node.acquire(
-            user, token, agent_name,
-            bridge_all=True, bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+            user,
+            agent_name,
+            bridge_all=True,
+            bridge_stp=bridge_stp,
+            bridge_fd=bridge_fd,
+        )
         self.assertThat(
             mock_create_acquired_bridges,
             MockCalledOnceWith(bridge_stp=bridge_stp, bridge_fd=bridge_fd))
@@ -2206,8 +2206,7 @@ class TestNode(MAASServerTestCase):
             MockCalledOnceWith(node.system_id, node.get_releasing_time()))
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
-        self.expectThat(node.agent_name, Equals(''))
-        self.expectThat(node.token, Is(None))
+        self.expectThat(node.agent_name, Equals(""))
         self.expectThat(node.netboot, Is(True))
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
@@ -2245,8 +2244,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(Node._set_status_expires, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
-        self.expectThat(node.agent_name, Equals(''))
-        self.expectThat(node.token, Is(None))
+        self.expectThat(node.agent_name, Equals(""))
         self.expectThat(node.netboot, Is(True))
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
@@ -2273,8 +2271,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(Node._set_status_expires, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Equals(None))
-        self.expectThat(node.agent_name, Equals(''))
-        self.expectThat(node.token, Is(None))
+        self.expectThat(node.agent_name, Equals(""))
         self.expectThat(node.netboot, Is(True))
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))

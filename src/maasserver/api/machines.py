@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -41,7 +41,6 @@ from maasserver.api.support import (
 )
 from maasserver.api.utils import (
     get_mandatory_param,
-    get_oauth_token,
     get_optional_list,
     get_optional_param,
 )
@@ -571,7 +570,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                     "Request from user %s to acquire machine: %s (%s)",
                     request.user.username, machine.fqdn, machine.system_id)
                 machine.acquire(
-                    request.user, get_oauth_token(request),
+                    request.user,
                     agent_name=agent_name, comment=comment,
                     bridge_all=bridge_all, bridge_stp=bridge_stp,
                     bridge_fd=bridge_fd)
@@ -1402,11 +1401,24 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @operation(idempotent=True)
     def list_allocated(self, request):
-        """Fetch Machines that were allocated to the User/oauth token."""
-        token = get_oauth_token(request)
-        match_ids = get_optional_list(request.GET, 'id')
-        machines = Machine.objects.get_allocated_visible_machines(
-            token, match_ids)
+        """@description-title List allocated
+        @description List machines that were allocated to the User.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        allocated machines.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
+        """
+        # limit to machines that the user can view
+        machines = Machine.objects.get_nodes(
+            request.user, NODE_PERMISSION.VIEW)
+        machines = machines.filter(
+            owner=request.user, status=NODE_STATUS.ALLOCATED
+        )
+        system_ids = get_optional_list(request.GET, "id")
+        if system_ids:
+            machines = machines.filter(system_id__in=system_ids)
         return machines.order_by('id')
 
     @operation(idempotent=False)
@@ -1693,7 +1705,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 raise NodesNotAvailable(message)
             if not dry_run:
                 machine.acquire(
-                    request.user, get_oauth_token(request),
+                    request.user,
                     agent_name=agent_name, comment=comment,
                     bridge_all=bridge_all, bridge_stp=bridge_stp,
                     bridge_fd=bridge_fd)

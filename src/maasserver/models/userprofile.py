@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """UserProfile model."""
@@ -20,6 +20,7 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.exceptions import CannotDeleteUserException
+from maasserver.models import Node
 from maasserver.models.cleansave import CleanSave
 from piston3.models import Token
 
@@ -145,7 +146,11 @@ class UserProfile(CleanSave, Model):
 
         """
         token = get_object_or_404(
-            Token, user=self.user, token_type=Token.ACCESS, key=token_key)
+            Token, user=self.user, token_type=Token.ACCESS, key=token_key,
+        )
+        # LP:1870171 - Make sure the key being deleted isn't assoicated with
+        # any node. In MAAS 2.8+ Node.token has been removed.
+        Node.objects.filter(token=token).update(token=None)
         token.consumer.delete()
         token.delete()
 

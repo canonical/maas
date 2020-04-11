@@ -2652,11 +2652,16 @@ class Node(CleanSave, TimestampedModel):
                     "s" if len(missing_packages) > 1 else ""))
 
     def acquire(
-            self, user, token=None, agent_name='', comment=None,
-            bridge_all=False, bridge_stp=None, bridge_fd=None):
-        """Mark commissioned node as acquired by the given user and token."""
+        self,
+        user,
+        agent_name="",
+        comment=None,
+        bridge_all=False,
+        bridge_stp=None,
+        bridge_fd=None,
+    ):
+        """Mark commissioned node as acquired by the given user."""
         assert self.owner is None or self.owner == user
-        assert token is None or token.user == user
 
         self._create_acquired_filesystems()
         self._register_request_event(
@@ -2665,7 +2670,6 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
         self.agent_name = agent_name
-        self.token = token
         if bridge_all:
             self._create_acquired_bridges(
                 bridge_stp=bridge_stp, bridge_fd=bridge_fd)
@@ -2924,8 +2928,7 @@ class Node(CleanSave, TimestampedModel):
             finalize_release = True
 
         self.status = NODE_STATUS.RELEASING
-        self.token = None
-        self.agent_name = ''
+        self.agent_name = ""
         self.set_netboot()
         self.osystem = ''
         self.distro_series = ''
