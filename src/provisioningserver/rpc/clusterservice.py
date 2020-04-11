@@ -891,6 +891,36 @@ class Cluster(RPCProtocol):
         """
         return pods.discover_pod(type, context, pod_id=pod_id, name=name)
 
+    @cluster.SendPodCommissioningResults.responder
+    def send_pod_commissioning_results(
+        self,
+        pod_id,
+        name,
+        type,
+        system_id,
+        context,
+        consumer_key,
+        token_key,
+        token_secret,
+        metadata_url,
+    ):
+        """SendPodCommissioningResults()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.SendPodCommissioningResults`.
+        """
+        return pods.send_pod_commissioning_results(
+            type,
+            context,
+            pod_id,
+            name,
+            system_id,
+            consumer_key,
+            token_key,
+            token_secret,
+            metadata_url,
+        )
+
     @cluster.ComposeMachine.responder
     def compose_machine(self, type, context, request, pod_id, name):
         """ComposeMachine()

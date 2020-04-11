@@ -50,6 +50,7 @@ from maasserver.models.iscsiblockdevice import (
 from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.resourcepool import ResourcePool
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.permissions import PodPermission
 from maasserver.testing.factory import factory
@@ -755,6 +756,10 @@ class TestPodManager(MAASServerTestCase):
 
 
 class TestPod(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.useFixture(SignalsDisabled("podhints"))
+
     def make_discovered_block_device(
         self,
         model=None,

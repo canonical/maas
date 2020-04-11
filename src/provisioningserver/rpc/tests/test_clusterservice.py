@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the cluster's RPC implementation."""
@@ -2255,9 +2255,7 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
             "consumer_key": factory.make_name("consumer_key"),
             "token_key": factory.make_name("token_key"),
             "token_secret": factory.make_name("token_secret"),
-            "metadata_url": urlparse(
-                "https://%s/path/to/metadata" % factory.make_hostname()
-            ),
+            "metadata_url": urlparse(factory.make_url()),
         }
 
     def test_is_registered(self):
@@ -4045,6 +4043,63 @@ class TestClusterProtocol_DiscoverPod(MAASTestCase):
         self.assertThat(
             mock_discover_pod,
             MockCalledOnceWith(pod_type, context, pod_id=pod_id, name=name),
+        )
+
+
+class TestClusterProtocol_SendPodCommissioningResults(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.SendPodCommissioningResults.commandName
+        )
+        self.assertIsNotNone(responder)
+
+    @inlineCallbacks
+    def test_calls_send_pod_commissioning_results(self):
+        mock_send_pod_commissioning_results = self.patch(
+            pods, "send_pod_commissioning_results"
+        )
+        mock_send_pod_commissioning_results.return_value = succeed({})
+        pod_type = factory.make_name("pod_type")
+        context = {"data": factory.make_name("data")}
+        pod_id = random.randint(1, 100)
+        name = factory.make_name("pod")
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        metadata_url = urlparse(factory.make_url())
+        yield call_responder(
+            Cluster(),
+            cluster.SendPodCommissioningResults,
+            {
+                "type": pod_type,
+                "context": context,
+                "pod_id": pod_id,
+                "name": name,
+                "system_id": system_id,
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+                "metadata_url": metadata_url,
+            },
+        )
+        self.assertThat(
+            mock_send_pod_commissioning_results,
+            MockCalledOnceWith(
+                pod_type,
+                context,
+                pod_id,
+                name,
+                system_id,
+                consumer_key,
+                token_key,
+                token_secret,
+                metadata_url,
+            ),
         )
 
 

@@ -16,11 +16,13 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.pod import Capabilities
-from provisioningserver.drivers.pod import lxd as lxd_pod_module
+from provisioningserver.drivers.pod import lxd as lxd_module
+from provisioningserver.drivers.pod.lxd import LXDPodDriver
 from provisioningserver.maas_certificates import (
     MAAS_CERTIFICATE,
     MAAS_PRIVATE_KEY,
 )
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils import kernel_to_debian_architecture
 
 
@@ -29,7 +31,7 @@ class TestLXDPodDriver(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_missing_packages(self):
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
@@ -53,7 +55,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     def test_get_url(self):
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         context = {"power_address": factory.make_hostname()}
 
         # Test ip adds protocol and port
@@ -83,11 +85,11 @@ class TestLXDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_client(self):
         context = self.make_parameters_context()
-        Client = self.patch(lxd_pod_module, "Client")
+        Client = self.patch(lxd_module, "Client")
         client = Client.return_value
         client.has_api_extension.return_value = True
         client.trusted = False
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         endpoint = driver.get_url(context)
         returned_client = yield driver.get_client(None, context)
         self.assertThat(
@@ -108,29 +110,29 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_parameters_context()
         context["password"] = None
         pod_id = factory.make_name("pod_id")
-        Client = self.patch(lxd_pod_module, "Client")
+        Client = self.patch(lxd_module, "Client")
         client = Client.return_value
         client.trusted = False
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         error_msg = f"Pod {pod_id}: Certificate is not trusted and no password was given."
-        with ExpectedException(lxd_pod_module.LXDPodError, error_msg):
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.get_client(pod_id, context)
 
     @inlineCallbacks
     def test_get_client_raises_error_when_cannot_connect(self):
         context = self.make_parameters_context()
         pod_id = factory.make_name("pod_id")
-        Client = self.patch(lxd_pod_module, "Client")
-        Client.side_effect = lxd_pod_module.ClientConnectionFailed()
-        driver = lxd_pod_module.LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
+        Client.side_effect = lxd_module.ClientConnectionFailed()
+        driver = LXDPodDriver()
         error_msg = f"Pod {pod_id}: Failed to connect to the LXD REST API."
-        with ExpectedException(lxd_pod_module.LXDPodError, error_msg):
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.get_client(pod_id, context)
 
     @inlineCallbacks
     def test__get_machine(self):
         context = self.make_parameters_context()
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         Client = self.patch(driver, "get_client")
         client = Client.return_value
         mock_machine = Mock()
@@ -144,20 +146,18 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_parameters_context()
         pod_id = factory.make_name("pod_id")
         instance_name = context.get("instance_name")
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         Client = self.patch(driver, "get_client")
         client = Client.return_value
-        client.virtual_machines.get.side_effect = lxd_pod_module.NotFound(
-            "Error"
-        )
+        client.virtual_machines.get.side_effect = lxd_module.NotFound("Error")
         error_msg = f"Pod {pod_id}: LXD VM {instance_name} not found."
-        with ExpectedException(lxd_pod_module.LXDPodError, error_msg):
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.get_machine(pod_id, context)
 
     @inlineCallbacks
     def test__power_on(self):
         context = self.make_parameters_context()
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
         mock_machine.status_code = 110
         yield driver.power_on(None, context)
@@ -166,7 +166,7 @@ class TestLXDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__power_off(self):
         context = self.make_parameters_context()
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
         mock_machine.status_code = 103
         yield driver.power_off(None, context)
@@ -175,7 +175,7 @@ class TestLXDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__power_query(self):
         context = self.make_parameters_context()
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
         mock_machine.status_code = 103
         state = yield driver.power_query(None, context)
@@ -185,22 +185,22 @@ class TestLXDPodDriver(MAASTestCase):
     def test_power_query_raises_error_on_unknown_state(self):
         context = self.make_parameters_context()
         pod_id = factory.make_name("pod_id")
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
         mock_machine.status_code = 106
         error_msg = f"Pod {pod_id}: Unknown power status code: {mock_machine.status_code}"
-        with ExpectedException(lxd_pod_module.LXDPodError, error_msg):
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.power_query(pod_id, context)
 
     @inlineCallbacks
     def test_discover_requires_client_to_have_vm_support(self):
         context = self.make_parameters_context()
-        driver = lxd_pod_module.LXDPodDriver()
-        Client = self.patch(lxd_pod_module, "Client")
+        driver = LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
         client = Client.return_value
         client.has_api_extension.return_value = False
         error_msg = "Please upgrade your LXD host to *."
-        with ExpectedException(lxd_pod_module.LXDPodError, error_msg):
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.discover(None, context)
         self.assertThat(
             client.has_api_extension, MockCalledOnceWith("virtual-machines")
@@ -209,8 +209,8 @@ class TestLXDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__discover(self):
         context = self.make_parameters_context()
-        driver = lxd_pod_module.LXDPodDriver()
-        Client = self.patch(lxd_pod_module, "Client")
+        driver = LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
         client = Client.return_value
         client.has_api_extension.return_value = True
         name = factory.make_name("hostname")
@@ -256,7 +256,7 @@ class TestLXDPodDriver(MAASTestCase):
 
     @inlineCallbacks
     def test__get_discovered_pod_storage_pool(self):
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_storage_pool = Mock()
         mock_storage_pool.name = factory.make_name("pool")
         mock_storage_pool.driver = "dir"
@@ -292,7 +292,7 @@ class TestLXDPodDriver(MAASTestCase):
 
     @inlineCallbacks
     def test__get_discovered_machine(self):
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_machine = Mock()
         mock_machine.name = factory.make_name("machine")
         mock_machine.architecture = "x86_64"
@@ -342,7 +342,7 @@ class TestLXDPodDriver(MAASTestCase):
             discovered_machine.architecture,
         )
         self.assertEquals(
-            lxd_pod_module.LXD_VM_POWER_STATE[mock_machine.status_code],
+            lxd_module.LXD_VM_POWER_STATE[mock_machine.status_code],
             discovered_machine.power_state,
         )
         self.assertEquals(2, discovered_machine.cores)
@@ -357,7 +357,7 @@ class TestLXDPodDriver(MAASTestCase):
             MatchesStructure.byEquality(
                 model=None,
                 serial=None,
-                id_path=lxd_pod_module.LXD_VM_ID_PATH + "root",
+                id_path=lxd_module.LXD_VM_ID_PATH + "root",
                 size=10 * 1000 ** 3,
                 block_size=512,
                 tags=[],
@@ -394,7 +394,7 @@ class TestLXDPodDriver(MAASTestCase):
     def test_get_discovered_machine_sets_power_state_to_unknown_for_unknown(
         self
     ):
-        driver = lxd_pod_module.LXDPodDriver()
+        driver = LXDPodDriver()
         mock_machine = Mock()
         mock_machine.name = factory.make_name("machine")
         mock_machine.architecture = "x86_64"
@@ -438,3 +438,17 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
         self.assertEquals("unknown", discovered_machine.power_state)
+
+    @inlineCallbacks
+    def test__get_commissioning_data(self):
+        driver = LXDPodDriver()
+        context = self.make_parameters_context()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.resources = {
+            factory.make_name("key"): factory.make_name("value")
+        }
+        commissioning_data = yield driver.get_commissioning_data(1, context)
+        self.assertDictEqual(
+            {LXD_OUTPUT_NAME: client.resources}, commissioning_data
+        )

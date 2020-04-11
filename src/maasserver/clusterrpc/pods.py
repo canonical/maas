@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers related to pod."""
@@ -13,6 +13,7 @@ from provisioningserver.rpc.cluster import (
     ComposeMachine,
     DecomposeMachine,
     DiscoverPod,
+    SendPodCommissioningResults,
 )
 from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
 from provisioningserver.utils.twisted import (
@@ -87,6 +88,63 @@ def get_best_discovered_result(discovered):
                     raise exc
     else:
         return None
+
+
+@asynchronous(timeout=120)
+def send_pod_commissioning_results(
+    client,
+    pod_id,
+    name,
+    pod_type,
+    system_id,
+    context,
+    consumer_key,
+    token_key,
+    token_secret,
+    metadata_url,
+):
+    """Send commissioning results for a Pod.
+
+    :param client: The client to use to make the RPC call.
+    :param pod_id: ID of the pod in the database.
+    :param name: Name of the pod in the database.
+    :param pod_type: Type of pod to discover.
+    :param system_id: system_id of the Node associated with the Pod.
+    :param context: Pod driver information to connect to pod.
+    :param consumer_key: The OAUTH consumer key for the Node.
+    :param token_key: The OAUTH token key for the Node.
+    :param token_secret: The OAUTH token secret for the Node.
+    :param metadata_url: The metadata URL commissioning data for the Node
+                         should be sent to.
+    """
+    d = client(
+        SendPodCommissioningResults,
+        pod_id=pod_id,
+        name=name,
+        type=pod_type,
+        system_id=system_id,
+        context=context,
+        consumer_key=consumer_key,
+        token_key=token_key,
+        token_secret=token_secret,
+        metadata_url=metadata_url,
+    )
+
+    def wrap_failure(failure):
+        prefix = f"Unable to send commissioning results for {name}({pod_id}) because"
+        if failure.check(UnknownPodType):
+            raise PodProblem(f"{prefix} `{pod_type}` is an unknown Pod type.")
+        elif failure.check(NotImplementedError):
+            raise PodProblem(
+                f"{prefix} `{pod_type}` driver does not implement the 'send_pod_commissioning_results' method."
+            )
+        elif failure.check(PodActionFail):
+            raise PodProblem(prefix + ": " + str(failure.value))
+        else:
+            return failure
+
+    d.addErrback(wrap_failure)
+    return d
 
 
 @asynchronous(timeout=FOREVER)

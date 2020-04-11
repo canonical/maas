@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Base pod driver."""
@@ -415,6 +415,16 @@ class PodDriverBase(PowerDriverBase):
         :param pod_id: Pod id.
         :param context:  Pod settings.
         """
+
+    def get_commissioning_data(self, pod_id, context):
+        """Retreive commissioning data from the Pod host.
+
+        :param pod_id: Pod id.
+        :param context: Pod settings.
+        :returns: Dictionary mapping builtin commissioning script names with
+        data to be sent to the metadata server.
+        """
+        raise NotImplementedError()
 
     def get_schema(self, detect_missing_packages=True):
         """Returns the JSON schema for the driver.

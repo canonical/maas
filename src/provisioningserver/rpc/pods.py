@@ -1,11 +1,14 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Pod RPC functions."""
 
 __all__ = ["discover_pod"]
 
+import json
+
 from twisted.internet.defer import Deferred
+from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
@@ -15,6 +18,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.refresh.maas_api_helper import signal, SignalException
 from provisioningserver.rpc.exceptions import (
     PodActionFail,
     PodInvalidResources,
@@ -127,6 +131,73 @@ def compose_machine(pod_type, context, request, pod_id, name):
             raise PodActionFail(get_error_message(failure.value))
 
     d.addCallback(convert)
+    d.addErrback(catch_all)
+    return d
+
+
+@asynchronous
+def send_pod_commissioning_results(
+    pod_type,
+    context,
+    pod_id,
+    name,
+    system_id,
+    consumer_key,
+    token_key,
+    token_secret,
+    metadata_url,
+):
+    """Send commissioning results for the Pod to the region."""
+    pod_driver = PodDriverRegistry.get_item(pod_type)
+    if pod_driver is None:
+        raise UnknownPodType(pod_type)
+    d = pod_driver.get_commissioning_data(pod_id, context)
+    if not isinstance(d, Deferred):
+        raise PodActionFail(
+            f"bad pod driver '{pod_type}'; 'get_commissioning_data' did not return Deferred."
+        )
+
+    def send_items(commissioning_results):
+        for filename, content in commissioning_results.items():
+            if isinstance(content, dict) or isinstance(content, list):
+                content = json.dumps(content, indent=4)
+            if not isinstance(content, bytes):
+                content = content.encode()
+            try:
+                signal(
+                    url=metadata_url.geturl(),
+                    creds={
+                        "consumer_key": consumer_key,
+                        "token_key": token_key,
+                        "token_secret": token_secret,
+                        "consumer_secret": "",
+                    },
+                    status="WORKING",
+                    files={filename: content, f"{filename}.out": content},
+                    exit_status=0,
+                    error=f"Finished {filename}: 0",
+                )
+            except SignalException as e:
+                raise PodActionFail(
+                    f"Unable to send Pod commissioning information for {name}({system_id}): {e.error}"
+                )
+
+    def catch_all(failure):
+        """Convert all failures into `PodActionFail` unless already a
+        `PodActionFail` or `NotImplementedError`."""
+        # Log locally to help debugging.
+        log.err(failure, "Failed to send_pod_commissioning_results.")
+        if failure.check(NotImplementedError, PodActionFail):
+            return failure
+        else:
+            raise PodActionFail(get_error_message(failure.value))
+
+    d.addCallback(
+        lambda commissioning_results: deferToThread(
+            send_items, commissioning_results
+        )
+    )
+    d.addCallback(lambda _: {})
     d.addErrback(catch_all)
     return d
 

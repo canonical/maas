@@ -32,6 +32,7 @@ from provisioningserver.maas_certificates import (
     MAAS_CERTIFICATE,
     MAAS_PRIVATE_KEY,
 )
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils import kernel_to_debian_architecture, typed
 from provisioningserver.utils.ipaddr import get_vid_from_ifname
 from provisioningserver.utils.twisted import asynchronous
@@ -341,3 +342,11 @@ class LXDPodDriver(PodDriver):
         """Decompose a virtual machine machine."""
         # abstract method, will update in subsequent branch.
         pass
+
+    @asynchronous
+    def get_commissioning_data(self, pod_id, context):
+        """Retreive commissioning data from LXD."""
+        d = self.get_client(pod_id, context)
+        d.addCallback(lambda client: client.resources)
+        d.addCallback(lambda resources: {LXD_OUTPUT_NAME: resources})
+        return d

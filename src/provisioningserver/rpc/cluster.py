@@ -778,6 +778,30 @@ class DiscoverPod(amp.Command):
     }
 
 
+class SendPodCommissioningResults(amp.Command):
+    """Send commissioning results from the Pod.
+
+    :since: 2.8
+    """
+
+    arguments = [
+        (b"pod_id", amp.Integer()),
+        (b"name", amp.Unicode()),
+        (b"type", amp.Unicode()),
+        (b"system_id", amp.Unicode()),
+        (b"context", StructureAsJSON()),
+        (b"consumer_key", amp.Unicode()),
+        (b"token_key", amp.Unicode()),
+        (b"token_secret", amp.Unicode()),
+        (b"metadata_url", ParsedURL()),
+    ]
+    errors = {
+        exceptions.UnknownPodType: b"UnknownPodType",
+        NotImplementedError: b"NotImplementedError",
+        exceptions.PodActionFail: b"PodActionFail",
+    }
+
+
 class ComposeMachine(amp.Command):
     """Compose a machine in a pod.
 

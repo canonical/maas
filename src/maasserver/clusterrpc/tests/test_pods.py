@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test for :py:mod:`maasserver.clusterrpc.power`."""
@@ -25,6 +25,7 @@ from maasserver.clusterrpc.pods import (
     decompose_machine,
     discover_pod,
     get_best_discovered_result,
+    send_pod_commissioning_results,
 )
 from maasserver.exceptions import PodProblem
 from maasserver.testing.factory import factory
@@ -34,8 +35,13 @@ from maasserver.testing.testcase import (
 )
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from metadataserver.models import NodeKey
 from provisioningserver.drivers.pod import DiscoveredPod, DiscoveredPodHints
-from provisioningserver.rpc.cluster import ComposeMachine, DecomposeMachine
+from provisioningserver.rpc.cluster import (
+    ComposeMachine,
+    DecomposeMachine,
+    SendPodCommissioningResults,
+)
 from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -204,6 +210,159 @@ class TestGetBestDiscoveredResult(MAASTestCase):
                 },
             ),
         )
+
+
+class TestSendPodCommissioningResults(MAASServerTestCase):
+    """Tests for `send_pod_commissioning_results`."""
+
+    def test__calls_and_returns_correctly(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        metadata_url = factory.make_url()
+        client = Mock()
+        client.return_value = succeed(None)
+
+        wait_for_reactor(send_pod_commissioning_results)(
+            client,
+            pod.id,
+            pod.name,
+            pod.power_type,
+            node.system_id,
+            pod.power_parameters,
+            token.consumer.key,
+            token.key,
+            token.secret,
+            metadata_url,
+        )
+
+        self.assertThat(
+            client,
+            MockCalledOnceWith(
+                SendPodCommissioningResults,
+                pod_id=pod.id,
+                name=pod.name,
+                type=pod.power_type,
+                system_id=node.system_id,
+                context=pod.power_parameters,
+                consumer_key=token.consumer.key,
+                token_key=token.key,
+                token_secret=token.secret,
+                metadata_url=metadata_url,
+            ),
+        )
+
+    def test__raises_PodProblem_for_UnknownPodType(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        metadata_url = factory.make_url()
+        client = Mock()
+        client.return_value = fail(UnknownPodType(pod.power_type))
+
+        error = self.assertRaises(
+            PodProblem,
+            wait_for_reactor(send_pod_commissioning_results),
+            client,
+            pod.id,
+            pod.name,
+            pod.power_type,
+            node.system_id,
+            pod.power_parameters,
+            token.consumer.key,
+            token.key,
+            token.secret,
+            metadata_url,
+        )
+        self.assertEqual(
+            f"Unable to send commissioning results for {pod.name}({pod.id}) "
+            f"because `{pod.power_type}` is an unknown Pod type.",
+            str(error),
+        )
+
+    def test__raises_PodProblem_for_NotImplementedError(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        metadata_url = factory.make_url()
+        client = Mock()
+        client.return_value = fail(NotImplementedError())
+
+        error = self.assertRaises(
+            PodProblem,
+            wait_for_reactor(send_pod_commissioning_results),
+            client,
+            pod.id,
+            pod.name,
+            pod.power_type,
+            node.system_id,
+            pod.power_parameters,
+            token.consumer.key,
+            token.key,
+            token.secret,
+            metadata_url,
+        )
+        self.assertEqual(
+            f"Unable to send commissioning results for {pod.name}({pod.id}) "
+            f"because `{pod.power_type}` driver does not implement the "
+            "'send_pod_commissioning_results' method.",
+            str(error),
+        )
+
+    def test__raises_PodProblem_for_PodActionFail(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        metadata_url = factory.make_url()
+        error_msg = factory.make_name("error")
+        client = Mock()
+        client.return_value = fail(PodActionFail(error_msg))
+
+        error = self.assertRaises(
+            PodProblem,
+            wait_for_reactor(send_pod_commissioning_results),
+            client,
+            pod.id,
+            pod.name,
+            pod.power_type,
+            node.system_id,
+            pod.power_parameters,
+            token.consumer.key,
+            token.key,
+            token.secret,
+            metadata_url,
+        )
+        self.assertEqual(
+            f"Unable to send commissioning results for {pod.name}({pod.id}) "
+            f"because: {error_msg}",
+            str(error),
+        )
+
+    def test__raises_same_exception(self):
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        metadata_url = factory.make_url()
+        client = Mock()
+        exception_type = factory.make_exception_type()
+        exception_msg = factory.make_name("error")
+        client.return_value = fail(exception_type(exception_msg))
+
+        error = self.assertRaises(
+            exception_type,
+            wait_for_reactor(send_pod_commissioning_results),
+            client,
+            pod.id,
+            pod.name,
+            pod.power_type,
+            node.system_id,
+            pod.power_parameters,
+            token.consumer.key,
+            token.key,
+            token.secret,
+            metadata_url,
+        )
+        self.assertEqual(exception_msg, str(error))
 
 
 class TestComposeMachine(MAASServerTestCase):

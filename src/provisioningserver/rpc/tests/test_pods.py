@@ -1,18 +1,21 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module:`~provisioningserver.rpc.pod`."""
 
 __all__ = []
 
+import json
 import random
 import re
-from unittest.mock import MagicMock
+from unittest.mock import call, MagicMock
+from urllib.parse import urlparse
 
 from testtools import ExpectedException
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
@@ -23,6 +26,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
+from provisioningserver.refresh.maas_api_helper import SignalException
 from provisioningserver.rpc import exceptions, pods
 
 
@@ -313,6 +317,195 @@ class TestComposeMachine(MAASTestCase):
                 fake_request,
                 pod_id=pod_id,
                 name=pod_name,
+            )
+
+
+class TestSendPodCommissioningResults(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_unknown_pod_raises_UnknownPodType(self):
+        with ExpectedException(exceptions.UnknownPodType):
+            yield pods.send_pod_commissioning_results(
+                pod_type=factory.make_name("type"),
+                context={},
+                pod_id=random.randint(1, 10),
+                name=factory.make_name("name"),
+                system_id=factory.make_name("system_id"),
+                consumer_key=factory.make_name("consumer_key"),
+                token_key=factory.make_name("token_key"),
+                token_secret=factory.make_name("token_secret"),
+                metadata_url=urlparse(factory.make_url()),
+            )
+
+    @inlineCallbacks
+    def test_handles_driver_not_returning_Deferred(self):
+        pod_type = factory.make_name("type")
+        fake_driver = MagicMock()
+        fake_driver.get_commissioning_data.return_value = None
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+            exceptions.PodActionFail,
+            re.escape(
+                f"bad pod driver '{pod_type}'; 'get_commissioning_data' did not "
+                "return Deferred."
+            ),
+        ):
+            yield pods.send_pod_commissioning_results(
+                pod_type=pod_type,
+                context={},
+                pod_id=random.randint(1, 10),
+                name=factory.make_name("name"),
+                system_id=factory.make_name("system_id"),
+                consumer_key=factory.make_name("consumer_key"),
+                token_key=factory.make_name("token_key"),
+                token_secret=factory.make_name("token_secret"),
+                metadata_url=urlparse(factory.make_url()),
+            )
+
+    @inlineCallbacks
+    def test_sends_results(self):
+        mock_signal = self.patch(pods, "signal")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        metadata_url = factory.make_url()
+        filename1 = factory.make_name("filename1")
+        data1 = {factory.make_name("key1"): factory.make_name("value1")}
+        filename2 = factory.make_name("filename2")
+        data2 = {factory.make_name("key2"): factory.make_name("value2")}
+        fake_driver = MagicMock()
+        fake_driver.get_commissioning_data.return_value = succeed(
+            {filename1: data1, filename2: data2}
+        )
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        ret = yield pods.send_pod_commissioning_results(
+            pod_type=factory.make_name("type"),
+            context={},
+            pod_id=random.randint(1, 10),
+            name=factory.make_name("name"),
+            system_id=factory.make_name("system_id"),
+            consumer_key=consumer_key,
+            token_key=token_key,
+            token_secret=token_secret,
+            metadata_url=urlparse(metadata_url),
+        )
+        self.assertDictEqual({}, ret)
+        self.assertThat(
+            mock_signal,
+            MockCallsMatch(
+                call(
+                    url=metadata_url,
+                    creds={
+                        "consumer_key": consumer_key,
+                        "token_key": token_key,
+                        "token_secret": token_secret,
+                        "consumer_secret": "",
+                    },
+                    status="WORKING",
+                    files={
+                        filename1: json.dumps(data1, indent=4).encode(),
+                        f"{filename1}.out": json.dumps(
+                            data1, indent=4
+                        ).encode(),
+                    },
+                    exit_status=0,
+                    error=f"Finished {filename1}: 0",
+                ),
+                call(
+                    url=metadata_url,
+                    creds={
+                        "consumer_key": consumer_key,
+                        "token_key": token_key,
+                        "token_secret": token_secret,
+                        "consumer_secret": "",
+                    },
+                    status="WORKING",
+                    files={
+                        filename2: json.dumps(data2, indent=4).encode(),
+                        f"{filename2}.out": json.dumps(
+                            data2, indent=4
+                        ).encode(),
+                    },
+                    exit_status=0,
+                    error=f"Finished {filename2}: 0",
+                ),
+            ),
+        )
+
+    @inlineCallbacks
+    def test_sends_results_raises_podactionfail_on_signalexception(self):
+        mock_signal = self.patch(pods, "signal")
+        err_msg = factory.make_name("error_message")
+        mock_signal.side_effect = SignalException(err_msg)
+        name = (factory.make_name("name"),)
+        system_id = factory.make_name("system_id")
+        fake_driver = MagicMock()
+        fake_driver.get_commissioning_data.return_value = succeed(
+            {factory.make_name("filename"): factory.make_name("data")}
+        )
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+            exceptions.PodActionFail,
+            re.escape(
+                f"Unable to send Pod commissioning information for {name}({system_id}): {err_msg}"
+            ),
+        ):
+            yield pods.send_pod_commissioning_results(
+                pod_type=factory.make_name("type"),
+                context={},
+                pod_id=random.randint(1, 10),
+                name=name,
+                system_id=system_id,
+                consumer_key=factory.make_name("consumer_key"),
+                token_key=factory.make_name("token_key"),
+                token_secret=factory.make_name("token_secret"),
+                metadata_url=urlparse(factory.make_url()),
+            )
+
+    @inlineCallbacks
+    def test_handles_driver_raising_NotImplementedError(self):
+        fake_driver = MagicMock()
+        fake_driver.get_commissioning_data.return_value = fail(
+            NotImplementedError()
+        )
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(NotImplementedError):
+            yield pods.send_pod_commissioning_results(
+                pod_type=factory.make_name("type"),
+                context={},
+                pod_id=random.randint(1, 10),
+                name=factory.make_name("name"),
+                system_id=factory.make_name("system_id"),
+                consumer_key=factory.make_name("consumer_key"),
+                token_key=factory.make_name("token_key"),
+                token_secret=factory.make_name("token_secret"),
+                metadata_url=urlparse(factory.make_url()),
+            )
+
+    @inlineCallbacks
+    def test_handles_driver_raising_any_Exception(self):
+        fake_driver = MagicMock()
+        fake_exception_type = factory.make_exception_type()
+        fake_exception_msg = factory.make_name("error")
+        fake_exception = fake_exception_type(fake_exception_msg)
+        fake_driver.get_commissioning_data.return_value = fail(fake_exception)
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+            exceptions.PodActionFail,
+            re.escape("Failed talking to pod: " + fake_exception_msg),
+        ):
+            yield pods.send_pod_commissioning_results(
+                pod_type=factory.make_name("type"),
+                context={},
+                pod_id=random.randint(1, 10),
+                name=factory.make_name("name"),
+                system_id=factory.make_name("system_id"),
+                consumer_key=factory.make_name("consumer_key"),
+                token_key=factory.make_name("token_key"),
+                token_secret=factory.make_name("token_secret"),
+                metadata_url=urlparse(factory.make_url()),
             )
 
 

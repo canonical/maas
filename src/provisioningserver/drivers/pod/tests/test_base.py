@@ -992,6 +992,15 @@ class TestFakePodDriverBase(MAASTestCase):
 
 
 class TestPodDriverBase(MAASTestCase):
+    def test_get_commissioning_data(self):
+        fake_driver = make_pod_driver_base()
+        self.assertRaises(
+            NotImplementedError,
+            fake_driver.get_commissioning_data,
+            random.randint(1, 100),
+            {},
+        )
+
     def test_get_schema(self):
         fake_name = factory.make_name("name")
         fake_description = factory.make_name("description")

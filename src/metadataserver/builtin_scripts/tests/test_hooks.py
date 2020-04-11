@@ -32,6 +32,7 @@ from maasserver.models.interface import Interface
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.numa import NUMANode
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
@@ -1753,6 +1754,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         )
 
     def test__syncs_pods(self):
+        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)
