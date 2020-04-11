@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the UserProfile model."""
@@ -84,6 +84,14 @@ class UserProfileTest(MAASServerTestCase):
         profile.delete()
         self.assertFalse(Consumer.objects.filter(id__in=consumer_ids).exists())
         self.assertFalse(Token.objects.filter(id__in=token_ids).exists())
+
+    def test_delete_doesnt_delete_node(self):
+        user = factory.make_User()
+        profile = user.userprofile
+        _, token = profile.create_authorisation_token()
+        node = factory.make_Node(owner=user, token=token)
+        profile.delete_authorisation_token(token.key)
+        self.assertIsNotNone(reload_object(node))
 
     def test_delete_deletes_related_filestorage_objects(self):
         # Deleting a profile deletes the related filestorage objects.

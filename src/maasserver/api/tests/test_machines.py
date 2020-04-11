@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the machines API."""
@@ -33,10 +33,6 @@ from maasserver.models import (
     node as node_module,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
-from maasserver.models.user import (
-    create_auth_token,
-    get_auth_tokens,
-)
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import (
@@ -546,29 +542,11 @@ class TestMachinesAPI(APITestCase.ForUser):
             [machine.system_id for machine in machines],
             extract_system_ids(parsed_result))
 
-    def test_GET_list_allocated_returns_only_allocated_with_user_token(self):
-        # If the user's allocated machines have different session tokens,
-        # list_allocated should only return the machines that have the
-        # current request's token on them.
-        machine_1 = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.user,
-            token=get_auth_tokens(self.user)[0])
-        second_token = create_auth_token(self.user)
-        factory.make_Node(
-            owner=self.user, status=NODE_STATUS.ALLOCATED,
-            token=second_token)
-
-        user_2 = factory.make_User()
-        create_auth_token(user_2)
-        factory.make_Node(
-            owner=self.user, status=NODE_STATUS.ALLOCATED,
-            token=second_token)
-
-        # At this point we have two machines owned by the same user but
-        # allocated with different tokens, and a third machine allocated to
-        # someone else entirely.  We expect list_allocated to
-        # return the machine with the same token as the one used in
-        # self.client, which is the one we set on machine_1 above.
+    def test_GET_list_allocated_returns_only_allocated_with_user(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user
+        )
+        factory.make_Node(status=NODE_STATUS.ALLOCATED)
 
         response = self.client.get(reverse('machines_handler'), {
             'op': 'list_allocated'})
@@ -576,17 +554,17 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
-            [machine_1.system_id], extract_system_ids(parsed_result))
+            [machine.system_id], extract_system_ids(parsed_result)
+        )
 
     def test_GET_list_allocated_filters_by_id(self):
-        # list_allocated takes an optional list of 'id' parameters to
-        # filter returned results.
-        current_token = get_auth_tokens(self.user)[0]
         machines = []
         for _ in range(3):
-            machines.append(factory.make_Node(
-                status=NODE_STATUS.ALLOCATED,
-                owner=self.user, token=current_token))
+            machines.append(
+                factory.make_Node(
+                    status=NODE_STATUS.ALLOCATED, owner=self.user
+                )
+            )
 
         required_machine_ids = [machines[0].system_id, machines[1].system_id]
         response = self.client.get(reverse('machines_handler'), {
@@ -1449,19 +1427,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         system_id = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         self.assertEqual(eligible_machine.system_id, system_id)
-
-    def test_POST_allocate_sets_a_token(self):
-        # "acquire" should set the Token being used in the request on
-        # the Machine that is allocated.
-        available_status = NODE_STATUS.READY
-        machine = factory.make_Node(
-            status=available_status, owner=None, with_boot_disk=True)
-        response = self.client.post(
-            reverse('machines_handler'), {'op': 'allocate'})
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        machine = Machine.objects.get(system_id=machine.system_id)
-        oauth_key = self.client.token.key
-        self.assertEqual(oauth_key, machine.token.key)
 
     def test_POST_accept_gets_machine_out_of_declared_state(self):
         # This will change when we add provisioning.  Until then,

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -45,7 +45,10 @@ from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.keys import ImportSSHKeysError
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from piston3.doc import generate_doc
@@ -287,6 +290,16 @@ class AccountAPITest(APITestCase.ForUser):
             })
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_delete_authorisation_token_doesnt_delete_node(self):
+        token = self.user.tokens.first()
+        node = factory.make_Node(owner=self.user, token=token)
+        response = self.client.post(
+            reverse("account_handler"),
+            {"op": "delete_authorisation_token", "token_key": token.key},
+        )
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.assertIsNotNone(reload_object(node))
 
     def test_update_authorisation_token(self):
         token_name_orig = 'Test_Token'

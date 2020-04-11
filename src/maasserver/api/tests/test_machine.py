@@ -716,10 +716,16 @@ class TestMachineAPI(APITestCase.ForUser):
         }
         self.client.post(self.get_machine_uri(machine), request)
         self.assertThat(
-            machine_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY,
-                bridge_all=False, bridge_fd=False,
-                bridge_stp=False, comment=request['comment']))
+            machine_method,
+            MockCalledOnceWith(
+                ANY,
+                agent_name=ANY,
+                bridge_all=False,
+                bridge_fd=0,
+                bridge_stp=False,
+                comment=request["comment"],
+            ),
+        )
 
     def test_POST_deploy_passes_bridge_settings(self):
         self.patch(node_module.Node, "_start")
@@ -740,10 +746,16 @@ class TestMachineAPI(APITestCase.ForUser):
         }
         self.client.post(self.get_machine_uri(machine), request)
         self.assertThat(
-            machine_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY,
-                bridge_all=True, bridge_fd=7,
-                bridge_stp=True, comment=None))
+            machine_method,
+            MockCalledOnceWith(
+                ANY,
+                agent_name=ANY,
+                bridge_all=True,
+                bridge_fd=7,
+                bridge_stp=True,
+                comment=None,
+            ),
+        )
 
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, '_stop')
@@ -898,10 +910,16 @@ class TestMachineAPI(APITestCase.ForUser):
             reverse('machines_handler'),
             {'op': 'allocate', 'comment': comment})
         self.assertThat(
-            machine_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY,
-                bridge_all=False, bridge_fd=False,
-                bridge_stp=False, comment=comment))
+            machine_method,
+            MockCalledOnceWith(
+                ANY,
+                agent_name=ANY,
+                bridge_all=False,
+                bridge_fd=False,
+                bridge_stp=False,
+                comment=comment,
+            ),
+        )
 
     def test_POST_allocate_handles_missing_comment(self):
         factory.make_Node(
@@ -911,10 +929,16 @@ class TestMachineAPI(APITestCase.ForUser):
         self.client.post(
             reverse('machines_handler'), {'op': 'allocate'})
         self.assertThat(
-            machine_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY,
-                bridge_all=False, bridge_fd=False,
-                bridge_stp=False, comment=None))
+            machine_method,
+            MockCalledOnceWith(
+                ANY,
+                agent_name=ANY,
+                bridge_all=False,
+                bridge_fd=0,
+                bridge_stp=False,
+                comment=None,
+            ),
+        )
 
     def test_POST_release_frees_hwe_kernel(self):
         self.patch(node_module.Machine, '_stop')
