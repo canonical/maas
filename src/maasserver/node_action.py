@@ -418,7 +418,7 @@ class Acquire(NodeAction):
         """See `NodeAction.execute`."""
         with locks.node_acquire:
             try:
-                self.node.acquire(self.user, token=None)
+                self.node.acquire(self.user)
             except ValidationError as e:
                 raise NodeActionError(e)
 
@@ -450,7 +450,7 @@ class Deploy(NodeAction):
         if self.node.owner is None:
             with locks.node_acquire:
                 try:
-                    self.node.acquire(self.user, token=None)
+                    self.node.acquire(self.user)
                 except ValidationError as e:
                     raise NodeActionError(e)
         if install_kvm:
