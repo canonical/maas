@@ -1,0 +1,6 @@
+#!/bin/bash
+find /sys/class/tty/ ! -type d -print0 2> /dev/null \
+    | xargs -0 readlink -f \
+    | sort -u
+# Do not fail commissioning if this fails.
+exit 0

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# The script is run both on controllers (which can be run inside a snap) and
+# commissioned machines.
+if [ -z "$SNAP" ]; then
+    sudo -n /usr/bin/lshw -xml
+else
+    "$SNAP/usr/bin/lshw" -xml
+fi

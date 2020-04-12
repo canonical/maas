@@ -254,6 +254,7 @@ lint-go:
 lint-shell: bin/shellcheck
 # skip files that have a non-shell shebang (e.g. Python files)
 	@bin/shellcheck -x -e 1071 \
+		src/provisioningserver/commissioning-scripts/* \
 		snap/hooks/* \
 		snap/local/tree/bin/* \
 		snap/local/tree/sbin/* \

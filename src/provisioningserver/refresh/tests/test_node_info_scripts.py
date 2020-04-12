@@ -22,8 +22,9 @@ from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import node_info_scripts as node_info_module
 from provisioningserver.refresh.node_info_scripts import (
+    get_script_content,
     make_function_call_script,
-    VIRTUALITY_SCRIPT,
+    VIRTUALITY_OUTPUT_NAME,
 )
 from provisioningserver.utils.shell import get_env_with_locale
 
@@ -363,7 +364,7 @@ class TestDHCPExplore(MAASTestCase):
 
 
 class TestVirtualityScript(MAASTestCase):
-    """Tests for `VIRTUALITY_SCRIPT`."""
+    """Tests for the `VIRTUALITY_OUTPUT_NAME` script."""
 
     def setUp(self):
         super(TestVirtualityScript, self).setUp()
@@ -378,7 +379,7 @@ class TestVirtualityScript(MAASTestCase):
 
     def run_script(self):
         script = self.bindir.joinpath("virtuality")
-        script.write_text(VIRTUALITY_SCRIPT, "ascii")
+        script.write_text(get_script_content(VIRTUALITY_OUTPUT_NAME), "ascii")
         script.chmod(0o700)
         env = get_env_with_locale()
         env["PATH"] = str(self.bindir)

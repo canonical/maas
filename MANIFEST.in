@@ -4,4 +4,5 @@ graft src/metadataserver/fixtures
 graft src/metadataserver/user_data/templates
 graft src/provisioningserver/templates
 include src/provisioningserver/drivers/power/*.xml
+include src/provisioningserver/commissioning-scripts/*
 include src/metadataserver/builtin_scripts/*.sh

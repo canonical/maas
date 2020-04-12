@@ -1,0 +1,2 @@
+#!/bin/bash
+find /sys/devices/ -name modalias -print0 | xargs -0 cat | sort -u

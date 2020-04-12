@@ -1,0 +1,110 @@
+#!/bin/bash
+
+echo "-----BEGIN KERNEL INFO-----"
+uname -a
+echo "-----END KERNEL INFO-----"
+echo ""
+echo "-----BEGIN KERNEL COMMAND LINE-----"
+cat /proc/cmdline
+echo "-----END KERNEL COMMAND LINE-----"
+CMDLINE="$(cat /proc/cmdline)"
+CLOUD_CONFIG="$(echo "$CMDLINE" | xargs -n1 echo | grep cloud-config-url)"
+URL="$(echo "$CLOUD_CONFIG" | grep -o 'http.*')"
+if [ "$URL" != "" ]; then
+    echo ""
+    echo "-----BEGIN CLOUD CONFIG QUERY-----"
+    # Filter out any base64 strings having to do with secrets or keys.
+    curl -LSsv "$URL" 2>&1 | \
+        sed '/_key: \|_secret: /'`
+           `'s/: [a-zA-Z0-9/+=]\{12,128\}/: (withheld)/g'
+    echo "-----END CLOUD CONFIG QUERY-----"
+fi
+echo ""
+echo "-----BEGIN CPU CORE COUNT AND MODEL-----"
+grep '^model name' /proc/cpuinfo | cut -d: -f 2- | sort | uniq -c
+echo "-----BEGIN CPU CORE COUNT AND MODEL-----"
+if [ -x "$(command -v lspci)" ]; then
+    echo ""
+    echo "-----BEGIN PCI INFO-----"
+    lspci -nn
+    echo "-----END PCI INFO-----"
+fi
+if [ -x "$(command -v lsusb)" ]; then
+    echo ""
+    echo "-----BEGIN USB INFO-----"
+    lsusb
+    echo "-----END USB INFO-----"
+fi
+echo ""
+echo "-----BEGIN MODALIASES-----"
+find /sys/devices/ -name modalias -print0 2> /dev/null | xargs -0 cat \
+    | sort | uniq -c
+echo "-----END MODALIASES-----"
+echo ""
+echo "-----BEGIN SERIAL PORTS-----"
+find /sys/class/tty/ ! -type d -print0 2> /dev/null \
+    | xargs -0 readlink -f \
+    | sort -u | grep -E -v 'devices/virtual|devices/platform'
+echo "-----END SERIAL PORTS-----"
+echo ""
+echo "-----BEGIN NETWORK INTERFACES-----"
+ip -o link
+echo "-----END NETWORK INTERFACES-----"
+if [ -x "$(command -v lsblk)" ]; then
+    echo ""
+    echo "-----BEGIN BLOCK DEVICE SUMMARY-----"
+    # Note: excluding ramdisks, floppy drives, and loopback devices.
+    lsblk --exclude 1,2,7 -o NAME,MAJ:MIN,FSTYPE,PHY-SEC,SIZE,VENDOR,MODEL
+    echo "-----END BLOCK DEVICE SUMMARY-----"
+fi
+# The remainder of this script only runs as root (during commissioning).
+if [ "$(id -u)" != "0" ]; then
+    # Do not fail commissioning if this fails.
+    exit 0
+fi
+if [ -x "$(command -v dmidecode)" ]; then
+    DMI_OUTFILE=/root/dmi.bin
+    echo ""
+    if dmidecode -u --dump-bin $DMI_OUTFILE; then
+        echo "-----BEGIN DMI DATA-----"
+        base64 $DMI_OUTFILE
+        echo "-----END DMI DATA-----"
+    else
+        echo "Unable to read DMI information."
+        exit 0
+    fi
+    # via http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmiopt.c
+    DMI_STRINGS="
+        bios-vendor
+        bios-version
+        bios-release-date
+        system-manufacturer
+        system-product-name
+        system-version
+        system-serial-number
+        system-uuid
+        baseboard-manufacturer
+        baseboard-product-name
+        baseboard-version
+        baseboard-serial-number
+        baseboard-asset-tag
+        chassis-manufacturer
+        chassis-type
+        chassis-version
+        chassis-serial-number
+        chassis-asset-tag
+        processor-family
+        processor-manufacturer
+        processor-version
+        processor-frequency
+    "
+    echo ""
+    echo "-----BEGIN DMI KEYPAIRS-----"
+    for key in $DMI_STRINGS; do
+        value=$(dmidecode --from-dump $DMI_OUTFILE -s "$key")
+        printf "%s=%s\\n" "$key" "$value"
+    done
+    echo "-----END DMI KEYPAIRS-----"
+fi
+# Do not fail commissioning if this fails.
+exit 0

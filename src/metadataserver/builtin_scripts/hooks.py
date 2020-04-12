@@ -101,7 +101,7 @@ def _parse_interfaces(node, data):
     """Return a dict of interfaces keyed by MAC address."""
     interfaces = {}
 
-    # Retrieve informaton from IPADDR_SCRIPT
+    # Retrieve informaton from IPADDR_OUTPUT_NAME script
     script_set = node.current_commissioning_script_set
     script_result = script_set.find_script_result(
         script_name=IPADDR_OUTPUT_NAME
@@ -362,7 +362,7 @@ def get_xml_field_value(evaluator, expression):
 
 
 def update_hardware_details(node, output, exit_status):
-    """Process the results of `LSHW_SCRIPT`.
+    """Process the results of the `LSHW_OUTPUT_NAME` script.
 
     Updates `node.storage` fields, and also evaluates all tag
     expressions against the given ``lshw`` XML.
@@ -432,7 +432,7 @@ def update_hardware_details(node, output, exit_status):
 
 
 def process_lxd_results(node, output, exit_status):
-    """Process the results of `LXD_SCRIPT`.
+    """Process the results of the `LXD_OUTPUT_NAME` script.
 
     If `exit_status` is non-zero, this function returns without doing
     anything.
@@ -565,7 +565,7 @@ def _parse_memory(data, numa_nodes):
 
 
 def set_virtual_tag(node, output, exit_status):
-    """Process the results of `VIRTUALITY_SCRIPT`.
+    """Process the results of `VIRTUALITY_OUTPUT_NAME` script.
 
     This adds or removes the *virtual* tag from the node, depending on
     whether a virtualization type is listed.
@@ -586,7 +586,7 @@ def set_virtual_tag(node, output, exit_status):
         node.tags.remove(tag)
     elif decoded_output == "":
         logger.warning(
-            "No virtual type reported in VIRTUALITY_SCRIPT output for node "
+            "No virtual type reported in VIRTUALITY_OUTPUT_NAME script output for node "
             "%s",
             node.system_id,
         )
@@ -772,7 +772,7 @@ def create_metadata_by_modalias(node, output: bytes, exit_status):
     If nodes are detected as supported switches, they also get Switch objects.
 
     :param node: The node whose tags to set.
-    :param output: Output from the LIST_MODALIASES_SCRIPT
+    :param output: Output from the LIST_MODALIASES_OUTPUT_NAME script
         (one modalias per line).
     :param exit_status: The exit status of the commissioning script.
     """

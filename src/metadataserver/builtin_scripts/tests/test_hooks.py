@@ -845,7 +845,7 @@ class TestSetVirtualTag(MAASServerTestCase):
         set_virtual_tag(node, b"", 0)
         self.assertTagsEqual(node, [])
         self.assertIn(
-            "No virtual type reported in VIRTUALITY_SCRIPT output for node "
+            "No virtual type reported in VIRTUALITY_OUTPUT_NAME script output for node "
             "%s" % node.system_id,
             logger.output,
         )
@@ -858,7 +858,7 @@ class TestSetVirtualTag(MAASServerTestCase):
         set_virtual_tag(node, b"", 0)
         self.assertTagsEqual(node, ["virtual"])
         self.assertIn(
-            "No virtual type reported in VIRTUALITY_SCRIPT output for node "
+            "No virtual type reported in VIRTUALITY_OUTPUT_NAME script output for node "
             "%s" % node.system_id,
             logger.output,
         )

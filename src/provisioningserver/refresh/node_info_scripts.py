@@ -24,7 +24,10 @@ from datetime import timedelta
 from inspect import getsource
 import json
 import os
+from pathlib import Path
 from textwrap import dedent
+
+from pkg_resources import get_distribution
 
 # The name of the script, used throughout MAAS for data processing. Any script
 # which is renamed will require a migration otherwise the user will see both
@@ -42,6 +45,15 @@ IPADDR_OUTPUT_NAME = "40-maas-01-network-interfaces"
 LXD_OUTPUT_NAME = "50-maas-01-commissioning"
 LLDP_OUTPUT_NAME = "99-maas-01-capture-lldp"
 KERNEL_CMDLINE_OUTPUT_NAME = "99-maas-05-kernel-cmdline"
+
+
+def get_script_content(name):
+    """Return the content of a script by name."""
+    package = get_distribution("maas")
+    script_path = package.get_resource_filename(
+        None, f"provisioningserver/commissioning-scripts/{name}"
+    )
+    return Path(script_path).read_bytes()
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -79,215 +91,6 @@ def make_function_call_script(function, *args, **kwargs):
         function_kwargs=json.dumps(kwargs),  # ASCII.
     )
     return script.encode("utf-8")
-
-
-# Built-in script to run lshw. This script runs both on the controller and
-# on a commissioning machine. So the script must check itself if its running
-# within a snap.
-LSHW_SCRIPT = dedent(
-    """\
-    #!/bin/bash
-    if [ -z "$SNAP" ]; then
-        sudo -n /usr/bin/lshw -xml
-    else
-        $SNAP/usr/bin/lshw -xml
-    fi
-    """
-)
-
-LXD_SCRIPT = dedent(
-    """\
-    #!/bin/bash -e
-
-    # When booting into the ephemeral environment root filesystem
-    # is the retrieved from the rack controller.
-    for i in $(cat /proc/cmdline); do
-        arg=$(echo $i | cut -d '=' -f1)
-        if [ "$arg" == "root" ]; then
-            value=$(echo $i | cut -d '=' -f2-)
-            # MAAS normally specifies the file has "filetype:url"
-            filetype=$(echo $value | cut -d ':' -f1)
-            if [ "$filetype" == "squash" ]; then
-                url=$(echo $value | cut -d ':' -f2-)
-            else
-                url=$filetype
-            fi
-            break
-        fi
-    done
-
-    # Get only the protocol, hostname, and port.
-    url=$(echo "$url" | awk -F '/' ' { print $1 "//" $3 } ')
-
-    if [ -z "$url" ] || $(echo "$url" | grep -vq "://"); then
-        echo "ERROR: Unable to find rack controller URL!" >&2
-        exit 1
-    fi
-
-    resources_bin="$DOWNLOAD_PATH/machine-resources"
-    wget "$url/machine-resources/$(dpkg --print-architecture)" \
-      -O "$resources_bin" >&2
-    chmod +x "$resources_bin"
-    "$resources_bin"
-    """
-)
-
-# Built-in script to run `ip addr`
-IPADDR_SCRIPT = dedent(
-    """\
-    #!/bin/bash
-    ip addr
-    """
-)
-
-# Built-in script to detect virtual instances.
-VIRTUALITY_SCRIPT = dedent(
-    """\
-    #!/bin/bash
-    # In Bourne Shell `type -p` does not work; `which` is closest.
-    if which systemd-detect-virt > /dev/null; then
-        # systemd-detect-virt prints "none" and returns nonzero if
-        # virtualisation is not detected. We suppress the exit code so that
-        # the calling machinery does not think there was a failure, and rely
-        # on the "none" token instead.
-        systemd-detect-virt || true
-    elif grep -q '^model name.*QEMU.*' /proc/cpuinfo; then
-        # Fall back if systemd-detect-virt isn't available. This method only
-        # detects QEMU virtualization not including KVM.
-        echo "qemu"
-    else
-        echo "none"
-    fi
-    """
-)
-
-SERIAL_PORTS_SCRIPT = dedent(
-    """\
-    #!/bin/bash
-    find /sys/class/tty/ ! -type d -print0 2> /dev/null \
-        | xargs -0 readlink -f \
-        | sort -u
-    # Do not fail commissioning if this fails.
-    exit 0
-    """
-)
-
-KERNEL_CMDLINE_SCRIPT = dedent(
-    """\
-    #!/bin/bash
-    cat /proc/cmdline
-    """
-)
-
-SUPPORT_SCRIPT = dedent(
-    r"""#!/bin/bash
-    echo "-----BEGIN KERNEL INFO-----"
-    uname -a
-    echo "-----END KERNEL INFO-----"
-    echo ""
-    echo "-----BEGIN KERNEL COMMAND LINE-----"
-    cat /proc/cmdline
-    echo "-----END KERNEL COMMAND LINE-----"
-    CMDLINE="$(cat /proc/cmdline)"
-    CLOUD_CONFIG="$(echo $CMDLINE | xargs -n1 echo | grep cloud-config-url)"
-    URL="$(echo $CLOUD_CONFIG | grep -o http.*)"
-    if [ "$URL" != "" ]; then
-        echo ""
-        echo "-----BEGIN CLOUD CONFIG QUERY-----"
-        # Filter out any base64 strings having to do with secrets or keys.
-        curl -LSsv "$URL" 2>&1 | \
-            sed '/_key: \|_secret: /'`
-               `'s/: [a-zA-Z0-9/+=]\{12,128\}/: (withheld)/g'
-        echo "-----END CLOUD CONFIG QUERY-----"
-    fi
-    echo ""
-    echo "-----BEGIN CPU CORE COUNT AND MODEL-----"
-    cat /proc/cpuinfo | grep '^model name' | cut -d: -f 2- | sort | uniq -c
-    echo "-----BEGIN CPU CORE COUNT AND MODEL-----"
-    if [ -x "$(which lspci)" ]; then
-        echo ""
-        echo "-----BEGIN PCI INFO-----"
-        lspci -nn
-        echo "-----END PCI INFO-----"
-    fi
-    if [ -x "$(which lsusb)" ]; then
-        echo ""
-        echo "-----BEGIN USB INFO-----"
-        lsusb
-        echo "-----END USB INFO-----"
-    fi
-    echo ""
-    echo "-----BEGIN MODALIASES-----"
-    find /sys/devices/ -name modalias -print0 2> /dev/null | xargs -0 cat \
-        | sort | uniq -c
-    echo "-----END MODALIASES-----"
-    echo ""
-    echo "-----BEGIN SERIAL PORTS-----"
-    find /sys/class/tty/ ! -type d -print0 2> /dev/null \
-        | xargs -0 readlink -f \
-        | sort -u | egrep -v 'devices/virtual|devices/platform'
-    echo "-----END SERIAL PORTS-----"
-    echo ""
-    echo "-----BEGIN NETWORK INTERFACES-----"
-    ip -o link
-    echo "-----END NETWORK INTERFACES-----"
-    if [ -x "$(which lsblk)" ]; then
-        echo ""
-        echo "-----BEGIN BLOCK DEVICE SUMMARY-----"
-        # Note: excluding ramdisks, floppy drives, and loopback devices.
-        lsblk --exclude 1,2,7 -o NAME,MAJ:MIN,FSTYPE,PHY-SEC,SIZE,VENDOR,MODEL
-        echo "-----END BLOCK DEVICE SUMMARY-----"
-    fi
-    # The remainder of this script only runs as root (during commissioning).
-    if [ "$(id -u)" != "0" ]; then
-        # Do not fail commissioning if this fails.
-        exit 0
-    fi
-    if [ -x "$(which dmidecode)" ]; then
-        DMI_OUTFILE=/root/dmi.bin
-        echo ""
-        dmidecode -u --dump-bin $DMI_OUTFILE && (
-            echo "-----BEGIN DMI DATA-----" ;
-            base64 $DMI_OUTFILE
-            echo "-----END DMI DATA-----"
-        ) || (echo "Unable to read DMI information."; exit 0)
-        # via http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmiopt.c
-        DMI_STRINGS="
-            bios-vendor
-            bios-version
-            bios-release-date
-            system-manufacturer
-            system-product-name
-            system-version
-            system-serial-number
-            system-uuid
-            baseboard-manufacturer
-            baseboard-product-name
-            baseboard-version
-            baseboard-serial-number
-            baseboard-asset-tag
-            chassis-manufacturer
-            chassis-type
-            chassis-version
-            chassis-serial-number
-            chassis-asset-tag
-            processor-family
-            processor-manufacturer
-            processor-version
-            processor-frequency
-        "
-        echo ""
-        echo "-----BEGIN DMI KEYPAIRS-----"
-        for key in $DMI_STRINGS; do
-            value=$(dmidecode --from-dump $DMI_OUTFILE -s $key)
-            printf "%s=%s\\n" "$key" "$(echo $value)"
-        done
-        echo "-----END DMI KEYPAIRS-----"
-    fi
-    # Do not fail commissioning if this fails.
-    exit 0
-    """
-)
 
 
 # Run `dhclient` on all the unconfigured interfaces.
@@ -428,31 +231,6 @@ def lldpd_capture(reference_file, time_delay):
     check_call(("lldpctl", "-f", "xml"))
 
 
-LIST_MODALIASES_SCRIPT = dedent(
-    """\
-    #!/bin/bash
-    find /sys/devices/ -name modalias -print0 | xargs -0 cat | sort -u
-    """
-)
-
-
-GET_FRUID_DATA_SCRIPT = dedent(
-    """\
-    #!/bin/bash -x
-    # Wait for interfaces to settle and get their IPs after the DHCP job.
-    sleep 5
-    for ifname in $(ls /sys/class/net); do
-        if [ "$ifname" != "lo" ]; then
-            curl --max-time 1 -s -f \
-                "http://fe80::1%$ifname:8080/api/sys/mb/fruid"
-        fi
-    done
-    # Do not fail commissioning if this fails.
-    exit 0
-    """
-)
-
-
 def null_hook(node, output, exit_status):
     """Intentionally do nothing.
 
@@ -487,7 +265,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             SUPPORT_INFO_OUTPUT_NAME,
             {
-                "content": SUPPORT_SCRIPT.encode("ascii"),
+                "content": get_script_content(SUPPORT_INFO_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(minutes=5),
                 "run_on_controller": True,
@@ -496,7 +274,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             LSHW_OUTPUT_NAME,
             {
-                "content": LSHW_SCRIPT.encode("ascii"),
+                "content": get_script_content(LSHW_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(minutes=5),
                 "run_on_controller": True,
@@ -505,7 +283,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             LXD_OUTPUT_NAME,
             {
-                "content": LXD_SCRIPT.encode("ascii"),
+                "content": get_script_content(LXD_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(minutes=1),
                 "run_on_controller": True,
@@ -514,7 +292,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             VIRTUALITY_OUTPUT_NAME,
             {
-                "content": VIRTUALITY_SCRIPT.encode("ascii"),
+                "content": get_script_content(VIRTUALITY_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(seconds=10),
                 "run_on_controller": True,
@@ -535,7 +313,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             LIST_MODALIASES_OUTPUT_NAME,
             {
-                "content": LIST_MODALIASES_SCRIPT.encode("ascii"),
+                "content": get_script_content(LIST_MODALIASES_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(seconds=10),
                 "run_on_controller": True,
@@ -553,7 +331,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             GET_FRUID_DATA_OUTPUT_NAME,
             {
-                "content": GET_FRUID_DATA_SCRIPT.encode("ascii"),
+                "content": get_script_content(GET_FRUID_DATA_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(minutes=1),
                 "run_on_controller": False,
@@ -562,7 +340,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             KERNEL_CMDLINE_OUTPUT_NAME,
             {
-                "content": KERNEL_CMDLINE_SCRIPT.encode("ascii"),
+                "content": get_script_content(KERNEL_CMDLINE_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(seconds=10),
                 "run_on_controller": False,
@@ -571,7 +349,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             SERIAL_PORTS_OUTPUT_NAME,
             {
-                "content": SERIAL_PORTS_SCRIPT.encode("ascii"),
+                "content": get_script_content(SERIAL_PORTS_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(seconds=10),
                 "run_on_controller": True,
@@ -591,7 +369,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         (
             IPADDR_OUTPUT_NAME,
             {
-                "content": IPADDR_SCRIPT.encode("ascii"),
+                "content": get_script_content(IPADDR_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(seconds=10),
                 "run_on_controller": True,

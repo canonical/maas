@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Wait for interfaces to settle and get their IPs after the DHCP job.
+sleep 5
+while read -r ifname; do
+    if [ "$ifname" != "lo" ]; then
+        curl --max-time 1 -s -f \
+            "http://fe80::1%$ifname:8080/api/sys/mb/fruid"
+    fi
+done < <(ls /sys/class/net)
+# Do not fail commissioning if this fails.
+exit 0

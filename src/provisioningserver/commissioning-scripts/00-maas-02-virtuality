@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [ -x "$(command -v systemd-detect-virt)" ]; then
+    # systemd-detect-virt prints "none" and returns nonzero if
+    # virtualisation is not detected. We suppress the exit code so that
+    # the calling machinery does not think there was a failure, and rely
+    # on the "none" token instead.
+    systemd-detect-virt || true
+elif grep -q '^model name.*QEMU.*' /proc/cpuinfo; then
+    # Fall back if systemd-detect-virt isn't available. This method only
+    # detects QEMU virtualization not including KVM.
+    echo "qemu"
+else
+    echo "none"
+fi
