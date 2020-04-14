@@ -409,6 +409,30 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         # user is still enabled
         self.assertTrue(self.user.is_active)
 
+    def test_failed_user_details_check(self):
+        self.client.allowed_for_user.side_effect = [
+            {"admin": []},
+            {
+                "view": ["pool1", "pool2"],
+                "view-all": [],
+                "deploy-machines": [],
+                "admin-machines": [],
+            },
+        ]
+        self.client.get_user_details.side_effect = APIError(500, "fail!")
+        valid = validate_user_external_auth(
+            self.user,
+            self.auth_info,
+            now=lambda: self.now,
+            rbac_client=self.client,
+        )
+        self.assertFalse(valid)
+        # user is checked again, last check time is updated
+        self.client.get_user_details.assert_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
+        # user is still enabled
+        self.assertTrue(self.user.is_active)
+
 
 class MacaroonBakeryMockMixin:
     """Mixin providing mock helpers for tests involving macaroonbakery."""

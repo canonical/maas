@@ -417,14 +417,11 @@ def _validate_user_rbac(auth_info, username, client=None):
                 "admin-machines",
             ).values()
         )
+        user_details = client.get_user_details(username)
     except APIError:
         raise UserValidationFailed()
 
-    return (
-        is_admin or access_to_pools,
-        is_admin,
-        client.get_user_details(username),
-    )
+    return (is_admin or access_to_pools, is_admin, user_details)
 
 
 class _IDClient(bakery.IdentityClient):
