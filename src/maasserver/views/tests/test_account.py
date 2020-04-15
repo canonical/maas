@@ -30,7 +30,29 @@ class TestLogin(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(
             json_load_bytes(response.content),
-            Equals({"authenticated": False, "external_auth_url": None}),
+            Equals(
+                {
+                    "authenticated": False,
+                    "external_auth_url": None,
+                    "no_users": True,
+                }
+            ),
+        )
+
+    def test_login_GET_returns_not_authenticated_with_users(self):
+        factory.make_User()
+        self.client.handler.enforce_csrf_checks = True
+        response = self.client.get(reverse("login"))
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals(
+                {
+                    "authenticated": False,
+                    "external_auth_url": None,
+                    "no_users": False,
+                }
+            ),
         )
 
     def test_login_GET_returns_authenticated(self):
@@ -42,7 +64,13 @@ class TestLogin(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(
             json_load_bytes(response.content),
-            Equals({"authenticated": True, "external_auth_url": None}),
+            Equals(
+                {
+                    "authenticated": True,
+                    "external_auth_url": None,
+                    "no_users": False,
+                }
+            ),
         )
 
     def test_login_GET_returns_external_auth_url(self):
@@ -52,7 +80,13 @@ class TestLogin(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(
             json_load_bytes(response.content),
-            Equals({"authenticated": False, "external_auth_url": auth_url}),
+            Equals(
+                {
+                    "authenticated": False,
+                    "external_auth_url": auth_url,
+                    "no_users": True,
+                }
+            ),
         )
 
     def test_login_returns_204_when_already_authenticated(self):

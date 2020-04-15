@@ -25,6 +25,7 @@ from django.views.decorators.csrf import csrf_exempt
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models.user import create_auth_token, get_auth_tokens
+from maasserver.models.userprofile import UserProfile
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -56,6 +57,7 @@ def login(request):
             "external_auth_url": request.external_auth_info.url
             if request.external_auth_info
             else None,
+            "no_users": not UserProfile.objects.all_users().exists(),
         }
     )
 
