@@ -409,6 +409,8 @@ class TestSendPodCommissioningResults(MAASTestCase):
                         f"{filename1}.out": json.dumps(
                             data1, indent=4
                         ).encode(),
+                        f"{filename1}.err": b"",
+                        f"{filename1}.yaml": b"",
                     },
                     exit_status=0,
                     error=f"Finished {filename1}: 0",
@@ -427,6 +429,8 @@ class TestSendPodCommissioningResults(MAASTestCase):
                         f"{filename2}.out": json.dumps(
                             data2, indent=4
                         ).encode(),
+                        f"{filename2}.err": b"",
+                        f"{filename2}.yaml": b"",
                     },
                     exit_status=0,
                     error=f"Finished {filename2}: 0",

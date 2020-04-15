@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 __all__ = ["ScriptResult"]
 
@@ -263,11 +263,14 @@ class ScriptResult(CleanSave, TimestampedModel):
         script_version_id=None,
         timedout=False,
     ):
-        # Controllers are allowed to overwrite their results during any status
+        # Controllers and Pods are allowed to overwrite their results during any status
         # to prevent new ScriptSets being created everytime a controller
         # starts. This also allows us to avoid creating an RPC call for the
         # rack controller to create a new ScriptSet.
-        if not self.script_set.node.is_controller:
+        if (
+            not self.script_set.node.is_controller
+            and not self.script_set.node.is_pod
+        ):
             # Allow PENDING, APPLYING_NETCONF, INSTALLING, and RUNNING scripts
             # incase the node didn't inform MAAS the Script was being run, it
             # just uploaded results.

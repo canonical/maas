@@ -755,29 +755,13 @@ class VersionIndexHandler(MetadataViewHandler):
         node = get_queried_node(request, for_mac=mac)
         status = get_mandatory_param(request.POST, "status", String)
         target_status = None
-        if (
-            node.status not in self.signalable_states
-            and node.node_type == NODE_TYPE.MACHINE
-        ):
-            raise NodeStateViolation(
-                "Machine status isn't valid (status is %s)"
-                % NODE_STATUS_CHOICES_DICT[node.status]
-            )
 
         # These statuses are acceptable for commissioning, disk erasing,
         # entering rescue mode and deploying.
         if status not in [choice[0] for choice in SIGNAL_STATUS_CHOICES]:
             raise MAASAPIBadRequest("Unknown status: '%s'" % status)
 
-        if (
-            node.status not in self.effective_signalable_states
-            and node.node_type == NODE_TYPE.MACHINE
-        ):
-            # If commissioning, it is already registered.  Nothing to be done.
-            # If it is installing, should be in deploying state.
-            return rc.ALL_OK
-
-        if node.node_type == NODE_TYPE.MACHINE:
+        if node.is_machine:
             process_status_dict = {
                 NODE_STATUS.NEW: self._process_new,
                 NODE_STATUS.TESTING: self._process_testing,
@@ -787,12 +771,21 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_STATUS.ENTERING_RESCUE_MODE: self._process_entering_rescue_mode,
                 NODE_STATUS.RESCUE_MODE: self._process_rescue_mode,
             }
-            if node.status not in process_status_dict and node.pods.exists():
-                # If a machine is also a Pod the RackController may update its
-                # results.
-                process = self._process_commissioning
-            else:
+            if node.status in process_status_dict:
                 process = process_status_dict[node.status]
+            elif node.is_pod:
+                # If a machine is also a Pod the RackController may update its
+                # commissioning results at any time.
+                process = self._process_commissioning
+            elif node.status in self.signalable_states:
+                # If commissioning, it is already registered.  Nothing to be
+                # done. If it is installing, should be in deploying state.
+                return rc.ALL_OK
+            else:
+                raise NodeStateViolation(
+                    "Machine status isn't valid (status is %s)"
+                    % NODE_STATUS_CHOICES_DICT[node.status]
+                )
         else:
             # Non-machine nodes can send testing results when in testing
             # state, otherwise accept all signals as commissioning signals

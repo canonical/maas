@@ -2146,6 +2146,7 @@ class TestPod(MAASServerTestCase):
         node = reload_object(node)
         self.assertItemsEqual([node], pod.hints.nodes.all())
         self.assertEquals(NODE_STATUS.DEPLOYED, node.status)
+        self.assertIsNotNone(node.current_commissioning_script_set)
 
     def test_sync_converts_existing_device(self):
         pod = factory.make_Pod()
@@ -2167,6 +2168,7 @@ class TestPod(MAASServerTestCase):
         self.assertItemsEqual([device], pod.hints.nodes.all())
         self.assertEquals(NODE_STATUS.DEPLOYED, device.status)
         self.assertEquals(NODE_TYPE.MACHINE, device.node_type)
+        self.assertIsNotNone(device.current_commissioning_script_set)
 
     def test_sync_creates_machine(self):
         factory.make_usable_boot_resource(architecture="amd64/generic")
@@ -2187,6 +2189,7 @@ class TestPod(MAASServerTestCase):
             mac_addresses,
             [str(iface.mac_address) for iface in node.interface_set.all()],
         )
+        self.assertIsNotNone(node.current_commissioning_script_set)
 
     def test_sync_hints_from_nodes(self):
         pod = factory.make_Pod()

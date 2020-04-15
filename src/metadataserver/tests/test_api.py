@@ -671,7 +671,7 @@ def call_signal(
     files: dict = None,
     headers: dict = None,
     status=None,
-    **kwargs
+    **kwargs,
 ):
     """Call the API's signal method.
 
@@ -2197,6 +2197,36 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertThat(response, HasStatusCode(http.client.OK))
+
+    def test_signaling_commissioning_when_pod_overwrites(self):
+        self.useFixture(SignalsDisabled("podhints"))
+        pod = factory.make_Pod()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
+        )
+        script_result = factory.make_ScriptResult(
+            node.current_commissioning_script_set, status=SCRIPT_STATUS.PASSED
+        )
+        pod.hints.nodes.add(node)
+        client = make_node_client(node=node)
+        new_result = factory.make_string().encode()
+        response = call_signal(
+            client,
+            status=SIGNAL_STATUS.WORKING,
+            script_result=0,
+            files={
+                script_result.name: new_result,
+                f"{script_result.name}.out": new_result,
+                f"{script_result.name}.err": b"",
+                f"{script_result.name}.yaml": b"",
+            },
+        )
+        script_result = reload_object(script_result)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEquals(new_result, script_result.output)
+        self.assertEquals(new_result, script_result.stdout)
+        self.assertEquals(b"", script_result.stderr)
+        self.assertEquals(b"", script_result.result)
 
     def test_signaling_requires_status_code(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)

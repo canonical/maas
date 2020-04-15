@@ -173,7 +173,15 @@ def send_pod_commissioning_results(
                         "consumer_secret": "",
                     },
                     status="WORKING",
-                    files={filename: content, f"{filename}.out": content},
+                    files={
+                        # UI shows combined output by default.
+                        filename: content,
+                        # STDOUT output is whats actually proceed.
+                        f"{filename}.out": content,
+                        # Clear out STDERR and results.
+                        f"{filename}.err": b"",
+                        f"{filename}.yaml": b"",
+                    },
                     exit_status=0,
                     error=f"Finished {filename}: 0",
                 )

@@ -1333,6 +1333,10 @@ class Node(CleanSave, TimestampedModel):
 
         return Pod.objects.filter(hints__nodes=self)
 
+    @property
+    def is_pod(self):
+        return self.pods.exists()
+
     def set_power_config(self, power_type, power_params):
         """Update the power configuration for a node.
 

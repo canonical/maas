@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -12,6 +12,7 @@ import yaml
 
 from maasserver.enum import NODE_TYPE
 from maasserver.models import Event, EventType
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -76,6 +77,36 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PASSED
         )
+        exit_status = random.randint(0, 255)
+        output = factory.make_bytes()
+        stdout = factory.make_bytes()
+        stderr = factory.make_bytes()
+        result = factory.make_bytes()
+
+        script_result.store_result(
+            random.randint(0, 255),
+            factory.make_bytes(),
+            factory.make_bytes(),
+            factory.make_bytes(),
+            factory.make_bytes(),
+        )
+        script_result.store_result(exit_status, output, stdout, stderr, result)
+
+        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(output, script_result.output)
+        self.assertEquals(stdout, script_result.stdout)
+        self.assertEquals(stderr, script_result.stderr)
+        self.assertEquals(result, script_result.result)
+
+    def test_store_result_allows_pod_to_overwrite(self):
+        self.useFixture(SignalsDisabled("podhints"))
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED
+        )
+        pod.hints.nodes.add(node)
         exit_status = random.randint(0, 255)
         output = factory.make_bytes()
         stdout = factory.make_bytes()

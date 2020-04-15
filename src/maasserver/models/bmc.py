@@ -67,6 +67,7 @@ from maasserver.permissions import PodPermission
 from maasserver.rpc import getAllClients, getClientFromIdentifiers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.enum import RESULT_TYPE
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import BlockDeviceType, InterfaceAttachType
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -1429,6 +1430,16 @@ class Pod(BMC):
                 )
                 assert form.is_valid(), form.errors
                 node = form.save()
+            if not node.current_commissioning_script_set:
+                # Avoid circular dependencies
+                from metadataserver.models import ScriptSet
+
+                # ScriptResults will be created on upload.
+                update[
+                    "current_commissioning_script_set"
+                ] = ScriptSet.objects.create(
+                    node=node, result_type=RESULT_TYPE.COMMISSIONING
+                )
             if node.status != NODE_STATUS.DEPLOYED:
                 update["status"] = NODE_STATUS.DEPLOYED
             if update:

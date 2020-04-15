@@ -12,7 +12,7 @@ import re
 
 from lxml import etree
 
-from maasserver.enum import NODE_METADATA
+from maasserver.enum import NODE_METADATA, NODE_STATUS
 from maasserver.models import Fabric, NUMANode, Subnet
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import Interface, PhysicalInterface
@@ -106,14 +106,20 @@ def _parse_interfaces(node, data):
     script_result = script_set.find_script_result(
         script_name=IPADDR_OUTPUT_NAME
     )
+    # Only the IP addresses come from ip addr output. While this information
+    # is useful for automatically associating a device with a VLAN and subnet
+    # it is not necessary for use as users can manually do it.
     if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
-        logger.error(
-            "%s: Unable to discover NIC IP addresses due to missing "
-            "passed output from %s" % (node.hostname, IPADDR_OUTPUT_NAME)
-        )
-    assert isinstance(script_result.output, bytes)
+        # Pods don't currently have ip addr information, don't warn about it.
+        if not node.is_pod:
+            logger.error(
+                "%s: Unable to discover NIC IP addresses due to missing "
+                "passed output from %s" % (node.hostname, IPADDR_OUTPUT_NAME)
+            )
+        ip_addr_info = {}
+    else:
+        ip_addr_info = parse_ip_addr(script_result.output)
 
-    ip_addr_info = parse_ip_addr(script_result.output)
     network_cards = data.get("network", {}).get("cards", {})
     for card in network_cards:
         for port in card.get("ports", {}):
@@ -136,7 +142,7 @@ def _parse_interfaces(node, data):
                 "sriov_max_vf": card.get("sriov", {}).get("maximum_vfs", 0),
             }
             # Assign the IP addresses to this interface
-            link = ip_addr_info[interface["name"]]
+            link = ip_addr_info.get(interface["name"], {})
             interface["ips"] = link.get("inet", []) + link.get("inet6", [])
 
             interfaces[mac] = interface
@@ -327,20 +333,29 @@ def update_node_network_information(node, data, numa_nodes):
             ).first()
             node.save(update_fields=["boot_interface"])
 
-    # Only configured Interfaces are tested so configuration must be done
-    # before regeneration.
-    node.set_initial_networking_configuration()
+    # Pods are already deployed. MAAS captures the network state, it does
+    # not change it.
+    if not (node.status == NODE_STATUS.DEPLOYED and node.is_pod):
+        # Only configured Interfaces are tested so configuration must be done
+        # before regeneration.
+        node.set_initial_networking_configuration()
 
-    # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on controllers.
-    # Currently this is not needed saving us 1 database query. However, if
-    # commissioning is ever enabled for controllers regeneration will need
-    # to be allowed on controllers otherwise network testing may break.
-    if node.current_testing_script_set is not None and not node.is_controller:
-        # LP: #1731353 - Regenerate ScriptResults before deleting Interfaces.
-        # This creates a ScriptResult with proper parameters for each interface
-        # on the system. Interfaces no long available will be deleted which
-        # causes a casade delete on their assoicated ScriptResults.
-        node.current_testing_script_set.regenerate(storage=False, network=True)
+        # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on
+        # controllers. Currently this is not needed saving us 1 database query.
+        # However, if commissioning is ever enabled for controllers
+        # regeneration will need to be allowed on controllers otherwise network
+        # testing may break.
+        if (
+            node.current_testing_script_set is not None
+            and not node.is_controller
+        ):
+            # LP: #1731353 - Regenerate ScriptResults before deleting Interfaces.
+            # This creates a ScriptResult with proper parameters for each interface
+            # on the system. Interfaces no long available will be deleted which
+            # causes a casade delete on their assoicated ScriptResults.
+            node.current_testing_script_set.regenerate(
+                storage=False, network=True
+            )
 
     Interface.objects.filter(node=node).exclude(
         id__in=[iface.id for iface in current_interfaces]

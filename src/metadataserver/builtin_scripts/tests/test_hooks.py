@@ -24,8 +24,14 @@ from testtools.matchers import (
     Not,
 )
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_METADATA
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_METADATA,
+    NODE_STATUS,
+)
 from maasserver.fields import MAC
+from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.config import Config
 from maasserver.models.interface import Interface
@@ -1576,6 +1582,26 @@ class TestProcessLXDResults(MAASServerTestCase):
             region, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
         )
         self.assertThat(mock_update_node_network_information, MockNotCalled())
+
+    def test__does_not_initialize_node_network_information_if_pod(self):
+        self.useFixture(SignalsDisabled("podhints"))
+        pod = factory.make_Pod()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
+        )
+        pod.hints.nodes.add(node)
+        mock_set_initial_net_config = self.patch(
+            node_module.Node, "set_initial_networking_configuration"
+        )
+        process_lxd_results(
+            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
+        )
+        self.assertThat(mock_set_initial_net_config, MockNotCalled())
+        # Verify network device information was collected
+        self.assertItemsEqual(
+            ["Intel Corporation", "Intel Corporation", "Intel Corporation"],
+            [iface.vendor for iface in node.interface_set.all()],
+        )
 
     def test__updates_memory(self):
         node = factory.make_Node()
