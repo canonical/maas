@@ -357,9 +357,12 @@ def update_node_network_information(node, data, numa_nodes):
                 storage=False, network=True
             )
 
-    Interface.objects.filter(node=node).exclude(
-        id__in=[iface.id for iface in current_interfaces]
-    ).delete()
+    if not (node.status == NODE_STATUS.DEPLOYED and node.is_pod):
+        # Don't delete interfaces on Pods. These may be things like
+        # bonds or bridges.
+        Interface.objects.filter(node=node).exclude(
+            id__in=[iface.id for iface in current_interfaces]
+        ).delete()
 
 
 def get_xml_field_value(evaluator, expression):
@@ -500,7 +503,7 @@ def process_lxd_results(node, output, exit_status):
 
     node.save(update_fields=["cpu_count", "cpu_speed", "memory"])
 
-    for pod in node.pods.all():
+    for pod in node.get_hosted_pods():
         pod.sync_hints_from_nodes()
 
 
@@ -777,9 +780,11 @@ def update_node_physical_block_devices(node, data, numa_nodes):
             id__in=delete_block_device_ids
         ).delete()
 
-    # Layout needs to be set last so removed disks aren't included in the
-    # applied layout.
-    node.set_default_storage_layout()
+    if not (node.status == NODE_STATUS.DEPLOYED and node.is_pod):
+        # Layout needs to be set last so removed disks aren't included in the
+        # applied layout. Deployed Pods should not have a layout set as the
+        # layout of the deployed system is unknown.
+        node.set_default_storage_layout()
 
 
 def create_metadata_by_modalias(node, output: bytes, exit_status):

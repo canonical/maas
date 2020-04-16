@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`NodeKey` model."""
@@ -66,7 +66,9 @@ class NodeKeyManager(Manager):
             uniquely associated with this node.
         :rtype: piston3.models.Token
         """
-        nodekey = get_one(self.filter(node=node))
+        nodekey = get_one(
+            self.filter(node=node).prefetch_related("token__consumer")
+        )
         if nodekey is None:
             return self._create_token(node)
         else:

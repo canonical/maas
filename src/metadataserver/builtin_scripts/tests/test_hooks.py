@@ -2248,6 +2248,25 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Config.objects.get_config("default_storage_layout"), layout
         )
 
+    def test__doesnt_set_storage_layout_if_pod(self):
+        self.useFixture(SignalsDisabled("podhints"))
+        pod = factory.make_Pod()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
+        )
+        pod.hints.nodes.add(node)
+        mock_set_default_storage_layout = self.patch(
+            node_module.Node, "set_default_storage_layout"
+        )
+
+        update_node_physical_block_devices(
+            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+        )
+
+        self.assertThat(mock_set_default_storage_layout, MockNotCalled())
+        _, layout = get_applied_storage_layout_for_node(node)
+        self.assertEquals("blank", layout)
+
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from LXD.

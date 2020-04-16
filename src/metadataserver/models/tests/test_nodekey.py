@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`NodeKey` model and manager."""
@@ -9,6 +9,7 @@ from testtools.matchers import HasLength
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.djangotestcase import CountQueries
 from metadataserver.models import NodeKey
 
 
@@ -52,6 +53,19 @@ class TestNodeKeyManager(MAASServerTestCase):
                 NodeKey.objects.get_token_for_node(node).key
             ),
         )
+
+    def test_get_token_for_node_prefetches(self):
+        # token.consumer.key is almost always used when retrieving the token.
+        # Prefetch it so it can be called in one deferToDatabase.
+        node = factory.make_Node()
+        consumer_key = NodeKey.objects.get_token_for_node(node).consumer.key
+        with CountQueries() as prefetch_count:
+            token = NodeKey.objects.get_token_for_node(node)
+        self.assertEquals(3, prefetch_count.num_queries)
+        # Verify consumer was prefetched
+        with CountQueries() as access_count:
+            self.assertEquals(consumer_key, token.consumer.key)
+        self.assertEquals(0, access_count.num_queries)
 
     def test_clear_token_for_node_deletes_related_NodeKey(self):
         node = factory.make_Node()

@@ -1327,15 +1327,8 @@ class Node(CleanSave, TimestampedModel):
         return self.node_type == NODE_TYPE.DEVICE
 
     @property
-    def pods(self):
-        # Avoid circular dependencies
-        from maasserver.models import Pod
-
-        return Pod.objects.filter(hints__nodes=self)
-
-    @property
     def is_pod(self):
-        return self.pods.exists()
+        return self.get_hosted_pods().exists()
 
     def set_power_config(self, power_type, power_params):
         """Update the power configuration for a node.
@@ -6060,10 +6053,14 @@ class Node(CleanSave, TimestampedModel):
         # Circular imports
         from maasserver.models import Pod
 
+        # Node's aren't created for Virsh or Intel Pods so the pod.hints.nodes
+        # association isn't created. LXD Pods always have this association.
         our_static_ips = StaticIPAddress.objects.filter(
             interface__node=self
         ).values_list("ip")
-        return Pod.objects.filter(ip_address__ip__in=our_static_ips)
+        return Pod.objects.filter(
+            Q(hints__nodes__in=[self]) | Q(ip_address__ip__in=our_static_ips)
+        ).distinct()
 
 
 # Piston serializes objects based on the object class.
