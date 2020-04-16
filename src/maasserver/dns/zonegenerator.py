@@ -120,6 +120,7 @@ def get_dns_server_addresses(
     ipv6=True,
     include_alternates=False,
     default_region_ip=None,
+    filter_allowed_dns=True,
 ):
     """Return the DNS server's IP addresses.
 
@@ -136,13 +137,15 @@ def get_dns_server_addresses(
     :param include_alternates: Include IP addresses from other regions?
     :param default_region_ip: The default source IP address to be used, if a
         specific URL is not defined.
+    :param filter_allowed_dns: If true, only include addresses for subnets
+        with allow_dns=True.
     :return: List of IPAddress to use.  Loopback addresses are removed from the
         list, unless there are no non-loopback addresses.
 
     """
     try:
-        iplist = get_maas_facing_server_addresses(
-            rack_controller,
+        ips = get_maas_facing_server_addresses(
+            rack_controller=rack_controller,
             ipv4=ipv4,
             ipv6=ipv6,
             include_alternates=include_alternates,
@@ -157,22 +160,21 @@ def get_dns_server_addresses(
             "local_config_set --maas-url' command." % e.strerror
         )
 
-    # LP:1847537 - Filter out MAAS DNS servers running on subnets which do not
-    # allow DNS to be provided from MAAS.
-    filtered_list = [
-        ip
-        for ip in iplist
-        if getattr(
-            Subnet.objects.get_best_subnet_for_ip(ip), "allow_dns", True
-        )
-    ]
-    non_loop = [ip for ip in filtered_list if not ip.is_loopback()]
-    if len(non_loop) > 0:
+    if filter_allowed_dns:
+        ips = [
+            ip
+            for ip in ips
+            if getattr(
+                Subnet.objects.get_best_subnet_for_ip(ip), "allow_dns", True
+            )
+        ]
+    non_loop = [ip for ip in ips if not ip.is_loopback()]
+    if non_loop:
         return non_loop
     else:
-        for ip in filtered_list:
+        for ip in ips:
             warn_loopback(ip)
-        return filtered_list
+        return ips
 
 
 def get_dns_search_paths():
@@ -237,7 +239,7 @@ class ZoneGenerator:
         internal_domains,
     ):
         """Generator of forward zones, collated by domain name."""
-        dns_ip_list = get_dns_server_addresses()
+        dns_ip_list = get_dns_server_addresses(filter_allowed_dns=False)
         domains = set(domains)
 
         # For each of the domains that we are generating, create the zone from:
