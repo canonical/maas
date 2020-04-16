@@ -27,6 +27,7 @@ from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
     get_dns_server_address,
+    get_dns_server_addresses,
     get_hostname_dnsdata_mapping,
     get_hostname_ip_mapping,
     InternalDomain,
@@ -82,7 +83,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         self.assertThat(
             patch,
             MockCalledOnceWith(
-                ANY,
+                rack_controller=None,
                 include_alternates=False,
                 ipv4=ipv4,
                 ipv6=ipv6,
@@ -133,6 +134,37 @@ class TestGetDNSServerAddress(MAASServerTestCase):
             subnet=subnet, url="http://%s" % ip.ip
         )
         self.assertIsNone(get_dns_server_address(rack_controller))
+
+
+class TestGetDNSServerAddresses(MAASServerTestCase):
+    def test_no_rack_all_subnets(self):
+        subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", allow_dns=False)
+        subnet2 = factory.make_Subnet(cidr="10.20.0.0/24", allow_dns=True)
+        ip1 = factory.make_StaticIPAddress(subnet=subnet1)
+        ip2 = factory.make_StaticIPAddress(subnet=subnet2)
+        ips = {IPAddress(ip1.ip), IPAddress(ip2.ip)}
+        resolver = self.patch(server_address, "resolve_hostname")
+        resolver.return_value = ips
+        rack_controller = factory.make_RackController()
+        self.assertCountEqual(
+            get_dns_server_addresses(
+                rack_controller=rack_controller, filter_allowed_dns=False
+            ),
+            ips,
+        )
+
+    def test_with_rack_only_allow_dns(self):
+        subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", allow_dns=False)
+        subnet2 = factory.make_Subnet(cidr="10.20.0.0/24", allow_dns=True)
+        ip1 = factory.make_StaticIPAddress(subnet=subnet1)
+        ip2 = factory.make_StaticIPAddress(subnet=subnet2)
+        resolver = self.patch(server_address, "resolve_hostname")
+        resolver.return_value = {IPAddress(ip1.ip), IPAddress(ip2.ip)}
+        rack_controller = factory.make_RackController()
+        self.assertCountEqual(
+            get_dns_server_addresses(rack_controller=rack_controller),
+            [IPAddress(ip2.ip)],
+        )
 
 
 class TestGetDNSSearchPaths(MAASServerTestCase):
@@ -540,6 +572,24 @@ class TestZoneGenerator(MAASServerTestCase):
             zones[1]._mapping,
         )
         self.assertEqual({}, zones[2]._mapping)
+
+    def test_forward_zone_includes_subnets_with_allow_dns_false(self):
+        default_ttl = random.randint(10, 300)
+        Config.objects.set_config("default_dns_ttl", default_ttl)
+        default_domain = Domain.objects.get_default_domain()
+        subnet = factory.make_Subnet(cidr="10.10.0.0/24", allow_dns=False)
+        ip = factory.make_StaticIPAddress(subnet=subnet)
+        resolver = self.patch(server_address, "resolve_hostname")
+        resolver.return_value = {IPAddress(ip.ip)}
+        zones = ZoneGenerator(
+            [default_domain], subnet, serial=random.randint(0, 65535)
+        )
+        [forward_zone] = [
+            zone for zone in zones if isinstance(zone, DNSForwardZoneConfig)
+        ]
+        self.assertEqual(
+            forward_zone._other_mapping["@"].rrset, {(default_ttl, "A", ip.ip)}
+        )
 
     def rfc2317_network(self, network):
         """Returns the network that rfc2317 glue goes in, if any."""
