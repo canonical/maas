@@ -1,0 +1,59 @@
+#!/bin/bash -e
+
+SCRIPT="$(basename "$0")"
+
+exit_error() {
+    echo "$@"
+    exit 1
+}
+
+git_tree_clean() {
+    git diff-index --quiet HEAD
+}
+
+deb_version() {
+    local version
+    version="$(echo "$1" | sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end')"
+    echo "${version}-0ubuntu1"
+}
+
+verbose_version() {
+    echo "$1" | sed 's/a/ alpha/; tend; s/b/ beta/; tend; s/rc/ RC/; :end'
+}
+
+
+tag_version() {
+    echo "$1" | sed 's/a/-alpha/; tend; s/b/-beta/; tend; s/rc/-rc/; :end'
+}
+
+replace_setup_version() {
+    local version="$1"
+    sed -i 's/\bversion=".*$/version="'"$version"'",/' setup.py
+}
+
+add_debian_changelog() {
+    local version="$1"
+    dch -v "$(deb_version "$version")" \
+        -m "New upstream release, MAAS $(verbose_version "$version")."
+}
+
+commit_and_tag() {
+    local version="$1"
+    local message
+    message="Relase $(verbose_version "$version")"
+
+    git ci -a -m "$message"
+    git tag -a "$(tag_version "$version")" -m "$message"
+}
+
+if [ -z "$1" ]; then
+    exit_error "Usage $SCRIPT <python-version>"
+fi
+
+if ! git_tree_clean; then
+    exit_error "Git tree is not clean, please reset."
+fi
+
+replace_setup_version "$1"
+add_debian_changelog "$1"
+commit_and_tag "$1"
