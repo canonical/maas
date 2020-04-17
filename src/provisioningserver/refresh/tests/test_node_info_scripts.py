@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test node info scripts."""
@@ -7,7 +7,6 @@ __all__ = []
 
 from inspect import getsource
 import os.path
-from pathlib import Path
 import subprocess
 from subprocess import CalledProcessError, check_output, STDOUT
 from textwrap import dedent
@@ -15,18 +14,13 @@ import time
 from unittest.mock import call
 
 from testtools.content import text_content
-from testtools.matchers import Equals, HasLength, MatchesAny, Not
 
-from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import node_info_scripts as node_info_module
 from provisioningserver.refresh.node_info_scripts import (
-    get_script_content,
     make_function_call_script,
-    VIRTUALITY_OUTPUT_NAME,
 )
-from provisioningserver.utils.shell import get_env_with_locale
 
 
 class TestMakeFunctionCallScript(MAASTestCase):
@@ -360,59 +354,4 @@ class TestDHCPExplore(MAASTestCase):
                 call(["sh", "-c", DHCP6_TEMPLATE % "virbr0"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "wlan0"]),
             ),
-        )
-
-
-class TestVirtualityScript(MAASTestCase):
-    """Tests for the `VIRTUALITY_OUTPUT_NAME` script."""
-
-    def setUp(self):
-        super(TestVirtualityScript, self).setUp()
-        # Set up a binaries directory which contains all the script deps.
-        self.bindir = Path(self.make_dir())
-        self.sysdv = self.bindir.joinpath("systemd-detect-virt")
-        self.sysdv.symlink_to("/usr/bin/systemd-detect-virt")
-        self.grep = self.bindir.joinpath("grep")
-        self.grep.symlink_to("/bin/grep")
-        self.which = self.bindir.joinpath("which")
-        self.which.symlink_to("/bin/which")
-
-    def run_script(self):
-        script = self.bindir.joinpath("virtuality")
-        script.write_text(get_script_content(VIRTUALITY_OUTPUT_NAME), "ascii")
-        script.chmod(0o700)
-        env = get_env_with_locale()
-        env["PATH"] = str(self.bindir)
-        try:
-            return check_output((str(script),), stderr=STDOUT, env=env)
-        except CalledProcessError as error:
-            self.addDetail(
-                "output", text_content(error.output.decode("utf-8", "replace"))
-            )
-            raise
-
-    def test_runs_locally(self):
-        self.assertThat(self.run_script().strip(), Not(HasLength(0)))
-
-    def test_runs_successfully_when_systemd_detect_virt_returns_nonzero(self):
-        # Replace symlink to systemd-detect-virt with a script of our making.
-        self.sysdv.unlink()
-        sysdv_name = factory.make_name("virt")
-        with self.sysdv.open("w") as fd:
-            fd.write("#!/bin/bash\n")
-            fd.write("echo %s\n" % sysdv_name)
-            fd.write("exit 1\n")
-        self.sysdv.chmod(0o700)
-        # The name echoed from our script is returned.
-        self.assertThat(
-            self.run_script(), Equals(sysdv_name.encode("ascii") + b"\n")
-        )
-
-    def test_runs_successfully_when_systemd_detect_virt_not_found(self):
-        # Remove symlink to systemd-detect-virt.
-        self.sysdv.unlink()
-        # Either "none" or "qemu" will be returned here depending on the host
-        # running these tests.
-        self.assertThat(
-            self.run_script(), MatchesAny(Equals(b"none\n"), Equals(b"qemu\n"))
         )

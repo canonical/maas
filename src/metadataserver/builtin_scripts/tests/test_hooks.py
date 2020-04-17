@@ -6,18 +6,15 @@
 __all__ = []
 
 from copy import deepcopy
-import doctest
 import json
 import os.path
 import random
-from textwrap import dedent
 
 from fixtures import FakeLogger
 from netaddr import IPNetwork
 from testtools.matchers import (
     Contains,
     ContainsAll,
-    DocTestMatches,
     Equals,
     Is,
     MatchesStructure,
@@ -55,16 +52,13 @@ from metadataserver.builtin_scripts.hooks import (
     create_metadata_by_modalias,
     detect_switch_vendor_model,
     determine_hardware_matches,
-    extract_router_mac_addresses,
     filter_modaliases,
     get_dmi_data,
     NODE_INFO_SCRIPTS,
     parse_bootif_cmdline,
     process_lxd_results,
     retag_node_for_hardware_by_modalias,
-    set_virtual_tag,
     SWITCH_OPENBMC_MAC,
-    update_hardware_details,
     update_node_fruid_metadata,
     update_node_network_information,
     update_node_physical_block_devices,
@@ -97,6 +91,38 @@ lldp_output_interface_template = """
   </chassis>
 </interface>
 """
+
+
+def make_lxd_system_info(virt_type=None):
+    if not virt_type:
+        virt_type = random.choice(["physical", "container", "virtual-machine"])
+    return {
+        "uuid": factory.make_UUID(),
+        "vendor": factory.make_name("system_vendor"),
+        "product": factory.make_name("system_product"),
+        "family": factory.make_name("system_family"),
+        "version": factory.make_name("system_version"),
+        "sku": factory.make_name("system_sku"),
+        "serial": factory.make_name("system_serial"),
+        "type": virt_type,
+        "firmware": {
+            "vendor": factory.make_name("mainboard_firmware_vendor"),
+            "date": "04/20/2020",
+            "version": factory.make_name("mainboard_firmware_version"),
+        },
+        "chassis": {
+            "vendor": factory.make_name("chassis_vendor"),
+            "type": factory.make_name("chassis_type"),
+            "serial": factory.make_name("chassis_serial"),
+            "version": factory.make_name("chassis_version"),
+        },
+        "motherboard": {
+            "vendor": factory.make_name("motherboard_vendor"),
+            "product": factory.make_name("motherboard_product"),
+            "serial": factory.make_name("motherboard_serial"),
+            "version": factory.make_name("motherboard_version"),
+        },
+    }
 
 
 SAMPLE_LXD_JSON = {
@@ -407,6 +433,7 @@ SAMPLE_LXD_JSON = {
         ],
         "total": 7,
     },
+    "system": make_lxd_system_info(),
 }
 
 
@@ -616,6 +643,7 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = {
         ],
         "total": 8,
     },
+    "system": make_lxd_system_info(),
 }
 
 
@@ -725,6 +753,7 @@ SAMPLE_LXD_XENIAL_NETWORK_JSON = {
         },
     ],
     "total": 4,
+    "system": make_lxd_system_info(),
 }
 
 
@@ -806,68 +835,6 @@ def make_lldp_output(macs):
     )
     script = (lldp_output_template % interfaces).encode("utf8")
     return bytes(script)
-
-
-class TestExtractRouters(MAASServerTestCase):
-    def test_extract_router_mac_addresses_returns_None_when_empty_input(self):
-        self.assertIsNone(extract_router_mac_addresses(""))
-
-    def test_extract_router_mac_addresses_returns_empty_list(self):
-        lldp_output = make_lldp_output([])
-        self.assertItemsEqual([], extract_router_mac_addresses(lldp_output))
-
-    def test_extract_router_mac_addresses_returns_routers_list(self):
-        macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
-        lldp_output = make_lldp_output(macs)
-        routers = extract_router_mac_addresses(lldp_output)
-        self.assertItemsEqual(macs, routers)
-
-
-class TestSetVirtualTag(MAASServerTestCase):
-    def getVirtualTag(self):
-        virtual_tag, _ = Tag.objects.get_or_create(name="virtual")
-        return virtual_tag
-
-    def assertTagsEqual(self, node, tags):
-        self.assertItemsEqual(tags, [tag.name for tag in node.tags.all()])
-
-    def test_sets_virtual_tag(self):
-        node = factory.make_Node()
-        self.assertTagsEqual(node, [])
-        set_virtual_tag(node, b"qemu", 0)
-        self.assertTagsEqual(node, ["virtual"])
-
-    def test_removes_virtual_tag(self):
-        node = factory.make_Node()
-        node.tags.add(self.getVirtualTag())
-        self.assertTagsEqual(node, ["virtual"])
-        set_virtual_tag(node, b"none", 0)
-        self.assertTagsEqual(node, [])
-
-    def test_output_not_containing_virtual_does_not_set_tag(self):
-        logger = self.useFixture(FakeLogger())
-        node = factory.make_Node()
-        self.assertTagsEqual(node, [])
-        set_virtual_tag(node, b"", 0)
-        self.assertTagsEqual(node, [])
-        self.assertIn(
-            "No virtual type reported in VIRTUALITY_OUTPUT_NAME script output for node "
-            "%s" % node.system_id,
-            logger.output,
-        )
-
-    def test_output_not_containing_virtual_does_not_remove_tag(self):
-        logger = self.useFixture(FakeLogger())
-        node = factory.make_Node()
-        node.tags.add(self.getVirtualTag())
-        self.assertTagsEqual(node, ["virtual"])
-        set_virtual_tag(node, b"", 0)
-        self.assertTagsEqual(node, ["virtual"])
-        self.assertIn(
-            "No virtual type reported in VIRTUALITY_OUTPUT_NAME script output for node "
-            "%s" % node.system_id,
-            logger.output,
-        )
 
 
 class TestDetectSwitchVendorModelDMIScenarios(MAASServerTestCase):
@@ -1415,154 +1382,55 @@ class TestUpdateFruidMetadata(MAASServerTestCase):
         )
 
 
-class TestUpdateHardwareDetails(MAASServerTestCase):
-
-    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-
-    def test_hardware_updates_hardware_uuid(self):
-        node = factory.make_Node()
-        hardware_uuid = factory.make_UUID()
-        xmlbytes = dedent(
-            """\
-        <node>
-            <configuration>
-                <setting id="uuid" value="%s" />
-            </configuration>
-        </node>
-        """
-            % hardware_uuid
-        ).encode()
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEquals(hardware_uuid, node.hardware_uuid)
-
-    def test_hardware_updates_ignores_empty_tags(self):
-        # Tags with empty definitions are ignored when
-        # update_hardware_details gets called.
-        factory.make_Tag(definition="")
-        node = factory.make_Node()
-        node.save()
-        xmlbytes = "<node/>".encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        # The real test is that update_hardware_details does not blow
-        # up, see bug 1131418.
-        self.assertEqual([], list(node.tags.all()))
-
-    def test_hardware_updates_logs_invalid_xml(self):
-        logger = self.useFixture(FakeLogger())
-        update_hardware_details(factory.make_Node(), b"garbage", 0)
-        expected_log = dedent(
-            """\
-        Invalid lshw data.
-        Traceback (most recent call last):
-        ...
-        lxml.etree.XMLSyntaxError: Start tag expected, ...
-        """
-        )
-        self.assertThat(
-            logger.output, DocTestMatches(expected_log, self.doctest_flags)
-        )
-
-    def test_hardware_updates_does_nothing_when_exit_status_is_not_zero(self):
-        logger = self.useFixture(FakeLogger(name="commissioningscript"))
-        update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
-        self.assertEqual("", logger.output)
-
-    def test_hardware_updates_node_attribs(self):
-        node = factory.make_Node()
-        system_vendor = factory.make_name("system_vendor")
-        system_product = factory.make_name("system_product")
-        system_version = factory.make_name("system_version")
-        system_serial = factory.make_name("system_serial")
-        mainboard_vendor = factory.make_name("mainboard_vendor")
-        mainboard_product = factory.make_name("mainboard_product")
-        mainboard_firmware_version = factory.make_name(
-            "mainboard_firmware_version"
-        )
-        mainboard_firmware_date = factory.make_name("mainboard_firmware_date")
-        xmlbytes = dedent(
-            """\
-        <node>
-          <node class="system">
-            <vendor>%s</vendor>
-            <product>%s</product>
-            <version>%s</version>
-            <serial>%s</serial>
-          </node>
-          <node id="core">
-            <vendor>%s</vendor>
-            <product>%s</product>
-            <node id="firmware">
-              <version>%s</version>
-              <date>%s</date>
-            </node>
-          </node>
-        </node>
-        """
-            % (
-                system_vendor,
-                system_product,
-                system_version,
-                system_serial,
-                mainboard_vendor,
-                mainboard_product,
-                mainboard_firmware_version,
-                mainboard_firmware_date,
-            )
-        ).encode()
-        update_hardware_details(node, xmlbytes, 0)
-
-        nmd = NodeMetadata.objects.get(node=node, key="system_vendor")
-        self.assertEquals(system_vendor, nmd.value)
-        nmd = NodeMetadata.objects.get(node=node, key="system_product")
-        self.assertEquals(system_product, nmd.value)
-        nmd = NodeMetadata.objects.get(node=node, key="system_version")
-        self.assertEquals(system_version, nmd.value)
-        nmd = NodeMetadata.objects.get(node=node, key="system_serial")
-        self.assertEquals(system_serial, nmd.value)
-
-        nmd = NodeMetadata.objects.get(node=node, key="mainboard_vendor")
-        self.assertEquals(mainboard_vendor, nmd.value)
-        nmd = NodeMetadata.objects.get(node=node, key="mainboard_product")
-        self.assertEquals(mainboard_product, nmd.value)
-        nmd = NodeMetadata.objects.get(
-            node=node, key="mainboard_firmware_version"
-        )
-        self.assertEquals(mainboard_firmware_version, nmd.value)
-        nmd = NodeMetadata.objects.get(
-            node=node, key="mainboard_firmware_date"
-        )
-        self.assertEquals(mainboard_firmware_date, nmd.value)
-
-    def test_hardware_ignores_empty_or_missing_node_attribs(self):
-        node = factory.make_Node()
-        xmlbytes = dedent(
-            """\
-        <node>
-          <node class="system">
-            <vendor></vendor>
-            <product>0123456789</product>
-          </node>
-        </node>
-        """
-        ).encode()
-        update_hardware_details(node, xmlbytes, 0)
-
-        for key in [
-            "system_vendor",
-            "system_product",
-            "system_version",
-            "system_serial",
-            "mainboard_Vendor",
-            "mainboard_product",
-            "mainboard_firmware_version",
-            "mainboard_firmware_date",
-        ]:
-            self.assertIsNone(NodeMetadata.objects.get(node=node, key=key))
-
-
 class TestProcessLXDResults(MAASServerTestCase):
+    def assertSystemInformation(self, node, data):
+        if "system" in data:
+            data = deepcopy(data["system"])
+        else:
+            data = deepcopy(data)
+
+        system_type = data.get("type")
+        if system_type and system_type != "physical":
+            self.assertTrue(node.tags.filter(name="virtual").exists())
+        else:
+            self.assertFalse(node.tags.filter(name="virtual").exists())
+        del data["type"]
+
+        for k, v in data.items():
+            if isinstance(v, dict):
+                for l, w in v.items():
+                    if not w or w in ["0123456789", "none"]:
+                        del data[k][v][l]
+            else:
+                if not v or v in ["0123456789", "none"]:
+                    del data[k]
+
+        pulled_data = {"uuid": node.hardware_uuid}
+        for nmd in node.nodemetadata_set.all():
+            if "_" not in nmd.key:
+                continue
+            if nmd.key.count("_") == 2:
+                main_section, subsection, key = nmd.key.split("_")
+                section = f"{main_section}_{subsection}"
+            else:
+                section, key = nmd.key.split("_")
+            if section == "system":
+                pulled_data[key] = nmd.value
+            elif section == "mainboard":
+                if "motherboard" not in pulled_data:
+                    pulled_data["motherboard"] = {}
+                pulled_data["motherboard"][key] = nmd.value
+            elif section == "mainboard_firmware":
+                if "firmware" not in pulled_data:
+                    pulled_data["firmware"] = {}
+                pulled_data["firmware"][key] = nmd.value
+            elif section == "chassis":
+                if "chassis" not in pulled_data:
+                    pulled_data["chassis"] = {}
+                pulled_data["chassis"][key] = nmd.value
+
+        self.assertDictEqual(data, pulled_data)
+
     def test__does_not_update_node_network_information_if_rack(self):
         rack = factory.make_RackController()
         mock_update_node_network_information = self.patch(
@@ -1778,6 +1646,61 @@ class TestProcessLXDResults(MAASServerTestCase):
             LXD_OUTPUT_NAME,
             "The LXD script hook depends on the IPADDR script result",
         )
+
+    def test__processes_system_information(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        process_lxd_results(node, json.dumps(SAMPLE_LXD_JSON).encode(), 0)
+        self.assertSystemInformation(node, SAMPLE_LXD_JSON)
+
+    def test__ignores_system_information_placeholders(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        modified_sample_lxd_data = deepcopy(SAMPLE_LXD_JSON)
+        for k, v in modified_sample_lxd_data["system"].items():
+            if isinstance(v, dict):
+                for l, w in v.items():
+                    modified_sample_lxd_data["system"][k][l] = random.choice(
+                        [None, "0123456789", "none"]
+                    )
+            else:
+                modified_sample_lxd_data["system"][k] = random.choice(
+                    [None, "0123456789", "none"]
+                )
+        process_lxd_results(
+            node, json.dumps(modified_sample_lxd_data).encode(), 0
+        )
+        self.assertFalse(
+            node.nodemetadata_set.exclude(key="cpu_model").exists()
+        )
+
+    def test__removes_missing_nodemetadata(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        process_lxd_results(node, json.dumps(SAMPLE_LXD_JSON).encode(), 0)
+        self.assertTrue(
+            node.nodemetadata_set.exclude(key="cpu_model").exists()
+        )
+        modified_sample_lxd_data = deepcopy(SAMPLE_LXD_JSON)
+        del modified_sample_lxd_data["system"]
+        process_lxd_results(
+            node, json.dumps(modified_sample_lxd_data).encode(), 0
+        )
+        self.assertFalse(
+            node.nodemetadata_set.exclude(key="cpu_model").exists()
+        )
+
+    def test__removes_virtual_tag(self):
+        node = factory.make_Node()
+        tag, _ = Tag.objects.get_or_create(name="virtual")
+        node.tags.add(tag)
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        modified_sample_lxd_data = deepcopy(SAMPLE_LXD_JSON)
+        modified_sample_lxd_data["system"]["type"] = "physical"
+        process_lxd_results(
+            node, json.dumps(modified_sample_lxd_data).encode(), 0
+        )
+        self.assertFalse(node.tags.filter(name="virtual").exists())
 
     def test__syncs_pods(self):
         self.useFixture(SignalsDisabled("podhints"))

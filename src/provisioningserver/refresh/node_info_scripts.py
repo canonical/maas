@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin node info scripts."""
@@ -16,7 +16,6 @@ __all__ = [
     "NODE_INFO_SCRIPTS",
     "SERIAL_PORTS_OUTPUT_NAME",
     "SUPPORT_INFO_OUTPUT_NAME",
-    "VIRTUALITY_OUTPUT_NAME",
 ]
 
 from collections import OrderedDict
@@ -35,7 +34,6 @@ from pkg_resources import get_distribution
 # 0014_rename_dhcp_unconfigured_ifaces.py
 SUPPORT_INFO_OUTPUT_NAME = "00-maas-00-support-info"
 LSHW_OUTPUT_NAME = "00-maas-01-lshw"
-VIRTUALITY_OUTPUT_NAME = "00-maas-02-virtuality"
 LLDP_INSTALL_OUTPUT_NAME = "00-maas-03-install-lldpd"
 LIST_MODALIASES_OUTPUT_NAME = "00-maas-04-list-modaliases"
 DHCP_EXPLORE_OUTPUT_NAME = "00-maas-05-dhcp-unconfigured-ifaces"
@@ -286,15 +284,6 @@ NODE_INFO_SCRIPTS = OrderedDict(
                 "content": get_script_content(LXD_OUTPUT_NAME),
                 "hook": null_hook,
                 "timeout": timedelta(minutes=1),
-                "run_on_controller": True,
-            },
-        ),
-        (
-            VIRTUALITY_OUTPUT_NAME,
-            {
-                "content": get_script_content(VIRTUALITY_OUTPUT_NAME),
-                "hook": null_hook,
-                "timeout": timedelta(seconds=10),
                 "run_on_controller": True,
             },
         ),

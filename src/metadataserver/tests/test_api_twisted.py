@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the twisted metadata API."""
@@ -22,7 +22,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Event, NodeMetadata, Tag
+from maasserver.models import Event, NodeMetadata
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout
@@ -1009,66 +1009,6 @@ class TestStatusWorkerService(MAASServerTestCase):
         }
         self.processMessage(node, payload)
         self.assertEqual(0, reload_object(script_result).exit_status)
-
-    def test_status_stores_virtual_tag_on_node_if_virtual(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
-        )
-        content = "virtual".encode("utf-8")
-        payload = {
-            "event_type": "finish",
-            "result": "SUCCESS",
-            "origin": "curtin",
-            "name": "commissioning",
-            "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
-            "files": [
-                {
-                    "path": "00-maas-02-virtuality.out",
-                    "encoding": "base64",
-                    "content": encode_as_base64(content),
-                }
-            ],
-        }
-        self.processMessage(node, payload)
-        node = reload_object(node)
-        self.assertEqual(
-            ["virtual"], [each_tag.name for each_tag in node.tags.all()]
-        )
-        for script_result in node.current_commissioning_script_set:
-            if script_result.name == "00-maas-02-virtuality":
-                break
-        self.assertEqual(content, script_result.stdout)
-
-    def test_status_removes_virtual_tag_on_node_if_not_virtual(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
-        )
-        tag, _ = Tag.objects.get_or_create(name="virtual")
-        node.tags.add(tag)
-        content = "none".encode("utf-8")
-        payload = {
-            "event_type": "finish",
-            "result": "SUCCESS",
-            "origin": "curtin",
-            "name": "commissioning",
-            "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
-            "files": [
-                {
-                    "path": "00-maas-02-virtuality.out",
-                    "encoding": "base64",
-                    "content": encode_as_base64(content),
-                }
-            ],
-        }
-        self.processMessage(node, payload)
-        node = reload_object(node)
-        self.assertEqual([], [each_tag.name for each_tag in node.tags.all()])
-        for script_result in node.current_commissioning_script_set:
-            if script_result.name == "00-maas-02-virtuality":
-                break
-        self.assertEqual(content, script_result.stdout)
 
     def test_captures_installation_start(self):
         node = factory.make_Node(

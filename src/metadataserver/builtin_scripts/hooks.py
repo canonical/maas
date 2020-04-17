@@ -10,8 +10,6 @@ import json
 import logging
 import re
 
-from lxml import etree
-
 from maasserver.enum import NODE_METADATA, NODE_STATUS
 from maasserver.models import Fabric, NUMANode, Subnet
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -27,10 +25,8 @@ from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
-    VIRTUALITY_OUTPUT_NAME,
 )
 from provisioningserver.utils.ipaddr import parse_ip_addr
 
@@ -365,88 +361,47 @@ def update_node_network_information(node, data, numa_nodes):
         ).delete()
 
 
-def get_xml_field_value(evaluator, expression):
-    """Return an XML field or None if its not found."""
-    field = evaluator(expression)
-    # Supermicro uses 0123456789 as a place holder.
-    if (
-        isinstance(field, list)
-        and len(field) > 0
-        and "0123456789" not in field[0].lower()
-    ):
-        return field[0]
+def _process_system_information(node, system_data):
+    def validate_and_set_data(key, value):
+        # Some vendors use placeholders when not setting data.
+        if not value or value.lower() in ["0123456789", "none"]:
+            value = None
+        if value:
+            NodeMetadata.objects.update_or_create(
+                node=node, key=key, defaults={"value": value}
+            )
+        else:
+            NodeMetadata.objects.filter(node=node, key=key).delete()
+
+    node.hardware_uuid = system_data.get("uuid")
+
+    # Gather system information. Custom built machines and some Supermicro
+    # servers do not provide this information.
+    for i in ["vendor", "product", "family", "version", "sku", "serial"]:
+        validate_and_set_data(f"system_{i}", system_data.get(i))
+
+    # Gather mainboard information, all systems should have this.
+    motherboard = system_data.get("motherboard", {})
+    for i in ["vendor", "product", "serial", "version"]:
+        validate_and_set_data(f"mainboard_{i}", motherboard.get(i))
+
+    # Gather mainboard firmware information.
+    firmware = system_data.get("firmware", {})
+    for i in ["vendor", "date", "version"]:
+        validate_and_set_data(f"mainboard_firmware_{i}", firmware.get(i))
+
+    # Gather chassis information.
+    chassis = system_data.get("chassis", {})
+    for i in ["vendor", "type", "serial", "version"]:
+        validate_and_set_data(f"chassis_{i}", chassis.get(i))
+
+    # Set the virtual tag.
+    system_type = system_data.get("type")
+    tag, _ = Tag.objects.get_or_create(name="virtual")
+    if not system_type or system_type == "physical":
+        node.tags.remove(tag)
     else:
-        return None
-
-
-def update_hardware_details(node, output, exit_status):
-    """Process the results of the `LSHW_OUTPUT_NAME` script.
-
-    Updates `node.storage` fields, and also evaluates all tag
-    expressions against the given ``lshw`` XML.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-    """
-    if exit_status != 0:
-        logger.error(
-            "%s: lshw script failed with status: %s."
-            % (node.hostname, exit_status)
-        )
-        return
-    assert isinstance(output, bytes)
-    try:
-        doc = etree.XML(output)
-    except etree.XMLSyntaxError:
-        logger.exception("Invalid lshw data.")
-    else:
-        # Same document, many queries: use XPathEvaluator.
-        evaluator = etree.XPathEvaluator(doc)
-
-        # Only one hardware UUID should be provided but lxml always returns a
-        # list.
-        for e in evaluator('//node/configuration/setting[@id="uuid"]'):
-            value = e.get("value")
-            if value:
-                node.hardware_uuid = value
-
-        node.save(update_fields=["hardware_uuid"])
-
-        # This gathers the system vendor, product, version, and serial. Custom
-        # built machines and some Supermicro servers do not provide this
-        # information.
-        for key in ["vendor", "product", "version", "serial"]:
-            value = get_xml_field_value(
-                evaluator, "//node[@class='system']/%s/text()" % key
-            )
-            if value:
-                NodeMetadata.objects.update_or_create(
-                    node=node, key="system_%s" % key, defaults={"value": value}
-                )
-
-        # Gather the mainboard information, all systems should have this.
-        for key in ["vendor", "product"]:
-            value = get_xml_field_value(
-                evaluator, "//node[@id='core']/%s/text()" % key
-            )
-            if value:
-                NodeMetadata.objects.update_or_create(
-                    node=node,
-                    key="mainboard_%s" % key,
-                    defaults={"value": value},
-                )
-
-        for key in ["version", "date"]:
-            value = get_xml_field_value(
-                evaluator,
-                "//node[@id='core']/node[@id='firmware']/%s/text()" % key,
-            )
-            if value:
-                NodeMetadata.objects.update_or_create(
-                    node=node,
-                    key="mainboard_firmware_%s" % key,
-                    defaults={"value": value},
-                )
+        node.tags.add(tag)
 
 
 def process_lxd_results(node, output, exit_status):
@@ -501,7 +456,8 @@ def process_lxd_results(node, output, exit_status):
             node=node, key="cpu_model", defaults={"value": cpu_model}
         )
 
-    node.save(update_fields=["cpu_count", "cpu_speed", "memory"])
+    _process_system_information(node, data.get("system", {}))
+    node.save()
 
     for pod in node.get_hosted_pods():
         pod.sync_hints_from_nodes()
@@ -580,49 +536,6 @@ def _parse_memory(data, numa_nodes):
         )
 
     return total_memory / 1024 / 1024, numa_nodes
-
-
-def set_virtual_tag(node, output, exit_status):
-    """Process the results of `VIRTUALITY_OUTPUT_NAME` script.
-
-    This adds or removes the *virtual* tag from the node, depending on
-    whether a virtualization type is listed.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-    """
-    if exit_status != 0:
-        logger.error(
-            "%s: virtual machine detection script failed with status: %s."
-            % (node.hostname, exit_status)
-        )
-        return
-    assert isinstance(output, bytes)
-    decoded_output = output.decode("ascii").strip()
-    tag, _ = Tag.objects.get_or_create(name="virtual")
-    if "none" in decoded_output:
-        node.tags.remove(tag)
-    elif decoded_output == "":
-        logger.warning(
-            "No virtual type reported in VIRTUALITY_OUTPUT_NAME script output for node "
-            "%s",
-            node.system_id,
-        )
-    else:
-        node.tags.add(tag)
-
-
-_xpath_routers = "/lldp//id[@type='mac']/text()"
-
-
-def extract_router_mac_addresses(raw_content):
-    """Extract the routers' MAC Addresses from raw LLDP information."""
-    if not raw_content:
-        return None
-    assert isinstance(raw_content, bytes)
-    parser = etree.XMLParser()
-    doc = etree.XML(raw_content.strip(), parser)
-    return doc.xpath(_xpath_routers)
 
 
 def get_tags_from_block_info(block_info):
@@ -1121,8 +1034,6 @@ def retag_node_for_hardware_by_modalias(
 
 
 # Register the post processing hooks.
-NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]["hook"] = update_hardware_details
-NODE_INFO_SCRIPTS[VIRTUALITY_OUTPUT_NAME]["hook"] = set_virtual_tag
 NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME][
     "hook"
 ] = update_node_fruid_metadata

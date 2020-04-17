@@ -46,7 +46,6 @@ from maasserver.models import (
     Event,
     NodeMetadata,
     SSHKey,
-    Tag,
     VersionedTextFile,
 )
 from maasserver.models.node import Node
@@ -2597,55 +2596,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(text, script_result.output)
         self.assertEqual(SCRIPT_STATUS.TIMEDOUT, script_result.status)
         self.assertIsNone(script_result.exit_status)
-
-    def test_signal_stores_virtual_tag_on_node_if_virtual(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
-        )
-        client = make_node_client(node=node)
-        content = "qemu".encode("utf-8")
-        response = call_signal(
-            client,
-            script_result=0,
-            files={"00-maas-02-virtuality.out": content},
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(
-            ["virtual"], [each_tag.name for each_tag in node.tags.all()]
-        )
-
-    def test_signal_removes_virtual_tag_on_node_if_not_virtual(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
-        )
-        tag, _ = Tag.objects.get_or_create(name="virtual")
-        node.tags.add(tag)
-        client = make_node_client(node=node)
-        content = "none".encode("utf-8")
-        response = call_signal(
-            client,
-            script_result=0,
-            files={"00-maas-02-virtuality.out": content},
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual([], [each_tag.name for each_tag in node.tags.all()])
-
-    def test_signal_leaves_untagged_physical_node_unaltered(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
-        )
-        client = make_node_client(node=node)
-        content = "none".encode("utf-8")
-        response = call_signal(
-            client,
-            script_result=0,
-            files={"00-maas-02-virtuality.out": content},
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(0, len(node.tags.all()))
 
     def test_signal_current_power_type_mscm_does_not_store_params(self):
         node = factory.make_Node(

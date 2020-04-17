@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -481,13 +481,22 @@ class NodeHandler(OperationsHandler):
         ret = {
             "system_vendor": "Unknown",
             "system_product": "Unknown",
+            "system_family": "Unknown",
             "system_version": "Unknown",
+            "system_sku": "Unknown",
             "system_serial": "Unknown",
             "cpu_model": "Unknown",
             "mainboard_vendor": "Unknown",
             "mainboard_product": "Unknown",
-            "mainboard_firmware_version": "Unknown",
+            "mainboard_serial": "Unknown",
+            "mainboard_version": "Unknown",
+            "mainboard_firmware_vendor": "Unknown",
             "mainboard_firmware_date": "Unknown",
+            "mainboard_firmware_version": "Unknown",
+            "chassis_vendor": "Unknown",
+            "chassis_type": "Unknown",
+            "chassis_serial": "Unknown",
+            "chassis_version": "Unknown",
         }
         # Iterate over the NodeMetadata objects instead of filtering to
         # avoid another database call as the values have been prefetched.

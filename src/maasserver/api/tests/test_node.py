@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Node API."""
@@ -319,8 +319,10 @@ class TestNodeAPI(APITestCase.ForUser):
         machine = factory.make_Machine(owner=self.user)
         system_vendor = factory.make_NodeMetadata(machine, "system_vendor")
         system_product = factory.make_NodeMetadata(machine, "system_product")
+        system_family = factory.make_NodeMetadata(machine, "system_family")
         system_version = factory.make_NodeMetadata(machine, "system_version")
         system_serial = factory.make_NodeMetadata(machine, "system_serial")
+        system_sku = factory.make_NodeMetadata(machine, "system_sku")
         cpu_model = factory.make_NodeMetadata(machine, "cpu_model")
         mainboard_vendor = factory.make_NodeMetadata(
             machine, "mainboard_vendor"
@@ -328,12 +330,25 @@ class TestNodeAPI(APITestCase.ForUser):
         mainboard_product = factory.make_NodeMetadata(
             machine, "mainboard_product"
         )
+        mainboard_serial = factory.make_NodeMetadata(
+            machine, "mainboard_serial"
+        )
+        mainboard_version = factory.make_NodeMetadata(
+            machine, "mainboard_version"
+        )
+        mainboard_firmware_vendor = factory.make_NodeMetadata(
+            machine, "mainboard_firmware_vendor"
+        )
         mainboard_firmware_version = factory.make_NodeMetadata(
             machine, "mainboard_firmware_version"
         )
         mainboard_firmware_date = factory.make_NodeMetadata(
             machine, "mainboard_firmware_date"
         )
+        chassis_vendor = factory.make_NodeMetadata(machine, "chassis_vendor")
+        chassis_type = factory.make_NodeMetadata(machine, "chassis_type")
+        chassis_serial = factory.make_NodeMetadata(machine, "chassis_serial")
+        chassis_version = factory.make_NodeMetadata(machine, "chassis_version")
         factory.make_NodeMetadata(machine)
 
         response = self.client.get(self.get_node_uri(machine))
@@ -344,13 +359,22 @@ class TestNodeAPI(APITestCase.ForUser):
             {
                 "system_vendor": system_vendor.value,
                 "system_product": system_product.value,
+                "system_family": system_family.value,
                 "system_version": system_version.value,
+                "system_sku": system_sku.value,
                 "system_serial": system_serial.value,
                 "cpu_model": cpu_model.value,
                 "mainboard_vendor": mainboard_vendor.value,
                 "mainboard_product": mainboard_product.value,
+                "mainboard_serial": mainboard_serial.value,
+                "mainboard_version": mainboard_version.value,
+                "mainboard_firmware_vendor": mainboard_firmware_vendor.value,
                 "mainboard_firmware_version": mainboard_firmware_version.value,
                 "mainboard_firmware_date": mainboard_firmware_date.value,
+                "chassis_vendor": chassis_vendor.value,
+                "chassis_type": chassis_type.value,
+                "chassis_serial": chassis_serial.value,
+                "chassis_version": chassis_version.value,
             },
             parsed_result["hardware_info"],
         )
