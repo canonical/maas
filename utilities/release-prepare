@@ -56,7 +56,9 @@ commit_and_tag() {
     git tag -a "$(tag_version "$version")" -m "$message"
 }
 
-if [ -z "$1" ]; then
+version="$1"
+
+if [ -z "$version" ]; then
     exit_error "Usage $SCRIPT <python-version>"
 fi
 
@@ -64,6 +66,6 @@ if ! git_tree_clean; then
     exit_error "Git tree is not clean, please reset."
 fi
 
-replace_setup_version "$1"
-add_debian_changelog "$1"
-commit_and_tag "$1"
+replace_setup_version "$version"
+add_debian_changelog "$version"
+commit_and_tag "$version"
