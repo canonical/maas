@@ -1,4 +1,14 @@
 #!/bin/bash -e
+#
+# Prepare a MAAS release by doing the following:
+#
+# - update python project version
+# - add d/changelog entry for the release
+# - commit changes and tag commit with release tag
+#
+# The script must be called with a single argument for the MAAS python version
+# to update to.
+#
 
 SCRIPT="$(basename "$0")"
 
