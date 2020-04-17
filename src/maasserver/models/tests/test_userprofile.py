@@ -12,6 +12,7 @@ from maasserver.models import (
     UserProfile,
 )
 from maasserver.models.user import (
+    create_auth_token,
     GENERIC_CONSUMER,
     get_auth_tokens,
     SYSTEM_USERS,
@@ -138,12 +139,16 @@ class UserProfileTest(MAASServerTestCase):
 
     def test_transfer_resources(self):
         user = factory.make_User()
-        node = factory.make_Node(owner=user)
+        token = create_auth_token(user)
+        node = factory.make_Node(owner=user, token=token)
         ipaddress = factory.make_StaticIPAddress(user=user)
         iprange = factory.make_IPRange(user=user)
         new_user = factory.make_User()
         user.userprofile.transfer_resources(new_user)
-        self.assertEqual(reload_object(node).owner, new_user)
+        token.delete()
+        node = reload_object(node)
+        self.assertEqual(node.owner, new_user)
+        self.assertIsNone(node.token)
         self.assertEqual(reload_object(ipaddress).user, new_user)
         self.assertEqual(reload_object(iprange).user, new_user)
 
