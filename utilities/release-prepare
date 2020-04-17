@@ -3,7 +3,7 @@
 SCRIPT="$(basename "$0")"
 
 exit_error() {
-    echo "$@"
+    echo "$@" >&2
     exit 1
 }
 
@@ -40,7 +40,7 @@ add_debian_changelog() {
 commit_and_tag() {
     local version="$1"
     local message
-    message="Relase $(verbose_version "$version")"
+    message="Release $(verbose_version "$version")"
 
     git ci -a -m "$message"
     git tag -a "$(tag_version "$version")" -m "$message"
