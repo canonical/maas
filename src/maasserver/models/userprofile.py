@@ -98,7 +98,10 @@ class UserProfile(CleanSave, Model):
         :type new_owner: maasserver.models.UserProfile
 
         """
-        self.user.node_set.update(owner=new_owner)
+        # LP:1870171 - Make sure the previous owners key isn't assoicated with
+        # any node. Nothing uses the token and in MAAS 2.8+ Node.token has
+        # been removed.
+        self.user.node_set.update(owner=new_owner, token=None)
         self.user.staticipaddress_set.update(user=new_owner)
         self.user.iprange_set.update(user=new_owner)
 
