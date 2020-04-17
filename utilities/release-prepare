@@ -1,0 +1,71 @@
+#!/bin/bash -e
+#
+# Prepare a MAAS release by doing the following:
+#
+# - update python project version
+# - add d/changelog entry for the release
+# - commit changes and tag commit with release tag
+#
+# The script must be called with a single argument for the MAAS python version
+# to update to.
+#
+
+SCRIPT="$(basename "$0")"
+
+exit_error() {
+    echo "$@" >&2
+    exit 1
+}
+
+git_tree_clean() {
+    git diff-index --quiet HEAD
+}
+
+deb_version() {
+    local version
+    version="$(echo "$1" | sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end')"
+    echo "${version}-0ubuntu1"
+}
+
+verbose_version() {
+    echo "$1" | sed 's/a/ alpha/; tend; s/b/ beta/; tend; s/rc/ RC/; :end'
+}
+
+
+tag_version() {
+    echo "$1" | sed 's/a/-alpha/; tend; s/b/-beta/; tend; s/rc/-rc/; :end'
+}
+
+replace_setup_version() {
+    local version="$1"
+    sed -i 's/\bversion=".*$/version="'"$version"'",/' setup.py
+}
+
+add_debian_changelog() {
+    local version="$1"
+    dch -v "$(deb_version "$version")" \
+        -m "New upstream release, MAAS $(verbose_version "$version")."
+}
+
+commit_and_tag() {
+    local version="$1"
+    local message
+    message="Release $(verbose_version "$version")"
+
+    git commit -a -m "$message"
+    git tag -a "$(tag_version "$version")" -m "$message"
+}
+
+version="$1"
+
+if [ -z "$version" ]; then
+    exit_error "Usage $SCRIPT <python-version>"
+fi
+
+if ! git_tree_clean; then
+    exit_error "Git tree is not clean, please reset."
+fi
+
+replace_setup_version "$version"
+add_debian_changelog "$version"
+commit_and_tag "$version"
