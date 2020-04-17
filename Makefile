@@ -259,7 +259,7 @@ lint-shell: bin/shellcheck
 		snap/local/tree/bin/* \
 		snap/local/tree/sbin/* \
 		snap/local/tree/helpers/* \
-	    utilities/release-*
+		utilities/release-*
 .PHONY: lint-shell
 
 format.parallel:

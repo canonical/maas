@@ -52,7 +52,7 @@ commit_and_tag() {
     local message
     message="Release $(verbose_version "$version")"
 
-    git ci -a -m "$message"
+    git commit -a -m "$message"
     git tag -a "$(tag_version "$version")" -m "$message"
 }
 
