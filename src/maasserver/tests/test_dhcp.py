@@ -2803,12 +2803,8 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
         )
-        primary_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan
-        )
-        secondary_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan
-        )
+        primary_interface = primary_rack.interface_set.get(vlan=vlan)
+        secondary_interface = secondary_rack.interface_set.get(vlan=vlan)
 
         subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         subnet_v6 = factory.make_Subnet(
@@ -2936,18 +2932,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
     def test__calls_connected_rack_when_node_primary_rack_is_disconn(self):
         rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
-        interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
-        interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
         disconnected_rack = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN(
             primary_rack=disconnected_rack, secondary_rack=rack_controller
         )
+        disconnected_interface = disconnected_rack.interface_set.get(vlan=vlan)
+        secondary_interface = rack_controller.interface_set.get(vlan=vlan)
         subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet,
-            interface=disconnected_rack.get_boot_interface(),
+            interface=disconnected_interface,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+            interface=secondary_interface,
         )
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         factory.make_StaticIPAddress(
@@ -2956,7 +2957,12 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             interface=node.get_boot_interface(),
         )
         dhcp_snippet = factory.make_DHCPSnippet(node=node)
+
         dhcp.validate_dhcp_config(dhcp_snippet)
+
+        config = dhcp.get_dhcp_configuration(rack_controller)
+        interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
+        interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
         if self.process_expected_shared_networks is not None:
             self.process_expected_shared_networks(config.shared_networks_v4)
