@@ -1393,8 +1393,18 @@ class TestMarkBrokenAction(MAASServerTestCase):
         action = MarkBroken(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
+        self.assertEqual("", reload_object(node).error_description)
+
+    def test_user_provided_description(self):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(owner=user, status=NODE_STATUS.COMMISSIONING)
+        action = MarkBroken(node, user, request)
+        self.assertTrue(action.is_permitted())
+        action.execute(message="Provided broken message")
         self.assertEqual(
-            "via web interface", reload_object(node).error_description
+            "Provided broken message", reload_object(node).error_description
         )
 
     def test_requires_edit_permission(self):

@@ -693,9 +693,9 @@ class MarkBroken(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % action.node.hostname
 
-    def _execute(self):
+    def _execute(self, message=None):
         """See `NodeAction.execute`."""
-        self.node.mark_broken(self.user, "via web interface")
+        self.node.mark_broken(self.user, message)
 
     def is_permitted(self):
         """Must also be owned to mark it broken."""
