@@ -1622,6 +1622,13 @@ class Factory(maastesting.factory.Factory):
             relay_vlan=relay_vlan,
         )
         vlan.save()
+        for rack in [primary_rack, secondary_rack]:
+            if rack is None:
+                continue
+            if rack not in vlan.connected_rack_controllers():
+                self.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan
+                )
         return vlan
 
     def make_Interface(

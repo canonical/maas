@@ -7121,7 +7121,7 @@ class RackController(Controller):
                 new_rack, new_racks = (
                     None,
                     controlled_vlan.connected_rack_controllers(
-                        exclude_racks=[self]
+                        exclude_racks=[self, controlled_vlan.primary_rack]
                     ),
                 )
                 if new_racks:
