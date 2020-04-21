@@ -51,6 +51,6 @@ class TestLogDeprecations(MAASTestCase):
         self.assertEqual(
             event["_message_0"],
             "Deprecation MD1 (https://maas.io/deprecations/MD1): "
-            "MAAS is currently running the PostgreSQL database inside the snap. "
-            "It should be migrated outside of the snap.",
+            "The setup for this MAAS is deprecated and not suitable for production "
+            "environments, as the database is running inside the snap.",
         )

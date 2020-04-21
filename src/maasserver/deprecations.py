@@ -14,9 +14,10 @@ DEPRECATION_URL = "https://maas.io/deprecations/{id}"
 DEPRECATIONS = {
     "MD1": {
         "since": "2.8",
+        "link-text": "How to migrate the database out of the snap",
         "description": (
-            "MAAS is currently running the PostgreSQL database inside the snap. "
-            "It should be migrated outside of the snap."
+            "The setup for this MAAS is deprecated and not suitable for production "
+            "environments, as the database is running inside the snap."
         ),
     }
 }
