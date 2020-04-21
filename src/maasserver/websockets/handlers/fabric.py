@@ -15,9 +15,7 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 class FabricHandler(TimestampedModelHandler):
     class Meta:
-        queryset = Fabric.objects.all().prefetch_related(
-            "vlan_set__interface_set"
-        )
+        queryset = Fabric.objects.all().prefetch_related("vlan_set")
         pk = "id"
         form = FabricForm
         form_requires_request = False

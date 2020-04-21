@@ -14,6 +14,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.space import SpaceHandler
+from maastesting.djangotestcase import count_queries
 
 
 class TestSpaceHandler(MAASServerTestCase):
@@ -52,6 +53,20 @@ class TestSpaceHandler(MAASServerTestCase):
             self.dehydrate_space(space) for space in Space.objects.all()
         ]
         self.assertItemsEqual(expected_spaces, handler.list({}))
+
+    def test_list_constant_queries(self):
+        user = factory.make_User()
+        handler = SpaceHandler(user, {}, None)
+        for _ in range(10):
+            space = factory.make_Space()
+            node = factory.make_Node(interface=True)
+            interface = node.get_boot_interface()
+            subnet = factory.make_Subnet(space=space, vlan=interface.vlan)
+            factory.make_StaticIPAddress(subnet=subnet, interface=interface)
+        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        queries_multiple, _ = count_queries(handler.list, {})
+
+        self.assertEqual(queries_one, queries_multiple)
 
 
 class TestSpaceHandlerDelete(MAASServerTestCase):
