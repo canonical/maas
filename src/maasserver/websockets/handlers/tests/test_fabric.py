@@ -10,6 +10,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.fabric import FabricHandler
+from maastesting.djangotestcase import count_queries
 
 
 class TestFabricHandler(MAASServerTestCase):
@@ -61,3 +62,20 @@ class TestFabricHandler(MAASServerTestCase):
             self.dehydrate_fabric(fabric) for fabric in Fabric.objects.all()
         ]
         self.assertItemsEqual(expected_fabrics, handler.list({}))
+
+    def test_list_constant_queries(self):
+        user = factory.make_User()
+        handler = FabricHandler(user, {}, None)
+        for _ in range(10):
+            fabric = factory.make_Fabric()
+            vlan = fabric.get_default_vlan()
+            for _ in range(3):
+                node = factory.make_Node(interface=True)
+                interface = node.get_boot_interface()
+                interface.vlan = vlan
+                interface.save()
+
+        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        queries_multiple, _ = count_queries(handler.list, {})
+
+        self.assertEqual(queries_one, queries_multiple)

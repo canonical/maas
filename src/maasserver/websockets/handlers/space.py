@@ -5,6 +5,8 @@
 
 __all__ = ["SpaceHandler"]
 
+import itertools
+
 from maasserver.forms.space import SpaceForm
 from maasserver.models.space import Space
 from maasserver.permissions import NodePermission
@@ -15,9 +17,7 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 class SpaceHandler(TimestampedModelHandler):
     class Meta:
-        queryset = Space.objects.all().prefetch_related(
-            "vlan_set__subnet_set__staticipaddress_set__interface_set"
-        )
+        queryset = Space.objects.all().prefetch_related("vlan_set__subnet_set")
         pk = "id"
         form = SpaceForm
         form_requires_request = False
@@ -33,11 +33,15 @@ class SpaceHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         data["name"] = obj.get_name()
-        data["vlan_ids"] = list(
-            obj.vlan_set.order_by("id").values_list("id", flat=True)
-        )
-        data["subnet_ids"] = list(
-            obj.subnet_set.order_by("id").values_list("id", flat=True)
+        vlans = obj.vlan_set.all()
+        data["vlan_ids"] = sorted(vlan.id for vlan in vlans)
+        data["subnet_ids"] = sorted(
+            itertools.chain(
+                *[
+                    [subnet.id for subnet in vlan.subnet_set.all()]
+                    for vlan in vlans
+                ]
+            )
         )
         return data
 
