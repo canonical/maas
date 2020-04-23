@@ -347,6 +347,17 @@ class LXDPodDriver(PodDriver):
     def get_commissioning_data(self, pod_id, context):
         """Retreive commissioning data from LXD."""
         d = self.get_client(pod_id, context)
-        d.addCallback(lambda client: client.resources)
+        # Replicate the LXD API in tree form, like machine-resources does.
+        d.addCallback(
+            lambda client: {
+                # /1.0
+                **client.host_info,
+                # /1.0/resources
+                "resources": client.resources,
+                # TODO - Add networking information.
+                # /1.0/networks
+                # 'networks': {'eth0': {...}, 'eth1': {...}, 'bond0': {...}},
+            }
+        )
         d.addCallback(lambda resources: {LXD_OUTPUT_NAME: resources})
         return d

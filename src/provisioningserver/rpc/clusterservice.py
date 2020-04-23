@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for clusters."""
@@ -55,7 +55,7 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_data_path
 from provisioningserver.prometheus.metrics import set_global_labels
-from provisioningserver.refresh import get_sys_info, refresh
+from provisioningserver.refresh import refresh
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -770,7 +770,7 @@ class Cluster(RPCProtocol):
                 log.err, "Failed to refresh the rack controller."
             )
 
-        return deferToThread(get_sys_info)
+        return deferToThread(lambda: {"maas_version": get_maas_version()})
 
     @cluster.AddChassis.responder
     def add_chassis(

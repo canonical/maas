@@ -6,7 +6,6 @@
 __all__ = []
 
 import base64
-from copy import deepcopy
 from datetime import datetime, timedelta
 import email
 import json
@@ -7275,13 +7274,11 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        XENIAL_NETWORK = deepcopy(test_hooks.SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = test_hooks.SAMPLE_LXD_XENIAL_NETWORK_JSON
         commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
             node, scripts=[lxd_script.name, ip_addr_script.name]
         )
         node.current_commissioning_script_set = commissioning_script_set
-        output = json.dumps(XENIAL_NETWORK).encode("utf-8")
+        output = test_hooks.make_lxd_output_json(with_xenial_network=True)
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
             script=lxd_script,
@@ -7318,13 +7315,11 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        XENIAL_NETWORK = deepcopy(test_hooks.SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = test_hooks.SAMPLE_LXD_XENIAL_NETWORK_JSON
         commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
             node, scripts=[lxd_script.name, ip_addr_script.name]
         )
         node.current_commissioning_script_set = commissioning_script_set
-        output = json.dumps(XENIAL_NETWORK).encode("utf-8")
+        output = test_hooks.make_lxd_output_json(with_xenial_network=True)
         error_message = b"some error message"
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
@@ -7363,13 +7358,11 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        XENIAL_NETWORK = deepcopy(test_hooks.SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = test_hooks.SAMPLE_LXD_XENIAL_NETWORK_JSON
         commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
             node, scripts=[lxd_script.name, ip_addr_script.name]
         )
         node.current_commissioning_script_set = commissioning_script_set
-        output = json.dumps(XENIAL_NETWORK).encode("utf-8")
+        output = test_hooks.make_lxd_output_json(with_xenial_network=True)
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
             script=lxd_script,
@@ -13222,13 +13215,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_refresh_issues_rpc_call(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {
-                "hostname": self.rackcontroller.hostname,
-                "architecture": self.rackcontroller.architecture,
-                "osystem": "",
-                "distro_series": "",
-                "interfaces": {},
-            }
+            {"maas_version": factory.make_name("maas_version")}
         )
 
         yield self.rackcontroller.refresh()
@@ -13249,13 +13236,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_refresh_logs_user_request(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {
-                "hostname": self.rackcontroller.hostname,
-                "architecture": self.rackcontroller.architecture,
-                "osystem": "",
-                "distro_series": "",
-                "interfaces": {},
-            }
+            {"maas_version": factory.make_name("maas_version")}
         )
 
         register_event = self.patch(
@@ -13281,48 +13262,6 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         mock_save = self.patch(self.rackcontroller, "save")
         yield self.rackcontroller.refresh()
         self.assertThat(mock_save, MockNotCalled())
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_refresh_sets_extra_values(self):
-        hostname = factory.make_hostname()
-        osystem = factory.make_name("osystem")
-        distro_series = factory.make_name("distro_series")
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-
-        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {
-                "hostname": hostname,
-                "architecture": self.rackcontroller.architecture,
-                "osystem": osystem,
-                "distro_series": distro_series,
-                "interfaces": interfaces,
-            }
-        )
-
-        yield self.rackcontroller.refresh()
-        rackcontroller = yield deferToDatabase(
-            reload_object, self.rackcontroller
-        )
-        self.assertEquals(hostname, rackcontroller.hostname)
-        self.assertEquals(osystem, rackcontroller.osystem)
-        self.assertEquals(distro_series, rackcontroller.distro_series)
-
-        def has_nic():
-            mac_address = interfaces["eth0"]["mac_address"]
-            return Interface.objects.filter(
-                node=self.rackcontroller, mac_address=mac_address
-            ).exists()
-
-        self.assertTrue((yield deferToDatabase(has_nic)))
 
 
 class TestRackController(MAASTransactionServerTestCase):
@@ -13976,45 +13915,6 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
                 region.system_id, token.consumer.key, token.key, token.secret
             ),
         )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test__sets_extra_values(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-        self.patch(node_module, "get_maas_id").return_value = region.system_id
-        self.patch(node_module, "refresh")
-        hostname = factory.make_hostname()
-        osystem = factory.make_name("osystem")
-        distro_series = factory.make_name("distro_series")
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        self.patch(node_module, "get_sys_info").return_value = {
-            "hostname": hostname,
-            "architecture": region.architecture,
-            "osystem": osystem,
-            "distro_series": distro_series,
-            "interfaces": interfaces,
-        }
-        yield region.refresh()
-        region = yield deferToDatabase(reload_object, region)
-        self.assertEquals(hostname, region.hostname)
-        self.assertEquals(osystem, region.osystem)
-        self.assertEquals(distro_series, region.distro_series)
-
-        def has_nic(region):
-            mac_address = interfaces["eth0"]["mac_address"]
-            return Interface.objects.filter(
-                node=region, mac_address=mac_address
-            ).exists()
-
-        self.assertTrue((yield deferToDatabase(has_nic, region)))
 
 
 class TestControllerGetDiscoveryState(MAASServerTestCase):

@@ -19,6 +19,7 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
+from maasserver.utils.osystems import get_release
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
@@ -28,6 +29,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
+from provisioningserver.utils import kernel_to_debian_architecture
 from provisioningserver.utils.ipaddr import parse_ip_addr
 
 logger = logging.getLogger(__name__)
@@ -404,24 +406,8 @@ def _process_system_information(node, system_data):
         node.tags.add(tag)
 
 
-def process_lxd_results(node, output, exit_status):
-    """Process the results of the `LXD_OUTPUT_NAME` script.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-    """
-    if exit_status != 0:
-        logger.error(
-            "%s: lxd script failed with status: "
-            "%s." % (node.hostname, exit_status)
-        )
-        return
-    assert isinstance(output, bytes)
-    try:
-        data = json.loads(output.decode("utf-8"))
-    except ValueError as e:
-        raise ValueError(e.message + ": " + output)
-
+def _process_lxd_resources(node, data):
+    """Process the resources results of the `LXD_OUTPUT_NAME` script."""
     # Update CPU details.
     node.cpu_count, node.cpu_speed, cpu_model, numa_nodes = _parse_cpuinfo(
         data
@@ -457,10 +443,6 @@ def process_lxd_results(node, output, exit_status):
         )
 
     _process_system_information(node, data.get("system", {}))
-    node.save()
-
-    for pod in node.get_hosted_pods():
-        pod.sync_hints_from_nodes()
 
 
 def _parse_cpuinfo(data):
@@ -698,6 +680,73 @@ def update_node_physical_block_devices(node, data, numa_nodes):
         # applied layout. Deployed Pods should not have a layout set as the
         # layout of the deployed system is unknown.
         node.set_default_storage_layout()
+
+
+def _process_lxd_environment(node, data):
+    """Process the environment results from the `LXD_OUTPUT_NAME` script."""
+    # Verify the architecture is set correctly. This is how the architecture
+    # gets set on controllers.
+    node.architecture = kernel_to_debian_architecture(
+        data["kernel_architecture"]
+    )
+
+    # When a machine is commissioning the OS will always be the ephemeral
+    # environment. Controllers run the machine-resources binary directly
+    # on the running machine and LXD Pods are getting this data from LXD
+    # on the running machine. In those cases the information gathered below
+    # is correct.
+    if node.is_controller or node.is_pod:
+        # This is how the hostname gets set on controllers and stays in sync on Pods.
+        node.hostname = data["server_name"]
+
+        # MAAS always stores OS information in lower case
+        node.osystem = data["os_name"].lower()
+        node.distro_series = data["os_version"].lower()
+        # LXD always gives the OS version while MAAS stores Ubuntu releases
+        # by release codename. e.g LXD gives 20.04 MAAS stores focal.
+        if node.osystem == "ubuntu":
+            release = get_release(node.distro_series)
+            if release:
+                node.distro_series = release["series"]
+
+
+def process_lxd_results(node, output, exit_status):
+    """Process the results of the `LXD_OUTPUT_NAME` script.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+    """
+    if exit_status != 0:
+        logger.error(
+            "%s: lxd script failed with status: "
+            "%s." % (node.hostname, exit_status)
+        )
+        return
+    assert isinstance(output, bytes)
+    try:
+        data = json.loads(output.decode("utf-8"))
+    except ValueError as e:
+        raise ValueError(e.message + ": " + output)
+
+    assert data.get("api_version") == "1.0", "Data not from LXD API 1.0!"
+
+    for api_extension in [
+        "resources",
+        "resources_v2",
+        "api_os",
+        "resources_system",
+    ]:
+        assert api_extension in data.get(
+            "api_extensions", []
+        ), f"Missing required LXD API extension '{api_extension}'"
+
+    _process_lxd_environment(node, data["environment"])
+    _process_lxd_resources(node, data["resources"])
+
+    node.save()
+
+    for pod in node.get_hosted_pods():
+        pod.sync_hints_from_nodes()
 
 
 def create_metadata_by_modalias(node, output: bytes, exit_status):

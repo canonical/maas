@@ -1,9 +1,10 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for working with operating systems."""
 
 __all__ = [
     "get_distro_series_initial",
+    "get_release",
     "get_release_requires_key",
     "get_release_version_from_string",
     "list_all_releases_requiring_keys",
@@ -153,10 +154,7 @@ def make_hwe_kernel_ui_text(hwe_kernel):
         kernel = kernel_list[1]
     else:
         kernel = hwe_kernel
-    # Try to get the release name from the SimpleStream
-    ubuntu_release = get_release_from_db(kernel)
-    if ubuntu_release is None:
-        ubuntu_release = get_release_from_distro_info(kernel)
+    ubuntu_release = get_release(kernel)
     if ubuntu_release is None:
         return hwe_kernel
     else:
@@ -389,6 +387,17 @@ def get_release_from_db(string):
         }
 
 
+def get_release(string):
+    """Convert an Ubuntu release, version, or subarch into a release dict.
+
+    First tries distro_info then falls back on searching SimpleStreams to
+    avoid hitting the database. Returns None if not found."""
+    release = get_release_from_distro_info(string)
+    if not release:
+        release = get_release_from_db(string)
+    return release
+
+
 def get_release_version_from_string(string):
     """Convert an Ubuntu release, version, or kernel into a version tuple.
 
@@ -452,11 +461,7 @@ def get_release_version_from_string(string):
         # Rolling kernels are always the latest
         version = [999, 999]
     else:
-        # First try to get release info from the SimpleStream
-        ubuntu_release = get_release_from_distro_info(release)
-        if ubuntu_release is None:
-            # Fall back on using the UbuntuDistroInfo library
-            ubuntu_release = get_release_from_db(release)
+        ubuntu_release = get_release(release)
         if ubuntu_release is None:
             raise ValueError(
                 "%s not found amongst the known Ubuntu releases!" % string

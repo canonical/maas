@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test refresh functions."""
@@ -18,7 +18,7 @@ from unittest.mock import sentinel
 from testtools.matchers import Contains, DirExists, Not
 
 from maastesting.factory import factory
-from maastesting.matchers import Equals, MockAnyCall
+from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
 from provisioningserver.refresh.maas_api_helper import (
@@ -26,7 +26,6 @@ from provisioningserver.refresh.maas_api_helper import (
     SignalException,
 )
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
-from provisioningserver.utils.version import get_maas_version
 
 
 class TestHelpers(MAASTestCase):
@@ -48,94 +47,6 @@ class TestHelpers(MAASTestCase):
         ).return_value = architecture.encode("utf-8")
         ret_arch = refresh.get_architecture()
         self.assertEquals(architecture, ret_arch)
-
-    def test_get_os_release_etc_os_release_exists(self):
-        # This is a canary incase /etc/os-release ever goes away
-        self.assertTrue(os.path.exists("/etc/os-release"))
-        os_release = refresh.get_os_release()
-        # refresh() in src/provisioningserver/rpc/clusterservice.py tries 'ID'
-        # first and falls back on 'NAME' if its not found. Both exist in
-        # Ubuntu 16.04 (Xenial).
-        self.assertIn("ID", os_release)
-        self.assertIn("NAME", os_release)
-        # refresh() in src/provisioningserver/rpc/clusterservice.py tries
-        # 'UBUNTU_CODENAME' first and falls back on 'VERSION_ID' if its not
-        # found. Both exist in Ubuntu 16.04 (Xenial).
-        self.assertIn("UBUNTU_CODENAME", os_release)
-        self.assertIn("VERSION_ID", os_release)
-
-    def test_get_sys_info(self):
-        hostname = factory.make_hostname()
-        osystem = factory.make_name("id")
-        distro_series = factory.make_name("ubuntu_codename")
-        architecture = factory.make_name("architecture")
-        self.patch(refresh.socket, "gethostname").return_value = hostname
-        self.patch_autospec(refresh, "get_os_release").return_value = {
-            "ID": osystem,
-            "UBUNTU_CODENAME": distro_series,
-        }
-        self.patch_autospec(
-            refresh, "get_architecture"
-        ).return_value = architecture
-        self.assertThat(
-            {
-                "hostname": hostname,
-                "architecture": architecture,
-                "osystem": osystem,
-                "distro_series": distro_series,
-                "maas_version": get_maas_version(),
-                "interfaces": {},
-            },
-            Equals(refresh.get_sys_info()),
-        )
-
-    def test_get_sys_info_on_host(self):
-        self.assertNotIn(None, refresh.get_sys_info())
-
-    def test_get_sys_info_alt(self):
-        hostname = factory.make_hostname()
-        osystem = factory.make_name("name")
-        distro_series = factory.make_name("version_id")
-        architecture = factory.make_name("architecture")
-        self.patch(refresh.socket, "gethostname").return_value = hostname
-        self.patch_autospec(refresh, "get_os_release").return_value = {
-            "NAME": osystem,
-            "VERSION_ID": distro_series,
-        }
-        self.patch_autospec(
-            refresh, "get_architecture"
-        ).return_value = architecture
-        self.assertThat(
-            {
-                "hostname": hostname,
-                "architecture": architecture,
-                "osystem": osystem,
-                "distro_series": distro_series,
-                "maas_version": get_maas_version(),
-                "interfaces": {},
-            },
-            Equals(refresh.get_sys_info()),
-        )
-
-    def test_get_sys_info_empty(self):
-        hostname = factory.make_hostname()
-        architecture = factory.make_name("architecture")
-        self.patch(refresh.socket, "gethostname").return_value = hostname
-        self.patch_autospec(refresh, "get_os_release").return_value = {}
-        self.patch_autospec(
-            refresh, "get_architecture"
-        ).return_value = architecture
-        self.assertThat(
-            {
-                "hostname": hostname,
-                "architecture": architecture,
-                "osystem": "",
-                "distro_series": "",
-                "maas_version": get_maas_version(),
-                "interfaces": {},
-            },
-            Equals(refresh.get_sys_info()),
-        )
 
 
 class TestRefresh(MAASTestCase):

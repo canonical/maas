@@ -3104,15 +3104,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         )
         mock_deferToThread.side_effect = [
             succeed(None),
-            succeed(
-                {
-                    "hostname": "",
-                    "architecture": "",
-                    "osystem": "",
-                    "distro_series": "",
-                    "interfaces": {},
-                }
-            ),
+            succeed({"maas_version": factory.make_name("maas_version")}),
         ]
 
         system_id = factory.make_name("system_id")
@@ -3155,19 +3147,10 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         consumer_key = factory.make_name("consumer_key")
         token_key = factory.make_name("token_key")
         token_secret = factory.make_name("token_secret")
-        hostname = factory.make_hostname()
-        architecture = factory.make_name("architecture")
-        osystem = factory.make_name("osystem")
-        distro_series = factory.make_name("distro_series")
         maas_version = factory.make_name("maas_version")
-        self.patch_autospec(clusterservice, "get_sys_info").return_value = {
-            "hostname": hostname,
-            "osystem": osystem,
-            "distro_series": distro_series,
-            "architecture": architecture,
-            "interfaces": {},
-            "maas_version": maas_version,
-        }
+        self.patch_autospec(
+            clusterservice, "get_maas_version"
+        ).return_value = maas_version
 
         response = yield call_responder(
             Cluster(),
@@ -3180,17 +3163,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
             },
         )
 
-        self.assertEqual(
-            {
-                "hostname": hostname,
-                "osystem": osystem,
-                "distro_series": distro_series,
-                "architecture": architecture,
-                "maas_version": maas_version,
-                "interfaces": {},
-            },
-            response,
-        )
+        self.assertEqual({"maas_version": maas_version}, response)
 
 
 class TestClusterProtocol_ScanNetworks(

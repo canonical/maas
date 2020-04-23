@@ -191,7 +191,7 @@ from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.refresh import get_sys_info, refresh
+from provisioningserver.refresh import refresh
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
@@ -224,6 +224,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
     undefined,
 )
+from provisioningserver.utils.version import get_maas_version
 
 log = LegacyLogger()
 maaslog = get_maas_logger("node")
@@ -4523,8 +4524,14 @@ class Node(CleanSave, TimestampedModel):
         script = self.current_commissioning_script_set.find_script_result(
             script_name=LXD_OUTPUT_NAME
         )
+        lxd_output = json.loads(script.stdout)
+        # MAAS 2.8 added additional information to machine-resources output.
+        # LXD_OUTPUT_NAME used to only contain resources, now it is one of
+        # the objects provided.
+        if "resources" in lxd_output:
+            lxd_output = lxd_output["resources"]
         update_node_network_information(
-            self, json.loads(script.stdout), NUMANode.objects.filter(node=self)
+            self, lxd_output, NUMANode.objects.filter(node=self)
         )
 
     def set_initial_networking_configuration(self):
@@ -6876,39 +6883,13 @@ class Controller(Node):
         )
 
     @transactional
-    def _process_sys_info(self, response):
-        update_fields = []
-        hostname = response.get("hostname")
-        if hostname and self.hostname != hostname:
-            self.hostname = hostname
-            update_fields.append("hostname")
-        architecture = response.get("architecture")
-        if architecture and self.architecture != architecture:
-            self.architecture = architecture
-            update_fields.append("architecture")
-        osystem = response.get("osystem")
-        if osystem and self.osystem != osystem:
-            self.osystem = osystem
-            update_fields.append("osystem")
-        distro_series = response.get("distro_series")
-        if distro_series and self.distro_series != distro_series:
-            self.distro_series = response["distro_series"]
-            update_fields.append("distro_series")
+    def _process_maas_version(self, response):
         maas_version = response.get("maas_version")
         if maas_version and self.version != maas_version:
             # Circular imports.
             from maasserver.models import ControllerInfo
 
             ControllerInfo.objects.set_version(self, maas_version)
-        # MAAS 2.3+ will send an empty dictionary on purpose, but older
-        # versions of the MAAS rack will send real data (and it might arrive
-        # in a more timely manner than the UpdateInterfaces call from the
-        # NetworksMonitoringService).
-        interfaces = response.get("interfaces", {})
-        if len(interfaces) > 0:
-            self.update_interfaces(response["interfaces"])
-        if len(update_fields) > 0:
-            self.save(update_fields=update_fields)
 
     @property
     def version(self):
@@ -6999,7 +6980,7 @@ class RackController(Controller):
             # handle it and don't update the database.
             return
         else:
-            yield deferToDatabase(self._process_sys_info, response)
+            yield deferToDatabase(self._process_maas_version, response)
 
     def add_chassis(
         self,
@@ -7372,8 +7353,10 @@ class RegionController(Controller):
             with NamedLock("refresh"):
                 token = yield deferToDatabase(self._get_token_for_controller)
                 yield deferToDatabase(self._signal_start_of_refresh)
-                sys_info = yield deferToThread(get_sys_info)
-                yield deferToDatabase(self._process_sys_info, sys_info)
+                maas_version = yield deferToThread(
+                    lambda: {"maas_version": get_maas_version()}
+                )
+                yield deferToDatabase(self._process_maas_version, maas_version)
                 yield deferToThread(
                     refresh,
                     self.system_id,

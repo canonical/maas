@@ -10,6 +10,7 @@ import json
 import os.path
 import random
 
+from distro_info import UbuntuDistroInfo
 from fixtures import FakeLogger
 from netaddr import IPNetwork
 from testtools.matchers import (
@@ -125,7 +126,7 @@ def make_lxd_system_info(virt_type=None):
     }
 
 
-SAMPLE_LXD_JSON = {
+SAMPLE_LXD_RESOURCES = {
     "cpu": {
         "architecture": "x86_64",
         "sockets": [
@@ -433,12 +434,11 @@ SAMPLE_LXD_JSON = {
         ],
         "total": 7,
     },
-    "system": make_lxd_system_info(),
 }
 
 
 # This is sample output from a rpi4
-SAMPLE_LXD_NO_MEMORY_NUMA_JSON = {
+SAMPLE_LXD_RESOURCES_NO_NUMA = {
     "cpu": {
         "architecture": "aarch64",
         "sockets": [
@@ -643,12 +643,11 @@ SAMPLE_LXD_NO_MEMORY_NUMA_JSON = {
         ],
         "total": 8,
     },
-    "system": make_lxd_system_info(),
 }
 
 
 # This matches ip_addr_results_xenial.txt for the unit tests
-SAMPLE_LXD_XENIAL_NETWORK_JSON = {
+SAMPLE_LXD_XENIAL_NETWORK = {
     "cards": [
         {
             "driver": "e1000e",
@@ -753,7 +752,6 @@ SAMPLE_LXD_XENIAL_NETWORK_JSON = {
         },
     ],
     "total": 4,
-    "system": make_lxd_system_info(),
 }
 
 
@@ -787,6 +785,88 @@ KERNEL_CMDLINE_OUTPUT = (
 )
 
 
+def make_lxd_host_info(
+    api_extensions=None,
+    api_version=None,
+    kernel_architecture=None,
+    kernel_version=None,
+    os_name=None,
+    os_version=None,
+    server_name=None,
+):
+    if api_extensions is None:
+        api_extensions = [
+            "resources",
+            "resources_v2",
+            "api_os",
+            "resources_system",
+        ]
+    if not api_version:
+        api_version = "1.0"
+    if not kernel_architecture:
+        kernel_architecture = random.choice(
+            ["i686", "x86_64", "aarch64", "ppc64le", "s390x", "mips", "mips64"]
+        )
+    if not kernel_version:
+        kernel_version = factory.make_name("kernel_version")
+    if not os_name:
+        os_name = "Ubuntu"
+    if not os_version:
+        os_version = random.choice(["16.04", "18.04", "20.04"])
+    if not server_name:
+        server_name = factory.make_hostname()
+    return {
+        "api_extensions": api_extensions,
+        "api_version": api_version,
+        "environment": {
+            "kernel": "Linux",
+            "kernel_architecture": kernel_architecture,
+            "kernel_version": kernel_version,
+            "os_name": os_name,
+            "os_version": os_version,
+            "server": "maas-machine-resources",
+            "server_name": server_name,
+            "server_version": "4.0.0",
+        },
+    }
+
+
+def make_lxd_output(
+    resources=None,
+    api_extensions=None,
+    api_version=None,
+    kernel_architecture=None,
+    kernel_version=None,
+    os_name=None,
+    os_version=None,
+    server_name=None,
+    virt_type=None,
+    with_xenial_network=False,
+):
+    if not resources:
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+    ret = {
+        **make_lxd_host_info(
+            api_extensions,
+            api_version,
+            kernel_architecture,
+            kernel_version,
+            os_name,
+            os_version,
+            server_name,
+        ),
+        "resources": resources,
+    }
+    ret["resources"]["system"] = make_lxd_system_info(virt_type)
+    if with_xenial_network:
+        ret["resources"]["network"] = deepcopy(SAMPLE_LXD_XENIAL_NETWORK)
+    return ret
+
+
+def make_lxd_output_json(*args, **kwargs):
+    return json.dumps(make_lxd_output(*args, **kwargs)).encode()
+
+
 def create_IPADDR_OUTPUT_NAME_script(node, output):
     commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
         node
@@ -807,7 +887,7 @@ def create_IPADDR_OUTPUT_NAME_script(node, output):
 
 
 def create_numa_nodes(node):
-    # This NUMA node information matches SAMPLE_LXD_JSON
+    # This NUMA node information matches SAMPLE_LXD_RESOURCES
     # so if that changes, this needs to be updated.
     numa_nodes = {
         0: {"memory": int(16691519488 / 2 / 1024 / 1024), "cores": [0, 1]},
@@ -1384,6 +1464,8 @@ class TestUpdateFruidMetadata(MAASServerTestCase):
 
 class TestProcessLXDResults(MAASServerTestCase):
     def assertSystemInformation(self, node, data):
+        if "resources" in data:
+            data = data["resources"]
         if "system" in data:
             data = deepcopy(data["system"])
         else:
@@ -1431,14 +1513,115 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         self.assertDictEqual(data, pulled_data)
 
+    def test__errors_if_not_supported_lxd_api_ver(self):
+        node = factory.make_Node()
+        self.assertRaises(
+            AssertionError,
+            process_lxd_results,
+            node,
+            make_lxd_output_json(
+                api_version=f"{random.randint(2, 10)}.{random.randint(0, 10)}"
+            ),
+            0,
+        )
+
+    def test__errors_if_missing_api_extension(self):
+        node = factory.make_Node()
+        required_extensions = set(
+            ["resources", "resources_v2", "api_os", "resources_system"]
+        )
+        for missing_extension in required_extensions:
+            extensions = required_extensions.difference([missing_extension])
+            self.assertRaises(
+                AssertionError,
+                process_lxd_results,
+                node,
+                make_lxd_output_json(api_extensions=list(extensions)),
+                0,
+            )
+
+    def test__sets_architecture(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        kernel_arch, deb_arch = random.choice(
+            [
+                ("i686", "i386/generic"),
+                ("x86_64", "amd64/generic"),
+                ("aarch64", "arm64/generic"),
+                ("ppc64le", "ppc64el/generic"),
+                ("s390x", "s390x/generic"),
+                ("mips", "mips/generic"),
+                ("mips64", "mips64el/generic"),
+            ]
+        )
+        process_lxd_results(
+            node, make_lxd_output_json(kernel_architecture=kernel_arch), 0
+        )
+        node = reload_object(node)
+        self.assertEquals(deb_arch, node.architecture)
+
+    def test__sets_os_hostname_for_controller(self):
+        rack = factory.make_RackController()
+        create_IPADDR_OUTPUT_NAME_script(rack, IP_ADDR_OUTPUT)
+        ubuntu_info = UbuntuDistroInfo()
+        ubuntu_release = random.choice(
+            [row.__dict__ for row in ubuntu_info._releases]
+        )
+        os_version = ubuntu_release["version"].replace(" LTS", "")
+        server_name = factory.make_hostname()
+        process_lxd_results(
+            rack,
+            make_lxd_output_json(
+                os_version=os_version, server_name=server_name
+            ),
+            0,
+        )
+        rack = reload_object(rack)
+        self.assertEquals("ubuntu", rack.osystem)
+        self.assertEquals(ubuntu_release["series"], rack.distro_series)
+        self.assertEquals(server_name, rack.hostname)
+
+    def test__sets_os_for_pod(self):
+        self.useFixture(SignalsDisabled("podhints"))
+        pod = factory.make_Pod()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
+        )
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        pod.hints.nodes.add(node)
+        ubuntu_info = UbuntuDistroInfo()
+        ubuntu_release = random.choice(
+            [row.__dict__ for row in ubuntu_info._releases]
+        )
+        os_version = ubuntu_release["version"].replace(" LTS", "")
+        server_name = factory.make_hostname()
+        process_lxd_results(
+            node,
+            make_lxd_output_json(
+                os_version=os_version, server_name=server_name
+            ),
+            0,
+        )
+        node = reload_object(node)
+        self.assertEquals("ubuntu", node.osystem)
+        self.assertEquals(ubuntu_release["series"], node.distro_series)
+
+    def test__ignores_os_for_machine(self):
+        node = factory.make_Node(osystem="centos", distro_series="8")
+        hostname = node.hostname
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        process_lxd_results(node, make_lxd_output_json(), 0)
+        node = reload_object(node)
+        self.assertEquals("centos", node.osystem)
+        self.assertEquals("8", node.distro_series)
+        self.assertEquals(hostname, node.hostname)
+
     def test__does_not_update_node_network_information_if_rack(self):
         rack = factory.make_RackController()
         mock_update_node_network_information = self.patch(
             hooks_module, "update_node_network_information"
         )
-        process_lxd_results(
-            rack, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(rack, make_lxd_output_json(), 0)
         self.assertThat(mock_update_node_network_information, MockNotCalled())
 
     def test__does_not_update_node_network_information_if_region(self):
@@ -1446,9 +1629,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         mock_update_node_network_information = self.patch(
             hooks_module, "update_node_network_information"
         )
-        process_lxd_results(
-            region, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(region, make_lxd_output_json(), 0)
         self.assertThat(mock_update_node_network_information, MockNotCalled())
 
     def test__does_not_initialize_node_network_information_if_pod(self):
@@ -1461,9 +1642,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         mock_set_initial_net_config = self.patch(
             node_module.Node, "set_initial_networking_configuration"
         )
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         self.assertThat(mock_set_initial_net_config, MockNotCalled())
         # Verify network device information was collected
         self.assertItemsEqual(
@@ -1477,9 +1656,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node.save()
         self.patch(hooks_module, "update_node_network_information")
 
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
         self.assertEqual(round(16691519488 / 1024 / 1024), node.memory)
 
@@ -1489,9 +1666,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node.save()
         self.patch(hooks_module, "update_node_network_information")
 
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
         self.assertEqual(2400, node.cpu_speed)
         nmd = NodeMetadata.objects.get(node=node, key="cpu_model")
@@ -1503,13 +1678,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         node.save()
         self.patch(hooks_module, "update_node_network_information")
 
-        NO_SPEED_IN_NAME = deepcopy(SAMPLE_LXD_JSON)
+        NO_SPEED_IN_NAME = deepcopy(SAMPLE_LXD_RESOURCES)
         NO_SPEED_IN_NAME["cpu"]["sockets"][0][
             "name"
         ] = "Intel(R) Core(TM) i7-4700MQ CPU"
-        process_lxd_results(
-            node, json.dumps(NO_SPEED_IN_NAME).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(NO_SPEED_IN_NAME), 0)
         node = reload_object(node)
         self.assertEqual(3400, node.cpu_speed)
 
@@ -1519,12 +1692,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         node.save()
         self.patch(hooks_module, "update_node_network_information")
 
-        NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_LXD_JSON)
+        NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_LXD_RESOURCES)
         del NO_NAME_OR_MAX_FREQ["cpu"]["sockets"][0]["name"]
         del NO_NAME_OR_MAX_FREQ["cpu"]["sockets"][0]["frequency_turbo"]
-        process_lxd_results(
-            node, json.dumps(NO_NAME_OR_MAX_FREQ).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(NO_NAME_OR_MAX_FREQ), 0)
         node = reload_object(node)
         self.assertEqual(3200, node.cpu_speed)
 
@@ -1534,7 +1705,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.patch(hooks_module, "update_node_network_information")
 
         process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
+            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
         )
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
@@ -1542,12 +1713,12 @@ class TestProcessLXDResults(MAASServerTestCase):
             self.assertEqual(expected_memory, numa_node.memory)
 
     def test__updates_memory_numa_nodes_missing(self):
-        total_memory = SAMPLE_LXD_NO_MEMORY_NUMA_JSON["memory"]["total"]
+        total_memory = SAMPLE_LXD_RESOURCES_NO_NUMA["memory"]["total"]
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
 
         process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_NO_MEMORY_NUMA_JSON).encode("utf-8"), 0
+            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_NO_NUMA), 0
         )
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(1, len(numa_nodes))
@@ -1558,9 +1729,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
 
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual([0, 1, 2, 3], numa_nodes[0].cores)
@@ -1570,13 +1739,13 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
 
-        lxd_json = deepcopy(SAMPLE_LXD_JSON)
+        lxd_json = deepcopy(SAMPLE_LXD_RESOURCES)
         cores_data = lxd_json["cpu"]["sockets"][0]["cores"]
         # each core has one thread in each numa node
         for core in cores_data:
             core["threads"][0]["numa_node"] = 0
             core["threads"][1]["numa_node"] = 1
-        process_lxd_results(node, json.dumps(lxd_json).encode("utf-8"), 0)
+        process_lxd_results(node, make_lxd_output_json(lxd_json), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual([0, 2, 4, 6], numa_nodes[0].cores)
@@ -1586,9 +1755,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         node_interfaces = list(
             Interface.objects.filter(node=node).order_by("name")
@@ -1602,9 +1769,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         node_interfaces = list(
             PhysicalBlockDevice.objects.filter(node=node).order_by("name")
@@ -1622,9 +1787,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             link_speed=0,
         )
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         # the existing interface gets updated
         iface1 = reload_object(iface)
         self.assertEqual(1000, iface1.link_speed)
@@ -1650,23 +1813,24 @@ class TestProcessLXDResults(MAASServerTestCase):
     def test__processes_system_information(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-        process_lxd_results(node, json.dumps(SAMPLE_LXD_JSON).encode(), 0)
-        self.assertSystemInformation(node, SAMPLE_LXD_JSON)
+        output = make_lxd_output()
+        process_lxd_results(node, json.dumps(output).encode(), 0)
+        self.assertSystemInformation(node, output)
 
     def test__ignores_system_information_placeholders(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-        modified_sample_lxd_data = deepcopy(SAMPLE_LXD_JSON)
-        for k, v in modified_sample_lxd_data["system"].items():
+        modified_sample_lxd_data = make_lxd_output()
+        for k, v in modified_sample_lxd_data["resources"]["system"].items():
             if isinstance(v, dict):
                 for l, w in v.items():
-                    modified_sample_lxd_data["system"][k][l] = random.choice(
-                        [None, "0123456789", "none"]
-                    )
+                    modified_sample_lxd_data["resources"]["system"][k][
+                        l
+                    ] = random.choice([None, "0123456789", "none"])
             else:
-                modified_sample_lxd_data["system"][k] = random.choice(
-                    [None, "0123456789", "none"]
-                )
+                modified_sample_lxd_data["resources"]["system"][
+                    k
+                ] = random.choice([None, "0123456789", "none"])
         process_lxd_results(
             node, json.dumps(modified_sample_lxd_data).encode(), 0
         )
@@ -1677,12 +1841,12 @@ class TestProcessLXDResults(MAASServerTestCase):
     def test__removes_missing_nodemetadata(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-        process_lxd_results(node, json.dumps(SAMPLE_LXD_JSON).encode(), 0)
+        process_lxd_results(node, make_lxd_output_json(), 0)
         self.assertTrue(
             node.nodemetadata_set.exclude(key="cpu_model").exists()
         )
-        modified_sample_lxd_data = deepcopy(SAMPLE_LXD_JSON)
-        del modified_sample_lxd_data["system"]
+        modified_sample_lxd_data = make_lxd_output()
+        del modified_sample_lxd_data["resources"]["system"]
         process_lxd_results(
             node, json.dumps(modified_sample_lxd_data).encode(), 0
         )
@@ -1695,10 +1859,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         tag, _ = Tag.objects.get_or_create(name="virtual")
         node.tags.add(tag)
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-        modified_sample_lxd_data = deepcopy(SAMPLE_LXD_JSON)
-        modified_sample_lxd_data["system"]["type"] = "physical"
         process_lxd_results(
-            node, json.dumps(modified_sample_lxd_data).encode(), 0
+            node, make_lxd_output_json(virt_type="physical"), 0
         )
         self.assertFalse(node.tags.filter(name="virtual").exists())
 
@@ -1709,9 +1871,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         pod.hints.nodes.add(node)
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
-        process_lxd_results(
-            node, json.dumps(SAMPLE_LXD_JSON).encode("utf-8"), 0
-        )
+        process_lxd_results(node, make_lxd_output_json(), 0)
         pod.hints.refresh_from_db()
 
         self.assertEquals(8, pod.hints.cores)
@@ -1725,12 +1885,16 @@ class TestProcessLXDResults(MAASServerTestCase):
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__idempotent_block_devices(self):
         device_names = [
-            device["id"] for device in SAMPLE_LXD_JSON["storage"]["disks"]
+            device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
         node = factory.make_Node()
         numa_nodes = create_numa_nodes(node)
-        update_node_physical_block_devices(node, SAMPLE_LXD_JSON, numa_nodes)
-        update_node_physical_block_devices(node, SAMPLE_LXD_JSON, numa_nodes)
+        update_node_physical_block_devices(
+            node, SAMPLE_LXD_RESOURCES, numa_nodes
+        )
+        update_node_physical_block_devices(
+            node, SAMPLE_LXD_RESOURCES, numa_nodes
+        )
         devices = list(PhysicalBlockDevice.objects.filter(node=node))
         created_names = []
         for index, device in enumerate(devices):
@@ -1753,11 +1917,11 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_devices(self):
         device_names = [
-            device["id"] for device in SAMPLE_LXD_JSON["storage"]["disks"]
+            device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_names = [
             device.name
@@ -1767,7 +1931,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__skips_read_only_and_cdroms(self):
         node = factory.make_Node()
-        READ_ONLY_AND_CDROM = deepcopy(SAMPLE_LXD_JSON)
+        READ_ONLY_AND_CDROM = deepcopy(SAMPLE_LXD_RESOURCES)
         READ_ONLY_AND_CDROM["storage"]["disks"][0]["read_only"] = "true"
         READ_ONLY_AND_CDROM["storage"]["disks"][1]["type"] = "cdrom"
         update_node_physical_block_devices(
@@ -1782,9 +1946,9 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__handles_renamed_block_device(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        NEW_NAMES = deepcopy(SAMPLE_LXD_JSON)
+        NEW_NAMES = deepcopy(SAMPLE_LXD_RESOURCES)
         NEW_NAMES["storage"]["disks"][0]["id"] = "sdy"
         NEW_NAMES["storage"]["disks"][1]["id"] = "sdz"
         update_node_physical_block_devices(
@@ -1803,12 +1967,12 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         # simulate a condition like the one in bug #1662343.
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         # Now, we simulate that we insert a new disk in the machine that
         # becomes sdx, thus pushing the other disks to sdy and sdz.
-        NEW_NAMES = deepcopy(SAMPLE_LXD_JSON)
+        NEW_NAMES = deepcopy(SAMPLE_LXD_RESOURCES)
         NEW_NAMES["storage"]["disks"][0]["id"] = "sdx"
         NEW_NAMES["storage"]["disks"][1]["id"] = "sdy"
         NEW_NAMES["storage"]["disks"].append(
@@ -1850,14 +2014,14 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__only_updates_physical_block_devices(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_ids_one = [
             device.id
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_ids_two = [
             device.id
@@ -1868,31 +2032,31 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__doesnt_reset_boot_disk(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         boot_disk = PhysicalBlockDevice.objects.filter(node=node).first()
         node.boot_disk = boot_disk
         node.save()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertEqual(boot_disk, reload_object(node).boot_disk)
 
     def test__clears_boot_disk(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNone(reload_object(node).boot_disk)
 
     def test__creates_physical_block_devices_in_order(self):
         device_names = [
-            device["id"] for device in SAMPLE_LXD_JSON["storage"]["disks"]
+            device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_names = [
             device.name
@@ -1903,8 +2067,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertEqual(device_names, created_names)
 
     def test__creates_physical_block_device(self):
-        # Check first device from SAMPLE_LXD_JSON
-        device = SAMPLE_LXD_JSON["storage"]["disks"][0]
+        # Check first device from SAMPLE_LXD_RESOURCES
+        device = SAMPLE_LXD_RESOURCES["storage"]["disks"][0]
         name = device["id"]
         id_path = f"/dev/disk/by-id/{device['device_id']}"
         size = device["size"]
@@ -1914,7 +2078,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         firmware_version = device["firmware_version"]
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first(),
@@ -1930,7 +2094,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
     def test__creates_physical_block_device_with_default_block_size(self):
-        SAMPLE_LXD_DEFAULT_BLOCK_SIZE = deepcopy(SAMPLE_LXD_JSON)
+        SAMPLE_LXD_DEFAULT_BLOCK_SIZE = deepcopy(SAMPLE_LXD_RESOURCES)
         # Set block_size to zero.
         SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]["block_size"] = 0
         device = SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]
@@ -1959,7 +2123,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
     def test__creates_physical_block_device_with_path(self):
-        NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_JSON)
+        NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_RESOURCES)
         NO_DEVICE_PATH["storage"]["disks"][0]["device_id"] = ""
         device = NO_DEVICE_PATH["storage"]["disks"][0]
         name = device["id"]
@@ -1986,7 +2150,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
     def test__creates_physical_block_device_with_path_for_missing_serial(self):
-        NO_SERIAL = deepcopy(SAMPLE_LXD_JSON)
+        NO_SERIAL = deepcopy(SAMPLE_LXD_RESOURCES)
         NO_SERIAL["storage"]["disks"][0]["serial"] = ""
         device = NO_SERIAL["storage"]["disks"][0]
         name = device["id"]
@@ -2013,7 +2177,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         node = factory.make_Node(with_boot_disk=False)
         other_node = factory.make_Node(with_boot_disk=False)
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertEqual(
             0,
@@ -2024,7 +2188,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_with_rotary_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.expectThat(
             PhysicalBlockDevice.objects.filter(node=node).last().tags,
@@ -2038,7 +2202,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_with_rotary_and_rpm_tags(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.expectThat(
             PhysicalBlockDevice.objects.filter(node=node).last().tags,
@@ -2052,7 +2216,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_with_ssd_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.expectThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
@@ -2066,7 +2230,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_without_removable_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
@@ -2076,7 +2240,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_with_removable_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).last().tags,
@@ -2086,7 +2250,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_without_sata_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).last().tags,
@@ -2096,7 +2260,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device_with_sata_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
@@ -2104,7 +2268,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
     def test__ignores_min_block_device_size_devices(self):
-        UNDER_MIN_BLOCK_SIZE = deepcopy(SAMPLE_LXD_JSON)
+        UNDER_MIN_BLOCK_SIZE = deepcopy(SAMPLE_LXD_RESOURCES)
         UNDER_MIN_BLOCK_SIZE["storage"]["disks"][0]["size"] = random.randint(
             1, MIN_BLOCK_DEVICE_SIZE
         )
@@ -2130,7 +2294,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
         node.save()
 
-        ONE_DISK = deepcopy(SAMPLE_LXD_JSON)
+        ONE_DISK = deepcopy(SAMPLE_LXD_RESOURCES)
         del ONE_DISK["storage"]["disks"][1]
         device = ONE_DISK["storage"]["disks"][0]
         update_node_physical_block_devices(
@@ -2163,7 +2327,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         node = factory.make_Node()
 
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         _, layout = get_applied_storage_layout_for_node(node)
@@ -2183,7 +2347,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
         update_node_physical_block_devices(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         self.assertThat(mock_set_default_storage_layout, MockNotCalled())
@@ -2245,7 +2409,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node = factory.make_Node(interface=True, skip_networking=True)
         boot_interface = node.get_boot_interface()
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertIsNotNone(reload_object(boot_interface))
         self.assertFalse(reload_object(node).skip_networking)
@@ -2260,7 +2424,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         # Makes sure all the test dataset MAC addresses were added to the node.
@@ -2273,7 +2437,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
         # all ports belong to a single card
-        lxd_output = deepcopy(SAMPLE_LXD_JSON)
+        lxd_output = deepcopy(SAMPLE_LXD_RESOURCES)
         card0 = lxd_output["network"]["cards"][0]
         port1 = lxd_output["network"]["cards"][1]["ports"][0]
         port2 = lxd_output["network"]["cards"][2]["ports"][0]
@@ -2301,8 +2465,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
-        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_RESOURCES)
+        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK
         update_node_network_information(
             node, XENIAL_NETWORK, create_numa_nodes(node)
         )
@@ -2321,7 +2485,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         Interface.objects.filter(node_id=node.id).delete()
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         nic = Interface.objects.get(mac_address="00:00:00:00:00:01")
@@ -2337,7 +2501,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         Interface.objects.filter(node_id=node.id).delete()
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         nic = Interface.objects.get(mac_address="00:00:00:00:00:01")
@@ -2353,7 +2517,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         Interface.objects.filter(node_id=node.id).delete()
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         nic1 = Interface.objects.get(mac_address="00:00:00:00:00:01")
@@ -2373,7 +2537,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
 
-        lxd_output = deepcopy(SAMPLE_LXD_JSON)
+        lxd_output = deepcopy(SAMPLE_LXD_RESOURCES)
         card_info = lxd_output["network"]["cards"][0]
         del card_info["vendor"]
         del card_info["product"]
@@ -2398,7 +2562,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         factory.make_Interface(node=node, mac_address="01:23:45:67:89:ab")
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         # These should have been added to the node.
@@ -2424,7 +2588,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node2 = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node2, IP_ADDR_OUTPUT)
         update_node_network_information(
-            node2, SAMPLE_LXD_JSON, create_numa_nodes(node2)
+            node2, SAMPLE_LXD_RESOURCES, create_numa_nodes(node2)
         )
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
@@ -2440,7 +2604,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         create_IPADDR_OUTPUT_NAME_script(node1, IP_ADDR_OUTPUT)
 
         update_node_network_information(
-            node1, SAMPLE_LXD_JSON, create_numa_nodes(node1)
+            node1, SAMPLE_LXD_RESOURCES, create_numa_nodes(node1)
         )
 
         # First make sure the first node has all the expected interfaces.
@@ -2453,7 +2617,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node2 = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node2, IP_ADDR_OUTPUT)
         update_node_network_information(
-            node2, SAMPLE_LXD_JSON, create_numa_nodes(node2)
+            node2, SAMPLE_LXD_RESOURCES, create_numa_nodes(node2)
         )
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
@@ -2497,7 +2661,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
@@ -2513,7 +2677,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             node=node,
         )
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         # This will ensure that the interface was renamed appropriately.
@@ -2529,7 +2693,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         self.assertIsNotNone(reload_object(iface_to_be_preserved))
@@ -2542,7 +2706,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
         eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         self.assertEqual(eth0, Interface.objects.get(id=eth0.id))
@@ -2563,7 +2727,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         eth3 = factory.make_Interface(mac_address=ETH3_MAC, node=node)
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -2593,7 +2757,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
@@ -2616,7 +2780,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
@@ -2629,7 +2793,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         eth0 = Interface.objects.get(node=node, name="eth0")
         address = str(IPNetwork(cidr).ip)
@@ -2648,8 +2812,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=cidr, vlan=VLAN.objects.get_default_vlan()
         )
-        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_RESOURCES)
+        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK
         update_node_network_information(
             node, XENIAL_NETWORK, create_numa_nodes(node)
         )
@@ -2668,8 +2832,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test__handles_disconnected_interfaces(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT_XENIAL)
-        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_RESOURCES)
+        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK
         update_node_network_information(
             node, XENIAL_NETWORK, create_numa_nodes(node)
         )
@@ -2687,8 +2851,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             subnet=subnet,
         )
         self.assertThat(ens12.vlan, Equals(subnet.vlan))
-        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
-        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_RESOURCES)
+        XENIAL_NETWORK["network"] = SAMPLE_LXD_XENIAL_NETWORK
         update_node_network_information(
             node, XENIAL_NETWORK, create_numa_nodes(node)
         )
@@ -2702,7 +2866,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
 
-        SWITCH_OPENBMC_MAC_JSON = deepcopy(SAMPLE_LXD_JSON)
+        SWITCH_OPENBMC_MAC_JSON = deepcopy(SAMPLE_LXD_RESOURCES)
         SWITCH_OPENBMC_MAC_JSON["network"]["cards"][0]["ports"][0][
             "address"
         ] = SWITCH_OPENBMC_MAC
@@ -2729,7 +2893,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         node = reload_object(node)
 
@@ -2751,7 +2915,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node.save()
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         self.assertEquals(1, len(node.get_latest_testing_script_results))
@@ -2781,7 +2945,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node)
+            node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
         # 2 devices configured, one for IPv4 one for IPv6.

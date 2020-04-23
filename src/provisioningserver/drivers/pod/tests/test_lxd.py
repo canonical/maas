@@ -446,9 +446,18 @@ class TestLXDPodDriver(MAASTestCase):
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
         client.resources = {
-            factory.make_name("key"): factory.make_name("value")
+            factory.make_name("rkey"): factory.make_name("rvalue")
+        }
+        client.host_info = {
+            factory.make_name("hkey"): factory.make_name("hvalue")
         }
         commissioning_data = yield driver.get_commissioning_data(1, context)
         self.assertDictEqual(
-            {LXD_OUTPUT_NAME: client.resources}, commissioning_data
+            {
+                LXD_OUTPUT_NAME: {
+                    **client.host_info,
+                    "resources": client.resources,
+                }
+            },
+            commissioning_data,
         )

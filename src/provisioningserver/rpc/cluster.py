@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for clusters.
@@ -723,14 +723,7 @@ class RefreshRackControllerInfo(amp.Command):
         (b"token_key", amp.Unicode()),
         (b"token_secret", amp.Unicode()),
     ]
-    response = [
-        (b"hostname", amp.Unicode()),
-        (b"architecture", amp.Unicode()),
-        (b"osystem", amp.Unicode()),
-        (b"distro_series", amp.Unicode()),
-        (b"interfaces", StructureAsJSON()),
-        (b"maas_version", amp.Unicode(optional=True)),
-    ]
+    response = [(b"maas_version", amp.Unicode())]
     errors = {exceptions.RefreshAlreadyInProgress: b"RefreshAlreadyInProgress"}
 
 

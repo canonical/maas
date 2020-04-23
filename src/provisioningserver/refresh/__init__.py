@@ -1,11 +1,10 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Functionality to refresh rack controller hardware and networking details."""
 
 import copy
 import os
-import socket
 import stat
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
@@ -24,7 +23,6 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 from provisioningserver.utils.snappy import get_snap_path, running_in_snap
 from provisioningserver.utils.twisted import synchronous
-from provisioningserver.utils.version import get_maas_version
 
 maaslog = get_maas_logger("refresh")
 
@@ -39,53 +37,6 @@ def get_architecture():
     if arch in ["i386", "amd64", "arm64", "ppc64el"]:
         subarch = "generic"
     return "%s/%s" % (arch, subarch)
-
-
-def get_os_release():
-    """Parse the contents of /etc/os-release into a dictionary."""
-
-    def full_strip(value):
-        return value.strip().strip("'\"")
-
-    os_release = {}
-    with open("/etc/os-release") as f:
-        for line in f:
-            key, value = line.split("=")
-            os_release[full_strip(key)] = full_strip(value)
-
-    return os_release
-
-
-@synchronous
-def get_sys_info():
-    """Return basic system information in a dictionary."""
-    os_release = get_os_release()
-    if "ID" in os_release:
-        osystem = os_release["ID"]
-    elif "NAME" in os_release:
-        osystem = os_release["NAME"]
-    else:
-        osystem = ""
-    if "UBUNTU_CODENAME" in os_release:
-        distro_series = os_release["UBUNTU_CODENAME"]
-    elif "VERSION_ID" in os_release:
-        distro_series = os_release["VERSION_ID"]
-    else:
-        distro_series = ""
-    result = {
-        "hostname": socket.gethostname().split(".")[0],
-        "architecture": get_architecture(),
-        "osystem": osystem,
-        "distro_series": distro_series,
-        "maas_version": get_maas_version(),
-        # In MAAS 2.3+, the NetworksMonitoringService is solely responsible for
-        # interface update, because interface updates need to include beaconing
-        # data. The key and empty dictionary are necessary for backward
-        # compatibility; the region will ignore the empty dictionary in
-        # _process_sys_info().
-        "interfaces": {},
-    }
-    return result
 
 
 def signal_wrapper(*args, **kwargs):
