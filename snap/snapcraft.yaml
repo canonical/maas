@@ -64,6 +64,7 @@ parts:
       - git
       - libffi-dev
       - libpq-dev
+      - libssl-dev # XXX needed while we're getting pylxd from pypi
       - libxml2-dev
       - libxslt1-dev
 
