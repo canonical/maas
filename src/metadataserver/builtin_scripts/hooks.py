@@ -35,6 +35,10 @@ from provisioningserver.utils.ipaddr import parse_ip_addr
 logger = logging.getLogger(__name__)
 
 
+class DuplicateMACs(Exception):
+    """Exception for when duplicate MAC addresses are in commissioning data."""
+
+
 SWITCH_TAG_NAME = "switch"
 SWITCH_HARDWARE = [
     # Seen on Facebook Wedge 40 switch:
@@ -143,7 +147,13 @@ def _parse_interfaces(node, data):
             link = ip_addr_info.get(interface["name"], {})
             interface["ips"] = link.get("inet", []) + link.get("inet6", [])
 
-            interfaces[mac] = interface
+            if mac in interfaces:
+                raise DuplicateMACs(
+                    f"Duplicated MAC address({mac}) on "
+                    "{interfaces[mac]['name']} and {interface['name']}"
+                )
+            else:
+                interfaces[mac] = interface
 
     return interfaces
 
@@ -248,7 +258,21 @@ def update_node_network_information(node, data, numa_nodes):
         node.save(update_fields=["skip_networking"])
         return
 
-    interfaces_info = _parse_interfaces(node, data)
+    try:
+        interfaces_info = _parse_interfaces(node, data)
+    except DuplicateMACs:
+        if node.is_controller or node.is_pod:
+            # Controllers and Pods send commissioning information from a
+            # deployed machine. If the machine is using a bond multiple
+            # interfaces will use the same MAC address. Since MAAS identifies
+            # interfaces by MAC skip updating interface information.
+            # When MAAS gains the ability to model LXD's commissioning
+            # information this can be removed.
+            return
+        else:
+            # Duplicate MACs are not expected on machines, raise the
+            # exception so this can be handled.
+            raise
     current_interfaces = set()
 
     for mac, iface in interfaces_info.items():
@@ -496,18 +520,17 @@ def _parse_cpuinfo(data):
             current_average = 0
             for socket in sockets:
                 current_average += socket.get("frequency", 0)
-            current_average /= len(sockets)
             if current_average:
                 # Fall back on the current speed, round it to
                 # the nearest hundredth as the number may be
                 # effected by CPU scaling.
+                current_average /= len(sockets)
                 cpu_speed = round(current_average / 100) * 100
 
     return cpu_count, cpu_speed, cpu_model, numa_nodes
 
 
 def _parse_memory(data, numa_nodes):
-
     total_memory = data.get("memory", {}).get("total", 0)
     default_numa_node = {"numa_node": 0, "total": total_memory}
     for memory_node in data.get("memory", {}).get(

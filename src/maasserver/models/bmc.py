@@ -642,7 +642,8 @@ class Pod(BMC):
             interface = self.ip_address.get_interface()
             if interface is not None:
                 return interface.node
-        return None
+        else:
+            return self.hints.nodes.first()
 
     def sync_hints(self, discovered_hints):
         """Sync the hints with `discovered_hints`."""

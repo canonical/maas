@@ -2414,6 +2414,59 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIsNotNone(reload_object(boot_interface))
         self.assertFalse(reload_object(node).skip_networking)
 
+    def test__does_nothing_if_duplicate_mac_on_controller(self):
+        mock_iface_get = self.patch(
+            hooks_module.PhysicalInterface.objects, "get"
+        )
+        rack = factory.make_RackController()
+        create_IPADDR_OUTPUT_NAME_script(rack, IP_ADDR_OUTPUT)
+        mac = factory.make_mac_address()
+        duplicate_mac_lxd_resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        for card in duplicate_mac_lxd_resources["network"]["cards"]:
+            for port in card["ports"]:
+                port["address"] = mac
+        update_node_network_information(
+            rack, duplicate_mac_lxd_resources, create_numa_nodes(rack)
+        )
+        self.assertThat(mock_iface_get, MockNotCalled())
+
+    def test__does_nothing_if_duplicate_mac_on_pod(self):
+        self.useFixture(SignalsDisabled("podhints"))
+        mock_iface_get = self.patch(
+            hooks_module.PhysicalInterface.objects, "get"
+        )
+        pod = factory.make_Pod()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
+        )
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        pod.hints.nodes.add(node)
+        mac = factory.make_mac_address()
+        duplicate_mac_lxd_resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        for card in duplicate_mac_lxd_resources["network"]["cards"]:
+            for port in card["ports"]:
+                port["address"] = mac
+        update_node_network_information(
+            node, duplicate_mac_lxd_resources, create_numa_nodes(node)
+        )
+        self.assertThat(mock_iface_get, MockNotCalled())
+
+    def test__raises_exception_if_duplicate_mac_on_machine(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        mac = factory.make_mac_address()
+        duplicate_mac_lxd_resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        for card in duplicate_mac_lxd_resources["network"]["cards"]:
+            for port in card["ports"]:
+                port["address"] = mac
+        self.assertRaises(
+            hooks_module.DuplicateMACs,
+            update_node_network_information,
+            node,
+            duplicate_mac_lxd_resources,
+            create_numa_nodes(node),
+        )
+
     def test__add_all_interfaces(self):
         """Test a node that has no previously known interfaces on which we
         need to add a series of interfaces.
