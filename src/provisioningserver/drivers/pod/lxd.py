@@ -285,9 +285,16 @@ class LXDPodDriver(PodDriver):
         # After the region creates the Pod object it will sync LXD commissioning
         # data for all hardware information.
         discovered_pod = DiscoveredPod(
+            # client.host_info["environment"]["architectures"] reports all the
+            # architectures the host CPU supports, not the architectures LXD
+            # supports. On x86_64 LXD reports [x86_64, i686] however LXD does
+            # not currently support VMs on i686. The LXD API currently does not
+            # have a way to query which architectures are usable for VMs. The
+            # safest bet is to just use the kernel_architecture.
             architectures=[
-                kernel_to_debian_architecture(arch)
-                for arch in client.host_info["environment"]["architectures"]
+                kernel_to_debian_architecture(
+                    client.host_info["environment"]["kernel_architecture"]
+                )
             ],
             name=client.host_info["environment"]["server_name"],
             mac_addresses=mac_addresses,
