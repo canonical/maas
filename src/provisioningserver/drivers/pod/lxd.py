@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import re
 from urllib.parse import urlparse
 
 from pylxd import Client
@@ -24,8 +25,10 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachineBlockDevice,
     DiscoveredMachineInterface,
     DiscoveredPod,
+    DiscoveredPodHints,
     DiscoveredPodStoragePool,
     PodDriver,
+    RequestedMachine,
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.maas_certificates import (
@@ -33,8 +36,14 @@ from provisioningserver.maas_certificates import (
     MAAS_PRIVATE_KEY,
 )
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
-from provisioningserver.utils import kernel_to_debian_architecture, typed
+from provisioningserver.rpc.exceptions import PodInvalidResources
+from provisioningserver.utils import (
+    debian_to_kernel_architecture,
+    kernel_to_debian_architecture,
+    typed,
+)
 from provisioningserver.utils.ipaddr import get_vid_from_ifname
+from provisioningserver.utils.lxd import lxd_cpu_speed
 from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("drivers.pod.lxd")
@@ -44,6 +53,41 @@ LXD_VM_POWER_STATE = {101: "on", 102: "off", 103: "on", 110: "off"}
 
 # LXD vm disk path
 LXD_VM_ID_PATH = "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_"
+
+# LXD byte suffixes.
+# https://lxd.readthedocs.io/en/latest/instances/#units-for-storage-and-network-limits
+LXD_BYTE_SUFFIXES = {
+    "B": 1,
+    "kB": 1000,
+    "MB": 1000 ** 2,
+    "GB": 1000 ** 3,
+    "TB": 1000 ** 4,
+    "PB": 1000 ** 5,
+    "EB": 1000 ** 6,
+    "KiB": 1024,
+    "MiB": 1024 ** 2,
+    "GiB": 1024 ** 3,
+    "TiB": 1024 ** 4,
+    "PiB": 1024 ** 5,
+    "EiB": 1024 ** 6,
+}
+
+
+def convert_lxd_byte_suffixes(value, divisor=None):
+    """Takes the value and converts to a proper integer
+    using LXD_BYTE_SUFFIXES."""
+    result = re.match(
+        r"(?P<size>[0-9]+)(?P<unit>%s)" % "|".join(LXD_BYTE_SUFFIXES.keys()),
+        value,
+    )
+    if result is not None:
+        value = result.group("size")
+        if "." in value:
+            value = float(value)
+        value = float(value) * LXD_BYTE_SUFFIXES[result.group("unit")]
+    if divisor:
+        value = float(value) / divisor
+    return int(value)
 
 
 class LXDPodError(Exception):
@@ -139,8 +183,9 @@ class LXDPodDriver(PodDriver):
             )
         return machine
 
+    @inlineCallbacks
     def get_discovered_machine(
-        self, machine, storage_pools, request=None, cpu_speed=0
+        self, client, machine, storage_pools, request=None
     ):
         """Get the discovered machine."""
         # Check the power state first.
@@ -163,15 +208,21 @@ class LXDPodDriver(PodDriver):
             # When request is provided map the tags from the request block
             # devices to the discovered block devices. This ensures that
             # composed machine has the requested tags on the block device.
+
             tags = []
-            if request is not None:
-                tags = request.block_devices[idx].tags
+            if (
+                request is not None
+                and expanded_devices[device]["type"] == "disk"
+            ):
+                tags = request.block_devices[0].tags
 
             device_info = expanded_devices[device]
             if device_info["type"] == "disk":
                 # Default disk size is 10GB.
-                size = device_info.get("size", 10 * 1000 ** 3)
-                pool = device_info.get("pool")
+                size = convert_lxd_byte_suffixes(
+                    device_info.get("size", "10GB")
+                )
+                storage_pool = device_info.get("pool")
                 block_devices.append(
                     DiscoveredMachineBlockDevice(
                         model=None,
@@ -179,7 +230,7 @@ class LXDPodDriver(PodDriver):
                         id_path=LXD_VM_ID_PATH + device,
                         size=size,
                         tags=tags,
-                        storage_pool=pool,
+                        storage_pool=storage_pool,
                     )
                 )
 
@@ -190,7 +241,13 @@ class LXDPodDriver(PodDriver):
             if configuration.endswith("hwaddr"):
                 mac = expanded_config[configuration]
                 name = configuration.split(".")[1]
-                nictype = expanded_devices[name]["nictype"]
+                nictype = expanded_devices[name].get("nictype")
+                if nictype is None and "network" in expanded_devices[name]:
+                    # Try finding the nictype from the networks.
+                    network = yield client.networks.get(
+                        expanded_devices[name]["network"]
+                    )
+                    nictype = network.type
                 interfaces.append(
                     DiscoveredMachineInterface(
                         mac_address=mac,
@@ -202,14 +259,22 @@ class LXDPodDriver(PodDriver):
                 )
                 boot = False
 
+        # LXD uses different suffixes to store memory so make
+        # sure we convert to MiB, which is what MAAS uses.
+        memory = expanded_config.get("limits.memory")
+        if memory is not None:
+            memory = convert_lxd_byte_suffixes(memory, divisor=1024 ** 2)
+        else:
+            memory = 1024
+
         return DiscoveredMachine(
             hostname=machine.name,
             architecture=kernel_to_debian_architecture(machine.architecture),
             # 1 core and 1GiB of memory (we need it in MiB) is default for
             # LXD if not specified.
             cores=int(expanded_config.get("limits.cpu", 1)),
-            memory=int(expanded_config.get("limits.memory", 1024)),
-            cpu_speed=cpu_speed,
+            memory=memory,
+            cpu_speed=0,
             interfaces=interfaces,
             block_devices=block_devices,
             power_state=power_state,
@@ -306,11 +371,12 @@ class LXDPodDriver(PodDriver):
             ],
         )
 
-        # Check that we have at least one storage pool.  If not, create it.
-        pools = yield deferToThread(client.storage_pools.all)
-        if not len(pools):
-            yield deferToThread(
-                client.storage_pools.create, {"name": "maas", "driver": "dir"}
+        # Check that we have at least one storage pool.
+        # If not, user should be warned that they need to create one.
+        storage_pools = yield deferToThread(client.storage_pools.all)
+        if not storage_pools:
+            raise LXDPodError(
+                "No storage pools exists.  Please create a storage pool in LXD."
             )
 
         # Discover Storage Pools.
@@ -327,28 +393,17 @@ class LXDPodDriver(PodDriver):
         machines = []
         virtual_machines = yield deferToThread(client.virtual_machines.all)
         for virtual_machine in virtual_machines:
-            discovered_machine = self.get_discovered_machine(
+            discovered_machine = yield self.get_discovered_machine(
+                client,
                 virtual_machine,
                 storage_pools=discovered_pod.storage_pools,
-                cpu_speed=discovered_pod.cpu_speed,
             )
+            discovered_machine.cpu_speed = lxd_cpu_speed(resources)
             machines.append(discovered_machine)
         discovered_pod.machines = machines
 
         # Return the DiscoveredPod.
         return discovered_pod
-
-    @inlineCallbacks
-    def compose(self, pod_id, context, request):
-        """Compose a virtual machine."""
-        # abstract method, will update in subsequent branch.
-        pass
-
-    @inlineCallbacks
-    def decompose(self, pod_id, context):
-        """Decompose a virtual machine machine."""
-        # abstract method, will update in subsequent branch.
-        pass
 
     @asynchronous
     def get_commissioning_data(self, pod_id, context):
@@ -368,3 +423,149 @@ class LXDPodDriver(PodDriver):
         )
         d.addCallback(lambda resources: {LXD_OUTPUT_NAME: resources})
         return d
+
+    def get_usable_storage_pool(
+        self, disk, storage_pools, default_storage_pool=None
+    ):
+        """Return the storage pool and type that has enough space for `disk.size`."""
+        # Filter off of tags.
+        filtered_storage_pools = [
+            storage_pool
+            for storage_pool in storage_pools
+            if storage_pool.name in disk.tags
+        ]
+        if filtered_storage_pools:
+            for storage_pool in filtered_storage_pools:
+                resources = storage_pool.resources.get()
+                available = resources.space["total"] - resources.space["used"]
+                if disk.size <= available:
+                    return storage_pool.name
+            raise PodInvalidResources(
+                "Not enough storage space on storage pools: %s"
+                % (
+                    ", ".join(
+                        [
+                            storage_pool.name
+                            for storage_pool in filtered_storage_pools
+                        ]
+                    )
+                )
+            )
+        # Filter off of default storage pool name.
+        if default_storage_pool:
+            filtered_storage_pools = [
+                storage_pool
+                for storage_pool in storage_pools
+                if storage_pool.name == default_storage_pool
+            ]
+            if filtered_storage_pools:
+                default_storage_pool = filtered_storage_pools[0]
+                resources = default_storage_pool.resources.get()
+                available = resources.space["total"] - resources.space["used"]
+                if disk.size <= available:
+                    return default_storage_pool.name
+                raise PodInvalidResources(
+                    f"Not enough space in default storage pool: {default_storage_pool.name}"
+                )
+            raise LXDPodError(
+                f"Default storage pool '{default_storage_pool}' doesn't exist."
+            )
+
+        # No filtering, just find a storage pool with enough space.
+        for storage_pool in storage_pools:
+            resources = storage_pool.resources.get()
+            available = resources.space["total"] - resources.space["used"]
+            if disk.size <= available:
+                return storage_pool.name
+        raise PodInvalidResources(
+            "Not enough storage space on any storage pools: %s"
+            % (
+                ", ".join(
+                    [storage_pool.name for storage_pool in storage_pools]
+                )
+            )
+        )
+
+    @inlineCallbacks
+    def compose(self, pod_id: str, context: dict, request: RequestedMachine):
+        """Compose a virtual machine."""
+        client = yield self.get_client(pod_id, context)
+        # Check to see if there is a maas profile.  If not, use the default.
+        try:
+            profile = yield deferToThread(client.profiles.get, "maas")
+        except NotFound:
+            # Fall back to default
+            try:
+                profile = yield deferToThread(client.profiles.get, "default")
+            except NotFound:
+                raise LXDPodError(
+                    f"Pod {pod_id}: MAAS needs LXD to have either a 'maas' "
+                    "profile or a 'default' profile, defined."
+                )
+        resources = yield deferToThread(lambda: client.resources)
+
+        definition = {
+            "name": request.hostname,
+            "architecture": debian_to_kernel_architecture(
+                request.architecture
+            ),
+            "config": {
+                "limits.cpu": str(request.cores),
+                "limits.memory": str(request.memory * 1024 ** 2),
+                # LP: 1867387 - Disable secure boot until its fixed in MAAS
+                "security.secureboot": "false",
+            },
+            "profiles": [profile.name],
+            # Image source is empty as we get images
+            # from MAAS when netbooting.
+            "source": {"type": "none"},
+        }
+
+        # Add disks to the definition.
+        # XXX: LXD VMs currently only support one virtual block device.
+        # Loop will need to be modified once LXD has multiple virtual
+        # block device support.
+        devices = {}
+        storage_pools = yield deferToThread(client.storage_pools.all)
+        default_storage_pool = context.get(
+            "default_storage_pool_id", context.get("default_storage_pool")
+        )
+        for idx, disk in enumerate(request.block_devices):
+            usable_pool = self.get_usable_storage_pool(
+                disk, storage_pools, default_storage_pool
+            )
+            devices["root"] = {
+                "path": "/",
+                "type": "disk",
+                "pool": usable_pool,
+                "size": str(disk.size),
+                "boot.priority": "0",
+            }
+
+        # Attach the devices to the defintion.
+        definition["devices"] = devices
+
+        # Create the machine.
+        machine = yield deferToThread(
+            client.virtual_machines.create, definition, wait=True
+        )
+        # Pod hints are updated on the region after the machine
+        # is composed.
+        discovered_machine = yield self.get_discovered_machine(
+            client, machine, storage_pools, request=request
+        )
+        discovered_machine.cpu_speed = lxd_cpu_speed(resources)
+        return discovered_machine, DiscoveredPodHints()
+
+    @inlineCallbacks
+    def decompose(self, pod_id, context):
+        """Decompose a virtual machine."""
+        client = yield self.get_client(pod_id, context)
+        machine = yield deferToThread(
+            client.virtual_machines.get, context["instance_name"]
+        )
+        # Stop the machine.
+        yield deferToThread(machine.stop)
+        yield deferToThread(machine.delete, wait=True)
+        # Hints are updated on the region for LXDPodDriver.
+        return DiscoveredPodHints()

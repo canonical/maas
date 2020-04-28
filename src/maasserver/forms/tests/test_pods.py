@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for pod forms."""
@@ -154,7 +154,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_pod = DiscoveredPod(
             architectures=["amd64/generic"],
             cores=random.randint(2, 4),
-            memory=random.randint(1024, 4096),
+            memory=random.randint(2048, 4096),
             local_storage=random.randint(1024, 1024 * 1024),
             cpu_speed=random.randint(2048, 4048),
             hints=DiscoveredPodHints(
@@ -1130,6 +1130,29 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 ),
             ),
         )
+
+    def test__get_machine_with_multiple_disks_fails_for_lxd_pods(self):
+        request = MagicMock()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host.boot_interface.vlan.dhcp_on = False
+        pod_host.boot_interface.vlan.save()
+        pod = make_pod_with_hints(host=pod_host)
+        pod.power_type = "lxd"
+        disk_1 = random.randint(8, 16) * (1000 ** 3)
+        disk_2 = random.randint(8, 16) * (1000 ** 3)
+        storage = "root:%d,extra:%d" % (
+            disk_1 // (1000 ** 3),
+            disk_2 // (1000 ** 3),
+        )
+        form = ComposeMachineForm(
+            data={"storage": storage}, request=request, pod=pod
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        with ExpectedException(
+            PodProblem,
+            ".*virtual machines currently only support one block device.",
+        ):
+            form.get_requested_machine(make_known_host_interfaces(pod))
 
     def test__get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
         request = MagicMock()

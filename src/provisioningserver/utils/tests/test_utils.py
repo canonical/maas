@@ -24,6 +24,7 @@ from provisioningserver.utils import (
     CircularDependency,
     classify,
     convert_size_to_bytes,
+    debian_to_kernel_architecture,
     flatten,
     is_instance_or_subclass,
     kernel_to_debian_architecture,
@@ -444,4 +445,29 @@ class TestKernelToDebianArchitecture(MAASTestCase):
     def test__kernel_to_debian_architecture(self):
         self.assertEquals(
             self.debian, kernel_to_debian_architecture(self.kernel)
+        )
+
+
+class TestDebianToKernalArchitecture(MAASTestCase):
+    """Tests for `debian_to_kernal_architecture`."""
+
+    scenarios = (
+        ("i386/generic", {"kernel": "i686", "debian": "i386/generic"}),
+        ("amd64/generic", {"kernel": "x86_64", "debian": "amd64/generic"}),
+        ("arm64/generic", {"kernel": "aarch64", "debian": "arm64/generic"}),
+        (
+            "ppc64el/generic",
+            {"kernel": "ppc64le", "debian": "ppc64el/generic"},
+        ),
+        ("s390x/generic", {"kernel": "s390x", "debian": "s390x/generic"}),
+        ("mips/generic", {"kernel": "mips", "debian": "mips/generic"}),
+        (
+            "mips64el/generic",
+            {"kernel": "mips64", "debian": "mips64el/generic"},
+        ),
+    )
+
+    def test__kernel_to_debian_architecture(self):
+        self.assertEquals(
+            self.kernel, debian_to_kernel_architecture(self.debian)
         )

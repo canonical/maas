@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Pod forms."""
@@ -521,6 +521,11 @@ class ComposeMachineForm(forms.Form):
         storage_constraints = get_storage_constraints_from_string(
             self.get_value_for("storage")
         )
+        # LXD Pods currently only support one block device.
+        if self.pod.power_type == "lxd" and len(storage_constraints) > 1:
+            raise PodProblem(
+                "LXD Pod virtual machines currently only support one block device."
+            )
         for _, size, tags in storage_constraints:
             if tags is None:
                 tags = []

@@ -7,6 +7,7 @@ __all__ = [
     "CircularDependency",
     "flatten",
     "kernel_to_debian_architecture",
+    "debian_to_kernal_architecture",
     "locate_config",
     "locate_template",
     "parse_key_value_file",
@@ -303,17 +304,28 @@ def convert_size_to_bytes(value):
     return int(capacity_value * multiplier)
 
 
+# Architectures as defined by:
+# https://github.com/lxc/lxd/blob/master/shared/osarch/architectures.go
+# https://www.debian.org/releases/oldstable/i386/ch02s01.html.en
+DEBIAN_TO_KERNEL_ARCHITECTURES = {
+    "i386/generic": "i686",
+    "amd64/generic": "x86_64",
+    "arm64/generic": "aarch64",
+    "ppc64el/generic": "ppc64le",
+    "s390x/generic": "s390x",
+    "mips/generic": "mips",
+    "mips64el/generic": "mips64",
+}
+KERNEL_TO_DEBIAN_ARCHITECTURES = {
+    v: k for k, v in DEBIAN_TO_KERNEL_ARCHITECTURES.items()
+}
+
+
 def kernel_to_debian_architecture(kernel_arch):
     """Map a kernel architecture to Debian architecture."""
-    # https://github.com/lxc/lxd/blob/master/shared/osarch/architectures.go
-    # https://www.debian.org/releases/oldstable/i386/ch02s01.html.en
-    architectures = {
-        "i686": "i386/generic",
-        "x86_64": "amd64/generic",
-        "aarch64": "arm64/generic",
-        "ppc64le": "ppc64el/generic",
-        "s390x": "s390x/generic",
-        "mips": "mips/generic",
-        "mips64": "mips64el/generic",
-    }
-    return architectures[kernel_arch]
+    return KERNEL_TO_DEBIAN_ARCHITECTURES[kernel_arch]
+
+
+def debian_to_kernel_architecture(debian_arch):
+    """Map a Debian architecture to kernel architecture."""
+    return DEBIAN_TO_KERNEL_ARCHITECTURES[debian_arch]
