@@ -521,7 +521,7 @@ class LXDPodDriver(PodDriver):
             "source": {"type": "none"},
         }
 
-        # Add disks to the definition.
+        # Add disk to the definition.
         # XXX: LXD VMs currently only support one virtual block device.
         # Loop will need to be modified once LXD has multiple virtual
         # block device support.
@@ -542,7 +542,61 @@ class LXDPodDriver(PodDriver):
                 "boot.priority": "0",
             }
 
-        # Attach the devices to the defintion.
+        # Create and attach interfaces to the machine.
+        # The reason we are doing this after the machine is created
+        # is because pylxd doesn't have a way to override the devices
+        # that are defined in the profile.  Since the profile is provided
+        # by the user, we have no idea how many interfaces are defined.
+        #
+        # Currently, only the bridged type is supported with virtual machines.
+        # https://lxd.readthedocs.io/en/latest/instances/#device-types
+        nic_devices = {}
+        profile_devices = profile.devices
+        device_names = []
+        boot = True
+        for interface in request.interfaces:
+            if interface.ifname is None:
+                # No interface constraints sent so use the best
+                # nic device from the profile's devices.
+                device_name, device = self.get_best_nic_device_from_profile(
+                    profile_devices
+                )
+                nic_devices[device_name] = device
+                if "boot.priority" not in device and boot:
+                    nic_devices[device_name]["boot.priority"] = "1"
+                    boot = False
+                device_names.append(device_name)
+            else:
+                # Interface constraints sent so build the nic devices.
+                # LXD uses 'bridged' while MAAS uses 'bridge' so convert
+                # the nictype.
+                nictype = (
+                    "".join([interface.attach_type, "d"])
+                    if interface.attach_type == "bridge"
+                    else interface.attach_type
+                )
+                nic_devices[interface.ifname] = {
+                    "name": interface.ifname,
+                    "parent": interface.attach_name,
+                    "nictype": nictype,
+                    "type": "nic",
+                }
+                # Set to boot from the first nic
+                if boot:
+                    nic_devices[interface.ifname]["boot.priority"] = "1"
+                    boot = False
+                device_names.append(interface.ifname)
+
+        # Iterate over all of the profile's devices with type=nic
+        # and set to type=none if not nic_device.  This overrides
+        # the device settings on the profile used by the machine.
+        for dk, dv in profile_devices.items():
+            if dk not in device_names and dv["type"] == "nic":
+                nic_devices[dk] = {"type": "none"}
+
+        # Merge the devices and attach the devices to the defintion.
+        for k, v in nic_devices.items():
+            devices[k] = v
         definition["devices"] = devices
 
         # Create the machine.
@@ -554,8 +608,33 @@ class LXDPodDriver(PodDriver):
         discovered_machine = yield self.get_discovered_machine(
             client, machine, storage_pools, request=request
         )
+        # Update the machine cpu speed.
         discovered_machine.cpu_speed = lxd_cpu_speed(resources)
         return discovered_machine, DiscoveredPodHints()
+
+    def get_best_nic_device_from_profile(self, devices):
+        """Return the nic name and device that is most likely to be
+        on a MAAS DHCP enabled subnet.  This is used when no interface
+        constraints are in the request."""
+        nic_devices = {k: v for k, v in devices.items() if v["type"] == "nic"}
+
+        # Check for boot.priority flag by sorting.
+        # If the boot.priority flag is set, this will
+        # most likely be an interface that is expected
+        # to boot off the network.
+        boot_priorities = sorted(
+            {k: v for k, v in nic_devices.items() if "boot.priority" in v},
+            key=lambda i: nic_devices[i]["boot.priority"],
+            reverse=True,
+        )
+
+        if boot_priorities:
+            return boot_priorities[0], nic_devices[boot_priorities[0]]
+
+        # Since we couldn't find a nic device with boot.priority set
+        # just choose the first nic device.
+        device_name = list(nic_devices.keys())[0]
+        return device_name, nic_devices[device_name]
 
     @inlineCallbacks
     def decompose(self, pod_id, context):

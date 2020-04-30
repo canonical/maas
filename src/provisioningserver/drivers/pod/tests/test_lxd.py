@@ -41,7 +41,7 @@ def make_requested_machine():
             size=random.randint(1024 ** 3, 4 * 1024 ** 3)
         )
     ]
-    interfaces = [RequestedMachineInterface() for _ in range(3)]
+    interfaces = [RequestedMachineInterface()]
     return RequestedMachine(
         hostname=factory.make_name("hostname"),
         architecture="amd64/generic",
@@ -657,7 +657,7 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.compose(pod_id, {}, None)
 
     @inlineCallbacks
-    def test_compose(self):
+    def test_compose_no_interface_constraints(self):
         pod_id = factory.make_name("pod_id")
         context = self.make_parameters_context()
         request = make_requested_machine()
@@ -666,6 +666,29 @@ class TestLXDPodDriver(MAASTestCase):
         client = Client.return_value
         mock_profile = Mock()
         mock_profile.name = random.choice(["maas", "default"])
+        profile_devices = {
+            "eth0": {
+                "name": "eth0",
+                "nictype": "bridged",
+                "parent": "lxdbr0",
+                "type": "nic",
+            },
+            "eth1": {
+                "boot.priority": "1",
+                "name": "eth1",
+                "nictype": "bridged",
+                "parent": "virbr1",
+                "type": "nic",
+            },
+            "root": {
+                "boot.priority": "0",
+                "path": "/",
+                "pool": "default",
+                "type": "disk",
+                "size": "20GB",
+            },
+        }
+        mock_profile.devices = profile_devices
         client.profiles.get.return_value = mock_profile
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
@@ -674,6 +697,13 @@ class TestLXDPodDriver(MAASTestCase):
         )
         usable_pool = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
+        mock_get_best_nic_from_profile = self.patch(
+            driver, "get_best_nic_from_profile"
+        )
+        mock_get_best_nic_from_profile.return_value = (
+            "eth1",
+            profile_devices["eth1"],
+        )
         mock_machine = Mock()
         client.virtual_machines.create.return_value = mock_machine
         mock_get_discovered_machine = self.patch(
@@ -699,14 +729,141 @@ class TestLXDPodDriver(MAASTestCase):
                     "pool": usable_pool,
                     "size": str(request.block_devices[0].size),
                     "boot.priority": "0",
-                }
+                },
+                "eth1": profile_devices["eth1"],
+                "eth0": {"type": "none"},
             },
         }
 
         discovered_machine, empty_hints = yield driver.compose(
             pod_id, context, request
         )
+        self.assertThat(
+            client.virtual_machines.create,
+            MockCalledOnceWith(definition, wait=True),
+        )
+        self.assertEquals(sentinel.discovered_machine, discovered_machine)
+        self.assertThat(
+            empty_hints,
+            MatchesAll(
+                IsInstance(DiscoveredPodHints),
+                MatchesStructure(
+                    cores=Equals(-1),
+                    cpu_speed=Equals(-1),
+                    memory=Equals(-1),
+                    local_storage=Equals(-1),
+                    local_disks=Equals(-1),
+                    iscsi_storage=Equals(-1),
+                ),
+            ),
+        )
 
+    @inlineCallbacks
+    def test_compose_multiple_interface_constraints(self):
+        pod_id = factory.make_name("pod_id")
+        context = self.make_parameters_context()
+        request = make_requested_machine()
+        request.interfaces = [
+            RequestedMachineInterface(
+                ifname=factory.make_name("ifname"),
+                attach_name=factory.make_name("bridge_name"),
+                attach_type="bridge",
+                attach_options=None,
+            )
+            for _ in range(3)
+        ]
+        # LXD uses 'bridged' while MAAS uses 'bridge' so convert
+        # the nictype as this is what we expect from LXDPodDriver.compose.
+        expected_interfaces = [
+            {
+                "name": request.interfaces[i].ifname,
+                "parent": request.interfaces[i].attach_name,
+                "nictype": "bridged",
+                "type": "nic",
+            }
+            for i in range(3)
+        ]
+        expected_interfaces[0]["boot.priority"] = "1"
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "get_client")
+        client = Client.return_value
+        mock_profile = Mock()
+        mock_profile.name = random.choice(["maas", "default"])
+        profile_devices = {
+            "eth0": {
+                "name": "eth0",
+                "nictype": "bridged",
+                "parent": "lxdbr0",
+                "type": "nic",
+            },
+            "eth1": {
+                "boot.priority": "1",
+                "name": "eth1",
+                "nictype": "bridged",
+                "parent": "virbr1",
+                "type": "nic",
+            },
+            "root": {
+                "boot.priority": "0",
+                "path": "/",
+                "pool": "default",
+                "type": "disk",
+                "size": "20GB",
+            },
+        }
+        mock_profile.devices = profile_devices
+        client.profiles.get.return_value = mock_profile
+        mock_storage_pools = Mock()
+        client.storage_pools.all.return_value = mock_storage_pools
+        mock_get_usable_storage_pool = self.patch(
+            driver, "get_usable_storage_pool"
+        )
+        usable_pool = factory.make_name("pool")
+        mock_get_usable_storage_pool.return_value = usable_pool
+        mock_get_best_nic_from_profile = self.patch(
+            driver, "get_best_nic_from_profile"
+        )
+        mock_get_best_nic_from_profile.return_value = (
+            "eth1",
+            profile_devices["eth1"],
+        )
+        mock_machine = Mock()
+        client.virtual_machines.create.return_value = mock_machine
+        mock_get_discovered_machine = self.patch(
+            driver, "get_discovered_machine"
+        )
+        mock_get_discovered_machine.return_value = sentinel.discovered_machine
+        definition = {
+            "name": request.hostname,
+            "architecture": debian_to_kernel_architecture(
+                request.architecture
+            ),
+            "config": {
+                "limits.cpu": str(request.cores),
+                "limits.memory": str(request.memory * 1024 ** 2),
+                "security.secureboot": "false",
+            },
+            "profiles": [mock_profile.name],
+            "source": {"type": "none"},
+            "devices": {
+                "root": {
+                    "path": "/",
+                    "type": "disk",
+                    "pool": usable_pool,
+                    "size": str(request.block_devices[0].size),
+                    "boot.priority": "0",
+                },
+                expected_interfaces[0]["name"]: expected_interfaces[0],
+                expected_interfaces[1]["name"]: expected_interfaces[1],
+                expected_interfaces[2]["name"]: expected_interfaces[2],
+                "eth1": {"type": "none"},
+                "eth0": {"type": "none"},
+            },
+        }
+
+        discovered_machine, empty_hints = yield driver.compose(
+            pod_id, context, request
+        )
         self.assertThat(
             client.virtual_machines.create,
             MockCalledOnceWith(definition, wait=True),
