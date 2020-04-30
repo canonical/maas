@@ -41,7 +41,12 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_path
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import shell, typed
+from provisioningserver.utils import (
+    debian_to_kernel_architecture,
+    kernel_to_debian_architecture,
+    shell,
+    typed,
+)
 from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import asynchronous, synchronous
@@ -235,22 +240,7 @@ DOM_TEMPLATE_S390X = dedent(
     """
 )
 
-
-# Virsh stores the architecture with a different
-# label then MAAS. This maps virsh architecture to
-# MAAS architecture.
-ARCH_FIX = {
-    "x86_64": "amd64/generic",
-    "ppc64": "ppc64el/generic",
-    "ppc64le": "ppc64el/generic",
-    "i686": "i386/generic",
-    "aarch64": "arm64/generic",
-    "s390x": "s390x/generic",
-}
-ARCH_FIX_REVERSE = {value: key for key, value in ARCH_FIX.items()}
-
 InterfaceInfo = namedtuple("InterfaceInfo", ("type", "source", "model", "mac"))
-
 
 REQUIRED_PACKAGES = [
     ["virsh", "libvirt-clients"],
@@ -630,7 +620,7 @@ class VirshSSH(pexpect.spawn):
             raise PodInvalidResources(
                 "Pod architecture is not supported: %s" % arch
             )
-        return ARCH_FIX.get(arch, arch)
+        return kernel_to_debian_architecture(arch)
 
     def get_machine_arch(self, machine):
         """Gets the VM architecture."""
@@ -645,7 +635,7 @@ class VirshSSH(pexpect.spawn):
 
         # Fix architectures that need to be referenced by a different
         # name, that MAAS understands.
-        return ARCH_FIX.get(arch, arch)
+        return kernel_to_debian_architecture(arch)
 
     def find_storage_pool(self, source, storage_pools):
         """Find the storage pool for `source`."""
@@ -1221,7 +1211,9 @@ class VirshSSH(pexpect.spawn):
         domain_params = self.get_domain_capabilities()
         domain_params["name"] = request.hostname
         domain_params["uuid"] = str(uuid4())
-        domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params["arch"] = debian_to_kernel_architecture(
+            request.architecture
+        )
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
 

@@ -33,7 +33,6 @@ from provisioningserver.drivers.pod import (
     virsh,
 )
 from provisioningserver.drivers.pod.virsh import (
-    ARCH_FIX_REVERSE,
     DOM_TEMPLATE_AMD64,
     DOM_TEMPLATE_ARM64,
     DOM_TEMPLATE_BRIDGE_INTERFACE,
@@ -45,6 +44,11 @@ from provisioningserver.drivers.pod.virsh import (
 )
 from provisioningserver.enum import LIBVIRT_NETWORK, MACVLAN_MODE_CHOICES
 from provisioningserver.rpc.exceptions import PodInvalidResources
+from provisioningserver.utils import (
+    debian_to_kernel_architecture,
+    kernel_to_debian_architecture,
+    KERNEL_TO_DEBIAN_ARCHITECTURES,
+)
 from provisioningserver.utils.shell import (
     get_env_with_locale,
     has_command_available,
@@ -871,16 +875,9 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh("")
         self.assertRaises(PodInvalidResources, conn.get_pod_arch, None)
 
-    def test_get_machine_arch_returns_valid(self):
-        arch = factory.make_name("arch")
-        output = SAMPLE_DUMPXML % arch
-        conn = self.configure_virshssh(output)
-        expected = conn.get_machine_arch("")
-        self.assertEqual(arch, expected)
-
-    def test_get_machine_arch_returns_valid_fixed(self):
-        arch = random.choice(list(virsh.ARCH_FIX))
-        fixed_arch = virsh.ARCH_FIX[arch]
+    def test_get_machine_arch_returns_valid_debian_architecture(self):
+        arch = random.choice(list(KERNEL_TO_DEBIAN_ARCHITECTURES.keys()))
+        fixed_arch = kernel_to_debian_architecture(arch)
         output = SAMPLE_DUMPXML % arch
         conn = self.configure_virshssh(output)
         expected = conn.get_machine_arch("")
@@ -2116,7 +2113,9 @@ class TestVirshSSH(MAASTestCase):
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
-        domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params["arch"] = debian_to_kernel_architecture(
+            request.architecture
+        )
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
         NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
@@ -2192,7 +2191,9 @@ class TestVirshSSH(MAASTestCase):
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
-        domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params["arch"] = debian_to_kernel_architecture(
+            request.architecture
+        )
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
         NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
@@ -2268,7 +2269,9 @@ class TestVirshSSH(MAASTestCase):
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
-        domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params["arch"] = debian_to_kernel_architecture(
+            request.architecture
+        )
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
         NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
@@ -2344,7 +2347,9 @@ class TestVirshSSH(MAASTestCase):
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
         domain_params["uuid"] = mock_uuid.return_value
-        domain_params["arch"] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params["arch"] = debian_to_kernel_architecture(
+            request.architecture
+        )
         domain_params["cores"] = str(request.cores)
         domain_params["memory"] = str(request.memory)
         NamedTemporaryFile = self.patch(virsh, "NamedTemporaryFile")
