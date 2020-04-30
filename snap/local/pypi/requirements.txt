@@ -12,5 +12,5 @@ macaroonbakery==1.2.0
 # XXX this is currently needed to make multiprocess collector setup work
 # correctly
 prometheus_client==0.6.0
-# XXX changes from this branch are needed for LXD POD to work
-git+https://github.com/ltrager/pylxd@master#egg=pylxd
+# XXX need unreleased changes for LXD PODs to work
+git+https://github.com/lxc/pylxd@master#egg=pylxd
