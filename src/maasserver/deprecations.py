@@ -46,3 +46,37 @@ def log_deprecations(logger=None):
 
     for d in get_deprecations():
         logger.msg("Deprecation {id} ({url}): {description}".format(**d))
+
+
+def sync_deprecation_notifications():
+    from maasserver.models import Notification
+
+    notifications = set(
+        Notification.objects.filter(
+            ident__startswith="deprecation_"
+        ).values_list("ident", flat=True)
+    )
+    for deprecation in get_deprecations():
+        dep_id = deprecation["id"]
+        for kind in ("users", "admins"):
+            dep_ident = f"deprecation_{dep_id}_{kind}"
+            if dep_ident in notifications:
+                notifications.remove(dep_ident)
+                continue
+            message = f"{deprecation['description']}"
+            if kind == "users":
+                message += "<br>Please contact your MAAS administrator."
+            message += (
+                f"<br><a class='p-link--external' href='{deprecation['url']}'>"
+                f"{deprecation['link-text']}...</a>"
+            )
+            Notification(
+                ident=dep_ident,
+                category="warning",
+                message=message,
+                **{kind: True},
+            ).save()
+
+    # delete other deprecation notifications
+    if notifications:
+        Notification.objects.filter(ident__in=notifications).delete()

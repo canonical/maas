@@ -2,7 +2,13 @@ from pathlib import Path
 
 from fixtures import EnvironmentVariable
 
-from maasserver.deprecations import get_deprecations, log_deprecations
+from maasserver.deprecations import (
+    get_deprecations,
+    log_deprecations,
+    sync_deprecation_notifications,
+)
+from maasserver.models import Notification
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LegacyLogger
 
@@ -54,3 +60,41 @@ class TestLogDeprecations(MAASTestCase):
             "The setup for this MAAS is deprecated and not suitable for production "
             "environments, as the database is running inside the snap.",
         )
+
+
+class TestSyncDeprecationNotifications(MAASServerTestCase):
+    def test_create_notifications(self):
+        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
+        snap_common_path = Path(self.make_dir())
+        self.useFixture(
+            EnvironmentVariable("SNAP_COMMON", str(snap_common_path))
+        )
+        snap_common_path.joinpath("snap_mode").write_text("all", "utf-8")
+
+        sync_deprecation_notifications()
+        notification1, notification2 = Notification.objects.order_by("ident")
+        self.assertEqual(notification1.ident, "deprecation_MD1_admins")
+        self.assertEqual(notification1.category, "warning")
+        self.assertTrue(notification1.admins)
+        self.assertFalse(notification1.users)
+        self.assertIn(
+            "https://maas.io/deprecations/MD1", notification1.message
+        )
+        self.assertNotIn(
+            "Please contact your MAAS administrator.", notification1.message
+        )
+        self.assertEqual(notification2.ident, "deprecation_MD1_users")
+        self.assertEqual(notification2.category, "warning")
+        self.assertFalse(notification2.admins)
+        self.assertTrue(notification2.users)
+        self.assertIn(
+            "Please contact your MAAS administrator.", notification2.message
+        )
+
+    def test_remove_deprecations(self):
+        Notification(
+            ident="deprecation_MD1_admins", message="some text"
+        ).save()
+        sync_deprecation_notifications()
+        # the notification is removed since there is no active deprecation
+        self.assertFalse(Notification.objects.exists())
