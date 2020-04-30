@@ -208,6 +208,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
 
     def test_creates_pod_with_discovered_information(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -232,8 +233,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_only_required(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -263,8 +266,10 @@ class TestPodForm(MAASTransactionServerTestCase):
                 ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
             ),
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_name(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_name = factory.make_name("pod")
@@ -273,8 +278,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pod_name, pod.name)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_power_parameters(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info["power_pass"] = factory.make_name("pass")
@@ -287,8 +294,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(
             pod_info["power_pass"], pod.power_parameters["power_pass"]
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_overcommit(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info["cpu_over_commit_ratio"] = random.randint(0, 10)
@@ -302,8 +311,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(
             pod_info["memory_over_commit_ratio"], pod.memory_over_commit_ratio
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_tags(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         tags = [
@@ -316,8 +327,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertItemsEqual(tags, pod.tags)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_zone(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         zone = factory.make_Zone()
@@ -326,8 +339,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(zone.id, pod.zone.id)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_pool(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
@@ -336,6 +351,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pool.id, pod.pool.id)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     @wait_for_reactor
     @inlineCallbacks
@@ -414,6 +430,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         yield deferToDatabase(validate_no_pods)
 
     def test_prevents_duplicate_pod(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
@@ -422,8 +439,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         new_form = PodForm(data=pod_info)
         self.assertTrue(new_form.is_valid(), form._errors)
         self.assertRaises(ValidationError, new_form.save)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_takes_over_bmc_with_pod(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         bmc = factory.make_BMC(
@@ -438,8 +457,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertEquals(bmc.id, pod.id)
         self.assertEquals(BMC_TYPE.POD, reload_object(bmc).bmc_type)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_existing_pod_minimal(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
@@ -470,8 +491,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
         self.assertEqual(power_parameters, pod.power_parameters)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_existing_pod(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -522,8 +545,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_default_storage_pool(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         default_storage_pool = random.choice(discovered_pod.storage_pools)
         pod = factory.make_Pod(pod_type="virsh")
@@ -546,8 +571,10 @@ class TestPodForm(MAASTransactionServerTestCase):
                 )
             ),
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_default_macvlan_mode(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         pod = factory.make_Pod(pod_type="virsh")
@@ -565,6 +592,7 @@ class TestPodForm(MAASTransactionServerTestCase):
                 default_macvlan_mode=Equals(default_macvlan_mode)
             ),
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     @wait_for_reactor
     @inlineCallbacks
@@ -687,6 +715,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
 
     def test_discover_and_sync_existing_pod(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -728,6 +757,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1855,6 +1885,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             form.compose()
 
     def test__compose_with_interfaces_with_unreserved_ip(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         # Mock the RPC client.
         client = MagicMock()
         mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
@@ -1898,8 +1929,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         machine = form.compose()
         ip = StaticIPAddress.objects.filter(ip=expected_ip).first()
         self.assertThat(ip.get_interface().node, Equals(machine))
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_with_commissioning(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -1933,8 +1966,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
         self.assertThat(mock_commissioning, MockCalledOnce())
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_sends_default_storage_pool_id(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -1970,6 +2005,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 name=pod.name,
             ),
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_duplicated_hostname(self):
         factory.make_Node(hostname="test")
@@ -2004,6 +2040,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
 
     def test__compose_without_commissioning(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -2039,8 +2076,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
         self.assertThat(mock_commissioning, MockNotCalled())
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_with_skip_commissioning_passed(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -2074,8 +2113,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
         self.assertThat(mock_commissioning, MockNotCalled())
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_sets_domain_and_zone(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -2111,8 +2152,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 MatchesStructure(domain=Equals(domain), zone=Equals(zone)),
             ),
         )
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_sets_resource_pool(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -2137,8 +2180,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
         self.assertEqual(pool, created_machine.pool)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_uses_pod_pool(self):
+        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
         pod.pool = factory.make_ResourcePool()
@@ -2162,6 +2207,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
         self.assertEqual(pod.pool, created_machine.pool)
+        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test__compose_check_over_commit_ratios_raises_error_for_cores(self):
         request = MagicMock()
@@ -2231,6 +2277,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
     def test__compose_with_commissioning_in_reactor(self):
         request = MagicMock()
         pod = yield deferToDatabase(make_pod_with_hints, with_host=True)
+        mock_request_commissioning_results = self.patch(
+            pods_module, "request_commissioning_results"
+        )
+        mock_request_commissioning_results.return_value = pod
 
         # Mock the RPC client.
         client = MagicMock()
@@ -2280,6 +2330,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
         self.assertThat(mock_commissioning, MockCalledOnce())
+        self.assertThat(mock_request_commissioning_results, MockCalledOnce())
 
     def test__save_raises_AttributeError(self):
         request = MagicMock()

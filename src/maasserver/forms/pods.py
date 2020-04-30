@@ -6,6 +6,7 @@
 __all__ = ["PodForm"]
 
 from functools import partial
+from urllib.parse import urlparse
 
 import crochet
 from django import forms
@@ -18,6 +19,7 @@ from django.forms import (
     ModelChoiceField,
 )
 import petname
+from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
 
@@ -29,6 +31,7 @@ from maasserver.clusterrpc.pods import (
     compose_machine,
     discover_pod,
     get_best_discovered_result,
+    send_pod_commissioning_results,
 )
 from maasserver.enum import BMC_TYPE, INTERFACE_TYPE, NODE_CREATION_TYPE
 from maasserver.exceptions import PodProblem
@@ -37,6 +40,7 @@ from maasserver.models import (
     BMC,
     BMCRoutableRackControllerRelationship,
     Domain,
+    Event,
     Interface,
     Machine,
     Node,
@@ -55,10 +59,12 @@ from maasserver.node_constraint_filter_forms import (
     storage_validator,
 )
 from maasserver.rpc import getClientFromIdentifiers
+from maasserver.utils import absolute_reverse
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.models import NodeKey
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -69,6 +75,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
@@ -84,6 +91,42 @@ def make_unique_hostname():
             continue
         else:
             return hostname
+
+
+@inlineCallbacks
+def request_commissioning_results(pod):
+    """Request commissioning results from machines associated with the Pod."""
+    nodes = yield deferToDatabase(lambda: list(pod.hints.nodes.all()))
+    # Intel RSD and libvirt Pods don't create machines for the host.
+    if not nodes:
+        return pod
+    client_identifiers = yield deferToDatabase(pod.get_client_identifiers)
+    client = yield getClientFromIdentifiers(client_identifiers)
+    for node in nodes:
+        token = yield deferToDatabase(NodeKey.objects.get_token_for_node, node)
+        try:
+            yield send_pod_commissioning_results(
+                client,
+                pod.id,
+                pod.name,
+                pod.power_type,
+                node.system_id,
+                pod.power_parameters,
+                token.consumer.key,
+                token.key,
+                token.secret,
+                urlparse(
+                    absolute_reverse("metadata-version", args=["latest"])
+                ),
+            )
+        except PodProblem as e:
+            yield deferToDatabase(
+                Event.objects.create_node_event,
+                node,
+                EVENT_TYPES.NODE_COMMISSIONING_EVENT_FAILED,
+                event_description=str(e),
+            )
+    return pod
 
 
 class PodForm(MAASModelForm):
@@ -372,6 +415,7 @@ class PodForm(MAASModelForm):
 
             d.addCallback(catch_no_racks)
             d.addCallback(partial(deferToDatabase, transactional(update_db)))
+            d.addCallback(request_commissioning_results)
             d.addErrback(wrap_errors)
             return d
         else:
@@ -398,7 +442,19 @@ class PodForm(MAASModelForm):
                     "Unable to start the pod discovery process. "
                     "No rack controllers connected."
                 )
-            return update_db((discovered_pod, discovered))
+            update_db((discovered_pod, discovered))
+            # The data isn't committed to the database until the transaction is
+            # complete. The commissioning results must be sent after the
+            # transaction completes so the metadata server can process the
+            # data.
+            post_commit_do(
+                reactor.callLater,
+                0,
+                request_commissioning_results,
+                self.instance,
+            )
+            # Run commissioning request here
+            return self.instance
 
 
 def get_known_host_interfaces(host: Node) -> list:
@@ -731,6 +787,10 @@ class ComposeMachineForm(forms.Form):
             d.addCallback(
                 partial(deferToDatabase, transactional(create_and_sync))
             )
+            d.addCallback(
+                lambda created_machine, _: created_machine,
+                request_commissioning_results(self.pod),
+            )
             return d
         else:
             # Running outside of reactor. Do the work inside and then finish
@@ -768,7 +828,11 @@ class ComposeMachineForm(forms.Form):
                     "timed out after %d seconds."
                     % (self.pod.power_type, timeout)
                 )
-            return create_and_sync((requested_machine, result))
+            created_machine = create_and_sync((requested_machine, result))
+            post_commit_do(
+                reactor.callLater, 0, request_commissioning_results, self.pod
+            )
+            return created_machine
 
 
 class ComposeMachineForPodsForm(forms.Form):

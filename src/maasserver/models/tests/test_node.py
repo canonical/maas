@@ -123,7 +123,6 @@ from maasserver.models.node import (
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.signals import power as node_query
-from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
@@ -13945,7 +13944,6 @@ class TestNodeGetHostedPods(MAASServerTestCase):
         self.assertThat(pods, Contains(pod))
 
     def test__returns_related_pods_by_association(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)

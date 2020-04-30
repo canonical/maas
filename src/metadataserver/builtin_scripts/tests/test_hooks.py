@@ -36,7 +36,6 @@ from maasserver.models.interface import Interface
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.numa import NUMANode
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
@@ -1272,7 +1271,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals(server_name, rack.hostname)
 
     def test__sets_os_for_pod(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
@@ -1323,7 +1321,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertThat(mock_update_node_network_information, MockNotCalled())
 
     def test__does_not_initialize_node_network_information_if_pod(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
@@ -1555,7 +1552,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertFalse(node.tags.filter(name="virtual").exists())
 
     def test__syncs_pods(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)
@@ -2026,7 +2022,6 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
     def test__doesnt_set_storage_layout_if_pod(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
@@ -2121,7 +2116,6 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertThat(mock_iface_get, MockNotCalled())
 
     def test__does_nothing_if_duplicate_mac_on_pod(self):
-        self.useFixture(SignalsDisabled("podhints"))
         mock_iface_get = self.patch(
             hooks_module.PhysicalInterface.objects, "get"
         )

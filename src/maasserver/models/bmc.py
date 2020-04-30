@@ -626,6 +626,12 @@ class Pod(BMC):
 
     _machine_name_re = re.compile(r"[a-z][a-z0-9-]+$", flags=re.I)
 
+    def __str__(self):
+        if self.name:
+            return f"{self.name} ({self.id})"
+        else:
+            return super().__str__()
+
     def __init__(self, *args, **kwargs):
         if "pool" not in kwargs:
             kwargs["pool"] = ResourcePool.objects.get_default_resource_pool()
@@ -638,12 +644,15 @@ class Pod(BMC):
 
     @property
     def host(self):
-        if self.ip_address is not None:
+        node = self.hints.nodes.first()
+        if node:
+            return node
+        elif self.ip_address is not None:
             interface = self.ip_address.get_interface()
             if interface is not None:
                 return interface.node
         else:
-            return self.hints.nodes.first()
+            return None
 
     def sync_hints(self, discovered_hints):
         """Sync the hints with `discovered_hints`."""
@@ -840,7 +849,7 @@ class Pod(BMC):
         creation_type=NODE_CREATION_TYPE.PRE_EXISTING,
         interfaces=None,
         requested_machine=None,
-        **kwargs
+        **kwargs,
     ):
         """Create's a `Machine` from `discovered_machines` for this pod."""
         if skip_commissioning:
@@ -886,7 +895,7 @@ class Pod(BMC):
             creation_type=creation_type,
             pool=pool,
             zone=zone,
-            **kwargs
+            **kwargs,
         )
         machine.bmc = self
         machine.instance_power_parameters = discovered_machine.power_parameters

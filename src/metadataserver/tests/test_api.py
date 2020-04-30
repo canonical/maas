@@ -2189,7 +2189,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(nmd, reload_object(nmd))
 
     def test_signaling_commissioning_when_pod_in_any_state(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node(with_empty_script_sets=True)
         pod.hints.nodes.add(node)
@@ -2198,7 +2197,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
 
     def test_signaling_commissioning_when_pod_overwrites(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True

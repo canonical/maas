@@ -12,7 +12,6 @@ import yaml
 
 from maasserver.enum import NODE_TYPE
 from maasserver.models import Event, EventType
-from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -99,7 +98,6 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(result, script_result.result)
 
     def test_store_result_allows_pod_to_overwrite(self):
-        self.useFixture(SignalsDisabled("podhints"))
         pod = factory.make_Pod()
         node = factory.make_Node()
         script_set = factory.make_ScriptSet(node=node)
