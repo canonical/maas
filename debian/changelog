@@ -1,9 +1,10 @@
-maas (2.8.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.8.0~beta3-0ubuntu1) UNRELEASED; urgency=medium
 
   * New upstream release, MAAS 2.8.0 beta1.
   * New upstream release, MAAS 2.8.0 beta2.
+  * New upstream release, MAAS 2.8.0 beta3.
 
- -- Alberto Donato <alberto.donato@canonical.com>  Fri, 24 Apr 2020 11:35:19 +0000
+ -- Alberto Donato <alberto.donato@canonical.com>  Fri, 01 May 2020 14:57:48 +0000
 
 maas (2.7.0~rc1-0ubuntu1) focal; urgency=medium
 
