@@ -45,6 +45,7 @@ add_debian_changelog() {
     local version="$1"
     dch -v "$(deb_version "$version")" \
         "New upstream release, MAAS $(verbose_version "$version")."
+    dch -r ""
 }
 
 commit_and_tag() {
