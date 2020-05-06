@@ -47,7 +47,7 @@ This will destroy all existing data in the snap.
 
 EOF
     local answer
-    answer=$(ask_yes_no "Proceed?")
+    answer=$(ask_yes_no N "Proceed?")
     [ "$answer" = "y" ] || exit 0
 
     log_to_file snap stop maas

@@ -676,7 +676,7 @@ class cmd_init(SnappyCommand):
             If you want to set up PostgreSQL on this machine, and configure it
             for use with MAAS, you can run the following command:
 
-            /snap/maas/current/helpers/maas-database-setup
+            sudo /snap/maas/current/helpers/maas-database-setup
 
             """
                 )

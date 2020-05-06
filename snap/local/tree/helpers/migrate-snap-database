@@ -38,7 +38,7 @@ EOF
         done
         echo
         local answer
-        answer=$(ask_yes_no "Proceed?")
+        answer=$(ask_yes_no Y "Proceed?")
         [ "$answer" = "y" ] || exit 0
     else
         message_step "Installing the PostgreSQL database server..."

@@ -35,7 +35,7 @@ If you proceed, all existing data in the snap will be destroyed.
 
 EOF
     local answer
-    answer=$(ask_yes_no "Proceed?")
+    answer=$(ask_yes_no N "Proceed?")
     [ "$answer" = "y" ] || exit 0
 }
 
@@ -73,7 +73,7 @@ If you proceed, the password for the user will be updated.
 EOF
 
         local answer
-        answer=$(ask_yes_no "Proceed?")
+        answer=$(ask_yes_no N "Proceed?")
         [ "$answer" = "y" ] || exit 0
     fi
 
@@ -104,7 +104,7 @@ the details above for database configuration.
 EOF
 
     local answer
-    answer=$(ask_yes_no "Proceed?")
+    answer=$(ask_yes_no N "Proceed?")
     [ "$answer" = "y" ] || exit 0
 
     message_step "Initializing MAAS..."

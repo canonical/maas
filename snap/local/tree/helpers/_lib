@@ -48,10 +48,17 @@ check_root() {
 }
 
 ask_yes_no() {
+    local default="${1,,}"  # always lowercase
+    shift 1
+
+    local choices
+    [ "$default" = "y" ] && choices="Y/n" || choices="y/N"
+
     local response=""
     while [ -z "$response" ]; do
-        read -r -p "$* [Y/N]: " response
+        read -r -p "$* [$choices]: " response
         case "$response" in
+            "") response="$default";;
             Y|y) response="y" ;;
             N|n) response="n" ;;
             *) response="" ;;
