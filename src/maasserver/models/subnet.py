@@ -62,12 +62,6 @@ SUBNET_NAME_VALIDATOR = RegexValidator(r"^[.: \w/-]+$")
 IPAddressExcludeList = Optional[Iterable[MaybeIPAddress]]
 
 
-def get_default_vlan():
-    from maasserver.models.vlan import VLAN
-
-    return VLAN.objects.get_default_vlan().id
-
-
 def create_cidr(network, subnet_mask=None):
     """Given the specified network and subnet mask, create a CIDR string.
 
@@ -355,12 +349,7 @@ class Subnet(CleanSave, TimestampedModel):
     description = TextField(null=False, blank=True)
 
     vlan = ForeignKey(
-        "VLAN",
-        default=get_default_vlan,
-        editable=True,
-        blank=False,
-        null=False,
-        on_delete=PROTECT,
+        "VLAN", editable=True, blank=False, null=False, on_delete=PROTECT
     )
 
     # XXX:fabric: unique constraint should be relaxed once proper support for

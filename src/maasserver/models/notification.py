@@ -37,6 +37,13 @@ def _create(method, category):
     return call_with_category
 
 
+class NotificationNotDismissable(Exception):
+    """The notification can't be dismissed."""
+
+    def __init__(self):
+        super().__init__("Notification is not dismissable")
+
+
 class NotificationManager(Manager):
     """Manager for `Notification` class."""
 
@@ -164,6 +171,7 @@ class Notification(CleanSave, TimestampedModel):
         meaning of the "warning" and "error" categories are fairly obvious.
         The "info" category might be used to reaffirm a small action, like "10
         partitions were created on machine foo".
+    :ivar dismissable: Whether the notification can be dismissed.
     """
 
     class Meta(DefaultMeta):
@@ -196,6 +204,7 @@ class Notification(CleanSave, TimestampedModel):
             ("info", "Informational"),
         ],
     )
+    dismissable = BooleanField(null=False, blank=True, default=True)
 
     def render(self):
         """Render this notification's message using its context.
@@ -220,6 +229,8 @@ class Notification(CleanSave, TimestampedModel):
 
         :param user: The user dismissing this notification.
         """
+        if not self.dismissable:
+            raise NotificationNotDismissable()
         NotificationDismissal.objects.get_or_create(
             notification=self, user=user
         )

@@ -22,7 +22,10 @@ from testtools.matchers import (
     Not,
 )
 
-from maasserver.models.notification import NotificationDismissal
+from maasserver.models.notification import (
+    NotificationDismissal,
+    NotificationNotDismissable,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime, Handler
@@ -43,6 +46,7 @@ def MatchesRenderedNotification(ntfn):
             "created": Equals(dehydrate_datetime(ntfn.created)),
             "message": Equals(ntfn.render()),
             "category": Equals(ntfn.category),
+            "dismissable": Equals(ntfn.dismissable),
         }
     )
 
@@ -113,6 +117,16 @@ class TestNotificationHandler(MAASServerTestCase):
         self.assertThat(notification, Not(HasBeenDismissedBy(user)))
         handler.dismiss({"id": str(notification.id)})
         self.assertThat(notification, HasBeenDismissedBy(user))
+
+    def test_not_dismissable(self):
+        user = factory.make_User()
+        handler = NotificationHandler(user, {}, None)
+        notification = factory.make_Notification(user=user, dismissable=False)
+        self.assertRaises(
+            NotificationNotDismissable,
+            handler.dismiss,
+            {"id": str(notification.id)},
+        )
 
     def test_dismiss_multiple(self):
         user = factory.make_User()

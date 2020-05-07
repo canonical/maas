@@ -61,6 +61,7 @@ class TestNotificationForm(MAASServerTestCase):
                 admins=False,
                 category="info",
                 context={},
+                dismissable=True,
             ),
         )
 
@@ -76,6 +77,7 @@ class TestNotificationForm(MAASServerTestCase):
                 {factory.make_name("key"): factory.make_name("value")}
             ),
             "category": random.choice(categories),
+            "dismissable": random.choice(["true", "false"]),
         }
         form = NotificationForm(data)
         self.assertTrue(form.is_valid(), form.errors)
@@ -86,6 +88,7 @@ class TestNotificationForm(MAASServerTestCase):
             users=(data["users"] == "true"),
             admins=(data["admins"] == "true"),
             context=json.loads(data["context"]),
+            dismissable=(data["dismissable"] == "true"),
         )
         self.assertThat(notification, MatchesStructure.byEquality(**expected))
 

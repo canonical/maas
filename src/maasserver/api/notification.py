@@ -22,6 +22,7 @@ DISPLAYED_NOTIFICATION_FIELDS = frozenset(
         "message",
         "context",
         "category",
+        "dismissable",
     )
 )
 
@@ -166,6 +167,9 @@ class NotificationHandler(OperationsHandler):
 
         @param (boolean) "admins" [required=false] True to notify all admins,
         defaults to false, i.e. not targeted to all admins.
+
+        @param (boolean) "dismissable" [required=false] True to allow users
+        dimissing the notification. Defaults to true.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the updated

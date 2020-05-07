@@ -74,6 +74,7 @@ def sync_deprecation_notifications():
                 ident=dep_ident,
                 category="warning",
                 message=message,
+                dismissable=False,
                 **{kind: True},
             ).save()
 

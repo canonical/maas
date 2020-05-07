@@ -3062,6 +3062,7 @@ class Factory(maastesting.factory.Factory):
         admins=False,
         context=None,
         category=None,
+        dismissable=True,
     ):
 
         if context is None:
@@ -3087,6 +3088,7 @@ class Factory(maastesting.factory.Factory):
             message=message,
             context=context,
             category=category,
+            dismissable=dismissable,
         )
         notification.save()
 

@@ -22,7 +22,10 @@ from testtools.matchers import (
     Not,
 )
 
-from maasserver.models.notification import Notification
+from maasserver.models.notification import (
+    Notification,
+    NotificationNotDismissable,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -165,6 +168,16 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
         n_for_admins.dismiss(admin)
         self.assertNotifications(user, [n_for_user, n_for_users])
         self.assertNotifications(admin, [])
+
+    def test_not_dismissable(self):
+        notification = Notification(
+            message="Some notification", dismissable=False
+        )
+        self.assertRaises(
+            NotificationNotDismissable,
+            notification.dismiss,
+            factory.make_User(),
+        )
 
 
 class TestNotification(MAASServerTestCase):

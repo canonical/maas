@@ -22,6 +22,7 @@ class NotificationForm(MAASModelForm):
             "message",
             "context",
             "category",
+            "dismissable",
         )
 
     def clean_context(self):
@@ -35,3 +36,7 @@ class NotificationForm(MAASModelForm):
                 return data
         else:
             return data
+
+    def clean_dismissable(self):
+        data = self.data.get("dismissable")
+        return data in (None, "true")

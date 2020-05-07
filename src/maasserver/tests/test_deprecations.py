@@ -75,6 +75,7 @@ class TestSyncDeprecationNotifications(MAASServerTestCase):
         notification1, notification2 = Notification.objects.order_by("ident")
         self.assertEqual(notification1.ident, "deprecation_MD1_admins")
         self.assertEqual(notification1.category, "warning")
+        self.assertFalse(notification1.dismissable)
         self.assertTrue(notification1.admins)
         self.assertFalse(notification1.users)
         self.assertIn(
@@ -85,6 +86,7 @@ class TestSyncDeprecationNotifications(MAASServerTestCase):
         )
         self.assertEqual(notification2.ident, "deprecation_MD1_users")
         self.assertEqual(notification2.category, "warning")
+        self.assertFalse(notification2.dismissable)
         self.assertFalse(notification2.admins)
         self.assertTrue(notification2.users)
         self.assertIn(

@@ -71,6 +71,7 @@ def MatchesNotification(notification):
             "message": Equals(notification.message),
             "context": Equals(notification.context),
             "category": Equals(notification.category),
+            "dismissable": Equals(notification.dismissable),
             "resource_uri": Equals(get_notification_uri(notification)),
         }
     )
@@ -133,6 +134,7 @@ class TestNotificationsAPI(APITestCase.ForUserAndAdmin):
             "message": factory.make_name("message"),
             "context": json.dumps(context),
             "category": random.choice(("info", "success", "warning", "error")),
+            "dismissable": random.choice(["true", "false"]),
         }
         uri = get_notifications_uri()
         response = self.client.post(uri, data)
@@ -152,6 +154,7 @@ class TestNotificationsAPI(APITestCase.ForUserAndAdmin):
                         "message": Equals(data["message"]),
                         "context": Equals(context),
                         "category": Equals(data["category"]),
+                        "dismissable": Is(data["dismissable"] == "true"),
                     }
                 ),
             )
