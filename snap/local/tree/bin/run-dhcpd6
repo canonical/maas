@@ -16,12 +16,11 @@ if [ ! -e "$INTERFACES_FILE" ]; then
     exit 1
 fi
 
-# Load the interfaces.
-INTERFACES=$(cat "$INTERFACES_FILE")
-
 # Initialize and clean the leases file.
 mkdir -p "$SNAP_DATA/var/lib/maas/dhcp"
 touch "$LEASES_FILE"
 "$SNAP/usr/sbin/maas-dhcp-helper" clean "$LEASES_FILE"
 
-exec "$SNAP/usr/sbin/dhcpd" -f -6 -pf "$DHCP_DIR/dhcpd6.pid" -cf "$DHCP_CONFIG" -lf "$LEASES_FILE" "$INTERFACES"
+INTERFACES=$(cat "$INTERFACES_FILE")
+# shellcheck disable=SC2086
+exec "$SNAP/usr/sbin/dhcpd" -f -6 -pf "$DHCP_DIR/dhcpd6.pid" -cf "$DHCP_CONFIG" -lf "$LEASES_FILE" $INTERFACES
