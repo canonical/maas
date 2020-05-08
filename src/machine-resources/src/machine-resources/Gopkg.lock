@@ -2,6 +2,18 @@
 
 
 [[projects]]
+  name = "github.com/flosch/pongo2"
+  packages = ["."]
+  revision = "5e81b817a0c48c1c57cdf1a9056cf76bdee02ca9"
+  version = "v3.0"
+
+[[projects]]
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
+  revision = "b65e62901fc1c0d968042419e74789f6af455eb9"
+  version = "v1.4.2"
+
+[[projects]]
   name = "github.com/jaypipes/pcidb"
   packages = ["."]
   revision = "49e68a8beb0c155efb2db43bea4b354ec4843ff1"
@@ -10,8 +22,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/lxc/lxd"
-  packages = ["lxd/resources","shared/api","shared/units","shared/usbid"]
-  revision = "b85a3ffa846e1ceb9fc091fa9bd5f20f4aa2d7b2"
+  packages = ["lxd/resources","shared","shared/api","shared/cancel","shared/ioprogress","shared/logger","shared/units","shared/usbid"]
+  revision = "7b12be0dc6b099dffc369299af2803a77611fc8d"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
@@ -28,8 +40,14 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = ["unix","windows"]
   revision = "b09406accb4736d857a32bf9444cd7edae2ffa79"
+
+[[projects]]
+  branch = "v2"
+  name = "gopkg.in/robfig/cron.v2"
+  packages = ["."]
+  revision = "be2e0b0deed5a68ffee390b4583a13aff8321535"
 
 [solve-meta]
   analyzer-name = "dep"
