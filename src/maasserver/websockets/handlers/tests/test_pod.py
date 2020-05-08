@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.pod`"""
@@ -127,6 +127,11 @@ class TestPodHandler(MAASTransactionServerTestCase):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
         pod = self.make_pod_with_hints()
+        # Create machines to test owners_count
+        factory.make_Node()
+        factory.make_Node(bmc=pod)
+        factory.make_Node(bmc=pod, owner=admin)
+        factory.make_Node(bmc=pod, owner=factory.make_User())
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
         self.assertItemsEqual(expected_data.keys(), result.keys())
@@ -139,6 +144,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(
             result["storage_pools"], Equals(expected_data["storage_pools"])
         )
+        self.assertThat(result["owners_count"], Equals(2))
 
     def test_get_with_pod_host(self):
         admin = factory.make_admin()

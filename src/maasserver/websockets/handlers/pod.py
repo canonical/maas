@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The Pod handler for the WebSocket connection."""
@@ -103,6 +103,12 @@ class PodHandler(TimestampedModelHandler):
         data["composed_machines_count"] = obj.node_set.filter(
             node_type=NODE_TYPE.MACHINE
         ).count()
+        data["owners_count"] = (
+            obj.node_set.exclude(owner=None)
+            .values_list("owner")
+            .distinct()
+            .count()
+        )
         data["hints"] = self.dehydrate_hints(obj.hints)
         storage_pools = obj.storage_pools.all()
         if len(storage_pools) > 0:
