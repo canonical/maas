@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test builtin_script fio."""
@@ -202,6 +202,8 @@ class TestFioTestRunFio(MAASTestCase):
         self.mock_stdout_write = self.patch(fio.sys.stdout, "write")
         self.mock_stderr_write = self.patch(fio.sys.stderr, "write")
         self.mock_check_output = self.patch(fio, "check_output")
+        self.mock_get_blocksize = self.patch(fio, "get_blocksize")
+        self.mock_get_blocksize.return_value = 512
 
     def test_run_fio_writes_yaml_file(self):
         tmp_path = Path(self.useFixture(TempDirectory()).path)

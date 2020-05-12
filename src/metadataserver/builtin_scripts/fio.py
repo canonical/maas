@@ -5,7 +5,7 @@
 # Author: Newell Jensen <newell.jensen@canonical.com>
 #         Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017-2018 Canonical
+# Copyright (C) 2017-2020 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -83,7 +83,6 @@ CMD = [
     "--direct=1",
     "--gtod_reduce=1",
     "--name=fio_test",
-    "--bs=4k",
     "--iodepth=64",
     "--size=4G",
     "--output-format=normal,json",
@@ -106,6 +105,13 @@ REGEX = re.compile(
 """,
     re.MULTILINE | re.DOTALL | re.VERBOSE,
 )
+
+
+def get_blocksize(blockdevice):
+    """Return the block size of the block device."""
+    blockname = os.path.basename(blockdevice)
+    with open("/sys/block/%s/queue/physical_block_size" % blockname, "r") as f:
+        return int(f.read())
 
 
 def run_cmd(readwrite, result_break=True):
@@ -163,6 +169,7 @@ def run_fio(blockdevice):
     Performs random and sequential read and write tests.
     """
     CMD.append("--filename=%s" % blockdevice)
+    CMD.append("--bs=%s" % get_blocksize(blockdevice))
     random_read = run_cmd("randread")
     sequential_read = run_cmd("read")
     random_write = run_cmd("randwrite")
