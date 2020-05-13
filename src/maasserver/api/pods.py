@@ -1,9 +1,9 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Pod`."""
 
-__all__ = ["PodHandler", "PodsHandler"]
+__all__ = ["PodHandler", "PodsHandler", "VmHostHandler", "VmHostsHandler"]
 
 from django.core.exceptions import PermissionDenied
 from formencode.validators import String
@@ -421,6 +421,18 @@ class PodHandler(OperationsHandler):
         return ("pod_handler", (pod_id,))
 
 
+# Pods are being renamed vm-hosts. For now just expose the new name on the
+# API.
+class VmHostHandler(PodHandler):
+    """
+    Manage an individual vm-host.
+
+    A vm-host is identified by its id.
+    """
+
+    api_doc_section_name = "VmHost"
+
+
 class PodsHandler(OperationsHandler):
     """Manage the collection of all the pod in the MAAS."""
 
@@ -497,3 +509,11 @@ class PodsHandler(OperationsHandler):
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+
+# Pods are being renamed vm-hosts. For now just expose the new name on the
+# API.
+class VmHostsHandler(PodsHandler):
+    """Manage the collection of all the vm-hosts in the MAAS."""
+
+    api_doc_section_name = "VmHosts"

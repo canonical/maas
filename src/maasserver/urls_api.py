@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -61,7 +61,12 @@ from maasserver.api.packagerepositories import (
     PackageRepositoryHandler,
 )
 from maasserver.api.partitions import PartitionHandler, PartitionsHandler
-from maasserver.api.pods import PodHandler, PodsHandler
+from maasserver.api.pods import (
+    PodHandler,
+    PodsHandler,
+    VmHostHandler,
+    VmHostsHandler,
+)
 from maasserver.api.rackcontrollers import (
     RackControllerHandler,
     RackControllersHandler,
@@ -150,6 +155,8 @@ device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 pod_handler = RestrictedResource(PodHandler, authentication=api_auth)
 pods_handler = RestrictedResource(PodsHandler, authentication=api_auth)
+vm_host_handler = RestrictedResource(VmHostHandler, authentication=api_auth)
+vm_hosts_handler = RestrictedResource(VmHostsHandler, authentication=api_auth)
 dhcp_snippet_handler = RestrictedResource(
     DHCPSnippetHandler, authentication=api_auth
 )
@@ -451,6 +458,10 @@ urlpatterns += [
     url(r"^devices/$", devices_handler, name="devices_handler"),
     url(r"^pods/(?P<id>[^/]+)/$", pod_handler, name="pod_handler"),
     url(r"^pods/$", pods_handler, name="pods_handler"),
+    # XXX: ltrager 2020-05-11 - Pods are being renamed vm-hosts. For now keep
+    # pods to not break API compatibility.
+    url(r"^vm-hosts/(?P<id>[^/]+)/$", vm_host_handler, name="vm_host_handler"),
+    url(r"^vm-hosts/$", vm_hosts_handler, name="vm_hosts_handler"),
     url(r"^events/$", events_handler, name="events_handler"),
     url(r"^discovery/$", discoveries_handler, name="discoveries_handler"),
     url(
