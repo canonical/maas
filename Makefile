@@ -579,7 +579,7 @@ snap:
 # Helpers for using the snap for development testing.
 #
 
-DEV_SNAP_DIR ?=  build/dev-snap
+DEV_SNAP_DIR ?= build/dev-snap
 DEV_SNAP_PRIME_DIR = $(DEV_SNAP_DIR)/prime
 DEV_SNAP_PRIME_MARKER = $(DEV_SNAP_PRIME_DIR)/snap/primed
 

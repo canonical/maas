@@ -22,6 +22,10 @@ plugs:
     content: maas-cli
     target: $SNAP/maas-cli/lib
     default-provider: maas-cli
+  test-db-socket:
+    interface: content
+    content: db-socket
+    target: $SNAP_COMMON/test-db-socket
 
 apps:
   supervisor:
