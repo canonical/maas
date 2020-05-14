@@ -35,18 +35,21 @@ class ArgumentParser(argparse.ArgumentParser):
         )
         super(ArgumentParser, self).__init__(*args, **kwargs)
 
-    def add_subparsers(self):
-        raise NotImplementedError("add_subparsers has been disabled")
+    def add_subparsers(self, title="drill down", metavar="COMMAND", **kwargs):
+        assert not hasattr(
+            self, "__subparsers"
+        ), "Only one group of subparsers allowed."
+        self.__subparsers = super().add_subparsers(
+            title=title, metavar=metavar, **kwargs
+        )
+        return self.__subparsers
 
     @property
     def subparsers(self):
         try:
             return self.__subparsers
         except AttributeError:
-            parent = super(ArgumentParser, self)
-            self.__subparsers = parent.add_subparsers(title="drill down")
-            self.__subparsers.metavar = "COMMAND"
-            return self.__subparsers
+            return self.add_subparsers()
 
     def error(self, message):
         """Make the default error messages more helpful

@@ -399,11 +399,35 @@ class TestCmdInit(MAASTestCase):
         self.patch(snappy.cmd_init, "_finalize_init")
 
         self.mock_read_input.side_effect = [
-            "http://localhost:5240/MAAS",
             "localhost",
             "db",
             "maas",
             "pwd",
+            "http://localhost:5240/MAAS",
+        ]
+        options = self.parser.parse_args(["region+rack"])
+        self.cmd(options)
+        self.mock_maas_configuration().update.assert_called_once_with(
+            {
+                "maas_url": "http://localhost:5240/MAAS",
+                "database_host": "localhost",
+                "database_name": "db",
+                "database_user": "maas",
+                "database_pass": "pwd",
+            }
+        )
+
+    def test_init_snap_db_options_prompt_deprecated(self):
+        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        self.patch(snappy, "set_rpc_secret")
+        self.patch(snappy.cmd_init, "_finalize_init")
+
+        self.mock_read_input.side_effect = [
+            "localhost",
+            "db",
+            "maas",
+            "pwd",
+            "http://localhost:5240/MAAS",
         ]
         options = self.parser.parse_args(["--mode=region+rack"])
         self.cmd(options)
@@ -423,11 +447,38 @@ class TestCmdInit(MAASTestCase):
         self.patch(snappy.cmd_init, "_finalize_init")
 
         self.mock_read_input.side_effect = [
-            "http://localhost:5240/MAAS",
             "localhost",
             "db",
             "maas",
             "pwd",
+            "http://localhost:5240/MAAS",
+        ]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-port", "5432"]
+        )
+        self.cmd(options)
+        self.mock_maas_configuration().update.assert_called_once_with(
+            {
+                "maas_url": "http://localhost:5240/MAAS",
+                "database_host": "localhost",
+                "database_name": "db",
+                "database_user": "maas",
+                "database_pass": "pwd",
+                "database_port": 5432,
+            }
+        )
+
+    def test_init_db_options_port_deprecated(self):
+        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        self.patch(snappy, "set_rpc_secret")
+        self.patch(snappy.cmd_init, "_finalize_init")
+
+        self.mock_read_input.side_effect = [
+            "localhost",
+            "db",
+            "maas",
+            "pwd",
+            "http://localhost:5240/MAAS",
         ]
         options = self.parser.parse_args(
             ["--mode=region+rack", "--database-port", "5432"]

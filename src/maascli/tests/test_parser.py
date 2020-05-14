@@ -16,9 +16,15 @@ from maastesting.testcase import MAASTestCase
 class TestArgumentParser(MAASTestCase):
     """Tests for `ArgumentParser`."""
 
-    def test_add_subparsers_disabled(self):
+    def test_add_subparsers_single_only(self):
         parser = ArgumentParser()
-        self.assertRaises(NotImplementedError, parser.add_subparsers)
+        parser.add_subparsers()
+        self.assertRaises(AssertionError, parser.add_subparsers)
+
+    def test_add_subparsers_returns_subparsers(self):
+        parser = ArgumentParser()
+        added_subparsers = parser.add_subparsers()
+        self.assertIs(added_subparsers, parser.subparsers)
 
     def test_subparsers_property(self):
         parser = ArgumentParser()
