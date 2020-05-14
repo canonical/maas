@@ -581,16 +581,18 @@ snap:
 
 DEV_SNAP_DIR ?=  build/dev-snap
 DEV_SNAP_PRIME_DIR = $(DEV_SNAP_DIR)/prime
+DEV_SNAP_PRIME_MARKER = $(DEV_SNAP_PRIME_DIR)/snap/primed
 
 $(DEV_SNAP_DIR): ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix $(DEV_SNAP_DIR)/
 	git submodule foreach --recursive 'git checkout-index -a --prefix $(PWD)/$(DEV_SNAP_DIR)/$$sm_path/'
 
-$(DEV_SNAP_PRIME_DIR): $(DEV_SNAP_DIR)
+$(DEV_SNAP_PRIME_MARKER): $(DEV_SNAP_DIR)
 	cd $(DEV_SNAP_DIR) && $(snapcraft) prime --destructive-mode
+	touch $@
 
 sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
-sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_DIR)
+sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'machine-resources' --exclude '*.pyc' \
 		--exclude '__pycache__' \
