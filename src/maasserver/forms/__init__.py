@@ -530,7 +530,7 @@ def clean_distro_series_field(form, field, os_field):
     if new_distro_series is None or "/" not in new_distro_series:
         return new_distro_series
     os, release = new_distro_series.split("/", 1)
-    if os_field in form.cleaned_data:
+    if form.cleaned_data.get(os_field):
         new_os = form.cleaned_data[os_field]
         if os != new_os:
             raise ValidationError(

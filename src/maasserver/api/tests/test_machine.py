@@ -1169,6 +1169,27 @@ class TestMachineAPI(APITestCase.ForUser):
             ).exists()
         )
 
+    def test_POST_deploy_distro_series(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        self.patch(auth, "validate_user_external_auth").return_value = True
+        # The api allows the updating of a Machine.
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            power_type="manual",
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self),
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "distro_series": "ubuntu/bionic"},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)["system_id"]
+        )
+
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, "_stop")
         owned_statuses = [NODE_STATUS.RESERVED, NODE_STATUS.ALLOCATED]
