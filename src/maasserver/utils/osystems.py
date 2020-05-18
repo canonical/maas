@@ -319,12 +319,12 @@ def validate_osystem_and_distro_series(osystem, distro_series):
     found_osystem = get_osystem_from_osystems(usable_osystems, osystem)
     if found_osystem is None:
         raise ValidationError(
-            "%s is not a support operating system." % osystem
+            "%s is not a supported operating system." % osystem
         )
     found_release = get_release_from_osystem(found_osystem, release)
     if found_release is None:
         raise ValidationError(
-            "%s/%s is not a support operating system and release "
+            "%s/%s is not a supported operating system and release "
             "combination." % (osystem, release)
         )
     return osystem, release

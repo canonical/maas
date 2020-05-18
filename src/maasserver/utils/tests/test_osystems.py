@@ -428,7 +428,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             ValidationError, validate_osystem_and_distro_series, os, release
         )
         self.assertEqual(
-            "%s is not a support operating system." % os, error.message
+            "%s is not a supported operating system." % os, error.message
         )
 
     def test__raises_error_if_not_supported_release(self):
@@ -442,7 +442,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             release,
         )
         self.assertEqual(
-            "%s/%s is not a support operating system and release "
+            "%s/%s is not a supported operating system and release "
             "combination." % (osystem["name"], release),
             error.message,
         )

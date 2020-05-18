@@ -712,7 +712,8 @@ class TestDeployAction(MAASServerTestCase):
             NodeActionError, Deploy(node, user, request).execute, **extra
         )
         self.assertEqual(
-            "{} is not a support operating system.".format(os_name), str(error)
+            "{} is not a supported operating system.".format(os_name),
+            str(error),
         )
 
     def test_Deploy_sets_osystem_and_series(self):
