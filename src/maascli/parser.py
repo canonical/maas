@@ -21,6 +21,8 @@ class ArgumentParser(argparse.ArgumentParser):
     a lazily evaluated `subparsers` property.
     """
 
+    __subparsers = None
+
     def _print_error(self, message):
         """Print the specified message to stderr.
 
@@ -36,8 +38,8 @@ class ArgumentParser(argparse.ArgumentParser):
         super(ArgumentParser, self).__init__(*args, **kwargs)
 
     def add_subparsers(self, title="drill down", metavar="COMMAND", **kwargs):
-        assert not hasattr(
-            self, "__subparsers"
+        assert (
+            self.__subparsers is None
         ), "Only one group of subparsers allowed."
         self.__subparsers = super().add_subparsers(
             title=title, metavar=metavar, **kwargs
@@ -46,9 +48,9 @@ class ArgumentParser(argparse.ArgumentParser):
 
     @property
     def subparsers(self):
-        try:
+        if self.__subparsers is not None:
             return self.__subparsers
-        except AttributeError:
+        else:
             return self.add_subparsers()
 
     def error(self, message):
