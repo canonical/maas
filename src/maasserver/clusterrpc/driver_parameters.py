@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -140,6 +140,20 @@ def add_power_driver_parameters(
     }
     if queryable is not None:
         params["queryable"] = queryable
+    # Add default values if the BMC is also a Pod.
+    if driver_type == "pod":
+        # Avoid circular dependencies
+        from maasserver.forms.pods import (
+            DEFAULT_COMPOSED_CORES,
+            DEFAULT_COMPOSED_MEMORY,
+            DEFAULT_COMPOSED_STORAGE,
+        )
+
+        params["defaults"] = {
+            "cores": DEFAULT_COMPOSED_CORES,
+            "memory": DEFAULT_COMPOSED_MEMORY,
+            "storage": DEFAULT_COMPOSED_STORAGE,
+        }
     parameters_set.append(params)
 
 

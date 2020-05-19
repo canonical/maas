@@ -3,7 +3,12 @@
 
 """Pod forms."""
 
-__all__ = ["PodForm"]
+__all__ = [
+    "DEFAULT_COMPOSED_CORES",
+    "DEFAULT_COMPOSED_MEMORY",
+    "DEFAULT_COMPOSED_STORAGE",
+    "PodForm",
+]
 
 from functools import partial
 from urllib.parse import urlparse
@@ -81,6 +86,13 @@ from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
 
 log = LegacyLogger()
+
+
+DEFAULT_COMPOSED_CORES = 1
+# Size is in MB
+DEFAULT_COMPOSED_MEMORY = 2048
+# Size is in GB
+DEFAULT_COMPOSED_STORAGE = 8
 
 
 def make_unique_hostname():
@@ -502,11 +514,14 @@ class ComposeMachineForm(forms.Form):
         self.fields["cores"] = IntegerField(
             min_value=1, max_value=self.pod.hints.cores, required=False
         )
-        self.initial["cores"] = 1
+        self.initial["cores"] = DEFAULT_COMPOSED_CORES
+        # LP:1877126 - Focal requires 2048M of memory to deploy, older
+        # versions of Ubuntu only need 1024M. The default is 2048M so all
+        # versions of Ubuntu work but users may use 1024M.
         self.fields["memory"] = IntegerField(
             min_value=1024, max_value=self.pod.hints.memory, required=False
         )
-        self.initial["memory"] = 1024
+        self.initial["memory"] = DEFAULT_COMPOSED_MEMORY
         self.fields["architecture"] = ChoiceField(
             choices=[(arch, arch) for arch in self.pod.architectures],
             required=False,
@@ -548,7 +563,7 @@ class ComposeMachineForm(forms.Form):
         self.fields["storage"] = CharField(
             validators=[storage_validator], required=False
         )
-        self.initial["storage"] = "root:8(local)"
+        self.initial["storage"] = f"root:{DEFAULT_COMPOSED_STORAGE}(local)"
         self.fields["interfaces"] = LabeledConstraintMapField(
             validators=[interfaces_validator],
             label="Interface constraints",
@@ -766,7 +781,7 @@ class ComposeMachineForm(forms.Form):
                 power_type,
                 power_paramaters,
                 requested_machine,
-                **kwargs
+                **kwargs,
             )
             return requested_machine, result
 

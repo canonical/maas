@@ -36,6 +36,9 @@ from maasserver.forms import pods as pods_module
 from maasserver.forms.pods import (
     ComposeMachineForm,
     ComposeMachineForPodsForm,
+    DEFAULT_COMPOSED_CORES,
+    DEFAULT_COMPOSED_MEMORY,
+    DEFAULT_COMPOSED_STORAGE,
     get_known_host_interfaces,
     PodForm,
 )
@@ -900,8 +903,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         composed_machine = DiscoveredMachine(
             hostname=factory.make_name("hostname"),
             architecture=pod.architectures[0],
-            cores=1,
-            memory=1024,
+            cores=DEFAULT_COMPOSED_CORES,
+            memory=DEFAULT_COMPOSED_MEMORY,
             cpu_speed=300,
             block_devices=[],
             interfaces=[],
@@ -1034,14 +1037,18 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 IsInstance(RequestedMachine),
                 MatchesStructure(
                     architecture=Equals(pod.architectures[0]),
-                    cores=Equals(1),
-                    memory=Equals(1024),
+                    cores=Equals(DEFAULT_COMPOSED_CORES),
+                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
                     cpu_speed=Is(None),
                     block_devices=MatchesListwise(
                         [
                             MatchesAll(
                                 IsInstance(RequestedMachineBlockDevice),
-                                MatchesStructure(size=Equals(8 * (1000 ** 3))),
+                                MatchesStructure(
+                                    size=Equals(
+                                        DEFAULT_COMPOSED_STORAGE * (1000 ** 3)
+                                    )
+                                ),
                             )
                         ]
                     ),
@@ -1959,8 +1966,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             MatchesAll(
                 IsInstance(Machine),
                 MatchesStructure(
-                    cpu_count=Equals(1),
-                    memory=Equals(1024),
+                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
+                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
                     cpu_speed=Equals(300),
                 ),
             ),
@@ -2069,8 +2076,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             MatchesAll(
                 IsInstance(Machine),
                 MatchesStructure(
-                    cpu_count=Equals(1),
-                    memory=Equals(1024),
+                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
+                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
                     cpu_speed=Equals(300),
                 ),
             ),
@@ -2106,8 +2113,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             MatchesAll(
                 IsInstance(Machine),
                 MatchesStructure(
-                    cpu_count=Equals(1),
-                    memory=Equals(1024),
+                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
+                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
                     cpu_speed=Equals(300),
                 ),
             ),
@@ -2249,7 +2256,12 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             "Unable to compose KVM instance in '%s'. "
             "Memory overcommit ratio is %s and there are %s "
             "available resources; %s requested."
-            % (pod.name, pod.memory_over_commit_ratio, pod.memory, 1024),
+            % (
+                pod.name,
+                pod.memory_over_commit_ratio,
+                pod.memory,
+                DEFAULT_COMPOSED_MEMORY,
+            ),
             str(error),
         )
 
@@ -2323,8 +2335,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             MatchesAll(
                 IsInstance(Machine),
                 MatchesStructure(
-                    cpu_count=Equals(1),
-                    memory=Equals(1024),
+                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
+                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
                     cpu_speed=Equals(300),
                 ),
             ),
