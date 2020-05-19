@@ -276,7 +276,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEquals(-1, discovered_pod.cores)
         self.assertEquals(-1, discovered_pod.cpu_speed)
         self.assertEquals(-1, discovered_pod.memory)
-        self.assertEquals(-1, discovered_pod.local_storage)
+        self.assertEquals(0, discovered_pod.local_storage)
         self.assertEquals(-1, discovered_pod.local_disks)
         self.assertEquals(-1, discovered_pod.iscsi_storage)
         self.assertEquals(-1, discovered_pod.hints.cores)
@@ -404,9 +404,9 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertThat(
             discovered_machine.block_devices[0],
             MatchesStructure.byEquality(
-                model=None,
-                serial=None,
-                id_path=lxd_module.LXD_VM_ID_PATH + "root",
+                model="QEMU HARDDISK",
+                serial="lxd_root",
+                id_path="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_root",
                 size=20 * 1000 ** 3,
                 block_size=512,
                 tags=[],

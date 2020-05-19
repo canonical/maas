@@ -1563,7 +1563,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals(8, pod.hints.cores)
         self.assertEquals(2400, pod.hints.cpu_speed)
         self.assertEquals(15918, pod.hints.memory)
-        self.assertEquals(6513285316608, pod.hints.local_storage)
         self.assertEquals(2, pod.hints.local_disks)
         self.assertEquals(0, pod.hints.iscsi_storage)
 

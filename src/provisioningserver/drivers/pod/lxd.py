@@ -51,8 +51,6 @@ maaslog = get_maas_logger("drivers.pod.lxd")
 # LXD status codes
 LXD_VM_POWER_STATE = {101: "on", 102: "off", 103: "on", 110: "off"}
 
-# LXD vm disk path
-LXD_VM_ID_PATH = "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_"
 
 # LXD byte suffixes.
 # https://lxd.readthedocs.io/en/latest/instances/#units-for-storage-and-network-limits
@@ -218,6 +216,16 @@ class LXDPodDriver(PodDriver):
 
             device_info = expanded_devices[device]
             if device_info["type"] == "disk":
+                # When LXD creates a QEMU disk the serial is always
+                # lxd_{device name}. The device_name is defined by
+                # the LXD profile or when adding a device. This is
+                # commonly "root" for the first disk. The model and
+                # serial must be correctly defined here otherwise
+                # MAAS will delete the disk created during composition
+                # which results in losing the storage pool link. Without
+                # the storage pool link MAAS can't determine how much
+                # of the storage pool has been used.
+                serial = f"lxd_{device}"
                 # Default disk size is 10GB.
                 size = convert_lxd_byte_suffixes(
                     device_info.get("size", "10GB")
@@ -225,9 +233,9 @@ class LXDPodDriver(PodDriver):
                 storage_pool = device_info.get("pool")
                 block_devices.append(
                     DiscoveredMachineBlockDevice(
-                        model=None,
-                        serial=None,
-                        id_path=LXD_VM_ID_PATH + device,
+                        model="QEMU HARDDISK",
+                        serial=serial,
+                        id_path=f"/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_{serial}",
                         size=size,
                         tags=tags,
                         storage_pool=storage_pool,
@@ -382,12 +390,15 @@ class LXDPodDriver(PodDriver):
         # Discover Storage Pools.
         pools = []
         storage_pools = yield deferToThread(client.storage_pools.all)
+        local_storage = 0
         for storage_pool in storage_pools:
             discovered_storage_pool = self.get_discovered_pod_storage_pool(
                 storage_pool
             )
+            local_storage += discovered_storage_pool.storage
             pools.append(discovered_storage_pool)
         discovered_pod.storage_pools = pools
+        discovered_pod.local_storage = local_storage
 
         # Discover VMs.
         machines = []

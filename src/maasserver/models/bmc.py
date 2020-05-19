@@ -1467,7 +1467,6 @@ class Pod(BMC):
         self.cores = hints.cores = 0
         self.cpu_speed = hints.cpu_speed = 0
         self.memory = hints.memory = 0
-        self.local_storage = hints.local_storage = 0
         self.local_disks = hints.local_disks = 0
         self.iscsi_storage = hints.iscsi_storage = 0
         # Set the hints for the Pod to the total amount for all nodes in a
@@ -1488,8 +1487,6 @@ class Pod(BMC):
                 self.cpu_speed = hints.cpu_speed
             for bd in node.blockdevice_set.all():
                 if bd.type == "physical":
-                    hints.local_storage += bd.size
-                    self.local_storage += bd.size
                     hints.local_disks += 1
                     self.local_disks += 1
                 elif bd.type == "iscsi":

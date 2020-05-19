@@ -2223,7 +2223,6 @@ class TestPod(MAASServerTestCase):
         self.assertEquals(pod.hints.cores, cores)
         self.assertEquals(pod.hints.cpu_speed, int(cpu_speed))
         self.assertEquals(pod.hints.memory, memory)
-        self.assertEquals(pod.hints.local_storage, local_storage)
         self.assertEquals(pod.hints.local_disks, len(nodes))
         self.assertEquals(pod.hints.iscsi_storage, iscsi_storage)
 
