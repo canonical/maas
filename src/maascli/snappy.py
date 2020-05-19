@@ -27,9 +27,11 @@ import threading
 import time
 
 import netifaces
+import psycopg2
+from psycopg2.extensions import parse_dsn
 import tempita
 
-from maascli.command import Command
+from maascli.command import Command, CommandError
 from maascli.configfile import MAASConfiguration
 from maascli.init import (
     add_candid_options,
@@ -65,57 +67,40 @@ ARGUMENTS = OrderedDict(
             },
         ),
         (
-            "database-host",
+            "database-uri",
             {
                 "help": (
-                    "Hostname or IP address that should be used to communicate to "
-                    "the database. Only used when in 'region+rack' or "
-                    "'region' mode."
+                    "URI for the MAAS Postgres database in the form of "
+                    "postgres://user:pass@host:port/dbname or "
+                    "maas-test-db:///. For maas-test-db:/// to work, the "
+                    "maas-test-db snap needs to be installed and connected"
                 ),
                 "for_mode": ["region+rack", "region"],
             },
+        ),
+        (
+            "database-host",
+            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
         ),
         (
             "database-port",
             {
                 "type": int,
-                "help": (
-                    "Optional option to set the port that should be used to "
-                    "communicate to the database. Only used when in "
-                    "'region+rack' or 'region' mode."
-                ),
+                "help": argparse.SUPPRESS,
                 "for_mode": ["region+rack", "region"],
             },
         ),
         (
             "database-name",
-            {
-                "help": (
-                    "Database name for MAAS to use. Only used when in "
-                    "'region+rack' or 'region' mode."
-                ),
-                "for_mode": ["region+rack", "region"],
-            },
+            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
         ),
         (
             "database-user",
-            {
-                "help": (
-                    "Database username to authenticate to the database. Only used "
-                    "when in 'region+rack' or 'region' mode."
-                ),
-                "for_mode": ["region+rack", "region"],
-            },
+            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
         ),
         (
             "database-pass",
-            {
-                "help": (
-                    "Database password to authenticate to the database. Only used "
-                    "when in 'region+rack' or 'region' mode."
-                ),
-                "for_mode": ["region+rack", "region"],
-            },
+            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
         ),
         (
             "secret",
@@ -641,31 +626,23 @@ def perform_work(msg, cmd, *args, **kwargs):
     return ret
 
 
-def required_prompt(prompt, help_text=None):
+def required_prompt(title, help_text=None, default=None):
     """Prompt for required input."""
     value = None
+    if default is not None:
+        default_text = f" [default={default}]"
+    else:
+        default_text = ""
+    prompt = f"{title}{default_text}: "
     while not value or value == "help":
         value = read_input(prompt)
+        if not value and default is not None:
+            value = default
+
         if value == "help":
             if help_text:
                 print_msg(help_text)
     return value
-
-
-def prompt_for_maas_url():
-    """Prompt for the MAAS URL."""
-    default_url = get_default_url()
-    url = None
-    while not url or url == "help":
-        url = read_input("MAAS URL [default=%s]: " % default_url)
-        if not url:
-            url = default_url
-        if url == "help":
-            print_msg(
-                "URL that MAAS should use for communicate from the nodes "
-                "to MAAS and other controllers of MAAS."
-            )
-    return url
 
 
 class SnappyCommand(Command):
@@ -711,6 +688,134 @@ def monkey_patch_for_all_mode_bw_compatability(parser):
     parser._parse_known_args = _parse_known_args
 
 
+def using_deprecated_database_options(options):
+    return (
+        options.database_host is not None
+        or options.database_name is not None
+        or options.database_user is not None
+        or options.database_pass is not None
+        or options.database_port is not None
+    )
+
+
+class DatabaseSettingsError(Exception):
+    """Something was wrong with the database settings."""
+
+
+MAAS_TEST_DB_URI = "maas-test-db:///"
+
+
+def get_database_settings(options):
+    """Get the database setting to use.
+
+    If some of the deprecated --database-foo options were used, it
+    prompts for the missing data.
+
+    Else, it will either read --database-uri from the options, or prompt
+    for it. Whem prompting for it, it will default to the maas-test-db
+    URI if the maas-test-db snap is installed and connected.
+    """
+
+    if using_deprecated_database_options(options):
+        if options.database_uri:
+            raise DatabaseSettingsError(
+                "Can't use deprecated --database-* parameters together with "
+                "--database-uri"
+            )
+        database_host = options.database_host
+        if not database_host:
+            database_host = required_prompt(
+                "Database host", help_text=ARGUMENTS["database-host"]["help"]
+            )
+        database_name = options.database_name
+        if not database_name:
+            database_name = required_prompt(
+                "Database name", help_text=ARGUMENTS["database-name"]["help"]
+            )
+        database_user = options.database_user
+        if not database_user:
+            database_user = required_prompt(
+                "Database user", help_text=ARGUMENTS["database-user"]["help"]
+            )
+        database_pass = options.database_pass
+        if not database_pass:
+            database_pass = required_prompt(
+                "Database password",
+                help_text=ARGUMENTS["database-pass"]["help"],
+            )
+        database_settings = {
+            "database_host": database_host,
+            "database_name": database_name,
+            "database_user": database_user,
+            "database_pass": database_pass,
+        }
+        # Add the port to the configuration if exists. By default
+        # MAAS handles picking the port automatically in the backend
+        # if none provided.
+        if options.database_port is not None:
+            database_settings["database_port"] = options.database_port
+    else:
+        database_uri = options.database_uri
+        test_db_socket = os.path.join(
+            os.environ["SNAP_COMMON"], "test-db-socket"
+        )
+        test_db_uri = f"postgres:///maasdb?host={test_db_socket}&user=maas"
+        if database_uri is None:
+            default_uri = None
+            if os.path.exists(test_db_socket):
+                default_uri = MAAS_TEST_DB_URI
+            database_uri = required_prompt(
+                f"Database URI",
+                default=default_uri,
+                help_text=ARGUMENTS["database-uri"]["help"],
+            )
+            if not database_uri:
+                database_uri = test_db_uri
+        # parse_dsn gives very confusing error messages if you pass in
+        # an invalid URI, so let's make sure the URI is of the form
+        # postgres://... before calling parse_dsn.
+        if database_uri != MAAS_TEST_DB_URI and not database_uri.startswith(
+            "postgres://"
+        ):
+            raise DatabaseSettingsError(
+                f"Database URI needs to be either '{MAAS_TEST_DB_URI}' or "
+                "start with 'postgres://'"
+            )
+        if database_uri == MAAS_TEST_DB_URI:
+            database_uri = test_db_uri
+        try:
+            parsed_dsn = parse_dsn(database_uri)
+        except psycopg2.ProgrammingError as error:
+            raise DatabaseSettingsError(
+                "Error parsing database URI: " + str(error).strip()
+            )
+        unsupported_params = set(parsed_dsn.keys()).difference(
+            ["user", "password", "host", "dbname", "port"]
+        )
+        if unsupported_params:
+            raise DatabaseSettingsError(
+                "Error parsing database URI: Unsupported parameters: "
+                + ", ".join(sorted(unsupported_params))
+            )
+        if "user" not in parsed_dsn:
+            raise DatabaseSettingsError(
+                f"No user found in URI: {database_uri}"
+            )
+        if "host" not in parsed_dsn:
+            parsed_dsn["host"] = "localhost"
+        if "dbname" not in parsed_dsn:
+            parsed_dsn["dbname"] = parsed_dsn["user"]
+        database_settings = {
+            "database_host": parsed_dsn["host"],
+            "database_name": parsed_dsn["dbname"],
+            "database_user": parsed_dsn.get("user", ""),
+            "database_pass": parsed_dsn.get("password"),
+        }
+        if "port" in parsed_dsn:
+            database_settings["database_port"] = int(parsed_dsn["port"])
+    return database_settings
+
+
 class cmd_init(SnappyCommand):
     """Initialise MAAS in the specified run mode.
 
@@ -718,10 +823,12 @@ class cmd_init(SnappyCommand):
     PostgreSQL database to connect to.
 
     If you want to set up PostgreSQL for a non-production deployment on
-    this machine, and configure it for use with MAAS, you can run the
-    following command:
+    this machine, and configure it for use with MAAS, you can install
+    the maas-test-db snap and connect it before running 'maas init':
 
-    sudo /snap/maas/current/helpers/maas-database-setup
+        sudo snap install --edge maas-test-db
+        sudo snap connect maas:test-db-socket maas-test-db
+        sudo maas init region+rack --database-uri maas-test-db:///
 
     """
 
@@ -839,51 +946,36 @@ class cmd_init(SnappyCommand):
             if reinit_db == "no":
                 return 0
 
-        database_host = database_name = None
-        database_user = database_pass = None
         rpc_secret = None
         if mode == "all":
-            database_host = os.path.join(get_base_db_dir(), "sockets")
-            database_name = "maasdb"
-            database_user = "maas"
-            database_pass = "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(10)
-            )
-
-        if mode in ["region", "region+rack"]:
-            database_host = options.database_host
-            if not database_host:
-                database_host = required_prompt(
-                    "Database host: ",
-                    help_text=ARGUMENTS["database-host"]["help"],
-                )
-            database_name = options.database_name
-            if not database_name:
-                database_name = required_prompt(
-                    "Database name: ",
-                    help_text=ARGUMENTS["database-name"]["help"],
-                )
-            database_user = options.database_user
-            if not database_user:
-                database_user = required_prompt(
-                    "Database user: ",
-                    help_text=ARGUMENTS["database-user"]["help"],
-                )
-            database_pass = options.database_pass
-            if not database_pass:
-                database_pass = required_prompt(
-                    "Database password: ",
-                    help_text=ARGUMENTS["database-pass"]["help"],
-                )
+            database_settings = {
+                "database_host": os.path.join(get_base_db_dir(), "sockets"),
+                "database_name": "maasdb",
+                "database_user": "maas",
+                "database_pass": "".join(
+                    random.choice(string.ascii_uppercase + string.digits)
+                    for _ in range(10)
+                ),
+            }
+        elif mode in ["region", "region+rack"]:
+            try:
+                database_settings = get_database_settings(options)
+            except DatabaseSettingsError as error:
+                raise CommandError(str(error))
+        else:
+            database_settings = {}
         maas_url = options.maas_url
         if mode != "none" and not maas_url:
-            maas_url = prompt_for_maas_url()
+            maas_url = required_prompt(
+                "MAAS URL",
+                default=get_default_url(),
+                help_text=ARGUMENTS["maas-url"]["help"],
+            )
         if mode == "rack":
             rpc_secret = options.secret
             if not rpc_secret:
                 rpc_secret = required_prompt(
-                    "Secret: ", help_text=ARGUMENTS["secret"]["help"]
+                    "Secret", help_text=ARGUMENTS["secret"]["help"]
                 )
 
         # Stop all services if in another mode.
@@ -896,19 +988,8 @@ class cmd_init(SnappyCommand):
             perform_work("Stopping services", stop_services)
 
         # Configure the settings.
-        settings = {
-            "maas_url": maas_url,
-            "database_host": database_host,
-            "database_name": database_name,
-            "database_user": database_user,
-            "database_pass": database_pass,
-        }
-
-        # Add the port to the configuration if exists. By default
-        # MAAS handles picking the port automatically in the backend
-        # if none provided.
-        if mode in ["region+rack", "region"] and options.database_port:
-            settings["database_port"] = options.database_port
+        settings = {"maas_url": maas_url}
+        settings.update(database_settings)
 
         MAASConfiguration().update(settings)
         set_rpc_secret(rpc_secret)

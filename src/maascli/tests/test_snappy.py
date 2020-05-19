@@ -17,6 +17,7 @@ import netifaces
 from testtools.matchers import Contains, Not
 
 from maascli import snappy
+from maascli.command import CommandError
 from maascli.parser import ArgumentParser
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -382,12 +383,13 @@ class TestCmdInit(MAASTestCase):
         self.parser = ArgumentParser()
         self.cmd = snappy.cmd_init(self.parser)
         self.patch(os, "getuid").return_value = 0
+        self.snap_common = self.make_dir()
         self.patch(
             os,
             "environ",
             {
                 "SNAP": "/snap/maas",
-                "SNAP_COMMON": "/snap/maas/common",
+                "SNAP_COMMON": self.snap_common,
                 "SNAP_DATA": "/snap/maas/data",
             },
         )
@@ -399,10 +401,7 @@ class TestCmdInit(MAASTestCase):
         self.patch(snappy.cmd_init, "_finalize_init")
 
         self.mock_read_input.side_effect = [
-            "localhost",
-            "db",
-            "maas",
-            "pwd",
+            "postgres://maas:pwd@localhost/db",
             "http://localhost:5240/MAAS",
         ]
         options = self.parser.parse_args(["region+rack"])
@@ -423,10 +422,7 @@ class TestCmdInit(MAASTestCase):
         self.patch(snappy.cmd_init, "_finalize_init")
 
         self.mock_read_input.side_effect = [
-            "localhost",
-            "db",
-            "maas",
-            "pwd",
+            "postgres://maas:pwd@localhost/db",
             "http://localhost:5240/MAAS",
         ]
         options = self.parser.parse_args(["--mode=region+rack"])
@@ -468,6 +464,29 @@ class TestCmdInit(MAASTestCase):
             }
         )
 
+    def test_init_db_parse_error(self):
+        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        self.patch(snappy, "set_rpc_secret")
+        self.patch(snappy.cmd_init, "_finalize_init")
+
+        self.mock_read_input.side_effect = [
+            "localhost",
+            "db",
+            "maas",
+            "pwd",
+            "http://localhost:5240/MAAS",
+        ]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "invalid"]
+        )
+        error = self.assertRaises(CommandError, self.cmd, options)
+        self.assertEqual(
+            "Database URI needs to be either 'maas-test-db:///' or start "
+            "with 'postgres://'",
+            str(error),
+        )
+        self.mock_maas_configuration().update.assert_not_called()
+
     def test_init_db_options_port_deprecated(self):
         self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
         self.patch(snappy, "set_rpc_secret")
@@ -493,4 +512,296 @@ class TestCmdInit(MAASTestCase):
                 "database_pass": "pwd",
                 "database_port": 5432,
             }
+        )
+
+    def test_get_database_settings_uri_and_deprecated(self):
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "postgres://dbuser:pwd@dbhost/",
+                "--database-name",
+                "dbname",
+            ]
+        )
+        error = self.assertRaises(
+            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+        )
+        self.assertEqual(
+            "Can't use deprecated --database-* parameters together with "
+            "--database-uri",
+            str(error),
+        )
+
+    def test_get_database_settings_no_prompt_dsn(self):
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "postgres://dbuser:pwd@dbhost/dbname",
+            ]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "dbhost",
+                "database_name": "dbname",
+                "database_user": "dbuser",
+                "database_pass": "pwd",
+            },
+            settings,
+        )
+
+    def test_get_database_settings_prompt_dsn(self):
+        self.mock_read_input.side_effect = [
+            "postgres://dbuser:pwd@dbhost/dbname"
+        ]
+        options = self.parser.parse_args(["region+rack"])
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "dbhost",
+                "database_name": "dbname",
+                "database_user": "dbuser",
+                "database_pass": "pwd",
+            },
+            settings,
+        )
+
+    def test_get_database_settings_maas_test_db_prompt_default(self):
+        options = self.parser.parse_args(["region+rack"])
+        os.mkdir(os.path.join(self.snap_common, "test-db-socket"))
+        self.mock_read_input.side_effect = [""]
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": f"{self.snap_common}/test-db-socket",
+                "database_name": "maasdb",
+                "database_user": "maas",
+                "database_pass": None,
+            },
+            settings,
+        )
+
+    def test_get_database_settings_maas_test_db_prompt_no_default(self):
+        options = self.parser.parse_args(["region+rack"])
+        self.mock_read_input.side_effect = ["", "postgres:///?user=foo"]
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "localhost",
+                "database_name": "foo",
+                "database_user": "foo",
+                "database_pass": None,
+            },
+            settings,
+        )
+
+    def test_get_database_settings_maas_test_db(self):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "maas-test-db:///"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": f"{self.snap_common}/test-db-socket",
+                "database_name": "maasdb",
+                "database_user": "maas",
+                "database_pass": None,
+            },
+            settings,
+        )
+
+    def test_get_database_settings_minimal_postgres(self):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "postgres:///?user=myuser"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "localhost",
+                "database_name": "myuser",
+                "database_user": "myuser",
+                "database_pass": None,
+            },
+            settings,
+        )
+
+    def test_get_database_settings_full_postgres(self):
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "postgres://myuser:pwd@myhost:1234/mydb",
+            ]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "myhost",
+                "database_name": "mydb",
+                "database_user": "myuser",
+                "database_pass": "pwd",
+                "database_port": 1234,
+            },
+            settings,
+        )
+
+    def test_get_database_settings_invalid_parameters(self):
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "postgres://myuser:pwd@myhost:1234/mydb?foo=bar",
+            ]
+        )
+        error = self.assertRaises(
+            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+        )
+        self.assertEqual(
+            "Error parsing database URI: "
+            'invalid dsn: invalid URI query parameter: "foo"',
+            str(error),
+        )
+
+    def test_get_database_settings_unsupported_parameters(self):
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "postgres://myuser:pwd@myhost/?passfile=foo&options=bar",
+            ]
+        )
+        error = self.assertRaises(
+            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+        )
+        self.assertEqual(
+            "Error parsing database URI: "
+            "Unsupported parameters: options, passfile",
+            str(error),
+        )
+
+    def test_get_database_settings_missing_user(self):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "postgres://myhost/"]
+        )
+        error = self.assertRaises(
+            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+        )
+        self.assertEqual(
+            "No user found in URI: postgres://myhost/", str(error)
+        )
+
+    def test_get_database_settings_invalid_maas_test_db(self):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "maas-test-db:///foo"]
+        )
+        error = self.assertRaises(
+            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+        )
+        self.assertEqual(
+            "Database URI needs to be either 'maas-test-db:///' or start with "
+            "'postgres://'",
+            str(error),
+        )
+
+    def test_get_database_settings_incomplete_postgres_uri(self):
+        # The URI needs to start with at least postgres:// before we
+        # even try to parse it.
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "postgres:/"]
+        )
+        error = self.assertRaises(
+            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+        )
+        self.assertEqual(
+            "Database URI needs to be either 'maas-test-db:///' or start with "
+            "'postgres://'",
+            str(error),
+        )
+
+    def test_deprecated_get_database_settings_prompt_all_but_host(self):
+        self.mock_read_input.side_effect = ["dbname", "dbuser", "pwd"]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-host", "myhost"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "myhost",
+                "database_name": "dbname",
+                "database_user": "dbuser",
+                "database_pass": "pwd",
+            },
+            settings,
+        )
+
+    def test_deprecated_get_database_settings_prompt_all_but_name(self):
+        self.mock_read_input.side_effect = ["dbhost", "dbuser", "pwd"]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-name", "myname"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "dbhost",
+                "database_name": "myname",
+                "database_user": "dbuser",
+                "database_pass": "pwd",
+            },
+            settings,
+        )
+
+    def test_deprecated_get_database_settings_prompt_all_but_user(self):
+        self.mock_read_input.side_effect = ["dbhost", "dbname", "pwd"]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-user", "myuser"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "dbhost",
+                "database_name": "dbname",
+                "database_user": "myuser",
+                "database_pass": "pwd",
+            },
+            settings,
+        )
+
+    def test_deprecated_get_database_settings_prompt_all_but_pass(self):
+        self.mock_read_input.side_effect = ["dbhost", "dbname", "dbuser"]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-pass", "mypwd"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "dbhost",
+                "database_name": "dbname",
+                "database_user": "dbuser",
+                "database_pass": "mypwd",
+            },
+            settings,
+        )
+
+    def test_deprecated_get_database_settings_prompt_all_but_port(self):
+        self.mock_read_input.side_effect = [
+            "dbhost",
+            "dbname",
+            "dbuser",
+            "pwd",
+        ]
+        options = self.parser.parse_args(
+            ["region+rack", "--database-port", "1234"]
+        )
+        settings = snappy.get_database_settings(options)
+        self.assertEqual(
+            {
+                "database_host": "dbhost",
+                "database_name": "dbname",
+                "database_user": "dbuser",
+                "database_pass": "pwd",
+                "database_port": 1234,
+            },
+            settings,
         )
