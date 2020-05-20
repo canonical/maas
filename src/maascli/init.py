@@ -55,68 +55,94 @@ def deprecated_for(new_option):
     return DeprecatedAction
 
 
-def add_candid_options(parser):
+def add_candid_options(parser, suppress_help=False):
     parser.add_argument(
         "--candid-agent-file",
-        help="Agent file containing Candid authentication information",
+        help=(
+            argparse.SUPPRESS
+            if suppress_help
+            else "Agent file containing Candid authentication information"
+        ),
     )
     parser.add_argument(
         "--candid-domain",
         default=None,
         help=(
-            "The authentication domain to look up users in for the external "
+            argparse.SUPPRESS
+            if suppress_help
+            else "The authentication domain to look up users in for the external "
             "Candid server."
         ),
     )
     parser.add_argument(
         "--candid-admin-group",
         default=None,
-        help="Group of users whose members are made admins in MAAS",
+        help=(
+            argparse.SUPPRESS
+            if suppress_help
+            else "Group of users whose members are made admins in MAAS"
+        ),
     )
 
 
-def add_rbac_options(parser):
+def add_rbac_options(parser, suppress_help=False):
     parser.add_argument(
         "--rbac-url",
         default=None,
-        help="The URL for the Canonical RBAC service to use.",
+        help=(
+            argparse.SUPPRESS
+            if suppress_help
+            else "The URL for the Canonical RBAC service to use."
+        ),
     )
     parser.add_argument(
         "--rbac-service-name",
         default=None,
         help=(
-            "Optionally, the name of the RBAC service to register this MAAS "
+            argparse.SUPPRESS
+            if suppress_help
+            else "Optionally, the name of the RBAC service to register this MAAS "
             "as.  If not provided, a list with services that the user can "
             "register will be displayed, to choose from."
         ),
     )
 
 
-def add_create_admin_options(parser):
+def add_create_admin_options(parser, suppress_help=False):
     parser.add_argument(
         "--admin-username",
         default=None,
         metavar="USERNAME",
-        help="Username for the admin account.",
+        help=argparse.SUPPRESS
+        if suppress_help
+        else "Username for the admin account.",
     )
     parser.add_argument(
         "--admin-password",
         default=None,
         metavar="PASSWORD",
-        help="Force a given admin password instead of prompting.",
+        help=(
+            argparse.SUPPRESS
+            if suppress_help
+            else "Force a given admin password instead of prompting."
+        ),
     )
     parser.add_argument(
         "--admin-email",
         default=None,
         metavar="EMAIL",
-        help="Email address for the admin.",
+        help=argparse.SUPPRESS
+        if suppress_help
+        else "Email address for the admin.",
     )
     parser.add_argument(
         "--admin-ssh-import",
         default=None,
         metavar="LP_GH_USERNAME",
         help=(
-            "Import SSH keys from Launchpad (lp:user-id) or "
+            argparse.SUPPRESS
+            if suppress_help
+            else "Import SSH keys from Launchpad (lp:user-id) or "
             "Github (gh:user-id) for the admin."
         ),
     )

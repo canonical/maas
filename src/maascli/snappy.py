@@ -23,6 +23,7 @@ import signal
 import string
 import subprocess
 import sys
+from textwrap import dedent
 import threading
 import time
 
@@ -623,6 +624,7 @@ def perform_work(msg, cmd, *args, **kwargs):
     finally:
         evnt.set()
         t.join()
+    clear_line()
     return ret
 
 
@@ -879,22 +881,17 @@ class cmd_init(SnappyCommand):
             "--enable-candid",
             default=False,
             action="store_true",
-            help=(
-                "Enable configuring the use of an external Candid server. "
-                "This feature is currently experimental. "
-                "If this isn't enabled, all --candid-* arguments "
-                "will be ignored."
-            ),
+            help=argparse.SUPPRESS,
         )
         for for_mode in ["region+rack", "region"]:
-            add_candid_options(subparsers_map[for_mode])
-            add_rbac_options(subparsers_map[for_mode])
+            add_candid_options(subparsers_map[for_mode], suppress_help=True)
+            add_rbac_options(subparsers_map[for_mode], suppress_help=True)
             subparsers_map[for_mode].add_argument(
-                "--skip-admin",
-                action="store_true",
-                help="Skip the admin creation.",
+                "--skip-admin", action="store_true", help=argparse.SUPPRESS
             )
-            add_create_admin_options(subparsers_map[for_mode])
+            add_create_admin_options(
+                subparsers_map[for_mode], suppress_help=True
+            )
 
     def handle(self, options):
         if os.getuid() != 0:
@@ -1021,7 +1018,6 @@ class cmd_init(SnappyCommand):
                 migrate_db,
                 capture=sys.stdout.isatty(),
             )
-            clear_line()
             init_maas(options)
         elif mode in ["region", "region+rack"]:
             # When in 'region' or 'region+rack' the migrations for the database
@@ -1031,8 +1027,22 @@ class cmd_init(SnappyCommand):
                 migrate_db,
                 capture=sys.stdout.isatty(),
             )
-        else:
-            clear_line()
+            print_msg(
+                dedent(
+                    """\
+                    MAAS has been set up.
+
+                    If you want to configure external authentication or use
+                    MAAS with Canonical RBAC, please run
+
+                      sudo maas configauth
+
+                    To create admins when not using external authentication, run
+
+                      sudo maas createadmin
+                    """
+                )
+            )
 
 
 class cmd_config(SnappyCommand):
@@ -1315,7 +1325,6 @@ class cmd_config(SnappyCommand):
                     else "Stopping services",
                     sighup_supervisord,
                 )
-                clear_line()
 
             # Perform migrations when switching to all.
             if changed_to_all:
@@ -1325,7 +1334,6 @@ class cmd_config(SnappyCommand):
                     migrate_db,
                     capture=sys.stdout.isatty(),
                 )
-                clear_line()
 
 
 class cmd_status(SnappyCommand):
