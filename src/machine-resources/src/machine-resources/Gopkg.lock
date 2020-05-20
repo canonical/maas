@@ -24,9 +24,10 @@
   revision = "3fe23663418fc1d724868c84f21b7519bbac7441"
 
 [[projects]]
+  branch = "master"
   name = "github.com/lxc/lxd"
   packages = ["lxd/resources","shared","shared/api","shared/cancel","shared/ioprogress","shared/logger","shared/osarch","shared/units","shared/usbid","shared/version"]
-  version = "lxd-4.0.1"
+  revision = "7516f0a2968b025efd1ea5066e78b16d6646b1c8"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
