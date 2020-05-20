@@ -1123,14 +1123,14 @@ class cmd_config(SnappyCommand):
             help="Show the hidden secret.",
         )
         for argument, kwargs in ARGUMENTS.items():
+            if argument == "database-uri":
+                # 'maas config' doesn't support database-uri, since it's
+                # more of a low-level tool for changing the MAAS
+                # configuration directly.
+                continue
             kwargs = kwargs.copy()
             kwargs.pop("for_mode")
             parser.add_argument("--%s" % argument, **kwargs)
-        parser.add_argument(
-            "--force",
-            action="store_true",
-            help="Force leaving 'all' mode and cause loss of database.",
-        )
         parser.add_argument(
             "--parsable",
             action="store_true",
@@ -1139,23 +1139,6 @@ class cmd_config(SnappyCommand):
         parser.add_argument(
             "--render", action="store_true", help=argparse.SUPPRESS
         )
-
-    def _validate_mode(self, options):
-        """Validate the parameters are correct for changing the mode."""
-        if options.mode is not None:
-            if options.mode != get_current_mode():
-                # Changing the mode, ensure that the required parameters
-                # are passed for this mode.
-                missing_flags = []
-                for flag in self.required_options[options.mode]:
-                    if not getattr(options, flag):
-                        missing_flags.append("--%s" % flag.replace("_", "-"))
-                if len(missing_flags) > 0:
-                    print_msg(
-                        "Changing mode to '%s' requires parameters: %s"
-                        % (options.mode, ", ".join(missing_flags))
-                    )
-                    sys.exit(1)
 
     def _validate_flags(self, options, running_mode):
         """
@@ -1196,7 +1179,7 @@ class cmd_config(SnappyCommand):
                     and getattr(options, flag) is not False
                 )
                 for flag in (
-                    ("mode", "secret")
+                    ("secret",)
                     + self.setting_flags
                     + tuple(self.optional_flags.keys())
                 )
@@ -1211,89 +1194,24 @@ class cmd_config(SnappyCommand):
             )
         else:
             restart_required = False
-            changed_to_all = False
-            current_mode = get_current_mode()
-            running_mode = current_mode
-            if options.mode is not None:
-                running_mode = options.mode
+            running_mode = get_current_mode()
 
             # Validate the mode and flags.
-            self._validate_mode(options)
             self._validate_flags(options, running_mode)
 
-            # Changing the mode from all requires --force.
-            if current_mode == "all" and options.mode != "all":
-                if current_mode == "all":
-                    if not options.force:
-                        print_msg(
-                            "Changing mode from 'all' to '%s' will "
-                            "disconnect the database and all data will "
-                            "be lost. Use '--force' if your sure you want "
-                            "to do this." % options.mode
-                        )
-                        sys.exit(1)
-                elif current_mode != "all" and options.mode == "all":
-                    # Changing mode to all requires services to be stopped and
-                    # a new database to be initialized.
-                    changed_to_all = True
-
-                    def stop_services():
-                        render_supervisord("none")
-                        sighup_supervisord()
-
-                    perform_work("Stopping services", stop_services)
-
-                    # Configure the new database settings.
-                    options.database_host = os.path.join(
-                        get_base_db_dir(), "sockets"
-                    )
-                    options.database_name = "maasdb"
-                    options.database_user = "maas"
-                    options.database_pass = "".join(
-                        random.choice(string.ascii_uppercase + string.digits)
-                        for _ in range(10)
-                    )
-                    MAASConfiguration().write_to_file(
-                        {
-                            "maas_url": options.maas_url,
-                            "database_host": options.database_host,
-                            "database_name": options.database_name,
-                            "database_user": options.database_user,
-                            "database_pass": options.database_pass,
-                        },
-                        "regiond.conf",
-                    )
-
-                    # Initialize the database before starting the services.
-                    perform_work("Initializing database", init_db)
-
-                if options.mode != current_mode:
-                    render_supervisord(options.mode)
-                    set_current_mode(options.mode)
-                    restart_required = True
-
             current_config = config_manager.get()
-            if current_mode != running_mode:
-                # Update all the settings since the mode changed.
-                for flag in self.setting_flags:
-                    flag_value = getattr(options, flag)
-                    if current_config.get(flag) != flag_value:
-                        config_manager.update({flag: flag_value})
-                        restart_required = True
+            # Only update the passed settings.
+            for flag in self.setting_flags:
+                flag_value = getattr(options, flag)
+                should_update = (
+                    flag_value is not None
+                    and current_config.get(flag) != flag_value
+                )
+                if should_update:
+                    config_manager.update({flag: flag_value})
+                    restart_required = True
+            if options.secret is not None:
                 set_rpc_secret(options.secret)
-            else:
-                # Only update the passed settings.
-                for flag in self.setting_flags:
-                    flag_value = getattr(options, flag)
-                    should_update = (
-                        flag_value is not None
-                        and current_config.get(flag) != flag_value
-                    )
-                    if should_update:
-                        config_manager.update({flag: flag_value})
-                        restart_required = True
-                if options.secret is not None:
-                    set_rpc_secret(options.secret)
 
             # fetch config again, as it might have changed
             current_config = config_manager.get()
@@ -1324,15 +1242,6 @@ class cmd_config(SnappyCommand):
                     if running_mode != "none"
                     else "Stopping services",
                     sighup_supervisord,
-                )
-
-            # Perform migrations when switching to all.
-            if changed_to_all:
-                perform_work("Waiting for postgresql", wait_for_postgresql)
-                perform_work(
-                    "Performing database migrations",
-                    migrate_db,
-                    capture=sys.stdout.isatty(),
                 )
 
 
