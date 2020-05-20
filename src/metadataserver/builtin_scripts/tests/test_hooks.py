@@ -1659,6 +1659,42 @@ class TestProcessLXDResults(MAASServerTestCase):
         for numa_node in numa_nodes:
             self.assertEqual(int(total_memory / 1024 / 1024), numa_node.memory)
 
+    def test__accepts_numa_node_zero_memory(self):
+        # Regression test for LP:1878923
+        node = factory.make_Node()
+        self.patch(hooks_module, "update_node_network_information")
+        data = deepcopy(SAMPLE_LXD_JSON)
+        data["memory"] = {
+            "nodes": [
+                {
+                    "numa_node": 0,
+                    "hugepages_used": 0,
+                    "hugepages_total": 0,
+                    "used": 1314131968,
+                    "total": 33720463360,
+                },
+                {
+                    "numa_node": 1,
+                    "hugepages_used": 0,
+                    "hugepages_total": 0,
+                    "used": 0,
+                    "total": 0,
+                },
+            ],
+            "hugepages_total": 0,
+            "hugepages_used": 0,
+            "hugepages_size": 2097152,
+            "used": 602902528,
+            "total": 33720463360,
+        }
+
+        process_lxd_results(node, json.dumps(data).encode(), 0)
+
+        self.assertEquals(32158, node.memory)
+        self.assertItemsEqual(
+            [32158, 0], [numa.memory for numa in node.numanode_set.all()]
+        )
+
     def test__updates_cpu_numa_nodes(self):
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")

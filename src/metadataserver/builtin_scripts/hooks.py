@@ -450,7 +450,7 @@ def process_lxd_results(node, output, exit_status):
         data
     )
     # Update memory.
-    node.memory, numa_nodes = _parse_memory(data, numa_nodes)
+    node.memory, numa_nodes = _parse_memory(data.get("memory", {}), numa_nodes)
 
     # Create or update NUMA nodes.
     numa_nodes = [
@@ -543,18 +543,16 @@ def _parse_cpuinfo(data):
     return cpu_count, cpu_speed, cpu_model, numa_nodes
 
 
-def _parse_memory(data, numa_nodes):
-
-    total_memory = data.get("memory", {}).get("total", 0)
+def _parse_memory(memory, numa_nodes):
+    total_memory = memory.get("total", 0)
     default_numa_node = {"numa_node": 0, "total": total_memory}
-    for memory_node in data.get("memory", {}).get(
-        "nodes", [default_numa_node]
-    ):
-        numa_nodes[memory_node["numa_node"]]["memory"] = (
-            memory_node["total"] / 1024 / 1024
+
+    for memory_node in memory.get("nodes", [default_numa_node]):
+        numa_nodes[memory_node["numa_node"]]["memory"] = int(
+            memory_node.get("total", 0) / 1024 ** 2
         )
 
-    return total_memory / 1024 / 1024, numa_nodes
+    return int(total_memory / 1024 ** 2), numa_nodes
 
 
 def set_virtual_tag(node, output, exit_status):
