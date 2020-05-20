@@ -175,6 +175,11 @@ def parse_interfaces_details(node):
         return interfaces
 
     details = json.loads(script_result.stdout)
+    # MAAS 2.8 added additional information to machine-resources output.
+    # LXD_OUTPUT_NAME used to only contain resources, now it is one of
+    # the objects provided.
+    if "resources" in details:
+        details = details["resources"]
     return _parse_interfaces(node, details)
 
 
