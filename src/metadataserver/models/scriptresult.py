@@ -378,7 +378,7 @@ class ScriptResult(CleanSave, TimestampedModel):
             # Circular imports.
             from metadataserver.api import try_or_log_event
 
-            try_or_log_event(
+            signal_status = try_or_log_event(
                 self.script_set.node,
                 None,
                 err,
@@ -387,6 +387,12 @@ class ScriptResult(CleanSave, TimestampedModel):
                 output=self.stdout,
                 exit_status=self.exit_status,
             )
+            # If the script failed to process mark the script as failed to
+            # prevent testing from running and help users identify where
+            # the error came from. This can happen when a commissioning
+            # script generated invalid output.
+            if signal_status is not None:
+                self.status = SCRIPT_STATUS.FAILED
 
         if (
             self.status == SCRIPT_STATUS.PASSED

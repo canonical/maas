@@ -10483,11 +10483,10 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
     def test__new_physical_with_multiple_dhcp_link_with_resource_info(self):
         controller = self.create_empty_controller(with_empty_script_sets=True)
-        mac_address = factory.make_mac_address()
         interfaces = {
             "eth0": {
                 "type": "physical",
-                "mac_address": mac_address,
+                "mac_address": "00:00:00:00:00:01",
                 "parents": [],
                 "links": [{"mode": "dhcp"}, {"mode": "dhcp"}],
                 "enabled": True,
@@ -10503,19 +10502,22 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         lxd_script = controller.current_commissioning_script_set.find_script_result(
             script_name=LXD_OUTPUT_NAME
         )
-        lxd_script_output = {
-            "network": {
-                "cards": [
-                    {
-                        "ports": [
-                            {"id": "eth0", "address": mac_address, "port": 0}
-                        ],
-                        "vendor": vendor,
-                        "product": product,
-                        "firmware_version": firmware_version,
-                    }
-                ]
-            }
+        lxd_script_output = deepcopy(test_hooks.SAMPLE_LXD_JSON)
+        lxd_script_output["network"] = {
+            "cards": [
+                {
+                    "ports": [
+                        {
+                            "id": "eth0",
+                            "address": "00:00:00:00:00:01",
+                            "port": 0,
+                        }
+                    ],
+                    "vendor": vendor,
+                    "product": product,
+                    "firmware_version": firmware_version,
+                }
+            ]
         }
         lxd_script.store_result(
             0, stdout=json.dumps(lxd_script_output).encode("utf-8")
