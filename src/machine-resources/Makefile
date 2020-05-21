@@ -27,7 +27,7 @@ DEP := cd $(PACKAGE_DIR); dep
 build: $(BINARIES)
 .PHONY: build
 
-$(BINARIES): $(PACKAGE_VENDOR_DIR)
+$(BINARIES): $(PACKAGE_VENDOR_DIR) $(PACKAGE_DIR)/main.go
 	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(GOARCH_$(notdir $@)) go build -ldflags '-s -w' -o $@ machine-resources
 
 $(PACKAGE_VENDOR_DIR) vendor:
@@ -41,5 +41,5 @@ clean:
 .PHONY: clean
 
 update-deps:
-	$(DEP) ensure -update github.com/lxc/lxd
+	$(DEP) ensure -update
 .PHONY: update-deps

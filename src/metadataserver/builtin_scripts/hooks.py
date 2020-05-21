@@ -662,7 +662,11 @@ def _process_lxd_environment(node, data):
     # on the running machine and LXD Pods are getting this data from LXD
     # on the running machine. In those cases the information gathered below
     # is correct.
-    if node.is_controller or node.is_pod:
+    if (
+        (node.is_controller or node.is_pod)
+        and data.get("os_name")
+        and data.get("os_version")
+    ):
         # This is how the hostname gets set on controllers and stays in sync on Pods.
         node.hostname = data["server_name"]
 

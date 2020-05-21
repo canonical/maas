@@ -490,19 +490,19 @@ def make_lxd_host_info(
             "api_os",
             "resources_system",
         ]
-    if not api_version:
+    if api_version is None:
         api_version = "1.0"
-    if not kernel_architecture:
+    if kernel_architecture is None:
         kernel_architecture = random.choice(
             ["i686", "x86_64", "aarch64", "ppc64le", "s390x", "mips", "mips64"]
         )
-    if not kernel_version:
+    if kernel_version is None:
         kernel_version = factory.make_name("kernel_version")
-    if not os_name:
+    if os_name is None:
         os_name = "Ubuntu"
-    if not os_version:
+    if os_version is None:
         os_version = random.choice(["16.04", "18.04", "20.04"])
-    if not server_name:
+    if server_name is None:
         server_name = factory.make_hostname()
     return {
         "api_extensions": api_extensions,
@@ -1269,6 +1269,20 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals("ubuntu", rack.osystem)
         self.assertEquals(ubuntu_release["series"], rack.distro_series)
         self.assertEquals(server_name, rack.hostname)
+
+    def test__doesnt_set_os_for_controller_if_blank(self):
+        osystem = factory.make_name("osystem")
+        distro_series = factory.make_name("distro_series")
+        rack = factory.make_RackController(
+            osystem=osystem, distro_series=distro_series
+        )
+        create_IPADDR_OUTPUT_NAME_script(rack, IP_ADDR_OUTPUT)
+        process_lxd_results(
+            rack, make_lxd_output_json(os_name="", os_version=""), 0
+        )
+        rack = reload_object(rack)
+        self.assertEquals(osystem, rack.osystem)
+        self.assertEquals(distro_series, rack.distro_series)
 
     def test__sets_os_for_pod(self):
         pod = factory.make_Pod()
