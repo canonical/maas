@@ -36,9 +36,9 @@ class TestGetDeprecations(MAASTestCase):
         )
         snap_common_path.joinpath("snap_mode").write_text("all", "utf-8")
         [notice] = get_deprecations()
-        self.assertEqual(notice["id"], "MD1")
-        self.assertEqual(notice["since"], "2.8")
-        self.assertEqual(notice["url"], "https://maas.io/deprecations/MD1")
+        self.assertEqual(notice.id, "MD1")
+        self.assertEqual(notice.since, "2.8")
+        self.assertEqual(notice.url, "https://maas.io/deprecations/MD1")
 
 
 class TestLogDeprecations(MAASTestCase):

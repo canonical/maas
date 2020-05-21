@@ -438,6 +438,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_init_db_options_port(self):
+        self.patch(snappy, "print_msg")
         self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
         self.patch(snappy, "set_rpc_secret")
         self.patch(snappy.cmd_init, "_finalize_init")
@@ -465,6 +466,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_init_db_parse_error(self):
+        self.patch(snappy, "print_msg")
         self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
         self.patch(snappy, "set_rpc_secret")
         self.patch(snappy.cmd_init, "_finalize_init")
@@ -488,6 +490,7 @@ class TestCmdInit(MAASTestCase):
         self.mock_maas_configuration().update.assert_not_called()
 
     def test_init_db_options_port_deprecated(self):
+        self.patch(snappy, "print_msg")
         self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
         self.patch(snappy, "set_rpc_secret")
         self.patch(snappy.cmd_init, "_finalize_init")
@@ -514,6 +517,30 @@ class TestCmdInit(MAASTestCase):
             }
         )
 
+    def test_init_all_mode_logs_deprecation(self):
+        mock_print = self.patch(snappy, "print_msg")
+        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        self.patch(snappy, "set_rpc_secret")
+        self.patch(snappy.cmd_init, "_finalize_init")
+        options = self.parser.parse_args(
+            [
+                "--mode=all",
+                "--maas-url",
+                "localhost",
+                "--database-uri",
+                "postgres://dbuser:pwd@dbhost/",
+                "--database-name",
+                "dbname",
+            ]
+        )
+        self.cmd(options)
+        mock_print.assert_called_once_with(
+            "\nWARNING: Passing --mode=all is deprecated and "
+            "will be removed in the 2.9 release.\n"
+            "See https://maas.io/deprecations/MD1 for more details.\n",
+            stderr=True,
+        )
+
     def test_get_database_settings_uri_and_deprecated(self):
         options = self.parser.parse_args(
             [
@@ -531,6 +558,29 @@ class TestCmdInit(MAASTestCase):
             "Can't use deprecated --database-* parameters together with "
             "--database-uri",
             str(error),
+        )
+
+    def test_get_database_settings_logs_deprecated(self):
+        mock_print = self.patch(snappy, "print_msg")
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-host",
+                "localhost",
+                "--database-name",
+                "dbname",
+                "--database-user",
+                "maas",
+                "--database-pass",
+                "secret",
+            ]
+        )
+        snappy.get_database_settings(options)
+        mock_print.assert_called_once_with(
+            "\nWARNING: Passing individual database configs is deprecated "
+            "and will be removed in the 2.9 release.\n"
+            "Please use --database-uri instead.\n",
+            stderr=True,
         )
 
     def test_get_database_settings_no_prompt_dsn(self):
@@ -721,6 +771,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_deprecated_get_database_settings_prompt_all_but_host(self):
+        self.patch(snappy, "print_msg")
         self.mock_read_input.side_effect = ["dbname", "dbuser", "pwd"]
         options = self.parser.parse_args(
             ["region+rack", "--database-host", "myhost"]
@@ -737,6 +788,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_deprecated_get_database_settings_prompt_all_but_name(self):
+        self.patch(snappy, "print_msg")
         self.mock_read_input.side_effect = ["dbhost", "dbuser", "pwd"]
         options = self.parser.parse_args(
             ["region+rack", "--database-name", "myname"]
@@ -753,6 +805,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_deprecated_get_database_settings_prompt_all_but_user(self):
+        self.patch(snappy, "print_msg")
         self.mock_read_input.side_effect = ["dbhost", "dbname", "pwd"]
         options = self.parser.parse_args(
             ["region+rack", "--database-user", "myuser"]
@@ -769,6 +822,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_deprecated_get_database_settings_prompt_all_but_pass(self):
+        self.patch(snappy, "print_msg")
         self.mock_read_input.side_effect = ["dbhost", "dbname", "dbuser"]
         options = self.parser.parse_args(
             ["region+rack", "--database-pass", "mypwd"]
@@ -785,6 +839,7 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_deprecated_get_database_settings_prompt_all_but_port(self):
+        self.patch(snappy, "print_msg")
         self.mock_read_input.side_effect = [
             "dbhost",
             "dbname",

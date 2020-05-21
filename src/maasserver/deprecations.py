@@ -3,39 +3,51 @@
 
 __all__ = ["get_deprecations", "log_deprecations"]
 
-from copy import deepcopy
-
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import snappy
 
 DEPRECATION_URL = "https://maas.io/deprecations/{id}"
 
+
+class Deprecation:
+    """A deprecation notice."""
+
+    def __init__(self, id, since, description, link_text=""):
+        self.id = id
+        self.since = since
+        self.description = description
+        self.link_text = link_text
+
+    @property
+    def url(self):
+        return DEPRECATION_URL.format(id=self.id)
+
+    @property
+    def message(self):
+        return "Deprecation {id} ({url}): {description}".format(
+            id=self.id, url=self.url, description=self.description
+        )
+
+
 # all known deprecation notices
 DEPRECATIONS = {
-    "MD1": {
-        "since": "2.8",
-        "link-text": "How to migrate the database out of the snap",
-        "description": (
+    "NO_ALL_MODE": Deprecation(
+        id="MD1",
+        since="2.8",
+        description=(
             "The setup for this MAAS is deprecated and not suitable for production "
             "environments, as the database is running inside the snap."
         ),
-    }
+        link_text="How to migrate the database out of the snap",
+    )
 }
 
 
 def get_deprecations():
     """Return a list of currently active deprecation notices."""
     deprecations = []
-
-    def add_deprecation(id):
-        deprecation = deepcopy(DEPRECATIONS[id])
-        deprecation["id"] = id
-        deprecation["url"] = DEPRECATION_URL.format(id=id)
-        deprecations.append(deprecation)
-
     if snappy.running_in_snap() and snappy.get_snap_mode() == "all":
-        add_deprecation("MD1")
-
+        deprecations.append(DEPRECATIONS["NO_ALL_MODE"])
     return deprecations
 
 
@@ -43,9 +55,8 @@ def log_deprecations(logger=None):
     """Log active deprecations."""
     if logger is None:
         logger = LegacyLogger()
-
     for d in get_deprecations():
-        logger.msg("Deprecation {id} ({url}): {description}".format(**d))
+        logger.msg(d.message)
 
 
 def sync_deprecation_notifications():
@@ -57,18 +68,17 @@ def sync_deprecation_notifications():
         ).values_list("ident", flat=True)
     )
     for deprecation in get_deprecations():
-        dep_id = deprecation["id"]
         for kind in ("users", "admins"):
-            dep_ident = f"deprecation_{dep_id}_{kind}"
+            dep_ident = f"deprecation_{deprecation.id}_{kind}"
             if dep_ident in notifications:
                 notifications.remove(dep_ident)
                 continue
-            message = f"{deprecation['description']}"
+            message = deprecation.description
             if kind == "users":
                 message += "<br>Please contact your MAAS administrator."
             message += (
-                f"<br><a class='p-link--external' href='{deprecation['url']}'>"
-                f"{deprecation['link-text']}...</a>"
+                f"<br><a class='p-link--external' href='{deprecation.url}'>"
+                f"{deprecation.link_text}...</a>"
             )
             Notification(
                 ident=dep_ident,

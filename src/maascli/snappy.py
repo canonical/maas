@@ -675,6 +675,13 @@ def monkey_patch_for_all_mode_bw_compatability(parser):
         add_deprecated_mode_argument(mode_parser)
         options, rest = mode_parser.parse_known_args(arg_strings)
         if options.deprecated_mode is not None:
+            if options.deprecated_mode == "all":
+                print_msg(
+                    "\nWARNING: Passing --mode=all is deprecated and "
+                    "will be removed in the 2.9 release.\n"
+                    "See https://maas.io/deprecations/MD1 for more details.\n",
+                    stderr=True,
+                )
             sub_command = (
                 "region+rack"
                 if options.deprecated_mode in ["all", "none"]
@@ -723,6 +730,13 @@ def get_database_settings(options):
             raise DatabaseSettingsError(
                 "Can't use deprecated --database-* parameters together with "
                 "--database-uri"
+            )
+        if using_deprecated_database_options(options):
+            print_msg(
+                "\nWARNING: Passing individual database configs is deprecated "
+                "and will be removed in the 2.9 release.\n"
+                "Please use --database-uri instead.\n",
+                stderr=True,
             )
         database_host = options.database_host
         if not database_host:
@@ -828,7 +842,7 @@ class cmd_init(SnappyCommand):
     this machine, and configure it for use with MAAS, you can install
     the maas-test-db snap and connect it before running 'maas init':
 
-        sudo snap install --edge maas-test-db
+        sudo snap install maas-test-db
         sudo snap connect maas:test-db-socket maas-test-db
         sudo maas init region+rack --database-uri maas-test-db:///
 

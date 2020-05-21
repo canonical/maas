@@ -242,12 +242,13 @@ def get_current_auth_config():
     return json.loads(output)
 
 
-def print_msg(msg="", newline=True):
+def print_msg(msg="", newline=True, stderr=False):
     """Print a message to stdout.
 
     Flushes the message to ensure its written immediately.
     """
-    print(msg, end=("\n" if newline else ""), flush=True)
+    stream = sys.stderr if stderr else sys.stdout
+    print(msg, end=("\n" if newline else ""), flush=True, file=stream)
 
 
 def init_maas(options):

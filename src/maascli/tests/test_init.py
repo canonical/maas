@@ -7,6 +7,7 @@ __all__ = []
 
 from io import StringIO
 import os
+import sys
 import tempfile
 from unittest.mock import MagicMock, patch
 
@@ -316,4 +317,6 @@ class TestPrintMsg(MAASTestCase):
 
     def test_print_msg_empty_message(self):
         init.print_msg()
-        self.mock_print.assert_called_with("", end="\n", flush=True)
+        self.mock_print.assert_called_with(
+            "", end="\n", file=sys.stdout, flush=True
+        )
