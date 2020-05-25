@@ -1263,6 +1263,9 @@ class cmd_status(SnappyCommand):
     """Status of controller services."""
 
     def handle(self, options):
+        if os.getuid() != 0:
+            raise SystemExit("The 'status' command must be run by root.")
+
         if get_current_mode() == "none":
             print_msg("MAAS is not configured")
             sys.exit(1)

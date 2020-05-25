@@ -860,3 +860,14 @@ class TestCmdInit(MAASTestCase):
             },
             settings,
         )
+
+
+class TestCmdStatus(MAASTestCase):
+    def test_requires_root(self):
+        parser = ArgumentParser()
+        cmd = snappy.cmd_status(parser)
+        self.patch(os, "getuid").return_value = 1000
+        error = self.assertRaises(SystemExit, cmd, parser.parse_args([]))
+        self.assertEqual(
+            str(error), "The 'status' command must be run by root."
+        )
