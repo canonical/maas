@@ -9194,32 +9194,6 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__creates_node_event_with_no_power_error(self):
-        node = yield deferToDatabase(
-            transactional(factory.make_Node), power_state=POWER_STATE.ON
-        )
-        mock_create_node_event = self.patch(Event.objects, "create_node_event")
-        mock_power_control = self.patch(node, "_power_control_node")
-        mock_power_control.return_value = defer.succeed(
-            {"state": POWER_STATE.ON}
-        )
-        observed_state = yield node.power_query()
-
-        self.assertEqual(POWER_STATE.ON, observed_state)
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_query, ANY)
-        )
-        self.assertThat(
-            mock_create_node_event,
-            MockCalledOnceWith(
-                node,
-                EVENT_TYPES.NODE_POWER_QUERIED,
-                event_description="Power state queried: %s" % POWER_STATE.ON,
-            ),
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
     def test__creates_node_event_with_power_error(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node), power_state=POWER_STATE.ERROR

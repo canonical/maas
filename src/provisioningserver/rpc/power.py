@@ -376,11 +376,8 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
 @inlineCallbacks
 def power_query_success(system_id, hostname, state):
     """Report a node that for which power querying has succeeded."""
-    message = "Power state queried: %s" % state
+    log.debug(f"Power state queried for node {system_id}: {state}")
     yield power_state_update(system_id, state)
-    yield send_node_event(
-        EVENT_TYPES.NODE_POWER_QUERIED_DEBUG, system_id, hostname, message
-    )
 
 
 @inlineCallbacks

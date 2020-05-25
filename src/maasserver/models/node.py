@@ -5650,14 +5650,10 @@ class Node(CleanSave, TimestampedModel):
             power_error = (
                 response["error_msg"] if "error_msg" in response else None
             )
-            # Add event log for success or failure.
-            # Use power_error for failure message.
             if power_error is None:
-                message = "Power state queried: %s" % power_state
-                Event.objects.create_node_event(
-                    self,
-                    EVENT_TYPES.NODE_POWER_QUERIED,
-                    event_description=message,
+                log.debug(
+                    f"Power state queried for node {self.system_id}: "
+                    f"{power_state}"
                 )
             else:
                 Event.objects.create_node_event(

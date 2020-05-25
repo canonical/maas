@@ -789,26 +789,6 @@ class TestPowerQuery(MAASTestCase):
             ),
         )
 
-    def test_power_query_success_emits_event(self):
-        system_id = factory.make_name("system_id")
-        hostname = factory.make_name("hostname")
-        state = factory.make_name("state")
-        message = "Power state queried: %s" % state
-        SendEvent, _, io = self.patch_rpc_methods()
-        d = power.power_query_success(system_id, hostname, state)
-        # This blocks until the deferred is complete.
-        io.flush()
-        self.assertIsNone(extract_result(d))
-        self.assertThat(
-            SendEvent,
-            MockCalledOnceWith(
-                ANY,
-                type_name=EVENT_TYPES.NODE_POWER_QUERIED_DEBUG,
-                system_id=system_id,
-                description=message,
-            ),
-        )
-
     def test_get_power_state_queries_node(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")

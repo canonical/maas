@@ -52,8 +52,6 @@ class EVENT_TYPES:
     NODE_POWER_ON_FAILED = "NODE_POWER_ON_FAILED"
     NODE_POWER_OFF_FAILED = "NODE_POWER_OFF_FAILED"
     NODE_POWER_CYCLE_FAILED = "NODE_POWER_CYCLE_FAILED"
-    NODE_POWER_QUERIED = "NODE_POWER_QUERIED"
-    NODE_POWER_QUERIED_DEBUG = "NODE_POWER_QUERIED_DEBUG"
     NODE_POWER_QUERY_FAILED = "NODE_POWER_QUERY_FAILED"
     # PXE request event.
     NODE_PXE_REQUEST = "NODE_PXE_REQUEST"
@@ -200,12 +198,6 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_POWER_CYCLE_FAILED: EventDetail(
         description="Failed to power cycle node", level=ERROR
-    ),
-    EVENT_TYPES.NODE_POWER_QUERIED: EventDetail(
-        description="Queried node's BMC", level=DEBUG
-    ),
-    EVENT_TYPES.NODE_POWER_QUERIED_DEBUG: EventDetail(
-        description="Queried node's BMC", level=DEBUG
     ),
     EVENT_TYPES.NODE_POWER_QUERY_FAILED: EventDetail(
         description="Failed to query node's BMC", level=WARN
