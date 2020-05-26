@@ -234,27 +234,21 @@ class WebApplicationService(StreamServerEndpointService):
             b"ws", WebSocketsResource(lookupProtocolForFactory(self.websocket))
         )
 
-        # Setup static resources
-        # /MAAS/r/{path} are all resolved by the new MAAS UI section of code.
+        # /MAAS/r/{path} and /MAAS/l/{path} are all resolved by the new MAAS UI
+        # react app, and legacy angularjs app respectively.
         # If any paths do not match then its routed to index.html in the new
         # UI code as it uses HTML 5 routing.
-        maas.putChild(
-            b"r", DefaultFallbackFile(os.path.join(settings.STATIC_ROOT, "ui"))
-        )
-        # /MAAS/{path} are resolved by the old MAAS UI section of code, but
-        # only for the specific content in the legacy folder as it overlays
-        # all other URL's under the /MAAS prefix.
+        maas.putChild(b"r", DefaultFallbackFile(settings.STATIC_ROOT))
+
+        maas.putChild(b"l", DefaultFallbackFile(settings.STATIC_ROOT))
+
+        # Redirect /MAAS to react app
+        maas.putChild(b"", Redirect(b"/MAAS/r/"))
+
+        # Setup static resources
         maas.putChild(
             b"assets",
-            NoListingFile(
-                os.path.join(settings.STATIC_ROOT, "legacy", "assets")
-            ),
-        )
-        maas.putChild(
-            b"",
-            DefaultFile(
-                os.path.join(settings.STATIC_ROOT, "legacy", "index.html")
-            ),
+            NoListingFile(os.path.join(settings.STATIC_ROOT, "assets")),
         )
 
         root = Resource()

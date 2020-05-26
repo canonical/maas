@@ -3,11 +3,11 @@ nodejs_path := $(mkfile_dir)/nodejs
 
 export PATH := $(nodejs_path)/bin:$(PATH)
 
-build: build/ui/index.html build/legacy/index.html
+build: build/index.html
 .PHONY: build
 
 clean-build:
-	rm -rf build src/build src/ui/build src/legacy/build
+	rm -rf build src/build src/ui/dist src/legacy/dist src/shared/dist
 .PHONY: clean-build
 
 clean: clean-build
@@ -33,22 +33,9 @@ nodejs/bin/yarn: nodejs/bin/node nodejs/yarn.tar.gz
 src/yarn.lock:
 	git submodule update --init --remote
 
-src/shared/dist/index.js: nodejs/bin/yarn src/yarn.lock
-	yarn --cwd src build-shared
+src/build: nodejs/bin/yarn src/yarn.lock
+	yarn --cwd src build-all
 
-src/ui/build/index.html: src/shared/dist/index.js
-	PUBLIC_URL=/MAAS/r/ yarn --cwd src build-ui
-
-src/legacy/build/index.html: src/shared/dist/index.js
-	PUBLIC_URL=/MAAS/ yarn --cwd src build-legacy
-
-src/build: src/ui/build/index.html src/legacy/build/index.html
-	yarn --cwd src copy-build
-
-build/ui/index.html: src/build
+build/index.html: src/build
 	mkdir -p build
-	cp -R src/build/ui/ build/
-
-build/legacy/index.html: src/build
-	mkdir -p build
-	cp -R src/build/legacy/ build/
+	cp -R src/build/* build/
