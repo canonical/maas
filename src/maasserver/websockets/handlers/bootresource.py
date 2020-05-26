@@ -39,6 +39,7 @@ from maasserver.models import (
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
+from maasserver.utils.osystems import release_a_newer_than_b
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     Handler,
@@ -129,6 +130,21 @@ class BootResourceHandler(Handler):
 
     def format_ubuntu_releases(self):
         """Return formatted Ubuntu release selections for the template."""
+
+        def get_unsupported_arches(release):
+            # The boot resources front and back end were both built with the idea
+            # that every Ubuntu release is supported on every architecture.
+            # 20.04 and above has dropped i386 support. Due to the way the
+            # websocket is setup its more effecient to get this information
+            # based on version than from the database.
+            try:
+                if release_a_newer_than_b(release, "20.04"):
+                    return ["i386"]
+            except ValueError:
+                # Unknown Ubuntu release, should only happen during testing.
+                pass
+            return []
+
         releases = []
         all_releases, selected_releases = self.get_ubuntu_release_selections()
         for release in sorted(list(self.ubuntu_releases), reverse=True):
@@ -142,6 +158,7 @@ class BootResourceHandler(Handler):
                 {
                     "name": release,
                     "title": format_ubuntu_distro_series(release),
+                    "unsupported_arches": get_unsupported_arches(release),
                     "checked": checked,
                     "deleted": False,
                 }
@@ -153,6 +170,7 @@ class BootResourceHandler(Handler):
                 {
                     "name": release,
                     "title": format_ubuntu_distro_series(release),
+                    "unsupported_arches": get_unsupported_arches(release),
                     "checked": True,
                     "deleted": True,
                 }

@@ -156,7 +156,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         sources = [factory.make_BootSource()]
-        releases = [factory.make_name("release") for _ in range(3)]
+        releases = ["20.04"] + [factory.make_name("release") for _ in range(3)]
         self.patch_get_os_info_from_boot_sources(sources, releases=releases)
         response = handler.poll({})
         json_obj = json.loads(response)
@@ -165,6 +165,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 {
                     "name": release,
                     "title": release,
+                    "unsupported_arches": (
+                        ["i386"] if release == "20.04" else []
+                    ),
                     "checked": False,
                     "deleted": False,
                 }
@@ -195,6 +198,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 {
                     "name": release,
                     "title": release,
+                    "unsupported_arches": [],
                     "checked": False,
                     "deleted": False,
                 }
@@ -204,6 +208,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 {
                     "name": selected_release,
                     "title": selected_release,
+                    "unsupported_arches": [],
                     "checked": True,
                     "deleted": True,
                 }
