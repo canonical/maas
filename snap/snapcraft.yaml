@@ -211,10 +211,7 @@ parts:
       PATH="$PATH:$SNAPCRAFT_PART_BUILD/../npm/bin"
       NODE_ENV="production"
       yarn install
-      yarn build-shared
-      PUBLIC_URL=/MAAS/r/ yarn build-ui
-      PUBLIC_URL=/MAAS/ yarn build-legacy
-      yarn copy-build
+      yarn build-all
 
       INSTALL_DIR="$SNAPCRAFT_PART_INSTALL/usr/share/maas/web"
       mkdir -p "$INSTALL_DIR"
