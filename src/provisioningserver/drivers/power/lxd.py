@@ -17,10 +17,7 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import PowerDriver
-from provisioningserver.maas_certificates import (
-    MAAS_CERTIFICATE,
-    MAAS_PRIVATE_KEY,
-)
+from provisioningserver.maas_certificates import get_maas_cert_tuple
 from provisioningserver.utils import typed
 
 # LXD Status Codes
@@ -85,9 +82,7 @@ class LXDPowerDriver(PowerDriver):
         password = context.get("password")
         try:
             client = Client(
-                endpoint=endpoint,
-                cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
-                verify=False,
+                endpoint=endpoint, cert=get_maas_cert_tuple(), verify=False
             )
             if not client.has_api_extension("virtual-machines"):
                 raise LXDError(

@@ -3,6 +3,15 @@
 
 """Manage certificates for controllers."""
 
+__all__ = [
+    "MAAS_CERTIFICATE",
+    "MAAS_PRIVATE_KEY",
+    "MAAS_PUBLIC_KEY",
+    "generate_certificate_if_needed",
+    "generate_rsa_keys_if_needed",
+    "get_maas_cert_tuple",
+]
+
 from datetime import datetime
 import os
 from socket import gethostname
@@ -69,6 +78,13 @@ def generate_rsa_keys_if_needed():
     return True
 
 
+# Cache when the start and end time a certificate is valid for so it only
+# has to be read once.
+_cert_not_before = None
+_cert_not_after = None
+_cert_mtime = None
+
+
 def generate_certificate_if_needed(
     not_before=0, not_after=(60 * 60 * 24 * 365)
 ):
@@ -76,27 +92,37 @@ def generate_certificate_if_needed(
 
     Returns True if a new certificate was generated.
     """
-    generate_rsa_keys_if_needed()
-    if os.path.isfile(MAAS_CERTIFICATE):
-        # Certificate exists, check if its still valid.
-        with open(MAAS_CERTIFICATE, "rb") as f:
-            cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+    global _cert_not_before, _cert_not_after, _cert_mtime
+    if not generate_rsa_keys_if_needed() and os.path.isfile(MAAS_CERTIFICATE):
+        if not _cert_not_before or not _cert_not_after or not _cert_mtime:
+            # Certificate exists, but the before and after times haven't been
+            # cached.
+            with open(MAAS_CERTIFICATE, "rb") as f:
+                _cert_mtime = os.path.getmtime(MAAS_CERTIFICATE)
+                cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+            _cert_not_before = datetime.strptime(
+                cert.get_notBefore().decode(), "%Y%m%d%H%M%SZ"
+            )
+            _cert_not_after = datetime.strptime(
+                cert.get_notAfter().decode(), "%Y%m%d%H%M%SZ"
+            )
+        # Check if the certificate is valid.
         now = datetime.utcnow()
-        cert_not_before = datetime.strptime(
-            cert.get_notBefore().decode(), "%Y%m%d%H%M%SZ"
-        )
-        cert_not_after = datetime.strptime(
-            cert.get_notAfter().decode(), "%Y%m%d%H%M%SZ"
-        )
-        needs_certificate = (now < cert_not_before) or (now > cert_not_after)
+        needs_certificate = (now < _cert_not_before) or (now > _cert_not_after)
     else:
         needs_certificate = True
 
     if not needs_certificate:
         return False
+    elif _cert_mtime and _cert_mtime != os.path.getmtime(MAAS_CERTIFICATE):
+        # Certificate was updated by another process. Invalidate cache and
+        # try again.
+        _cert_not_before = _cert_not_after = _cert_mtime = None
+        return generate_certificate_if_needed(not_before, not_after)
 
     try:
-        with NamedLock("certificate"):
+        lock = NamedLock("certificate")
+        with lock:
             with open(MAAS_PRIVATE_KEY, "rb") as f:
                 pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
 
@@ -120,12 +146,20 @@ def generate_certificate_if_needed(
         # System is running a region and rack. The other process
         # is generating the certificate, wait up to 60s for it.
         waits = 0
-        while not os.path.isfile(MAAS_CERTIFICATE) and waits < 600:
+        while lock.is_locked() and waits < 600:
             sleep(0.1)
             waits += 1
         assert os.path.isfile(
             MAAS_CERTIFICATE
         ), "Unable to generate MAAS certificate!"
+
+    # Invalidate the before and after cache after a certificate has been
+    # regenerated. OpenSSL only accepts the duration the certificate
+    # should be valid for, not the exact times the certificate should
+    # start and stop being valid for. Reread the before and after
+    # times from the newly written certificate on next access.
+    _cert_not_before = _cert_not_after = _cert_mtime = None
+
     return True
 
 
@@ -134,3 +168,9 @@ def get_certificate_fingerprint(digest_name="sha256"):
     with open(MAAS_CERTIFICATE, "rb") as f:
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
     return cert.digest(digest_name).decode()
+
+
+def get_maas_cert_tuple():
+    """Return a certificate tuple as required by python-requests."""
+    generate_certificate_if_needed()
+    return (MAAS_CERTIFICATE, MAAS_PRIVATE_KEY)

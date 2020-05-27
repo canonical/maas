@@ -31,10 +31,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachine,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.maas_certificates import (
-    MAAS_CERTIFICATE,
-    MAAS_PRIVATE_KEY,
-)
+from provisioningserver.maas_certificates import get_maas_cert_tuple
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
@@ -149,7 +146,7 @@ class LXDPodDriver(PodDriver):
             client = yield deferToThread(
                 Client,
                 endpoint=endpoint,
-                cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
+                cert=get_maas_cert_tuple(),
                 verify=False,
             )
             if not client.trusted:
