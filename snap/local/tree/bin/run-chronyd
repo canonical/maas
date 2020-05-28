@@ -3,13 +3,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 mkdir -p \
-      "$SNAP_DATA/var/lib/chrony" \
       "$SNAP_DATA/etc/chrony" \
+      "$SNAP_COMMON/chrony" \
       "$SNAP_COMMON/log/ntpstats"
 
-if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
-    cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"
-fi
+# ensure config file is up to date
+cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"
 
 CHRONY_OPTS="-u root -d -f $SNAP_DATA/etc/chrony/chrony.conf"
 if [ -f /run/systemd/container ]; then

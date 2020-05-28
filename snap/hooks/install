@@ -2,6 +2,16 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+# XXX data migrations in the snap. This should be dropped at next epoch bump
+migrate_data() {
+    # move chrony log and driftfile
+    if  [ -f "$SNAP_DATA/var/lib/chrony/chrony.drift" ]; then
+        mkdir -p "$SNAP_COMMON/chrony/"
+        mv "$SNAP_DATA/var/lib/chrony/chrony.drift" "$SNAP_COMMON/chrony/chrony.drift"
+        rm -rf "$SNAP_DATA/var/lib/chrony"
+    fi
+}
+
 mkdir -p \
       "$SNAP_DATA/var/lib/maas" \
       "$SNAP_DATA/root" \
@@ -10,6 +20,8 @@ if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"
 fi
+
+migrate_data
 
 # Always overwrite sample preseeds to ensure samples are up-to-date in case
 # we do changes that need to be reflected.
