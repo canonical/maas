@@ -291,23 +291,3 @@ Conflicts: squid-deb-proxy
 Description: MAAS Caching Proxy
  This package installs and configures a Caching Proxy server that can be
  used by MAAS. It enhances the overall MAAS user experience.
-
-Package: maas-region-udeb
-Package-Type: udeb
-Section: debian-installer
-Architecture: all
-Depends:
- ${shlibs:Depends},
- ${misc:Depends}
-XB-Installer-Menu-Item: 2350
-Description: Install a MAAS server (installer integration)
-
-Package: maas-rack-udeb
-Package-Type: udeb
-Section: debian-installer
-Architecture: all
-Depends:
- ${shlibs:Depends},
- ${misc:Depends}
-XB-Installer-Menu-Item: 2350
-Description: Install a MAAS Rack controller (installer integration)
