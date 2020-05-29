@@ -840,10 +840,9 @@ class cmd_init(SnappyCommand):
 
     If you want to set up PostgreSQL for a non-production deployment on
     this machine, and configure it for use with MAAS, you can install
-    the maas-test-db snap and connect it before running 'maas init':
+    the maas-test-db snap before running 'maas init':
 
         sudo snap install maas-test-db
-        sudo snap connect maas:test-db-socket maas-test-db
         sudo maas init region+rack --database-uri maas-test-db:///
 
     """

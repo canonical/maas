@@ -7,15 +7,24 @@
 
 set -o pipefail
 
-if ! snap connections maas 2>/dev/null; then
+is_installed() {
+    snap connections "$1" >/dev/null 2>&1
+}
+
+if ! is_installed maas; then
     echo "The maas snap is not installed" >&2
     exit 1
-fi | \
+fi
+
+snap connections maas | \
     awk '$1 != "content" && $3 == "-" {print $2}' | \
     xargs -r -n1 sudo snap connect
 
-# connect content interface too
+# connect content interfaces too
 sudo snap connect maas:maas-cli maas-cli
+if is_installed maas-test-db; then
+    sudo snap connect maas:test-db-socket maas-test-db
+fi
 
 # need to restart services since some checks are done at startup
 sudo snap restart maas
