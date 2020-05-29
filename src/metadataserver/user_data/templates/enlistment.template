@@ -32,7 +32,8 @@ main() {
     case "$power_type" in
         ipmi)
             power_params=$(maas-ipmi-autodetect \
-                ${IPMI_AUTODETECT_ARGS} --commission-creds) &&
+                ${IPMI_AUTODETECT_ARGS} --maas-ipmi-user "{{maas_ipmi_user}}" \
+                    --commission-creds) &&
                 [ -n "${power_params}" ] && power_params=${power_params%.}
             ;;
         moonshot)

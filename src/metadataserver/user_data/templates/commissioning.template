@@ -20,7 +20,9 @@ main() {
     power_type=$(get_power_type)
     case "$power_type" in
         ipmi)
-            power_settings=$(maas-ipmi-autodetect ${IPMI_AUTODETECT_ARGS})
+            power_settings=$(maas-ipmi-autodetect \
+                --maas-ipmi-user "{{maas_ipmi_user}}" \
+                ${IPMI_AUTODETECT_ARGS})
             ;;
         moonshot)
             power_settings=$(maas-moonshot-autodetect)

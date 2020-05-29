@@ -12,6 +12,7 @@ import re
 from testtools.matchers import ContainsAll
 
 from maasserver.enum import NODE_STATUS
+from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.user_data import (
@@ -258,4 +259,52 @@ class TestDiskErasingUserData(MAASServerTestCase):
         )
         self.assertIsNotNone(
             re.search(self.maas_wipe, payload, re.MULTILINE | re.DOTALL)
+        )
+
+
+class TestIPMIUser(MAASServerTestCase):
+
+    scenarios = (
+        ("default_enlist", {"ipmi_user": None, "status": NODE_STATUS.NEW}),
+        ("custom_enlist", {"ipmi_user": "custom", "status": NODE_STATUS.NEW}),
+        (
+            "default_commission",
+            {"ipmi_user": "custom", "status": NODE_STATUS.COMMISSIONING},
+        ),
+        (
+            "custom_commission",
+            {"ipmi_user": "custom", "status": NODE_STATUS.COMMISSIONING},
+        ),
+    )
+
+    def test_generate_user_data_specifies_ipmi_user(self):
+        node = factory.make_Node()
+        if self.ipmi_user:
+            Config.objects.set_config("maas_auto_ipmi_user", self.ipmi_user)
+        user_data = generate_user_data_for_status(
+            node,
+            status=self.status,
+            extra_content={"enlist_commissioning": True},
+        )
+        parsed_data = email.message_from_string(user_data.decode("utf-8"))
+        self.assertTrue(parsed_data.is_multipart())
+
+        user_data_script = parsed_data.get_payload()[0]
+        self.assertEquals(
+            'text/x-shellscript; charset="utf-8"',
+            user_data_script["Content-Type"],
+        )
+        self.assertEquals(
+            "base64", user_data_script["Content-Transfer-Encoding"]
+        )
+        self.assertEquals(
+            'attachment; filename="user_data.sh"',
+            user_data_script["Content-Disposition"],
+        )
+        payload = base64.b64decode(user_data_script.get_payload())
+        if self.ipmi_user is None:
+            # Ensure that the default user is being used.
+            self.ipmi_user = "maas"
+        self.assertIn(
+            f'--maas-ipmi-user "{self.ipmi_user}"', payload.decode("utf-8")
         )

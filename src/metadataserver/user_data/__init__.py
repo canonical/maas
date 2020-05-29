@@ -20,6 +20,7 @@ from django.urls import reverse
 import tempita
 
 from maasserver.enum import NODE_STATUS
+from maasserver.models.config import Config
 from maasserver.utils import absolute_reverse
 from metadataserver.user_data.snippets import (
     get_snippet_context,
@@ -65,7 +66,12 @@ def generate_user_data(
         server_url = absolute_reverse("machines_handler")
     else:
         server_url = request.build_absolute_uri(reverse("machines_handler"))
-    preseed_context = {"node": node, "server_url": server_url}
+    configs = Config.objects.get_configs(["maas_auto_ipmi_user"])
+    preseed_context = {
+        "node": node,
+        "server_url": server_url,
+        "maas_ipmi_user": configs["maas_auto_ipmi_user"],
+    }
 
     # Render the snippets in the main template.
     snippets = get_snippet_context(encoding=ENCODING)

@@ -396,6 +396,39 @@ class MAASHandlerAPITest(APITestCase.ForUser):
             internal_domain, Config.objects.get_config("maas_internal_domain")
         )
 
+    def test_get_config_maas_ipmi_user(self):
+        ipmi_user = factory.make_name("internal")
+        Config.objects.set_config("maas_auto_ipmi_user", ipmi_user)
+        response = self.client.get(
+            reverse("maas_handler"),
+            {"op": "get_config", "name": "maas_auto_ipmi_user"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        expected = '"%s"' % ipmi_user
+        self.assertEqual(
+            expected.encode(settings.DEFAULT_CHARSET), response.content
+        )
+
+    def test_set_config_maas_ipmi_user(self):
+        self.become_admin()
+        ipmi_user = factory.make_name("internal")
+        response = self.client.post(
+            reverse("maas_handler"),
+            {
+                "op": "set_config",
+                "name": "maas_auto_ipmi_user",
+                "value": ipmi_user,
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.assertEqual(
+            ipmi_user, Config.objects.get_config("maas_auto_ipmi_user")
+        )
+
 
 class MAASHandlerAPITestForProxyPort(APITestCase.ForUser):
 

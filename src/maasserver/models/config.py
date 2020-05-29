@@ -122,6 +122,7 @@ def get_default_config():
         "prometheus_push_interval": 60,
         # Enlistment options
         "enlist_commissioning": True,
+        "maas_auto_ipmi_user": "maas",
         # VMware vCenter crednetials
         "vcenter_server": "",
         "vcenter_username": "",

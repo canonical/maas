@@ -369,6 +369,12 @@ def main():
         help="Create IPMI temporary credentials",
         default=False,
     )
+    parser.add_argument(
+        "--maas-ipmi-user",
+        type=str,
+        help="IPMI user that should be autocreated for MAAS",
+        default="maas",
+    )
 
     args = parser.parse_args()
 
@@ -380,7 +386,7 @@ def main():
         time.sleep(120)
 
     # create user/pass
-    IPMI_MAAS_USER = "maas"
+    IPMI_MAAS_USER = args.maas_ipmi_user
     IPMI_MAAS_PASSWORD = None
 
     IPMI_MAAS_PASSWORD = configure_ipmi_user(IPMI_MAAS_USER)

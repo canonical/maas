@@ -838,6 +838,18 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "maas_auto_ipmi_user": {
+        "default": "maas",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "MAAS IPMI user.",
+            "required": False,
+            "help_text": (
+                "The name of the IPMI user that MAAS automatically creates "
+                "during enlistment/commissioning."
+            ),
+        },
+    },
     "vcenter_server": {
         "default": "",
         "form": forms.CharField,
