@@ -34,10 +34,10 @@
 #     type: interface
 #   url:
 #     type: url
-#     description: A comma seperated list of URLs, IPs, or domains to test if
-#                  the specified interface has access to. Any protocol
-#                  supported by curl is support. If no protocol or icmp is
-#                  given the URL will be pinged.
+#     description: A comma separated list of URLs, IPs, or domains to test if 
+#                  all the interfaces have access to. Any protocol supported
+#                  by curl is supported. If no protocol or icmp is given the
+#                  URL will be pinged.
 #     default: https://connectivity-check.ubuntu.com
 #     required: True
 #     allow_list: True
