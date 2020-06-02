@@ -413,17 +413,21 @@ def _process_system_information(node, system_data):
         validate_and_set_data(f"system_{i}", system_data.get(i))
 
     # Gather mainboard information, all systems should have this.
-    motherboard = system_data.get("motherboard", {})
+    motherboard = system_data.get("motherboard")
+    # LP:1881116 - LXD will sometimes define the value as None.
+    motherboard = motherboard if isinstance(motherboard, dict) else {}
     for i in ["vendor", "product", "serial", "version"]:
         validate_and_set_data(f"mainboard_{i}", motherboard.get(i))
 
     # Gather mainboard firmware information.
-    firmware = system_data.get("firmware", {})
+    firmware = system_data.get("firmware")
+    firmware = firmware if isinstance(firmware, dict) else {}
     for i in ["vendor", "date", "version"]:
         validate_and_set_data(f"mainboard_firmware_{i}", firmware.get(i))
 
     # Gather chassis information.
-    chassis = system_data.get("chassis", {})
+    chassis = system_data.get("chassis")
+    chassis = chassis if isinstance(chassis, dict) else {}
     for i in ["vendor", "type", "serial", "version"]:
         validate_and_set_data(f"chassis_{i}", chassis.get(i))
 

@@ -11,6 +11,7 @@ import os.path
 import random
 
 from distro_info import UbuntuDistroInfo
+from django.db.models import Q
 from fixtures import FakeLogger
 from netaddr import IPNetwork
 from testtools.matchers import (
@@ -1573,6 +1574,25 @@ class TestProcessLXDResults(MAASServerTestCase):
         )
         self.assertFalse(
             node.nodemetadata_set.exclude(key="cpu_model").exists()
+        )
+
+    def test__handles_none_system_information(self):
+        # Regression test for LP:1881116
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        modified_sample_lxd_data = make_lxd_output()
+        for key in ["motherboard", "firmware", "chassis"]:
+            modified_sample_lxd_data["resources"]["system"][key] = None
+        process_lxd_results(
+            node, json.dumps(modified_sample_lxd_data).encode(), 0
+        )
+        self.assertEquals(
+            0,
+            node.nodemetadata_set.filter(
+                Q(key__startswith="mainboard")
+                | Q(key__startswith="firmware")
+                | Q(key__startswith="chassis")
+            ).count(),
         )
 
     def test__removes_missing_nodemetadata(self):
