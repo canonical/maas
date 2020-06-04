@@ -1,7 +1,7 @@
 Source: maas
 Section: net
 Priority: optional
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Maintainer: MAAS developers <maas-devel@lists.ubuntu.com>
 Build-Depends: debhelper (>= 10),
                dh-apport,
                dh-exec,
@@ -82,7 +82,7 @@ Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          python3-django-piston3 (>= 0.3~rc2),
          python3-djorm-ext-pgarray,
          python3-maas-provisioningserver (= ${binary:Version}),
-         python3-macaroonbakery (>= 1.1.3),
+         python3-macaroonbakery (>= 1.2.1),
          python3-mimeparse,
          python3-petname,
          python3-requests,
@@ -141,7 +141,7 @@ Depends: archdetect-deb,
          python3-oauthlib,
          python3-paramiko,
          python3-pexpect,
-         python3-pylxd,
+         python3-pylxd (>= 2.2.11~),
          python3-pyparsing,
          python3-pyvmomi,
          python3-seamicroclient,
@@ -179,7 +179,7 @@ Package: python3-maas-client
 Section: python
 Architecture: all
 Depends: python3-httplib2,
-         python3-macaroonbakery (>= 1.1.3),
+         python3-macaroonbakery (>= 1.2.1),
          python3-netifaces,
          python3-oauth,
          python3-tempita,
