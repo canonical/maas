@@ -418,17 +418,18 @@ class TestPartition(MAASServerTestCase):
             for _ in range(4)
         ]
         idx = 1
-        for partition in partitions:
-            self.expectThat(idx, Equals(partition.get_partition_number()))
-            idx += 1
+        for idx, partition in enumerate(partitions, 1):
+            self.assertEqual(partition.get_partition_number(), idx)
 
-    def test_get_partition_number_starting_at_2_for_amd64_not_gpt(self):
+    def test_get_partition_number_starting_at_2_for_amd64_not_uefi(self):
         node = factory.make_Node(
             bios_boot_method="pxe", architecture="amd64/generic"
         )
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
+            size=(MIN_PARTITION_SIZE * 4)
+            + PARTITION_TABLE_EXTRA_SPACE
+            + BIOS_GRUB_PARTITION_SIZE,
         )
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT

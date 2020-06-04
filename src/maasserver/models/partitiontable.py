@@ -41,13 +41,9 @@ PARTITION_TABLE_EXTRA_SPACE = (
 # on ppc64el and will fail to boot.
 PREP_PARTITION_SIZE = 8 * 1024 * 1024  # 8MiB
 
-# 2 TiB disks require GPT partition tables so the whole disk can be used. MBR
-# is forced on the boot disk unless the disk is larger than 2TiB.
-GPT_REQUIRED_SIZE = 2 * 1024 * 1024 * 1024 * 1024
-
 # The amount of space required to be reserved for the bios_grub partition.
 # bios_grub partition is required on amd64 architectures when grub is used
-# on the boot disk and the disk is larger than GPT_REQUIRED_SIZE.
+# on the boot disk with GPT.
 BIOS_GRUB_PARTITION_SIZE = 1 * 1024 * 1024  # 1MiB
 
 
@@ -62,7 +58,9 @@ class PartitionTable(CleanSave, TimestampedModel):
         """Needed for South to recognize this model."""
 
     table_type = CharField(
-        max_length=20, choices=PARTITION_TABLE_TYPE_CHOICES, default=None
+        max_length=20,
+        choices=PARTITION_TABLE_TYPE_CHOICES,
+        default=PARTITION_TABLE_TYPE.GPT,
     )
 
     block_device = ForeignKey(
@@ -95,7 +93,6 @@ class PartitionTable(CleanSave, TimestampedModel):
         elif (
             node_arch == "amd64"
             and self.block_device.node.bios_boot_method != "uefi"
-            and self.block_device.size >= GPT_REQUIRED_SIZE
         ):
             extra_space += BIOS_GRUB_PARTITION_SIZE
         return extra_space
@@ -146,55 +143,6 @@ class PartitionTable(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "Partition table for {bd}".format(bd=self.block_device)
-
-    def save(self, *args, **kwargs):
-        self._set_and_validate_table_type_for_boot_disk()
-        return super(PartitionTable, self).save(*args, **kwargs)
-
-    def _set_and_validate_table_type_for_boot_disk(self):
-        """Validates or set the table type if this partition table is on the
-        boot disk for a node."""
-        if (
-            self.block_device is not None
-            and self.block_device.node is not None
-        ):
-            node = self.block_device.node
-            boot_disk = node.get_boot_disk()
-            # Compare the block_device.id and boot_disk.id because it is
-            # possible they are not the same type. One being an instance
-            # of PhysicalBlockDevice and the other being just a BlockDevice.
-            # Without this comparison the wrong partition table type will be
-            # placed on the boot disk.
-            if boot_disk is not None and self.block_device.id == boot_disk.id:
-                bios_boot_method = node.get_bios_boot_method()
-                if bios_boot_method in ["uefi", "powernv", "powerkvm"]:
-                    # UEFI, PowerNV, or PowerKVM must always use a GPT table.
-                    if not self.table_type:
-                        self.table_type = PARTITION_TABLE_TYPE.GPT
-                    elif self.table_type != PARTITION_TABLE_TYPE.GPT:
-                        raise ValidationError(
-                            {
-                                "table_type": [
-                                    "Partition table on this node's boot disk "
-                                    "must be using '%s'."
-                                    % (PARTITION_TABLE_TYPE.GPT)
-                                ]
-                            }
-                        )
-                else:
-                    # Don't even check if its 'pxe', because we always fallback
-                    # to MBR unless the disk is larger than 2TiB in that case
-                    # it is GPT.
-                    disk_size = self.block_device.size
-                    if not self.table_type:
-                        if disk_size >= GPT_REQUIRED_SIZE:
-                            self.table_type = PARTITION_TABLE_TYPE.GPT
-                        else:
-                            self.table_type = PARTITION_TABLE_TYPE.MBR
-
-        # Force GPT for everything else.
-        if not self.table_type:
-            self.table_type = PARTITION_TABLE_TYPE.GPT
 
     def clean(self, *args, **kwargs):
         super(PartitionTable, self).clean(*args, **kwargs)

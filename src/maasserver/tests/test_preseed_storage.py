@@ -2510,6 +2510,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
             device: sda
             number: 1
             type: partition
+            offset: 4194304B
             size: 3145728B
             uuid: 7f79841c-9f57-4ab7-ada2-b2774e3908a3
             wipe: superblock
@@ -2625,6 +2626,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
             osystem="esxi",
+            bios_boot_method="uefi",
             distro_series="6.7",
             with_boot_disk=False,
         )

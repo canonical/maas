@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import json
 import random
+from unittest import skip
 
 from django.conf import settings
 from django.test import RequestFactory
@@ -407,6 +408,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertIsNone(parsed_result[0]["pod"])
 
+    @skip("LP:1840491")
     def test_GET_machines_issues_constant_number_of_queries(self):
         # Patch middleware so it does not affect query counting.
         self.patch(
@@ -417,8 +419,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         for _ in range(10):
             node = factory.make_Node_with_Interface_on_Subnet()
             factory.make_VirtualBlockDevice(node=node)
-        # XXX ltrager 2019-08-16 - Work around for LP:1840491
-        Node.objects.update(boot_disk=None)
 
         num_queries1, response1 = count_queries(
             self.client.get, reverse("machines_handler")
@@ -427,7 +427,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         for _ in range(10):
             node = factory.make_Node_with_Interface_on_Subnet()
             factory.make_VirtualBlockDevice(node=node)
-        # XXX ltrager 2019-08-16 - Work around for LP:1840491
         Node.objects.update(boot_disk=None)
         num_queries2, response2 = count_queries(
             self.client.get, reverse("machines_handler")

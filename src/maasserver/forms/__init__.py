@@ -152,6 +152,7 @@ from maasserver.models import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
+from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
 from maasserver.permissions import NodePermission, ResourcePoolPermission
 from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.utils.converters import machine_readable_bytes
@@ -2869,6 +2870,30 @@ class NUMANodeFormMixin:
         return self.cleaned_data["numa_node"]
 
 
+class UpdateBlockDevicePartitionTableTypeFormMixin:
+    """Mixin form class for updating partition table type for a block device.
+
+    The form using this mixin should define a partition_table_type field and
+    call the save() from this class in its own save.
+
+    """
+
+    def clean_partition_table_type(self):
+        table_type = self.cleaned_data.get("partition_table_type")
+        if not table_type:
+            return
+        if not self.instance.get_partitiontable():
+            raise ValidationError("Block device has no partition table")
+        return table_type
+
+    def save(self):
+        table_type = self.cleaned_data.get("partition_table_type")
+        if table_type:
+            part_table = self.instance.get_partitiontable()
+            part_table.table_type = table_type
+            part_table.save()
+
+
 class CreatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
     """For creating physical block device."""
 
@@ -2903,7 +2928,11 @@ class CreatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
         return block_device
 
 
-class UpdatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
+class UpdatePhysicalBlockDeviceForm(
+    MAASModelForm,
+    NUMANodeFormMixin,
+    UpdateBlockDevicePartitionTableTypeFormMixin,
+):
     """For updating physical block device."""
 
     name = forms.CharField(required=False)
@@ -2912,6 +2941,9 @@ class UpdatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
     block_size = BytesField(required=False)
     numa_node = forms.IntegerField(
         required=False, initial=0, min_value=0, label="NUMA node"
+    )
+    partition_table_type = forms.ChoiceField(
+        required=False, choices=PARTITION_TABLE_TYPE_CHOICES
     )
 
     class Meta:
@@ -2935,6 +2967,11 @@ class UpdatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
         # needed by NUMANodeForm
         return self.instance.node
 
+    def save(self):
+        block_device = super().save()
+        UpdateBlockDevicePartitionTableTypeFormMixin.save(self)
+        return block_device
+
 
 class UpdateDeployedPhysicalBlockDeviceForm(MAASModelForm):
     """For updating physical block device on deployed machine."""
@@ -2947,12 +2984,17 @@ class UpdateDeployedPhysicalBlockDeviceForm(MAASModelForm):
         fields = ["name", "model", "serial", "id_path"]
 
 
-class UpdateVirtualBlockDeviceForm(MAASModelForm):
+class UpdateVirtualBlockDeviceForm(
+    MAASModelForm, UpdateBlockDevicePartitionTableTypeFormMixin
+):
     """For updating virtual block device."""
 
     name = forms.CharField(required=False)
     uuid = UUID4Field(required=False)
     size = BytesField(required=False)
+    partition_table_type = forms.ChoiceField(
+        required=False, choices=PARTITION_TABLE_TYPE_CHOICES
+    )
 
     class Meta:
         model = VirtualBlockDevice

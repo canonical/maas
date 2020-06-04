@@ -2643,7 +2643,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_PartitionTable(
         self,
-        table_type=None,
+        table_type=PARTITION_TABLE_TYPE.GPT,
         block_device=None,
         node=None,
         block_device_size=None,

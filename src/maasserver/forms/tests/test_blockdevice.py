@@ -22,6 +22,7 @@ from maasserver.forms import (
 from maasserver.models import Filesystem
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
+from maasserver.models.partitiontable import PARTITION_TABLE_TYPE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
@@ -350,6 +351,35 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
         self.assertEqual(block_device.numa_node, numa_node)
+
+    def test_udpate_partitiontable_type(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=block_device
+        )
+        form = UpdatePhysicalBlockDeviceForm(
+            instance=block_device,
+            data={"partition_table_type": PARTITION_TABLE_TYPE.MBR},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertEqual(
+            block_device.get_partitiontable().table_type,
+            PARTITION_TABLE_TYPE.MBR,
+        )
+
+    def test_udpate_partitiontable_type_no_table(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        self.assertIsNone(block_device.get_partitiontable())
+        form = UpdatePhysicalBlockDeviceForm(
+            instance=block_device,
+            data={"partition_table_type": PARTITION_TABLE_TYPE.MBR},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors["partition_table_type"],
+            ["Block device has no partition table"],
+        )
 
 
 class TestUpdateDeployedPhysicalBlockDeviceForm(MAASServerTestCase):

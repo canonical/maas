@@ -155,6 +155,7 @@ class TestTagAPI(APITestCase.ForUser):
             [r["system_id"] for r in parsed_result],
         )
 
+    @skip("LP:1840491")
     def test_GET_nodes_query_count(self):
         # Patch middleware so it does not affect query counting.
         self.patch(
@@ -233,6 +234,7 @@ class TestTagAPI(APITestCase.ForUser):
             [machine.system_id], [r["system_id"] for r in parsed_result]
         )
 
+    @skip("LP:1840491")
     def test_GET_machines_query_count(self):
         # Patch middleware so it does not affect query counting.
         self.patch(

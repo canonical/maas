@@ -548,7 +548,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ["root_device", "root_size", "boot_size"], layout.fields.keys()
         )
 
-    def test__creates_layout_with_mbr_defaults(self):
+    def test__creates_layout_with_gpt_defaults(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
@@ -558,7 +558,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 
         # Validate partition table.
         partition_table = boot_disk.get_partitiontable()
-        self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
         # Validate root partition.
         partitions = partition_table.partitions.order_by("id").all()
@@ -715,7 +715,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 
         # Validate partition table.
         partition_table = boot_disk.get_partitiontable()
-        self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
         # Validate boot partition.
         partitions = partition_table.partitions.order_by("id").all()
