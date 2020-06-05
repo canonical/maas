@@ -4198,6 +4198,83 @@ class TestMachineHandler(MAASServerTestCase):
             ),
         )
 
+    def test_scriptresult_cache_allows_duplicate_with_diff_params(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(with_boot_disk=False)
+        bds = [factory.make_PhysicalBlockDevice(node=node) for _ in range(2)]
+        ifaces = [factory.make_Interface(node=node) for _ in range(2)]
+        testing_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING
+        )
+        node.current_testing_script_set = testing_script_set
+        node.save()
+        bd_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            hardware_type=HARDWARE_TYPE.STORAGE,
+            parameters={"storage": {"type": "storage"}},
+        )
+        iface_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            hardware_type=HARDWARE_TYPE.NETWORK,
+            parameters={"interface": {"type": "interface"}},
+        )
+        factory.make_ScriptResult(
+            script_set=testing_script_set,
+            script=bd_script,
+            status=SCRIPT_STATUS.PASSED,
+            physical_blockdevice=bds[0],
+        )
+        factory.make_ScriptResult(
+            script_set=testing_script_set,
+            script=bd_script,
+            status=SCRIPT_STATUS.FAILED,
+            physical_blockdevice=bds[1],
+        )
+        factory.make_ScriptResult(
+            script_set=testing_script_set,
+            script=iface_script,
+            status=SCRIPT_STATUS.PASSED,
+            interface=ifaces[0],
+        )
+        factory.make_ScriptResult(
+            script_set=testing_script_set,
+            script=iface_script,
+            status=SCRIPT_STATUS.FAILED,
+            interface=ifaces[1],
+        )
+        observed = handler.get({"system_id": node.system_id})
+        self.assertDictEqual(
+            {
+                "status": SCRIPT_STATUS.FAILED,
+                "pending": 0,
+                "running": 0,
+                "passed": 2,
+                "failed": 2,
+            },
+            observed["testing_status"],
+        )
+        self.assertDictEqual(
+            {
+                "status": SCRIPT_STATUS.FAILED,
+                "pending": 0,
+                "running": 0,
+                "passed": 1,
+                "failed": 1,
+            },
+            observed["storage_test_status"],
+        )
+        self.assertDictEqual(
+            {
+                "status": SCRIPT_STATUS.FAILED,
+                "pending": 0,
+                "running": 0,
+                "passed": 1,
+                "failed": 1,
+            },
+            observed["network_test_status"],
+        )
+
 
 class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
     @wait_for_reactor
