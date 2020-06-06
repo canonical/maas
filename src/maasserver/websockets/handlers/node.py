@@ -428,11 +428,15 @@ class NodeHandler(TimestampedModelHandler):
         script_results = script_results.order_by(
             "script_name",
             "physical_blockdevice_id",
+            "interface_id",
             "script_set__node_id",
             "-id",
         )
         script_results = script_results.distinct(
-            "script_name", "physical_blockdevice_id", "script_set__node_id"
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+            "script_set__node_id",
         )
         nodes_reset = set()
         for script_result in script_results:
