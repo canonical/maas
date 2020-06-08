@@ -22,7 +22,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import security
-from provisioningserver.path import get_data_path
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.security import (
     fernet_decrypt_psk,
     fernet_encrypt_psk,
@@ -41,8 +41,8 @@ class SharedSecretTestCase(MAASTestCase):
         get_secret = self.patch(security, "get_shared_secret_filesystem_path")
         # Ensure each test uses a different filename for the shared secret,
         # so that tests cannot interfere with each other.
-        get_secret.return_value = get_data_path(
-            "var", "lib", "maas", "secret-%s" % factory.make_string(16)
+        get_secret.return_value = get_maas_data_path(
+            "secret-%s" % factory.make_string(16)
         )
         # Extremely unlikely, but just in case.
         self.delete_secret()

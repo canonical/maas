@@ -53,7 +53,7 @@ from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.recs import probe_and_enlist_recs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.path import get_data_path
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.prometheus.metrics import set_global_labels
 from provisioningserver.refresh import refresh
 from provisioningserver.rpc import (
@@ -1456,7 +1456,7 @@ class ClusterClientService(TimerService, object):
 
     def _get_saved_rpc_info_path(self):
         """Return path to the saved RPC state file."""
-        return get_data_path("/var/lib/maas/rpc.state")
+        return get_maas_data_path("rpc.state")
 
     def _get_saved_rpc_info_urls(self):
         """Return the URLs to the RPC endpoint from the saved RPC state."""

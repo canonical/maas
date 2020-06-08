@@ -51,7 +51,7 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
-from provisioningserver.path import get_data_path, get_tentative_data_path
+from provisioningserver.path import get_maas_data_path, get_tentative_data_path
 import provisioningserver.utils.fs as fs_module
 from provisioningserver.utils.fs import (
     atomic_copy,
@@ -502,7 +502,7 @@ class TestSudoWriteFile(MAASTestCase):
         )
 
     def test_can_write_file_in_development(self):
-        filename = get_data_path("/var/lib/maas/dhcpd.conf")
+        filename = get_maas_data_path("dhcpd.conf")
         contents = factory.make_bytes()  # Binary safe.
         mode = random.randint(0o000, 0o777) | 0o400  # Always u+r.
         sudo_write_file(filename, contents, mode)
@@ -550,7 +550,7 @@ class TestSudoDeleteFile(MAASTestCase):
         )
 
     def test_can_delete_file_in_development(self):
-        filename = get_data_path("/var/lib/maas/dhcpd.conf")
+        filename = get_maas_data_path("dhcpd.conf")
         with open(filename, "wb") as fd:
             fd.write(factory.make_bytes())
         sudo_delete_file(filename)

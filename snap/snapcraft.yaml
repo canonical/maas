@@ -14,7 +14,8 @@ system-usernames:
 #
 # 0: MAAS 2.5 PostgreSQL 9.5
 # 1: MAAS 2.6+ PostgreSQL 10
-epoch: 1
+# 2: MAAS 2.8+ Move MAAS data to $SNAP_COMMON
+epoch: 2*
 
 plugs:
   maas-cli:

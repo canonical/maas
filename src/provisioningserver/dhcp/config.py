@@ -15,7 +15,7 @@ from netaddr import IPAddress, IPNetwork, IPRange
 import tempita
 
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.path import get_data_path, get_path
+from provisioningserver.path import get_maas_data_path, get_path
 from provisioningserver.utils import load_template, snappy, typed
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
@@ -417,7 +417,7 @@ def get_config_v4(
     """
     platform_codename = linux_distribution()[2]
     template = load_template("dhcp", template_name)
-    dhcp_socket = get_data_path("/var/lib/maas/dhcpd.sock")
+    dhcp_socket = get_maas_data_path("dhcpd.sock")
 
     # Helper functions to stuff into the template namespace.
     helpers = {

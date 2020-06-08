@@ -6,6 +6,7 @@
 export DJANGO_SETTINGS_MODULE=maasserver.djangosettings.snappy
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
+export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_IPC_SOCKET_PATH="$SNAP_DATA/maas-regiond.sock"
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"

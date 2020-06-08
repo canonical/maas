@@ -87,13 +87,11 @@ class ProvisioningServiceMaker:
         # If the TFTP port has been set to zero, use the experimental offload
         # service. Otherwise stick to the normal in-process TFTP service.
         if tftp_port == 0:
-            from provisioningserver.path import get_data_path
+            from provisioningserver.path import get_maas_data_path
             from provisioningserver.rackdservices import tftp_offload
             from twisted.internet.endpoints import UNIXServerEndpoint
 
-            tftp_offload_socket = get_data_path(
-                "/var/lib/maas/tftp-offload.sock"
-            )
+            tftp_offload_socket = get_maas_data_path("tftp-offload.sock")
             tftp_offload_endpoint = UNIXServerEndpoint(
                 reactor, tftp_offload_socket, wantPID=False
             )

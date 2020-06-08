@@ -2,10 +2,10 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-DHCP_DIR="$SNAP_DATA/var/lib/maas/dhcp"
-DHCP_CONFIG="$SNAP_DATA/var/lib/maas/dhcpd.conf"
-INTERFACES_FILE="$SNAP_DATA/var/lib/maas/dhcpd-interfaces"
-LEASES_FILE="$SNAP_DATA/var/lib/maas/dhcp/dhcpd.leases"
+DHCP_DIR="$SNAP_COMMON/maas/dhcp"
+DHCP_CONFIG="$SNAP_COMMON/maas/dhcpd.conf"
+INTERFACES_FILE="$SNAP_COMMON/maas/dhcpd-interfaces"
+LEASES_FILE="$SNAP_COMMON/maas/dhcp/dhcpd.leases"
 
 if [ ! -e "$DHCP_CONFIG" ]; then
     echo "Cannot start dhcpd as $DHCP_CONFIG does not exist."
@@ -17,7 +17,7 @@ if [ ! -e "$INTERFACES_FILE" ]; then
 fi
 
 # Initialize and clean the leases file.
-mkdir -p "$SNAP_DATA/var/lib/maas/dhcp"
+mkdir -p "$SNAP_COMMON/maas/dhcp"
 touch "$LEASES_FILE"
 "$SNAP/usr/sbin/maas-dhcp-helper" clean "$LEASES_FILE"
 

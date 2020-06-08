@@ -2,7 +2,8 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# XXX data migrations in the snap. This should be dropped at next epoch bump
+# _EPOCH_: data migrations in the snap. This should be dropped when bumping
+# epoch to 2
 migrate_data() {
     # move chrony log and driftfile
     if  [ -f "$SNAP_DATA/var/lib/chrony/chrony.drift" ]; then
@@ -10,10 +11,19 @@ migrate_data() {
         mv "$SNAP_DATA/var/lib/chrony/chrony.drift" "$SNAP_COMMON/chrony/chrony.drift"
         rm -rf "$SNAP_DATA/var/lib/chrony"
     fi
+
+    # migrate /var/lib/maas to avoid space waste because of duplicated trees
+    # for different snap revisions
+    if [ -d "$SNAP_DATA/var/lib/maas" ]; then
+        mv "$SNAP_DATA/var/lib/maas" "$SNAP_COMMON/"
+        # shellcheck disable=SC2115
+        rm -rf "$SNAP_DATA/var"
+    fi
+    # ensure target dir always exists
+    mkdir -p "$SNAP_COMMON/maas"
 }
 
 mkdir -p \
-      "$SNAP_DATA/var/lib/maas" \
       "$SNAP_DATA/root" \
       "$SNAP_DATA/supervisord"
 if [ ! -d "$SNAP_COMMON/log" ]; then

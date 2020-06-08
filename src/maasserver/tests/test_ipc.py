@@ -56,15 +56,15 @@ class TestGetIPCSocketPath(MAASTestCase):
         )
         self.assertEquals(path, get_ipc_socket_path())
 
-    def test_returns_ipc_from_maas_root(self):
+    def test_returns_ipc_from_maas_data(self):
         path = factory.make_name("path")
-        self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", path))
+        self.useFixture(EnvironmentVariableFixture("MAAS_DATA", path))
         self.assertEquals(
             os.path.join(path, "maas-regiond.sock"), get_ipc_socket_path()
         )
 
     def test_returns_ipc_at_default_location(self):
-        self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", None))
+        self.useFixture(EnvironmentVariableFixture("MAAS_DATA", None))
         self.assertEquals(
             "/var/lib/maas/maas-regiond.sock", get_ipc_socket_path()
         )

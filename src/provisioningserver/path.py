@@ -3,10 +3,16 @@
 
 """Compute paths relative to root."""
 
-__all__ = ["get_path", "get_data_path", "get_tentative_data_path"]
+__all__ = [
+    "get_path",
+    "get_data_path",
+    "get_maas_data_path",
+    "get_tentative_data_path",
+]
 
 from os import getenv, makedirs
 from os.path import abspath, dirname, join
+from pathlib import Path
 
 
 def get_path_env(env):
@@ -64,6 +70,12 @@ def get_data_path(*path_elements):
     # Make sure that the path to the file actually exists.
     makedirs(dirname(path), exist_ok=True)
     return path
+
+
+def get_maas_data_path(path: str) -> str:
+    """Return a path under the MAAS data path."""
+    base_path = Path(getenv("MAAS_DATA", "/var/lib/maas"))
+    return str(base_path / path)
 
 
 def get_path(*path_elements):

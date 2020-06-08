@@ -653,13 +653,12 @@ class TestClusterConfiguration(MAASTestCase):
         self.assertEqual({"tftp_port": example_port}, config.store)
 
     def test_default_tftp_root(self):
-        # The default tftp_root is calculated relative to MAAS_ROOT at module
+        # The default tftp_root is calculated relative to MAAS_DATA at module
         # import time, so we need to recreate that value.
-        maas_root = os.path.join(maastesting.root, ".run")
+        maas_root = os.path.join(maastesting.root, ".run/maas")
         config = ClusterConfiguration({})
         self.assertEqual(
-            os.path.join(maas_root, "var/lib/maas/boot-resources/current"),
-            config.tftp_root,
+            os.path.join(maas_root, "boot-resources/current"), config.tftp_root
         )
 
     def test_set_and_get_tftp_root(self):

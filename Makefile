@@ -23,8 +23,9 @@ dbrun := bin/database --preserve run --
 export GOPATH := $(shell go env GOPATH)
 export PATH := $(GOPATH)/bin:$(PATH)
 
-# For anything we start, we want to hint as to its root directory.
+# For anything we start, we want to hint as to its root and data directories.
 export MAAS_ROOT := $(CURDIR)/.run
+export MAAS_DATA := $(CURDIR)/.run/maas
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
 export PGDATABASE := maas

@@ -20,17 +20,14 @@ class TestToggleCprofile(MAASTestCase):
         self.now = datetime(2019, 1, 31, 1, 2, 3, 4)
         self.datetime_mock = self.patch(debug, "datetime")
         self.datetime_mock.now.return_value = self.now
-        self.maas_root = self.useFixture(TempDir()).path
+        self.maas_data = self.useFixture(TempDir()).path
         self.useFixture(
-            EnvironmentVariableFixture("MAAS_ROOT", self.maas_root)
+            EnvironmentVariableFixture("MAAS_DATA", self.maas_data)
         )
 
     def _get_prof_path(self, process_name):
         return (
-            Path(self.maas_root)
-            / "var"
-            / "lib"
-            / "maas"
+            Path(self.maas_data)
             / "profiling"
             / f"{process_name}-{os.getpid()}-2019-01-31T01:02:03.000004.pyprof"
         )

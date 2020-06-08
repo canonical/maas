@@ -39,6 +39,7 @@ from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.utils.network import (
     get_all_interface_addresses,
@@ -56,10 +57,7 @@ log = LegacyLogger()
 def get_ipc_socket_path():
     """Return the path to the IPC socket."""
     return os.environ.get(
-        "MAAS_IPC_SOCKET_PATH",
-        os.path.join(
-            os.environ.get("MAAS_ROOT", "/var/lib/maas"), "maas-regiond.sock"
-        ),
+        "MAAS_IPC_SOCKET_PATH", get_maas_data_path("maas-regiond.sock")
     )
 
 

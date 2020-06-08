@@ -131,7 +131,7 @@ from formencode.declarative import DeclarativeMeta
 from formencode.validators import Number, Set
 import yaml
 
-from provisioningserver.path import get_tentative_data_path
+from provisioningserver.path import get_maas_data_path, get_tentative_data_path
 from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
     DirectoryString,
@@ -787,9 +787,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         DirectoryString(
             # Don't validate values that are already stored.
             accept_python=True,
-            if_missing=get_tentative_data_path(
-                "/var/lib/maas/boot-resources/current"
-            ),
+            if_missing=get_maas_data_path("boot-resources/current"),
         ),
     )
 

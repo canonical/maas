@@ -15,7 +15,7 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import DatagramProtocol
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.path import get_data_path
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLease
 from provisioningserver.utils.twisted import pause, retries
@@ -25,7 +25,7 @@ maaslog = get_maas_logger("lease_socket_service")
 
 def get_socket_path():
     """Return path to dhcpd.sock."""
-    return os.path.join(get_data_path("/var/lib/maas"), "dhcpd.sock")
+    return get_maas_data_path("dhcpd.sock")
 
 
 class LeaseSocketService(Service, DatagramProtocol):
