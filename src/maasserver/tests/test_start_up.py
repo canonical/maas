@@ -102,27 +102,27 @@ class TestInnerStartUp(MAASServerTestCase):
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
-    def test__calls_dns_kms_setting_changed_if_master(self):
+    def test_calls_dns_kms_setting_changed_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         self.assertThat(start_up.dns_kms_setting_changed, MockCalledOnceWith())
 
-    def test__does_not_call_dns_kms_setting_changed_if_not_master(self):
+    def test_does_not_call_dns_kms_setting_changed_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
 
-    def test__calls_load_builtin_scripts_if_master(self):
+    def test_calls_load_builtin_scripts_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         self.assertThat(start_up.load_builtin_scripts, MockCalledOnceWith())
 
-    def test__does_not_call_load_builtin_scripts_if_not_master(self):
+    def test_does_not_call_load_builtin_scripts_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.load_builtin_scripts, MockNotCalled())
 
-    def test__resets_deprecated_commissioning_release_if_master(self):
+    def test_resets_deprecated_commissioning_release_if_master(self):
         Config.objects.set_config(
             "commissioning_distro_series", random.choice(["precise", "trusty"])
         )
@@ -139,7 +139,7 @@ class TestInnerStartUp(MAASServerTestCase):
             ).exists()
         )
 
-    def test__doesnt_reset_deprecated_commissioning_release_if_notmaster(self):
+    def test_doesnt_reset_deprecated_commissioning_release_if_notmaster(self):
         release = random.choice(["precise", "trusty"])
         Config.objects.set_config("commissioning_distro_series", release)
         with post_commit_hooks:
@@ -153,7 +153,7 @@ class TestInnerStartUp(MAASServerTestCase):
             ).exists()
         )
 
-    def test__calls_refresh_and_generates_certificate_if_master(self):
+    def test_calls_refresh_and_generates_certificate_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         region = RegionController.objects.first()
@@ -169,36 +169,36 @@ class TestInnerStartUp(MAASServerTestCase):
             ),
         )
 
-    def test__does_not_call_if_not_master(self):
+    def test_does_not_call_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.post_commit_do, MockNotCalled())
 
-    def test__doesnt_call_dns_kms_setting_changed_if_not_master(self):
+    def test_doesnt_call_dns_kms_setting_changed_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
 
-    def test__creates_region_controller(self):
+    def test_creates_region_controller(self):
         self.assertThat(RegionController.objects.all(), HasLength(0))
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(RegionController.objects.all(), HasLength(1))
 
-    def test__creates_maas_id_file(self):
+    def test_creates_maas_id_file(self):
         self.assertThat(get_maas_id(), Is(None))
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(get_maas_id(), Not(Is(None)))
 
-    def test__creates_maas_uuid(self):
+    def test_creates_maas_uuid(self):
         self.assertThat(get_maas_id(), Is(None))
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         uuid = Config.objects.get_config("uuid")
         self.assertThat(uuid, Not(Is(None)))
 
-    def test__syncs_deprecation_notifications(self):
+    def test_syncs_deprecation_notifications(self):
         self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
         snap_common_path = Path(self.make_dir())
         self.useFixture(

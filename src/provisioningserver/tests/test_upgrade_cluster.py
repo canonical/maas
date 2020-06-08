@@ -80,7 +80,7 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
         """Create a storage config."""
         self.useFixture(ClusterConfigurationFixture(tftp_root=storage_dir))
 
-    def test__calls_chown_if_boot_resources_dir_exists(self):
+    def test_calls_chown_if_boot_resources_dir_exists(self):
         self.patch(upgrade_cluster, "check_call")
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
@@ -90,7 +90,7 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
             MockCalledOnceWith(["chown", "-R", "maas", storage_dir]),
         )
 
-    def test__skips_chown_if_boot_resources_dir_does_not_exist(self):
+    def test_skips_chown_if_boot_resources_dir_does_not_exist(self):
         self.patch(upgrade_cluster, "check_call")
         storage_dir = os.path.join(self.make_dir(), factory.make_name("none"))
         os.mkdir(storage_dir)
@@ -115,14 +115,14 @@ class TestCreateGNUPGHome(MAASTestCase):
     def patch_call(self):
         return self.patch(upgrade_cluster, "check_call")
 
-    def test__succeeds_if_directory_exists(self):
+    def test_succeeds_if_directory_exists(self):
         existing_home = self.make_dir()
         self.patch_gnupg_home(existing_home)
         self.patch_call()
         upgrade_cluster.create_gnupg_home()
         self.assertEqual([], os.listdir(existing_home))
 
-    def test__creates_directory(self):
+    def test_creates_directory(self):
         parent = self.make_dir()
         new_home = self.make_nonexistent_path(parent)
         self.patch_gnupg_home(new_home)
@@ -130,7 +130,7 @@ class TestCreateGNUPGHome(MAASTestCase):
         upgrade_cluster.create_gnupg_home()
         self.assertThat(new_home, DirExists())
 
-    def test__sets_ownership_to_maas_if_running_as_root(self):
+    def test_sets_ownership_to_maas_if_running_as_root(self):
         parent = self.make_dir()
         new_home = self.make_nonexistent_path(parent)
         self.patch_gnupg_home(new_home)
@@ -141,7 +141,7 @@ class TestCreateGNUPGHome(MAASTestCase):
             call, MockCalledOnceWith(["chown", "maas:maas", new_home])
         )
 
-    def test__doesnt_set_ownership_to_maas_when_in_snap(self):
+    def test_doesnt_set_ownership_to_maas_when_in_snap(self):
         parent = self.make_dir()
         new_home = self.make_nonexistent_path(parent)
         self.patch_gnupg_home(new_home)
@@ -151,7 +151,7 @@ class TestCreateGNUPGHome(MAASTestCase):
         upgrade_cluster.create_gnupg_home()
         self.assertThat(call, MockNotCalled())
 
-    def test__does_not_set_ownership_if_not_running_as_root(self):
+    def test_does_not_set_ownership_if_not_running_as_root(self):
         parent = self.make_dir()
         new_home = self.make_nonexistent_path(parent)
         self.patch_gnupg_home(new_home)
@@ -170,13 +170,13 @@ class TestRetireBootResourcesYAML(MAASTestCase):
         self.patch(upgrade_cluster, "BOOTRESOURCES_FILE", path)
         return path
 
-    def test__does_nothing_if_file_not_present(self):
+    def test_does_nothing_if_file_not_present(self):
         path = self.set_bootresources_yaml("")
         os.remove(path)
         upgrade_cluster.retire_bootresources_yaml()
         self.assertThat(path, Not(FileExists()))
 
-    def test__prefixes_header_to_file_if_present(self):
+    def test_prefixes_header_to_file_if_present(self):
         content = factory.make_string()
         path = self.set_bootresources_yaml(content)
         upgrade_cluster.retire_bootresources_yaml()
@@ -188,7 +188,7 @@ class TestRetireBootResourcesYAML(MAASTestCase):
             ),
         )
 
-    def test__is_idempotent(self):
+    def test_is_idempotent(self):
         path = self.set_bootresources_yaml(factory.make_string())
         upgrade_cluster.retire_bootresources_yaml()
         content_after_upgrade = read_text_file(path)
@@ -197,7 +197,7 @@ class TestRetireBootResourcesYAML(MAASTestCase):
             path, FileContains(content_after_upgrade, encoding="utf-8")
         )
 
-    def test__survives_encoding_problems(self):
+    def test_survives_encoding_problems(self):
         path = os.path.join(self.make_dir(), "bootresources.yaml")
         content = b"[[%s]]" % sample_binary_data
         with open(path, "wb") as config:
@@ -225,7 +225,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         if not make_current_dir:
             os.rmdir(self.current_dir)
 
-    def test__list_subdirs_under_current_directory(self):
+    def test_list_subdirs_under_current_directory(self):
         self.patch(upgrade_cluster, "list_subdirs").return_value = ["ubuntu"]
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
@@ -237,7 +237,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
             MockCalledOnceWith(os.path.join(storage_dir, "current")),
         )
 
-    def test__exits_early_if_boot_resources_dir_does_not_exist(self):
+    def test_exits_early_if_boot_resources_dir_does_not_exist(self):
         # Patch list_subdirs, if it gets called then the method did not
         # exit early.
         self.patch(upgrade_cluster, "list_subdirs")
@@ -248,7 +248,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         )
         self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
 
-    def test__exits_early_if_current_dir_does_not_exist(self):
+    def test_exits_early_if_current_dir_does_not_exist(self):
         # Patch list_subdirs, if it gets called then the method did not
         # exit early.
         self.patch(upgrade_cluster, "list_subdirs")
@@ -259,7 +259,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         )
         self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
 
-    def test__exits_early_if_ubuntu_dir_exist(self):
+    def test_exits_early_if_ubuntu_dir_exist(self):
         # Patch drill_down, if it gets called then the method did not
         # exit early.
         self.patch(upgrade_cluster, "drill_down")
@@ -271,7 +271,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         )
         self.assertThat(upgrade_cluster.drill_down, MockNotCalled())
 
-    def test__doesnt_create_ubuntu_dir_when_no_valid_directories(self):
+    def test_doesnt_create_ubuntu_dir_when_no_valid_directories(self):
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
         upgrade_cluster.migrate_architectures_into_ubuntu_directory(
@@ -281,7 +281,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
             os.path.exists(os.path.join(storage_dir, "current", "ubuntu"))
         )
 
-    def test__moves_paths_with_correct_levels_into_ubuntu_dir(self):
+    def test_moves_paths_with_correct_levels_into_ubuntu_dir(self):
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
         arches = [factory.make_name("arch") for _ in range(3)]
@@ -305,7 +305,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
             list_subdirs(os.path.join(storage_dir, "current", "ubuntu")),
         )
 
-    def test__doesnt_move_paths_with_fewer_levels_into_ubuntu_dir(self):
+    def test_doesnt_move_paths_with_fewer_levels_into_ubuntu_dir(self):
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
         arches = [factory.make_name("arch") for _ in range(3)]
@@ -336,7 +336,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
             list_subdirs(os.path.join(storage_dir, "current", "ubuntu")),
         )
 
-    def test__doesnt_move_paths_with_more_levels_into_ubuntu_dir(self):
+    def test_doesnt_move_paths_with_more_levels_into_ubuntu_dir(self):
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
         # Extra directory level, this is what it looks like after upgrade.

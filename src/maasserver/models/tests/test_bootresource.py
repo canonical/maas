@@ -353,7 +353,7 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
-    def test__returns_empty_if_no_cache(self):
+    def test_returns_empty_if_no_cache(self):
         release = factory.make_name("release")
         name = "ubuntu/%s" % release
         factory.make_usable_boot_resource(
@@ -363,7 +363,7 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
             [], BootResource.objects.get_available_commissioning_resources()
         )
 
-    def test__returns_empty_if_no_lts(self):
+    def test_returns_empty_if_no_lts(self):
         release = factory.make_name("release")
         name = "ubuntu/%s" % release
         support_eol = factory.make_date().strftime("%Y-%m-%d")
@@ -380,7 +380,7 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
             [], BootResource.objects.get_available_commissioning_resources()
         )
 
-    def test__returns_only_lts(self):
+    def test_returns_only_lts(self):
         release = factory.make_name("release")
         name = "ubuntu/%s" % release
         support_eol = factory.make_date().strftime("%Y-%m-%d")
@@ -411,7 +411,7 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
             BootResource.objects.get_available_commissioning_resources(),
         )
 
-    def test__returns_longest_remaining_supported_lts_first(self):
+    def test_returns_longest_remaining_supported_lts_first(self):
         trusty_resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name="ubuntu/trusty"
         )
@@ -439,14 +439,14 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
 class TestGetResourcesMatchingBootImages(MAASServerTestCase):
     """Tests for `get_resources_matching_boot_images`."""
 
-    def test__returns_empty_list_if_no_resources_but_images(self):
+    def test_returns_empty_list_if_no_resources_but_images(self):
         BootResource.objects.all().delete()
         images = [make_rpc_boot_image() for _ in range(3)]
         self.assertEqual(
             [], BootResource.objects.get_resources_matching_boot_images(images)
         )
 
-    def test__returns_resource_if_matching_image(self):
+    def test_returns_resource_if_matching_image(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -465,7 +465,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
 
-    def test__returns_bootloader_if_matching(self):
+    def test_returns_bootloader_if_matching(self):
         resource = factory.make_usable_boot_resource(
             name="bootloader/uefi",
             bootloader_type="uefi",
@@ -485,7 +485,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
 
-    def test__returns_resource_with_wildcard_label(self):
+    def test_returns_resource_with_wildcard_label(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -503,7 +503,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
 
-    def test__returns_empty_list_if_subarch_not_supported_by_resource(self):
+    def test_returns_empty_list_if_subarch_not_supported_by_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -522,7 +522,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
 
-    def test__returns_empty_list_if_label_doesnt_match_resource(self):
+    def test_returns_empty_list_if_label_doesnt_match_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -540,7 +540,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
 
-    def test__returns_one_resource_if_image_has_multiple_purposes(self):
+    def test_returns_one_resource_if_image_has_multiple_purposes(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -564,7 +564,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images(images),
         )
 
-    def test__returns_multiple_resource_for_hwe_resources(self):
+    def test_returns_multiple_resource_for_hwe_resources(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
         name = "%s/%s" % (os, series)
@@ -601,7 +601,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images(images),
         )
 
-    def test__returns_resource_for_generated_resource(self):
+    def test_returns_resource_for_generated_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED
         )
@@ -620,7 +620,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
 
-    def test__returns_resource_for_uploaded_resource(self):
+    def test_returns_resource_for_uploaded_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED
         )
@@ -642,20 +642,20 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
 class TestBootImagesAreInSync(MAASServerTestCase):
     """Tests for `boot_images_are_in_sync`."""
 
-    def test__returns_True_if_both_empty(self):
+    def test_returns_True_if_both_empty(self):
         BootResource.objects.all().delete()
         self.assertTrue(BootResource.objects.boot_images_are_in_sync([]))
 
-    def test__returns_False_if_no_images(self):
+    def test_returns_False_if_no_images(self):
         factory.make_BootResource()
         self.assertFalse(BootResource.objects.boot_images_are_in_sync([]))
 
-    def test__returns_False_if_no_resources_but_images(self):
+    def test_returns_False_if_no_resources_but_images(self):
         BootResource.objects.all().delete()
         images = [make_rpc_boot_image() for _ in range(3)]
         self.assertFalse(BootResource.objects.boot_images_are_in_sync(images))
 
-    def test__returns_True_if_resource_matches_image(self):
+    def test_returns_True_if_resource_matches_image(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -671,7 +671,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         )
         self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
 
-    def test__returns_False_if_image_subarch_not_supported_by_resource(self):
+    def test_returns_False_if_image_subarch_not_supported_by_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -687,7 +687,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         )
         self.assertFalse(BootResource.objects.boot_images_are_in_sync([image]))
 
-    def test__returns_False_if_image_label_doesnt_match_resource(self):
+    def test_returns_False_if_image_label_doesnt_match_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -702,7 +702,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         )
         self.assertFalse(BootResource.objects.boot_images_are_in_sync([image]))
 
-    def test__returns_True_if_image_has_multiple_purposes(self):
+    def test_returns_True_if_image_has_multiple_purposes(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
@@ -723,7 +723,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         ]
         self.assertTrue(BootResource.objects.boot_images_are_in_sync(images))
 
-    def test__returns_True_for_generated_resource(self):
+    def test_returns_True_for_generated_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED
         )
@@ -739,7 +739,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         )
         self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
 
-    def test__returns_True_for_uploaded_resource(self):
+    def test_returns_True_for_uploaded_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED
         )
@@ -811,7 +811,7 @@ class TestGetUsableKernels(MAASServerTestCase):
         ),
     )
 
-    def test__returns_usable_kernels(self):
+    def test_returns_usable_kernels(self):
         if self.subarch == "generic":
             generic_kernels = []
             for i in self.kernels:
@@ -866,7 +866,7 @@ class TestGetUsableKernels(MAASServerTestCase):
 class TestGetKpackageForNode(MAASServerTestCase):
     """Tests for `get_kpackage_for_node`."""
 
-    def test__returns_kpackage(self):
+    def test_returns_kpackage(self):
         resource = factory.make_BootResource(
             name="ubuntu/trusty",
             architecture="amd64/hwe-t",
@@ -892,7 +892,7 @@ class TestGetKpackageForNode(MAASServerTestCase):
             BootResource.objects.get_kpackage_for_node(node),
         )
 
-    def test__returns_hwe_rolling(self):
+    def test_returns_hwe_rolling(self):
         node = factory.make_Node()
         for hwe_kernel, kpackage in (
             ["hwe-rolling", "linux-generic-hwe-rolling"],
@@ -908,7 +908,7 @@ class TestGetKpackageForNode(MAASServerTestCase):
                 kpackage, BootResource.objects.get_kpackage_for_node(node)
             )
 
-    def test__returns_none(self):
+    def test_returns_none(self):
         node = factory.make_Node()
         self.assertIsNone(BootResource.objects.get_kpackage_for_node(node))
 
@@ -916,7 +916,7 @@ class TestGetKpackageForNode(MAASServerTestCase):
 class TestGetKparamsForNode(MAASServerTestCase):
     """Tests for `get_kparams_for_node`."""
 
-    def test__returns_kpackage(self):
+    def test_returns_kpackage(self):
         resource = factory.make_BootResource(
             name="ubuntu/trusty",
             architecture="amd64/hwe-t",
@@ -944,7 +944,7 @@ class TestGetKparamsForNode(MAASServerTestCase):
             "a=b", BootResource.objects.get_kparams_for_node(node)
         )
 
-    def test__returns_none(self):
+    def test_returns_none(self):
         node = factory.make_Node()
         self.assertIsNone(BootResource.objects.get_kparams_for_node(node))
 

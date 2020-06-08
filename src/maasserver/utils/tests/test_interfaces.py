@@ -18,19 +18,19 @@ from maastesting.testcase import MAASTestCase
 class TestMakeNameFromInterface(MAASTestCase):
     """Tests for `make_name_from_interface`."""
 
-    def test__passes_name_unchanged(self):
+    def test_passes_name_unchanged(self):
         name = factory.make_name("itf9:2")
         self.assertEqual(name, make_name_from_interface(name))
 
-    def test__escapes_weird_characters(self):
+    def test_escapes_weird_characters(self):
         self.assertEqual("x--y", make_name_from_interface("x?y"))
         self.assertEqual("x--y", make_name_from_interface("x y"))
 
-    def test__makes_up_name_if_no_interface_given(self):
+    def test_makes_up_name_if_no_interface_given(self):
         self.assertNotIn(make_name_from_interface(None), (None, ""))
         self.assertNotIn(make_name_from_interface(""), (None, ""))
 
-    def test__makes_up_unique_name_if_no_interface_given(self):
+    def test_makes_up_unique_name_if_no_interface_given(self):
         self.assertNotEqual(
             make_name_from_interface(""), make_name_from_interface("")
         )

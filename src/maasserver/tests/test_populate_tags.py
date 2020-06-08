@@ -109,7 +109,7 @@ class TestDoPopulateTags(MAASServerTestCase):
 
         return clients
 
-    def test__makes_calls_to_each_client_given(self):
+    def test_makes_calls_to_each_client_given(self):
         rack_controllers = [factory.make_RackController() for _ in range(3)]
         clients = self.patch_clients(rack_controllers)
 
@@ -164,7 +164,7 @@ class TestDoPopulateTags(MAASServerTestCase):
                 ),
             )
 
-    def test__logs_successes(self):
+    def test_logs_successes(self):
         rack_controllers = [factory.make_RackController()]
         clients = self.patch_clients(rack_controllers)
 
@@ -200,7 +200,7 @@ class TestDoPopulateTags(MAASServerTestCase):
             log.output,
         )
 
-    def test__logs_failures(self):
+    def test_logs_failures(self):
         rack_controllers = [factory.make_RackController()]
         clients = self.patch_clients(rack_controllers)
         clients[0].side_effect = always_fail_with(
@@ -252,14 +252,14 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         return self.useFixture(MockLiveRegionToClusterRPCFixture())
 
-    def test__populate_tags_fails_called_in_transaction(self):
+    def test_populate_tags_fails_called_in_transaction(self):
         with transaction.atomic():
             tag = factory.make_Tag(populate=False)
             self.assertRaises(
                 transaction.TransactionManagementError, populate_tags, tag
             )
 
-    def test__calls_are_made_to_all_clusters(self):
+    def test_calls_are_made_to_all_clusters(self):
         rpc_fixture = self.prepare_live_rpc()
         rack_controllers = [factory.make_RackController() for _ in range(3)]
         protocols = []
@@ -309,7 +309,7 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
     This happens when there are no rack controllers to carry out the task.
     """
 
-    def test__saving_tag_schedules_node_population(self):
+    def test_saving_tag_schedules_node_population(self):
         clock = self.patch(tag_module, "reactor", Clock())
 
         with post_commit_hooks:
@@ -337,7 +337,7 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__populate_in_region_when_no_clients(self):
+    def test_populate_in_region_when_no_clients(self):
         clock = self.patch(tag_module, "reactor", Clock())
 
         # Ensure there are no clients.

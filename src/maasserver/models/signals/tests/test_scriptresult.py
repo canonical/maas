@@ -24,7 +24,7 @@ from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 
 
 class TestStatusTransitionEvent(MAASServerTestCase):
-    def test__running_or_installing_emits_event(self):
+    def test_running_or_installing_emits_event(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PENDING, script=script
@@ -47,7 +47,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             ),
         )
 
-    def test__running_or_installing_emits_event_with_storage_parameter(self):
+    def test_running_or_installing_emits_event_with_storage_parameter(self):
         node = factory.make_Node()
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         script_set = factory.make_ScriptSet(
@@ -77,7 +77,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             ),
         )
 
-    def test__running_or_installing_emits_event_with_interface_parameter(self):
+    def test_running_or_installing_emits_event_with_interface_parameter(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         script_set = factory.make_ScriptSet(
@@ -107,7 +107,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             ),
         )
 
-    def test__running_or_installing_emits_event_with_nic_disk_param(self):
+    def test_running_or_installing_emits_event_with_nic_disk_param(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         script_set = factory.make_ScriptSet(
@@ -143,7 +143,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             ),
         )
 
-    def test__script_did_not_complete_emits_event(self):
+    def test_script_did_not_complete_emits_event(self):
 
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING,
@@ -173,7 +173,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             ),
         )
 
-    def test__script_changed_status_emits_event(self):
+    def test_script_changed_status_emits_event(self):
 
         old_status = SCRIPT_STATUS.RUNNING
         script_result = factory.make_ScriptResult(
@@ -208,7 +208,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             ),
         )
 
-    def test__install_log_emits_event(self):
+    def test_install_log_emits_event(self):
 
         old_status = SCRIPT_STATUS.RUNNING
         script_result = factory.make_ScriptResult(

@@ -283,7 +283,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__compose(self):
+    def test_compose(self):
         user = yield deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
         pod = yield deferToDatabase(self.make_pod_with_hints)

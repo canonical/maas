@@ -550,14 +550,14 @@ class TestRackClient(MAASTestCase):
             RackClient.cache_calls,
         )
 
-    def test__getCallCache_adds_new_call_cache(self):
+    def test_getCallCache_adds_new_call_cache(self):
         conn = DummyConnection()
         cache = {}
         client = RackClient(conn, cache)
         call_cache = client._getCallCache()
         self.assertIs(call_cache, cache["call_cache"])
 
-    def test__getCallCache_returns_existing(self):
+    def test_getCallCache_returns_existing(self):
         conn = DummyConnection()
         cache = {}
         client = RackClient(conn, cache)
@@ -569,7 +569,7 @@ class TestRackClient(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__call__returns_cache_value(self):
+    def test_call__returns_cache_value(self):
         conn = DummyConnection()
         conn.ident = factory.make_name("ident")
         client = RackClient(conn, {})
@@ -584,7 +584,7 @@ class TestRackClient(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__call__adds_result_to_cache(self):
+    def test_call__adds_result_to_cache(self):
         conn = DummyConnection()
         conn.ident = factory.make_name("ident")
         self.patch(conn, "callRemote").return_value = succeed(
@@ -600,7 +600,7 @@ class TestRackClient(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__call__doesnt_add_result_to_cache_for_not_cache_call(self):
+    def test_call__doesnt_add_result_to_cache_for_not_cache_call(self):
         conn = DummyConnection()
         conn.ident = factory.make_name("ident")
         self.patch(conn, "callRemote").return_value = succeed(
@@ -614,7 +614,7 @@ class TestRackClient(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__call__records_latency_metric(self):
+    def test_call__records_latency_metric(self):
         mock_metrics = self.patch(PROMETHEUS_METRICS, "update")
         conn = DummyConnection()
         conn.ident = factory.make_name("ident")

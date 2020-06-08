@@ -180,7 +180,7 @@ def token_to_dict(token):
 class TestAuthenticate(MAASServerTestCase):
     """Tests for the `authenticate` view."""
 
-    def test__returns_existing_credentials(self):
+    def test_returns_existing_credentials(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         user = factory.make_User(username, password)
@@ -194,7 +194,7 @@ class TestAuthenticate(MAASServerTestCase):
             json_load_bytes(response.content), Equals(token_to_dict(token))
         )
 
-    def test__returns_first_of_existing_credentials(self):
+    def test_returns_first_of_existing_credentials(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         user = factory.make_User(username, password)
@@ -210,7 +210,7 @@ class TestAuthenticate(MAASServerTestCase):
             json_load_bytes(response.content), Equals(token_to_dict(token))
         )
 
-    def test__returns_existing_named_credentials(self):
+    def test_returns_existing_named_credentials(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         consumer = factory.make_name("consumer")
@@ -229,7 +229,7 @@ class TestAuthenticate(MAASServerTestCase):
             json_load_bytes(response.content), Equals(token_to_dict(token))
         )
 
-    def test__returns_first_of_existing_named_credentials(self):
+    def test_returns_first_of_existing_named_credentials(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         consumer = factory.make_name("consumer")
@@ -248,7 +248,7 @@ class TestAuthenticate(MAASServerTestCase):
             json_load_bytes(response.content), Equals(token_to_dict(tokens[0]))
         )
 
-    def test__returns_new_credentials(self):
+    def test_returns_new_credentials(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         user = factory.make_User(username, password)
@@ -263,7 +263,7 @@ class TestAuthenticate(MAASServerTestCase):
             json_load_bytes(response.content), Equals(token_to_dict(token))
         )
 
-    def test__returns_new_named_credentials(self):
+    def test_returns_new_named_credentials(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         consumer = factory.make_name("consumer")
@@ -283,7 +283,7 @@ class TestAuthenticate(MAASServerTestCase):
             ContainsDict({"name": Equals(consumer)}),
         )
 
-    def test__rejects_unknown_username(self):
+    def test_rejects_unknown_username(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         response = self.client.post(
@@ -292,7 +292,7 @@ class TestAuthenticate(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
 
-    def test__rejects_incorrect_password(self):
+    def test_rejects_incorrect_password(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         factory.make_User(username, password)
@@ -302,7 +302,7 @@ class TestAuthenticate(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
 
-    def test__rejects_inactive_user(self):
+    def test_rejects_inactive_user(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
         user = factory.make_User(username, password)
@@ -314,7 +314,7 @@ class TestAuthenticate(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
 
-    def test__rejects_GET(self):
+    def test_rejects_GET(self):
         response = self.client.get(reverse("authenticate"))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
         self.assertThat(response["Allow"], Equals("POST"))
@@ -352,23 +352,23 @@ class TestAuthenticate(MAASServerTestCase):
 
 
 class TestCSRF(MAASServerTestCase):
-    def test__method_not_allowed_on_get(self):
+    def test_method_not_allowed_on_get(self):
         response = self.client.get(reverse("csrf"))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
 
-    def test__method_not_allowed_on_put(self):
+    def test_method_not_allowed_on_put(self):
         response = self.client.put(reverse("csrf"))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
 
-    def test__method_not_allowed_on_delete(self):
+    def test_method_not_allowed_on_delete(self):
         response = self.client.delete(reverse("csrf"))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
 
-    def test__forbidden_when_not_authenticated(self):
+    def test_forbidden_when_not_authenticated(self):
         response = self.client.post(reverse("csrf"))
         self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
 
-    def test__returns_csrf(self):
+    def test_returns_csrf(self):
         # Force the client to test for CSRF because the view should be CSRF
         # exempt. If not exempt then the `client.post` would fail.
         self.client.handler.enforce_csrf_checks = True

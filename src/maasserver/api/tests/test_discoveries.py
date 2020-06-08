@@ -115,7 +115,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         self.assertTrue(results[0]["last_seen"] >= results[1]["last_seen"])
         self.assertTrue(results[1]["last_seen"] >= results[2]["last_seen"])
 
-    def test__by_unknown_mac(self):
+    def test_by_unknown_mac(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
@@ -127,7 +127,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({"op": "by_unknown_mac"})
         self.assertThat(len(results), Equals(0))
 
-    def test__by_unknown_ip(self):
+    def test_by_unknown_ip(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
@@ -139,7 +139,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({"op": "by_unknown_ip"})
         self.assertThat(len(results), Equals(0))
 
-    def test__by_unknown_ip_and_mac__known_ip(self):
+    def test_by_unknown_ip_and_mac__known_ip(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
@@ -150,7 +150,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
         self.assertThat(len(results), Equals(0))
 
-    def test__by_unknown_ip_and_mac__known_mac(self):
+    def test_by_unknown_ip_and_mac__known_mac(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
@@ -187,15 +187,15 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         result = {"result": factory.make_name()}
         self.scan_all_rack_networks_mock.return_value = result
 
-    def test__scan__fails_scan_all_if_not_forced(self):
+    def test_scan__fails_scan_all_if_not_forced(self):
         response = self.post_api_response({"op": "scan"})
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
-    def test__scan__threads_must_be_number(self):
+    def test_scan__threads_must_be_number(self):
         response = self.post_api_response({"op": "scan", "threads": "x"})
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
-    def test__scan__calls_scan_all_networks_with_scan_all_if_forced(self):
+    def test_scan__calls_scan_all_networks_with_scan_all_if_forced(self):
         result = self.post_api_results({"op": "scan", "force": "true"})
         self.assertThat(result, Equals(result))
         self.assertThat(
@@ -205,7 +205,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             ),
         )
 
-    def test__scan__passes_ping(self):
+    def test_scan__passes_ping(self):
         result = self.post_api_results(
             {"op": "scan", "force": "true", "always_use_ping": "true"}
         )
@@ -217,7 +217,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             ),
         )
 
-    def test__scan__passes_slow(self):
+    def test_scan__passes_slow(self):
         result = self.post_api_results(
             {"op": "scan", "force": "true", "slow": "true"}
         )
@@ -229,7 +229,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             ),
         )
 
-    def test__scan__passes_threads(self):
+    def test_scan__passes_threads(self):
         result = self.post_api_results(
             {"op": "scan", "force": "true", "threads": "3.14"}
         )
@@ -241,7 +241,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             ),
         )
 
-    def test__scan__calls_scan_all_networks_with_specified_cidrs(self):
+    def test_scan__calls_scan_all_networks_with_specified_cidrs(self):
         result = self.post_api_results(
             {
                 "op": "scan",
@@ -263,17 +263,17 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             ),
         )
 
-    def test__scan__with_invalid_cidrs_fails(self):
+    def test_scan__with_invalid_cidrs_fails(self):
         response = self.post_api_response(
             {"op": "scan", "cidr": ["x.x.x.x/y"]}
         )
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
-    def test__scan__with_no_cidrs_does_not_call_scan_all_networks(self):
+    def test_scan__with_no_cidrs_does_not_call_scan_all_networks(self):
         response = self.post_api_response({"op": "scan"})
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
-    def test__clear_not_allowed_for_non_admin(self):
+    def test_clear_not_allowed_for_non_admin(self):
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
         make_discoveries(interface=iface, count=3)
@@ -283,7 +283,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
-    def test__clear_requires_parameters(self):
+    def test_clear_requires_parameters(self):
         self.become_admin()
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -294,7 +294,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
 
-    def test__clear_all_allowed_for_admin(self):
+    def test_clear_all_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -303,7 +303,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         response = self.client.post(uri, {"op": "clear", "all": "true"})
         self.assertEqual(204, response.status_code, response.content)
 
-    def test__clear_mdns_allowed_for_admin(self):
+    def test_clear_mdns_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -312,7 +312,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         response = self.client.post(uri, {"op": "clear", "mdns": "true"})
         self.assertEqual(204, response.status_code, response.content)
 
-    def test__clear_neighbours_allowed_for_admin(self):
+    def test_clear_neighbours_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -323,7 +323,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
 
 
 class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
-    def test__clear_by_mac_and_ip_not_allowed_for_non_admin(self):
+    def test_clear_by_mac_and_ip_not_allowed_for_non_admin(self):
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
         make_discoveries(interface=iface, count=3)
@@ -340,7 +340,7 @@ class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
-    def test__clear_by_mac_and_ip_requires_parameters(self):
+    def test_clear_by_mac_and_ip_requires_parameters(self):
         self.become_admin()
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -351,7 +351,7 @@ class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
 
-    def test__clear_by_mac_and_ip_allowed_for_admin(self):
+    def test_clear_by_mac_and_ip_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -470,7 +470,7 @@ def make_RPCResults(
 
 
 class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
-    def test__no_racks_available(self):
+    def test_no_racks_available(self):
         results = make_RPCResults(available=[], failed=[])
         result = get_scan_result_string_for_humans(results)
         self.assertThat(
@@ -480,7 +480,7 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
             ),
         )
 
-    def test__scan_not_started_on_at_least_one_rack(self):
+    def test_scan_not_started_on_at_least_one_rack(self):
         results = make_RPCResults(
             available=["x"], unavailable=["y", "z"], failed=[]
         )
@@ -490,12 +490,12 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
             DocTestMatches("Scanning could not be started on 2 rack..."),
         )
 
-    def test__scan_in_progress(self):
+    def test_scan_in_progress(self):
         results = make_RPCResults(available=["x"], unavailable=[], failed=[])
         result = get_scan_result_string_for_humans(results)
         self.assertThat(result, DocTestMatches("Scanning is in-progress..."))
 
-    def test__scan_failed_on_at_least_one_rack(self):
+    def test_scan_failed_on_at_least_one_rack(self):
         results = make_RPCResults(
             available=["x"], failed=["v", "w"], unavailable=["y", "z"]
         )
@@ -508,7 +508,7 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
             ),
         )
 
-    def test__failed_rack(self):
+    def test_failed_rack(self):
         results = make_RPCResults(
             available=["w"], failed=["w"], unavailable=[]
         )
@@ -550,7 +550,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             timeout=self.timed_out,
         )
 
-    def test__populates_results_correctly(self):
+    def test_populates_results_correctly(self):
         result = user_friendly_scan_results(scan_all_rack_networks())
         self.assertThat(
             result,
@@ -573,12 +573,12 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             ),
         )
 
-    def test__results_can_be_converted_to_json_and_back(self):
+    def test_results_can_be_converted_to_json_and_back(self):
         result = user_friendly_scan_results(scan_all_rack_networks())
         json_result = json.dumps(result)
         self.assertThat(json.loads(json_result), Equals(result))
 
-    def test__calls_racks_synchronously(self):
+    def test_calls_racks_synchronously(self):
         scan_all_rack_networks()
         self.assertThat(
             self.call_racks_sync_mock,
@@ -587,7 +587,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             ),
         )
 
-    def test__calls_racks_synchronously_with_scan_all(self):
+    def test_calls_racks_synchronously_with_scan_all(self):
         scan_all_rack_networks(scan_all=True)
         self.assertThat(
             self.call_racks_sync_mock,
@@ -598,7 +598,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             ),
         )
 
-    def test__calls_racks_synchronously_with_cidrs(self):
+    def test_calls_racks_synchronously_with_cidrs(self):
         subnet_query = Subnet.objects.filter(
             staticipaddress__interface__node__in=self.started
         )
@@ -617,7 +617,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         controllers = self.call_racks_sync_mock.call_args[1]["controllers"]
         self.assertItemsEqual(self.started, controllers)
 
-    def test__calls_racks_synchronously_with_force_ping(self):
+    def test_calls_racks_synchronously_with_force_ping(self):
         scan_all_rack_networks(ping=True)
         self.assertThat(
             self.call_racks_sync_mock,
@@ -628,7 +628,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             ),
         )
 
-    def test__calls_racks_synchronously_with_threads(self):
+    def test_calls_racks_synchronously_with_threads(self):
         threads = random.randint(1, 99)
         scan_all_rack_networks(threads=threads)
         self.assertThat(
@@ -640,7 +640,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             ),
         )
 
-    def test__calls_racks_synchronously_with_slow(self):
+    def test_calls_racks_synchronously_with_slow(self):
         scan_all_rack_networks(slow=True)
         self.assertThat(
             self.call_racks_sync_mock,

@@ -105,16 +105,16 @@ is_valid_secret = MatchesAll(
 
 
 class TestGetSharedSecret(MAASTransactionServerTestCase):
-    def test__generates_new_secret_when_none_exists(self):
+    def test_generates_new_secret_when_none_exists(self):
         secret = security.get_shared_secret()
         self.assertThat(secret, is_valid_secret)
 
-    def test__same_secret_is_returned_on_subsequent_calls(self):
+    def test_same_secret_is_returned_on_subsequent_calls(self):
         self.assertEqual(
             security.get_shared_secret(), security.get_shared_secret()
         )
 
-    def test__uses_database_secret_when_none_on_fs(self):
+    def test_uses_database_secret_when_none_on_fs(self):
         secret_before = security.get_shared_secret()
         unlink(security.get_shared_secret_filesystem_path())
         secret_after = security.get_shared_secret()
@@ -125,7 +125,7 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
             FileContains(b2a_hex(secret_after)),
         )
 
-    def test__uses_filesystem_secret_when_none_in_database(self):
+    def test_uses_filesystem_secret_when_none_in_database(self):
         secret_before = security.get_shared_secret()
         Config.objects.set_config("rpc_shared_secret", None)
         secret_after = security.get_shared_secret()
@@ -136,18 +136,18 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
             Config.objects.get_config("rpc_shared_secret"),
         )
 
-    def test__errors_when_database_value_cannot_be_decoded(self):
+    def test_errors_when_database_value_cannot_be_decoded(self):
         security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "_")
         self.assertRaises(binascii.Error, security.get_shared_secret)
 
-    def test__errors_when_database_and_filesystem_values_differ(self):
+    def test_errors_when_database_and_filesystem_values_differ(self):
         security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "666f6f")
         write_text_file(security.get_shared_secret_filesystem_path(), "626172")
         self.assertRaises(AssertionError, security.get_shared_secret)
 
-    def test__deals_fine_with_whitespace_in_database_value(self):
+    def test_deals_fine_with_whitespace_in_database_value(self):
         Config.objects.set_config("rpc_shared_secret", " 666f6f\n")
         # Ordinarily we would need to commit now, because get_shared_secret()
         # runs in a separate thread. However, Django thinks that transaction

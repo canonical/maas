@@ -441,14 +441,14 @@ class TestRegisterRackController(MAASServerTestCase):
 
 
 class TestUpdateForeignDHCP(MAASServerTestCase):
-    def test__doesnt_fail_if_interface_missing(self):
+    def test_doesnt_fail_if_interface_missing(self):
         rack_controller = factory.make_RackController()
         # No error should be raised.
         update_foreign_dhcp(
             rack_controller.system_id, factory.make_name("eth"), None
         )
 
-    def test__clears_external_dhcp_on_vlan(self):
+    def test_clears_external_dhcp_on_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=rack_controller
@@ -458,7 +458,7 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         update_foreign_dhcp(rack_controller.system_id, interface.name, None)
         self.assertIsNone(reload_object(interface.vlan).external_dhcp)
 
-    def test__sets_external_dhcp_when_not_managed_vlan(self):
+    def test_sets_external_dhcp_when_not_managed_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=rack_controller
@@ -467,7 +467,7 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
         self.assertEquals(dhcp_ip, reload_object(interface.vlan).external_dhcp)
 
-    def test__logs_warning_for_external_dhcp_on_interface_no_vlan(self):
+    def test_logs_warning_for_external_dhcp_on_interface_no_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=rack_controller
@@ -484,7 +484,7 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
             ),
         )
 
-    def test__clears_external_dhcp_when_managed_vlan(self):
+    def test_clears_external_dhcp_when_managed_vlan(self):
         rack_controller = factory.make_RackController(interface=False)
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -508,7 +508,7 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
 
 
 class TestUpdateInterfaces(MAASServerTestCase):
-    def test__calls_update_interfaces_on_rack_controller(self):
+    def test_calls_update_interfaces_on_rack_controller(self):
         rack_controller = factory.make_RackController()
         patched_update_interfaces = self.patch(
             RackController, "update_interfaces"
@@ -521,7 +521,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
 
 
 class TestReportNeighbours(MAASServerTestCase):
-    def test__calls_report_neighbours_on_rack_controller(self):
+    def test_calls_report_neighbours_on_rack_controller(self):
         rack_controller = factory.make_RackController()
         patched_report_neighbours = self.patch(
             RackController, "report_neighbours"
@@ -533,7 +533,7 @@ class TestReportNeighbours(MAASServerTestCase):
 
 
 class TestUpdateLastImageSync(MAASServerTestCase):
-    def test__updates_last_image_sync(self):
+    def test_updates_last_image_sync(self):
         rack = factory.make_RackController()
         previous_sync = rack.last_image_sync = now()
         rack.save()

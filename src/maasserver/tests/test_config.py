@@ -89,11 +89,11 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         for name, default in options_and_defaults.items()
     )
 
-    def test__default(self):
+    def test_default(self):
         config = RegionConfiguration({})
         self.assertEqual(self.default, getattr(config, self.option))
 
-    def test__set_and_get(self):
+    def test_set_and_get(self):
         config = RegionConfiguration({})
         if isinstance(getattr(config, self.option), str):
             example_value = factory.make_name(self.option)
@@ -117,11 +117,11 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
 class TestRegionConfigurationWorkerOptions(MAASTestCase):
     """Tests for the worker options in `RegionConfiguration`."""
 
-    def test__default(self):
+    def test_default(self):
         config = RegionConfiguration({})
         self.assertEqual(4, config.num_workers)
 
-    def test__set_and_get(self):
+    def test_set_and_get(self):
         config = RegionConfiguration({})
         workers = random.randint(8, 12)
         config.num_workers = workers
@@ -140,11 +140,11 @@ class TestRegionConfigurationDebugOptions(MAASTestCase):
         for name, default in options_and_defaults.items()
     )
 
-    def test__default(self):
+    def test_default(self):
         config = RegionConfiguration({})
         self.assertEqual(self.default, getattr(config, self.option))
 
-    def test__set_and_get(self):
+    def test_set_and_get(self):
         config = RegionConfiguration({})
         example_value = random.choice(["true", "yes", "True"])
         # Argument values will most often be passed in from the command-line,

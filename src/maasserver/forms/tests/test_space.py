@@ -12,11 +12,11 @@ from maasserver.utils.orm import reload_object
 
 
 class TestSpaceForm(MAASServerTestCase):
-    def test__requires_name(self):
+    def test_requires_name(self):
         form = SpaceForm({})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__creates_space(self):
+    def test_creates_space(self):
         space_name = factory.make_name("space")
         space_description = factory.make_name("description")
         form = SpaceForm(
@@ -27,12 +27,12 @@ class TestSpaceForm(MAASServerTestCase):
         self.assertEqual(space_name, space.get_name())
         self.assertEqual(space_description, space.description)
 
-    def test__doest_require_name_on_update(self):
+    def test_doest_require_name_on_update(self):
         space = factory.make_Space()
         form = SpaceForm(instance=space, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_space(self):
+    def test_updates_space(self):
         new_name = factory.make_name("space")
         new_description = factory.make_name("description")
         space = factory.make_Space()

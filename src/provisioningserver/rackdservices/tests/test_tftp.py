@@ -1156,7 +1156,7 @@ class TestUDPServer(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__getPort_calls__listenUDP_with_args_from_constructor(self):
+    def test_getPort_calls__listenUDP_with_args_from_constructor(self):
         server = UDPServer(sentinel.foo, bar=sentinel.bar)
         _listenUDP = self.patch(server, "_listenUDP")
         _listenUDP.return_value = sentinel.port
@@ -1165,13 +1165,13 @@ class TestUDPServer(MAASTestCase):
             _listenUDP, MockCalledOnceWith(sentinel.foo, bar=sentinel.bar)
         )
 
-    def test__listenUDP_with_IPv4_address(self):
+    def test_listenUDP_with_IPv4_address(self):
         server = UDPServer(0, DummyProtocol(), "127.0.0.1")
         port = server._getPort()
         self.addCleanup(port.stopListening)
         self.assertEqual(AF_INET, port.addressFamily)
 
-    def test__listenUDP_with_IPv6_address(self):
+    def test_listenUDP_with_IPv6_address(self):
         server = UDPServer(0, DummyProtocol(), "::1")
         port = server._getPort()
         self.addCleanup(port.stopListening)
@@ -1181,14 +1181,14 @@ class TestUDPServer(MAASTestCase):
 class TestLogRequest(MAASTestCase):
     """Tests for `log_request`."""
 
-    def test__defers_log_call_later(self):
+    def test_defers_log_call_later(self):
         clock = Clock()
         log_request(sentinel.filename, clock)
         self.expectThat(clock.calls, HasLength(1))
         [call] = clock.calls
         self.expectThat(call.getTime(), Equals(0.0))
 
-    def test__sends_event_later(self):
+    def test_sends_event_later(self):
         send_event = self.patch(tftp_module, "send_node_event_ip_address")
         ip = factory.make_ip_address()
         self.patch(tftp_module.tftp, "get_remote_address").return_value = (
@@ -1208,7 +1208,7 @@ class TestLogRequest(MAASTestCase):
             ),
         )
 
-    def test__logs_to_server_log(self):
+    def test_logs_to_server_log(self):
         self.patch(tftp_module, "send_node_event_ip_address")
         ip = factory.make_ip_address()
         self.patch(tftp_module.tftp, "get_remote_address").return_value = (
@@ -1224,7 +1224,7 @@ class TestLogRequest(MAASTestCase):
             logger.output, Equals("%s requested by %s" % (file_name, ip))
         )
 
-    def test__logs_when_sending_event_errors(self):
+    def test_logs_when_sending_event_errors(self):
         send_event = self.patch(tftp_module, "send_node_event_ip_address")
         send_event.side_effect = factory.make_exception()
         clock = Clock()

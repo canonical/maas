@@ -578,14 +578,14 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request(factory.make_string(), "GET")
         return self.process_request(request)
 
-    def test__checks_connectivity_of_rack_controllers(self):
+    def test_checks_connectivity_of_rack_controllers(self):
         getAllClients = self.patch(middleware_module, "getAllClients")
 
         self.quick_process()
 
         self.assertThat(getAllClients, MockCalledOnceWith())
 
-    def test__registers_error_if_all_rack_controllers_are_disconnected(self):
+    def test_registers_error_if_all_rack_controllers_are_disconnected(self):
         factory.make_RackController()
 
         getAllClients = self.patch(middleware_module, "getAllClients")
@@ -602,7 +602,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
             error,
         )
 
-    def test__registers_error_if_any_clusters_are_disconnected(self):
+    def test_registers_error_if_any_clusters_are_disconnected(self):
         rack_controllers = [
             factory.make_RackController(),
             factory.make_RackController(),
@@ -625,7 +625,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
             error,
         )
 
-    def test__removes_error_once_all_clusters_are_connected(self):
+    def test_removes_error_once_all_clusters_are_connected(self):
         rack_controllers = [
             factory.make_RackController(),
             factory.make_RackController(),
@@ -645,7 +645,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertIsNone(error)
 
-    def test__does_not_suppress_exceptions_from_connectivity_checks(self):
+    def test_does_not_suppress_exceptions_from_connectivity_checks(self):
         def get_response(request):
             return None
 

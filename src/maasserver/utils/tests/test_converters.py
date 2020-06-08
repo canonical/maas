@@ -53,13 +53,13 @@ class TestHumanReadableBytes(MAASTestCase):
         ("YB", dict(size=(1000 ** 8), output="1.0", suffix="YB")),
     ]
 
-    def test__returns_size_with_suffix(self):
+    def test_returns_size_with_suffix(self):
         self.assertEqual(
             "%s %s" % (self.output, self.suffix),
             human_readable_bytes(self.size),
         )
 
-    def test__returns_size_without_suffix(self):
+    def test_returns_size_without_suffix(self):
         self.assertEqual(
             self.output, human_readable_bytes(self.size, include_suffix=False)
         )
@@ -87,7 +87,7 @@ class TestMachineReadableBytes(MAASTestCase):
 
 
 class TestRoundSizeToNearestBlock(MAASTestCase):
-    def test__round_up_adds_extra_block(self):
+    def test_round_up_adds_extra_block(self):
         block_size = 4096
         size = block_size + 1
         self.assertEqual(
@@ -96,7 +96,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
             "Should add an extra block to the size.",
         )
 
-    def test__round_up_doesnt_add_extra_block(self):
+    def test_round_up_doesnt_add_extra_block(self):
         block_size = 4096
         size = block_size
         self.assertEqual(
@@ -105,7 +105,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
             "Shouldn't add an extra block to the size.",
         )
 
-    def test__round_down_removes_block(self):
+    def test_round_down_removes_block(self):
         block_size = 4096
         size = block_size + 1
         self.assertEqual(
@@ -114,7 +114,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
             "Should remove block from the size.",
         )
 
-    def test__round_down_doesnt_remove_block(self):
+    def test_round_down_doesnt_remove_block(self):
         block_size = 4096
         size = block_size * 2
         self.assertEqual(

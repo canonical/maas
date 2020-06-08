@@ -408,7 +408,7 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
 class TestRackControllersImporter(MAASServerTestCase):
     """Tests for `RackControllersImporter`."""
 
-    def test__init_with_single_system_id(self):
+    def test_init_with_single_system_id(self):
         system_id = factory.make_name("system_id")
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
@@ -424,7 +424,7 @@ class TestRackControllersImporter(MAASServerTestCase):
             ),
         )
 
-    def test__init_with_multiple_ssytem_ids(self):
+    def test_init_with_multiple_ssytem_ids(self):
         system_ids = [factory.make_name("system_id") for _ in range(3)]
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
@@ -440,20 +440,20 @@ class TestRackControllersImporter(MAASServerTestCase):
             ),
         )
 
-    def test__init_also_accepts_already_parsed_proxy(self):
+    def test_init_also_accepts_already_parsed_proxy(self):
         proxy = urlparse(factory.make_simple_http_url())
         importer = RackControllersImporter(
             sentinel.system_id, [sentinel.source], proxy
         )
         self.assertThat(importer, MatchesStructure(proxy=Is(proxy)))
 
-    def test__init_also_accepts_no_proxy(self):
+    def test_init_also_accepts_no_proxy(self):
         importer = RackControllersImporter(
             sentinel.system_id, [sentinel.source]
         )
         self.assertThat(importer, MatchesStructure(proxy=Is(None)))
 
-    def test__schedule_arranges_for_later_run(self):
+    def test_schedule_arranges_for_later_run(self):
         # Avoid deferring to the database.
         self.patch(boot_images_module, "deferToDatabase", maybeDeferred)
         # Avoid actually initiating a run.
@@ -495,7 +495,7 @@ class TestRackControllersImporter(MAASServerTestCase):
             ),
         )
 
-    def test__run_will_not_error_instead_it_logs(self):
+    def test_run_will_not_error_instead_it_logs(self):
         call = self.patch(RackControllersImporter, "__call__")
         call.return_value = fail(ZeroDivisionError())
 
@@ -516,11 +516,11 @@ class TestRackControllersImporter(MAASServerTestCase):
 class TestRackControllersImporterNew(MAASServerTestCase):
     """Tests for the `RackControllersImporter.new` function."""
 
-    def test__new_obtains_system_ids_if_not_given(self):
+    def test_new_obtains_system_ids_if_not_given(self):
         importer = RackControllersImporter.new(sources=[], proxy=None)
         self.assertThat(importer, MatchesStructure(system_ids=Equals(())))
 
-    def test__new_obtains_system_ids_for_accepted_clusters_if_not_given(self):
+    def test_new_obtains_system_ids_for_accepted_clusters_if_not_given(self):
         rack = factory.make_RackController()
 
         importer = RackControllersImporter.new(sources=[], proxy=None)
@@ -529,14 +529,14 @@ class TestRackControllersImporterNew(MAASServerTestCase):
             importer, MatchesStructure(system_ids=Equals((rack.system_id,)))
         )
 
-    def test__new_obtains_sources_if_not_given(self):
+    def test_new_obtains_sources_if_not_given(self):
         importer = RackControllersImporter.new(system_ids=[], proxy=None)
         self.assertThat(
             importer,
             MatchesStructure(sources=Equals([get_simplestream_endpoint()])),
         )
 
-    def test__new_obtains_proxy_if_not_given(self):
+    def test_new_obtains_proxy_if_not_given(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -548,7 +548,7 @@ class TestRackControllersImporterNew(MAASServerTestCase):
             importer, MatchesStructure(proxy=Equals(urlparse(proxy)))
         )
 
-    def test__new_obtains_None_proxy_if_disabled(self):
+    def test_new_obtains_None_proxy_if_disabled(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -572,7 +572,7 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
         # This fixture allows us to simulate mock clusters.
         self.rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
 
-    def test__calling_importer_issues_rpc_calls_to_clusters(self):
+    def test_calling_importer_issues_rpc_calls_to_clusters(self):
         # Some clusters that we'll ask to import resources.
         rack_1 = factory.make_RackController()
         rack_2 = factory.make_RackController()
@@ -610,7 +610,7 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__run_calls_importer_and_reports_results(self):
+    def test_run_calls_importer_and_reports_results(self):
         # Some clusters that we'll ask to import resources.
         rack_1 = factory.make_RackController()
         rack_2 = factory.make_RackController()

@@ -125,7 +125,7 @@ class TestServiceState(MAASTestCase):
     }
 
     @inlineCallbacks
-    def test__returns_service_status_string(self):
+    def test_returns_service_status_string(self):
         # Make sure the short status string makes sense.
         service = make_fake_service(self.state_expected)
         state = ServiceState(self.state_observed, None)
@@ -141,7 +141,7 @@ class TestServiceState(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__returns_service_info_message(self):
+    def test_returns_service_info_message(self):
         # Make sure any message given by a service gets passed through, except
         # when the service is dead or off and expected to be on, in which case
         # a message is manufactured.
@@ -185,20 +185,20 @@ class TestServiceMonitor(MAASTestCase):
         return ServiceMonitor(*fake_services)
 
     @inlineCallbacks
-    def test___getServiceLock_returns_lock_for_service(self):
+    def test_getServiceLock_returns_lock_for_service(self):
         service_monitor = self.make_service_monitor()
         name = factory.make_name("service")
         lock = yield service_monitor._getServiceLock(name)
         self.assertIsInstance(lock, DeferredLock)
 
-    def test__getServiceByName_returns_service(self):
+    def test_getServiceByName_returns_service(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
         self.assertEquals(
             fake_service, service_monitor.getServiceByName(fake_service.name)
         )
 
-    def test__getServiceByName_raises_ServiceUnknownError(self):
+    def test_getServiceByName_raises_ServiceUnknownError(self):
         service_monitor = self.make_service_monitor()
         self.assertRaises(
             ServiceUnknownError,
@@ -207,7 +207,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__updateServiceState_updates_stored_service_state(self):
+    def test_updateServiceState_updates_stored_service_state(self):
         service_monitor = self.make_service_monitor()
         name = factory.make_name("service")
         active_state = pick_observed_state()
@@ -223,7 +223,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEquals(state, observed_state)
 
     @inlineCallbacks
-    def test__updateServiceState_does_not_hold_service_lock(self):
+    def test_updateServiceState_does_not_hold_service_lock(self):
         service_monitor = self.make_service_monitor()
         service_lock = self.patch(service_monitor, "_getServiceLock")
         name = factory.make_name("service")
@@ -236,7 +236,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(service_lock.release, MockNotCalled())
 
     @inlineCallbacks
-    def test__getServiceState_with_now_True(self):
+    def test_getServiceState_with_now_True(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
         active_state = pick_observed_state()
@@ -261,7 +261,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__getServiceState_with_now_False(self):
+    def test_getServiceState_with_now_False(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
         mock_loadSystemDServiceState = self.patch(
@@ -279,7 +279,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(mock_loadSystemDServiceState, MockNotCalled())
 
     @inlineCallbacks
-    def test__ensureServices_returns_dict_for_states(self):
+    def test_ensureServices_returns_dict_for_states(self):
         fake_services = [make_fake_service() for _ in range(3)]
         expected_states = {}
         for service in fake_services:
@@ -296,7 +296,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEquals(expected_states, observed)
 
     @inlineCallbacks
-    def test__ensureServices_handles_errors(self):
+    def test_ensureServices_handles_errors(self):
         services = make_fake_service(), make_fake_service()
         service_monitor = self.make_service_monitor(services)
         # Plant some states into the monitor's memory.
@@ -338,7 +338,7 @@ class TestServiceMonitor(MAASTestCase):
             )
 
     @inlineCallbacks
-    def test__ensureServices_calls__ensureService(self):
+    def test_ensureServices_calls__ensureService(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
         active_state = pick_observed_state()
@@ -351,14 +351,14 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(mock_ensureService, MockCalledOnceWith(fake_service))
 
     @inlineCallbacks
-    def test__restartService_raises_ServiceNotOnError(self):
+    def test_restartService_raises_ServiceNotOnError(self):
         fake_service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([fake_service])
         with ExpectedException(ServiceNotOnError):
             yield service_monitor.restartService(fake_service.name)
 
     @inlineCallbacks
-    def test__restartService_performs_restart(self):
+    def test_restartService_performs_restart(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_performServiceAction = self.patch(
@@ -380,7 +380,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__restartService_raises_ServiceActionError_if_not_on(self):
+    def test_restartService_raises_ServiceActionError_if_not_on(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_performServiceAction = self.patch(
@@ -395,21 +395,21 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor.restartService(fake_service.name)
 
     @inlineCallbacks
-    def test__reloadService_raises_ServiceNotOnError(self):
+    def test_reloadService_raises_ServiceNotOnError(self):
         fake_service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([fake_service])
         with ExpectedException(ServiceNotOnError):
             yield service_monitor.reloadService(fake_service.name)
 
     @inlineCallbacks
-    def test__reloadService_returns_when_if_on(self):
+    def test_reloadService_returns_when_if_on(self):
         fake_service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([fake_service])
         yield service_monitor.restartService(fake_service.name, if_on=True)
         # No exception expected.
 
     @inlineCallbacks
-    def test__reloadService_calls_ensureService_then_reloads(self):
+    def test_reloadService_calls_ensureService_then_reloads(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_performServiceAction = self.patch(
@@ -430,7 +430,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__reloadService_raises_error_if_fails_to_start(self):
+    def test_reloadService_raises_error_if_fails_to_start(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_ensureService = self.patch(service_monitor, "ensureService")
@@ -441,14 +441,14 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor.reloadService(fake_service.name)
 
     @inlineCallbacks
-    def test__reloadService_returns_when_if_on_equals_false(self):
+    def test_reloadService_returns_when_if_on_equals_false(self):
         fake_service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([fake_service])
         yield service_monitor.reloadService(fake_service.name, if_on=True)
         # No exception expected.
 
     @inlineCallbacks
-    def test__reloadService_always_calls_ensureService_then_reloads(self):
+    def test_reloadService_always_calls_ensureService_then_reloads(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_performServiceAction = self.patch(
@@ -469,7 +469,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__reloadService_always_raises_error_if_fails_to_start(self):
+    def test_reloadService_always_raises_error_if_fails_to_start(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_ensureService = self.patch(service_monitor, "ensureService")
@@ -480,7 +480,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor.reloadService(fake_service.name, if_on=True)
 
     @inlineCallbacks
-    def test__killService_performs_kill_then_ensureService(self):
+    def test_killService_performs_kill_then_ensureService(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_performServiceAction = self.patch(
@@ -500,7 +500,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__killService_doesnt_fail_on_ServiceActionError(self):
+    def test_killService_doesnt_fail_on_ServiceActionError(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])
         mock_performServiceAction = self.patch(
@@ -520,7 +520,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___execCmd_times_out(self):
+    def test_execCmd_times_out(self):
         monitor = ServiceMonitor(make_fake_service())
         with ExpectedException(ServiceActionError):
             yield monitor._execCmd(
@@ -530,7 +530,7 @@ class TestServiceMonitor(MAASTestCase):
         yield pause(0.5)
 
     @inlineCallbacks
-    def test___execCmd_retries(self):
+    def test_execCmd_retries(self):
         monitor = ServiceMonitor(make_fake_service())
         mock_deferWithTimeout = self.patch(
             service_monitor_module, "deferWithTimeout"
@@ -541,7 +541,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual(3, mock_deferWithTimeout.call_count)
 
     @inlineCallbacks
-    def test___execSystemDServiceAction_calls_systemctl(self):
+    def test_execSystemDServiceAction_calls_systemctl(self):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
@@ -562,7 +562,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___execSystemDServiceAction_calls_systemctl_with_options(self):
+    def test_execSystemDServiceAction_calls_systemctl_with_options(self):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         mock_getProcessOutputAndValue = self.patch(
@@ -592,7 +592,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___execSystemDServiceAction_decodes_stdout_and_stderr(self):
+    def test_execSystemDServiceAction_decodes_stdout_and_stderr(self):
         # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
         example_text = (
             "\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf "
@@ -617,7 +617,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(stderr, Equals(example_stderr))
 
     @inlineCallbacks
-    def test___execSupervisorServiceAction_calls_supervisorctl(self):
+    def test_execSupervisorServiceAction_calls_supervisorctl(self):
         snap_path = factory.make_name("path")
         self.patch(snappy, "get_snap_path").return_value = snap_path
         service_monitor = self.make_service_monitor()
@@ -644,7 +644,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___execSupervisorServiceAction_emulates_kill(self):
+    def test_execSupervisorServiceAction_emulates_kill(self):
         snap_path = factory.make_name("path")
         self.patch(snappy, "get_snap_path").return_value = snap_path
         service_monitor = self.make_service_monitor()
@@ -677,7 +677,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___execSupervisorServiceAction_decodes_stdout_and_stderr(self):
+    def test_execSupervisorServiceAction_decodes_stdout_and_stderr(self):
         # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
         example_text = (
             "\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf "
@@ -704,7 +704,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(stderr, Equals(example_stderr))
 
     @inlineCallbacks
-    def test___performServiceAction_holds_lock_performs_systemd_action(self):
+    def test_performServiceAction_holds_lock_performs_systemd_action(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         service_locks = service_monitor._serviceLocks
@@ -735,7 +735,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___performServiceAction_holds_lock_perform_supervisor_action(self):
+    def test_performServiceAction_holds_lock_perform_supervisor_action(self):
         self.run_under_snappy()
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
@@ -767,7 +767,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___performServiceAction_raises_ServiceActionError_if_fails(self):
+    def test_performServiceAction_raises_ServiceActionError_if_fails(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execSystemDServiceAction = self.patch(
@@ -779,7 +779,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._performServiceAction(service, action)
 
     @inlineCallbacks
-    def test___performServiceAction_logs_error_if_action_fails(self):
+    def test_performServiceAction_logs_error_if_action_fails(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execSystemDServiceAction = self.patch(
@@ -800,7 +800,7 @@ class TestServiceMonitor(MAASTestCase):
             maaslog.output,
         )
 
-    def test___loadServiceState_uses_systemd(self):
+    def test_loadServiceState_uses_systemd(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_loadSystemDServiceState = self.patch(
@@ -811,7 +811,7 @@ class TestServiceMonitor(MAASTestCase):
             sentinel.result, service_monitor._loadServiceState(service)
         )
 
-    def test___loadServiceState_uses_supervisor(self):
+    def test_loadServiceState_uses_supervisor(self):
         self.run_under_snappy()
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
@@ -824,7 +824,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_calls_systemctl(self):
+    def test_loadSystemDServiceState_status_calls_systemctl(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_execSystemDServiceAction = self.patch(
@@ -841,7 +841,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_raises_ServiceUnknownError(self):
+    def test_loadSystemDServiceState_status_raises_ServiceUnknownError(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         systemd_status_output = (
@@ -867,7 +867,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_returns_off_and_dead(self):
+    def test_loadSystemDServiceState_status_returns_off_and_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         systemd_status_output = (
@@ -901,7 +901,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("dead", process_state)
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_returns_dead_for_failed(self):
+    def test_loadSystemDServiceState_status_returns_dead_for_failed(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         systemd_status_output = (
@@ -934,7 +934,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_returns_on_and_running(self):
+    def test_loadSystemDServiceState_status_returns_on_and_running(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         systemd_status_output = (
@@ -964,7 +964,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_ignores_sudo_output(self):
+    def test_loadSystemDServiceState_status_ignores_sudo_output(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         systemd_status_output = (
@@ -995,7 +995,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_raise_error_for_bad_active(self):
+    def test_loadSystemDServiceState_status_raise_error_for_bad_active(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         systemd_status_output = (
@@ -1024,7 +1024,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
-    def test___loadSystemDServiceState_status_raise_error_for_bad_output(self):
+    def test_loadSystemDServiceState_status_raise_error_for_bad_output(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_execSystemDServiceAction = self.patch(
@@ -1040,7 +1040,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_status_calls_supervisorctl(self):
+    def test_loadSupervisorServiceState_status_calls_supervisorctl(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_execSupervisorServiceAction = self.patch(
@@ -1057,7 +1057,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_exit_code_greater_than_3(self):
+    def test_loadSupervisorServiceState_exit_code_greater_than_3(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execSupervisorServiceAction = self.patch(
@@ -1068,7 +1068,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSupervisorServiceState(service)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_service_name_doesnt_match(self):
+    def test_loadSupervisorServiceState_service_name_doesnt_match(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         supervisor_status_output = dedent(
@@ -1089,7 +1089,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSupervisorServiceState(service)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_unknown_status(self):
+    def test_loadSupervisorServiceState_unknown_status(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         supervisor_status_output = (
@@ -1113,7 +1113,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSupervisorServiceState(service)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_starting_returns_on(self):
+    def test_loadSupervisorServiceState_starting_returns_on(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         supervisor_status_output = (
@@ -1140,7 +1140,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_running_returns_on(self):
+    def test_loadSupervisorServiceState_running_returns_on(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         supervisor_status_output = (
@@ -1167,7 +1167,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_stopped_returns_off(self):
+    def test_loadSupervisorServiceState_stopped_returns_off(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         supervisor_status_output = (
@@ -1194,7 +1194,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("dead", process_state)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_fatal_returns_dead(self):
+    def test_loadSupervisorServiceState_fatal_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         supervisor_status_output = (
@@ -1221,7 +1221,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_exited_returns_dead(self):
+    def test_loadSupervisorServiceState_exited_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         supervisor_status_output = (
@@ -1248,7 +1248,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
-    def test___loadSupervisorServiceState_backoff_returns_dead(self):
+    def test_loadSupervisorServiceState_backoff_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         supervisor_status_output = (
@@ -1275,7 +1275,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
-    def test___ensureService_logs_warning_in_mismatch_process_state(self):
+    def test_ensureService_logs_warning_in_mismatch_process_state(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1302,7 +1302,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___ensureService_logs_debug_in_expected_states(self):
+    def test_ensureService_logs_debug_in_expected_states(self):
         state = SERVICE_STATE.ON
         service = make_fake_service(state)
         service_monitor = self.make_service_monitor([service])
@@ -1326,7 +1326,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___ensureService_allows_dead_for_off_service(self):
+    def test_ensureService_allows_dead_for_off_service(self):
         service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([service])
 
@@ -1348,7 +1348,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___ensureService_logs_mismatch_for_dead_process_state(self):
+    def test_ensureService_logs_mismatch_for_dead_process_state(self):
         service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([service])
 
@@ -1375,7 +1375,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___ensureService_performs_start_for_off_service(self):
+    def test_ensureService_performs_start_for_off_service(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1404,7 +1404,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__ensureService_performs_stop_for_on_service(self):
+    def test_ensureService_performs_stop_for_on_service(self):
         service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([service])
 
@@ -1433,7 +1433,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__ensureService_performs_raises_ServiceActionError(self):
+    def test_ensureService_performs_raises_ServiceActionError(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1467,7 +1467,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__ensureService_does_nothing_when_any_state_expected(self):
+    def test_ensureService_does_nothing_when_any_state_expected(self):
         service = make_fake_service(SERVICE_STATE.ANY)
         service_monitor = self.make_service_monitor([service])
 

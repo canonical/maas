@@ -30,7 +30,7 @@ def _mock_ensure_link_up(self):
 
 
 class TestEnableAndDisableInterface(MAASServerTestCase):
-    def test__enable_interface_creates_link_up(self):
+    def test_enable_interface_creates_link_up(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, enabled=False
         )
@@ -41,7 +41,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         )
         self.assertIsNotNone(link_ip)
 
-    def test__enable_interface_creates_link_up_on_children(self):
+    def test_enable_interface_creates_link_up_on_children(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, enabled=False
         )
@@ -55,7 +55,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         )
         self.assertIsNotNone(link_ip)
 
-    def test__ensure_link_up_only_called_once_per_interface(self):
+    def test_ensure_link_up_only_called_once_per_interface(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, enabled=False
         )
@@ -64,7 +64,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         # This will cause a RecursionError if the code doesn't work.
         interface.save()
 
-    def test__disable_interface_removes_links(self):
+    def test_disable_interface_removes_links(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, enabled=True
         )
@@ -73,7 +73,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         interface.save()
         self.assertItemsEqual([], interface.ip_addresses.all())
 
-    def test__disable_interface_removes_links_on_children(self):
+    def test_disable_interface_removes_links_on_children(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, enabled=True
         )
@@ -85,7 +85,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         interface.save()
         self.assertItemsEqual([], vlan_interface.ip_addresses.all())
 
-    def test__disable_interface_doesnt_remove_links_on_enabled_children(self):
+    def test_disable_interface_doesnt_remove_links_on_enabled_children(self):
         node = factory.make_Node()
         nic0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, enabled=True
@@ -103,7 +103,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
 
 
 class TestMTUParams(MAASServerTestCase):
-    def test__updates_children_mtu(self):
+    def test_updates_children_mtu(self):
         new_mtu = random.randint(800, 2000)
         physical_interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan1_interface = factory.make_Interface(
@@ -122,7 +122,7 @@ class TestMTUParams(MAASServerTestCase):
         )
         self.assertEqual("", reload_object(vlan2_interface).params)
 
-    def test__updates_parents_mtu(self):
+    def test_updates_parents_mtu(self):
         node = factory.make_Node()
         physical1_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node
@@ -172,7 +172,7 @@ class TestUpdateChildInterfaceParents(MAASServerTestCase):
         ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
     )
 
-    def test__updates_interface_parents(self):
+    def test_updates_interface_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -181,7 +181,7 @@ class TestUpdateChildInterfaceParents(MAASServerTestCase):
         self.assertEqual(child.vlan, reload_object(parent1).vlan)
         self.assertEqual(child.vlan, reload_object(parent2).vlan)
 
-    def test__update_interface_clears_parent_links(self):
+    def test_update_interface_clears_parent_links(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -190,7 +190,7 @@ class TestUpdateChildInterfaceParents(MAASServerTestCase):
         factory.make_Interface(self.iftype, parents=[parent1, parent2])
         self.assertIsNone(reload_object(static_ip))
 
-    def test__visited_set_is_thread_local(self):
+    def test_visited_set_is_thread_local(self):
         thread_local = update_parents_thread_local
         thread_local.visiting.add("a")
 
@@ -211,7 +211,7 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
         ("device", {"maker": factory.make_Device}),
     )
 
-    def test__removes_links(self):
+    def test_removes_links(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         static_ip = factory.make_StaticIPAddress(interface=interface)
@@ -225,7 +225,7 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
         self.assertIsNone(reload_object(static_ip))
         self.assertIsNotNone(reload_object(discovered_ip))
 
-    def test__removes_links_when_goes_to_disconnected(self):
+    def test_removes_links_when_goes_to_disconnected(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         static_ip = factory.make_StaticIPAddress(interface=interface)
@@ -253,7 +253,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         ),
     )
 
-    def test__moves_link_subnets_to_same_vlan(self):
+    def test_moves_link_subnets_to_same_vlan(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -264,7 +264,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface.save()
         self.assertEquals(new_vlan, reload_object(subnet).vlan)
 
-    def test__doesnt_move_link_subnets_when_target_vlan_is_None(self):
+    def test_doesnt_move_link_subnets_when_target_vlan_is_None(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         old_vlan = interface.vlan
@@ -274,7 +274,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface.save()
         self.assertEquals(old_vlan, reload_object(subnet).vlan)
 
-    def test__doesnt_move_link_subnets_when_source_vlan_is_None(self):
+    def test_doesnt_move_link_subnets_when_source_vlan_is_None(self):
         node = self.maker()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, vlan=None
@@ -286,7 +286,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface.save()
         self.assertEquals(interface.vlan, reload_object(subnet).vlan)
 
-    def test__moves_children_vlans_to_same_fabric(self):
+    def test_moves_children_vlans_to_same_fabric(self):
         node = self.maker()
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet(vlan=parent.vlan)

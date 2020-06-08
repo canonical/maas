@@ -75,34 +75,34 @@ class SharedSecretTestCase(MAASTestCase):
 
 
 class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
-    def test__returns_None_when_no_secret_exists(self):
+    def test_returns_None_when_no_secret_exists(self):
         self.assertIsNone(security.get_shared_secret_from_filesystem())
 
-    def test__returns_secret_when_one_exists(self):
+    def test_returns_secret_when_one_exists(self):
         secret = self.write_secret()
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
-    def test__same_secret_is_returned_on_subsequent_calls(self):
+    def test_same_secret_is_returned_on_subsequent_calls(self):
         self.write_secret()
         self.assertEqual(
             security.get_shared_secret_from_filesystem(),
             security.get_shared_secret_from_filesystem(),
         )
 
-    def test__errors_reading_file_are_raised(self):
+    def test_errors_reading_file_are_raised(self):
         self.write_secret()
         secret_path = security.get_shared_secret_filesystem_path()
         chmod(secret_path, 0o000)
         self.assertRaises(IOError, security.get_shared_secret_from_filesystem)
 
-    def test__errors_when_filesystem_value_cannot_be_decoded(self):
+    def test_errors_when_filesystem_value_cannot_be_decoded(self):
         self.write_secret()
         write_text_file(security.get_shared_secret_filesystem_path(), "_")
         self.assertRaises(
             binascii.Error, security.get_shared_secret_from_filesystem
         )
 
-    def test__deals_fine_with_whitespace_in_filesystem_value(self):
+    def test_deals_fine_with_whitespace_in_filesystem_value(self):
         secret = self.write_secret()
         write_text_file(
             security.get_shared_secret_filesystem_path(),
@@ -110,7 +110,7 @@ class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
         )
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
-    def test__reads_with_lock(self):
+    def test_reads_with_lock(self):
         lock = FileLock(security.get_shared_secret_filesystem_path())
         self.assertFalse(lock.is_locked())
 
@@ -126,7 +126,7 @@ class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
 
 
 class TestSetSharedSecretOnFilesystem(MAASTestCase):
-    def test__default_iteration_count_is_reasonably_large(self):
+    def test_default_iteration_count_is_reasonably_large(self):
         # Ensure that the iteration count is high by default. This is very
         # important so that the MAAS secret cannot be determined by
         # brute-force.
@@ -137,12 +137,12 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         secret_hex = read_text_file(secret_path)
         return security.to_bin(secret_hex)
 
-    def test__writes_secret(self):
+    def test_writes_secret(self):
         secret = factory.make_bytes()
         security.set_shared_secret_on_filesystem(secret)
         self.assertEqual(secret, self.read_secret())
 
-    def test__writes_with_lock(self):
+    def test_writes_with_lock(self):
         lock = FileLock(security.get_shared_secret_filesystem_path())
         self.assertFalse(lock.is_locked())
 
@@ -155,7 +155,7 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         self.assertThat(write_text_file, MockCalledOnceWith(ANY, ANY))
         self.assertFalse(lock.is_locked())
 
-    def test__writes_with_secure_permissions(self):
+    def test_writes_with_secure_permissions(self):
         secret = factory.make_bytes()
         security.set_shared_secret_on_filesystem(secret)
         secret_path = security.get_shared_secret_filesystem_path()
@@ -169,7 +169,7 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
 
 
 class TestInstallSharedSecretScript(MAASTestCase):
-    def test__has_add_arguments(self):
+    def test_has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
         # ActionScript/MainScript.
         security.InstallSharedSecretScript.add_arguments(sentinel.parser)
@@ -181,7 +181,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         )
         self.assertEqual(code, error.code)
 
-    def test__reads_secret_from_stdin(self):
+    def test_reads_secret_from_stdin(self):
         secret = factory.make_bytes()
 
         stdin = self.patch_autospec(security, "stdin")
@@ -191,7 +191,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         self.installAndCheckExitCode(0)
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
-    def test__ignores_surrounding_whitespace_from_stdin(self):
+    def test_ignores_surrounding_whitespace_from_stdin(self):
         secret = factory.make_bytes()
 
         stdin = self.patch_autospec(security, "stdin")
@@ -203,7 +203,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         self.installAndCheckExitCode(0)
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
-    def test__reads_secret_from_tty(self):
+    def test_reads_secret_from_tty(self):
         secret = factory.make_bytes()
 
         stdin = self.patch_autospec(security, "stdin")
@@ -218,7 +218,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         )
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
-    def test__ignores_surrounding_whitespace_from_tty(self):
+    def test_ignores_surrounding_whitespace_from_tty(self):
         secret = factory.make_bytes()
 
         stdin = self.patch_autospec(security, "stdin")
@@ -230,7 +230,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         self.installAndCheckExitCode(0)
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
-    def test__deals_gracefully_with_eof_from_tty(self):
+    def test_deals_gracefully_with_eof_from_tty(self):
         stdin = self.patch_autospec(security, "stdin")
         stdin.isatty.return_value = True
 
@@ -240,7 +240,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         self.installAndCheckExitCode(1)
         self.assertIsNone(security.get_shared_secret_from_filesystem())
 
-    def test__deals_gracefully_with_interrupt_from_tty(self):
+    def test_deals_gracefully_with_interrupt_from_tty(self):
         stdin = self.patch_autospec(security, "stdin")
         stdin.isatty.return_value = True
 
@@ -254,7 +254,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         )
         self.assertIsNone(security.get_shared_secret_from_filesystem())
 
-    def test__prints_error_message_when_secret_cannot_be_decoded(self):
+    def test_prints_error_message_when_secret_cannot_be_decoded(self):
         stdin = self.patch_autospec(security, "stdin")
         stdin.readline.return_value = "garbage"
         stdin.isatty.return_value = False
@@ -271,7 +271,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
             ),
         )
 
-    def test__prints_message_when_secret_is_installed(self):
+    def test_prints_message_when_secret_is_installed(self):
         stdin = self.patch_autospec(security, "stdin")
         stdin.readline.return_value = b2a_hex(factory.make_bytes()).decode(
             "ascii"
@@ -289,13 +289,13 @@ class TestInstallSharedSecretScript(MAASTestCase):
 
 
 class TestCheckForSharedSecretScript(MAASTestCase):
-    def test__has_add_arguments(self):
+    def test_has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
         # ActionScript/MainScript.
         security.CheckForSharedSecretScript.add_arguments(sentinel.parser)
         self.assertIsNotNone("Obligatory assertion.")
 
-    def test__exits_non_zero_if_secret_does_not_exist(self):
+    def test_exits_non_zero_if_secret_does_not_exist(self):
         print = self.patch(security, "print")
         error = self.assertRaises(
             SystemExit, security.CheckForSharedSecretScript.run, sentinel.args
@@ -305,7 +305,7 @@ class TestCheckForSharedSecretScript(MAASTestCase):
             print, MockCalledOnceWith("Shared-secret is NOT installed.")
         )
 
-    def test__exits_zero_if_secret_exists(self):
+    def test_exits_zero_if_secret_exists(self):
         security.set_shared_secret_on_filesystem(factory.make_bytes())
         print = self.patch(security, "print")
         error = self.assertRaises(
@@ -318,14 +318,14 @@ class TestCheckForSharedSecretScript(MAASTestCase):
 
 
 class TestFernetEncryption(SharedSecretTestCase):
-    def test__first_encrypt_caches_psk(self):
+    def test_first_encrypt_caches_psk(self):
         self.write_secret()
         self.assertIsNone(security._fernet_psk)
         testdata = factory.make_string()
         fernet_encrypt_psk(testdata)
         self.assertIsNotNone(security._fernet_psk)
 
-    def test__derives_identical_key_on_decrypt(self):
+    def test_derives_identical_key_on_decrypt(self):
         self.write_secret()
         self.assertIsNone(security._fernet_psk)
         testdata = factory.make_bytes()
@@ -339,7 +339,7 @@ class TestFernetEncryption(SharedSecretTestCase):
         self.assertEqual(first_key, second_key)
         self.assertEqual(testdata, decrypted)
 
-    def test__can_encrypt_and_decrypt_string(self):
+    def test_can_encrypt_and_decrypt_string(self):
         self.write_secret()
         testdata = factory.make_string()
         token = fernet_encrypt_psk(testdata)
@@ -350,7 +350,7 @@ class TestFernetEncryption(SharedSecretTestCase):
         decrypted = decrypted.decode("ascii")
         self.assertThat(decrypted, Equals(testdata))
 
-    def test__can_encrypt_and_decrypt_with_raw_bytes(self):
+    def test_can_encrypt_and_decrypt_with_raw_bytes(self):
         self.write_secret()
         testdata = factory.make_bytes()
         token = fernet_encrypt_psk(testdata, raw=True)
@@ -358,21 +358,21 @@ class TestFernetEncryption(SharedSecretTestCase):
         decrypted = fernet_decrypt_psk(token, raw=True)
         self.assertThat(decrypted, Equals(testdata))
 
-    def test__can_encrypt_and_decrypt_bytes(self):
+    def test_can_encrypt_and_decrypt_bytes(self):
         self.write_secret()
         testdata = factory.make_bytes()
         token = fernet_encrypt_psk(testdata)
         decrypted = fernet_decrypt_psk(token)
         self.assertThat(decrypted, Equals(testdata))
 
-    def test__raises_when_no_secret_exists(self):
+    def test_raises_when_no_secret_exists(self):
         testdata = factory.make_bytes()
         with ExpectedException(MissingSharedSecret):
             fernet_encrypt_psk(testdata)
         with ExpectedException(MissingSharedSecret):
             fernet_decrypt_psk(b"")
 
-    def test__assures_data_integrity(self):
+    def test_assures_data_integrity(self):
         self.write_secret()
         testdata = factory.make_bytes(size=10)
         token = fernet_encrypt_psk(testdata)
@@ -392,7 +392,7 @@ class TestFernetEncryption(SharedSecretTestCase):
         with ExpectedException(InvalidToken, msg=test_description):
             fernet_decrypt_psk(bad_token)
 
-    def test__messages_from_up_to_a_minute_in_the_future_accepted(self):
+    def test_messages_from_up_to_a_minute_in_the_future_accepted(self):
         self.write_secret()
         testdata = factory.make_bytes()
         now = time.time()
@@ -400,7 +400,7 @@ class TestFernetEncryption(SharedSecretTestCase):
         token = fernet_encrypt_psk(testdata)
         fernet_decrypt_psk(token, ttl=1)
 
-    def test__messages_from_the_past_exceeding_ttl_rejected(self):
+    def test_messages_from_the_past_exceeding_ttl_rejected(self):
         self.write_secret()
         testdata = factory.make_bytes()
         now = time.time()
@@ -409,7 +409,7 @@ class TestFernetEncryption(SharedSecretTestCase):
         with ExpectedException(InvalidToken):
             fernet_decrypt_psk(token, ttl=1)
 
-    def test__messages_from_future_exceeding_clock_skew_limit_rejected(self):
+    def test_messages_from_future_exceeding_clock_skew_limit_rejected(self):
         self.write_secret()
         testdata = factory.make_bytes()
         now = time.time()

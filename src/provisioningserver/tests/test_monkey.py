@@ -35,7 +35,7 @@ class TestAugmentDeferToThreadPool(MAASTestCase):
 
 
 class TestPatchedURI(MAASTestCase):
-    def test__parses_URL_with_hostname(self):
+    def test_parses_URL_with_hostname(self):
         hostname = factory.make_name("host").encode("ascii")
         path = factory.make_name("path").encode("ascii")
         uri = get_patched_URI().fromBytes(b"http://%s/%s" % (hostname, path))
@@ -43,7 +43,7 @@ class TestPatchedURI(MAASTestCase):
         self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(80))
 
-    def test__parses_URL_with_hostname_and_port(self):
+    def test_parses_URL_with_hostname_and_port(self):
         hostname = factory.make_name("host").encode("ascii")
         port = factory.pick_port()
         path = factory.make_name("path").encode("ascii")
@@ -54,7 +54,7 @@ class TestPatchedURI(MAASTestCase):
         self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(port))
 
-    def test__parses_URL_with_IPv4_address(self):
+    def test_parses_URL_with_IPv4_address(self):
         ip = factory.make_ipv4_address().encode("ascii")
         path = factory.make_name("path").encode("ascii")
         uri = get_patched_URI().fromBytes(b"http://%s/%s" % (ip, path))
@@ -62,7 +62,7 @@ class TestPatchedURI(MAASTestCase):
         self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(80))
 
-    def test__parses_URL_with_IPv4_address_and_port(self):
+    def test_parses_URL_with_IPv4_address_and_port(self):
         ip = factory.make_ipv4_address().encode("ascii")
         port = factory.pick_port()
         path = factory.make_name("path").encode("ascii")
@@ -73,7 +73,7 @@ class TestPatchedURI(MAASTestCase):
         self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(port))
 
-    def test__parses_URL_with_IPv6_address(self):
+    def test_parses_URL_with_IPv6_address(self):
         ip = factory.make_ipv6_address().encode("ascii")
         path = factory.make_name("path").encode("ascii")
         uri = get_patched_URI().fromBytes(b"http://[%s]/%s" % (ip, path))
@@ -81,7 +81,7 @@ class TestPatchedURI(MAASTestCase):
         self.expectThat(uri.path, Equals(b"/%s" % path))
         self.expectThat(uri.port, Equals(80))
 
-    def test__parses_URL_with_IPv6_address_and_port(self):
+    def test_parses_URL_with_IPv6_address_and_port(self):
         ip = factory.make_ipv6_address().encode("ascii")
         port = factory.pick_port()
         path = factory.make_name("path").encode("ascii")

@@ -87,7 +87,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
         for name, field in power_type_parameters.items():
             self.assertIsInstance(field, DictCharField)
 
-    def test__overrides_defaults(self):
+    def test_overrides_defaults(self):
         name = factory.make_name("name")
         field_name = factory.make_name("field_name")
         new_default = factory.make_name("new default")
@@ -114,7 +114,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
             new_default, power_type_parameters[name].fields[0].initial
         )
 
-    def test__manual_does_not_require_power_params(self):
+    def test_manual_does_not_require_power_params(self):
         json_parameters = [
             {
                 "driver_type": "power",
@@ -140,7 +140,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
 class TestMakeFormField(MAASServerTestCase):
     """Test that make_form_field() converts JSON fields to Django."""
 
-    def test__creates_char_field_for_strings(self):
+    def test_creates_char_field_for_strings(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -150,7 +150,7 @@ class TestMakeFormField(MAASServerTestCase):
         django_field = make_form_field(json_field)
         self.assertIsInstance(django_field, forms.CharField)
 
-    def test__creates_string_field_for_passwords(self):
+    def test_creates_string_field_for_passwords(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -160,7 +160,7 @@ class TestMakeFormField(MAASServerTestCase):
         django_field = make_form_field(json_field)
         self.assertIsInstance(django_field, forms.CharField)
 
-    def test__creates_choice_field_for_choices(self):
+    def test_creates_choice_field_for_choices(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -183,7 +183,7 @@ class TestMakeFormField(MAASServerTestCase):
         )
         self.assertEqual(json_field["default"], django_field.initial)
 
-    def test__creates_mac_address_field_for_mac_addresses(self):
+    def test_creates_mac_address_field_for_mac_addresses(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -193,7 +193,7 @@ class TestMakeFormField(MAASServerTestCase):
         django_field = make_form_field(json_field)
         self.assertIsInstance(django_field, MACAddressFormField)
 
-    def test__sets_properties_on_form_field(self):
+    def test_sets_properties_on_form_field(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -206,7 +206,7 @@ class TestMakeFormField(MAASServerTestCase):
             (django_field.label, django_field.required),
         )
 
-    def test__sets_initial_to_default(self):
+    def test_sets_initial_to_default(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -221,11 +221,11 @@ class TestMakeFormField(MAASServerTestCase):
 class TestMakeSettingField(MAASServerTestCase):
     """Test that make_setting_field() creates JSON-verifiable fields."""
 
-    def test__returns_json_verifiable_dict(self):
+    def test_returns_json_verifiable_dict(self):
         json_field = make_setting_field("some_field", "Some Label")
         jsonschema.validate(json_field, SETTING_PARAMETER_FIELD_SCHEMA)
 
-    def test__provides_sane_default_values(self):
+    def test_provides_sane_default_values(self):
         json_field = make_setting_field("some_field", "Some Label")
         expected_field = {
             "name": "some_field",
@@ -238,7 +238,7 @@ class TestMakeSettingField(MAASServerTestCase):
         }
         self.assertEqual(expected_field, json_field)
 
-    def test__sets_field_values(self):
+    def test_sets_field_values(self):
         expected_field = {
             "name": "yet_another_field",
             "label": "Can I stop writing tests now?",
@@ -251,7 +251,7 @@ class TestMakeSettingField(MAASServerTestCase):
         json_field = make_setting_field(**expected_field)
         self.assertEqual(expected_field, json_field)
 
-    def test__validates_choices(self):
+    def test_validates_choices(self):
         self.assertRaises(
             jsonschema.ValidationError,
             make_setting_field,
@@ -260,7 +260,7 @@ class TestMakeSettingField(MAASServerTestCase):
             choices="Nonsense",
         )
 
-    def test__creates_password_fields(self):
+    def test_creates_password_fields(self):
         json_field = make_setting_field(
             "some_field", "Some Label", field_type="password"
         )

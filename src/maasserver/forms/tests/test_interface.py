@@ -63,7 +63,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
         ("region_rack", {"maker": factory.make_RegionRackController}),
     )
 
-    def test__edits_interface(self):
+    def test_edits_interface(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_vlan = factory.make_VLAN(vid=33)
@@ -79,7 +79,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             ),
         )
 
-    def test__allows_no_vlan(self):
+    def test_allows_no_vlan(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         form = ControllerInterfaceForm(instance=interface, data={"vlan": None})
@@ -92,7 +92,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             ),
         )
 
-    def test__updates_interface_links(self):
+    def test_updates_interface_links(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
         )
@@ -116,7 +116,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             ),
         )
 
-    def test__updates_interface_errors_for_not_link_connected_and_speed(self):
+    def test_updates_interface_errors_for_not_link_connected_and_speed(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
         )
@@ -134,7 +134,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
 
 
 class DeployedInterfaceFormTest(MAASServerTestCase):
-    def test__updates_interface(self):
+    def test_updates_interface(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
         )
@@ -166,7 +166,7 @@ class DeployedInterfaceFormTest(MAASServerTestCase):
             ),
         )
 
-    def test__updates_interface_errors_for_not_link_connected_and_speed(self):
+    def test_updates_interface_errors_for_not_link_connected_and_speed(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
         )
@@ -189,7 +189,7 @@ class DeployedInterfaceFormTest(MAASServerTestCase):
 
 
 class TestPhysicalInterfaceForm(MAASServerTestCase):
-    def test__updates_interface(self):
+    def test_updates_interface(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
         )
@@ -225,7 +225,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             ),
         )
 
-    def test__updates_interface_errors_for_not_link_connected_and_speed(self):
+    def test_updates_interface_errors_for_not_link_connected_and_speed(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
         )
@@ -246,7 +246,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             form.errors["__all__"][0],
         )
 
-    def test__creates_physical_interface(self):
+    def test_creates_physical_interface(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = "eth0"
@@ -276,7 +276,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__creates_physical_interface_with_numa_node(self):
+    def test_creates_physical_interface_with_numa_node(self):
         node = factory.make_Node()
         numa_node = factory.make_NUMANode(node=node)
         mac_address = factory.make_mac_address()
@@ -298,7 +298,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertEqual(interface.node, node)
         self.assertEqual(interface.numa_node, numa_node)
 
-    def test__creates_physical_interface_generates_name(self):
+    def test_creates_physical_interface_generates_name(self):
         node = factory.make_Node()
         interface_name = factory.make_name("eth")
         self.patch(node, "get_next_ifname").return_value = interface_name
@@ -328,7 +328,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__creates_physical_interface_disconnected(self):
+    def test_creates_physical_interface_disconnected(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = "eth0"
@@ -356,7 +356,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__create_ensures_link_up(self):
+    def test_create_ensures_link_up(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = "eth0"
@@ -377,7 +377,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
 
-    def test__requires_mac_address(self):
+    def test_requires_mac_address(self):
         interface_name = "eth0"
         vlan = factory.make_VLAN()
         form = PhysicalInterfaceForm(
@@ -444,7 +444,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         interface = form.save()
         self.assertEquals(vlan, interface.vlan)
 
-    def test__rejects_parents(self):
+    def test_rejects_parents(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = factory.make_VLAN()
         form = PhysicalInterfaceForm(
@@ -463,7 +463,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__edits_interface(self):
+    def test_edits_interface(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0"
         )
@@ -488,7 +488,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__edits_doesnt_overwrite_name(self):
+    def test_edits_doesnt_overwrite_name(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0"
         )
@@ -508,7 +508,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__edits_interface_disconnected(self):
+    def test_edits_interface_disconnected(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0"
         )
@@ -532,7 +532,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__create_sets_interface_parameters(self):
+    def test_create_sets_interface_parameters(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = "eth0"
@@ -560,7 +560,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             interface.params,
         )
 
-    def test__update_doesnt_change_interface_parameters(self):
+    def test_update_doesnt_change_interface_parameters(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0"
         )
@@ -590,7 +590,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             interface.params,
         )
 
-    def test__update_does_change_interface_parameters(self):
+    def test_update_does_change_interface_parameters(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0"
         )
@@ -624,7 +624,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             interface.params,
         )
 
-    def test__update_allows_clearing_interface_parameters(self):
+    def test_update_allows_clearing_interface_parameters(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0"
         )
@@ -646,7 +646,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
 
 
 class VLANInterfaceFormTest(MAASServerTestCase):
-    def test__creates_vlan_interface(self):
+    def test_creates_vlan_interface(self):
         vlan = factory.make_VLAN(vid=10)
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         form = VLANInterfaceForm(
@@ -663,7 +663,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         )
         self.assertItemsEqual([parent], interface.parents.all())
 
-    def test__create_ensures_link_up(self):
+    def test_create_ensures_link_up(self):
         vlan = factory.make_VLAN(vid=10)
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         form = VLANInterfaceForm(
@@ -675,7 +675,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
 
-    def test__create_rejects_interface_without_vlan(self):
+    def test_create_rejects_interface_without_vlan(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         form = VLANInterfaceForm(
             node=parent.node, data={"parents": [parent.id]}
@@ -716,7 +716,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors["vlan"][0],
         )
 
-    def test__rejects_no_parents(self):
+    def test_rejects_no_parents(self):
         vlan = factory.make_VLAN(vid=10)
         form = VLANInterfaceForm(
             node=factory.make_Node(), data={"vlan": vlan.id}
@@ -728,7 +728,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_vlan_parent(self):
+    def test_rejects_vlan_parent(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan_parent = factory.make_Interface(
             INTERFACE_TYPE.VLAN, parents=[parent]
@@ -745,7 +745,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_no_vlan(self):
+    def test_rejects_no_vlan(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         form = VLANInterfaceForm(
             node=parent.node, data={"vlan": None, "parents": [parent.id]}
@@ -757,7 +757,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors["vlan"][0],
         )
 
-    def test__rejects_vlan_not_on_same_fabric(self):
+    def test_rejects_vlan_not_on_same_fabric(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
         other_vlan = factory.make_VLAN()
@@ -773,7 +773,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors["vlan"][0],
         )
 
-    def test__rejects_parent_on_bond(self):
+    def test_rejects_parent_on_bond(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         factory.make_Interface(INTERFACE_TYPE.BOND, parents=[parent])
         vlan = factory.make_VLAN(vid=10)
@@ -787,7 +787,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_more_than_one_parent(self):
+    def test_rejects_more_than_one_parent(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -805,7 +805,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         )
 
     @skip("XXX: GavinPanella 2017-03-29 bug=1677203: Fails spuriously.")
-    def test__edits_interface(self):
+    def test_edits_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.VLAN, parents=[parent]
@@ -828,7 +828,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
 
 
 class BondInterfaceFormTest(MAASServerTestCase):
-    def test__error_with_invalid_bond_mode(self):
+    def test_error_with_invalid_bond_mode(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         parent2 = factory.make_Interface(
@@ -856,7 +856,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             form.errors,
         )
 
-    def test__creates_bond_interface(self):
+    def test_creates_bond_interface(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         parent2 = factory.make_Interface(
@@ -886,7 +886,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
         )
         self.assertItemsEqual([parent1, parent2], interface.parents.all())
 
-    def test__create_removes_parent_links_and_sets_link_up_on_bond(self):
+    def test_create_removes_parent_links_and_sets_link_up_on_bond(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         parent1.ensure_link_up()
@@ -921,7 +921,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
 
-    def test__creates_bond_interface_with_parent_mac_address(self):
+    def test_creates_bond_interface_with_parent_mac_address(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         parent2 = factory.make_Interface(
@@ -949,7 +949,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
         )
         self.assertItemsEqual([parent1, parent2], interface.parents.all())
 
-    def test__creates_bond_interface_with_default_bond_params(self):
+    def test_creates_bond_interface_with_default_bond_params(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         parent2 = factory.make_Interface(
@@ -979,7 +979,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             interface.params,
         )
 
-    def test__creates_bond_interface_with_bond_params(self):
+    def test_creates_bond_interface_with_bond_params(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         parent2 = factory.make_Interface(
@@ -1025,7 +1025,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             interface.params,
         )
 
-    def test__rejects_no_parents(self):
+    def test_rejects_no_parents(self):
         vlan = factory.make_VLAN(vid=10)
         interface_name = factory.make_name()
         form = BondInterfaceForm(
@@ -1039,7 +1039,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parents_already_have_children(self):
+    def test_rejects_when_parents_already_have_children(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0"
@@ -1064,7 +1064,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "Interfaces already in-use: eth0, eth1.", form.errors["parents"][0]
         )
 
-    def test__rejects_when_parents_not_in_same_vlan(self):
+    def test_rejects_when_parents_not_in_same_vlan(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0"
@@ -1083,7 +1083,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__edits_interface(self):
+    def test_edits_interface(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1119,7 +1119,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             [parent1, parent2, new_parent], interface.parents.all()
         )
 
-    def test__edits_interface_allows_disconnected(self):
+    def test_edits_interface_allows_disconnected(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1139,7 +1139,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             ),
         )
 
-    def test__edits_interface_removes_parents(self):
+    def test_edits_interface_removes_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1167,7 +1167,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
         )
         self.assertItemsEqual([parent1, parent2], interface.parents.all())
 
-    def test__edits_interface_updates_mac_address_when_parent_removed(self):
+    def test_edits_interface_updates_mac_address_when_parent_removed(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1198,7 +1198,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             interface.mac_address, [parent1.mac_address, parent2.mac_address]
         )
 
-    def test__edit_doesnt_overwrite_params(self):
+    def test_edit_doesnt_overwrite_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1242,7 +1242,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             interface.params,
         )
 
-    def test__edit_does_overwrite_params(self):
+    def test_edit_does_overwrite_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1304,7 +1304,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             interface.params,
         )
 
-    def test__edit_allows_zero_params(self):
+    def test_edit_allows_zero_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node
@@ -1368,7 +1368,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
 
 
 class BridgeInterfaceFormTest(MAASServerTestCase):
-    def test__creates_bridge_interface(self):
+    def test_creates_bridge_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
@@ -1386,7 +1386,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         self.assertEqual(interface.mac_address, parent.mac_address)
         self.assertItemsEqual([parent], interface.parents.all())
 
-    def test__allows_bridge_on_parent_with_vlan_bridges(self):
+    def test_allows_bridge_on_parent_with_vlan_bridges(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan1 = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent])
         factory.make_Interface(INTERFACE_TYPE.BRIDGE, parents=[vlan1])
@@ -1408,7 +1408,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         self.assertEqual(interface.mac_address, parent.mac_address)
         self.assertItemsEqual([parent], interface.parents.all())
 
-    def test__allows_bridge_on_bond_with_vlan_bridges(self):
+    def test_allows_bridge_on_bond_with_vlan_bridges(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         eth1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -1434,7 +1434,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         self.assertEqual(interface.mac_address, bond0.mac_address)
         self.assertItemsEqual([bond0], interface.parents.all())
 
-    def test__create_removes_parent_links_and_sets_link_up_on_bridge(self):
+    def test_create_removes_parent_links_and_sets_link_up_on_bridge(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent.ensure_link_up()
         interface_name = factory.make_name()
@@ -1454,7 +1454,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
 
-    def test__creates_bridge_interface_with_parent_mac_address(self):
+    def test_creates_bridge_interface_with_parent_mac_address(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
@@ -1477,7 +1477,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         )
         self.assertItemsEqual([parent], interface.parents.all())
 
-    def test__rejects_no_parent(self):
+    def test_rejects_no_parent(self):
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
             node=factory.make_Node(), data={"name": interface_name}
@@ -1489,7 +1489,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parent_already_have_children(self):
+    def test_rejects_when_parent_already_have_children(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0"
@@ -1513,7 +1513,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             "Interfaces already in-use: eth0.", form.errors["parents"][0]
         )
 
-    def test__rejects_when_parent_is_bridge(self):
+    def test_rejects_when_parent_is_bridge(self):
         node = factory.make_Node()
         bridge = factory.make_Interface(INTERFACE_TYPE.BRIDGE, node=node)
         interface_name = factory.make_name()
@@ -1527,7 +1527,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parent_is_already_in_a_bridge(self):
+    def test_rejects_when_parent_is_already_in_a_bridge(self):
         node = factory.make_Node()
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_Interface(
@@ -1544,7 +1544,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parent_is_already_in_a_bond(self):
+    def test_rejects_when_parent_is_already_in_a_bond(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -1562,7 +1562,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__edits_interface(self):
+    def test_edits_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent]
@@ -1594,7 +1594,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         )
         self.assertItemsEqual([new_parent], interface.parents.all())
 
-    def test__edits_interface_allows_disconnected(self):
+    def test_edits_interface_allows_disconnected(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent]
@@ -1611,7 +1611,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             ),
         )
 
-    def test__edit_doesnt_overwrite_params(self):
+    def test_edit_doesnt_overwrite_params(self):
         """Check that updating parameters that are not bridge specific do not
         overwrite the bridge specific parameters."""
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1640,7 +1640,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             interface.params,
         )
 
-    def test__edit_does_overwrite_params(self):
+    def test_edit_does_overwrite_params(self):
         """Check that updating specific bridge parameters that do actually
         update the parameters."""
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1680,7 +1680,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             interface.params,
         )
 
-    def test__edit_allows_zero_params(self):
+    def test_edit_allows_zero_params(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent]
@@ -1720,7 +1720,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
 
 
 class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
-    def test__creates_acquired_bridge_interface(self):
+    def test_creates_acquired_bridge_interface(self):
         interface_name = factory.make_name("br")
         node = factory.make_Node()
         parent_fabric = factory.make_Fabric()
@@ -1760,7 +1760,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
         self.assertItemsEqual([parent_sip], interface.ip_addresses.all())
         self.assertItemsEqual([], parent.ip_addresses.all())
 
-    def test__rejects_no_parent(self):
+    def test_rejects_no_parent(self):
         interface_name = factory.make_name()
         form = AcquiredBridgeInterfaceForm(
             node=factory.make_Node(), data={"name": interface_name}
@@ -1772,7 +1772,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parent_already_have_non_vlan_children(self):
+    def test_rejects_when_parent_already_have_non_vlan_children(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0"
@@ -1794,7 +1794,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
             "Interfaces already in-use: eth0.", form.errors["parents"][0]
         )
 
-    def test__rejects_when_parent_is_bridge(self):
+    def test_rejects_when_parent_is_bridge(self):
         node = factory.make_Node()
         bridge = factory.make_Interface(INTERFACE_TYPE.BRIDGE, node=node)
         interface_name = factory.make_name()
@@ -1808,7 +1808,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parent_is_already_in_a_bridge(self):
+    def test_rejects_when_parent_is_already_in_a_bridge(self):
         node = factory.make_Node()
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_Interface(
@@ -1825,7 +1825,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
             form.errors["parents"][0],
         )
 
-    def test__rejects_when_parent_is_already_in_a_bond(self):
+    def test_rejects_when_parent_is_already_in_a_bond(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)

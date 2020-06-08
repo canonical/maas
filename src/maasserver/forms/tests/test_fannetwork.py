@@ -14,7 +14,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestFanNetworkForm(MAASServerTestCase):
-    def test__requires_name(self):
+    def test_requires_name(self):
         slash = random.randint(12, 28)
         underlay = factory.make_ipv4_network(slash=slash)
         overlay = factory.make_ipv4_network(slash=slash - 4)
@@ -24,7 +24,7 @@ class TestFanNetworkForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual({"name": ["This field is required."]}, form.errors)
 
-    def test__requires_overlay(self):
+    def test_requires_overlay(self):
         slash = random.randint(12, 28)
         underlay = factory.make_ipv4_network(slash=slash)
         form = FanNetworkForm(
@@ -36,7 +36,7 @@ class TestFanNetworkForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual({"overlay": ["This field is required."]}, form.errors)
 
-    def test__requires_underlay(self):
+    def test_requires_underlay(self):
         slash = random.randint(12, 28)
         overlay = factory.make_ipv4_network(slash=slash - 4)
         form = FanNetworkForm(
@@ -47,7 +47,7 @@ class TestFanNetworkForm(MAASServerTestCase):
             {"underlay": ["This field is required."]}, form.errors
         )
 
-    def test__creates_fannetwork(self):
+    def test_creates_fannetwork(self):
         fannetwork_name = factory.make_name("fannetwork")
         slash = random.randint(12, 28)
         underlay = factory.make_ipv4_network(slash=slash)
@@ -63,12 +63,12 @@ class TestFanNetworkForm(MAASServerTestCase):
         fannetwork = form.save()
         self.assertEqual(fannetwork_name, fannetwork.name)
 
-    def test__doest_require_name_on_update(self):
+    def test_doest_require_name_on_update(self):
         fannetwork = factory.make_FanNetwork()
         form = FanNetworkForm(instance=fannetwork, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_fannetwork(self):
+    def test_updates_fannetwork(self):
         new_name = factory.make_name("fannetwork")
         fannetwork = factory.make_FanNetwork()
         form = FanNetworkForm(instance=fannetwork, data={"name": new_name})

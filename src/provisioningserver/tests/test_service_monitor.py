@@ -68,7 +68,7 @@ class TestSyslogServiceOnRack(MAASTestCase):
 
 
 class TestGlobalServiceMonitor(MAASTestCase):
-    def test__includes_all_services(self):
+    def test_includes_all_services(self):
         self.assertItemsEqual(
             [
                 "http",

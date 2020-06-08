@@ -464,15 +464,15 @@ class TestIPv6DNS(TestDNSServer):
 class TestGetUpstreamDNS(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_upstream_dns()"""
 
-    def test__returns_empty_list_if_not_set(self):
+    def test_returns_empty_list_if_not_set(self):
         self.assertEqual([], get_upstream_dns())
 
-    def test__returns_list_of_one_address_if_set(self):
+    def test_returns_list_of_one_address_if_set(self):
         address = factory.make_ip_address()
         Config.objects.set_config("upstream_dns", address)
         self.assertEqual([address], get_upstream_dns())
 
-    def test__returns_list_if_space_separated_ips(self):
+    def test_returns_list_if_space_separated_ips(self):
         addresses = [factory.make_ip_address() for _ in range(3)]
         Config.objects.set_config("upstream_dns", " ".join(addresses))
         self.assertEqual(addresses, get_upstream_dns())
@@ -485,16 +485,16 @@ class TestGetTrustedAcls(MAASServerTestCase):
         super(TestGetTrustedAcls, self).setUp()
         self.useFixture(RegionConfigurationFixture())
 
-    def test__returns_empty_string_if_no_networks(self):
+    def test_returns_empty_string_if_no_networks(self):
         self.assertEqual([], get_trusted_acls())
 
-    def test__returns_single_network(self):
+    def test_returns_single_network(self):
         subnet = factory.make_ipv6_network()
         Config.objects.set_config("dns_trusted_acl", str(subnet))
         expected = [str(subnet)]
         self.assertEqual(expected, get_trusted_acls())
 
-    def test__returns_many_networks(self):
+    def test_returns_many_networks(self):
         subnets = [
             str(factory.make_ipv4_network())
             for _ in range(random.randint(1, 5))
@@ -514,21 +514,21 @@ class TestGetTrustedNetworks(MAASServerTestCase):
         super(TestGetTrustedNetworks, self).setUp()
         self.useFixture(RegionConfigurationFixture())
 
-    def test__returns_empty_string_if_no_networks(self):
+    def test_returns_empty_string_if_no_networks(self):
         self.assertEqual([], get_trusted_networks())
 
-    def test__returns_single_network(self):
+    def test_returns_single_network(self):
         subnet = factory.make_Subnet()
         expected = [str(subnet.cidr)]
         self.assertEqual(expected, get_trusted_networks())
 
-    def test__returns_no_networks_if_not_allow_dns(self):
+    def test_returns_no_networks_if_not_allow_dns(self):
         factory.make_Subnet(allow_dns=False)
         subnet_allowed = factory.make_Subnet(allow_dns=True)
         expected = [str(subnet_allowed.cidr)]
         self.assertEqual(expected, get_trusted_networks())
 
-    def test__returns_many_networks(self):
+    def test_returns_many_networks(self):
         subnets = [factory.make_Subnet() for _ in range(random.randint(1, 5))]
         expected = [str(subnet.cidr) for subnet in subnets]
         # Note: This test was seen randomly failing because the networks were
@@ -539,13 +539,13 @@ class TestGetTrustedNetworks(MAASServerTestCase):
 class TestGetInternalDomain(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_internal_domain()"""
 
-    def test__uses_maas_internal_domain_config(self):
+    def test_uses_maas_internal_domain_config(self):
         internal_domain = factory.make_name("internal")
         Config.objects.set_config("maas_internal_domain", internal_domain)
         domain = get_internal_domain()
         self.assertEqual(internal_domain, domain.name)
 
-    def test__doesnt_add_disconnected_rack(self):
+    def test_doesnt_add_disconnected_rack(self):
         rack = factory.make_RackController()
         # No `RegionRackRPCConnection` is being created so the rack is
         # disconnected.
@@ -561,7 +561,7 @@ class TestGetInternalDomain(MAASServerTestCase):
         domain = get_internal_domain()
         self.assertEqual(0, len(domain.resources))
 
-    def test__adds_connected_rack_ipv4(self):
+    def test_adds_connected_rack_ipv4(self):
         rack = factory.make_RackController()
         factory.make_RegionRackRPCConnection(rack)
         nic = rack.get_boot_interface()
@@ -582,7 +582,7 @@ class TestGetInternalDomain(MAASServerTestCase):
             domain.resources[0].records[0],
         )
 
-    def test__adds_connected_rack_ipv6(self):
+    def test_adds_connected_rack_ipv6(self):
         rack = factory.make_RackController()
         factory.make_RegionRackRPCConnection(rack)
         nic = rack.get_boot_interface()
@@ -603,7 +603,7 @@ class TestGetInternalDomain(MAASServerTestCase):
             domain.resources[0].records[0],
         )
 
-    def test__adds_connected_multiple_racks_ipv4(self):
+    def test_adds_connected_multiple_racks_ipv4(self):
         rack1 = factory.make_RackController()
         factory.make_RegionRackRPCConnection(rack1)
         rack2 = factory.make_RackController()
@@ -642,7 +642,7 @@ class TestGetInternalDomain(MAASServerTestCase):
             ),
         )
 
-    def test__adds_connected_multiple_racks_ipv6(self):
+    def test_adds_connected_multiple_racks_ipv6(self):
         rack1 = factory.make_RackController()
         factory.make_RegionRackRPCConnection(rack1)
         rack2 = factory.make_RackController()
@@ -681,7 +681,7 @@ class TestGetInternalDomain(MAASServerTestCase):
             ),
         )
 
-    def test__prefers_static_ip_over_dhcp(self):
+    def test_prefers_static_ip_over_dhcp(self):
         rack = factory.make_RackController()
         factory.make_RegionRackRPCConnection(rack)
         nic = rack.get_boot_interface()
@@ -725,6 +725,6 @@ class TestGetResourceNameForSubnet(MAASServerTestCase):
         ),
     )
 
-    def test__returns_valid(self):
+    def test_returns_valid(self):
         subnet = factory.make_Subnet(cidr=self.cidr)
         self.assertEqual(self.result, get_resource_name_for_subnet(subnet))

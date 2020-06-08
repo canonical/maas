@@ -225,7 +225,7 @@ class TestAtomicCopy(MAASTestCase):
         atomic_copy(loader, destination)
         self.assertThat(destination, FileContains(loader_contents))
 
-    def test___installs_new_bootloader(self):
+    def test_installs_new_bootloader(self):
         contents = factory.make_bytes()
         loader = self.make_file(contents=contents)
         install_dir = self.make_dir()
@@ -233,14 +233,14 @@ class TestAtomicCopy(MAASTestCase):
         atomic_copy(loader, dest)
         self.assertThat(dest, FileContains(contents))
 
-    def test__replaces_file_if_changed(self):
+    def test_replaces_file_if_changed(self):
         contents = factory.make_bytes()
         loader = self.make_file(contents=contents)
         dest = self.make_file(contents="Old contents")
         atomic_copy(loader, dest)
         self.assertThat(dest, FileContains(contents))
 
-    def test__skips_if_unchanged(self):
+    def test_skips_if_unchanged(self):
         contents = factory.make_bytes()
         dest = self.make_file(contents=contents)
         age_file(dest, 100)
@@ -250,7 +250,7 @@ class TestAtomicCopy(MAASTestCase):
         self.assertThat(dest, FileContains(contents))
         self.assertEqual(original_write_time, os.stat(dest).st_mtime)
 
-    def test__sweeps_aside_dot_new_if_any(self):
+    def test_sweeps_aside_dot_new_if_any(self):
         contents = factory.make_bytes()
         loader = self.make_file(contents=contents)
         dest = self.make_file(contents="Old contents")
@@ -386,14 +386,14 @@ class TestIncrementalWrite(MAASTestCase):
 
 
 class TestGetMAASProvisionCommand(MAASTestCase):
-    def test__returns_just_command_for_production(self):
+    def test_returns_just_command_for_production(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
         self.assertEqual(
             "/usr/lib/maas/maas-common", get_maas_common_command()
         )
 
-    def test__returns_maas_rack_for_snap(self):
+    def test_returns_maas_rack_for_snap(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
         self.patch(os, "environ", {"SNAP": "/snap/maas/10"})
@@ -401,7 +401,7 @@ class TestGetMAASProvisionCommand(MAASTestCase):
             get_maas_common_command(), "/snap/maas/10/bin/maas-rack"
         )
 
-    def test__returns_full_path_for_development(self):
+    def test_returns_full_path_for_development(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = True
         self.assertEqual(
@@ -412,7 +412,7 @@ class TestGetMAASProvisionCommand(MAASTestCase):
 class TestGetLibraryScriptPath(MAASTestCase):
     """Tests for `get_library_script_path`."""
 
-    def test__returns_usr_lib_maas_name_for_production(self):
+    def test_returns_usr_lib_maas_name_for_production(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
         script_name = factory.make_name("script")
@@ -421,7 +421,7 @@ class TestGetLibraryScriptPath(MAASTestCase):
             get_library_script_path(script_name),
         )
 
-    def test__returns_full_path_for_development(self):
+    def test_returns_full_path_for_development(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = True
         script_name = factory.make_name("script")
@@ -576,12 +576,12 @@ class TestSudoWriteFileScript(MAASTestCase):
         self.script = load_script(self.script_path)
         self.script.atomic_write = create_autospec(self.script.atomic_write)
 
-    def test__white_list_is_a_non_empty_set_of_file_names(self):
+    def test_white_list_is_a_non_empty_set_of_file_names(self):
         self.assertThat(self.script.whitelist, IsInstance(set))
         self.assertThat(self.script.whitelist, Not(HasLength(0)))
         self.assertThat(self.script.whitelist, AllMatch(IsInstance(str)))
 
-    def test__accepts_file_names_on_white_list(self):
+    def test_accepts_file_names_on_white_list(self):
         calls_expected = []
         for filename in self.script.whitelist:
             content = factory.make_bytes()  # It's binary safe.
@@ -595,7 +595,7 @@ class TestSudoWriteFileScript(MAASTestCase):
             self.script.atomic_write, MockCallsMatch(*calls_expected)
         )
 
-    def test__rejects_file_name_not_on_white_list(self):
+    def test_rejects_file_name_not_on_white_list(self):
         filename = factory.make_name("/some/where", sep="/")
         mode = random.randint(0o000, 0o777)  # Inclusive of endpoints.
         args = self.script.arg_parser.parse_args([filename, oct(mode)])
@@ -614,7 +614,7 @@ class TestSudoWriteFileScript(MAASTestCase):
             ),
         )
 
-    def test__rejects_file_mode_with_high_bits_set(self):
+    def test_rejects_file_mode_with_high_bits_set(self):
         filename = random.choice(list(self.script.whitelist))
         mode = random.randint(0o1000, 0o7777)  # Inclusive of endpoints.
         args = self.script.arg_parser.parse_args([filename, oct(mode)])
@@ -643,12 +643,12 @@ class TestSudoDeleteFileScript(MAASTestCase):
         self.script = load_script(self.script_path)
         self.script.atomic_delete = create_autospec(self.script.atomic_delete)
 
-    def test__white_list_is_a_non_empty_set_of_file_names(self):
+    def test_white_list_is_a_non_empty_set_of_file_names(self):
         self.assertThat(self.script.whitelist, IsInstance(set))
         self.assertThat(self.script.whitelist, Not(HasLength(0)))
         self.assertThat(self.script.whitelist, AllMatch(IsInstance(str)))
 
-    def test__accepts_file_names_on_white_list(self):
+    def test_accepts_file_names_on_white_list(self):
         calls_expected = []
         for filename in self.script.whitelist:
             args = self.script.arg_parser.parse_args([filename])
@@ -658,7 +658,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
             self.script.atomic_delete, MockCallsMatch(*calls_expected)
         )
 
-    def test__is_okay_when_the_file_does_not_exist(self):
+    def test_is_okay_when_the_file_does_not_exist(self):
         filename = random.choice(list(self.script.whitelist))
         args = self.script.arg_parser.parse_args([filename])
         self.script.atomic_delete.side_effect = FileNotFoundError
@@ -667,7 +667,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
             self.script.atomic_delete, MockCalledOnceWith(filename)
         )
 
-    def test__rejects_file_name_not_on_white_list(self):
+    def test_rejects_file_name_not_on_white_list(self):
         filename = factory.make_name("/some/where", sep="/")
         args = self.script.arg_parser.parse_args([filename])
         with CaptureStandardIO() as stdio:
@@ -865,26 +865,26 @@ class TestSystemLocks(MAASTestCase):
 
         self.patch(lock._fslock, "unlock").side_effect = do_unlock
 
-    def test__path_is_read_only(self):
+    def test_path_is_read_only(self):
         lock = self.make_lock()
         with ExpectedException(AttributeError):
             lock.path = factory.make_name()
 
-    def test__holds_file_system_lock(self):
+    def test_holds_file_system_lock(self):
         lock = self.make_lock()
         self.assertFalse(lockfile.isLocked(lock.path))
         with lock:
             self.assertTrue(lockfile.isLocked(lock.path))
         self.assertFalse(lockfile.isLocked(lock.path))
 
-    def test__is_locked_reports_accurately(self):
+    def test_is_locked_reports_accurately(self):
         lock = self.make_lock()
         self.assertFalse(lock.is_locked())
         with lock:
             self.assertTrue(lock.is_locked())
         self.assertFalse(lock.is_locked())
 
-    def test__is_locked_holds_global_lock(self):
+    def test_is_locked_holds_global_lock(self):
         lock = self.make_lock()
         PROCESS_LOCK = self.patch(self.locktype, "PROCESS_LOCK")
         self.assertFalse(lock.is_locked())
@@ -893,7 +893,7 @@ class TestSystemLocks(MAASTestCase):
             PROCESS_LOCK.__exit__, MockCalledOnceWith(None, None, None)
         )
 
-    def test__cannot_be_acquired_twice(self):
+    def test_cannot_be_acquired_twice(self):
         """
         `SystemLock` and its kin do not suffer from a bug that afflicts
         ``lockfile`` (https://pypi.python.org/pypi/lockfile):
@@ -919,7 +919,7 @@ class TestSystemLocks(MAASTestCase):
                 with lock:
                     pass
 
-    def test__locks_and_unlocks_while_holding_global_lock(self):
+    def test_locks_and_unlocks_while_holding_global_lock(self):
         lock = self.make_lock()
         self.ensure_global_lock_held_when_locking_and_unlocking(lock)
 
@@ -929,7 +929,7 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(lock._fslock.lock, MockCalledOnceWith())
         self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
 
-    def test__wait_waits_until_lock_can_be_acquired(self):
+    def test_wait_waits_until_lock_can_be_acquired(self):
         clock = self.patch(internet, "reactor", Clock())
         sleep = self.patch(fs_module, "sleep")
         sleep.side_effect = clock.advance
@@ -947,7 +947,7 @@ class TestSystemLocks(MAASTestCase):
 
         self.assertThat(do_unlock, MockCalledOnceWith())
 
-    def test__wait_raises_exception_when_time_has_run_out(self):
+    def test_wait_raises_exception_when_time_has_run_out(self):
         clock = self.patch(internet, "reactor", Clock())
         sleep = self.patch(fs_module, "sleep")
         sleep.side_effect = clock.advance
@@ -966,7 +966,7 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(sleep, MockCallsMatch(call(0.1), call(0.1)))
         self.assertThat(do_unlock, MockNotCalled())
 
-    def test__wait_locks_and_unlocks_while_holding_global_lock(self):
+    def test_wait_locks_and_unlocks_while_holding_global_lock(self):
         lock = self.make_lock()
         self.ensure_global_lock_held_when_locking_and_unlocking(lock)
 
@@ -976,7 +976,7 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(lock._fslock.lock, MockCalledOnceWith())
         self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
 
-    def test__context_is_implemented_using_acquire_and_release(self):
+    def test_context_is_implemented_using_acquire_and_release(self):
         # Thus implying that all the earlier tests are valid for both.
         lock = self.make_lock()
         acquire = self.patch(lock, "acquire")
@@ -1004,7 +1004,7 @@ class TestSystemLocks(MAASTestCase):
 class TestSystemLock(MAASTestCase):
     """Tests specific to `SystemLock`."""
 
-    def test__path(self):
+    def test_path(self):
         filename = self.make_file()
         observed = SystemLock(filename).path
         self.assertEqual(filename, observed)
@@ -1013,7 +1013,7 @@ class TestSystemLock(MAASTestCase):
 class TestFileLock(MAASTestCase):
     """Tests specific to `FileLock`."""
 
-    def test__path(self):
+    def test_path(self):
         filename = self.make_file()
         expected = filename + ".lock"
         observed = FileLock(filename).path
@@ -1023,7 +1023,7 @@ class TestFileLock(MAASTestCase):
 class TestRunLock(MAASTestCase):
     """Tests specific to `RunLock`."""
 
-    def test__string_path(self):
+    def test_string_path(self):
         filename = "/foo/bar/123:456.txt"
         expected = get_tentative_data_path(
             "/run/lock/maas@foo:bar:123::456.txt"
@@ -1031,7 +1031,7 @@ class TestRunLock(MAASTestCase):
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
-    def test__byte_path(self):
+    def test_byte_path(self):
         filename = b"/foo/bar/123:456.txt"
         expected = get_tentative_data_path(
             "/run/lock/maas@foo:bar:123::456.txt"
@@ -1043,18 +1043,18 @@ class TestRunLock(MAASTestCase):
 class TestNamedLock(MAASTestCase):
     """Tests specific to `NamedLock`."""
 
-    def test__string_name(self):
+    def test_string_name(self):
         name = factory.make_name("lock")
         expected = get_tentative_data_path("/run/lock/maas:" + name)
         observed = NamedLock(name).path
         self.assertEqual(expected, observed)
 
-    def test__byte_name_is_rejected(self):
+    def test_byte_name_is_rejected(self):
         name = factory.make_name("lock").encode("ascii")
         error = self.assertRaises(TypeError, NamedLock, name)
         self.assertThat(str(error), Equals("Lock name must be str, not bytes"))
 
-    def test__name_rejects_unacceptable_characters(self):
+    def test_name_rejects_unacceptable_characters(self):
         # This demonstrates that validation is performed, but it is not an
         # exhaustive test by any means.
         self.assertRaises(ValueError, NamedLock, "foo:bar")

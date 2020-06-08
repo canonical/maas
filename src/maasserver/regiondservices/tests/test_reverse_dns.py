@@ -41,7 +41,7 @@ class TestReverseDNSService(
 
     @wait_for(30)
     @inlineCallbacks
-    def test__caches_region_model_object(self):
+    def test_caches_region_model_object(self):
         hostname = factory.make_hostname()
         self.set_fake_twisted_dns_reply([hostname])
         service = ReverseDNSService()
@@ -51,7 +51,7 @@ class TestReverseDNSService(
 
     @wait_for(30)
     @inlineCallbacks
-    def test__adds_rdns_entry(self):
+    def test_adds_rdns_entry(self):
         hostname = factory.make_hostname()
         self.set_fake_twisted_dns_reply([hostname])
         service = ReverseDNSService()
@@ -65,7 +65,7 @@ class TestReverseDNSService(
 
     @wait_for(30)
     @inlineCallbacks
-    def test__updates_rdns_entry(self):
+    def test_updates_rdns_entry(self):
         hostname = factory.make_hostname()
         hostname2 = factory.make_hostname()
         self.set_fake_twisted_dns_reply([hostname])
@@ -82,7 +82,7 @@ class TestReverseDNSService(
 
     @wait_for(30)
     @inlineCallbacks
-    def test__deletes_rdns_entry(self):
+    def test_deletes_rdns_entry(self):
         hostname = factory.make_hostname()
         self.set_fake_twisted_dns_reply([hostname])
         service = ReverseDNSService()
@@ -96,7 +96,7 @@ class TestReverseDNSService(
 
     @wait_for(30)
     @inlineCallbacks
-    def test__registers_and_unregisters_listener(self):
+    def test_registers_and_unregisters_listener(self):
         listener = Mock()
         listener.register = Mock()
         listener.unregister = Mock()
@@ -114,7 +114,7 @@ class TestReverseDNSService(
 
     @wait_for(30)
     @inlineCallbacks
-    def test__ignores_timeouts_when_consuming_neighbour_event(self):
+    def test_ignores_timeouts_when_consuming_neighbour_event(self):
         reverseResolve = self.patch(reverse_dns_module, "reverseResolve")
         reverseResolve.return_value = defer.fail(defer.TimeoutError())
         ip = factory.make_ip_address(ipv6=False)

@@ -1160,7 +1160,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         self.assertThat(node.system_id, HasLength(6))
 
-    def test__set_zone(self):
+    def test_set_zone(self):
         zone = factory.make_Zone()
         node = factory.make_Node()
         node.set_zone(zone)
@@ -4682,7 +4682,7 @@ class TestNode(MAASServerTestCase):
             node.get_extra_macs(),
         )
 
-    def test__clear_full_storage_configuration_removes_related_objects(self):
+    def test_clear_full_storage_configuration_removes_related_objects(self):
         node = factory.make_Node()
         physical_block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
@@ -4851,7 +4851,7 @@ class TestNode(MAASServerTestCase):
             "Filesystem on virtual block device should have been removed.",
         )
 
-    def test__clear_full_storage_configuration_lp1815091(self):
+    def test_clear_full_storage_configuration_lp1815091(self):
         node = factory.make_Node()
         physical_block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
@@ -4892,7 +4892,7 @@ class TestNode(MAASServerTestCase):
             reload_object(raid5), Is(None), "Raid should have been removed."
         )
 
-    def test__create_acquired_filesystems(self):
+    def test_create_acquired_filesystems(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
@@ -4913,7 +4913,7 @@ class TestNode(MAASServerTestCase):
             "Filesystem on block device should have acquired set.",
         )
 
-    def test__create_acquired_filesystems_calls_clear(self):
+    def test_create_acquired_filesystems_calls_clear(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         mock_clear_acquired_filesystems = self.patch_autospec(
             node, "_clear_acquired_filesystems"
@@ -4921,7 +4921,7 @@ class TestNode(MAASServerTestCase):
         node._create_acquired_filesystems()
         self.assertThat(mock_clear_acquired_filesystems, MockCalledOnceWith())
 
-    def test__clear_acquired_filesystems_only_removes_acquired(self):
+    def test_clear_acquired_filesystems_only_removes_acquired(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
@@ -5081,7 +5081,7 @@ class TestNode(MAASServerTestCase):
         node.save()
         self.assertEqual(primary_rack, node.get_boot_rack_controller())
 
-    def test__register_request_event_saves_event(self):
+    def test_register_request_event_saves_event(self):
         node = factory.make_Node()
         user = factory.make_User()
         log_mock = self.patch_autospec(
@@ -5105,7 +5105,7 @@ class TestNode(MAASServerTestCase):
             ),
         )
 
-    def test__register_request_event_none_user_saves_comment_not_user(self):
+    def test_register_request_event_none_user_saves_comment_not_user(self):
         node = factory.make_Node()
         log_mock = self.patch_autospec(
             Event.objects, "register_event_and_event_type"
@@ -5128,7 +5128,7 @@ class TestNode(MAASServerTestCase):
             ),
         )
 
-    def test__status_event_returns_cached_event(self):
+    def test_status_event_returns_cached_event(self):
         # The first event won't be returned.
         event = factory.make_Event(
             type=factory.make_EventType(level=logging.INFO),
@@ -5151,7 +5151,7 @@ class TestNode(MAASServerTestCase):
         node._status_event = event
         self.assertEqual(event, node.status_event())
 
-    def test__status_event_returns_most_recent_event(self):
+    def test_status_event_returns_most_recent_event(self):
         # The first event won't be returned.
         event = factory.make_Event(
             type=factory.make_EventType(level=logging.INFO),
@@ -5171,11 +5171,11 @@ class TestNode(MAASServerTestCase):
         )
         self.assertEqual(event, node.status_event())
 
-    def test__status_event_returns_none_for_new_node(self):
+    def test_status_event_returns_none_for_new_node(self):
         node = factory.make_Node()
         self.assertIsNone(node.status_event())
 
-    def test__status_message_returns_most_recent_event(self):
+    def test_status_message_returns_most_recent_event(self):
         # The first event won't be returned.
         event = factory.make_Event(
             type=factory.make_EventType(level=logging.INFO),
@@ -5200,11 +5200,11 @@ class TestNode(MAASServerTestCase):
             "%s - %s" % (type_message, message), node.status_message()
         )
 
-    def test__status_message_returns_none_for_new_node(self):
+    def test_status_message_returns_none_for_new_node(self):
         node = factory.make_Node()
         self.assertIsNone(node.status_message())
 
-    def test__status_action_returns_most_recent_event(self):
+    def test_status_action_returns_most_recent_event(self):
         # The first event won't be returned.
         event = factory.make_Event(
             type=factory.make_EventType(level=logging.INFO),
@@ -6864,7 +6864,7 @@ class TestNodeParentRelationShip(MAASServerTestCase):
 class TestNodeNetworking(MAASTransactionServerTestCase):
     """Tests for methods on the `Node` related to networking."""
 
-    def test__create_acquired_bridges_doesnt_call_on_bridge(self):
+    def test_create_acquired_bridges_doesnt_call_on_bridge(self):
         mock_create_acquired_bridge = self.patch(
             Interface, "create_acquired_bridge"
         )
@@ -6879,7 +6879,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node._create_acquired_bridges()
         self.assertThat(mock_create_acquired_bridge, MockNotCalled())
 
-    def test__create_acquired_bridges_calls_configured_interface(self):
+    def test_create_acquired_bridges_calls_configured_interface(self):
         mock_create_acquired_bridge = self.patch(
             Interface, "create_acquired_bridge"
         )
@@ -6897,7 +6897,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__create_acquired_bridges_passes_options(self):
+    def test_create_acquired_bridges_passes_options(self):
         mock_create_acquired_bridge = self.patch(
             Interface, "create_acquired_bridge"
         )
@@ -7036,7 +7036,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             [parent.id], [nic.id for nic in static_ip.interface_set.all()]
         )
 
-    def test__clear_networking_configuration(self):
+    def test_clear_networking_configuration(self):
         node = factory.make_Node()
         nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -7074,7 +7074,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         self.assertEqual(set([True]), clearing_config)
 
-    def test__clear_networking_configuration_clears_gateways(self):
+    def test_clear_networking_configuration_clears_gateways(self):
         node = factory.make_Node()
         nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -7116,7 +7116,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         self.assertThat(node.gateway_link_ipv4, Equals(None))
         self.assertThat(node.gateway_link_ipv6, Equals(None))
 
-    def test__get_default_gateways_returns_priority_and_complete_list(self):
+    def test_get_default_gateways_returns_priority_and_complete_list(self):
         node = factory.make_Node()
         nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -7415,7 +7415,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
                     continue
             self.assertIsNotNone(expected_gw)
 
-    def test__simple(self):
+    def test_simple(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY
         )
@@ -7431,7 +7431,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__ipv4_and_ipv6(self):
+    def test_ipv4_and_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
@@ -7458,7 +7458,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__only_one(self):
+    def test_only_one(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY
         )
@@ -7481,7 +7481,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__managed_subnet_over_unmanaged(self):
+    def test_managed_subnet_over_unmanaged(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         unmanaged_network = factory.make_ipv4_network()
@@ -7510,7 +7510,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__bond_over_physical_interface(self):
+    def test_bond_over_physical_interface(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node
@@ -7544,7 +7544,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__physical_over_vlan_interface(self):
+    def test_physical_over_vlan_interface(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node
@@ -7574,7 +7574,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__boot_interface_over_other_interfaces(self):
+    def test_boot_interface_over_other_interfaces(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node
@@ -7606,7 +7606,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__sticky_ip_over_user_reserved(self):
+    def test_sticky_ip_over_user_reserved(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         sticky_network = factory.make_ipv4_network()
@@ -7634,7 +7634,7 @@ class TestGetGatewaysByPriority(MAASServerTestCase):
             node.get_gateways_by_priority(),
         )
 
-    def test__user_reserved_ip_over_auto(self):
+    def test_user_reserved_ip_over_auto(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         user_reserved_network = factory.make_ipv4_network()
@@ -7679,7 +7679,7 @@ def MatchesDefaultGateways(ipv4, ipv6):
 class TestGetDefaultGateways(MAASServerTestCase):
     """Tests for `Node.get_default_gateways`."""
 
-    def test__return_set_ipv4_and_ipv6(self):
+    def test_return_set_ipv4_and_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
@@ -7729,7 +7729,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ),
         )
 
-    def test__return_set_ipv4_and_guess_ipv6(self):
+    def test_return_set_ipv4_and_guess_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
@@ -7768,7 +7768,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ),
         )
 
-    def test__return_set_ipv6_and_guess_ipv4(self):
+    def test_return_set_ipv6_and_guess_ipv4(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
@@ -7807,7 +7807,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ),
         )
 
-    def test__return_guess_ipv4_and_ipv6(self):
+    def test_return_guess_ipv4_and_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
@@ -7930,13 +7930,13 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
         return other_rackif_ip, other_rack
 
-    def test__uses_rack_ipv4_if_ipv4_only_with_no_gateway(self):
+    def test_uses_rack_ipv4_if_ipv4_only_with_no_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
 
-    def test__uses_rack_ipv4_if_ipv4_only_with_no_gateway_v4_dns(self):
+    def test_uses_rack_ipv4_if_ipv4_only_with_no_gateway_v4_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True,
@@ -7947,7 +7947,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
 
-    def test__uses_rack_ipv6_if_ipv6_only_with_no_gateway_v6_dns(self):
+    def test_uses_rack_ipv6_if_ipv6_only_with_no_gateway_v6_dns(self):
         ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=False,
@@ -7958,7 +7958,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
 
-    def test__uses_rack_ipv6_if_dual_stack_with_no_gateway_and_told(self):
+    def test_uses_rack_ipv6_if_dual_stack_with_no_gateway_and_told(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
         )
@@ -7966,7 +7966,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(ipv4=False), Equals([rack_v6])
         )
 
-    def test__uses_rack_ipv6_if_dual_stack_with_dual_gateway_and_told(self):
+    def test_uses_rack_ipv6_if_dual_stack_with_dual_gateway_and_told(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=True
         )
@@ -7974,19 +7974,19 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(ipv4=False), Equals([rack_v6])
         )
 
-    def test__uses_rack_ipv4_if_dual_stack_with_no_gateway(self):
+    def test_uses_rack_ipv4_if_dual_stack_with_no_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
 
-    def test__uses_rack_ipv4_if_dual_stack_with_ipv4_gateway(self):
+    def test_uses_rack_ipv4_if_dual_stack_with_ipv4_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=False
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
 
-    def test__uses_subnet_ipv4_if_dual_stack_with_ipv4_gateway_with_dns(self):
+    def test_uses_subnet_ipv4_if_dual_stack_with_ipv4_gateway_with_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
         ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8001,13 +8001,13 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), Equals([rack_v4, ipv4_subnet_dns])
         )
 
-    def test__uses_rack_ipv6_if_dual_stack_with_ipv6_gateway(self):
+    def test_uses_rack_ipv6_if_dual_stack_with_ipv6_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=True
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
 
-    def test__uses_subnet_ipv6_if_dual_stack_with_ipv6_gateway(self):
+    def test_uses_subnet_ipv6_if_dual_stack_with_ipv6_gateway(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
         ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8022,13 +8022,13 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), Equals([rack_v6, ipv6_subnet_dns])
         )
 
-    def test__uses_rack_ipv4_if_ipv4_with_ipv4_gateway(self):
+    def test_uses_rack_ipv4_if_ipv4_with_ipv4_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=False, ipv6_gateway=False
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
 
-    def test__uses_subnet_ipv4_if_ipv4_stack_with_ipv4_gateway_and_dns(self):
+    def test_uses_subnet_ipv4_if_ipv4_stack_with_ipv4_gateway_and_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
         ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8043,13 +8043,13 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), Equals([rack_v4, ipv4_subnet_dns])
         )
 
-    def test__uses_rack_ipv6_if_ipv6_with_ipv6_gateway(self):
+    def test_uses_rack_ipv6_if_ipv6_with_ipv6_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=True
         )
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
 
-    def test__uses_subnet_ipv6_if_ipv6_with_ipv6_gateway_and_dns(self):
+    def test_uses_subnet_ipv6_if_ipv6_with_ipv6_gateway_and_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
         ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8064,7 +8064,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), Equals([rack_v6, ipv6_subnet_dns])
         )
 
-    def test__uses_other_routeable_rack_controllers_ipv4(self):
+    def test_uses_other_routeable_rack_controllers_ipv4(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False
         )
@@ -8074,7 +8074,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             rack_ips.append(rack_ip)
         self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
 
-    def test__uses_other_routeable_rack_controllers_ipv6(self):
+    def test_uses_other_routeable_rack_controllers_ipv6(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
         )
@@ -8084,7 +8084,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             rack_ips.append(rack_ip)
         self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
 
-    def test__uses_subnet_ipv4_gateway_with_other_routeable_racks(self):
+    def test_uses_subnet_ipv4_gateway_with_other_routeable_racks(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=False, ipv6_gateway=False
         )
@@ -8094,7 +8094,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             rack_ips.append(rack_ip)
         self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
 
-    def test__uses_subnet_ipv6_gateway_with_other_routeable_racks(self):
+    def test_uses_subnet_ipv6_gateway_with_other_routeable_racks(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=True
         )
@@ -8104,13 +8104,13 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             rack_ips.append(rack_ip)
         self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
 
-    def test__ignores_dns_servers_on_unallowed_subnets(self):
+    def test_ignores_dns_servers_on_unallowed_subnets(self):
         # Regression test for LP:1847537
         rack_v4, rack_v6, node = self.make_Node_with_RackController()
         Subnet.objects.update(allow_dns=False)
         self.assertThat(node.get_default_dns_servers(), Equals([]))
 
-    def test__uses_subnet_ipv4_dns_only(self):
+    def test_uses_subnet_ipv4_dns_only(self):
         # Regression test for LP:1847537
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8121,7 +8121,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), [ipv4_subnet_dns]
         )
 
-    def test__uses_subnet_ipv6_dns_only(self):
+    def test_uses_subnet_ipv6_dns_only(self):
         # Regression test for LP:1847537
         ipv6_subnet_dns = factory.make_ipv6_address()
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8189,12 +8189,12 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.patch(node_module, "post_commit").return_value = d
         return d
 
-    def test__raises_PermissionDenied_if_user_doesnt_have_edit(self):
+    def test_raises_PermissionDenied_if_user_doesnt_have_edit(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
         self.assertRaises(PermissionDenied, node.start, factory.make_User())
 
-    def test__raises_ValidationError_if_no_common_family(self):
+    def test_raises_ValidationError_if_no_common_family(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin, power_type="manual"
@@ -8209,7 +8209,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         with ExpectedException(ValidationError):
             node.start(admin)
 
-    def test__raises_ValidationError_if_ephemeral_deploy_and_install_kvm(self):
+    def test_raises_ValidationError_if_ephemeral_deploy_and_install_kvm(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin,
@@ -8221,7 +8221,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         with ExpectedException(ValidationError):
             node.start(admin)
 
-    def test__raises_ValidationError_if_ephemeral_deployment_less_bionic(self):
+    def test_raises_ValidationError_if_ephemeral_deployment_less_bionic(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin,
@@ -8233,7 +8233,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         with ExpectedException(ValidationError):
             node.start(admin)
 
-    def test__doesnt_raise_network_validation_when_all_dhcp(self):
+    def test_doesnt_raise_network_validation_when_all_dhcp(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin, power_type="manual"
@@ -8261,7 +8261,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__treats_ipv4_mapped_address_as_ipv4(self):
+    def test_treats_ipv4_mapped_address_as_ipv4(self):
         admin = factory.make_admin()
         network = factory.make_ipv4_network()
         node = self.make_acquired_node_with_interface(
@@ -8285,7 +8285,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__rejects_ipv6_only_host_when_url_is_ipv4_mapped(self):
+    def test_rejects_ipv6_only_host_when_url_is_ipv4_mapped(self):
         admin = factory.make_admin()
         network = factory.make_ipv6_network()
         node = self.make_acquired_node_with_interface(
@@ -8297,7 +8297,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         with ExpectedException(ValidationError):
             node.start(admin)
 
-    def test__checks_all_interfaces_for_common_family(self):
+    def test_checks_all_interfaces_for_common_family(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin, power_type="manual"
@@ -8330,7 +8330,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__start_ignores_address_compatibility_when_no_rack(self):
+    def test_start_ignores_address_compatibility_when_no_rack(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin, power_type="manual"
@@ -8356,7 +8356,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__start_logs_user_request(self):
+    def test_start_logs_user_request(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin, power_type="manual"
@@ -8373,7 +8373,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__sets_user_data(self):
+    def test_sets_user_data(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8383,7 +8383,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         nud = NodeUserData.objects.get(node=node)
         self.assertEqual(user_data, nud.data)
 
-    def test__resets_user_data(self):
+    def test_resets_user_data(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8393,7 +8393,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user, user_data=None)
         self.assertFalse(NodeUserData.objects.filter(node=node).exists())
 
-    def test__sets_to_deploying(self):
+    def test_sets_to_deploying(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8401,7 +8401,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user)
         self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
 
-    def test__creates_acquired_bridges_for_install_kvm(self):
+    def test_creates_acquired_bridges_for_install_kvm(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8426,7 +8426,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertEquals(bridge.params["bridge_fd"], bridge_fd)
         self.assertTrue(node.install_kvm)
 
-    def test__doesnt_change_broken(self):
+    def test_doesnt_change_broken(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8436,7 +8436,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user)
         self.assertEquals(NODE_STATUS.BROKEN, node.status)
 
-    def test__claims_auto_ip_addresses(self):
+    def test_claims_auto_ip_addresses(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8446,7 +8446,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         self.expectThat(claim_auto_ips, MockCalledOnceWith(ANY))
 
-    def test__only_claims_auto_addresses_when_allocated(self):
+    def test_only_claims_auto_addresses_when_allocated(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8464,7 +8464,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # isn't ALLOCATED.
         self.assertThat(claim_auto_ips, MockNotCalled())
 
-    def test__claims_auto_ip_addresses_assigns_without_no_racks(self):
+    def test_claims_auto_ip_addresses_assigns_without_no_racks(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8480,7 +8480,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(ip.ip, Not(Is(None)))
         self.assertThat(ip.temp_expires_on, Is(None))
 
-    def test__claims_auto_ip_addresses_skips_used_ip_from_rack(self):
+    def test_claims_auto_ip_addresses_skips_used_ip_from_rack(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8572,7 +8572,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(auto_ip.ip, Equals(third_ip.ip))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
 
-    def test__claims_auto_ip_addresses_retries_on_failure_from_rack(self):
+    def test_claims_auto_ip_addresses_retries_on_failure_from_rack(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8626,7 +8626,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(auto_ip.ip, Equals(first_ip.ip))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
 
-    def test__claims_auto_ip_addresses_assigns_ip_on_three_failures(self):
+    def test_claims_auto_ip_addresses_assigns_ip_on_three_failures(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8678,7 +8678,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(auto_ip.ip, Equals(first_ip.ip))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
 
-    def test__claims_auto_ip_addresses_fails_after_three_tries(self):
+    def test_claims_auto_ip_addresses_fails_after_three_tries(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8751,7 +8751,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             with post_commit_hooks:
                 node.start(user)
 
-    def test__sets_deploying_before_claiming_auto_ips(self):
+    def test_sets_deploying_before_claiming_auto_ips(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_state=POWER_STATE.ON
@@ -8776,7 +8776,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY)
         )
 
-    def test__claims_auto_ips_when_script_needs_it(self):
+    def test_claims_auto_ips_when_script_needs_it(self):
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=random.choice(COMMISSIONING_LIKE_STATUSES)
@@ -8818,7 +8818,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         self.assertThat(mock_claim_auto_ips, MockCalledOnceWith(ANY))
 
-    def test__doesnt_claims_auto_ips_when_script_doenst_need_it(self):
+    def test_doesnt_claims_auto_ips_when_script_doenst_need_it(self):
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=random.choice(COMMISSIONING_LIKE_STATUSES)
@@ -8858,7 +8858,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         self.assertThat(mock_claim_auto_ips, MockNotCalled())
 
-    def test__manual_power_type_doesnt_call__power_control_node(self):
+    def test_manual_power_type_doesnt_call__power_control_node(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8869,7 +8869,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         self.assertThat(mock_power_control, MockNotCalled())
 
-    def test__adds_callbacks_and_errbacks_to_post_commit(self):
+    def test_adds_callbacks_and_errbacks_to_post_commit(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
         old_status = node.status
@@ -8905,7 +8905,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__calls_power_cycle_when_cycling_allowed(self):
+    def test_calls_power_cycle_when_cycling_allowed(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_state=POWER_STATE.ON
@@ -8925,7 +8925,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY)
         )
 
-    def test__aborts_all_scripts_and_logs(self):
+    def test_aborts_all_scripts_and_logs(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user, status=NODE_STATUS.NEW)
         script_set = factory.make_ScriptSet(node=node)
@@ -9012,7 +9012,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
 
 class TestGetBMCClientConnectionInfo(MAASServerTestCase):
-    def test__returns_bmc_identifiers(self):
+    def test_returns_bmc_identifiers(self):
         node = factory.make_Node()
 
         mock_bmcs = self.patch(node.bmc, "get_client_identifiers")
@@ -9030,7 +9030,7 @@ class TestGetBMCClientConnectionInfo(MAASServerTestCase):
             node._get_bmc_client_connection_info(),
         )
 
-    def test__creates_event_on_error(self):
+    def test_creates_event_on_error(self):
         node = factory.make_Node()
 
         self.assertRaises(PowerProblem, node._get_bmc_client_connection_info)
@@ -9071,13 +9071,13 @@ class TestNode_Stop(MAASServerTestCase):
         self.patch(node_module, "post_commit").return_value = d
         return d
 
-    def test__raises_PermissionDenied_if_user_doesnt_have_edit(self):
+    def test_raises_PermissionDenied_if_user_doesnt_have_edit(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
         other_user = factory.make_User()
         self.assertRaises(PermissionDenied, node.stop, other_user)
 
-    def test__logs_user_request(self):
+    def test_logs_user_request(self):
         self.patch_post_commit()
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(admin)
@@ -9094,7 +9094,7 @@ class TestNode_Stop(MAASServerTestCase):
             ),
         )
 
-    def test__doesnt_call__power_control_node_if_cant_be_stopped(self):
+    def test_doesnt_call__power_control_node_if_cant_be_stopped(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
             admin, power_type="manual"
@@ -9103,7 +9103,7 @@ class TestNode_Stop(MAASServerTestCase):
         node.stop(admin)
         self.assertThat(mock_power_control, MockNotCalled())
 
-    def test__calls__power_control_node_with_stop_mode(self):
+    def test_calls__power_control_node_with_stop_mode(self):
         d = self.patch_post_commit()
         admin = factory.make_admin()
         stop_mode = factory.make_name("stop")
@@ -9117,7 +9117,7 @@ class TestNode_Stop(MAASServerTestCase):
             MockCalledOnceWith(d, power_off_node, expected_power_info),
         )
 
-    def test__stop_allows_no_user(self):
+    def test_stop_allows_no_user(self):
         d = self.patch_post_commit()
         admin = factory.make_admin()
         stop_mode = factory.make_name("stop")
@@ -9137,7 +9137,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__updates_power_state(self):
+    def test_updates_power_state(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node), power_state=POWER_STATE.ON
         )
@@ -9153,7 +9153,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__does_not_update_power_state_when_same(self):
+    def test_does_not_update_power_state_when_same(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node), power_state=POWER_STATE.ON
         )
@@ -9171,7 +9171,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__updates_power_state_unknown_for_non_queryable_power_type(self):
+    def test_updates_power_state_unknown_for_non_queryable_power_type(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node),
             power_type="apc",
@@ -9194,7 +9194,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__creates_node_event_with_power_error(self):
+    def test_creates_node_event_with_power_error(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node), power_state=POWER_STATE.ERROR
         )
@@ -9679,18 +9679,18 @@ class TestNode_Delete_With_Transactional_Events(MAASTransactionServerTestCase):
 
 
 class TestController(MAASServerTestCase):
-    def test__was_probably_machine_true(self):
+    def test_was_probably_machine_true(self):
         rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
         rack.bmc = factory.make_BMC()
         rack.save()
         self.assertTrue(rack._was_probably_machine())
 
-    def test__was_probably_machine_false(self):
+    def test_was_probably_machine_false(self):
         self.assertFalse(factory.make_RackController()._was_probably_machine())
 
 
 class TestControllerUpdateDiscoveryState(MAASServerTestCase):
-    def test__calls_update_discovery_state_per_interface(self):
+    def test_calls_update_discovery_state_per_interface(self):
         controller = factory.make_RegionRackController()
         eth1 = factory.make_Interface(node=controller)
         factory.make_Interface(
@@ -9719,7 +9719,7 @@ class TestControllerUpdateDiscoveryState(MAASServerTestCase):
 class TestReportNeighbours(MAASServerTestCase):
     """Tests for `Controller.report_neighbours()."""
 
-    def test__calls_update_neighbour_for_each_neighbour(self):
+    def test_calls_update_neighbour_for_each_neighbour(self):
         rack = factory.make_RackController()
         factory.make_Interface(name="eth0", node=rack)
         factory.make_Interface(name="eth1", node=rack)
@@ -9736,7 +9736,7 @@ class TestReportNeighbours(MAASServerTestCase):
             MockCallsMatch(*[call(neighbour) for neighbour in neighbours]),
         )
 
-    def test__calls_report_vid_for_each_vid(self):
+    def test_calls_report_vid_for_each_vid(self):
         rack = factory.make_RackController()
         factory.make_Interface(name="eth0", node=rack)
         factory.make_Interface(name="eth1", node=rack)
@@ -9754,7 +9754,7 @@ class TestReportNeighbours(MAASServerTestCase):
 class TestReportMDNSEntries(MAASServerTestCase):
     """Tests for `Controller.report_mdns_entries()."""
 
-    def test__calls_update_mdns_entry_for_each_entry(self):
+    def test_calls_update_mdns_entry_for_each_entry(self):
         rack = factory.make_RackController()
         factory.make_Interface(name="eth0", node=rack)
         factory.make_Interface(name="eth1", node=rack)
@@ -9847,7 +9847,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
     scenarios = UpdateInterfacesMixin.scenarios
 
-    def test__order_of_calls_to_update_interface_is_always_the_same(self):
+    def test_order_of_calls_to_update_interface_is_always_the_same(self):
         controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
@@ -9973,7 +9973,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 mock_update_interface, MockCallsMatch(*expected_call_order)
             )
 
-    def test__all_new_physical_interfaces_no_links(self):
+    def test_all_new_physical_interfaces_no_links(self):
         controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
@@ -10024,7 +10024,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             Contains(Fabric.objects.get_default_fabric().get_default_vlan()),
         )
 
-    def test__vlans_with_alternate_naming_conventions(self):
+    def test_vlans_with_alternate_naming_conventions(self):
         controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
@@ -10167,7 +10167,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertThat(list(eth0_0102.parents.all()), Equals([eth0]))
 
-    def test__sets_discovery_parameters(self):
+    def test_sets_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
         bond_mac = factory.make_mac_address()
@@ -10225,7 +10225,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__clears_discovery_parameters(self):
+    def test_clears_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
         interfaces = {
@@ -10296,7 +10296,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__new_physical_with_new_subnet_link(self):
+    def test_new_physical_with_new_subnet_link(self):
         controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()
         ip = factory.pick_ip_in_network(network)
@@ -10348,7 +10348,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__new_physical_with_dhcp_link(self):
+    def test_new_physical_with_dhcp_link(self):
         controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()
         ip = factory.pick_ip_in_network(network)
@@ -10409,7 +10409,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__new_physical_with_multiple_dhcp_link(self):
+    def test_new_physical_with_multiple_dhcp_link(self):
         controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
@@ -10448,7 +10448,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__new_physical_with_multiple_dhcp_link_with_resource_info(self):
+    def test_new_physical_with_multiple_dhcp_link_with_resource_info(self):
         controller = self.create_empty_controller(with_empty_script_sets=True)
         interfaces = {
             "eth0": {
@@ -10495,7 +10495,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(product, eth0.product)
         self.assertEqual(firmware_version, eth0.firmware_version)
 
-    def test__new_physical_with_existing_subnet_link_with_gateway(self):
+    def test_new_physical_with_existing_subnet_link_with_gateway(self):
         controller = self.create_empty_controller()
         subnet = factory.make_Subnet()
         network = subnet.get_ipnetwork()
@@ -10546,7 +10546,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__new_physical_with_existing_subnet_link_without_gateway(self):
+    def test_new_physical_with_existing_subnet_link_without_gateway(self):
         controller = self.create_empty_controller()
         subnet = factory.make_Subnet()
         subnet.gateway_ip = None
@@ -10595,7 +10595,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__new_physical_with_multiple_subnets(self):
+    def test_new_physical_with_multiple_subnets(self):
         controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet1 = factory.make_Subnet(vlan=vlan)
@@ -10649,7 +10649,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_existing_static_link(self):
+    def test_existing_physical_with_existing_static_link(self):
         controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
@@ -10699,7 +10699,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_existing_auto_link(self):
+    def test_existing_physical_with_existing_auto_link(self):
         controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
@@ -10749,7 +10749,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_removes_old_links(self):
+    def test_existing_physical_removes_old_links(self):
         controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
@@ -10809,7 +10809,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         for extra_ip in extra_ips:
             self.expectThat(reload_object(extra_ip), Is(None))
 
-    def test__existing_physical_with_links_new_vlan_no_links(self):
+    def test_existing_physical_with_links_new_vlan_no_links(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -10881,7 +10881,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_links_new_vlan_new_links(self):
+    def test_existing_physical_with_links_new_vlan_new_links(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -10980,7 +10980,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_links_new_vlan_wrong_subnet_vid(self):
+    def test_existing_physical_with_links_new_vlan_wrong_subnet_vid(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11084,7 +11084,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_no_links_new_vlan_no_links(self):
+    def test_existing_physical_with_no_links_new_vlan_no_links(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11134,7 +11134,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_no_links_new_vlan_with_links(self):
+    def test_existing_physical_with_no_links_new_vlan_with_links(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11200,7 +11200,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__existing_physical_with_no_links_vlan_with_wrong_subnet(self):
+    def test_existing_physical_with_no_links_vlan_with_wrong_subnet(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11296,7 +11296,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         for link in links_to_remove:
             self.expectThat(reload_object(link), Is(None))
 
-    def test__bond_with_existing_parents(self):
+    def test_bond_with_existing_parents(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11349,7 +11349,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesSetwise(Equals("eth0"), Equals("eth1")),
         )
 
-    def test__bridge_with_existing_parents(self):
+    def test_bridge_with_existing_parents(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11402,7 +11402,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesSetwise(Equals("eth0"), Equals("eth1")),
         )
 
-    def test__bond_updates_existing_bond(self):
+    def test_bond_updates_existing_bond(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11459,7 +11459,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             [parent.name for parent in bond0.parents.all()], Equals(["eth0"])
         )
 
-    def test__bridge_updates_existing_bridge(self):
+    def test_bridge_updates_existing_bridge(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11516,7 +11516,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             [parent.name for parent in br0.parents.all()], Equals(["eth0"])
         )
 
-    def test__bond_creates_link_updates_parent_vlan(self):
+    def test_bond_creates_link_updates_parent_vlan(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11601,7 +11601,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesSetwise(Equals("eth0"), Equals("eth1")),
         )
 
-    def test__bridge_creates_link_updates_parent_vlan(self):
+    def test_bridge_creates_link_updates_parent_vlan(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11686,7 +11686,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesSetwise(Equals("eth0"), Equals("eth1")),
         )
 
-    def test__bridge_with_mac_as_phyisical_not_updated(self):
+    def test_bridge_with_mac_as_phyisical_not_updated(self):
         controller = self.create_empty_controller(with_empty_script_sets=True)
         controller = self.create_empty_controller()
         mac_address = factory.make_mac_address()
@@ -11745,7 +11745,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertNotEqual(product, br0.product)
         self.assertNotEqual(firmware_version, br0.firmware_version)
 
-    def test__removes_missing_interfaces(self):
+    def test_removes_missing_interfaces(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11763,7 +11763,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Is(None))
 
-    def test__removes_one_bond_parent(self):
+    def test_removes_one_bond_parent(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11797,7 +11797,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Not(Is(None)))
 
-    def test__removes_one_bridge_parent(self):
+    def test_removes_one_bridge_parent(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11831,7 +11831,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(br0), Not(Is(None)))
 
-    def test__removes_one_bond_and_one_parent(self):
+    def test_removes_one_bond_and_one_parent(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11858,7 +11858,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Is(None))
 
-    def test__removes_one_bridge_and_one_parent(self):
+    def test_removes_one_bridge_and_one_parent(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
@@ -11885,7 +11885,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(br0), Is(None))
 
-    def test__all_new_bond_with_vlan(self):
+    def test_all_new_bond_with_vlan(self):
         controller = self.create_empty_controller()
         bond0_fabric = factory.make_Fabric()
         bond0_untagged = bond0_fabric.get_default_vlan()
@@ -12023,7 +12023,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__all_new_bridge_with_vlan(self):
+    def test_all_new_bridge_with_vlan(self):
         controller = self.create_empty_controller()
         br0_fabric = factory.make_Fabric()
         br0_untagged = br0_fabric.get_default_vlan()
@@ -12156,7 +12156,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__two_controllers_with_similar_configurations_bug_1563701(self):
+    def test_two_controllers_with_similar_configurations_bug_1563701(self):
         interfaces1 = {
             "ens3": {
                 "enabled": True,
@@ -12343,7 +12343,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         r2_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.3"))
         self.assertIsNotNone(r2_ens5_16)
 
-    def test__all_new_bridge_on_vlan_interface_with_identical_macs(self):
+    def test_all_new_bridge_on_vlan_interface_with_identical_macs(self):
         controller = self.create_empty_controller()
         default_vlan = VLAN.objects.get_default_vlan()
         br0_fabric = factory.make_Fabric()
@@ -12506,7 +12506,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ),
         )
 
-    def test__bridge_on_vlan_interface_with_identical_macs_replacing_phy(self):
+    def test_bridge_on_vlan_interface_with_identical_macs_replacing_phy(self):
         controller = self.create_empty_controller()
         br0_fabric = factory.make_Fabric()
         eth0_100_vlan = factory.make_VLAN(vid=100, fabric=br0_fabric)
@@ -13782,7 +13782,7 @@ class TestRegionController(MAASServerTestCase):
 class TestRegionControllerRefresh(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__only_runs_on_running_region(self):
+    def test_only_runs_on_running_region(self):
         region = yield deferToDatabase(factory.make_RegionController)
 
         with ExpectedException(NotImplementedError):
@@ -13790,7 +13790,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__acquires_and_releases_lock(self):
+    def test_acquires_and_releases_lock(self):
         def mock_refresh(*args, **kwargs):
             lock = NamedLock("refresh")
             self.assertTrue(lock.is_locked())
@@ -13811,7 +13811,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__lock_released_on_error(self):
+    def test_lock_released_on_error(self):
         exception = factory.make_exception()
         self.patch(node_module, "refresh").side_effect = exception
         region = yield deferToDatabase(factory.make_RegionController)
@@ -13830,7 +13830,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__does_nothing_when_locked(self):
+    def test_does_nothing_when_locked(self):
         region = yield deferToDatabase(factory.make_RegionController)
         self.patch(node_module, "get_maas_id").return_value = region.system_id
         mock_deferToDatabase = self.patch(node_module, "deferToDatabase")
@@ -13840,7 +13840,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__logs_user_request(self):
+    def test_logs_user_request(self):
         region = yield deferToDatabase(factory.make_RegionController)
         self.patch(node_module, "get_maas_id").return_value = region.system_id
         self.patch(node_module, "refresh")
@@ -13865,7 +13865,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__runs_refresh(self):
+    def test_runs_refresh(self):
         def get_token_for_controller(region):
             token = NodeKey.objects.get_token_for_node(region)
             token.consumer.key  # Fetch this now while we're in the database.
@@ -13893,7 +13893,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
 
 
 class TestControllerGetDiscoveryState(MAASServerTestCase):
-    def test__gets_discovery_state_for_each_interface(self):
+    def test_gets_discovery_state_for_each_interface(self):
         rack = factory.make_RegionRackController(ifname="eth0")
         eth1 = factory.make_Interface(node=rack, name="eth1")
         factory.make_Interface(node=rack, name="eth2")
@@ -13907,19 +13907,19 @@ class TestControllerGetDiscoveryState(MAASServerTestCase):
 
 
 class TestNodeGetHostedPods(MAASServerTestCase):
-    def test__returns_queryset(self):
+    def test_returns_queryset(self):
         node = factory.make_Node()
         pods = node.get_hosted_pods()
         self.assertThat(pods, IsInstance(QuerySet))
 
-    def test__returns_related_pods_by_ip(self):
+    def test_returns_related_pods_by_ip(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         ip = factory.make_StaticIPAddress(interface=node.boot_interface)
         pod = factory.make_Pod(ip_address=ip)
         pods = node.get_hosted_pods()
         self.assertThat(pods, Contains(pod))
 
-    def test__returns_related_pods_by_association(self):
+    def test_returns_related_pods_by_association(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)
@@ -13928,7 +13928,7 @@ class TestNodeGetHostedPods(MAASServerTestCase):
 
 
 class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
-    def test__identical_size_tags(self):
+    def test_identical_size_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
         node1_sda = factory.make_PhysicalBlockDevice(
             node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
@@ -13954,7 +13954,7 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
             node2._get_storage_mapping_between_nodes(node1),
         )
 
-    def test__larger_size_identical_tags(self):
+    def test_larger_size_identical_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
         node1_sda = factory.make_PhysicalBlockDevice(
             node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
@@ -13980,7 +13980,7 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
             node2._get_storage_mapping_between_nodes(node1),
         )
 
-    def test__larger_size_diff_tags(self):
+    def test_larger_size_diff_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
         node1_sda = factory.make_PhysicalBlockDevice(
             node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
@@ -14006,7 +14006,7 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
             node2._get_storage_mapping_between_nodes(node1),
         )
 
-    def test__small_size_fails(self):
+    def test_small_size_fails(self):
         node1 = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
@@ -14154,7 +14154,7 @@ class TestNodeStorageClone_SimpleMBRLayout(
             serial="QM00001",
         )  # 8 GiB
 
-    def test__copy(self):
+    def test_copy(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
@@ -14494,7 +14494,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
             raid_5_disk_5,
         )
 
-    def test__copy(self):
+    def test_copy(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             bios_boot_method="uefi",
@@ -14681,7 +14681,7 @@ class TestNodeStorageClone_SpecialFilesystems(
             serial="QM00001",
         )
 
-    def test__copy(self):
+    def test_copy(self):
         node = factory.make_Node(with_boot_disk=False)
         self.create_physical_disks(node)
         factory.make_Filesystem(
@@ -14716,7 +14716,7 @@ class TestNodeStorageClone_SpecialFilesystems(
 
 
 class TestNodeInterfaceClone__MappingBetweenNodes(MAASServerTestCase):
-    def test__match_by_name(self):
+    def test_match_by_name(self):
         node1 = factory.make_Node()
         node1_eth0 = factory.make_Interface(node=node1, name="eth0")
         node1_ens3 = factory.make_Interface(node=node1, name="ens3")
@@ -14735,7 +14735,7 @@ class TestNodeInterfaceClone__MappingBetweenNodes(MAASServerTestCase):
             node2._get_interface_mapping_between_nodes(node1),
         )
 
-    def test__fail_when_source_no_match(self):
+    def test_fail_when_source_no_match(self):
         node1 = factory.make_Node()
         factory.make_Interface(node=node1, name="eth0")
         factory.make_Interface(node=node1, name="ens3")
@@ -14757,7 +14757,7 @@ class TestNodeInterfaceClone__MappingBetweenNodes(MAASServerTestCase):
 
 
 class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
-    def test__auto_ip_assigned_on_clone_when_source_has_ip(self):
+    def test_auto_ip_assigned_on_clone_when_source_has_ip(self):
         node = factory.make_Node()
         node_eth0 = factory.make_Interface(node=node, name="eth0")
         node_ip = factory.make_StaticIPAddress(
@@ -14772,7 +14772,7 @@ class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
         self.assertIsNotNone(dest_ip.ip)
         self.assertNotEqual(node_ip.ip, dest_ip.ip)
 
-    def test__auto_ip_unassigned_on_clone_when_source_has_no_ip(self):
+    def test_auto_ip_unassigned_on_clone_when_source_has_no_ip(self):
         node = factory.make_Node()
         node_eth0 = factory.make_Interface(node=node, name="eth0")
         node_ip = factory.make_StaticIPAddress(
@@ -14786,7 +14786,7 @@ class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
         dest_ip = dest_node_eth0.ip_addresses.first()
         self.assertIsNone(dest_ip.ip)
 
-    def test__sticky_ip_assigned_on_clone(self):
+    def test_sticky_ip_assigned_on_clone(self):
         node = factory.make_Node()
         node_eth0 = factory.make_Interface(node=node, name="eth0")
         node_ip = factory.make_StaticIPAddress(
@@ -14801,7 +14801,7 @@ class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
         self.assertIsNotNone(dest_ip.ip)
         self.assertNotEqual(node_ip.ip, dest_ip.ip)
 
-    def test__user_reserved_ip_assigned_on_clone(self):
+    def test_user_reserved_ip_assigned_on_clone(self):
         user = factory.make_User()
         subnet = factory.make_Subnet()
         node = factory.make_Node()
@@ -14822,7 +14822,7 @@ class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
         self.assertNotEqual(node_ip.ip, dest_ip.ip)
         self.assertEqual(user, dest_ip.user)
 
-    def test__dhcp_assigned_on_clone(self):
+    def test_dhcp_assigned_on_clone(self):
         node = factory.make_Node()
         node_eth0 = factory.make_Interface(node=node, name="eth0")
         factory.make_StaticIPAddress(
@@ -14835,7 +14835,7 @@ class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
         dest_ip = dest_node_eth0.ip_addresses.first()
         self.assertEqual(IPADDRESS_TYPE.DHCP, dest_ip.alloc_type)
 
-    def test__discovered_not_assigned_on_clone(self):
+    def test_discovered_not_assigned_on_clone(self):
         node = factory.make_Node()
         node_eth0 = factory.make_Interface(node=node, name="eth0")
         factory.make_StaticIPAddress(
@@ -14873,7 +14873,7 @@ class TestNodeInterfaceClone_SimpleNetworkLayout(
         sip.subnet = None
         sip.save()
 
-    def test__copy(self):
+    def test_copy(self):
         # Keep them in the same domain to make the checking of configuraton
         # easy. A copy to destination doesn't move the destinations nodes
         # domain.
@@ -14911,7 +14911,7 @@ class TestNodeInterfaceClone_SimpleNetworkLayout(
 class TestNodeInterfaceClone_VLANOnBondNetworkLayout(
     MAASServerTestCase, AssertNetworkConfigMixin
 ):
-    def test__copy(self):
+    def test_copy(self):
         domain = factory.make_Domain("bbb")
         node = factory.make_Node_with_Interface_on_Subnet(
             interface_count=2,
@@ -14977,7 +14977,7 @@ class TestNodeInterfaceClone_VLANOnBondNetworkLayout(
 class TestNodeInterfaceClone_BridgeNetworkLayout(
     MAASServerTestCase, AssertNetworkConfigMixin
 ):
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(ifname="eth0")
         boot_interface = node.get_boot_interface()
         vlan = boot_interface.vlan

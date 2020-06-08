@@ -107,7 +107,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         fake = FakeResolveHostname(*addresses)
         return self.patch(server_address, "resolve_hostname", fake)
 
-    def test__integrates_with_get_maas_facing_server_host(self):
+    def test_integrates_with_get_maas_facing_server_host(self):
         ip = factory.make_ipv4_address()
         maas_url = "http://%s" % ip
         rack = factory.make_RackController(url=maas_url)
@@ -115,7 +115,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             str(ip), server_address.get_maas_facing_server_host(rack)
         )
 
-    def test__resolves_hostname(self):
+    def test_resolves_hostname(self):
         hostname = make_hostname()
         self.patch_get_maas_facing_server_host(hostname)
         ip = factory.make_ipv4_address()
@@ -124,7 +124,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         self.assertEqual([IPAddress(ip)], result)
         self.assertEqual(hostname, fake_resolve.hostname)
 
-    def test__returns_v4_and_v6_addresses(self):
+    def test_returns_v4_and_v6_addresses(self):
         # If a server has mixed v4 and v6 addresses,
         # get_maas_facing_server_addresses() will return both.
         v4_ip = factory.make_ipv4_address()
@@ -136,7 +136,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             get_maas_facing_server_addresses(ipv4=True, ipv6=True),
         )
 
-    def test__ignores_IPv4_if_ipv4_not_set(self):
+    def test_ignores_IPv4_if_ipv4_not_set(self):
         v4_ip = factory.make_ipv4_address()
         v6_ip = factory.make_ipv6_address()
         self.patch_resolve_hostname([v4_ip, v6_ip])
@@ -146,7 +146,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             get_maas_facing_server_addresses(ipv4=False, ipv6=True),
         )
 
-    def test__falls_back_on_IPv6_if_ipv4_set_but_no_IPv4_address_found(self):
+    def test_falls_back_on_IPv6_if_ipv4_set_but_no_IPv4_address_found(self):
         v6_ip = factory.make_ipv6_address()
         self.patch_resolve_hostname([v6_ip])
         self.patch_get_maas_facing_server_host()
@@ -155,7 +155,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             get_maas_facing_server_addresses(ipv4=True, ipv6=True),
         )
 
-    def test__does_not_return_link_local_addresses(self):
+    def test_does_not_return_link_local_addresses(self):
         global_ipv6 = factory.make_ipv6_address()
         local_ipv6 = [
             "fe80::%d:9876:5432:10" % randint(0, 9999) for _ in range(5)
@@ -166,7 +166,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             [IPAddress(global_ipv6)], get_maas_facing_server_addresses()
         )
 
-    def test__returns_link_local_addresses_if_asked(self):
+    def test_returns_link_local_addresses_if_asked(self):
         global_ipv6 = factory.make_ipv6_address()
         local_ipv6 = [
             "fe80::%d:9876:5432:10" % randint(0, 9999) for _ in range(5)
@@ -178,7 +178,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             get_maas_facing_server_addresses(link_local=True),
         )
 
-    def test__fails_if_neither_ipv4_nor_ipv6_set(self):
+    def test_fails_if_neither_ipv4_nor_ipv6_set(self):
         self.patch_resolve_hostname()
         self.patch_get_maas_facing_server_host()
         self.assertRaises(
@@ -188,12 +188,12 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             ipv6=False,
         )
 
-    def test__raises_error_if_hostname_does_not_resolve(self):
+    def test_raises_error_if_hostname_does_not_resolve(self):
         self.patch_resolve_hostname([])
         self.patch_get_maas_facing_server_host()
         self.assertRaises(UnresolvableHost, get_maas_facing_server_addresses)
 
-    def test__alternates_include_other_regions_on_same_subnet(self):
+    def test_alternates_include_other_regions_on_same_subnet(self):
         factory.make_Subnet(cidr="192.168.0.0/24")
         maas_url = "http://192.168.0.254/MAAS"
         rack = factory.make_RackController(url=maas_url)
@@ -221,7 +221,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             ),
         )
 
-    def test__alternates_do_not_contain_duplicate_for_maas_url_ip(self):
+    def test_alternates_do_not_contain_duplicate_for_maas_url_ip(self):
         # See bug #1753493. (This tests to ensure we don't provide the same
         # IP address from maas_url twice.) Also ensures that the IP address
         # from maas_url comes first.
@@ -242,7 +242,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             Equals([IPAddress("192.168.0.2"), IPAddress("192.168.0.1")]),
         )
 
-    def test__alternates_include_one_ip_address_per_region_and_maas_url(self):
+    def test_alternates_include_one_ip_address_per_region_and_maas_url(self):
         factory.make_Subnet(cidr="192.168.0.0/24")
         maas_url = "http://192.168.0.254/MAAS"
         rack = factory.make_RackController(url=maas_url)
@@ -272,7 +272,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             ),
         )
 
-    def test__alternates_use_consistent_subnet(self):
+    def test_alternates_use_consistent_subnet(self):
         factory.make_Subnet(cidr="192.168.0.0/24")
         factory.make_Subnet(cidr="192.168.1.0/24")
         maas_url = "http://192.168.0.1/MAAS"
@@ -302,7 +302,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             ),
         )
 
-    def test__alternates_support_ipv4_and_ipv6(self):
+    def test_alternates_support_ipv4_and_ipv6(self):
         factory.make_Subnet(cidr="192.168.0.0/24")
         factory.make_Subnet(cidr="192.168.1.0/24")
         factory.make_Subnet(cidr="2001:db8::/64")

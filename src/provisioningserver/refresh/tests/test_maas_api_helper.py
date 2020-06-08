@@ -646,7 +646,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             combined_path.read_text(),
         )
 
-    def test__captures_script_output(self):
+    def test_captures_script_output(self):
         proc = Popen(
             'echo "stdout"; echo "stderr" 1>&2',
             stdout=PIPE,
@@ -669,7 +669,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             ),
         )
 
-    def test__forwards_to_console(self):
+    def test_forwards_to_console(self):
         stdout = self.patch(maas_api_helper.sys.stdout, "write")
         stderr = self.patch(maas_api_helper.sys.stderr, "write")
         stdout_flush = self.patch(maas_api_helper.sys.stdout, "flush")
@@ -687,7 +687,7 @@ class TestCaptureScriptOutput(MAASTestCase):
         self.assertThat(stdout_flush, MockCalledOnce())
         self.assertThat(stderr_flush, MockCalledOnce())
 
-    def test__does_not_wait_for_forked_process(self):
+    def test_does_not_wait_for_forked_process(self):
         start_time = time.time()
         proc = Popen("sleep 6 &", stdout=PIPE, stderr=PIPE, shell=True)
         self.assertThat(
@@ -698,7 +698,7 @@ class TestCaptureScriptOutput(MAASTestCase):
         # returns. capture_script_output should not block on the forked call.
         self.assertLess(time.time() - start_time, 3)
 
-    def test__captures_output_from_completed_process(self):
+    def test_captures_output_from_completed_process(self):
         # Write to both stdout and stderr.
         proc = Popen(
             "echo -n foo >&1 && echo -n bar >&2",
@@ -723,7 +723,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             ),
         )
 
-    def test__captures_stderr_after_stdout_closes(self):
+    def test_captures_stderr_after_stdout_closes(self):
         # Write to stdout, close stdout, then write to stderr.
         proc = Popen(
             "echo -n foo >&1 && exec 1>&- && echo -n bar >&2",
@@ -746,7 +746,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             ),
         )
 
-    def test__captures_stdout_after_stderr_closes(self):
+    def test_captures_stdout_after_stderr_closes(self):
         # Write to stderr, close stderr, then write to stdout.
         proc = Popen(
             "echo -n bar >&2 && exec 2>&- && echo -n foo >&1",
@@ -769,14 +769,14 @@ class TestCaptureScriptOutput(MAASTestCase):
             ),
         )
 
-    def test__captures_all_output(self):
+    def test_captures_all_output(self):
         proc = Popen(("lshw", "-xml"), stdout=PIPE, stderr=PIPE)
         returncode, stdout, stderr, combined = self.capture(proc)
         self.assertThat(returncode, Equals(0), stderr)
         # This is a complete XML document; we've captured all output.
         self.assertThat(etree.fromstring(stdout).tag, Equals("list"))
 
-    def test__interprets_backslash(self):
+    def test_interprets_backslash(self):
         proc = Popen(
             'bash -c "echo -en \bmas\bas"',
             stdout=PIPE,
@@ -790,7 +790,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             ),
         )
 
-    def test__interprets_carriage_return(self):
+    def test_interprets_carriage_return(self):
         proc = Popen(
             'bash -c "echo -en foo\rmaas"',
             stdout=PIPE,
@@ -804,7 +804,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             ),
         )
 
-    def test__timeout(self):
+    def test_timeout(self):
         self.patch(maas_api_helper.time, "monotonic").side_effect = (
             0,
             60 * 6,

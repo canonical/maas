@@ -22,17 +22,17 @@ from maastesting.testcase import MAASTestCase
 class TestValidateISCSITarget(MAASTestCase):
     """Tests for the `validate_iscsi_target`."""
 
-    def test__raises_no_errors_with_iscsi_prefix(self):
+    def test_raises_no_errors_with_iscsi_prefix(self):
         host = factory.make_ipv4_address()
         target_name = factory.make_name("target")
         validate_iscsi_target("iscsi:%s::::%s" % (host, target_name))
 
-    def test__raises_no_errors_without_iscsi_prefix(self):
+    def test_raises_no_errors_without_iscsi_prefix(self):
         host = factory.make_ipv4_address()
         target_name = factory.make_name("target")
         validate_iscsi_target("%s::::%s" % (host, target_name))
 
-    def test__raises_error_when_invalid(self):
+    def test_raises_error_when_invalid(self):
         host = factory.make_ipv4_address()
         self.assertRaises(
             ValidationError, validate_iscsi_target, "%s::::" % host

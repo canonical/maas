@@ -179,7 +179,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         url = driver.get_url(context)
         self.assertEqual(expected_url, url)
 
-    def test__make_auth_headers(self):
+    def test_make_auth_headers(self):
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         creds = "%s:%s" % (power_user, power_pass)
@@ -423,7 +423,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__set_pxe_boot(self):
+    def test_set_pxe_boot(self):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -459,7 +459,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__power_on(self):
+    def test_power_on(self):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -486,7 +486,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__power_off(self):
+    def test_power_off(self):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -508,7 +508,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__power_off_already_off(self):
+    def test_power_off_already_off(self):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)

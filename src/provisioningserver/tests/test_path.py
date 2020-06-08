@@ -61,12 +61,12 @@ class TestGetPathFunctions(MAASTestCase):
         """For the duration of this test, set the `MAAS_ROOT` variable`."""
         self.useFixture(self.fixture(root_path))
 
-    def test__defaults_to_root(self):
+    def test_defaults_to_root(self):
         self.set_root()
         self.patch(provisioningserver.path, "makedirs")
         self.assertEqual("/", self.get_path_function())
 
-    def test__appends_path_elements(self):
+    def test_appends_path_elements(self):
         self.set_root("/")
         self.patch(provisioningserver.path, "makedirs")
         part1 = factory.make_name("dir")
@@ -76,7 +76,7 @@ class TestGetPathFunctions(MAASTestCase):
             self.get_path_function(part1, part2),
         )
 
-    def test__obeys_MAAS_ROOT_variable(self):
+    def test_obeys_MAAS_ROOT_variable(self):
         root = factory.make_name("/root")
         self.set_root(root)
         self.patch(provisioningserver.path, "makedirs")
@@ -85,19 +85,19 @@ class TestGetPathFunctions(MAASTestCase):
             os.path.join(root, path), self.get_path_function(path)
         )
 
-    def test__assumes_MAAS_ROOT_is_unset_if_empty(self):
+    def test_assumes_MAAS_ROOT_is_unset_if_empty(self):
         self.set_root("")
         self.patch(provisioningserver.path, "makedirs")
         path = factory.make_name("path")
         self.assertEqual(os.path.join("/", path), self.get_path_function(path))
 
-    def test__returns_absolute_path(self):
+    def test_returns_absolute_path(self):
         self.set_root(".")
         self.patch(provisioningserver.path, "makedirs")
         self.assertThat(self.get_path_function(), StartsWith("/"))
         self.assertEqual(getcwd(), self.get_path_function())
 
-    def test__concatenates_despite_leading_slash(self):
+    def test_concatenates_despite_leading_slash(self):
         root = self.make_dir()
         self.set_root(root)
         self.patch(provisioningserver.path, "makedirs")
@@ -107,14 +107,14 @@ class TestGetPathFunctions(MAASTestCase):
             self.get_path_function("/" + filename),
         )
 
-    def test__normalises(self):
+    def test_normalises(self):
         self.set_root()
         self.patch(provisioningserver.path, "makedirs")
         self.assertEqual(
             "/foo/bar", self.get_path_function("foo///szut//..///bar//")
         )
 
-    def test__maybe_creates_dirpath_if_not_exists(self):
+    def test_maybe_creates_dirpath_if_not_exists(self):
         root_path = self.make_dir()
         self.set_root(root_path)
         self.assertThat(

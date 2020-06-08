@@ -176,7 +176,7 @@ class TestOperationsHandlerMixin(MAASTestCase):
     def make_handler(self, **namespace):
         return type("TestHandler", (OperationsHandlerMixin,), namespace)
 
-    def test__decorate_decorates_exports(self):
+    def test_decorate_decorates_exports(self):
         handler = self.make_handler(
             exports={"foo": sentinel.foo, "bar": sentinel.bar}
         )
@@ -185,7 +185,7 @@ class TestOperationsHandlerMixin(MAASTestCase):
             {"foo": "SENTINEL.FOO", "bar": "SENTINEL.BAR"}, handler.exports
         )
 
-    def test__decorate_decorates_anonymous_exports(self):
+    def test_decorate_decorates_anonymous_exports(self):
         handler = self.make_handler(exports={"foo": sentinel.foo})
         handler.anonymous = self.make_handler(exports={"bar": sentinel.bar})
         handler.decorate(lambda thing: str(thing).upper())

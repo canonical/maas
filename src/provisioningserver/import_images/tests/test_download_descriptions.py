@@ -32,12 +32,12 @@ from provisioningserver.import_images.testing.factory import (
 class TestValidateProduct(MAASTestCase):
     """Tests for `validate_product`."""
 
-    def test__ignores_random(self):
+    def test_ignores_random(self):
         self.assertTrue(
             validate_product({}, factory.make_name("product_name"))
         )
 
-    def test__validates_ubuntu(self):
+    def test_validates_ubuntu(self):
         self.assertTrue(
             validate_product(
                 {"os": "ubuntu"},
@@ -51,7 +51,7 @@ class TestValidateProduct(MAASTestCase):
             )
         )
 
-    def test__validates_ubuntu_core(self):
+    def test_validates_ubuntu_core(self):
         self.assertTrue(
             validate_product(
                 {"os": "ubuntu-core"},
@@ -65,7 +65,7 @@ class TestValidateProduct(MAASTestCase):
             )
         )
 
-    def test__rejects_unknown_ubuntu_version(self):
+    def test_rejects_unknown_ubuntu_version(self):
         self.assertFalse(
             validate_product(
                 {"os": "ubuntu"},
@@ -79,7 +79,7 @@ class TestValidateProduct(MAASTestCase):
             )
         )
 
-    def test__validates_bootloaders(self):
+    def test_validates_bootloaders(self):
         acceptable_bootloaders = [
             {"os": "pxelinux", "arch": "i386", "bootloader-type": "pxe"},
             {
@@ -105,7 +105,7 @@ class TestValidateProduct(MAASTestCase):
                 "Failed to validate %s" % product_name,
             )
 
-    def test__rejects_unknown_bootloader_version(self):
+    def test_rejects_unknown_bootloader_version(self):
         version = random.randint(2, 100)
         product_name = "com.ubuntu.maas.daily:%d:pxelinux:pxe:i386" % version
         self.assertFalse(
@@ -115,7 +115,7 @@ class TestValidateProduct(MAASTestCase):
             )
         )
 
-    def test__rejects_unknown_bootloader(self):
+    def test_rejects_unknown_bootloader(self):
         bootloader = {
             "os": factory.make_name("os"),
             "arch": factory.make_name("arch"),

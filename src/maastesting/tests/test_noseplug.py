@@ -44,7 +44,7 @@ from maastesting.testcase import MAASTestCase
 
 
 class TestCrochet(MAASTestCase):
-    def test__options_adds_options(self):
+    def test_options_adds_options(self):
         crochet = Crochet()
         parser = OptionParser()
         crochet.options(parser=parser, env={})
@@ -68,7 +68,7 @@ class TestCrochet(MAASTestCase):
             ),
         )
 
-    def test__configure_sets_up_crochet_if_enabled(self):
+    def test_configure_sets_up_crochet_if_enabled(self):
         self.patch_autospec(crochet_module, "setup")
         self.patch_autospec(crochet_module, "no_setup")
 
@@ -81,7 +81,7 @@ class TestCrochet(MAASTestCase):
         self.assertThat(crochet_module.setup, MockCalledOnceWith())
         self.assertThat(crochet_module.no_setup, MockNotCalled())
 
-    def test__configure_sets_up_crochet_with_no_setup_if_enabled(self):
+    def test_configure_sets_up_crochet_with_no_setup_if_enabled(self):
         self.patch_autospec(crochet_module, "setup")
         self.patch_autospec(crochet_module, "no_setup")
 
@@ -96,7 +96,7 @@ class TestCrochet(MAASTestCase):
         self.assertThat(crochet_module.setup, MockNotCalled())
         self.assertThat(crochet_module.no_setup, MockCalledOnceWith())
 
-    def test__configure_does_not_set_up_crochet_if_not_enabled(self):
+    def test_configure_does_not_set_up_crochet_if_not_enabled(self):
         self.patch_autospec(crochet_module, "setup")
         self.patch_autospec(crochet_module, "no_setup")
 
@@ -321,11 +321,11 @@ class TestScenarios(MAASTestCase):
 
 
 class TestSelect(MAASTestCase):
-    def test__create_has_dirs(self):
+    def test_create_has_dirs(self):
         select = Select()
         self.assertThat(select, MatchesStructure.byEquality(dirs=frozenset()))
 
-    def test__options_adds_options(self):
+    def test_options_adds_options(self):
         select = Select()
         parser = OptionParser()
         select.options(parser=parser, env={})
@@ -353,7 +353,7 @@ class TestSelect(MAASTestCase):
             ),
         )
 
-    def test__configure_scans_directories(self):
+    def test_configure_scans_directories(self):
         directory = self.make_dir()
         segments = factory.make_name("child"), factory.make_name("grandchild")
         makedirs(join(directory, *segments))
@@ -373,7 +373,7 @@ class TestSelect(MAASTestCase):
             select.dirs, Equals(set(fp.path for fp in expected_dirs))
         )
 
-    def test__wantDirectory_checks_dirs_and_thats_it(self):
+    def test_wantDirectory_checks_dirs_and_thats_it(self):
         directory = self.make_dir()
         segments = factory.make_name("child"), factory.make_name("grandchild")
         makedirs(join(directory, *segments))
@@ -392,7 +392,7 @@ class TestSelect(MAASTestCase):
 
 
 class TestSelectBucket(MAASTestCase):
-    def test__options_adds_options(self):
+    def test_options_adds_options(self):
         select = SelectBucket()
         parser = OptionParser()
         select.options(parser=parser, env={})
@@ -420,7 +420,7 @@ class TestSelectBucket(MAASTestCase):
             ),
         )
 
-    def test__configure_parses_selected_bucket(self):
+    def test_configure_parses_selected_bucket(self):
         select = SelectBucket()
         parser = OptionParser()
         select.add_options(parser=parser, env={})
@@ -436,7 +436,7 @@ class TestSelectBucket(MAASTestCase):
         test.id = lambda: test_id
         return test
 
-    def test__prepareTestRunner_wraps_given_runner_and_filters_tests(self):
+    def test_prepareTestRunner_wraps_given_runner_and_filters_tests(self):
         select = SelectBucket()
         parser = OptionParser()
         select.add_options(parser=parser, env={})
@@ -469,7 +469,7 @@ class TestSelectBucket(MAASTestCase):
         self.assertThat({t.id() for t in runner_orig.test}, Equals({"H"}))
         self.assertThat(ord("H") % 13, Equals(7))
 
-    def test__prepareTestRunner_does_nothing_when_no_bucket_selected(self):
+    def test_prepareTestRunner_does_nothing_when_no_bucket_selected(self):
         select = SelectBucket()
         parser = OptionParser()
         select.add_options(parser=parser, env={})
@@ -479,7 +479,7 @@ class TestSelectBucket(MAASTestCase):
 
 
 class TestSubunit(MAASTestCase):
-    def test__options_adds_options(self):
+    def test_options_adds_options(self):
         select = Subunit()
         parser = OptionParser()
         select.options(parser=parser, env={})
@@ -507,7 +507,7 @@ class TestSubunit(MAASTestCase):
             ),
         )
 
-    def test__configure_opens_stream(self):
+    def test_configure_opens_stream(self):
         subunit = Subunit()
         parser = OptionParser()
         subunit.add_options(parser=parser, env={})
@@ -519,7 +519,7 @@ class TestSubunit(MAASTestCase):
             self.assertThat(subunit.stream.fileno(), Equals(fd.fileno()))
             self.assertThat(subunit.stream.mode, Equals("wb"))
 
-    def test__prepareTestResult_returns_subunit_client(self):
+    def test_prepareTestResult_returns_subunit_client(self):
         subunit = Subunit()
         with open(devnull, "wb") as stream:
             subunit.stream = stream
@@ -529,7 +529,7 @@ class TestSubunit(MAASTestCase):
 
 
 class TestMain(MAASTestCase):
-    def test__sets_addplugins(self):
+    def test_sets_addplugins(self):
         self.patch(noseplug, "TestProgram")
         noseplug.main()
         self.assertThat(

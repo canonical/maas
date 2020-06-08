@@ -59,7 +59,7 @@ class TestListBootImages(MAASTestCase):
         self.tftp_root = self.make_dir()
         self.useFixture(ClusterConfigurationFixture(tftp_root=self.tftp_root))
 
-    def test__calls_list_boot_images_with_boot_resource_storage(self):
+    def test_calls_list_boot_images_with_boot_resource_storage(self):
         self.patch(boot_images, "CACHED_BOOT_IMAGES", None)
         mock_list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images()
@@ -67,13 +67,13 @@ class TestListBootImages(MAASTestCase):
             mock_list_boot_images, MockCalledOnceWith(self.tftp_root)
         )
 
-    def test__calls_list_boot_images_when_cache_is_None(self):
+    def test_calls_list_boot_images_when_cache_is_None(self):
         self.patch(boot_images, "CACHED_BOOT_IMAGES", None)
         mock_list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images()
         self.assertThat(mock_list_boot_images, MockCalledOnceWith(ANY))
 
-    def test__doesnt_call_list_boot_images_when_cache_is_not_None(self):
+    def test_doesnt_call_list_boot_images_when_cache_is_not_None(self):
         fake_boot_images = [factory.make_name("image") for _ in range(3)]
         self.patch(boot_images, "CACHED_BOOT_IMAGES", fake_boot_images)
         mock_list_boot_images = self.patch(tftppath, "list_boot_images")
@@ -82,7 +82,7 @@ class TestListBootImages(MAASTestCase):
 
 
 class TestReloadBootImages(MAASTestCase):
-    def test__sets_CACHED_BOOT_IMAGES(self):
+    def test_sets_CACHED_BOOT_IMAGES(self):
         self.patch(
             boot_images, "CACHED_BOOT_IMAGES", factory.make_name("old_cache")
         )
@@ -94,7 +94,7 @@ class TestReloadBootImages(MAASTestCase):
 
 
 class TestGetHostsFromSources(MAASTestCase):
-    def test__returns_set_of_hosts_from_sources(self):
+    def test_returns_set_of_hosts_from_sources(self):
         sources, _ = make_sources()
         hosts = set()
         for source in sources:
@@ -109,7 +109,7 @@ class TestGetHostsFromSources(MAASTestCase):
 
 
 class TestFixSourcesForCluster(MAASTestCase):
-    def test__removes_matching_path_from_maas_url_with_extra_slashes(self):
+    def test_removes_matching_path_from_maas_url_with_extra_slashes(self):
         sources = [{"url": "http://localhost/MAAS/images/index.json"}]
         observed = fix_sources_for_cluster(
             sources, "http://192.168.122.2/MAAS/////"
@@ -118,7 +118,7 @@ class TestFixSourcesForCluster(MAASTestCase):
             "http://192.168.122.2/MAAS/images/index.json", observed[0]["url"]
         )
 
-    def test__removes_matching_path_from_maas_url(self):
+    def test_removes_matching_path_from_maas_url(self):
         sources = [{"url": "http://localhost/MAAS/images/index.json"}]
         observed = fix_sources_for_cluster(
             sources, "http://192.168.122.2/MAAS/"
@@ -127,7 +127,7 @@ class TestFixSourcesForCluster(MAASTestCase):
             "http://192.168.122.2/MAAS/images/index.json", observed[0]["url"]
         )
 
-    def test__removes_matching_path_with_extra_slashes_from_maas_url(self):
+    def test_removes_matching_path_with_extra_slashes_from_maas_url(self):
         sources = [{"url": "http://localhost///MAAS///images/index.json"}]
         observed = fix_sources_for_cluster(
             sources, "http://192.168.122.2/MAAS/"
@@ -136,7 +136,7 @@ class TestFixSourcesForCluster(MAASTestCase):
             "http://192.168.122.2/MAAS/images/index.json", observed[0]["url"]
         )
 
-    def test__doesnt_remove_non_matching_path_from_maas_url(self):
+    def test_doesnt_remove_non_matching_path_from_maas_url(self):
         sources = [{"url": "http://localhost/MAAS/images/index.json"}]
         observed = fix_sources_for_cluster(
             sources, "http://192.168.122.2/not-matching/"
@@ -146,7 +146,7 @@ class TestFixSourcesForCluster(MAASTestCase):
             observed[0]["url"],
         )
 
-    def test__doesnt_remove_non_matching_path_from_maas_url_with_slashes(self):
+    def test_doesnt_remove_non_matching_path_from_maas_url_with_slashes(self):
         sources = [{"url": "http://localhost///MAAS/images/index.json"}]
         observed = fix_sources_for_cluster(
             sources, "http://192.168.122.2/not-matching////"
@@ -179,7 +179,7 @@ class TestRunImport(MAASTestCase):
 
         return self.patch(boot_resources, "import_images", CaptureEnv())
 
-    def test__run_import_integrates_with_boot_resources_function(self):
+    def test_run_import_integrates_with_boot_resources_function(self):
         # If the config specifies no sources, nothing will be imported.  But
         # the task succeeds without errors.
         fixture = self.useFixture(BootSourcesFixture([]))
@@ -192,14 +192,14 @@ class TestRunImport(MAASTestCase):
             Is(False),
         )
 
-    def test__run_import_sets_GPGHOME(self):
+    def test_run_import_sets_GPGHOME(self):
         home = factory.make_name("home")
         self.patch(boot_images, "get_maas_user_gpghome").return_value = home
         fake = self.patch_boot_resources_function()
         _run_import(sources=[], maas_url=factory.make_simple_http_url())
         self.assertEqual(home, fake.env["GNUPGHOME"])
 
-    def test__run_import_sets_proxy_if_given(self):
+    def test_run_import_sets_proxy_if_given(self):
         proxy = "http://%s.example.com" % factory.make_name("proxy")
         fake = self.patch_boot_resources_function()
         _run_import(
@@ -211,7 +211,7 @@ class TestRunImport(MAASTestCase):
         self.expectThat(fake.env["http_proxy"], Equals(proxy))
         self.expectThat(fake.env["https_proxy"], Equals(proxy))
 
-    def test__run_import_sets_proxy_for_loopback(self):
+    def test_run_import_sets_proxy_for_loopback(self):
         fake = self.patch_boot_resources_function()
         _run_import(sources=[], maas_url=factory.make_simple_http_url())
         self.assertEqual(
@@ -222,7 +222,7 @@ class TestRunImport(MAASTestCase):
             ),
         )
 
-    def test__run_import_sets_proxy_for_source_host(self):
+    def test_run_import_sets_proxy_for_source_host(self):
         host = factory.make_name("host").lower()
         maas_url = "http://%s/" % host
         sources, _ = make_sources()
@@ -241,13 +241,13 @@ class TestRunImport(MAASTestCase):
             + [host],
         )
 
-    def test__run_import_accepts_sources_parameter(self):
+    def test_run_import_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, "import_images")
         sources, _ = make_sources()
         _run_import(sources=sources, maas_url=factory.make_simple_http_url())
         self.assertThat(fake, MockCalledOnceWith(sources))
 
-    def test__run_import_calls_reload_boot_images(self):
+    def test_run_import_calls_reload_boot_images(self):
         fake_reload = self.patch(boot_images, "reload_boot_images")
         self.patch(boot_resources, "import_images")
         sources, _ = make_sources()
@@ -260,7 +260,7 @@ class TestImportBootImages(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
-    def test__add_to_waiting_if_lock_already_held(self):
+    def test_add_to_waiting_if_lock_already_held(self):
         yield concurrency.boot_images.acquire()
         deferToThread = self.patch(boot_images, "deferToThread")
         deferToThread.return_value = defer.succeed(None)
@@ -281,7 +281,7 @@ class TestImportBootImages(MAASTestCase):
         )
 
     @defer.inlineCallbacks
-    def test__never_more_than_one_waiting(self):
+    def test_never_more_than_one_waiting(self):
         yield concurrency.boot_images.acquire()
         deferToThread = self.patch(boot_images, "deferToThread")
         deferToThread.return_value = defer.succeed(None)
@@ -302,7 +302,7 @@ class TestImportBootImages(MAASTestCase):
             ),
         )
 
-    def test__takes_lock_when_running(self):
+    def test_takes_lock_when_running(self):
         clock = Clock()
         deferToThread = self.patch(boot_images, "deferToThread")
         deferToThread.return_value = pause(1, clock)
@@ -406,10 +406,10 @@ class TestIsImportBootImagesRunning(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
-    def test__returns_True_when_lock_is_held(self):
+    def test_returns_True_when_lock_is_held(self):
         yield concurrency.boot_images.acquire()
         self.addCleanup(concurrency.boot_images.release)
         self.assertTrue(is_import_boot_images_running())
 
-    def test__returns_False_when_lock_is_not_held(self):
+    def test_returns_False_when_lock_is_not_held(self):
         self.assertFalse(is_import_boot_images_running())

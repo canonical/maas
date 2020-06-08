@@ -71,7 +71,7 @@ class TestLogging(MAASTestCase):
             set_verbosity = verbosity_under_test
         return verbosity, set_verbosity
 
-    def test__twistd_default_verbosity(self):
+    def test_twistd_default_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(2)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -100,7 +100,7 @@ class TestLogging(MAASTestCase):
         ]
         self.assertSequenceEqual(expected, observed)
 
-    def test__twistd_high_verbosity(self):
+    def test_twistd_high_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(3)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -132,7 +132,7 @@ class TestLogging(MAASTestCase):
         ]
         self.assertSequenceEqual(expected, observed)
 
-    def test__twistd_low_verbosity(self):
+    def test_twistd_low_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(1)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -155,7 +155,7 @@ class TestLogging(MAASTestCase):
         ]
         self.assertSequenceEqual(expected, observed)
 
-    def test__twistd_lowest_verbosity(self):
+    def test_twistd_lowest_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(0)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -174,7 +174,7 @@ class TestLogging(MAASTestCase):
         ]
         self.assertSequenceEqual(expected, observed)
 
-    def test__command_default_verbosity(self):
+    def test_command_default_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(2)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -211,7 +211,7 @@ class TestLogging(MAASTestCase):
             ),
         )
 
-    def test__command_high_verbosity(self):
+    def test_command_high_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(3)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -251,7 +251,7 @@ class TestLogging(MAASTestCase):
             ),
         )
 
-    def test__command_low_verbosity(self):
+    def test_command_low_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(1)
         name = factory.make_name("log.name")
         logged = log_something(
@@ -283,7 +283,7 @@ class TestLogging(MAASTestCase):
             ),
         )
 
-    def test__command_lowest_verbosity(self):
+    def test_command_lowest_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(0)
         name = factory.make_name("log.name")
         logged = log_something(

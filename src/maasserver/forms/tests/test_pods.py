@@ -917,18 +917,18 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         return composed_machine, pod_hints
 
-    def test__requires_request_kwarg(self):
+    def test_requires_request_kwarg(self):
         error = self.assertRaises(ValueError, ComposeMachineForm)
         self.assertEqual("'request' kwargs is required.", str(error))
 
-    def test__requires_pod_kwarg(self):
+    def test_requires_pod_kwarg(self):
         request = MagicMock()
         error = self.assertRaises(
             ValueError, ComposeMachineForm, request=request
         )
         self.assertEqual("'pod' kwargs is required.", str(error))
 
-    def test__sets_up_fields_based_on_pod(self):
+    def test_sets_up_fields_based_on_pod(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         form = ComposeMachineForm(request=request, pod=pod)
@@ -995,7 +995,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__sets_up_fields_based_on_pod_no_max_cpu_speed(self):
+    def test_sets_up_fields_based_on_pod_no_max_cpu_speed(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         pod.hints.cpu_speed = 0
@@ -1014,7 +1014,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__sets_up_pool_default(self):
+    def test_sets_up_pool_default(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         pool = factory.make_ResourcePool()
@@ -1023,7 +1023,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(request=request, pod=pod)
         self.assertEqual(pool, form.initial["pool"])
 
-    def test__get_machine_uses_all_initial_values(self):
+    def test_get_machine_uses_all_initial_values(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         form = ComposeMachineForm(data={}, request=request, pod=pod)
@@ -1060,7 +1060,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_uses_passed_values(self):
+    def test_get_machine_uses_passed_values(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         architecture = random.choice(pod.architectures)
@@ -1127,7 +1127,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_handles_no_tags_in_storage(self):
+    def test_get_machine_handles_no_tags_in_storage(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         disk_1 = random.randint(8, 16) * (1000 ** 3)
@@ -1168,7 +1168,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_multiple_disks_fails_for_lxd_pods(self):
+    def test_get_machine_with_multiple_disks_fails_for_lxd_pods(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         pod_host.boot_interface.vlan.dhcp_on = False
@@ -1191,7 +1191,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         ):
             form.get_requested_machine(make_known_host_interfaces(pod))
 
-    def test__get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
+    def test_get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         pod_host.boot_interface.vlan.dhcp_on = False
@@ -1209,7 +1209,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         ):
             form.get_requested_machine(make_known_host_interfaces(pod))
 
-    def test__get_machine_with_interfaces_fails_for_no_matching_network(self):
+    def test_get_machine_with_interfaces_fails_for_no_matching_network(self):
         request = MagicMock()
         pod = make_pod_with_hints(with_host=True)
         # Make a subnet that won't match the host via the constraint.
@@ -1224,7 +1224,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         ):
             form.get_requested_machine(make_known_host_interfaces(pod))
 
-    def test__get_machine_with_interfaces_by_subnet(self):
+    def test_get_machine_with_interfaces_by_subnet(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
@@ -1270,7 +1270,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_with_empty_interfaces_input(self):
+    def test_get_machine_with_interfaces_with_empty_interfaces_input(self):
         request = MagicMock()
         host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
@@ -1307,7 +1307,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_with_unreserved_ip(self):
+    def test_get_machine_with_interfaces_with_unreserved_ip(self):
         # Mock the RPC client.
         client = MagicMock()
         mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
@@ -1376,7 +1376,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_subnet_with_default_mode(self):
+    def test_get_machine_with_interfaces_by_subnet_with_default_mode(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
@@ -1421,7 +1421,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_subnet_with_empty_mode(self):
+    def test_get_machine_with_interfaces_by_subnet_with_empty_mode(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
@@ -1468,7 +1468,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_space(self):
+    def test_get_machine_with_interfaces_by_space(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
@@ -1508,7 +1508,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_spaces(self):
+    def test_get_machine_with_interfaces_by_spaces(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         dmz_space = factory.make_Space("dmz")
@@ -1562,7 +1562,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_subnets_bridge(self):
+    def test_get_machine_with_interfaces_by_subnets_bridge(self):
         request = MagicMock()
         cidr1 = "10.0.0.0/24"
         cidr2 = "192.168.100.0/24"
@@ -1623,7 +1623,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_subnets_bond(self):
+    def test_get_machine_with_interfaces_by_subnets_bond(self):
         request = MagicMock()
         cidr1 = "10.0.0.0/24"
         cidr2 = "192.168.100.0/24"
@@ -1689,7 +1689,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_subnets_bond_inside_bridge(self):
+    def test_get_machine_with_interfaces_by_subnets_bond_inside_bridge(self):
         request = MagicMock()
         cidr1 = "10.0.0.0/24"
         cidr2 = "192.168.100.0/24"
@@ -1762,7 +1762,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_interfaces_by_space_as_bridge(self):
+    def test_get_machine_with_interfaces_by_space_as_bridge(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet(
             status=NODE_STATUS.READY
@@ -1807,7 +1807,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__get_machine_with_known_host_interfaces(self):
+    def test_get_machine_with_known_host_interfaces(self):
         # Need to test that it can actually find the pod host's data correctly
         # and that this matches what is expected.
         request = MagicMock()
@@ -1850,7 +1850,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__compose_with_interfaces_with_reserved_ip_fails(self):
+    def test_compose_with_interfaces_with_reserved_ip_fails(self):
         # Mock the RPC client.
         client = MagicMock()
         mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
@@ -1891,7 +1891,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         with ExpectedException(StaticIPAddressUnavailable):
             form.compose()
 
-    def test__compose_with_interfaces_with_unreserved_ip(self):
+    def test_compose_with_interfaces_with_unreserved_ip(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         # Mock the RPC client.
         client = MagicMock()
@@ -1938,7 +1938,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertThat(ip.get_interface().node, Equals(machine))
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_with_commissioning(self):
+    def test_compose_with_commissioning(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -1975,7 +1975,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertThat(mock_commissioning, MockCalledOnce())
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_sends_default_storage_pool_id(self):
+    def test_compose_sends_default_storage_pool_id(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -2014,7 +2014,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_duplicated_hostname(self):
+    def test_compose_duplicated_hostname(self):
         factory.make_Node(hostname="test")
 
         request = MagicMock()
@@ -2029,7 +2029,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             form.errors,
         )
 
-    def test__compose_hostname_with_underscore(self):
+    def test_compose_hostname_with_underscore(self):
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -2046,7 +2046,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             form.errors,
         )
 
-    def test__compose_without_commissioning(self):
+    def test_compose_without_commissioning(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -2085,7 +2085,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertThat(mock_commissioning, MockNotCalled())
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_with_skip_commissioning_passed(self):
+    def test_compose_with_skip_commissioning_passed(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -2122,7 +2122,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertThat(mock_commissioning, MockNotCalled())
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_sets_domain_and_zone(self):
+    def test_compose_sets_domain_and_zone(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -2161,7 +2161,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_sets_resource_pool(self):
+    def test_compose_sets_resource_pool(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -2189,7 +2189,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertEqual(pool, created_machine.pool)
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_uses_pod_pool(self):
+    def test_compose_uses_pod_pool(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -2216,7 +2216,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertEqual(pod.pool, created_machine.pool)
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
-    def test__compose_check_over_commit_ratios_raises_error_for_cores(self):
+    def test_compose_check_over_commit_ratios_raises_error_for_cores(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         pod.cores = 0
@@ -2238,7 +2238,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             str(error),
         )
 
-    def test__compose_check_over_commit_ratios_raises_error_for_memory(self):
+    def test_compose_check_over_commit_ratios_raises_error_for_memory(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         pod.memory = 0
@@ -2265,7 +2265,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             str(error),
         )
 
-    def test__compose_handles_timeout_error(self):
+    def test_compose_handles_timeout_error(self):
         request = MagicMock()
         pod = make_pod_with_hints()
 
@@ -2286,7 +2286,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__compose_with_commissioning_in_reactor(self):
+    def test_compose_with_commissioning_in_reactor(self):
         request = MagicMock()
         pod = yield deferToDatabase(make_pod_with_hints, with_host=True)
         mock_request_commissioning_results = self.patch(
@@ -2344,7 +2344,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertThat(mock_commissioning, MockCalledOnce())
         self.assertThat(mock_request_commissioning_results, MockCalledOnce())
 
-    def test__save_raises_AttributeError(self):
+    def test_save_raises_AttributeError(self):
         request = MagicMock()
         pod = make_pod_with_hints()
         form = ComposeMachineForm(data={}, request=request, pod=pod)
@@ -2372,18 +2372,18 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
     def make_pods(self):
         return [make_pod_with_hints() for _ in range(3)]
 
-    def test__requires_request_kwarg(self):
+    def test_requires_request_kwarg(self):
         error = self.assertRaises(ValueError, ComposeMachineForPodsForm)
         self.assertEqual("'request' kwargs is required.", str(error))
 
-    def test__requires_pods_kwarg(self):
+    def test_requires_pods_kwarg(self):
         request = MagicMock()
         error = self.assertRaises(
             ValueError, ComposeMachineForPodsForm, request=request
         )
         self.assertEqual("'pods' kwargs is required.", str(error))
 
-    def test__sets_up_pod_forms_based_on_pods(self):
+    def test_sets_up_pod_forms_based_on_pods(self):
         request = MagicMock()
         pods = self.make_pods()
         data = self.make_data(pods)
@@ -2406,7 +2406,7 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
             ),
         )
 
-    def test__save_raises_AttributeError(self):
+    def test_save_raises_AttributeError(self):
         request = MagicMock()
         pods = self.make_pods()
         data = self.make_data(pods)
@@ -2490,13 +2490,13 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
 
 
 class TestGetKnownHostInterfaces(MAASServerTestCase):
-    def test__returns_empty_list_if_no_interfaces(self):
+    def test_returns_empty_list_if_no_interfaces(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         node.interface_set.all().delete()
         interfaces = get_known_host_interfaces(node)
         self.assertThat(interfaces, HasLength(0))
 
-    def test__returns_appropriate_attach_type(self):
+    def test_returns_appropriate_attach_type(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=False)
         node.interface_set.all().delete()
@@ -2523,7 +2523,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             ],
         )
 
-    def test__behaves_correctly_when_vlan_is_none(self):
+    def test_behaves_correctly_when_vlan_is_none(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         node.interface_set.all().delete()
         bridge = factory.make_Interface(
@@ -2549,7 +2549,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             ],
         )
 
-    def test__gets_dhcp_status_for_directly_enabled_vlan(self):
+    def test_gets_dhcp_status_for_directly_enabled_vlan(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=True)
         node.interface_set.all().delete()
@@ -2576,7 +2576,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             ],
         )
 
-    def test__gets_dhcp_status_for_indirectly_enabled_vlan(self):
+    def test_gets_dhcp_status_for_indirectly_enabled_vlan(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         relay_vlan = factory.make_VLAN(dhcp_on=True)
         vlan = factory.make_VLAN(dhcp_on=False, relay_vlan=relay_vlan)

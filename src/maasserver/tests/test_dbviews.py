@@ -32,7 +32,7 @@ class TestDatabaseViews(MAASServerTestCase):
 class TestRoutablePairs(MAASServerTestCase):
     """Tests for the `maasserver_routable_pairs` view."""
 
-    def test__contains_nothing_when_there_are_no_nodes(self):
+    def test_contains_nothing_when_there_are_no_nodes(self):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
             self.assertThat(cursor.fetchall(), HasLength(0))
@@ -47,7 +47,7 @@ class TestRoutablePairs(MAASServerTestCase):
         sip = factory.make_StaticIPAddress(interface=iface, subnet=subnet)
         return node, iface, subnet, sip
 
-    def test__contains_routes_between_nodes_on_same_subnet(self):
+    def test_contains_routes_between_nodes_on_same_subnet(self):
         network = factory.make_ip4_or_6_network()
         node1, if1, sn1, sip1 = self.make_node_with_address(network)
         node2, if2, sn2, sip2 = self.make_node_with_address(network)
@@ -70,7 +70,7 @@ class TestRoutablePairs(MAASServerTestCase):
             cursor.execute("SELECT * from maasserver_routable_pairs")
             self.assertItemsEqual(expected, cursor.fetchall())
 
-    def test__contains_routes_between_nodes_on_same_vlan(self):
+    def test_contains_routes_between_nodes_on_same_vlan(self):
         vlan = factory.make_VLAN()
         network1 = factory.make_ip4_or_6_network()
         network2 = factory.make_ip4_or_6_network(version=network1.version)
@@ -99,7 +99,7 @@ class TestRoutablePairs(MAASServerTestCase):
             cursor.execute("SELECT * from maasserver_routable_pairs")
             self.assertItemsEqual(expected, cursor.fetchall())
 
-    def test__contains_routes_between_nodes_on_same_space(self):
+    def test_contains_routes_between_nodes_on_same_space(self):
         space = factory.make_Space()
         network1 = factory.make_ip4_or_6_network()
         network2 = factory.make_ip4_or_6_network(version=network1.version)
@@ -124,7 +124,7 @@ class TestRoutablePairs(MAASServerTestCase):
             cursor.execute("SELECT * from maasserver_routable_pairs")
             self.assertItemsEqual(expected, cursor.fetchall())
 
-    def test__contains_routes_between_nodes_via_null_space(self):
+    def test_contains_routes_between_nodes_via_null_space(self):
         network1 = factory.make_ip4_or_6_network()
         network2 = factory.make_ip4_or_6_network(version=network1.version)
         node1, if1, sn1, sip1 = self.make_node_with_address(network1)
@@ -148,7 +148,7 @@ class TestRoutablePairs(MAASServerTestCase):
             cursor.execute("SELECT * from maasserver_routable_pairs")
             self.assertItemsEqual(expected, cursor.fetchall())
 
-    def test__does_not_contain_routes_between_nodes_on_differing_spaces(self):
+    def test_does_not_contain_routes_between_nodes_on_differing_spaces(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         network1 = factory.make_ip4_or_6_network()
@@ -170,7 +170,7 @@ class TestRoutablePairs(MAASServerTestCase):
             cursor.execute("SELECT * from maasserver_routable_pairs")
             self.assertItemsEqual(expected, cursor.fetchall())
 
-    def test__does_not_contain_routes_between_addrs_of_diff_network_fams(self):
+    def test_does_not_contain_routes_between_addrs_of_diff_network_fams(self):
         space = factory.make_Space()  # One space.
         network1 = factory.make_ip4_or_6_network()
         network2 = factory.make_ip4_or_6_network(

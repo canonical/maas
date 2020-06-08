@@ -36,7 +36,7 @@ from maastesting.testcase import MAASTestCase
 class TestValidateISCSITarget(MAASTestCase):
     """Tests for the `validate_iscsi_target`."""
 
-    def test__raises_no_errors_with_iscsi_prefix(self):
+    def test_raises_no_errors_with_iscsi_prefix(self):
         host = factory.make_ipv4_address()
         target_name = factory.make_name("target")
         validate_iscsi_target("iscsi:%s::::%s" % (host, target_name))
@@ -45,7 +45,7 @@ class TestValidateISCSITarget(MAASTestCase):
 class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     """Tests for the `BlockDeviceManager.get_block_device_or_404`."""
 
-    def test__raises_Http404_when_invalid_node(self):
+    def test_raises_Http404_when_invalid_node(self):
         user = factory.make_admin()
         block_device = factory.make_BlockDevice()
         self.assertRaises(
@@ -57,7 +57,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__raises_Http404_when_invalid_device(self):
+    def test_raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
         node = factory.make_Node()
         # The call to make_Node creates a block device.  We'll pick a random id
@@ -72,7 +72,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__return_block_device_by_name(self):
+    def test_return_block_device_by_name(self):
         user = factory.make_User()
         node = factory.make_Node()
         device = factory.make_PhysicalBlockDevice(node=node)
@@ -83,7 +83,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__view_raises_PermissionDenied_when_user_not_owner(self):
+    def test_view_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         device = factory.make_BlockDevice(node=node)
@@ -96,7 +96,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__view_returns_device_when_no_owner(self):
+    def test_view_returns_device_when_no_owner(self):
         user = factory.make_User()
         node = factory.make_Node()
         device = factory.make_PhysicalBlockDevice(node=node)
@@ -107,7 +107,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__view_returns_device_when_owner(self):
+    def test_view_returns_device_when_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         device = factory.make_PhysicalBlockDevice(node=node)
@@ -118,7 +118,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__edit_raises_PermissionDenied_when_user_not_owner(self):
+    def test_edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         device = factory.make_BlockDevice(node=node)
@@ -131,7 +131,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__edit_returns_device_when_user_is_owner(self):
+    def test_edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         device = factory.make_BlockDevice(node=node)
@@ -142,7 +142,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
+    def test_admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
         node = factory.make_Node()
         device = factory.make_BlockDevice(node=node)
@@ -155,7 +155,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_returns_device_when_admin(self):
+    def test_admin_returns_device_when_admin(self):
         user = factory.make_admin()
         node = factory.make_Node()
         device = factory.make_BlockDevice(node=node)
@@ -170,7 +170,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
 class TestBlockDeviceManager(MAASServerTestCase):
     """Tests for the `BlockDeviceManager`."""
 
-    def test__raises_Http404_when_invalid_node(self):
+    def test_raises_Http404_when_invalid_node(self):
         user = factory.make_admin()
         block_device = factory.make_BlockDevice()
         self.assertRaises(
@@ -182,7 +182,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__raises_Http404_when_invalid_device(self):
+    def test_raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
         node = factory.make_Node()
         # The call to make_Node creates a block device.  We'll pick a random id
@@ -197,7 +197,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__returns_device_when_admin(self):
+    def test_returns_device_when_admin(self):
         user = factory.make_admin()
         node = factory.make_Node()
         device = factory.make_BlockDevice(node=node)
@@ -208,7 +208,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             ).id,
         )
 
-    def test__raises_PermissionDenied_when_user_requests_admin(self):
+    def test_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
         node = factory.make_Node()
         device = factory.make_BlockDevice(node=node)
@@ -529,12 +529,12 @@ class TestBlockDeviceBlockNameIdx(MAASTestCase):
         ("18277", {"idx": 18277, "name": "sdzzz"}),
     )
 
-    def test__get_block_name_from_idx(self):
+    def test_get_block_name_from_idx(self):
         self.assertEqual(
             self.name, BlockDevice._get_block_name_from_idx(self.idx)
         )
 
-    def test__get_idx_from_block_name(self):
+    def test_get_idx_from_block_name(self):
         self.assertEqual(
             self.idx, BlockDevice._get_idx_from_block_name(self.name)
         )
@@ -549,7 +549,7 @@ class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
         ("VirtualBlockDevice", {"factory": factory.make_VirtualBlockDevice}),
     ]
 
-    def test__calls_save_on_related_filesystem_groups(self):
+    def test_calls_save_on_related_filesystem_groups(self):
         mock_filter_by_block_device = self.patch(
             FilesystemGroup.objects, "filter_by_block_device"
         )
@@ -562,7 +562,7 @@ class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
 class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
     """Tests for the `BlockDevice` post_save signal to update group name."""
 
-    def test__updates_filesystem_group_name_when_not_volume_group(self):
+    def test_updates_filesystem_group_name_when_not_volume_group(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
                 FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
@@ -574,7 +574,7 @@ class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
         virtual_device.save()
         self.assertEqual(newname, reload_object(filesystem_group).name)
 
-    def test__doesnt_update_filesystem_group_name_when_volume_group(self):
+    def test_doesnt_update_filesystem_group_name_when_volume_group(self):
         virtual_device = factory.make_VirtualBlockDevice()
         filesystem_group = virtual_device.filesystem_group
         group_name = filesystem_group.name
@@ -587,7 +587,7 @@ class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
 class TestBlockDevicePostDelete(MAASServerTestCase):
     """Tests for the `BlockDevice` post_delete signal."""
 
-    def test__deletes_filesystem_group_when_virtual_block_device_deleted(self):
+    def test_deletes_filesystem_group_when_virtual_block_device_deleted(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
                 FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
@@ -596,7 +596,7 @@ class TestBlockDevicePostDelete(MAASServerTestCase):
         filesystem_group.virtual_device.delete()
         self.assertIsNone(reload_object(filesystem_group))
 
-    def test__doesnt_delete_volume_group(self):
+    def test_doesnt_delete_volume_group(self):
         virtual_device = factory.make_VirtualBlockDevice()
         volume_group = virtual_device.filesystem_group
         virtual_device.delete()

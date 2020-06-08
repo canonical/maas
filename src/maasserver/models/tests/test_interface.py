@@ -188,7 +188,7 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertFalse(created)
         self.assertEquals(interface, retrieved_interface)
 
-    def test__get_interface_dict_for_node(self):
+    def test_get_interface_dict_for_node(self):
         node1 = factory.make_Node()
         node1_eth0 = factory.make_Interface(node=node1, name="eth0")
         node1_eth1 = factory.make_Interface(node=node1, name="eth1")
@@ -204,7 +204,7 @@ class TestInterfaceManager(MAASServerTestCase):
             Equals({"eth0": node2_eth0, "eth1": node2_eth1}),
         )
 
-    def test__get_interface_dict_for_node__by_names(self):
+    def test_get_interface_dict_for_node__by_names(self):
         node1 = factory.make_Node()
         node1_eth0 = factory.make_Interface(node=node1, name="eth0")
         node1_eth1 = factory.make_Interface(node=node1, name="eth1")
@@ -230,7 +230,7 @@ class TestInterfaceManager(MAASServerTestCase):
             Equals({"eth0": node2_eth0, "eth1": node2_eth1}),
         )
 
-    def test__get_all_interfaces_definition_for_node(self):
+    def test_get_all_interfaces_definition_for_node(self):
         node1 = factory.make_Node()
         eth0 = factory.make_Interface(node=node1, name="eth0")
         eth0_vlan = factory.make_Interface(
@@ -343,7 +343,7 @@ class TestInterfaceManager(MAASServerTestCase):
         annotate_with_default_monitored_interfaces(interfaces)
         self.assertDictEqual(interfaces, expected_result)
 
-    def test__get_interface_dict_for_node__prefetches_on_request(self):
+    def test_get_interface_dict_for_node__prefetches_on_request(self):
         node1 = factory.make_Node()
         factory.make_Interface(node=node1, name="eth0")
         counter = CountQueries()
@@ -355,7 +355,7 @@ class TestInterfaceManager(MAASServerTestCase):
             self.assertIsNotNone(interfaces["eth0"].vlan.fabric)
         self.assertThat(counter.num_queries, Equals(1))
 
-    def test__get_interface_dict_for_node__skips_prefetch_if_not_requested(
+    def test_get_interface_dict_for_node__skips_prefetch_if_not_requested(
         self,
     ):
         node1 = factory.make_Node()
@@ -383,7 +383,7 @@ class TestInterfaceManager(MAASServerTestCase):
 
 
 class TestInterfaceQueriesMixin(MAASServerTestCase):
-    def test__filter_by_specifiers_default_matches_cidr_or_name(self):
+    def test_filter_by_specifiers_default_matches_cidr_or_name(self):
         subnet1 = factory.make_Subnet(cidr="10.0.0.0/24")
         subnet2 = factory.make_Subnet(cidr="2001:db8::/64")
         node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
@@ -435,7 +435,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             Interface.objects.filter_by_specifiers(iface3.name), [iface3]
         )
 
-    def test__filter_by_specifiers_matches_fabric_class(self):
+    def test_filter_by_specifiers_matches_fabric_class(self):
         fabric1 = factory.make_Fabric(class_type="10g")
         fabric2 = factory.make_Fabric(class_type="1g")
         vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
@@ -456,7 +456,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_fabric(self):
+    def test_filter_by_specifiers_matches_fabric(self):
         fabric1 = factory.make_Fabric(name="fabric1")
         fabric2 = factory.make_Fabric(name="fabric2")
         vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
@@ -476,7 +476,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_interface_id(self):
+    def test_filter_by_specifiers_matches_interface_id(self):
         iface1 = factory.make_Interface()
         iface2 = factory.make_Interface()
         self.assertItemsEqual(
@@ -494,7 +494,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_vid(self):
+    def test_filter_by_specifiers_matches_vid(self):
         fabric1 = factory.make_Fabric()
         parent1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=fabric1.get_default_vlan()
@@ -526,7 +526,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_vlan(self):
+    def test_filter_by_specifiers_matches_vlan(self):
         fabric1 = factory.make_Fabric()
         parent1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=fabric1.get_default_vlan()
@@ -558,7 +558,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_subnet_specifier(self):
+    def test_filter_by_specifiers_matches_subnet_specifier(self):
         subnet1 = factory.make_Subnet()
         subnet2 = factory.make_Subnet()
         node1 = factory.make_Node_with_Interface_on_Subnet(
@@ -591,7 +591,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_subnet_cidr_alias(self):
+    def test_filter_by_specifiers_matches_subnet_cidr_alias(self):
         subnet1 = factory.make_Subnet()
         subnet2 = factory.make_Subnet()
         node1 = factory.make_Node_with_Interface_on_Subnet(
@@ -624,7 +624,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_space_by_subnet(self):
+    def test_filter_by_specifiers_matches_space_by_subnet(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
@@ -654,7 +654,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_space_by_vlan(self):
+    def test_filter_by_specifiers_matches_space_by_vlan(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
@@ -684,7 +684,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_undefined_space(self):
+    def test_filter_by_specifiers_matches_undefined_space(self):
         space1 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
         vlan2 = factory.make_VLAN(space=None)
@@ -715,7 +715,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             [iface1, iface2],
         )
 
-    def test__filter_by_specifiers_matches_type(self):
+    def test_filter_by_specifiers_matches_type(self):
         physical = factory.make_Interface()
         bond = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND, parents=[physical]
@@ -737,7 +737,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             Interface.objects.filter_by_specifiers("type:unknown"), [unknown]
         )
 
-    def test__filter_by_specifiers_matches_ip(self):
+    def test_filter_by_specifiers_matches_ip(self):
         subnet1 = factory.make_Subnet(cidr="10.0.0.0/24")
         subnet2 = factory.make_Subnet(cidr="10.0.1.0/24")
         iface1 = factory.make_Interface()
@@ -761,7 +761,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             Interface.objects.filter_by_specifiers("ip:10.0.1.1"), [iface2]
         )
 
-    def test__filter_by_specifiers_matches_unconfigured_mode(self):
+    def test_filter_by_specifiers_matches_unconfigured_mode(self):
         subnet1 = factory.make_Subnet(cidr="10.0.0.0/24")
         subnet2 = factory.make_Subnet(cidr="10.0.1.0/24")
         subnet3 = factory.make_Subnet(cidr="10.0.2.0/24")
@@ -791,7 +791,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             Interface.objects.filter_by_specifiers("mode:unconfigured"),
         )
 
-    def test__get_matching_node_map(self):
+    def test_get_matching_node_map(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
@@ -822,7 +822,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         self.assertItemsEqual(nodes3, [node1.id, node2.id])
         self.assertEqual(map3, {node1.id: [iface1.id], node2.id: [iface2.id]})
 
-    def test__get_matching_node_map_with_multiple_interfaces(self):
+    def test_get_matching_node_map_with_multiple_interfaces(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
@@ -860,7 +860,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             {node1.id: sorted([iface1.id, iface3.id]), node2.id: [iface2.id]},
         )
 
-    def test__get_matching_node_map_by_multiple_tags(self):
+    def test_get_matching_node_map_by_multiple_tags(self):
         tags = [factory.make_name("tag")]
         tags_specifier = "tag:%s" % "&&".join(tags)
         node = factory.make_Node()
@@ -873,7 +873,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         self.assertItemsEqual(nodes, [node.id])
         self.assertEqual(map, {node.id: [interface.id]})
 
-    def test__get_matching_node_map_by_tag(self):
+    def test_get_matching_node_map_by_tag(self):
         tags = [factory.make_name("tag")]
         node = factory.make_Node()
         interface = factory.make_Interface(
@@ -887,7 +887,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
 
 
 class TestAllInterfacesParentsFirst(MAASServerTestCase):
-    def test__all_interfaces_parents_first(self):
+    def test_all_interfaces_parents_first(self):
         node1 = factory.make_Node()
         eth0 = factory.make_Interface(node=node1, name="eth0")
         eth0_vlan = factory.make_Interface(
@@ -952,7 +952,7 @@ class TestAllInterfacesParentsFirst(MAASServerTestCase):
         n2_ifaces = list(Interface.objects.all_interfaces_parents_first(node2))
         self.expectThat(n2_ifaces, Equals([n2_eth0, n2_eth1]))
 
-    def test__all_interfaces_parents_ignores_orphan_interfaces(self):
+    def test_all_interfaces_parents_ignores_orphan_interfaces(self):
         # Previous versions of MAAS had a bug which resulted in an "orphan"
         # interface (an interface missing a pointer to its node). Because
         # we don't want this method to cause excessive querying, we expect
@@ -1381,18 +1381,18 @@ class InterfaceUpdateNeighbourTest(MAASServerTestCase):
                 vid = None
         return {"ip": ip, "mac": mac, "time": time, "vid": vid}
 
-    def test__ignores_updates_if_neighbour_discovery_state_is_false(self):
+    def test_ignores_updates_if_neighbour_discovery_state_is_false(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.update_neighbour(self.make_neighbour_json())
         self.assertThat(Neighbour.objects.count(), Equals(0))
 
-    def test___adds_new_neighbour_if_neighbour_discovery_state_is_true(self):
+    def test_adds_new_neighbour_if_neighbour_discovery_state_is_true(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.neighbour_discovery_state = True
         iface.update_neighbour(self.make_neighbour_json())
         self.assertThat(Neighbour.objects.count(), Equals(1))
 
-    def test___updates_existing_neighbour(self):
+    def test_updates_existing_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
@@ -1417,7 +1417,7 @@ class InterfaceUpdateNeighbourTest(MAASServerTestCase):
         # Make sure the "last seen" time is correct.
         self.assertThat(neighbour.updated, Not(Equals(yesterday)))
 
-    def test__replaces_obsolete_neighbour(self):
+    def test_replaces_obsolete_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
@@ -1434,7 +1434,7 @@ class InterfaceUpdateNeighbourTest(MAASServerTestCase):
         # binding was deleted.
         self.assertThat(list(Neighbour.objects.all())[0].count, Equals(1))
 
-    def test__logs_new_binding(self):
+    def test_logs_new_binding(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
@@ -1444,7 +1444,7 @@ class InterfaceUpdateNeighbourTest(MAASServerTestCase):
             "...: New MAC, IP binding observed...", maaslog.output
         )
 
-    def test__logs_moved_binding(self):
+    def test_logs_moved_binding(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
@@ -1472,18 +1472,18 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
             hostname = factory.make_hostname()
         return {"address": ip, "hostname": hostname}
 
-    def test__ignores_updates_if_mdns_discovery_state_is_false(self):
+    def test_ignores_updates_if_mdns_discovery_state_is_false(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.update_neighbour(self.make_mdns_entry_json())
         self.assertThat(MDNS.objects.count(), Equals(0))
 
-    def test___adds_new_entry_if_mdns_discovery_state_is_true(self):
+    def test_adds_new_entry_if_mdns_discovery_state_is_true(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         iface.update_mdns_entry(self.make_mdns_entry_json())
         self.assertThat(MDNS.objects.count(), Equals(1))
 
-    def test___updates_existing_entry(self):
+    def test_updates_existing_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
@@ -1507,7 +1507,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         self.assertThat(mdns_entry.count, Equals(2))
         self.assertThat(mdns_entry.updated, Not(Equals(yesterday)))
 
-    def test__replaces_obsolete_entry(self):
+    def test_replaces_obsolete_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
@@ -1521,7 +1521,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         # binding was deleted.
         self.assertThat(MDNS.objects.count(), Equals(1))
 
-    def test__logs_new_entry(self):
+    def test_logs_new_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
@@ -1531,7 +1531,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
             "...: New mDNS entry resolved...", maaslog.output
         )
 
-    def test__logs_moved_entry(self):
+    def test_logs_moved_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
@@ -1544,7 +1544,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
             "...: Hostname...moved from...to...", maaslog.output
         )
 
-    def test__logs_updated_entry(self):
+    def test_logs_updated_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
@@ -1746,7 +1746,7 @@ class InterfaceMTUTest(MAASServerTestCase):
         eth0_vlan2.vlan.save()
         self.assertEqual(eth0_vlan2.vlan.mtu, eth0.get_effective_mtu())
 
-    def test__creates_acquired_bridge_copies_mtu(self):
+    def test_creates_acquired_bridge_copies_mtu(self):
         mtu = random.randint(600, 9100)
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent.params = {"mtu": mtu}
@@ -2331,7 +2331,7 @@ class UnknownInterfaceTest(MAASServerTestCase):
 
 
 class UpdateIpAddressesTest(MAASServerTestCase):
-    def test__finds_ipv6_subnet(self):
+    def test_finds_ipv6_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(cidr=network.cidr)
@@ -2341,7 +2341,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         self.assertFalse(Subnet.objects.filter(cidr=cidr).exists())
         self.assertEqual(interface.ip_addresses.first().subnet, subnet)
 
-    def test__eui64_address_returns_correct_value(self):
+    def test_eui64_address_returns_correct_value(self):
         mac_address = factory.make_mac_address()
         network = factory.make_ipv6_network(slash=64)
         iface = factory.make_Interface(
@@ -2352,7 +2352,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             EUI(mac_address).ipv6(network.first),
         )
 
-    def test__does_not_add_eui_64_address(self):
+    def test_does_not_add_eui_64_address(self):
         # See also LP#1639090.
         mac_address = factory.make_MAC()
         iface = factory.make_Interface(
@@ -2364,7 +2364,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         self.assertEqual(0, iface.ip_addresses.count())
         self.assertEqual(1, Subnet.objects.filter(cidr=network.cidr).count())
 
-    def test__does_not_add_addresses_from_duplicate_subnet(self):
+    def test_does_not_add_addresses_from_duplicate_subnet(self):
         # See also LP#1803188.
         mac_address = factory.make_MAC()
         vlan = factory.make_VLAN()
@@ -2382,7 +2382,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         )
         self.assertEqual(2, iface.ip_addresses.count())
 
-    def test__finds_ipv6_subnet_regardless_of_order(self):
+    def test_finds_ipv6_subnet_regardless_of_order(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(cidr=network.cidr)
@@ -2393,7 +2393,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         self.assertFalse(Subnet.objects.filter(cidr=cidr_128).exists())
         self.assertFalse(iface.ip_addresses.exclude(subnet=subnet).exists())
 
-    def test__creates_missing_slash_64_ipv6_subnet(self):
+    def test_creates_missing_slash_64_ipv6_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         cidr = "%s/128" % str(IPAddress(network.first + 1))
@@ -2404,7 +2404,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         self.assertFalse(Subnet.objects.filter(cidr=cidr).exists())
         self.assertEqual(interface.ip_addresses.first().subnet, subnets[0])
 
-    def test__creates_missing_subnet(self):
+    def test_creates_missing_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ip4_or_6_network()
         cidr = str(network)
@@ -2426,7 +2426,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             ),
         )
 
-    def test__creates_discovered_ip_addresses(self):
+    def test_creates_discovered_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = VLAN.objects.get_default_vlan()
         num_connections = 3
@@ -2452,7 +2452,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 ),
             )
 
-    def test__links_interface_to_vlan_on_existing_subnet_with_logging(self):
+    def test_links_interface_to_vlan_on_existing_subnet_with_logging(self):
         fabric1 = factory.make_Fabric()
         fabric2 = factory.make_Fabric()
         fabric3 = factory.make_Fabric()
@@ -2508,7 +2508,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             ),
         )
 
-    def test__deletes_old_discovered_ip_addresses_on_interface(self):
+    def test_deletes_old_discovered_ip_addresses_on_interface(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         # Create existing DISCOVERED IP address on the interface. These should
         # all be deleted.
@@ -2525,7 +2525,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Discovered IP address should have been deleted.",
         )
 
-    def test__deletes_old_discovered_ip_addresses(self):
+    def test_deletes_old_discovered_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = VLAN.objects.get_default_vlan()
         num_connections = 3
@@ -2568,7 +2568,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 ),
             )
 
-    def test__deletes_old_discovered_ip_addresses_with_unknown_nics(self):
+    def test_deletes_old_discovered_ip_addresses_with_unknown_nics(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = VLAN.objects.get_default_vlan()
         num_connections = 3
@@ -2626,7 +2626,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 ),
             )
 
-    def test__deletes_old_sticky_ip_addresses_not_linked(self):
+    def test_deletes_old_sticky_ip_addresses_not_linked(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = VLAN.objects.get_default_vlan()
         num_connections = 3
@@ -2669,7 +2669,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 ),
             )
 
-    def test__deletes_old_ip_address_on_managed_subnet_with_log(self):
+    def test_deletes_old_ip_address_on_managed_subnet_with_log(self):
         network = factory.make_ip4_or_6_network()
         cidr = str(network)
         address = str(network.ip)
@@ -2703,7 +2703,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             ),
         )
 
-    def test__deletes_old_ip_address_on_unmanaged_subnet_with_log(self):
+    def test_deletes_old_ip_address_on_unmanaged_subnet_with_log(self):
         network = factory.make_ip4_or_6_network()
         cidr = str(network)
         address = str(network.ip)
@@ -2739,7 +2739,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
 class TestLinkSubnet(MAASTransactionServerTestCase):
     """Tests for `Interface.link_subnet`."""
 
-    def test__AUTO_creates_link_to_AUTO_with_subnet(self):
+    def test_AUTO_creates_link_to_AUTO_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         auto_subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, auto_subnet)
@@ -2747,7 +2747,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
         self.assertEqual(auto_subnet, auto_ip.subnet)
 
-    def test__DHCP_creates_link_to_DHCP_with_subnet(self):
+    def test_DHCP_creates_link_to_DHCP_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         dhcp_subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
@@ -2755,7 +2755,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         dhcp_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.DHCP)
         self.assertEqual(dhcp_subnet, dhcp_ip.subnet)
 
-    def test__DHCP_creates_link_to_DHCP_without_subnet(self):
+    def test_DHCP_creates_link_to_DHCP_without_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
         interface = reload_object(interface)
@@ -2765,7 +2765,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             )
         )
 
-    def test__STATIC_not_allowed_if_ip_address_not_in_subnet(self):
+    def test_STATIC_not_allowed_if_ip_address_not_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(
@@ -2783,7 +2783,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             "IP address is not in the given subnet '%s'." % subnet, str(error)
         )
 
-    def test__AUTO_link_sets_vlan_if_vlan_undefined(self):
+    def test_AUTO_link_sets_vlan_if_vlan_undefined(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(
@@ -2795,7 +2795,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         interface = reload_object(interface)
         self.assertThat(interface.vlan, Equals(subnet.vlan))
 
-    def test__STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
+    def test_STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
         ip_in_dynamic = IPAddress(subnet.get_dynamic_ranges().first().start_ip)
@@ -2813,7 +2813,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             str(error),
         )
 
-    def test__STATIC_sets_ip_in_no_subnet(self):
+    def test_STATIC_sets_ip_in_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ip = factory.make_ip_address()
         interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, None, ip_address=ip)
@@ -2826,7 +2826,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             )
         )
 
-    def test__STATIC_sets_ip_in_subnet(self):
+    def test_STATIC_sets_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -2843,7 +2843,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         )
 
     @transactional
-    def test__STATIC_picks_ip_in_subnet(self):
+    def test_STATIC_picks_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, subnet)
@@ -2856,7 +2856,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         self.assertIsNotNone(ip_address)
         self.assertIn(IPAddress(ip_address.ip), subnet.get_ipnetwork())
 
-    def test__LINK_UP_creates_link_STICKY_with_subnet(self):
+    def test_LINK_UP_creates_link_STICKY_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         link_subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, link_subnet)
@@ -2865,7 +2865,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         self.assertIsNone(link_ip.ip)
         self.assertEqual(link_subnet, link_ip.subnet)
 
-    def test__LINK_UP_creates_link_STICKY_without_subnet(self):
+    def test_LINK_UP_creates_link_STICKY_without_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, None)
         interface = reload_object(interface)
@@ -2879,20 +2879,20 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
 class TestForceAutoOrDHCPLink(MAASServerTestCase):
     """Tests for `Interface.force_auto_or_dhcp_link`."""
 
-    def test__does_nothing_when_disconnected(self):
+    def test_does_nothing_when_disconnected(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, link_connected=False
         )
         self.assertIsNone(interface.force_auto_or_dhcp_link())
 
-    def test__sets_to_AUTO_on_subnet(self):
+    def test_sets_to_AUTO_on_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = interface.force_auto_or_dhcp_link()
         self.assertEqual(IPADDRESS_TYPE.AUTO, static_ip.alloc_type)
         self.assertEqual(subnet, static_ip.subnet)
 
-    def test__sets_to_DHCP(self):
+    def test_sets_to_DHCP(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         static_ip = interface.force_auto_or_dhcp_link()
         self.assertEqual(IPADDRESS_TYPE.DHCP, static_ip.alloc_type)
@@ -2902,7 +2902,7 @@ class TestForceAutoOrDHCPLink(MAASServerTestCase):
 class TestEnsureLinkUp(MAASServerTestCase):
     """Tests for `Interface.ensure_link_up`."""
 
-    def test__does_nothing_if_has_link(self):
+    def test_does_nothing_if_has_link(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, subnet)
@@ -2914,7 +2914,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
             "Should only have one IP address assigned.",
         )
 
-    def test__does_nothing_if_no_vlan(self):
+    def test_does_nothing_if_no_vlan(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, link_connected=False
         )
@@ -2926,7 +2926,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
             "Should only have no IP address assigned.",
         )
 
-    def test__removes_other_link_ups_if_other_link_exists(self):
+    def test_removes_other_link_ups_if_other_link_exists(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         link_ups = [
             factory.make_StaticIPAddress(
@@ -2940,7 +2940,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
         interface.ensure_link_up()
         self.assertItemsEqual([], reload_objects(StaticIPAddress, link_ups))
 
-    def test__creates_link_up_to_discovered_subnet_on_same_vlan(self):
+    def test_creates_link_up_to_discovered_subnet_on_same_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         factory.make_StaticIPAddress(
@@ -2956,7 +2956,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
         self.assertIsNone(link_ip.ip)
         self.assertEqual(subnet, link_ip.subnet)
 
-    def test__creates_link_up_to_no_subnet_when_on_different_vlan(self):
+    def test_creates_link_up_to_no_subnet_when_on_different_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet()
         factory.make_StaticIPAddress(
@@ -2972,7 +2972,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
         self.assertIsNone(link_ip.ip)
         self.assertIsNone(link_ip.subnet)
 
-    def test__creates_link_up_to_no_subnet(self):
+    def test_creates_link_up_to_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.ensure_link_up()
         link_ip = interface.ip_addresses.filter(
@@ -2985,7 +2985,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
 class TestUnlinkIPAddress(MAASServerTestCase):
     """Tests for `Interface.unlink_ip_address`."""
 
-    def test__doesnt_call_ensure_link_up_if_clearing_config(self):
+    def test_doesnt_call_ensure_link_up_if_clearing_config(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         auto_ip = factory.make_StaticIPAddress(
@@ -3003,7 +3003,7 @@ class TestUnlinkIPAddress(MAASServerTestCase):
 class TestUnlinkSubnet(MAASServerTestCase):
     """Tests for `Interface.unlink_subnet`."""
 
-    def test__AUTO_deletes_link(self):
+    def test_AUTO_deletes_link(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         auto_ip = factory.make_StaticIPAddress(
@@ -3015,7 +3015,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(auto_ip.id)
         self.assertIsNone(reload_object(auto_ip))
 
-    def test__DHCP_deletes_link_with_subnet(self):
+    def test_DHCP_deletes_link_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         dhcp_subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
@@ -3024,7 +3024,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(dhcp_ip.id)
         self.assertIsNone(reload_object(dhcp_ip))
 
-    def test__STATIC_deletes_link_in_no_subnet(self):
+    def test_STATIC_deletes_link_in_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ip = factory.make_ip_address()
         interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, None, ip_address=ip)
@@ -3037,7 +3037,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(static_ip.id)
         self.assertIsNone(reload_object(static_ip))
 
-    def test__STATIC_deletes_link_in_subnet(self):
+    def test_STATIC_deletes_link_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -3053,7 +3053,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(static_ip.id)
         self.assertIsNone(reload_object(static_ip))
 
-    def test__LINK_UP_deletes_link(self):
+    def test_LINK_UP_deletes_link(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         link_ip = factory.make_StaticIPAddress(
@@ -3065,7 +3065,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(link_ip.id)
         self.assertIsNone(reload_object(link_ip))
 
-    def test__always_has_LINK_UP(self):
+    def test_always_has_LINK_UP(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         link_ip = factory.make_StaticIPAddress(
@@ -3086,7 +3086,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
 class TestUpdateIPAddress(MAASTransactionServerTestCase):
     """Tests for `Interface.update_ip_address`."""
 
-    def test__switch_dhcp_to_auto(self):
+    def test_switch_dhcp_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3105,7 +3105,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
-    def test__switch_dhcp_to_link_up(self):
+    def test_switch_dhcp_to_link_up(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3125,7 +3125,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertIsNone(static_ip.ip)
 
     @transactional
-    def test__switch_dhcp_to_static(self):
+    def test_switch_dhcp_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
@@ -3150,7 +3150,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNotNone(static_ip.ip)
 
-    def test__switch_auto_to_dhcp(self):
+    def test_switch_auto_to_dhcp(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3169,7 +3169,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
-    def test__switch_auto_to_link_up(self):
+    def test_switch_auto_to_link_up(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3189,7 +3189,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertIsNone(static_ip.ip)
 
     @transactional
-    def test__switch_auto_to_static(self):
+    def test_switch_auto_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
@@ -3214,7 +3214,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNotNone(static_ip.ip)
 
-    def test__switch_link_up_to_auto(self):
+    def test_switch_link_up_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3233,7 +3233,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
-    def test__switch_link_up_to_dhcp(self):
+    def test_switch_link_up_to_dhcp(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3253,7 +3253,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertIsNone(static_ip.ip)
 
     @transactional
-    def test__switch_link_up_to_static(self):
+    def test_switch_link_up_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
@@ -3278,7 +3278,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNotNone(static_ip.ip)
 
-    def test__switch_static_to_dhcp(self):
+    def test_switch_static_to_dhcp(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3297,7 +3297,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
-    def test__switch_static_to_auto(self):
+    def test_switch_static_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3316,7 +3316,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
-    def test__switch_static_to_link_up(self):
+    def test_switch_static_to_link_up(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3335,7 +3335,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
-    def test__switch_static_to_same_subnet_does_nothing(self):
+    def test_switch_static_to_same_subnet_does_nothing(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3354,7 +3354,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(subnet, static_ip.subnet)
         self.assertEqual(static_ip_address, static_ip.ip)
 
-    def test__switch_static_to_already_used_ip_address(self):
+    def test_switch_static_to_already_used_ip_address(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3381,7 +3381,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
                 ip_address=used_ip_address,
             )
 
-    def test__switch_static_to_same_subnet_with_different_ip(self):
+    def test_switch_static_to_same_subnet_with_different_ip(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
@@ -3410,7 +3410,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_ip_address, new_static_ip.ip)
 
     @transactional
-    def test__switch_static_to_another_subnet(self):
+    def test_switch_static_to_another_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
@@ -3447,7 +3447,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         self.assertEqual(new_subnet, new_static_ip.subnet)
         self.assertIsNotNone(new_static_ip.ip)
 
-    def test__switch_static_to_another_subnet_with_ip_address(self):
+    def test_switch_static_to_another_subnet_with_ip_address(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
@@ -3480,7 +3480,7 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
 class TestUpdateLinkById(MAASServerTestCase):
     """Tests for `Interface.update_link_by_id`."""
 
-    def test__calls_update_ip_address_with_ip_address(self):
+    def test_calls_update_ip_address_with_ip_address(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         static_ip = factory.make_StaticIPAddress(
@@ -3506,7 +3506,7 @@ class TestUpdateLinkById(MAASServerTestCase):
 class TestClaimAutoIPs(MAASTransactionServerTestCase):
     """Tests for `Interface.claim_auto_ips`."""
 
-    def test__claims_all_auto_ip_addresses(self):
+    def test_claims_all_auto_ip_addresses(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             for _ in range(3):
@@ -3534,7 +3534,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
         )
         self.assertItemsEqual(assigned_addresses, observed)
 
-    def test__keeps_ip_address_ids_consistent(self):
+    def test_keeps_ip_address_ids_consistent(self):
         auto_ip_ids = []
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3568,7 +3568,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             auto_ip_ids, (ip.id for ip in assigned_addresses)
         )
 
-    def test__claims_all_missing_assigned_auto_ip_addresses(self):
+    def test_claims_all_missing_assigned_auto_ip_addresses(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             for _ in range(3):
@@ -3600,7 +3600,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "Assigned IP address should be inside the subnet network.",
         )
 
-    def test__claims_ip_address_not_in_dynamic_ip_range(self):
+    def test_claims_ip_address_not_in_dynamic_ip_range(self):
         with transaction.atomic():
             subnet = factory.make_ipv4_Subnet_with_IPRanges()
             interface = factory.make_Interface(
@@ -3625,7 +3625,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
         )
         self.assertTrue(subnet.is_valid_static_ip(observed[0].ip))
 
-    def test__claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
+    def test_claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             network = factory.make_ipv4_network(slash=30)
@@ -3659,7 +3659,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             IPAddress(network.first + 2), IPAddress(observed[0].ip)
         )
 
-    def test__claim_fails_if_subnet_missing(self):
+    def test_claim_fails_if_subnet_missing(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -3683,7 +3683,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__excludes_ip_addresses_in_exclude_addresses(self):
+    def test_excludes_ip_addresses_in_exclude_addresses(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -3703,7 +3703,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
         self.assertNotEqual(IPAddress(exclude), IPAddress(auto_ip.ip))
 
-    def test__can_acquire_multiple_address_from_the_same_subnet(self):
+    def test_can_acquire_multiple_address_from_the_same_subnet(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -3730,7 +3730,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             IPAddress(auto_ips[0].ip) + 1, IPAddress(auto_ips[1].ip)
         )
 
-    def test__claims_all_auto_ip_addresses_with_temp_expires_on(self):
+    def test_claims_all_auto_ip_addresses_with_temp_expires_on(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             for _ in range(3):
@@ -3767,11 +3767,11 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
 class TestCreateAcquiredBridge(MAASServerTestCase):
     """Tests for `Interface.create_acquired_bridge`."""
 
-    def test__raises_ValueError_for_bridge(self):
+    def test_raises_ValueError_for_bridge(self):
         bridge = factory.make_Interface(INTERFACE_TYPE.BRIDGE)
         self.assertRaises(ValueError, bridge.create_acquired_bridge)
 
-    def test__creates_acquired_bridge_with_default_options(self):
+    def test_creates_acquired_bridge_with_default_options(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         bridge = parent.create_acquired_bridge()
         self.assertThat(
@@ -3794,7 +3794,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
         )
         self.assertEquals([parent.id], [p.id for p in bridge.parents.all()])
 
-    def test__creates_acquired_bridge_with_passed_options(self):
+    def test_creates_acquired_bridge_with_passed_options(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
@@ -3822,7 +3822,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
         )
         self.assertEquals([parent.id], [p.id for p in bridge.parents.all()])
 
-    def test__creates_acquired_bridge_moves_links_from_parent_to_bridge(self):
+    def test_creates_acquired_bridge_moves_links_from_parent_to_bridge(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         auto_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, interface=parent
@@ -3861,7 +3861,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
 class TestReleaseAutoIPs(MAASServerTestCase):
     """Tests for `Interface.release_auto_ips`."""
 
-    def test__clears_all_auto_ips_with_ips(self):
+    def test_clears_all_auto_ips_with_ips(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(3):
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -3887,7 +3887,7 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         )
         self.assertItemsEqual(releases_addresses, observed)
 
-    def test__clears_only_auto_ips_with_ips(self):
+    def test_clears_only_auto_ips_with_ips(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(2):
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -3922,7 +3922,7 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
     the update_fields=[...] parameter to save() is correct.
     """
 
-    def test__monitored_flag_vetoes_discovery_state(self):
+    def test_monitored_flag_vetoes_discovery_state(self):
         settings = {"monitored": False}
         iface = factory.make_Interface()
         iface.update_discovery_state(
@@ -3932,7 +3932,7 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
         iface = reload_object(iface)
         self.expectThat(iface.neighbour_discovery_state, Is(False))
 
-    def test__sets_neighbour_state_true_when_monitored_flag_is_true(self):
+    def test_sets_neighbour_state_true_when_monitored_flag_is_true(self):
         settings = {"monitored": True}
         iface = factory.make_Interface()
         iface.update_discovery_state(
@@ -3942,7 +3942,7 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
         iface = reload_object(iface)
         self.expectThat(iface.neighbour_discovery_state, Is(True))
 
-    def test__sets_mdns_state_based_on_passive_setting(self):
+    def test_sets_mdns_state_based_on_passive_setting(self):
         settings = {"monitored": False}
         iface = factory.make_Interface()
         iface.update_discovery_state(
@@ -3960,7 +3960,7 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
 
 
 class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):
-    def test__reports_correct_parameters(self):
+    def test_reports_correct_parameters(self):
         iface = factory.make_Interface()
         iface.neighbour_discovery_state = random.choice([True, False])
         iface.mdns_discovery_state = random.choice([True, False])
@@ -3974,7 +3974,7 @@ class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):
 class TestReportVID(MAASServerTestCase):
     """Tests for `Interface.release_auto_ips`."""
 
-    def test__creates_vlan_if_necessary(self):
+    def test_creates_vlan_if_necessary(self):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         iface = factory.make_Interface(vlan=vlan)
@@ -3988,7 +3988,7 @@ class TestReportVID(MAASServerTestCase):
         # observed it. (expect nothing to happen.)
         iface.report_vid(vid)
 
-    def test__logs_vlan_creation_and_sets_description(self):
+    def test_logs_vlan_creation_and_sets_description(self):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         iface = factory.make_Interface(vlan=vlan)
@@ -4022,7 +4022,7 @@ class TestInterfaceGetDefaultBridgeName(MAASServerTestCase):
         "enx00e07cc81e1d": "b-x00e07cc81e1d",
     }
 
-    def test__returns_expected_bridge_names_consistent_with_juju(self):
+    def test_returns_expected_bridge_names_consistent_with_juju(self):
         interface = factory.make_Interface()
         for ifname, expected_bridge_name in self.expected_bridge_names.items():
             interface.name = ifname

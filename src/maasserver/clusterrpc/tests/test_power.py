@@ -54,7 +54,7 @@ class TestPowerNode(MAASServerTestCase):
         ("PowerOff", {"power_func": power_off_node, "command": PowerOff}),
     )
 
-    def test__powers_single_node(self):
+    def test_powers_single_node(self):
         node = factory.make_Node()
         client = Mock()
 
@@ -77,7 +77,7 @@ class TestPowerNode(MAASServerTestCase):
             ),
         )
 
-    def test__raises_power_problem(self):
+    def test_raises_power_problem(self):
         node = factory.make_Node()
         client = Mock()
         client.return_value = fail(
@@ -96,7 +96,7 @@ class TestPowerNode(MAASServerTestCase):
 class TestPowerCycle(MAASServerTestCase):
     """Tests for `power_cycle`."""
 
-    def test__power_cycles_single_node(self):
+    def test_power_cycles_single_node(self):
         node = factory.make_Node()
         client = Mock()
 
@@ -119,7 +119,7 @@ class TestPowerCycle(MAASServerTestCase):
             ),
         )
 
-    def test__raises_power_problem(self):
+    def test_raises_power_problem(self):
         node = factory.make_Node()
         client = Mock()
         client.return_value = fail(
@@ -138,7 +138,7 @@ class TestPowerCycle(MAASServerTestCase):
 class TestPowerQuery(MAASServerTestCase):
     """Tests for `power_query`."""
 
-    def test__power_querys_single_node(self):
+    def test_power_querys_single_node(self):
         node = factory.make_Node()
         client = Mock()
 
@@ -165,7 +165,7 @@ class TestPowerQuery(MAASServerTestCase):
 class TestPowerDriverCheck(MAASServerTestCase):
     """Tests for `power_driver_check`."""
 
-    def test__handled(self):
+    def test_handled(self):
         node = factory.make_Node()
         power_info = node.get_effective_power_info()
         client = Mock()
@@ -191,7 +191,7 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_PowerQuery_on_all_clients(self):
+    def test_calls_PowerQuery_on_all_clients(self):
         node, power_info = yield deferToDatabase(
             self.make_node_with_power_info
         )
@@ -232,7 +232,7 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__handles_timeout(self):
+    def test_handles_timeout(self):
         node, power_info = yield deferToDatabase(
             self.make_node_with_power_info
         )

@@ -83,7 +83,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def test__issue_ipmitool_command_sets_pxe_boot(self):
+    def test_issue_ipmitool_command_sets_pxe_boot(self):
         context = make_context()
         env = get_env_with_locale()
         pxe_command = make_pxe_command(context)
@@ -96,7 +96,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
             call_and_check_mock, MockCalledOnceWith(pxe_command, env=env)
         )
 
-    def test__issue_ipmitool_command_returns_stdout_if_no_match(self):
+    def test_issue_ipmitool_command_returns_stdout_if_no_match(self):
         context = make_context()
         env = get_env_with_locale()
         ipmitool_command = make_ipmitool_command("status", context)
@@ -111,7 +111,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals("other"))
 
-    def test__issue_ipmitool_raises_power_action_error(self):
+    def test_issue_ipmitool_raises_power_action_error(self):
         context = make_context()
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, "call_and_check")

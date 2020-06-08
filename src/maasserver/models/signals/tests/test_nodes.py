@@ -256,7 +256,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         ]
         super().__init__(*args, **kwargs)
 
-    def test__releases_interface_config_when_turned_off(self):
+    def test_releases_interface_config_when_turned_off(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
@@ -275,7 +275,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         ):
             self.assertIsNone(ip.ip)
 
-    def test__does_nothing_if_not_off(self):
+    def test_does_nothing_if_not_off(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
@@ -296,7 +296,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         ):
             self.assertIsNotNone(ip.ip)
 
-    def test__does_nothing_if_reserved_status(self):
+    def test_does_nothing_if_reserved_status(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=self.status, power_state=POWER_STATE.ON
         )
@@ -316,7 +316,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         ):
             self.assertIsNotNone(ip.ip)
 
-    def test__does_nothing_if_not_machine(self):
+    def test_does_nothing_if_not_machine(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             node_type=factory.pick_choice(
                 NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]

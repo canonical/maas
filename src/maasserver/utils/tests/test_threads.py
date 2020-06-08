@@ -25,7 +25,7 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 class TestMakeFunctions(MAASTestCase):
     """Tests for the `make_*` functions."""
 
-    def test__make_default_pool_creates_disconnected_pool(self):
+    def test_make_default_pool_creates_disconnected_pool(self):
         pool = threads.make_default_pool()
         self.assertThat(pool, IsInstance(ThreadPool))
         self.assertThat(
@@ -34,13 +34,13 @@ class TestMakeFunctions(MAASTestCase):
         self.assertThat(pool.max, Equals(threads.max_threads_for_default_pool))
         self.assertThat(pool.min, Equals(0))
 
-    def test__make_default_pool_accepts_max_threads_setting(self):
+    def test_make_default_pool_accepts_max_threads_setting(self):
         maxthreads = random.randint(1, 1000)
         pool = threads.make_default_pool(maxthreads)
         self.assertThat(pool.max, Equals(maxthreads))
         self.assertThat(pool.min, Equals(0))
 
-    def test__make_database_pool_creates_connected_pool(self):
+    def test_make_database_pool_creates_connected_pool(self):
         pool = threads.make_database_pool()
         self.assertThat(pool, IsInstance(ThreadPool))
         self.assertThat(pool.context.contextFactory, Is(orm.FullyConnected))
@@ -49,13 +49,13 @@ class TestMakeFunctions(MAASTestCase):
         )
         self.assertThat(pool.min, Equals(0))
 
-    def test__make_database_pool_accepts_max_threads_setting(self):
+    def test_make_database_pool_accepts_max_threads_setting(self):
         maxthreads = random.randint(1, 1000)
         pool = threads.make_database_pool(maxthreads)
         self.assertThat(pool.max, Equals(maxthreads))
         self.assertThat(pool.min, Equals(0))
 
-    def test__make_database_unpool_creates_unpool(self):
+    def test_make_database_unpool_creates_unpool(self):
         pool = threads.make_database_unpool()
         self.assertThat(pool, IsInstance(ThreadUnpool))
         self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
@@ -64,7 +64,7 @@ class TestMakeFunctions(MAASTestCase):
             pool.lock.limit, Equals(threads.max_threads_for_database_pool)
         )
 
-    def test__make_database_unpool_accepts_max_threads_setting(self):
+    def test_make_database_unpool_accepts_max_threads_setting(self):
         maxthreads = random.randint(1, 1000)
         pool = threads.make_database_unpool(maxthreads)
         self.assertThat(pool.lock.limit, Equals(maxthreads))
@@ -73,11 +73,11 @@ class TestMakeFunctions(MAASTestCase):
 class TestInstallFunctions(MAASTestCase):
     """Tests for the `install_*` functions."""
 
-    def test__install_default_pool_will_not_work_now(self):
+    def test_install_default_pool_will_not_work_now(self):
         error = self.assertRaises(AssertionError, threads.install_default_pool)
         self.assertDocTestMatches("Too late; ...", str(error))
 
-    def test__default_pool_is_disconnected_pool(self):
+    def test_default_pool_is_disconnected_pool(self):
         pool = reactor.threadpool
         self.assertThat(pool, IsInstance(ThreadPool))
         self.assertThat(
@@ -85,13 +85,13 @@ class TestInstallFunctions(MAASTestCase):
         )
         self.assertThat(pool.min, Equals(0))
 
-    def test__install_database_pool_will_not_work_now(self):
+    def test_install_database_pool_will_not_work_now(self):
         error = self.assertRaises(
             AssertionError, threads.install_database_pool
         )
         self.assertDocTestMatches("Too late; ...", str(error))
 
-    def test__database_pool_is_connected_unpool(self):
+    def test_database_pool_is_connected_unpool(self):
         pool = reactor.threadpoolForDatabase
         self.assertThat(pool, IsInstance(ThreadUnpool))
         self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
@@ -100,7 +100,7 @@ class TestInstallFunctions(MAASTestCase):
 class TestDeferToDatabase(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
-    def test__defers_to_database_threadpool(self):
+    def test_defers_to_database_threadpool(self):
         @orm.transactional
         def call_in_database_thread(a, b):
             orm.validate_in_transaction(connection)
@@ -117,7 +117,7 @@ class TestDeferToDatabase(MAASServerTestCase):
 class TestCallOutToDatabase(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_out_to_database_threadpool(self):
+    def test_calls_out_to_database_threadpool(self):
         @orm.transactional
         def call_in_database_thread(a, b):
             orm.validate_in_transaction(connection)

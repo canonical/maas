@@ -48,7 +48,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         }
         return params
 
-    def test__creates_package_repository(self):
+    def test_creates_package_repository(self):
         repo = factory.make_PackageRepository()
         params = self.make_valid_repo_params(repo)
         form = PackageRepositoryForm(data=params)
@@ -65,17 +65,17 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             "Created package repository '%s'." % package_repository.name,
         )
 
-    def test__create_package_repository_requires_name(self):
+    def test_create_package_repository_requires_name(self):
         form = PackageRepositoryForm(
             data={"url": factory.make_url(scheme="http")}
         )
         self.assertFalse(form.is_valid())
 
-    def test__create_package_repository_requires_url(self):
+    def test_create_package_repository_requires_url(self):
         form = PackageRepositoryForm(data={"name": factory.make_name("name")})
         self.assertFalse(form.is_valid())
 
-    def test__default_repository_cannot_be_disabled(self):
+    def test_default_repository_cannot_be_disabled(self):
         repo = factory.make_PackageRepository(default=True)
         params = self.make_valid_repo_params(repo)
         params["enabled"] = False
@@ -83,7 +83,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertRaises(ValidationError, form.clean)
 
-    def test__create_package_repository_defaults_to_enabled(self):
+    def test_create_package_repository_defaults_to_enabled(self):
         repo = factory.make_PackageRepository()
         params = self.make_valid_repo_params(repo)
         del params["enabled"]
@@ -96,7 +96,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertAttributes(package_repository, params)
         self.assertTrue(package_repository.enabled)
 
-    def test__fail_validation_on_create_cleans_url(self):
+    def test_fail_validation_on_create_cleans_url(self):
         PackageRepository.objects.all().delete()
         repo = factory.make_PackageRepository()
         params = self.make_valid_repo_params(repo)
@@ -106,7 +106,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertItemsEqual([], PackageRepository.objects.all())
 
-    def test__updates_name(self):
+    def test_updates_name(self):
         package_repository = factory.make_PackageRepository()
         name = factory.make_name("name")
         form = PackageRepositoryForm(
@@ -125,7 +125,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             "Updated package repository '%s'." % (package_repository.name),
         )
 
-    def test__updates_url(self):
+    def test_updates_url(self):
         package_repository = factory.make_PackageRepository()
         url = factory.make_url(scheme="http")
         form = PackageRepositoryForm(
@@ -138,7 +138,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         package_repository = form.save(endpoint, request)
         self.assertEqual(url, package_repository.url)
 
-    def test__updates_enabled(self):
+    def test_updates_enabled(self):
         package_repository = factory.make_PackageRepository()
         enabled = not package_repository.enabled
         form = PackageRepositoryForm(
@@ -151,7 +151,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         package_repository = form.save(endpoint, request)
         self.assertEqual(enabled, package_repository.enabled)
 
-    def test__updates_arches(self):
+    def test_updates_arches(self):
         package_repository = factory.make_PackageRepository()
         arch1 = random.choice(PackageRepository.KNOWN_ARCHES)
         arch2 = random.choice(PackageRepository.KNOWN_ARCHES)
@@ -166,7 +166,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         package_repository = form.save(endpoint, request)
         self.assertEqual([arch1, arch2, arch3], package_repository.arches)
 
-    def test__update_failure_doesnt_delete_url(self):
+    def test_update_failure_doesnt_delete_url(self):
         package_repository = factory.make_PackageRepository()
         url = package_repository.url
         form = PackageRepositoryForm(
@@ -176,7 +176,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEquals(url, reload_object(package_repository).url)
 
-    def test__creates_package_repository_defaults_main_arches(self):
+    def test_creates_package_repository_defaults_main_arches(self):
         repo = factory.make_PackageRepository(arches=[])
         params = self.make_valid_repo_params(repo)
         del params["arches"]
@@ -191,7 +191,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             package_repository.arches, PackageRepository.MAIN_ARCHES
         )
 
-    def test__arches_validation(self):
+    def test_arches_validation(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository, data={"arches": ["i286"]}
@@ -208,7 +208,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         self.assertRaises(ValueError, form.save, endpoint, request)
 
-    def test__arches_comma_cleaning(self):
+    def test_arches_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository, data={"arches": ["i386,armhf"]}
@@ -229,7 +229,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         repo = form.save(endpoint, request)
         self.assertItemsEqual(["i386"], repo.arches)
 
-    def test__distribution_comma_cleaning(self):
+    def test_distribution_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository, data={"distributions": ["val1,val2"]}
@@ -250,7 +250,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         repo = form.save(endpoint, request)
         self.assertItemsEqual(["val1"], repo.distributions)
 
-    def test__disabled_pocket_comma_cleaning(self):
+    def test_disabled_pocket_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository,
@@ -273,7 +273,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         repo = form.save(endpoint, request)
         self.assertItemsEqual(["updates"], repo.disabled_pockets)
 
-    def test__disabled_component_comma_cleaning(self):
+    def test_disabled_component_comma_cleaning(self):
         package_repository = factory.make_PackageRepository(
             default=True, components=[]
         )
@@ -303,7 +303,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         repo = form.save(endpoint, request)
         self.assertItemsEqual(["universe"], repo.disabled_components)
 
-    def test__component_comma_cleaning(self):
+    def test_component_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository, data={"components": ["val1,val2"]}
@@ -324,7 +324,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         repo = form.save(endpoint, request)
         self.assertItemsEqual(["val1"], repo.components)
 
-    def test__updates_disable_sources(self):
+    def test_updates_disable_sources(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository, data={"disable_sources": True}

@@ -30,18 +30,18 @@ class TestRDNSManager(MAASServerTestCase):
     def setUp(self):
         super().setUp()
 
-    def test__get_current_entry__returns_entry(self):
+    def test_get_current_entry__returns_entry(self):
         region = factory.make_RegionController()
         rdns = factory.make_RDNS(ip="10.0.0.1", hostname="test.maas")
         result = RDNS.objects.get_current_entry("10.0.0.1", region)
         self.assertThat(rdns.hostname, Equals(result.hostname))
 
-    def test__get_current_entry__returns_none_if_not_found(self):
+    def test_get_current_entry__returns_none_if_not_found(self):
         region = factory.make_RegionController()
         result = RDNS.objects.get_current_entry("10.0.0.1", region)
         self.assertThat(result, Is(None))
 
-    def test__allows_separate_observations_per_region(self):
+    def test_allows_separate_observations_per_region(self):
         r1 = factory.make_RegionController()
         r2 = factory.make_RegionController()
         rdns1 = factory.make_RDNS("10.0.0.1", "test.maasr1", r1)
@@ -52,13 +52,13 @@ class TestRDNSManager(MAASServerTestCase):
         self.assertThat(rdns2.id, Equals(result2.id))
         self.assertThat(rdns1.id, Not(Equals(rdns2.id)))
 
-    def test__forbids_duplicate_observation_on_single_region(self):
+    def test_forbids_duplicate_observation_on_single_region(self):
         region = factory.make_RegionController()
         factory.make_RDNS("10.0.0.1", "test.maas", region)
         with ExpectedException(ValidationError, ".*already exists.*"):
             factory.make_RDNS("10.0.0.1", "test.maasr2", region)
 
-    def test__set_current_entry_creates_new_with_log(self):
+    def test_set_current_entry_creates_new_with_log(self):
         region = factory.make_RegionController()
         hostname = factory.make_hostname()
         ip = factory.make_ip_address()
@@ -73,7 +73,7 @@ class TestRDNSManager(MAASServerTestCase):
             DocTestMatches("New reverse DNS entry...resolves to..."),
         )
 
-    def test__set_current_entry_updates_existing_hostname_with_log(self):
+    def test_set_current_entry_updates_existing_hostname_with_log(self):
         region = factory.make_RegionController()
         hostname = factory.make_hostname()
         ip = factory.make_ip_address()
@@ -90,7 +90,7 @@ class TestRDNSManager(MAASServerTestCase):
             DocTestMatches("Reverse DNS entry updated...resolves to..."),
         )
 
-    def test__set_current_entry_updates_existing_hostnames(self):
+    def test_set_current_entry_updates_existing_hostnames(self):
         region = factory.make_RegionController()
         h1 = factory.make_hostname()
         h2 = factory.make_hostname()
@@ -105,7 +105,7 @@ class TestRDNSManager(MAASServerTestCase):
         self.assertThat(result.hostname, Equals(h1))
         self.assertThat(result.hostnames, Equals([h1, h2, h3]))
 
-    def test__set_current_entry_updates_updated_time(self):
+    def test_set_current_entry_updates_updated_time(self):
         region = factory.make_RegionController()
         hostname = factory.make_hostname()
         ip = factory.make_ip_address()
@@ -116,21 +116,21 @@ class TestRDNSManager(MAASServerTestCase):
         result = RDNS.objects.first()
         self.assertThat(result.updated, GreaterThan(yesterday))
 
-    def test__set_current_entry_asserts_for_empty_list(self):
+    def test_set_current_entry_asserts_for_empty_list(self):
         region = factory.make_RegionController()
         with ExpectedException(AssertionError):
             RDNS.objects.set_current_entry(
                 factory.make_ip_address(), [], region
             )
 
-    def test__delete_current_entry_ignores_missing_entries(self):
+    def test_delete_current_entry_ignores_missing_entries(self):
         region = factory.make_RegionController()
         ip = factory.make_ip_address()
         with TwistedLoggerFixture() as logger:
             RDNS.objects.delete_current_entry(ip, region)
         self.assertThat(logger.output, Equals(""))
 
-    def test__delete_current_entry_deletes_and_logs_if_entry_deleted(self):
+    def test_delete_current_entry_deletes_and_logs_if_entry_deleted(self):
         region = factory.make_RegionController()
         hostname = factory.make_hostname()
         ip = factory.make_ip_address()

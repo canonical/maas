@@ -73,7 +73,7 @@ def AfterBeingDecoded(matcher):
 class TestEventToDict(APITestCase.ForUser):
     """Test for `event_to_dict` function."""
 
-    def test__node_not_None(self):
+    def test_node_not_None(self):
         event = factory.make_Event()
         self.assertThat(
             event_to_dict(event),
@@ -93,7 +93,7 @@ class TestEventToDict(APITestCase.ForUser):
             ),
         )
 
-    def test__node_and_user_is_None(self):
+    def test_node_and_user_is_None(self):
         user = factory.make_User()
         node = factory.make_Node()
         event = factory.make_Event(node=node, user=user)
@@ -118,7 +118,7 @@ class TestEventToDict(APITestCase.ForUser):
             ),
         )
 
-    def test__type_level_AUDIT(self):
+    def test_type_level_AUDIT(self):
         event = factory.make_Event()
         self.assertThat(
             event_to_dict(event),

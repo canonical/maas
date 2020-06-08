@@ -44,11 +44,11 @@ class TestRegistry(MAASTestCase):
             Registry2,
         )
 
-    def test___getitem__(self):
+    def test_getitem__(self):
         Registry.register_item("resource", sentinel.resource)
         self.assertEqual(sentinel.resource, Registry["resource"])
 
-    def test___getitem__raises_KeyError_when_name_is_not_registered(self):
+    def test_getitem__raises_KeyError_when_name_is_not_registered(self):
         self.assertRaises(KeyError, lambda: Registry["resource"])
 
     def test_get_item(self):
@@ -63,7 +63,7 @@ class TestRegistry(MAASTestCase):
     def test_get_item_returns_None_default(self):
         self.assertIsNone(Registry.get_item("resource"))
 
-    def test__contains__(self):
+    def test_contains__(self):
         Registry.register_item("resource", sentinel.resource)
         self.assertIn("resource", Registry)
 

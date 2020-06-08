@@ -52,7 +52,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_DiscoverPod_on_all_clients(self):
+    def test_calls_DiscoverPod_on_all_clients(self):
         rack_ids = [factory.make_name("system_id") for _ in range(3)]
         pod = DiscoveredPod(
             architectures=["amd64/generic"],
@@ -82,7 +82,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__returns_discovered_pod_and_errors(self):
+    def test_returns_discovered_pod_and_errors(self):
         pod_type = factory.make_name("pod")
         pod = DiscoveredPod(
             architectures=["amd64/generic"],
@@ -120,7 +120,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__handles_timeout(self):
+    def test_handles_timeout(self):
         def defer_way_later(*args, **kwargs):
             # Create a defer that will finish in 1 minute.
             return deferLater(reactor, 60 * 60, lambda: None)
@@ -215,7 +215,7 @@ class TestGetBestDiscoveredResult(MAASTestCase):
 class TestSendPodCommissioningResults(MAASServerTestCase):
     """Tests for `send_pod_commissioning_results`."""
 
-    def test__calls_and_returns_correctly(self):
+    def test_calls_and_returns_correctly(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
@@ -252,7 +252,7 @@ class TestSendPodCommissioningResults(MAASServerTestCase):
             ),
         )
 
-    def test__raises_PodProblem_for_UnknownPodType(self):
+    def test_raises_PodProblem_for_UnknownPodType(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
@@ -280,7 +280,7 @@ class TestSendPodCommissioningResults(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_PodProblem_for_NotImplementedError(self):
+    def test_raises_PodProblem_for_NotImplementedError(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
@@ -309,7 +309,7 @@ class TestSendPodCommissioningResults(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_PodProblem_for_PodActionFail(self):
+    def test_raises_PodProblem_for_PodActionFail(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
@@ -338,7 +338,7 @@ class TestSendPodCommissioningResults(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_same_exception(self):
+    def test_raises_same_exception(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
@@ -368,7 +368,7 @@ class TestSendPodCommissioningResults(MAASServerTestCase):
 class TestComposeMachine(MAASServerTestCase):
     """Tests for `compose_machine`."""
 
-    def test__calls_and_returns_correctly(self):
+    def test_calls_and_returns_correctly(self):
         pod = factory.make_Pod()
         client = Mock()
         client.return_value = succeed(
@@ -398,7 +398,7 @@ class TestComposeMachine(MAASServerTestCase):
         self.assertEqual(sentinel.machine, machine)
         self.assertEqual(sentinel.hints, hints)
 
-    def test__raises_PodProblem_for_UnknownPodType(self):
+    def test_raises_PodProblem_for_UnknownPodType(self):
         pod = factory.make_Pod()
         client = Mock()
         client.return_value = fail(UnknownPodType(pod.power_type))
@@ -419,7 +419,7 @@ class TestComposeMachine(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_PodProblem_for_NotImplementedError(self):
+    def test_raises_PodProblem_for_NotImplementedError(self):
         pod = factory.make_Pod()
         client = Mock()
         client.return_value = fail(NotImplementedError())
@@ -440,7 +440,7 @@ class TestComposeMachine(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_PodProblem_for_PodActionFail(self):
+    def test_raises_PodProblem_for_PodActionFail(self):
         pod = factory.make_Pod()
         error_msg = factory.make_name("error")
         client = Mock()
@@ -460,7 +460,7 @@ class TestComposeMachine(MAASServerTestCase):
             "Unable to compose machine because: %s" % error_msg, str(error)
         )
 
-    def test__raises_same_exception(self):
+    def test_raises_same_exception(self):
         pod = factory.make_Pod()
         client = Mock()
         exception_type = factory.make_exception_type()
@@ -483,7 +483,7 @@ class TestComposeMachine(MAASServerTestCase):
 class TestDecomposeMachine(MAASServerTestCase):
     """Tests for `decompose_machine`."""
 
-    def test__calls_and_returns_correctly(self):
+    def test_calls_and_returns_correctly(self):
         hints = DiscoveredPodHints(
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 2000),
@@ -510,7 +510,7 @@ class TestDecomposeMachine(MAASServerTestCase):
         )
         self.assertEqual(hints, result)
 
-    def test__raises_PodProblem_for_UnknownPodType(self):
+    def test_raises_PodProblem_for_UnknownPodType(self):
         pod = factory.make_Pod()
         client = Mock()
         client.return_value = fail(UnknownPodType(pod.power_type))
@@ -530,7 +530,7 @@ class TestDecomposeMachine(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_PodProblem_for_NotImplementedError(self):
+    def test_raises_PodProblem_for_NotImplementedError(self):
         pod = factory.make_Pod()
         client = Mock()
         client.return_value = fail(NotImplementedError())
@@ -550,7 +550,7 @@ class TestDecomposeMachine(MAASServerTestCase):
             str(error),
         )
 
-    def test__raises_PodProblem_for_PodActionFail(self):
+    def test_raises_PodProblem_for_PodActionFail(self):
         pod = factory.make_Pod()
         error_msg = factory.make_name("error")
         client = Mock()
@@ -569,7 +569,7 @@ class TestDecomposeMachine(MAASServerTestCase):
             "Unable to decompose machine because: %s" % error_msg, str(error)
         )
 
-    def test__raises_same_exception(self):
+    def test_raises_same_exception(self):
         pod = factory.make_Pod()
         client = Mock()
         exception_type = factory.make_exception_type()

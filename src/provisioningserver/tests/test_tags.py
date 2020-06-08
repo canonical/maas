@@ -472,7 +472,7 @@ class TestGenNodeDetails(MAASTestCase):
             lambda mapping: "merged:" + "+".join(mapping),
         )
 
-    def test__generates_node_details(self):
+    def test_generates_node_details(self):
         batches = [["s1", "s2"], ["s3"]]
         responses = [
             {

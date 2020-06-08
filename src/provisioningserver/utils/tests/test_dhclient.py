@@ -55,24 +55,24 @@ class TestGetLatestFixedAddress(MAASTestCase):
         """
     )
 
-    def test__missing(self):
+    def test_missing(self):
         self.assertIsNone(
             get_lastest_fixed_address(factory.make_name("lease"))
         )
 
-    def test__empty(self):
+    def test_empty(self):
         path = self.make_file(contents="")
         self.assertIsNone(get_lastest_fixed_address(path))
 
-    def test__random(self):
+    def test_random(self):
         path = self.make_file()
         self.assertIsNone(get_lastest_fixed_address(path))
 
-    def test__ipv4(self):
+    def test_ipv4(self):
         path = self.make_file(contents=self.IPV4_LEASE_FILE)
         self.assertEquals("192.168.1.113", get_lastest_fixed_address(path))
 
-    def test__ipv6(self):
+    def test_ipv6(self):
         path = self.make_file(contents=self.IPV6_LEASE_FILE)
         self.assertEquals(
             "2001:db8:a0b:12f0::3", get_lastest_fixed_address(path)
@@ -80,7 +80,7 @@ class TestGetLatestFixedAddress(MAASTestCase):
 
 
 class TestGetDhclientInfo(MAASTestCase):
-    def test__returns_interface_name_with_address(self):
+    def test_returns_interface_name_with_address(self):
         proc_path = self.make_dir()
         leases_path = self.make_dir()
         running_pids = set(random.randint(2, 999) for _ in range(3))

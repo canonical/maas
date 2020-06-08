@@ -195,10 +195,10 @@ class TestClassify(MAASTestCase):
 
 
 class TestFlatten(MAASTestCase):
-    def test__returns_iterator(self):
+    def test_returns_iterator(self):
         self.assertThat(flatten(()), IsInstance(Iterator))
 
-    def test__returns_empty_when_nothing_provided(self):
+    def test_returns_empty_when_nothing_provided(self):
         self.assertItemsEqual([], flatten([]))
         self.assertItemsEqual([], flatten(()))
         self.assertItemsEqual([], flatten({}))
@@ -206,28 +206,28 @@ class TestFlatten(MAASTestCase):
         self.assertItemsEqual([], flatten(([], (), {}, set())))
         self.assertItemsEqual([], flatten(([[]], ((),))))
 
-    def test__flattens_list(self):
+    def test_flattens_list(self):
         self.assertItemsEqual([1, 2, 3, "abc"], flatten([1, 2, 3, "abc"]))
 
-    def test__flattens_nested_lists(self):
+    def test_flattens_nested_lists(self):
         self.assertItemsEqual([1, 2, 3, "abc"], flatten([[[1, 2, 3, "abc"]]]))
 
-    def test__flattens_arbitrarily_nested_lists(self):
+    def test_flattens_arbitrarily_nested_lists(self):
         self.assertItemsEqual(
             [1, "two", "three", 4, 5, 6],
             flatten([[1], ["two", "three"], [4], [5, 6]]),
         )
 
-    def test__flattens_other_iterables(self):
+    def test_flattens_other_iterables(self):
         self.assertItemsEqual(
             [1, 2, 3.3, 4, 5, 6], flatten([1, 2, {3.3, 4, (5, 6)}])
         )
 
-    def test__treats_string_like_objects_as_leaves(self):
+    def test_treats_string_like_objects_as_leaves(self):
         # Strings are iterable, but we know they cannot be flattened further.
         self.assertItemsEqual(["abcdef"], flatten("abcdef"))
 
-    def test__takes_star_args(self):
+    def test_takes_star_args(self):
         self.assertItemsEqual("abcdef", flatten("a", "b", "c", "d", "e", "f"))
 
 
@@ -343,23 +343,23 @@ class TestIsInstanceOrSubclass(MAASTestCase):
         ("types", {"foo": Foo, "bar": Bar, "baz": Baz}),
     )
 
-    def test__accepts_correct_type(self):
+    def test_accepts_correct_type(self):
         self.assertThat(is_instance_or_subclass(self.foo, Foo), Equals(True))
         self.assertThat(is_instance_or_subclass(self.bar, Bar), Equals(True))
         self.assertThat(is_instance_or_subclass(self.baz, Baz), Equals(True))
 
-    def test__returns_false_if_object_is_not_relevant(self):
+    def test_returns_false_if_object_is_not_relevant(self):
         self.assertThat(is_instance_or_subclass("Bar", Bar), Equals(False))
 
-    def test__accept_subclass(self):
+    def test_accept_subclass(self):
         self.assertThat(is_instance_or_subclass(self.baz, Bar), Equals(True))
 
-    def test__rejects_incorrect_type(self):
+    def test_rejects_incorrect_type(self):
         self.assertThat(is_instance_or_subclass(self.foo, Bar), Equals(False))
         self.assertThat(is_instance_or_subclass(self.bar, Baz), Equals(False))
         self.assertThat(is_instance_or_subclass(self.baz, Foo), Equals(False))
 
-    def test__accepts_tuple_or_list(self):
+    def test_accepts_tuple_or_list(self):
         self.assertThat(
             is_instance_or_subclass(self.foo, (Baz, Foo, Bar)), Equals(True)
         )
@@ -370,7 +370,7 @@ class TestIsInstanceOrSubclass(MAASTestCase):
             is_instance_or_subclass(self.baz, [Bar, Foo]), Equals(True)
         )
 
-    def test__accepts_variable_args(self):
+    def test_accepts_variable_args(self):
         self.assertThat(
             is_instance_or_subclass(self.foo, Baz, Foo, Bar), Equals(True)
         )
@@ -378,7 +378,7 @@ class TestIsInstanceOrSubclass(MAASTestCase):
             is_instance_or_subclass(self.foo, Baz, Bar), Equals(False)
         )
 
-    def test__accepts_non_flat_list(self):
+    def test_accepts_non_flat_list(self):
         self.assertThat(
             is_instance_or_subclass(self.foo, (Baz, (Bar, (Foo,)))),
             Equals(True),
@@ -409,23 +409,23 @@ class TestConvertSizeToBytes(MAASTestCase):
         ("zero", {"value": "0 TiB", "expected": 0}),
     )
 
-    def test__convert_size_to_bytes(self):
+    def test_convert_size_to_bytes(self):
         self.assertEqual(self.expected, convert_size_to_bytes(self.value))
 
 
 class TestConvertSizeToBytesErrors(MAASTestCase):
     """Error handling tests for `convert_size_to_bytes`."""
 
-    def test__unknown_capacity_unit(self):
+    def test_unknown_capacity_unit(self):
         error = self.assertRaises(
             UnknownCapacityUnitError, convert_size_to_bytes, "200 superbytes"
         )
         self.assertEqual("Unknown capacity unit 'superbytes'", str(error))
 
-    def test__empty_string(self):
+    def test_empty_string(self):
         self.assertRaises(ValueError, convert_size_to_bytes, "")
 
-    def test__empty_value(self):
+    def test_empty_value(self):
         self.assertRaises(ValueError, convert_size_to_bytes, " KiB")
 
 
@@ -442,7 +442,7 @@ class TestKernelToDebianArchitecture(MAASTestCase):
         ("mips64", {"kernel": "mips64", "debian": "mips64el/generic"}),
     )
 
-    def test__kernel_to_debian_architecture(self):
+    def test_kernel_to_debian_architecture(self):
         self.assertEquals(
             self.debian, kernel_to_debian_architecture(self.kernel)
         )
@@ -467,7 +467,7 @@ class TestDebianToKernalArchitecture(MAASTestCase):
         ),
     )
 
-    def test__kernel_to_debian_architecture(self):
+    def test_kernel_to_debian_architecture(self):
         self.assertEquals(
             self.kernel, debian_to_kernel_architecture(self.debian)
         )

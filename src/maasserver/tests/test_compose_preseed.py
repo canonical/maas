@@ -305,7 +305,7 @@ class TestAptProxy(MAASServerTestCase):
         ),
     )
 
-    def test__returns_correct_url(self):
+    def test_returns_correct_url(self):
         import maasserver.compose_preseed as cp_module
 
         # Disable boot source cache signals.

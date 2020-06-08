@@ -65,7 +65,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
         ("Bcache", {"model": Bcache, "type": FILESYSTEM_GROUP_TYPE.BCACHE}),
     )
 
-    def test__raises_Http404_when_invalid_node(self):
+    def test_raises_Http404_when_invalid_node(self):
         user = factory.make_admin()
         filesystem_group = factory.make_FilesystemGroup(group_type=self.type)
         self.assertRaises(
@@ -77,7 +77,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__raises_Http404_when_invalid_device(self):
+    def test_raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
         node = factory.make_Node()
         self.assertRaises(
@@ -89,7 +89,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__view_raises_PermissionDenied_when_user_not_owner(self):
+    def test_view_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         filesystem_group = factory.make_FilesystemGroup(
@@ -104,7 +104,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__view_returns_device_by_name(self):
+    def test_view_returns_device_by_name(self):
         user = factory.make_User()
         node = factory.make_Node()
         filesystem_group = factory.make_FilesystemGroup(
@@ -120,7 +120,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__view_returns_device_when_no_owner(self):
+    def test_view_returns_device_when_no_owner(self):
         user = factory.make_User()
         node = factory.make_Node()
         filesystem_group = factory.make_FilesystemGroup(
@@ -133,7 +133,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__view_returns_device_when_owner(self):
+    def test_view_returns_device_when_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         filesystem_group = factory.make_FilesystemGroup(
@@ -146,7 +146,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__edit_raises_PermissionDenied_when_user_not_owner(self):
+    def test_edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         filesystem_group = factory.make_FilesystemGroup(
@@ -161,7 +161,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__edit_returns_device_when_user_is_owner(self):
+    def test_edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         filesystem_group = factory.make_FilesystemGroup(
@@ -174,7 +174,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
+    def test_admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
         node = factory.make_Node()
         filesystem_group = factory.make_FilesystemGroup(
@@ -189,7 +189,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_returns_device_when_admin(self):
+    def test_admin_returns_device_when_admin(self):
         user = factory.make_admin()
         node = factory.make_Node()
         filesystem_group = factory.make_FilesystemGroup(
@@ -206,7 +206,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
 class TestManagersFilterByBlockDevice(MAASServerTestCase):
     """Tests for the managers `filter_by_block_device`."""
 
-    def test__volume_group_on_block_device(self):
+    def test_volume_group_on_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         filesystem = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device
@@ -224,7 +224,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__volume_group_on_partition(self):
+    def test_volume_group_on_partition(self):
         block_device = factory.make_PhysicalBlockDevice(size=10 * 1024 ** 3)
         partition_table = factory.make_PartitionTable(
             block_device=block_device
@@ -248,7 +248,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__volume_group_on_two_partitions(self):
+    def test_volume_group_on_two_partitions(self):
         block_device = factory.make_PhysicalBlockDevice()
         partition_table = factory.make_PartitionTable(
             block_device=block_device
@@ -275,7 +275,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__raid_on_block_devices(self):
+    def test_raid_on_block_devices(self):
         node = factory.make_Node()
         block_device_one = factory.make_PhysicalBlockDevice(node=node)
         filesystem_one = factory.make_Filesystem(
@@ -299,7 +299,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__raid_on_partitions(self):
+    def test_raid_on_partitions(self):
         block_device = factory.make_PhysicalBlockDevice()
         partition_table = factory.make_PartitionTable(
             block_device=block_device
@@ -324,7 +324,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__bcache_on_block_devices(self):
+    def test_bcache_on_block_devices(self):
         node = factory.make_Node()
         block_device_one = factory.make_PhysicalBlockDevice(node=node)
         cache_set = factory.make_CacheSet(block_device=block_device_one)
@@ -349,7 +349,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__bcache_on_partitions(self):
+    def test_bcache_on_partitions(self):
         device_size = random.randint(
             MIN_BLOCK_DEVICE_SIZE * 4, MIN_BLOCK_DEVICE_SIZE * 1024
         )
@@ -387,7 +387,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
 class TestManagersFilterByNode(MAASServerTestCase):
     """Tests for the managers `filter_by_node`."""
 
-    def test__volume_group_on_block_device(self):
+    def test_volume_group_on_block_device(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
@@ -404,7 +404,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__volume_group_on_partition(self):
+    def test_volume_group_on_partition(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -425,7 +425,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__volume_group_on_two_partitions(self):
+    def test_volume_group_on_two_partitions(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -451,7 +451,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__raid_on_block_devices(self):
+    def test_raid_on_block_devices(self):
         node = factory.make_Node()
         block_device_one = factory.make_PhysicalBlockDevice(node=node)
         filesystem_one = factory.make_Filesystem(
@@ -473,7 +473,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__raid_on_partitions(self):
+    def test_raid_on_partitions(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -499,7 +499,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__bcache_on_block_devices(self):
+    def test_bcache_on_block_devices(self):
         node = factory.make_Node()
         block_device_one = factory.make_PhysicalBlockDevice(node=node)
         cache_set = factory.make_CacheSet(block_device=block_device_one)
@@ -522,7 +522,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids
         )
 
-    def test__bcache_on_partitions(self):
+    def test_bcache_on_partitions(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -1746,7 +1746,7 @@ class TestFilesystemGroupGetNiceName(MAASServerTestCase):
         ),
     ]
 
-    def test__returns_prefix(self):
+    def test_returns_prefix(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=self.group_type
         )
@@ -1790,7 +1790,7 @@ class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
         ),
     ]
 
-    def test__returns_prefix(self):
+    def test_returns_prefix(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=self.group_type
         )
@@ -1833,7 +1833,7 @@ class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
         # above.
     ]
 
-    def test__returns_block_size(self):
+    def test_returns_block_size(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=self.group_type
         )

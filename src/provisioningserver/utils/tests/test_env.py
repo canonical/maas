@@ -24,13 +24,13 @@ class TestEnvironmentVariables(MAASTestCase):
     def make_variable(self):
         return factory.make_name("testvar"), factory.make_name("value")
 
-    def test__sets_variables(self):
+    def test_sets_variables(self):
         var, value = self.make_variable()
         with env.environment_variables({var: value}):
             environment = os.environ.copy()
         self.assertEqual(value, environment[var])
 
-    def test__overrides_prior_values(self):
+    def test_overrides_prior_values(self):
         var, prior_value = self.make_variable()
         temp_value = factory.make_name("temp-value")
         with env.environment_variables({var: prior_value}):
@@ -38,7 +38,7 @@ class TestEnvironmentVariables(MAASTestCase):
                 environment = os.environ.copy()
         self.assertEqual(temp_value, environment[var])
 
-    def test__leaves_other_variables_intact(self):
+    def test_leaves_other_variables_intact(self):
         untouched_var, untouched_value = self.make_variable()
         var, value = self.make_variable()
         with env.environment_variables({untouched_var: untouched_value}):
@@ -46,7 +46,7 @@ class TestEnvironmentVariables(MAASTestCase):
                 environment = os.environ.copy()
         self.assertEqual(untouched_value, environment[untouched_var])
 
-    def test__restores_variables_to_previous_values(self):
+    def test_restores_variables_to_previous_values(self):
         var, prior_value = self.make_variable()
         temp_value = factory.make_name("temp-value")
         with env.environment_variables({var: prior_value}):
@@ -55,14 +55,14 @@ class TestEnvironmentVariables(MAASTestCase):
             environment = os.environ.copy()
         self.assertEqual(prior_value, environment[var])
 
-    def test__restores_previously_unset_variables_to_being_unset(self):
+    def test_restores_previously_unset_variables_to_being_unset(self):
         var, value = self.make_variable()
         self.assertNotIn(var, os.environ)
         with env.environment_variables({var: value}):
             pass
         self.assertNotIn(var, os.environ)
 
-    def test__restores_even_after_exception(self):
+    def test_restores_even_after_exception(self):
         var, value = self.make_variable()
         self.assertNotIn(var, os.environ)
 

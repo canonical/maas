@@ -49,7 +49,7 @@ class TestEvents(MAASTestCase):
 class TestSendEventNode(MAASTestCase):
     """Tests for `send_node_event`."""
 
-    def test__calls_singleton_hub_logByID_directly(self):
+    def test_calls_singleton_hub_logByID_directly(self):
         self.patch(nodeEventHub, "logByID").return_value = sentinel.d
         result = send_node_event(
             sentinel.event_type,
@@ -69,7 +69,7 @@ class TestSendEventNode(MAASTestCase):
 class TestSendEventNodeMACAddress(MAASTestCase):
     """Tests for `send_node_event_mac_address`."""
 
-    def test__calls_singleton_hub_logByMAC_directly(self):
+    def test_calls_singleton_hub_logByMAC_directly(self):
         self.patch(nodeEventHub, "logByMAC").return_value = sentinel.d
         result = send_node_event_mac_address(
             sentinel.event_type, sentinel.mac_address, sentinel.description
@@ -86,7 +86,7 @@ class TestSendEventNodeMACAddress(MAASTestCase):
 class TestSendEventNodeIPAddress(MAASTestCase):
     """Tests for `send_node_event_mac_address`."""
 
-    def test__calls_singleton_hub_logByIP_directly(self):
+    def test_calls_singleton_hub_logByIP_directly(self):
         self.patch(nodeEventHub, "logByIP").return_value = sentinel.d
         result = send_node_event_ip_address(
             sentinel.event_type, sentinel.ip_address, sentinel.description
@@ -103,7 +103,7 @@ class TestSendEventNodeIPAddress(MAASTestCase):
 class TestSendRackEvent(MAASTestCase):
     """Tests for `send_rack_event`."""
 
-    def test__calls_singleton_hub_logByID_directly(self):
+    def test_calls_singleton_hub_logByID_directly(self):
         self.patch(nodeEventHub, "logByID").return_value = sentinel.d
         rack_system_id = factory.make_name("system_id")
         self.useFixture(MAASIDFixture(rack_system_id))
@@ -131,7 +131,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
         return protocol, connecting
 
     @inlineCallbacks
-    def test__event_is_sent_to_region(self):
+    def test_event_is_sent_to_region(self):
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
@@ -152,7 +152,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__event_type_is_registered_on_first_call_only(self):
+    def test_event_type_is_registered_on_first_call_only(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[succeed({}), succeed({})]
         )
@@ -189,7 +189,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
         self.assertThat(protocol.SendEvent, MockCalledOnce())
 
     @inlineCallbacks
-    def test__updates_cache_if_event_type_not_found(self):
+    def test_updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[succeed({}), fail(NoSuchEventType())]
         )
@@ -225,7 +225,7 @@ class TestSendEventMACAddress(MAASTestCase):
         return protocol, connecting
 
     @inlineCallbacks
-    def test__event_is_sent_to_region(self):
+    def test_event_is_sent_to_region(self):
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
@@ -246,7 +246,7 @@ class TestSendEventMACAddress(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__failure_is_suppressed_if_node_not_found(self):
+    def test_failure_is_suppressed_if_node_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[fail(NoSuchNode())]
         )
@@ -269,7 +269,7 @@ class TestSendEventMACAddress(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__event_type_is_registered_on_first_call_only(self):
+    def test_event_type_is_registered_on_first_call_only(self):
         protocol, connecting = self.patch_rpc_methods(side_effect=[{}, {}])
         self.addCleanup((yield connecting))
 
@@ -304,7 +304,7 @@ class TestSendEventMACAddress(MAASTestCase):
         self.assertThat(protocol.SendEventMACAddress, MockCalledOnce())
 
     @inlineCallbacks
-    def test__updates_cache_if_event_type_not_found(self):
+    def test_updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[succeed({}), fail(NoSuchEventType())]
         )
@@ -340,7 +340,7 @@ class TestSendEventIPAddress(MAASTestCase):
         return protocol, connecting
 
     @inlineCallbacks
-    def test__event_is_sent_to_region(self):
+    def test_event_is_sent_to_region(self):
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
@@ -361,7 +361,7 @@ class TestSendEventIPAddress(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__failure_is_suppressed_if_node_not_found(self):
+    def test_failure_is_suppressed_if_node_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[fail(NoSuchNode())]
         )
@@ -384,7 +384,7 @@ class TestSendEventIPAddress(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__event_type_is_registered_on_first_call_only(self):
+    def test_event_type_is_registered_on_first_call_only(self):
         protocol, connecting = self.patch_rpc_methods(side_effect=[{}, {}])
         self.addCleanup((yield connecting))
 
@@ -419,7 +419,7 @@ class TestSendEventIPAddress(MAASTestCase):
         self.assertThat(protocol.SendEventIPAddress, MockCalledOnce())
 
     @inlineCallbacks
-    def test__updates_cache_if_event_type_not_found(self):
+    def test_updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[succeed({}), fail(NoSuchEventType())]
         )

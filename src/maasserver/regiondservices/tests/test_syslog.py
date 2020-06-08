@@ -100,7 +100,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryUpdate_updates_syslog_server(self):
+    def test_tryUpdate_updates_syslog_server(self):
         service = syslog.RegionSyslogService(reactor)
         port, peers = yield deferToDatabase(self.make_example_configuration)
         write_config = self.patch_autospec(syslog, "write_config")
@@ -144,7 +144,7 @@ class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryUpdate_logs_errors_from_broken_method(self):
+    def test_tryUpdate_logs_errors_from_broken_method(self):
         service = syslog.RegionSyslogService(reactor)
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
@@ -174,7 +174,7 @@ class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):
 class TestRegionSyslogService_Database(MAASServerTestCase):
     """Database tests for `RegionSyslogService`."""
 
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         service = syslog.RegionSyslogService(reactor)
 
         # Put all addresses in the same space so they're mutually routable.

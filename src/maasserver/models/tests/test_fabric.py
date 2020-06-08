@@ -18,7 +18,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestFabricManagerGetFabricOr404(MAASServerTestCase):
-    def test__user_view_returns_fabric(self):
+    def test_user_view_returns_fabric(self):
         user = factory.make_User()
         fabric = factory.make_Fabric()
         self.assertEqual(
@@ -28,7 +28,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         fabric = factory.make_Fabric()
         self.assertRaises(
@@ -39,7 +39,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         fabric = factory.make_Fabric()
         self.assertRaises(
@@ -50,7 +50,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_view_returns_fabric(self):
+    def test_admin_view_returns_fabric(self):
         admin = factory.make_admin()
         fabric = factory.make_Fabric()
         self.assertEqual(
@@ -60,7 +60,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_fabric(self):
+    def test_admin_edit_returns_fabric(self):
         admin = factory.make_admin()
         fabric = factory.make_Fabric()
         self.assertEqual(
@@ -70,7 +70,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_fabric(self):
+    def test_admin_admin_returns_fabric(self):
         admin = factory.make_admin()
         fabric = factory.make_Fabric()
         self.assertEqual(
@@ -82,7 +82,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
 
 
 class TestFabricManager(MAASServerTestCase):
-    def test__default_specifier_matches_id(self):
+    def test_default_specifier_matches_id(self):
         factory.make_Fabric()
         fabric = factory.make_Fabric()
         factory.make_Fabric()
@@ -91,7 +91,7 @@ class TestFabricManager(MAASServerTestCase):
             Fabric.objects.filter_by_specifiers("%s" % id), [fabric]
         )
 
-    def test__default_specifier_matches_name_with_id(self):
+    def test_default_specifier_matches_name_with_id(self):
         factory.make_Fabric()
         fabric = factory.make_Fabric()
         factory.make_Fabric()
@@ -100,7 +100,7 @@ class TestFabricManager(MAASServerTestCase):
             Fabric.objects.filter_by_specifiers("fabric-%s" % id), [fabric]
         )
 
-    def test__default_specifier_matches_name(self):
+    def test_default_specifier_matches_name(self):
         factory.make_Fabric()
         fabric = factory.make_Fabric(name="infinite-improbability")
         factory.make_Fabric()
@@ -109,7 +109,7 @@ class TestFabricManager(MAASServerTestCase):
             [fabric],
         )
 
-    def test__name_specifier_matches_name(self):
+    def test_name_specifier_matches_name(self):
         factory.make_Fabric()
         fabric = factory.make_Fabric(name="infinite-improbability")
         factory.make_Fabric()
@@ -118,7 +118,7 @@ class TestFabricManager(MAASServerTestCase):
             [fabric],
         )
 
-    def test__class_specifier_matches_class(self):
+    def test_class_specifier_matches_class(self):
         factory.make_Fabric(class_type="1 Gbps")
         fabric = factory.make_Fabric(class_type="400 Tbps")
         factory.make_Fabric(class_type="10 Gbps")

@@ -199,7 +199,7 @@ class TestServiceMonitorService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__buildServices_includes_always_running_services(self):
+    def test_buildServices_includes_always_running_services(self):
         monitor_service = sms.ServiceMonitorService(
             sentinel.client_service, Clock()
         )
@@ -209,7 +209,7 @@ class TestServiceMonitorService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__buildServices_adds_services_to_always_running_services(self):
+    def test_buildServices_adds_services_to_always_running_services(self):
         monitor_service = sms.ServiceMonitorService(
             sentinel.client_service, Clock()
         )

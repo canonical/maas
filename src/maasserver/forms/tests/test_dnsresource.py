@@ -15,7 +15,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDNSResourceForm(MAASServerTestCase):
-    def test__creates_dnsresource(self):
+    def test_creates_dnsresource(self):
         name = factory.make_name("dnsresource")
         sip = factory.make_StaticIPAddress()
         domain = factory.make_Domain()
@@ -31,7 +31,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(sip.id, dnsresource.ip_addresses.first().id)
 
-    def test__accepts_string_for_ip_addresses(self):
+    def test_accepts_string_for_ip_addresses(self):
         name = factory.make_name("dnsresource")
         sip = factory.make_StaticIPAddress()
         domain = factory.make_Domain()
@@ -44,7 +44,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(sip.id, dnsresource.ip_addresses.first().id)
 
-    def test__creates_staticipaddresses(self):
+    def test_creates_staticipaddresses(self):
         name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         ips = [factory.make_ip_address() for _ in range(3)]
@@ -64,7 +64,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         actual_users = {ip.user_id for ip in actual_ips}
         self.assertItemsEqual({request.user.id}, actual_users)
 
-    def test__accepts_mix_of_id_and_ipaddress(self):
+    def test_accepts_mix_of_id_and_ipaddress(self):
         name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         ips = [factory.make_StaticIPAddress() for _ in range(6)]
@@ -125,12 +125,12 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(None, dnsresource.address_ttl)
 
-    def test__doesnt_require_name_on_update(self):
+    def test_doesnt_require_name_on_update(self):
         dnsresource = factory.make_DNSResource()
         form = DNSResourceForm(instance=dnsresource, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_dnsresource(self):
+    def test_updates_dnsresource(self):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("new")
         new_sip_ids = [factory.make_StaticIPAddress().id]
@@ -152,7 +152,7 @@ class TestDNSResourceForm(MAASServerTestCase):
             [ip.id for ip in reload_object(dnsresource).ip_addresses.all()],
         )
 
-    def test__update_allows_multiple_ips(self):
+    def test_update_allows_multiple_ips(self):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("new")
         new_sip_ids = [factory.make_StaticIPAddress().id for _ in range(3)]

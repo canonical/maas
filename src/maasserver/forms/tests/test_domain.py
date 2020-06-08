@@ -14,7 +14,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDomainForm(MAASServerTestCase):
-    def test__creates_domain(self):
+    def test_creates_domain(self):
         domain_name = factory.make_name("domain")
         domain_authoritative = factory.pick_bool()
         ttl = random.randint(1, 604800)
@@ -31,12 +31,12 @@ class TestDomainForm(MAASServerTestCase):
         self.assertEqual(domain_authoritative, domain.authoritative)
         self.assertEqual(ttl, domain.ttl)
 
-    def test__doest_require_name_on_update(self):
+    def test_doest_require_name_on_update(self):
         domain = factory.make_Domain()
         form = DomainForm(instance=domain, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_domain(self):
+    def test_updates_domain(self):
         new_name = factory.make_name("domain")
         old_authoritative = factory.pick_bool()
         domain = factory.make_Domain(authoritative=old_authoritative)

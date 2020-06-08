@@ -204,7 +204,7 @@ class TestChangePowerState(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test___handles_power_driver_power_types(self):
+    def test_handles_power_driver_power_types(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_driver = random.choice(
@@ -249,7 +249,7 @@ class TestChangePowerState(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__return_none_when_unqueryable(self):
+    def test_return_none_when_unqueryable(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_driver = random.choice(
@@ -284,7 +284,7 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(result, Equals(None))
 
     @inlineCallbacks
-    def test__calls_power_driver_on_for_power_driver(self):
+    def test_calls_power_driver_on_for_power_driver(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_driver = random.choice(
@@ -321,7 +321,7 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(result, Equals("on"))
 
     @inlineCallbacks
-    def test__calls_power_driver_off_for_power_driver(self):
+    def test_calls_power_driver_off_for_power_driver(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_driver = random.choice(
@@ -358,7 +358,7 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(result, Equals("off"))
 
     @inlineCallbacks
-    def test__calls_power_driver_cycle_for_power_driver(self):
+    def test_calls_power_driver_cycle_for_power_driver(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_driver = random.choice(
@@ -395,7 +395,7 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(result, Equals("on"))
 
     @inlineCallbacks
-    def test__marks_the_node_broken_if_exception_for_power_driver(self):
+    def test_marks_the_node_broken_if_exception_for_power_driver(self):
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
         power_driver = random.choice(
@@ -712,7 +712,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__calls_change_power_state_with_timeout(self):
+    def test_calls_change_power_state_with_timeout(self):
         self.patch_methods_using_rpc()
         defer_with_timeout = self.patch(power, "deferWithTimeout")
 

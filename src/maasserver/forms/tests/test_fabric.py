@@ -12,7 +12,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestFabricForm(MAASServerTestCase):
-    def test__creates_fabric(self):
+    def test_creates_fabric(self):
         fabric_name = factory.make_name("fabric")
         fabric_description = factory.make_name("description")
         fabric_class_type = factory.make_name("class_type")
@@ -29,12 +29,12 @@ class TestFabricForm(MAASServerTestCase):
         self.assertEqual(fabric_description, fabric.description)
         self.assertEqual(fabric_class_type, fabric.class_type)
 
-    def test__doest_require_name_on_update(self):
+    def test_doest_require_name_on_update(self):
         fabric = factory.make_Fabric()
         form = FabricForm(instance=fabric, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_fabric(self):
+    def test_updates_fabric(self):
         new_name = factory.make_name("fabric")
         new_fabric_description = factory.make_name("description")
         new_class_type = factory.make_name("class_type")

@@ -106,11 +106,11 @@ class TestAsynchronousDecorator(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__calls_in_current_thread_when_current_thread_is_reactor(self):
+    def test_calls_in_current_thread_when_current_thread_is_reactor(self):
         result = asynchronous(return_args)(1, 2, three=3)
         self.assertEqual(((1, 2), {"three": 3}), result)
 
-    def test__calls_in_current_thread_when_io_thread_is_not_set(self):
+    def test_calls_in_current_thread_when_io_thread_is_not_set(self):
         # Patch ioThread such that isInIOThread() returns False. It will
         # return False for every thread too, so asynchronous() explicitly
         # checks ioThread. It can be unset as twistd starts an application, so
@@ -121,7 +121,7 @@ class TestAsynchronousDecorator(MAASTestCase):
         self.assertEqual(((1, 2), {"three": 3}), result)
 
     @inlineCallbacks
-    def test__calls_into_reactor_when_current_thread_is_not_reactor(self):
+    def test_calls_into_reactor_when_current_thread_is_not_reactor(self):
         def do_stuff_in_thread():
             result = asynchronous(return_args)(3, 4, five=5)
             self.assertThat(result, IsInstance(EventualResult))
@@ -134,7 +134,7 @@ class TestAsynchronousDecorator(MAASTestCase):
         # do_stuff_in_thread().
         self.assertEqual(((3, 4), {"five": 5}), result)
 
-    def test__provides_marker_interface(self):
+    def test_provides_marker_interface(self):
         self.assertThat(return_args, Not(Provides(IAsynchronous)))
         self.assertThat(asynchronous(return_args), Provides(IAsynchronous))
 
@@ -189,7 +189,7 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
         self.assertEqual(((3, 4), {"five": 5}), result)
 
     @inlineCallbacks
-    def test__passes_timeout_to_wait(self):
+    def test_passes_timeout_to_wait(self):
         # These mocks are going to help us tell a story of a timeout.
         run_in_reactor = self.patch(twisted_module, "run_in_reactor")
         func_in_reactor = run_in_reactor.return_value
@@ -258,7 +258,7 @@ class TestSynchronousDecorator(MAASTestCase):
         self.patch(reactor, "running", False)
         self.assertEqual(((3, 4), {"five": 5}), self.return_args(3, 4, five=5))
 
-    def test__provides_marker_interface(self):
+    def test_provides_marker_interface(self):
         self.assertThat(return_args, Not(Provides(ISynchronous)))
         self.assertThat(synchronous(return_args), Provides(ISynchronous))
 
@@ -266,7 +266,7 @@ class TestSynchronousDecorator(MAASTestCase):
 class TestSynchronousDecoratorSychronously(MAASTestCase):
     """Test `synchronous` outside of the reactor thread."""
 
-    def test__raises_TypeError_when_call_returns_Deferred(self):
+    def test_raises_TypeError_when_call_returns_Deferred(self):
         @synchronous
         def deferSomething(*args, **kwargs):
             return Deferred()
@@ -281,7 +281,7 @@ class TestSynchronousDecoratorSychronously(MAASTestCase):
             ),
         )
 
-    def test__raises_TypeError_when_callable_returns_Deferred(self):
+    def test_raises_TypeError_when_callable_returns_Deferred(self):
         class Something:
             def __call__(self, *args, **kwargs):
                 return Deferred()
@@ -301,17 +301,17 @@ class TestSynchronousDecoratorSychronously(MAASTestCase):
 class TestSuppress(MAASTestCase):
     """Tests for `suppress`."""
 
-    def test__suppresses_given_exception(self):
+    def test_suppresses_given_exception(self):
         error_type = factory.make_exception_type()
         failure = Failure(error_type())
         self.assertThat(suppress(failure, error_type), Is(None))
 
-    def test__does_not_suppress_other_exceptions(self):
+    def test_does_not_suppress_other_exceptions(self):
         error_type = factory.make_exception_type()
         failure = Failure(factory.make_exception())
         self.assertThat(suppress(failure, error_type), Is(failure))
 
-    def test__returns_instead_value_when_suppressing(self):
+    def test_returns_instead_value_when_suppressing(self):
         error_type = factory.make_exception_type()
         failure = Failure(error_type())
         self.assertThat(
@@ -546,7 +546,7 @@ DelayedCallCalled = MatchesStructure(
 
 
 class TestDeferWithTimeout(MAASTestCase):
-    def test__returns_Deferred_that_will_be_cancelled_after_timeout(self):
+    def test_returns_Deferred_that_will_be_cancelled_after_timeout(self):
         clock = self.patch(internet, "reactor", Clock())
 
         # Called with only a timeout, `deferWithTimeout` returns a Deferred.
@@ -573,7 +573,7 @@ class TestDeferWithTimeout(MAASTestCase):
         self.assertThat(delayed_call, DelayedCallCalled)
         self.assertRaises(CancelledError, extract_result, d)
 
-    def test__returns_Deferred_that_wont_be_cancelled_if_called(self):
+    def test_returns_Deferred_that_wont_be_cancelled_if_called(self):
         clock = self.patch(internet, "reactor", Clock())
 
         # Called without a function argument, `deferWithTimeout` returns a new
@@ -593,7 +593,7 @@ class TestDeferWithTimeout(MAASTestCase):
         # The result has been safely passed on.
         self.assertThat(extract_result(d), Is(sentinel.result))
 
-    def test__returns_Deferred_that_wont_be_cancelled_if_errored(self):
+    def test_returns_Deferred_that_wont_be_cancelled_if_errored(self):
         clock = self.patch(internet, "reactor", Clock())
 
         # Called without a function argument, `deferWithTimeout` returns a new
@@ -615,7 +615,7 @@ class TestDeferWithTimeout(MAASTestCase):
         # The error has been passed safely on.
         self.assertRaises(RuntimeError, extract_result, d)
 
-    def test__calls_given_function(self):
+    def test_calls_given_function(self):
         clock = self.patch(internet, "reactor", Clock())
 
         class OurDeferred(Deferred):
@@ -647,7 +647,7 @@ class TestDeferWithTimeout(MAASTestCase):
         self.assertThat(delayed_call, DelayedCallCalled)
         self.assertRaises(CancelledError, extract_result, d)
 
-    def test__calls_given_function_and_always_returns_Deferred(self):
+    def test_calls_given_function_and_always_returns_Deferred(self):
         clock = self.patch(internet, "reactor", Clock())
 
         def do_something(a, *b, **c):
@@ -673,14 +673,14 @@ class TestDeferWithTimeout(MAASTestCase):
 class TestCall(MAASTestCase):
     """Tests for `call`."""
 
-    def test__without_arguments(self):
+    def test_without_arguments(self):
         func = Mock(return_value=sentinel.something)
         # The result going in is discarded; func's result is passed on.
         d = call(sentinel.result, func)
         self.assertThat(extract_result(d), Is(sentinel.something))
         self.assertThat(func, MockCalledOnceWith())
 
-    def test__with_arguments(self):
+    def test_with_arguments(self):
         func = Mock(return_value=sentinel.something)
         # The result going in is discarded; func's result is passed on.
         d = call(sentinel.r, func, sentinel.a, sentinel.b, c=sentinel.c)
@@ -689,7 +689,7 @@ class TestCall(MAASTestCase):
             func, MockCalledOnceWith(sentinel.a, sentinel.b, c=sentinel.c)
         )
 
-    def test__does_not_suppress_errors(self):
+    def test_does_not_suppress_errors(self):
         d = call(sentinel.result, operator.truediv, 0, 0)
         self.assertRaises(ZeroDivisionError, extract_result, d)
 
@@ -697,14 +697,14 @@ class TestCall(MAASTestCase):
 class TestCallOut(MAASTestCase):
     """Tests for `callOut`."""
 
-    def test__without_arguments(self):
+    def test_without_arguments(self):
         func = Mock()
         # The result is passed through untouched.
         d = callOut(sentinel.result, func)
         self.assertThat(extract_result(d), Is(sentinel.result))
         self.assertThat(func, MockCalledOnceWith())
 
-    def test__with_arguments(self):
+    def test_with_arguments(self):
         func = Mock()
         # The result is passed through untouched.
         d = callOut(sentinel.r, func, sentinel.a, sentinel.b, c=sentinel.c)
@@ -713,7 +713,7 @@ class TestCallOut(MAASTestCase):
             func, MockCalledOnceWith(sentinel.a, sentinel.b, c=sentinel.c)
         )
 
-    def test__does_not_suppress_errors(self):
+    def test_does_not_suppress_errors(self):
         d = callOut(sentinel.result, operator.truediv, 0, 0)
         self.assertRaises(ZeroDivisionError, extract_result, d)
 
@@ -724,7 +724,7 @@ class TestCallOutToThread(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
-    def test__without_arguments(self):
+    def test_without_arguments(self):
         func = Mock()
         # The result is passed through untouched.
         result = yield callOutToThread(sentinel.result, func)
@@ -732,7 +732,7 @@ class TestCallOutToThread(MAASTestCase):
         self.assertThat(func, MockCalledOnceWith())
 
     @inlineCallbacks
-    def test__with_arguments(self):
+    def test_with_arguments(self):
         func = Mock()
         # The result is passed through untouched.
         result = yield callOutToThread(
@@ -744,12 +744,12 @@ class TestCallOutToThread(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__does_not_suppress_errors(self):
+    def test_does_not_suppress_errors(self):
         with ExpectedException(ZeroDivisionError):
             yield callOutToThread(sentinel.result, operator.truediv, 0, 0)
 
     @inlineCallbacks
-    def test__defers_to_thread(self):
+    def test_defers_to_thread(self):
         threads = {threading.currentThread()}
 
         def captureThread():
@@ -767,27 +767,27 @@ class TestCallInReactor(MAASTestCase):
     def returnThreadIdent(self, *_, **__):
         return threading.get_ident()
 
-    def test__without_arguments_from_reactor(self):
+    def test_without_arguments_from_reactor(self):
         func = Mock(side_effect=self.returnThreadIdent)
         result = callInReactor(func)
         self.assertThat(result, Equals(threading.get_ident()))
         self.assertThat(func, MockCalledOnceWith())
 
     @inlineCallbacks
-    def test__without_arguments_from_thread(self):
+    def test_without_arguments_from_thread(self):
         func = Mock(side_effect=self.returnThreadIdent)
         result = yield deferToNewThread(callInReactor, func)
         self.assertThat(result, Equals(threading.get_ident()))
         self.assertThat(func, MockCalledOnceWith())
 
-    def test__with_arguments_in_reactor(self):
+    def test_with_arguments_in_reactor(self):
         func = Mock(side_effect=self.returnThreadIdent)
         result = callInReactor(func, sentinel.a, b=sentinel.b)
         self.assertThat(result, Equals(threading.get_ident()))
         self.assertThat(func, MockCalledOnceWith(sentinel.a, b=sentinel.b))
 
     @inlineCallbacks
-    def test__with_arguments_in_thread(self):
+    def test_with_arguments_in_thread(self):
         func = Mock(side_effect=self.returnThreadIdent)
         result = yield deferToNewThread(
             callInReactor, func, sentinel.a, b=sentinel.b
@@ -801,12 +801,12 @@ class TestCallInReactorErrors(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__propagates_exceptions_in_reactor(self):
+    def test_propagates_exceptions_in_reactor(self):
         with ExpectedException(ZeroDivisionError):
             callInReactor(operator.truediv, 0, 0)
 
     @inlineCallbacks
-    def test__propagates_exceptions_in_thread(self):
+    def test_propagates_exceptions_in_thread(self):
         with ExpectedException(ZeroDivisionError):
             yield deferToNewThread(callInReactor, operator.truediv, 0, 0)
 
@@ -824,7 +824,7 @@ class TestCallInReactorWithTimeout(MAASTestCase):
     def returnThreadIdent(self, *_, **__):
         return threading.get_ident()
 
-    def test__without_arguments_from_reactor(self):
+    def test_without_arguments_from_reactor(self):
         result = callInReactorWithTimeout(sentinel.timeout, sentinel.func)
         self.assertThat(result, Equals(threading.get_ident()))
         self.assertThat(
@@ -833,7 +833,7 @@ class TestCallInReactorWithTimeout(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__without_arguments_from_thread(self):
+    def test_without_arguments_from_thread(self):
         result = yield deferToNewThread(
             callInReactorWithTimeout, sentinel.timeout, sentinel.func
         )
@@ -843,7 +843,7 @@ class TestCallInReactorWithTimeout(MAASTestCase):
             MockCalledOnceWith(sentinel.timeout, sentinel.func),
         )
 
-    def test__with_arguments_in_reactor(self):
+    def test_with_arguments_in_reactor(self):
         result = callInReactorWithTimeout(
             sentinel.timeout, sentinel.func, sentinel.a, b=sentinel.b
         )
@@ -856,7 +856,7 @@ class TestCallInReactorWithTimeout(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__with_arguments_in_thread(self):
+    def test_with_arguments_in_thread(self):
         result = yield deferToNewThread(
             callInReactorWithTimeout,
             sentinel.timeout,
@@ -879,12 +879,12 @@ class TestCallInReactorWithTimeoutErrors(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
-    def test__propagates_exceptions_in_reactor(self):
+    def test_propagates_exceptions_in_reactor(self):
         with ExpectedException(ZeroDivisionError):
             yield callInReactorWithTimeout(5.0, operator.truediv, 0, 0)
 
     @inlineCallbacks
-    def test__propagates_exceptions_in_thread(self):
+    def test_propagates_exceptions_in_thread(self):
         with ExpectedException(ZeroDivisionError):
             yield deferToNewThread(
                 callInReactorWithTimeout, 5.0, operator.truediv, 0, 0
@@ -894,7 +894,7 @@ class TestCallInReactorWithTimeoutErrors(MAASTestCase):
 class TestDeferredValue(MAASTestCase):
     """Tests for `DeferredValue`."""
 
-    def test__create(self):
+    def test_create(self):
         dvalue = DeferredValue()
         self.assertThat(
             dvalue,
@@ -903,11 +903,11 @@ class TestDeferredValue(MAASTestCase):
             ),
         )
 
-    def test__get_returns_a_Deferred(self):
+    def test_get_returns_a_Deferred(self):
         dvalue = DeferredValue()
         self.assertThat(dvalue.get(), IsInstance(Deferred))
 
-    def test__get_returns_a_Deferred_with_a_timeout(self):
+    def test_get_returns_a_Deferred_with_a_timeout(self):
         clock = self.patch(internet, "reactor", Clock())
         dvalue = DeferredValue()
         waiter = dvalue.get(10)
@@ -917,7 +917,7 @@ class TestDeferredValue(MAASTestCase):
         clock.advance(1)
         self.assertRaises(CancelledError, extract_result, waiter)
 
-    def test__set_notifies_all_waiters(self):
+    def test_set_notifies_all_waiters(self):
         dvalue = DeferredValue()
         waiter1 = dvalue.get()
         waiter2 = dvalue.get()
@@ -925,7 +925,7 @@ class TestDeferredValue(MAASTestCase):
         self.expectThat(extract_result(waiter1), Is(sentinel.value))
         self.expectThat(extract_result(waiter2), Is(sentinel.value))
 
-    def test__set_notifies_all_waiters_that_have_not_timed_out(self):
+    def test_set_notifies_all_waiters_that_have_not_timed_out(self):
         clock = self.patch(internet, "reactor", Clock())
         dvalue = DeferredValue()
         waiter0 = dvalue.get()
@@ -937,7 +937,7 @@ class TestDeferredValue(MAASTestCase):
         self.expectThat(extract_result(waiter2), Is(sentinel.value))
         self.assertRaises(CancelledError, extract_result, waiter1)
 
-    def test__set_clears_and_cancels_capturing(self):
+    def test_set_clears_and_cancels_capturing(self):
         dvalue = DeferredValue()
         source = Deferred()
         dvalue.capturing = source
@@ -945,7 +945,7 @@ class TestDeferredValue(MAASTestCase):
         self.assertIsNone(dvalue.capturing)
         self.assertRaises(CancelledError, extract_result, source)
 
-    def test__set_clears_observing(self):
+    def test_set_clears_observing(self):
         dvalue = DeferredValue()
         source = Deferred()
         dvalue.observing = source
@@ -953,25 +953,25 @@ class TestDeferredValue(MAASTestCase):
         self.assertIsNone(dvalue.observing)
         self.assertFalse(source.called)
 
-    def test__get_after_set_returns_the_value(self):
+    def test_get_after_set_returns_the_value(self):
         dvalue = DeferredValue()
         dvalue.set(sentinel.value)
         waiter = dvalue.get()
         self.expectThat(extract_result(waiter), Is(sentinel.value))
 
-    def test__get_can_be_cancelled(self):
+    def test_get_can_be_cancelled(self):
         dvalue = DeferredValue()
         waiter = dvalue.get()
         waiter.cancel()
         self.assertRaises(CancelledError, extract_result, waiter)
         self.assertEqual(set(), dvalue.waiters)
 
-    def test__set_can_only_be_called_once(self):
+    def test_set_can_only_be_called_once(self):
         dvalue = DeferredValue()
         dvalue.set(sentinel.value)
         self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.foobar)
 
-    def test__cancel_stops_everything(self):
+    def test_cancel_stops_everything(self):
         dvalue = DeferredValue()
         waiter = dvalue.get()
         dvalue.cancel()
@@ -979,20 +979,20 @@ class TestDeferredValue(MAASTestCase):
         self.assertRaises(CancelledError, extract_result, dvalue.get())
         self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.value)
 
-    def test__cancel_can_be_called_multiple_times(self):
+    def test_cancel_can_be_called_multiple_times(self):
         dvalue = DeferredValue()
         dvalue.cancel()
         self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.value)
         dvalue.cancel()
         self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.value)
 
-    def test__cancel_does_nothing_if_value_already_set(self):
+    def test_cancel_does_nothing_if_value_already_set(self):
         dvalue = DeferredValue()
         dvalue.set(sentinel.value)
         dvalue.cancel()
         self.assertEqual(sentinel.value, extract_result(dvalue.get()))
 
-    def test__cancel_clears_and_cancels_capturing(self):
+    def test_cancel_clears_and_cancels_capturing(self):
         dvalue = DeferredValue()
         source = Deferred()
         dvalue.capturing = source
@@ -1000,7 +1000,7 @@ class TestDeferredValue(MAASTestCase):
         self.assertIsNone(dvalue.capturing)
         self.assertRaises(CancelledError, extract_result, source)
 
-    def test__cancel_clears_observing(self):
+    def test_cancel_clears_observing(self):
         dvalue = DeferredValue()
         source = Deferred()
         dvalue.observing = source
@@ -1008,25 +1008,25 @@ class TestDeferredValue(MAASTestCase):
         self.assertIsNone(dvalue.observing)
         self.assertFalse(source.called)
 
-    def test__set_exception_results_in_a_callback(self):
+    def test_set_exception_results_in_a_callback(self):
         exception = factory.make_exception()
         dvalue = DeferredValue()
         dvalue.set(exception)
         self.assertIs(exception, dvalue.value)
 
-    def test__set_failure_results_in_an_errback(self):
+    def test_set_failure_results_in_an_errback(self):
         exception_type = factory.make_exception_type()
         dvalue = DeferredValue()
         dvalue.set(Failure(exception_type()))
         self.assertRaises(exception_type, extract_result, dvalue.get())
 
-    def test__fail_results_in_an_errback(self):
+    def test_fail_results_in_an_errback(self):
         exception_type = factory.make_exception_type()
         dvalue = DeferredValue()
         dvalue.fail(exception_type())
         self.assertRaises(exception_type, extract_result, dvalue.get())
 
-    def test__fail_None_results_in_an_errback_with_current_exception(self):
+    def test_fail_None_results_in_an_errback_with_current_exception(self):
         exception_type = factory.make_exception_type()
         dvalue = DeferredValue()
         try:
@@ -1035,17 +1035,17 @@ class TestDeferredValue(MAASTestCase):
             dvalue.fail()
         self.assertRaises(exception_type, extract_result, dvalue.get())
 
-    def test__fail_can_only_be_called_once(self):
+    def test_fail_can_only_be_called_once(self):
         exception = factory.make_exception()
         dvalue = DeferredValue()
         dvalue.fail(exception)
         self.assertRaises(AlreadyCalledError, dvalue.fail, exception)
 
-    def test__value_is_not_available_until_set(self):
+    def test_value_is_not_available_until_set(self):
         dvalue = DeferredValue()
         self.assertRaises(AttributeError, lambda: dvalue.value)
 
-    def test__capture_captures_callback(self):
+    def test_capture_captures_callback(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.capture(d)
@@ -1055,7 +1055,7 @@ class TestDeferredValue(MAASTestCase):
         self.assertEqual(sentinel.result, extract_result(waiter))
         self.assertIsNone(extract_result(d))
 
-    def test__capture_captures_errback(self):
+    def test_capture_captures_errback(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.capture(d)
@@ -1066,13 +1066,13 @@ class TestDeferredValue(MAASTestCase):
         self.assertRaises(type(exception), extract_result, waiter)
         self.assertIsNone(extract_result(d))
 
-    def test__capture_records_source_as_capturing_attribute(self):
+    def test_capture_records_source_as_capturing_attribute(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.capture(d)
         self.assertIs(d, dvalue.capturing)
 
-    def test__capture_can_only_be_called_once(self):
+    def test_capture_can_only_be_called_once(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.capture(d)
@@ -1080,12 +1080,12 @@ class TestDeferredValue(MAASTestCase):
         # It's not possible to call observe() once capture() has been called.
         self.assertRaises(AlreadyCalledError, dvalue.observe, d)
 
-    def test__capture_cannot_be_called_once_value_is_set(self):
+    def test_capture_cannot_be_called_once_value_is_set(self):
         dvalue = DeferredValue()
         dvalue.set(sentinel.value)
         self.assertRaises(AlreadyCalledError, dvalue.capture, sentinel.unused)
 
-    def test__observe_observes_callback(self):
+    def test_observe_observes_callback(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.observe(d)
@@ -1095,7 +1095,7 @@ class TestDeferredValue(MAASTestCase):
         self.assertEqual(sentinel.result, extract_result(waiter))
         self.assertEqual(sentinel.result, extract_result(d))
 
-    def test__observe_observes_errback(self):
+    def test_observe_observes_errback(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.observe(d)
@@ -1106,13 +1106,13 @@ class TestDeferredValue(MAASTestCase):
         self.assertRaises(type(exception), extract_result, waiter)
         self.assertRaises(type(exception), extract_result, d)
 
-    def test__observe_records_source_as_observing_attribute(self):
+    def test_observe_records_source_as_observing_attribute(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.observe(d)
         self.assertIs(d, dvalue.observing)
 
-    def test__observe_can_only_be_called_once(self):
+    def test_observe_can_only_be_called_once(self):
         dvalue = DeferredValue()
         d = Deferred()
         dvalue.observe(d)
@@ -1120,21 +1120,21 @@ class TestDeferredValue(MAASTestCase):
         # It's not possible to call capture() once observe() has been called.
         self.assertRaises(AlreadyCalledError, dvalue.capture, d)
 
-    def test__observe_cannot_be_called_once_value_is_set(self):
+    def test_observe_cannot_be_called_once_value_is_set(self):
         dvalue = DeferredValue()
         dvalue.set(sentinel.value)
         self.assertRaises(AlreadyCalledError, dvalue.observe, sentinel.unused)
 
-    def test__isSet_is_False_when_there_is_no_value(self):
+    def test_isSet_is_False_when_there_is_no_value(self):
         dvalue = DeferredValue()
         self.assertFalse(dvalue.isSet)
 
-    def test__isSet_is_True_when_there_is_a_value(self):
+    def test_isSet_is_True_when_there_is_a_value(self):
         dvalue = DeferredValue()
         dvalue.set(sentinel.foobar)
         self.assertTrue(dvalue.isSet)
 
-    def test__isSet_is_True_when_there_is_a_failure(self):
+    def test_isSet_is_True_when_there_is_a_failure(self):
         dvalue = DeferredValue()
         dvalue.fail(factory.make_exception())
         self.assertTrue(dvalue.isSet)
@@ -1158,7 +1158,7 @@ class TestRPCFetcher(MAASTestCase):
             MockCalledOnceWith(self.fake_command, test=sentinel.kwarg_test),
         )
 
-    def test__deferred_fires_when_client_completes(self):
+    def test_deferred_fires_when_client_completes(self):
         client = Mock()
         client.return_value = Deferred()
 
@@ -1171,7 +1171,7 @@ class TestRPCFetcher(MAASTestCase):
         self.assertThat(extract_result(d), Is(sentinel.content))
         self.assertNotIn(client, fetcher.pending)
 
-    def test__concurrent_gets_become_related(self):
+    def test_concurrent_gets_become_related(self):
         client = Mock()
         client.return_value = Deferred()
 
@@ -1187,7 +1187,7 @@ class TestRPCFetcher(MAASTestCase):
         self.assertThat(extract_result(d1), Is(sentinel.content))
         self.assertThat(extract_result(d2), Is(sentinel.content))
 
-    def test__non_concurrent_gets_do_not_become_related(self):
+    def test_non_concurrent_gets_do_not_become_related(self):
         client_d1, client_d2 = Deferred(), Deferred()
 
         client = Mock()
@@ -1205,7 +1205,7 @@ class TestRPCFetcher(MAASTestCase):
         client_d2.callback(sentinel.bar)
         self.assertThat(extract_result(d2), Is(sentinel.bar))
 
-    def test__errors_are_treated_just_the_same(self):
+    def test_errors_are_treated_just_the_same(self):
         client = Mock()
         client.return_value = Deferred()
 
@@ -1219,7 +1219,7 @@ class TestRPCFetcher(MAASTestCase):
         self.assertRaises(exception_type, extract_result, d1)
         self.assertRaises(exception_type, extract_result, d2)
 
-    def test__clients_are_treated_differently(self):
+    def test_clients_are_treated_differently(self):
         client1_d, client2_d = Deferred(), Deferred()
 
         client1 = Mock()
@@ -1245,7 +1245,7 @@ class TestDeferToNewThread(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
-    def test__runs_given_func_in_new_thread(self):
+    def test_runs_given_func_in_new_thread(self):
         def thing_to_call(*args, **kwargs):
             thread = threading.currentThread()
             return thread, args, kwargs
@@ -1259,7 +1259,7 @@ class TestDeferToNewThread(MAASTestCase):
         self.expectThat(kwargs, Equals({"thing": sentinel.kwarg}))
 
     @inlineCallbacks
-    def test__gives_new_thread_informative_name(self):
+    def test_gives_new_thread_informative_name(self):
         def get_name_of_thread():
             return threading.currentThread().name
 
@@ -1267,7 +1267,7 @@ class TestDeferToNewThread(MAASTestCase):
         self.assertThat(name, Equals("deferToNewThread(get_name_of_thread)"))
 
     @inlineCallbacks
-    def test__gives_new_thread_generic_name_if_func_has_no_name(self):
+    def test_gives_new_thread_generic_name_if_func_has_no_name(self):
         def get_name_of_thread():
             return threading.currentThread().name
 
@@ -1277,7 +1277,7 @@ class TestDeferToNewThread(MAASTestCase):
         name = yield deferToNewThread(func)
         self.assertThat(name, Equals("deferToNewThread(...)"))
 
-    def test__propagates_context_into_thread(self):
+    def test_propagates_context_into_thread(self):
         name = factory.make_name("name")
         value = factory.make_name("value")
 
@@ -1288,7 +1288,7 @@ class TestDeferToNewThread(MAASTestCase):
             {name: value}, deferToNewThread, check_context_in_thread
         )
 
-    def test__propagates_context_into_callback_from_thread(self):
+    def test_propagates_context_into_callback_from_thread(self):
         name = factory.make_name("name")
         value = factory.make_name("value")
 
@@ -1302,7 +1302,7 @@ class TestDeferToNewThread(MAASTestCase):
         d.addCallbacks(check_context_in_callback, self.fail)
         return d
 
-    def test__propagates_context_into_errback_from_thread(self):
+    def test_propagates_context_into_errback_from_thread(self):
         name = factory.make_name("name")
         value = factory.make_name("value")
 
@@ -1332,24 +1332,24 @@ class TestThreadUnpool(MAASTestCase, ThreadUnpoolMixin):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__init(self):
+    def test_init(self):
         lock = self.make_semaphore()
         unpool = ThreadUnpool(lock)
         self.assertThat(unpool.lock, Is(lock))
 
-    def test__start_sets_started(self):
+    def test_start_sets_started(self):
         unpool = ThreadUnpool(sentinel.lock)
         self.assertThat(unpool.started, Is(None))
         unpool.start()
         self.assertThat(unpool.started, Is(True))
 
-    def test__stop_unsets_started(self):
+    def test_stop_unsets_started(self):
         unpool = ThreadUnpool(sentinel.lock)
         self.assertThat(unpool.started, Is(None))
         unpool.stop()
         self.assertThat(unpool.started, Is(False))
 
-    def test__callInThreadWithCallback_makes_callback(self):
+    def test_callInThreadWithCallback_makes_callback(self):
         lock = self.make_semaphore()
         unpool = ThreadUnpool(lock)
         callback = Mock()
@@ -1362,7 +1362,7 @@ class TestThreadUnpool(MAASTestCase, ThreadUnpoolMixin):
         )
         return d
 
-    def test__callInThreadWithCallback_makes_callback_on_error(self):
+    def test_callInThreadWithCallback_makes_callback_on_error(self):
         lock = self.make_semaphore()
         unpool = ThreadUnpool(lock)
         callback = Mock()
@@ -1377,7 +1377,7 @@ class TestThreadUnpool(MAASTestCase, ThreadUnpoolMixin):
         return d
 
     @inlineCallbacks
-    def test__callInThreadWithCallback_logs_failure_reporting_result(self):
+    def test_callInThreadWithCallback_logs_failure_reporting_result(self):
         unpool = ThreadUnpool(self.make_semaphore())
         onResult = Mock(side_effect=factory.make_exception())
         with TwistedLoggerFixture() as logger:
@@ -1421,7 +1421,7 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         ),
     )
 
-    def test__passes_args_through(self):
+    def test_passes_args_through(self):
         lock = self.make_semaphore()
         unpool = ThreadUnpool(lock)
         func = Mock(__name__="fred")
@@ -1435,7 +1435,7 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         )
         return d
 
-    def test__defers_to_new_thread(self):
+    def test_defers_to_new_thread(self):
         lock = self.make_semaphore()
         unpool = ThreadUnpool(lock)
         deferToNewThread = self.patch(twisted_module, "deferToNewThread")
@@ -1445,7 +1445,7 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         self.assertThat(deferToNewThread, MockCalledOnceWith(sentinel.func))
 
     @inlineCallbacks
-    def test__logs_failure_deferring_to_thread(self):
+    def test_logs_failure_deferring_to_thread(self):
         unpool = ThreadUnpool(self.make_semaphore())
         deferToNewThread = self.patch(twisted_module, "deferToNewThread")
         deferToNewThread.side_effect = factory.make_exception()
@@ -1462,7 +1462,7 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         )
 
     @inlineCallbacks
-    def test__context_is_active_in_new_thread(self):
+    def test_context_is_active_in_new_thread(self):
         steps = []
         threads = []
 
@@ -1523,7 +1523,7 @@ class TestThreadPool(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__init(self):
+    def test_init(self):
         pool = ThreadPool()
         self.assertThat(
             pool,
@@ -1542,7 +1542,7 @@ class TestThreadPool(MAASTestCase):
             ),
         )
 
-    def test__init_with_parameters(self):
+    def test_init_with_parameters(self):
         minthreads = randint(0, 100)
         maxthreads = randint(100, 200)
         pool = ThreadPool(
@@ -1568,7 +1568,7 @@ class TestThreadPool(MAASTestCase):
             ),
         )
 
-    def test__context_entry_failures_are_propagated_to_tasks(self):
+    def test_context_entry_failures_are_propagated_to_tasks(self):
         exception = factory.make_exception()
 
         pool = ThreadPool(
@@ -1583,7 +1583,7 @@ class TestThreadPool(MAASTestCase):
         return assert_fails_with(d, type(exception))
 
     @inlineCallbacks
-    def test__context_exit_failures_are_logged(self):
+    def test_context_exit_failures_are_logged(self):
         exception = factory.make_exception()
 
         pool = ThreadPool(
@@ -1645,7 +1645,7 @@ class TestThreadPoolCommonBehaviour(MAASTestCase):
         ),
     )
 
-    def test__context_is_active_in_new_thread(self):
+    def test_context_is_active_in_new_thread(self):
         steps = []
         threads = []
 
@@ -1697,7 +1697,7 @@ class TestThreadPoolLimiter(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__init(self):
+    def test_init(self):
         pool_beneath = DummyThreadPool()
         pool = ThreadPoolLimiter(pool_beneath, sentinel.lock)
         self.assertThat(
@@ -1719,7 +1719,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         pool = ThreadPoolLimiter(pool_beneath, DeferredSemaphore(1))
         return pool
 
-    def test__callInThread_calls_callInThreadWithCallback(self):
+    def test_callInThread_calls_callInThreadWithCallback(self):
         pool = self.make_pool()
         self.patch_autospec(pool, "callInThreadWithCallback")
         pool.callInThreadWithCallback.return_value = sentinel.called
@@ -1732,7 +1732,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__without_callback_acquires_and_releases_lock(self):
+    def test_without_callback_acquires_and_releases_lock(self):
         pool = self.make_pool()  # Limit to a single thread.
         # Callback from a thread.
         d = Deferred()
@@ -1750,7 +1750,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         self.assertThat(pool.lock.tokens, Equals(1))
 
     @inlineCallbacks
-    def test__with_callback_acquires_and_releases_lock(self):
+    def test_with_callback_acquires_and_releases_lock(self):
         pool = self.make_pool()  # Limit to a single thread.
         # Callback from a thread.
         d, callback = Deferred(), Mock()
@@ -1770,7 +1770,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         self.assertThat(callback, MockCalledOnceWith(True, sentinel.result))
 
     @inlineCallbacks
-    def test__without_callback_releases_lock_when_underlying_pool_breaks(self):
+    def test_without_callback_releases_lock_when_underlying_pool_breaks(self):
         pool = self.make_pool()  # Limit to a single thread.
 
         exception_type = factory.make_exception_type()
@@ -1796,7 +1796,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__with_callback_releases_lock_when_underlying_pool_breaks(self):
+    def test_with_callback_releases_lock_when_underlying_pool_breaks(self):
         pool = self.make_pool()  # Limit to a single thread.
 
         exception_type = factory.make_exception_type()
@@ -1820,7 +1820,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         self.assertThat(result.value, IsInstance(exception_type))
 
     @inlineCallbacks
-    def test__when_deferring_acquires_and_releases_lock(self):
+    def test_when_deferring_acquires_and_releases_lock(self):
         pool = self.make_pool()
         # Within the thread the lock had been acquired.
         tokens_in_thread = yield deferToThreadPool(
@@ -1834,7 +1834,7 @@ class TestThreadPoolLimiter(MAASTestCase):
         self.assertThat(pool.lock.tokens, Equals(1))
 
     @inlineCallbacks
-    def test__when_deferring_acquires_and_releases_lock_on_error(self):
+    def test_when_deferring_acquires_and_releases_lock_on_error(self):
         pool = self.make_pool()
         # Within the thread the lock had been acquired.
         with ExpectedException(ZeroDivisionError):
@@ -1851,21 +1851,21 @@ class TestMakeDeferredWithProcessProtocol(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
-    def test__calls_callback_when_processended_called_with_none(self):
+    def test_calls_callback_when_processended_called_with_none(self):
         d, protocol = makeDeferredWithProcessProtocol()
         protocol.processEnded(None)
         result = yield d
         self.expectThat(result, Is(None))
 
     @inlineCallbacks
-    def test__calls_callback_when_process_called_with_processdone(self):
+    def test_calls_callback_when_process_called_with_processdone(self):
         d, protocol = makeDeferredWithProcessProtocol()
         protocol.processEnded(Failure(ProcessDone(0)))
         result = yield d
         self.expectThat(result, Is(None))
 
     @inlineCallbacks
-    def test__calls_errback_when_processended_called_with_failure(self):
+    def test_calls_errback_when_processended_called_with_failure(self):
         d, protocol = makeDeferredWithProcessProtocol()
         exception = factory.make_exception()
         protocol.processEnded(Failure(exception))
@@ -1984,7 +1984,7 @@ class TestTerminateProcess(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__terminates_process_with_TERM_QUIT_then_KILL(self):
+    def test_terminates_process_with_TERM_QUIT_then_KILL(self):
         protocol = SignalPrinterProtocol()
         process = yield self.startSignalPrinter(protocol)
         self.terminateSignalPrinter(process, protocol)
@@ -2001,7 +2001,7 @@ class TestTerminateProcess(MAASTestCase):
             )
 
     @inlineCallbacks
-    def test__terminates_with_kill_and_killpg(self):
+    def test_terminates_with_kill_and_killpg(self):
         protocol = SignalPrinterProtocol()
         process = yield self.startSignalPrinter(protocol, pgrp=True)
         # Capture the pid now; it gets cleared when the process exits.
@@ -2023,7 +2023,7 @@ class TestTerminateProcess(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__terminates_with_kill_if_not_in_separate_process_group(self):
+    def test_terminates_with_kill_if_not_in_separate_process_group(self):
         protocol = SignalPrinterProtocol()
         process = yield self.startSignalPrinter(protocol, pgrp=False)
         # Capture the pid now; it gets cleared when the process exits.
@@ -2133,7 +2133,7 @@ class TestReducedWebLogFormatter(MAASTestCase):
         scenarios_types,
     )
 
-    def test__renders_full_request(self):
+    def test_renders_full_request(self):
         request = requesthelper.DummyRequest("foo/bar")
         request.method = self.prep(self.method)
         request.client = address.IPv4Address(

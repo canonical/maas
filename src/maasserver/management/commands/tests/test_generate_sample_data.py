@@ -15,12 +15,12 @@ from maastesting.testcase import MAASTestCase
 
 
 class TestGenerateSampleData(MAASTestCase):
-    def test__exists_and_calls_populate(self):
+    def test_exists_and_calls_populate(self):
         self.patch(sampledata, "populate")
         call_command("generate_sample_data")
         self.assertThat(sampledata.populate, MockCalledOnceWith())
 
-    def test__not_available_in_production(self):
+    def test_not_available_in_production(self):
         self.useFixture(ImportErrorFixture("maasserver.testing", "sampledata"))
         self.patch(sampledata, "populate")
         with CaptureStandardIO() as stdio:

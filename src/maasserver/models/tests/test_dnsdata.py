@@ -40,7 +40,7 @@ MULTI_CNAME_MSG = "Only one CNAME can be associated with a name."
 
 
 class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
-    def test__user_view_returns_dnsdata(self):
+    def test_user_view_returns_dnsdata(self):
         user = factory.make_User()
         dnsdata = factory.make_DNSData()
         self.assertEqual(
@@ -50,7 +50,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         dnsdata = factory.make_DNSData()
         self.assertRaises(
@@ -61,7 +61,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         dnsdata = factory.make_DNSData()
         self.assertRaises(
@@ -72,7 +72,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_view_returns_dnsdata(self):
+    def test_admin_view_returns_dnsdata(self):
         admin = factory.make_admin()
         dnsdata = factory.make_DNSData()
         self.assertEqual(
@@ -82,7 +82,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_dnsdata(self):
+    def test_admin_edit_returns_dnsdata(self):
         admin = factory.make_admin()
         dnsdata = factory.make_DNSData()
         self.assertEqual(
@@ -92,7 +92,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_dnsdata(self):
+    def test_admin_admin_returns_dnsdata(self):
         admin = factory.make_admin()
         dnsdata = factory.make_DNSData()
         self.assertEqual(

@@ -710,13 +710,13 @@ class TestClusterConfiguration(MAASTestCase):
 class TestClusterConfigurationGRUBRoot(MAASTestCase):
     """Tests for `ClusterConfiguration.grub_root`."""
 
-    def test__is_relative_to_tftp_root_without_trailing_slash(self):
+    def test_is_relative_to_tftp_root_without_trailing_slash(self):
         random_dir = self.make_dir().rstrip("/")
         self.useFixture(ClusterConfigurationFixture(tftp_root=random_dir))
         with ClusterConfiguration.open() as configuration:
             self.assertEqual(random_dir + "/grub", configuration.grub_root)
 
-    def test__is_relative_to_tftp_root_with_trailing_slash(self):
+    def test_is_relative_to_tftp_root_with_trailing_slash(self):
         random_dir = self.make_dir().rstrip("/") + "/"
         self.useFixture(ClusterConfigurationFixture(tftp_root=random_dir))
         with ClusterConfiguration.open() as configuration:

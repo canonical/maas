@@ -72,7 +72,7 @@ class TestCleanPathRequest(MAASTestCase):
 
 
 class TestOverlaySite(MAASTestCase):
-    def test__init__(self):
+    def test_init__(self):
         root = Resource()
         site = OverlaySite(root)
         self.assertThat(site, IsInstance(Site))
@@ -163,7 +163,7 @@ class TestResourceOverlay(MAASTestCase):
     def make_resourceoverlay(self):
         return webapp.ResourceOverlay(Resource())
 
-    def test__init__(self):
+    def test_init__(self):
         resource = self.make_resourceoverlay()
         self.assertThat(resource, IsInstance(Resource))
 
@@ -192,7 +192,7 @@ class TestWebApplicationService(MAASTestCase):
         )
         return service
 
-    def test__init_creates_site(self):
+    def test_init_creates_site(self):
         service = self.make_webapp()
         self.assertThat(service.site, IsInstance(Site))
         self.assertThat(
@@ -205,7 +205,7 @@ class TestWebApplicationService(MAASTestCase):
         )
         self.assertThat(service.websocket, IsInstance(WebSocketFactory))
 
-    def test__start_and_stop_the_service(self):
+    def test_start_and_stop_the_service(self):
         service = self.make_webapp()
         # Both privileged and and normal start must be called, as twisted
         # multi-service will do the same.
@@ -217,7 +217,7 @@ class TestWebApplicationService(MAASTestCase):
         self.assertFalse(service.running)
         self.assertFalse(service.starting)
 
-    def test__successful_start_installs_wsgi_resource(self):
+    def test_successful_start_installs_wsgi_resource(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 

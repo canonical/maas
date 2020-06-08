@@ -22,7 +22,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
-    def test__user_view_returns_dnsresource(self):
+    def test_user_view_returns_dnsresource(self):
         user = factory.make_User()
         dnsresource = factory.make_DNSResource()
         self.assertEqual(
@@ -32,7 +32,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         dnsresource = factory.make_DNSResource()
         self.assertRaises(
@@ -43,7 +43,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         dnsresource = factory.make_DNSResource()
         self.assertRaises(
@@ -54,7 +54,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_view_returns_dnsresource(self):
+    def test_admin_view_returns_dnsresource(self):
         admin = factory.make_admin()
         dnsresource = factory.make_DNSResource()
         self.assertEqual(
@@ -64,7 +64,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_dnsresource(self):
+    def test_admin_edit_returns_dnsresource(self):
         admin = factory.make_admin()
         dnsresource = factory.make_DNSResource()
         self.assertEqual(
@@ -74,7 +74,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_dnsresource(self):
+    def test_admin_admin_returns_dnsresource(self):
         admin = factory.make_admin()
         dnsresource = factory.make_DNSResource()
         self.assertEqual(
@@ -86,7 +86,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
 
 
 class TestDNSResourceManager(MAASServerTestCase):
-    def test__default_specifier_matches_id(self):
+    def test_default_specifier_matches_id(self):
         factory.make_DNSResource()
         dnsresource = factory.make_DNSResource()
         factory.make_DNSResource()
@@ -95,7 +95,7 @@ class TestDNSResourceManager(MAASServerTestCase):
             DNSResource.objects.filter_by_specifiers("%s" % id), [dnsresource]
         )
 
-    def test__default_specifier_matches_name(self):
+    def test_default_specifier_matches_name(self):
         factory.make_DNSResource()
         name = factory.make_name("dnsresource")
         dnsresource = factory.make_DNSResource(name=name)
@@ -104,7 +104,7 @@ class TestDNSResourceManager(MAASServerTestCase):
             DNSResource.objects.filter_by_specifiers(name), [dnsresource]
         )
 
-    def test__name_specifier_matches_name(self):
+    def test_name_specifier_matches_name(self):
         factory.make_DNSResource()
         name = factory.make_name("dnsresource")
         dnsresource = factory.make_DNSResource(name=name)
@@ -257,7 +257,7 @@ class DNSResourceTest(MAASServerTestCase):
 
 
 class TestUpdateDynamicHostname(MAASServerTestCase):
-    def test__adds_new_hostname(self):
+    def test_adds_new_hostname(self):
         sip = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -266,7 +266,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         dnsrr = DNSResource.objects.get(name=hostname)
         self.assertThat(dnsrr.ip_addresses.all(), Contains(sip))
 
-    def test__coerces_to_valid_hostname(self):
+    def test_coerces_to_valid_hostname(self):
         sip = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -275,7 +275,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         dnsrr = DNSResource.objects.get(name="no-tea")
         self.assertThat(dnsrr.ip_addresses.all(), Contains(sip))
 
-    def test__does_not_modify_existing_non_dynamic_records(self):
+    def test_does_not_modify_existing_non_dynamic_records(self):
         sip_reserved = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.USER_RESERVED
         )
@@ -289,7 +289,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_reserved))
         self.assertThat(dnsrr.ip_addresses.all(), Not(Contains(sip_dynamic)))
 
-    def test__updates_existing_dynamic_record(self):
+    def test_updates_existing_dynamic_record(self):
         sip_before = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -303,7 +303,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_after))
         self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_before))
 
-    def test__skips_updating_already_added_ip(self):
+    def test_skips_updating_already_added_ip(self):
         sip1 = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -329,7 +329,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         self.assertThat(dnsrr.updated, Equals(before))
         self.assertThat(dnsrr.created, Equals(before))
 
-    def test__update_releases_obsolete_hostnames(self):
+    def test_update_releases_obsolete_hostnames(self):
         sip = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -345,7 +345,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
 
 
 class TestReleaseDynamicHostname(MAASServerTestCase):
-    def test__releases_dynamic_hostname(self):
+    def test_releases_dynamic_hostname(self):
         sip = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -356,7 +356,7 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
             DNSResource.objects.filter(name=hostname).first(), Equals(None)
         )
 
-    def test__releases_dynamic_hostname_keep_others(self):
+    def test_releases_dynamic_hostname_keep_others(self):
         sip1 = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -370,7 +370,7 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
         dns_resource = DNSResource.objects.get(name=hostname)
         self.assertEqual([sip1], list(dns_resource.ip_addresses.all()))
 
-    def test__no_update_not_there(self):
+    def test_no_update_not_there(self):
         sip1 = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -389,7 +389,7 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
         self.assertEqual([sip1], list(dns_resource.ip_addresses.all()))
         self.assertEqual(before, dns_resource.updated)
 
-    def test__leaves_static_hostnames_untouched(self):
+    def test_leaves_static_hostnames_untouched(self):
         sip = factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
@@ -409,13 +409,13 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
 class TestStaticIPAddressSignals(MAASServerTestCase):
     """Tests the signals signals/staticipaddress.py."""
 
-    def test__deletes_orphaned_record(self):
+    def test_deletes_orphaned_record(self):
         dnsrr = factory.make_DNSResource()
         StaticIPAddress.objects.all().delete()
         dnsrr = reload_object(dnsrr)
         self.assertThat(dnsrr, Is(None))
 
-    def test__non_orphaned_record_not_deleted(self):
+    def test_non_orphaned_record_not_deleted(self):
         dnsrr = factory.make_DNSResource(ip_addresses=["8.8.8.8", "8.8.4.4"])
         sip = StaticIPAddress.objects.get(ip="8.8.4.4")
         sip.delete()

@@ -71,7 +71,7 @@ class TestResourcePool(MAASServerTestCase):
 
 
 class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
-    def test__user_view_returns_resource_pool(self):
+    def test_user_view_returns_resource_pool(self):
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.assertEqual(
@@ -81,7 +81,7 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.assertRaises(
@@ -92,7 +92,7 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
             ResourcePoolPermission.edit,
         )
 
-    def test__admin_view_returns_resource_pool(self):
+    def test_admin_view_returns_resource_pool(self):
         admin = factory.make_admin()
         pool = factory.make_ResourcePool()
         self.assertEqual(
@@ -102,7 +102,7 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_resource_pool(self):
+    def test_admin_edit_returns_resource_pool(self):
         admin = factory.make_admin()
         pool = factory.make_ResourcePool()
         self.assertEqual(
@@ -121,7 +121,7 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
         rbac._store.cleared = False  # Prevent re-creation of the client
         self.rbac_store = client.store
 
-    def test__user_returns_all(self):
+    def test_user_returns_all(self):
         user = factory.make_User()
         factory.make_ResourcePool()
         self.assertItemsEqual(
@@ -129,7 +129,7 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
             ResourcePool.objects.get_resource_pools(user),
         )
 
-    def test__user_rbac_returns_viewable(self):
+    def test_user_rbac_returns_viewable(self):
         self.enable_rbac()
         user = factory.make_User()
         pool = factory.make_ResourcePool()
@@ -140,7 +140,7 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
             [pool], ResourcePool.objects.get_resource_pools(user)
         )
 
-    def test__user_rbac_returns_view_all(self):
+    def test_user_rbac_returns_view_all(self):
         self.enable_rbac()
         user = factory.make_User()
         pool = factory.make_ResourcePool()

@@ -17,7 +17,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
-    def test__user_view_returns_space(self):
+    def test_user_view_returns_space(self):
         user = factory.make_User()
         space = factory.make_Space()
         self.assertEqual(
@@ -27,7 +27,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         space = factory.make_Space()
         self.assertRaises(
@@ -38,7 +38,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         space = factory.make_Space()
         self.assertRaises(
@@ -49,7 +49,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_view_returns_space(self):
+    def test_admin_view_returns_space(self):
         admin = factory.make_admin()
         space = factory.make_Space()
         self.assertEqual(
@@ -59,7 +59,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_space(self):
+    def test_admin_edit_returns_space(self):
         admin = factory.make_admin()
         space = factory.make_Space()
         self.assertEqual(
@@ -69,7 +69,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_space(self):
+    def test_admin_admin_returns_space(self):
         admin = factory.make_admin()
         space = factory.make_Space()
         self.assertEqual(
@@ -81,7 +81,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
 
 
 class TestSpaceManager(MAASServerTestCase):
-    def test__default_specifier_matches_id(self):
+    def test_default_specifier_matches_id(self):
         factory.make_Space()
         space = factory.make_Space()
         factory.make_Space()
@@ -90,7 +90,7 @@ class TestSpaceManager(MAASServerTestCase):
             Space.objects.filter_by_specifiers("%s" % id), [space]
         )
 
-    def test__default_specifier_matches_name_with_id(self):
+    def test_default_specifier_matches_name_with_id(self):
         factory.make_Space()
         space = factory.make_Space()
         factory.make_Space()
@@ -99,7 +99,7 @@ class TestSpaceManager(MAASServerTestCase):
             Space.objects.filter_by_specifiers("space-%s" % id), [space]
         )
 
-    def test__default_specifier_matches_name(self):
+    def test_default_specifier_matches_name(self):
         factory.make_Space()
         space = factory.make_Space(name="infinite-improbability")
         factory.make_Space()
@@ -108,7 +108,7 @@ class TestSpaceManager(MAASServerTestCase):
             [space],
         )
 
-    def test__name_specifier_matches_name(self):
+    def test_name_specifier_matches_name(self):
         factory.make_Space()
         space = factory.make_Space(name="infinite-improbability")
         factory.make_Space()
@@ -117,7 +117,7 @@ class TestSpaceManager(MAASServerTestCase):
             [space],
         )
 
-    def test__class_specifier_matches_attached_subnet(self):
+    def test_class_specifier_matches_attached_subnet(self):
         factory.make_Space()
         space = factory.make_Space()
         subnet = factory.make_Subnet(space=space)

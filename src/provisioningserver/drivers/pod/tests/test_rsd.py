@@ -680,7 +680,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertItemsEqual([], missing)
 
     @inlineCallbacks
-    def test__list_resources(self):
+    def test_list_resources(self):
         driver = RSDPodDriver()
         context = make_context()
         endpoint = factory.make_name("endpoint")
@@ -698,7 +698,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertItemsEqual(resources, resource_ids)
 
     @inlineCallbacks
-    def test__scrape_logical_drives_and_targets(self):
+    def test_scrape_logical_drives_and_targets(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -736,7 +736,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__scrape_remote_drives(self):
+    def test_scrape_remote_drives(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -755,7 +755,7 @@ class TestRSDPodDriver(MAASTestCase):
             remote_drives,
         )
 
-    def test__calculate_remote_storage(self):
+    def test_calculate_remote_storage(self):
         driver = RSDPodDriver()
         LV_NO_TARGETS = deepcopy(SAMPLE_JSON_LV)
         LV_NO_TARGETS["Links"]["Targets"] = []
@@ -790,7 +790,7 @@ class TestRSDPodDriver(MAASTestCase):
             },
         )
 
-    def test__calculate_remote_storage_no_remote_drives(self):
+    def test_calculate_remote_storage_no_remote_drives(self):
         driver = RSDPodDriver()
         LV_NO_TARGETS = deepcopy(SAMPLE_JSON_LV)
         LV_NO_TARGETS["Links"]["Targets"] = []
@@ -826,7 +826,7 @@ class TestRSDPodDriver(MAASTestCase):
             },
         )
 
-    def test__calculate_pod_remote_storage(self):
+    def test_calculate_pod_remote_storage(self):
         driver = RSDPodDriver()
         logical_drives = {
             b"redfish/v1/Services/1/LogicalDrives/1": SAMPLE_JSON_LV,
@@ -859,7 +859,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(80 * (1024 ** 3), pod_hints_capacity)
 
     @inlineCallbacks
-    def test__get_pod_memory_resources(self):
+    def test_get_pod_memory_resources(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -880,7 +880,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals([7812, 7812], memories)
 
     @inlineCallbacks
-    def test__get_pod_processor_resources(self):
+    def test_get_pod_processor_resources(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -905,7 +905,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals("x86-64", arch)
 
     @inlineCallbacks
-    def test__get_pod_storage_resources(self):
+    def test_get_pod_storage_resources(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -929,7 +929,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals([111.7587089538574, 111.7587089538574], storages)
 
     @inlineCallbacks
-    def test__get_pod_resources(self):
+    def test_get_pod_resources(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -999,7 +999,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(0, pod.local_storage)
 
     @inlineCallbacks
-    def test__get_pod_machine_memories(self):
+    def test_get_pod_machine_memories(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1015,7 +1015,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(31248, discovered_machine.memory)
 
     @inlineCallbacks
-    def test__get_pod_machine_processors(self):
+    def test_get_pod_machine_processors(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1034,7 +1034,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals([2300, 2300], discovered_machine.cpu_speeds)
 
     @inlineCallbacks
-    def test__get_pod_machine_local_storages(self):
+    def test_get_pod_machine_local_storages(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1072,7 +1072,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__get_pod_machine_local_storages_with_request(self):
+    def test_get_pod_machine_local_storages_with_request(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1134,7 +1134,7 @@ class TestRSDPodDriver(MAASTestCase):
             ),
         )
 
-    def test__get_pod_machine_remote_storages(self):
+    def test_get_pod_machine_remote_storages(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1234,7 +1234,7 @@ class TestRSDPodDriver(MAASTestCase):
             ),
         )
 
-    def test__get_pod_machine_remote_storages_with_request(self):
+    def test_get_pod_machine_remote_storages_with_request(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1301,7 +1301,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__get_pod_machine_interfaces(self):
+    def test_get_pod_machine_interfaces(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1368,7 +1368,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__get_pod_machine(self):
+    def test_get_pod_machine(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1461,7 +1461,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__get_pod_machines(self):
+    def test_get_pod_machines(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -1505,7 +1505,7 @@ class TestRSDPodDriver(MAASTestCase):
             ),
         )
 
-    def test__get_pod_hints(self):
+    def test_get_pod_hints(self):
         driver = RSDPodDriver()
         discovered_pod = make_discovered_pod()
         # Calculate expected hints.
@@ -1535,7 +1535,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__discover(self):
+    def test_discover(self):
         driver = RSDPodDriver()
         context = make_context()
         headers = driver.make_auth_headers(**context)
@@ -1599,7 +1599,7 @@ class TestRSDPodDriver(MAASTestCase):
             MockCalledOnceWith(mock_get_pod_resources.return_value),
         )
 
-    def test__select_remote_master(self):
+    def test_select_remote_master(self):
         driver = RSDPodDriver()
         size = 20 * (1024 ** 3)
         remote_storage = {
@@ -1630,7 +1630,7 @@ class TestRSDPodDriver(MAASTestCase):
             ),
         )
 
-    def test__set_drive_type(self):
+    def test_set_drive_type(self):
         driver = RSDPodDriver()
         local_drive = {
             "CapacityGiB": None,
@@ -1648,7 +1648,7 @@ class TestRSDPodDriver(MAASTestCase):
             driver.set_drive_type(drive, block_device)
             self.assertEquals(drive["Type"], bk_types[idx])
 
-    def test__convert_request_to_json_payload(self):
+    def test_convert_request_to_json_payload(self):
         driver = RSDPodDriver()
         request = make_requested_machine()
         # iSCSI disk smaller than master drive size of 10GiB.
@@ -1810,7 +1810,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__compose(self):
+    def test_compose(self):
         # This test will start with a requested 64 cores.
         # RSD API will not succeed until we are at 8 processors
         # with 8 cores each as seen here:
@@ -1987,7 +1987,7 @@ class TestRSDPodDriver(MAASTestCase):
             )
 
     @inlineCallbacks
-    def test__delete_node(self):
+    def test_delete_node(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -2046,7 +2046,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__decompose(self):
+    def test_decompose(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -2068,7 +2068,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertThat(mock_get_pod_hints, MockCalledOnceWith(discovered_pod))
 
     @inlineCallbacks
-    def test__get_composed_node_state(self):
+    def test_get_composed_node_state(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -2205,7 +2205,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__set_pxe_boot(self):
+    def test_set_pxe_boot(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -2239,7 +2239,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__power_on(self):
+    def test_power_on(self):
         driver = RSDPodDriver()
         system_id = factory.make_name("system_id")
         context = make_context()
@@ -2267,7 +2267,7 @@ class TestRSDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__power_off(self):
+    def test_power_off(self):
         driver = RSDPodDriver()
         system_id = factory.make_name("system_id")
         context = make_context()

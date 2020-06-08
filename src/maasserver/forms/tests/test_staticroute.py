@@ -13,7 +13,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestStaticRouteForm(MAASServerTestCase):
-    def test__requires_source_destination_gateway_ip(self):
+    def test_requires_source_destination_gateway_ip(self):
         form = StaticRouteForm({})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual(
@@ -25,7 +25,7 @@ class TestStaticRouteForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__creates_staticroute(self):
+    def test_creates_staticroute(self):
         source = factory.make_Subnet()
         version = source.get_ipnetwork().version
         dest = factory.make_Subnet(version=version)
@@ -44,12 +44,12 @@ class TestStaticRouteForm(MAASServerTestCase):
         self.assertEqual(gateway_ip, staticroute.gateway_ip)
         self.assertEqual(0, staticroute.metric)
 
-    def test__doest_require_any_fields_on_update(self):
+    def test_doest_require_any_fields_on_update(self):
         static_route = factory.make_StaticRoute()
         form = StaticRouteForm(instance=static_route, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_staticroute(self):
+    def test_updates_staticroute(self):
         static_route = factory.make_StaticRoute()
         new_source = factory.make_Subnet()
         version = new_source.get_ipnetwork().version

@@ -263,7 +263,7 @@ class TestNodeAction(MAASServerTestCase):
 
 
 class TestDeleteAction(MAASServerTestCase):
-    def test__users_cannot_delete_controller(self):
+    def test_users_cannot_delete_controller(self):
         controller = factory.make_RackController()
         user = factory.make_User()
         request = factory.make_fake_request("/")
@@ -271,7 +271,7 @@ class TestDeleteAction(MAASServerTestCase):
         action = Delete(controller, user, request)
         self.assertFalse(action.is_permitted())
 
-    def test__admins_can_delete_controller(self):
+    def test_admins_can_delete_controller(self):
         controller = factory.make_RackController()
         admin = factory.make_admin()
         request = factory.make_fake_request("/")
@@ -279,7 +279,7 @@ class TestDeleteAction(MAASServerTestCase):
         action = Delete(controller, admin, request)
         self.assertTrue(action.is_permitted())
 
-    def test__deletes_node(self):
+    def test_deletes_node(self):
         node = factory.make_Node()
         admin = factory.make_admin()
         request = factory.make_fake_request("/")
@@ -404,7 +404,7 @@ class TestCommissionAction(MAASServerTestCase):
 
 
 class TestTest(MAASServerTestCase):
-    def test__starts_testing(self):
+    def test_starts_testing(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         enable_ssh = factory.pick_bool()
@@ -1061,7 +1061,7 @@ class TestPowerOnAction(MAASServerTestCase):
 
 
 class TestPowerOffAction(MAASServerTestCase):
-    def test__stops_deployed_node(self):
+    def test_stops_deployed_node(self):
         user = factory.make_User()
         request = factory.make_fake_request("/")
         request.user = user
@@ -1087,7 +1087,7 @@ class TestPowerOffAction(MAASServerTestCase):
             audit_event.description, "Powered off '%s'." % node.hostname
         )
 
-    def test__stops_Ready_node(self):
+    def test_stops_Ready_node(self):
         admin = factory.make_admin()
         request = factory.make_fake_request("/")
         request.user = admin
@@ -1108,7 +1108,7 @@ class TestPowerOffAction(MAASServerTestCase):
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
-    def test__actionable_for_non_monitored_states(self):
+    def test_actionable_for_non_monitored_states(self):
         all_statuses = NON_MONITORED_STATUSES
         results = {}
         for status in all_statuses:
@@ -1129,7 +1129,7 @@ class TestPowerOffAction(MAASServerTestCase):
             "Nodes with certain statuses could not be powered off.",
         )
 
-    def test__non_actionable_for_monitored_states(self):
+    def test_non_actionable_for_monitored_states(self):
         all_statuses = MONITORED_STATUSES
         results = {}
         for status in all_statuses:
@@ -1150,7 +1150,7 @@ class TestPowerOffAction(MAASServerTestCase):
             "Nodes with certain statuses could be powered off.",
         )
 
-    def test__non_actionable_if_node_already_off(self):
+    def test_non_actionable_if_node_already_off(self):
         all_statuses = NON_MONITORED_STATUSES
         results = {}
         for status in all_statuses:

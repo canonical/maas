@@ -883,7 +883,7 @@ class TestVirshSSH(MAASTestCase):
         expected = conn.get_machine_arch("")
         self.assertEqual(fixed_arch, expected)
 
-    def test__get_pod_resources(self):
+    def test_get_pod_resources(self):
         conn = self.configure_virshssh("")
         architecture = factory.make_name("arch")
         cores = random.randint(1, 8)
@@ -936,7 +936,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEquals(storage_pools, discovered_pod.storage_pools)
         self.assertEquals(local_storage, discovered_pod.local_storage)
 
-    def test__get_pod_hints(self):
+    def test_get_pod_hints(self):
         conn = self.configure_virshssh("")
         cores = random.randint(8, 16)
         memory = random.randint(4096, 8192)
@@ -963,7 +963,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEquals(cpu_speed, discovered_pod_hints.cpu_speed)
         self.assertEquals(local_storage, discovered_pod_hints.local_storage)
 
-    def test__get_discovered_machine(self):
+    def test_get_discovered_machine(self):
         conn = self.configure_virshssh("")
         hostname = factory.make_name("hostname")
         architecture = factory.make_name("arch")
@@ -1062,7 +1062,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertFalse(discovered_machine.interfaces[1].boot)
         self.assertFalse(discovered_machine.interfaces[2].boot)
 
-    def test__get_discovered_machine_handles_no_storage_pools_found(self):
+    def test_get_discovered_machine_handles_no_storage_pools_found(self):
         conn = self.configure_virshssh("")
         hostname = factory.make_name("hostname")
         architecture = factory.make_name("arch")
@@ -1173,7 +1173,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertFalse(discovered_machine.interfaces[1].boot)
         self.assertFalse(discovered_machine.interfaces[2].boot)
 
-    def test__get_discovered_machine_handles_bad_storage_device(self):
+    def test_get_discovered_machine_handles_bad_storage_device(self):
         conn = self.configure_virshssh("")
         hostname = factory.make_name("hostname")
         architecture = factory.make_name("arch")

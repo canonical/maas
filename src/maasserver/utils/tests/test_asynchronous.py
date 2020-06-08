@@ -122,7 +122,7 @@ class TestUseOnceIterator(MAASTestCase):
 
 
 class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
-    def test__is_thread_local(self):
+    def test_is_thread_local(self):
         dhooks = DeferredHooks()
         queues = []
         for _ in range(3):
@@ -135,18 +135,18 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         # Each queue is distinct (deque is unhashable; use the id() of each).
         self.assertThat(set(id(q) for q in queues), HasLength(3))
 
-    def test__add_appends_Deferred_to_queue(self):
+    def test_add_appends_Deferred_to_queue(self):
         dhooks = DeferredHooks()
         self.assertThat(dhooks.hooks, HasLength(0))
         dhooks.add(Deferred())
         self.assertThat(dhooks.hooks, HasLength(1))
 
-    def test__add_cannot_be_called_in_the_reactor(self):
+    def test_add_cannot_be_called_in_the_reactor(self):
         dhooks = DeferredHooks()
         add_in_reactor = wait_for(30)(dhooks.add)  # Wait 30 seconds.
         self.assertRaises(AssertionError, add_in_reactor, Deferred())
 
-    def test__fire_calls_hooks(self):
+    def test_fire_calls_hooks(self):
         dhooks = DeferredHooks()
         ds = Deferred(), Deferred()
         for d in ds:
@@ -155,7 +155,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         for d in ds:
             self.assertIsNone(extract_result(d))
 
-    def test__fire_calls_hooks_in_reactor(self):
+    def test_fire_calls_hooks_in_reactor(self):
         def validate_in_reactor(_):
             self.assertTrue(isInIOThread())
 
@@ -166,7 +166,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         dhooks.fire()
         self.assertThat(d, IsFiredDeferred())
 
-    def test__fire_propagates_error_from_hook(self):
+    def test_fire_propagates_error_from_hook(self):
         error = factory.make_exception()
         dhooks = DeferredHooks()
         d = Deferred()
@@ -174,7 +174,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         dhooks.add(d)
         self.assertRaises(type(error), dhooks.fire)
 
-    def test__fire_always_consumes_all_hooks(self):
+    def test_fire_always_consumes_all_hooks(self):
         dhooks = DeferredHooks()
         d1, d2 = Deferred(), Deferred()
         d1.addCallback(lambda _: 0 / 0)  # d1 will fail.
@@ -185,7 +185,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(d1, IsFiredDeferred())
         self.assertThat(d2, IsFiredDeferred())
 
-    def test__reset_cancels_all_hooks(self):
+    def test_reset_cancels_all_hooks(self):
         canceller = Mock()
         dhooks = DeferredHooks()
         d1, d2 = Deferred(canceller), Deferred(canceller)
@@ -195,7 +195,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(dhooks.hooks, HasLength(0))
         self.assertThat(canceller, MockCallsMatch(call(d1), call(d2)))
 
-    def test__reset_cancels_in_reactor(self):
+    def test_reset_cancels_in_reactor(self):
         def validate_in_reactor(_):
             self.assertTrue(isInIOThread())
 
@@ -207,7 +207,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(dhooks.hooks, HasLength(0))
         self.assertThat(d, IsFiredDeferred())
 
-    def test__reset_suppresses_CancelledError(self):
+    def test_reset_suppresses_CancelledError(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
         dhooks = DeferredHooks()
@@ -218,7 +218,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(extract_result(d), Is(None))
         self.assertEqual("", logger.output)
 
-    def test__logs_failures_from_cancellers(self):
+    def test_logs_failures_from_cancellers(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
         canceller = Mock()
@@ -246,7 +246,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
             logger.output,
         )
 
-    def test__logs_failures_from_cancellers_when_hook_already_fired(self):
+    def test_logs_failures_from_cancellers_when_hook_already_fired(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
         def canceller(d):
@@ -271,7 +271,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
             logger.output,
         )
 
-    def test__logs_failures_from_cancelled_hooks(self):
+    def test_logs_failures_from_cancelled_hooks(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
         error = factory.make_exception()
@@ -294,7 +294,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
             logger.output,
         )
 
-    def test__savepoint_saves_and_restores_hooks(self):
+    def test_savepoint_saves_and_restores_hooks(self):
         d = Deferred()
         dhooks = DeferredHooks()
         dhooks.add(d)
@@ -304,7 +304,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
 
         self.expectThat(list(dhooks.hooks), Equals([d]))
 
-    def test__savepoint_restores_hooks_with_new_hooks_on_clean_exit(self):
+    def test_savepoint_restores_hooks_with_new_hooks_on_clean_exit(self):
         d1 = Deferred()
         d2 = Deferred()
         dhooks = DeferredHooks()
@@ -316,7 +316,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
 
         self.expectThat(list(dhooks.hooks), Equals([d1, d2]))
 
-    def test__savepoint_restores_hooks_only_on_dirty_exit(self):
+    def test_savepoint_restores_hooks_only_on_dirty_exit(self):
         d1 = Deferred()
         d2 = Deferred()
         dhooks = DeferredHooks()

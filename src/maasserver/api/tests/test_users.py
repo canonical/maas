@@ -253,7 +253,7 @@ class TestUsers(APITestCase.ForUser):
             ContainsAll([user.username for user in users]),
         )
 
-    def test__whoami_returns_user(self):
+    def test_whoami_returns_user(self):
         factory.make_User()
         response = self.client.get(reverse("users_handler"), {"op": "whoami"})
         self.assertEqual(
@@ -262,7 +262,7 @@ class TestUsers(APITestCase.ForUser):
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(result["username"], Equals(self.user.username))
 
-    def test__whoami_returns_forbidden_if_not_logged_in(self):
+    def test_whoami_returns_forbidden_if_not_logged_in(self):
         self.client.logout()
         factory.make_User()
         response = self.client.get(reverse("users_handler"), {"op": "whoami"})

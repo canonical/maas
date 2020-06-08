@@ -134,7 +134,7 @@ class TestRackExternalService(MAASTestCase):
         self.assertThat(service.step, Equals(service.INTERVAL_LOW))
 
     @inlineCallbacks
-    def test__getConfiguration_updates_interval_to_high(self):
+    def test_getConfiguration_updates_interval_to_high(self):
         rpc_service, protocol = yield prepareRegion(self)
         service = make_startable_RackExternalService(
             self, rpc_service, reactor, []
@@ -220,7 +220,7 @@ class TestRackNTP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
         servers, peers = self.make_servers_and_peers()
         rpc_service, protocol = yield prepareRegion(
@@ -248,7 +248,7 @@ class TestRackNTP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__tryUpdate_updates_ntp_server(self):
+    def test_tryUpdate_updates_ntp_server(self):
         self.useFixture(MAASRootFixture())
         servers, peers = self.make_servers_and_peers()
         rpc_service, _ = yield prepareRegion(
@@ -349,7 +349,7 @@ class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
     )
 
     @inlineCallbacks
-    def test__tryUpdate_logs_errors_from_broken_method(self):
+    def test_tryUpdate_logs_errors_from_broken_method(self):
         # Patch the logger in the clusterservice so no log messages are printed
         # because the tests run in debug mode.
         self.patch(common.log, "debug")
@@ -413,7 +413,7 @@ class TestRackDNS(MAASTestCase):
         return service, dns
 
     @inlineCallbacks
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
         trusted_networks = self.make_trusted_networks()
         rpc_service, protocol = yield prepareRegion(
@@ -446,7 +446,7 @@ class TestRackDNS(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__tryUpdate_updates_dns_server(self):
+    def test_tryUpdate_updates_dns_server(self):
         self.useFixture(MAASRootFixture())
         trusted_networks = self.make_trusted_networks()
         rpc_service, _ = yield prepareRegion(
@@ -569,7 +569,7 @@ class TestRackDNS(MAASTestCase):
         # Nothing was logged; there's no need for lots of chatter.
         self.assertThat(logger.output, Equals(""))
 
-    def test__genRegionIps_groups_by_region(self):
+    def test_genRegionIps_groups_by_region(self):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         for _ in range(3):
@@ -586,7 +586,7 @@ class TestRackDNS(MAASTestCase):
         region_ips = list(dns._genRegionIps(mock_rpc.connections))
         self.assertEquals(3, len(region_ips))
 
-    def test__genRegionIps_always_returns_same_result(self):
+    def test_genRegionIps_always_returns_same_result(self):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         for _ in range(3):
@@ -636,7 +636,7 @@ class TestRackProxy(MAASTestCase):
         return service, proxy
 
     @inlineCallbacks
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
         allowed_cidrs = self.make_cidrs()
         proxy_enabled = factory.pick_bool()
@@ -680,7 +680,7 @@ class TestRackProxy(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__tryUpdate_updates_proxy_server(self):
+    def test_tryUpdate_updates_proxy_server(self):
         self.useFixture(MAASRootFixture())
         allowed_cidrs = self.make_cidrs()
         proxy_prefer_v4_proxy = factory.pick_bool()
@@ -795,7 +795,7 @@ class TestRackSyslog(MAASTestCase):
         return service, syslog
 
     @inlineCallbacks
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         port = factory.pick_port()
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
         rpc_service, protocol = yield prepareRegion(
@@ -827,7 +827,7 @@ class TestRackSyslog(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__tryUpdate_updates_syslog_server(self):
+    def test_tryUpdate_updates_syslog_server(self):
         self.useFixture(MAASRootFixture())
         port = factory.pick_port()
         rpc_service, _ = yield prepareRegion(self, syslog_port=port)

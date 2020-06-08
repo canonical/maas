@@ -33,7 +33,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestClearFullStorageConfigration(MAASServerTestCase):
-    def test__clears_all_objects(self):
+    def test_clears_all_objects(self):
         node = factory.make_Node()
         physical_block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
@@ -137,7 +137,7 @@ class TestClearFullStorageConfigration(MAASServerTestCase):
 
 
 class TestCreateFlatLayout(MAASServerTestCase):
-    def test__creates_layout_for_1TiB_disk(self):
+    def test_creates_layout_for_1TiB_disk(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=1024 ** 4, block_size=512

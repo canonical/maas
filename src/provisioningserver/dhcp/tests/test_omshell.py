@@ -364,7 +364,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         ("IPv6", {"ipv6": True, "port": 7912}),
     )
 
-    def test__calls_omshell_correctly(self):
+    def test_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
         ip_address = factory.make_ip_address(ipv6=self.ipv6)
@@ -398,7 +398,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
             run, MockCalledOnceWith(expected_script.encode("utf-8"))
         )
 
-    def test__considers_nonexistent_lease_a_success(self):
+    def test_considers_nonexistent_lease_a_success(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
         ip_address = factory.make_ip_address(ipv6=self.ipv6)
@@ -412,7 +412,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         shell.nullify_lease(ip_address)  # No exception.
         self.assertThat(shell._run, MockCalledOnceWith(ANY))
 
-    def test__catches_invalid_error(self):
+    def test_catches_invalid_error(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
         ip_address = factory.make_ip_address(ipv6=self.ipv6)
@@ -424,7 +424,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
             ExternalProcessError, shell.nullify_lease, ip_address
         )
 
-    def test__catches_failed_update(self):
+    def test_catches_failed_update(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
         ip_address = factory.make_ip_address(ipv6=self.ipv6)

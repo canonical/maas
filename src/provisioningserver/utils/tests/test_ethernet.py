@@ -48,7 +48,7 @@ def make_ethernet_packet(
 
 
 class TestEthernet(MAASTestCase):
-    def test__is_valid_returns_false_for_truncated_non_vlan(self):
+    def test_is_valid_returns_false_for_truncated_non_vlan(self):
         src_mac = factory.make_mac_address()
         dst_mac = factory.make_mac_address()
         ethertype = ETHERTYPE.ARP
@@ -63,7 +63,7 @@ class TestEthernet(MAASTestCase):
         eth = Ethernet(packet)
         self.assertThat(eth.is_valid(), Equals(False))
 
-    def test__is_valid_returns_false_for_truncated_vlan(self):
+    def test_is_valid_returns_false_for_truncated_vlan(self):
         src_mac = factory.make_mac_address()
         dst_mac = factory.make_mac_address()
         ethertype = ETHERTYPE.ARP
@@ -80,7 +80,7 @@ class TestEthernet(MAASTestCase):
         eth = Ethernet(packet)
         self.assertThat(eth.is_valid(), Equals(False))
 
-    def test__parses_non_vlan(self):
+    def test_parses_non_vlan(self):
         src_mac = factory.make_mac_address()
         dst_mac = factory.make_mac_address()
         ethertype = ETHERTYPE.ARP
@@ -99,7 +99,7 @@ class TestEthernet(MAASTestCase):
         self.assertThat(eth.payload, Equals(payload))
         self.assertThat(eth.is_valid(), Equals(True))
 
-    def test__parses_vlan(self):
+    def test_parses_vlan(self):
         src_mac = factory.make_mac_address()
         dst_mac = factory.make_mac_address()
         ethertype = ETHERTYPE.ARP

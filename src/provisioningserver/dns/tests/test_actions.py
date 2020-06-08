@@ -37,14 +37,14 @@ from provisioningserver.utils.shell import ExternalProcessError
 class TestReconfigure(MAASTestCase):
     """Tests for :py:func:`actions.bind_reconfigure`."""
 
-    def test__executes_rndc_command(self):
+    def test_executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
         actions.bind_reconfigure()
         self.assertThat(
             actions.execute_rndc_command, MockCalledOnceWith(("reconfig",))
         )
 
-    def test__logs_subprocess_error(self):
+    def test_logs_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
@@ -55,7 +55,7 @@ class TestReconfigure(MAASTestCase):
             logger.output,
         )
 
-    def test__upgrades_subprocess_error(self):
+    def test_upgrades_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         self.assertRaises(ExternalProcessError, actions.bind_reconfigure)
@@ -64,7 +64,7 @@ class TestReconfigure(MAASTestCase):
 class TestReload(MAASTestCase):
     """Tests for :py:func:`actions.bind_reload`."""
 
-    def test__executes_rndc_command(self):
+    def test_executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
         actions.bind_reload()
         self.assertThat(
@@ -72,7 +72,7 @@ class TestReload(MAASTestCase):
             MockCalledOnceWith(("reload",), timeout=2),
         )
 
-    def test__logs_subprocess_error(self):
+    def test_logs_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
@@ -83,7 +83,7 @@ class TestReload(MAASTestCase):
             logger.output,
         )
 
-    def test__false_on_subprocess_error(self):
+    def test_false_on_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         self.assertFalse(actions.bind_reload())
@@ -92,7 +92,7 @@ class TestReload(MAASTestCase):
 class TestReloadWithRetries(MAASTestCase):
     """Tests for :py:func:`actions.bind_reload_with_retries`."""
 
-    def test__calls_bind_reload_count_times(self):
+    def test_calls_bind_reload_count_times(self):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch_autospec(actions, "bind_reload")
         bind_reload.return_value = False
@@ -101,7 +101,7 @@ class TestReloadWithRetries(MAASTestCase):
         expected_calls = [call(timeout=2)] * attempts
         self.assertThat(actions.bind_reload, MockCallsMatch(*expected_calls))
 
-    def test__returns_on_success(self):
+    def test_returns_on_success(self):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch(actions, "bind_reload")
         bind_reload_return_values = [False, False, True]
@@ -113,7 +113,7 @@ class TestReloadWithRetries(MAASTestCase):
         expected_calls = [call(timeout=2), call(timeout=2), call(timeout=2)]
         self.assertThat(actions.bind_reload, MockCallsMatch(*expected_calls))
 
-    def test__sleeps_interval_seconds_between_attempts(self):
+    def test_sleeps_interval_seconds_between_attempts(self):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch_autospec(actions, "bind_reload")
         bind_reload.return_value = False
@@ -128,7 +128,7 @@ class TestReloadWithRetries(MAASTestCase):
 class TestReloadZone(MAASTestCase):
     """Tests for :py:func:`actions.bind_reload_zones`."""
 
-    def test__executes_rndc_command(self):
+    def test_executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
         self.assertTrue(actions.bind_reload_zones(sentinel.zone))
         self.assertThat(
@@ -136,7 +136,7 @@ class TestReloadZone(MAASTestCase):
             MockCalledOnceWith(("reload", sentinel.zone)),
         )
 
-    def test__logs_subprocess_error(self):
+    def test_logs_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
@@ -147,7 +147,7 @@ class TestReloadZone(MAASTestCase):
             logger.output,
         )
 
-    def test__false_on_subprocess_error(self):
+    def test_false_on_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         self.assertFalse(actions.bind_reload_zones(sentinel.zone))

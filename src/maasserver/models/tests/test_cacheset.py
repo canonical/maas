@@ -145,7 +145,7 @@ class TestCacheSetManager(MAASServerTestCase):
 class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
     """Tests for the `CacheSetManager.get_cache_set_or_404`."""
 
-    def test__raises_Http404_when_invalid_node(self):
+    def test_raises_Http404_when_invalid_node(self):
         user = factory.make_admin()
         cache_set = factory.make_CacheSet()
         self.assertRaises(
@@ -157,7 +157,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__raises_Http404_when_invalid_device(self):
+    def test_raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
         node = factory.make_Node()
         self.assertRaises(
@@ -169,7 +169,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             NodePermission.view,
         )
 
-    def test__return_cache_set_by_name(self):
+    def test_return_cache_set_by_name(self):
         user = factory.make_User()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
@@ -180,7 +180,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__view_returns_cache_set_when_no_owner(self):
+    def test_view_returns_cache_set_when_no_owner(self):
         user = factory.make_User()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
@@ -191,7 +191,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__view_returns_cache_set_when_owner(self):
+    def test_view_returns_cache_set_when_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         cache_set = factory.make_CacheSet(node=node)
@@ -202,7 +202,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__edit_raises_PermissionDenied_when_user_not_owner(self):
+    def test_edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         cache_set = factory.make_CacheSet(node=node)
@@ -215,7 +215,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__edit_returns_device_when_user_is_owner(self):
+    def test_edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         cache_set = factory.make_CacheSet(node=node)
@@ -226,7 +226,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             ).id,
         )
 
-    def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
+    def test_admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
@@ -239,7 +239,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_returns_device_when_admin(self):
+    def test_admin_returns_device_when_admin(self):
         user = factory.make_admin()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)

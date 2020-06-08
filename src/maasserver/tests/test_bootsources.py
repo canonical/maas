@@ -229,20 +229,20 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
         self.addCleanup(bootsources_signals.enable)
         bootsources_signals.disable()
 
-    def test__returns_empty_sources_and_sets_when_cache_empty(self):
+    def test_returns_empty_sources_and_sets_when_cache_empty(self):
         self.assertEqual(
             ([], set(), set()),
             get_os_info_from_boot_sources(factory.make_name("os")),
         )
 
-    def test__returns_empty_sources_and_sets_when_no_os(self):
+    def test_returns_empty_sources_and_sets_when_no_os(self):
         factory.make_BootSourceCache()
         self.assertEqual(
             ([], set(), set()),
             get_os_info_from_boot_sources(factory.make_name("os")),
         )
 
-    def test__returns_sources_and_sets_of_releases_and_architectures(self):
+    def test_returns_sources_and_sets_of_releases_and_architectures(self):
         os = factory.make_name("os")
         sources = [
             factory.make_BootSource(keyring_data="1234") for _ in range(2)
@@ -287,7 +287,7 @@ class TestPrivateUpdateCache(MAASServerTestCase):
             },
         )
 
-    def test__adds_release_to_cache(self):
+    def test_adds_release_to_cache(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         os = factory.make_name("os")
         release = factory.make_name("release")
@@ -312,7 +312,7 @@ class TestPrivateUpdateCache(MAASServerTestCase):
         self.assertEqual(release_title, cached.release_title)
         self.assertEqual(support_eol, cached.support_eol.strftime("%Y-%m-%d"))
 
-    def test__consistent_query_count(self):
+    def test_consistent_query_count(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         image_mapping = BootImageMapping()
         for _ in range(random.randint(20, 50)):
@@ -350,7 +350,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.addCleanup(bootsources_signals.enable)
         bootsources_signals.disable()
 
-    def test__has_env_GNUPGHOME_set(self):
+    def test_has_env_GNUPGHOME_set(self):
         capture = patch_and_capture_env_for_download_all_image_descriptions(
             self
         )
@@ -360,7 +360,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             bootsources.get_maas_user_gpghome(), capture.env["GNUPGHOME"]
         )
 
-    def test__has_env_http_and_https_proxy_set(self):
+    def test_has_env_http_and_https_proxy_set(self):
         proxy_address = factory.make_name("proxy")
         Config.objects.set_config("http_proxy", proxy_address)
         capture = patch_and_capture_env_for_download_all_image_descriptions(
@@ -377,7 +377,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__has_env_http_and_https_proxy_set_with_custom_no_proxy(self):
+    def test_has_env_http_and_https_proxy_set_with_custom_no_proxy(self):
         proxy_address = factory.make_name("proxy")
         Config.objects.set_config("http_proxy", proxy_address)
         Config.objects.set_config("boot_images_no_proxy", True)
@@ -399,7 +399,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__passes_user_agent_with_maas_version(self):
+    def test_passes_user_agent_with_maas_version(self):
         mock_download = self.patch(
             bootsources, "download_all_image_descriptions"
         )
@@ -411,7 +411,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         )
 
     @skip("XXX: GavinPanella 2015-12-04 bug=1546235: Fails spuriously.")
-    def test__doesnt_have_env_http_and_https_proxy_set_if_disabled(self):
+    def test_doesnt_have_env_http_and_https_proxy_set_if_disabled(self):
         proxy_address = factory.make_name("proxy")
         Config.objects.set_config("http_proxy", proxy_address)
         Config.objects.set_config("enable_http_proxy", False)
@@ -428,7 +428,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__returns_clears_entire_cache(self):
+    def test_returns_clears_entire_cache(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         factory.make_BootSourceCache(source)
         mock_download = self.patch(
@@ -438,7 +438,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         cache_boot_sources()
         self.assertEqual(0, BootSourceCache.objects.all().count())
 
-    def test__returns_adds_entries_to_cache_for_source(self):
+    def test_returns_adds_entries_to_cache_for_source(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         os = factory.make_name("os")
         releases = [factory.make_name("release") for _ in range(3)]
@@ -458,7 +458,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(releases, cached_releases)
 
-    def test__adds_release_codename_title_and_support_eol(self):
+    def test_adds_release_codename_title_and_support_eol(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         os = factory.make_name("os")
         release = factory.make_name("release")
@@ -486,7 +486,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.assertEqual(release_title, cached.release_title)
         self.assertEqual(support_eol, cached.support_eol.strftime("%Y-%m-%d"))
 
-    def test__adds_title_to_extra(self):
+    def test_adds_title_to_extra(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         os = factory.make_name("os")
         release = factory.make_name("release")
@@ -508,7 +508,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             {"title": "%s %s" % (os_title, release_title)}, cached.extra
         )
 
-    def test__adds_title_with_gadget_to_extra(self):
+    def test_adds_title_with_gadget_to_extra(self):
         source = factory.make_BootSource(keyring_data=b"1234")
         os = factory.make_name("os")
         release = factory.make_name("release")
@@ -537,7 +537,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             cached.extra,
         )
 
-    def test__notifies_missing_commissioning_os(self):
+    def test_notifies_missing_commissioning_os(self):
         cache_boot_sources()
         self.assertTrue(
             Notification.objects.filter(
@@ -559,7 +559,7 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
         self.addCleanup(bootsources_signals.enable)
         bootsources_signals.disable()
 
-    def test__catches_connection_errors_and_sets_component_error(self):
+    def test_catches_connection_errors_and_sets_component_error(self):
         sources = [
             factory.make_BootSource(keyring_data=b"1234") for _ in range(3)
         ]
@@ -586,7 +586,7 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
         actual_error = get_persistent_error(COMPONENT.REGION_IMAGE_IMPORT)
         self.assertEqual(expected_error, actual_error)
 
-    def test__clears_component_error_when_successful(self):
+    def test_clears_component_error_when_successful(self):
         register_persistent_error(
             COMPONENT.REGION_IMAGE_IMPORT, factory.make_string()
         )

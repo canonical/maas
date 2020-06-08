@@ -106,7 +106,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def test__finds_power_address_from_mac_address(self):
+    def test_finds_power_address_from_mac_address(self):
         context = make_context()
         driver = IPMIPowerDriver()
         ip_address = factory.make_ipv4_address()
@@ -131,7 +131,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             driver._issue_ipmipower_command.call_args[0], Contains(ip_address)
         )
 
-    def test__chassis_config_written_to_temporary_file(self):
+    def test_chassis_config_written_to_temporary_file(self):
         NamedTemporaryFile = self.patch(ipmi_module, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
@@ -149,7 +149,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         self.assertThat(tmpfile.flush, MockCalledOnceWith())
         self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
 
-    def test__issue_ipmi_chassis_config_command_raises_power_auth_error(self):
+    def test_issue_ipmi_chassis_config_command_raises_power_auth_error(self):
         ipmi_errors = {
             key: IPMI_ERRORS[key]
             for key in IPMI_ERRORS
@@ -166,7 +166,7 @@ class TestIPMIPowerDriver(MAASTestCase):
                 factory.make_name("power_address"),
             )
 
-    def test__issue_ipmi_chassis_config_command_logs_maaslog_warning(self):
+    def test_issue_ipmi_chassis_config_command_logs_maaslog_warning(self):
         power_address = factory.make_name("power_address")
         stderr = factory.make_name("stderr")
         run_command_mock = self.patch(ipmi_module.shell, "run_command")
@@ -187,7 +187,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             ),
         )
 
-    def test__issue_ipmipower_command_raises_error(self):
+    def test_issue_ipmipower_command_raises_error(self):
         for error, error_info in IPMI_ERRORS.items():
             run_command_mock = self.patch(ipmi_module.shell, "run_command")
             run_command_mock.return_value = ProcessResult(
@@ -201,7 +201,7 @@ class TestIPMIPowerDriver(MAASTestCase):
                 factory.make_name("power_address"),
             )
 
-    def test__issue_ipmipower_command_raises_unknown_error(self):
+    def test_issue_ipmipower_command_raises_unknown_error(self):
         run_command_mock = self.patch(ipmi_module.shell, "run_command")
         run_command_mock.return_value = ProcessResult(
             stderr="error", returncode=1
@@ -214,7 +214,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             factory.make_name("power_address"),
         )
 
-    def test__issue_ipmipower_command_does_not_mistake_host_for_status(self):
+    def test_issue_ipmipower_command_does_not_mistake_host_for_status(self):
         run_command_mock = self.patch(ipmi_module.shell, "run_command")
         # "cameron" contains the string "on", but the machine is off.
         run_command_mock.return_value = ProcessResult(stdout="cameron: off")
@@ -227,7 +227,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             Equals("off"),
         )
 
-    def test__issue_ipmi_command_issues_power_on(self):
+    def test_issue_ipmi_command_issues_power_on(self):
         context = make_context()
         ipmi_chassis_config_command = make_ipmi_chassis_config_command(
             **context, tmp_config_name=ANY
@@ -246,7 +246,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals("on"))
 
-    def test__issue_ipmi_command_issues_power_off(self):
+    def test_issue_ipmi_command_issues_power_off(self):
         context = make_context()
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ("--off",)
@@ -257,7 +257,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock.assert_called_once_with(*ipmipower_command)
         self.expectThat(result, Equals("off"))
 
-    def test__issue_ipmi_command_issues_power_off_soft_mode(self):
+    def test_issue_ipmi_command_issues_power_off_soft_mode(self):
         context = make_context()
         context["power_off_mode"] = "soft"
         ipmipower_command = make_ipmipower_command(**context)
@@ -269,7 +269,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock.assert_called_once_with(*ipmipower_command)
         self.expectThat(result, Equals("off"))
 
-    def test__issue_ipmi_command_issues_power_query(self):
+    def test_issue_ipmi_command_issues_power_query(self):
         context = make_context()
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ("--stat",)
@@ -319,7 +319,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             _issue_ipmi_command_mock, MockCalledOnceWith("query", **context)
         )
 
-    def test__issue_ipmi_chassis_config_with_power_boot_type(self):
+    def test_issue_ipmi_chassis_config_with_power_boot_type(self):
         context = make_context()
         driver = IPMIPowerDriver()
         ip_address = factory.make_ipv4_address()
@@ -357,7 +357,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             MockCalledOnceWith(ANY, power_change, ip_address),
         )
 
-    def test__chassis_config_written_to_temporary_file_with_boot_type(self):
+    def test_chassis_config_written_to_temporary_file_with_boot_type(self):
         boot_type = self.patch(ipmi_module, "power_boot_type")
         boot_type.return_value = IPMI_BOOT_TYPE.EFI
         NamedTemporaryFile = self.patch(ipmi_module, "NamedTemporaryFile")

@@ -18,7 +18,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
-    def test__user_view_returns_fannetwork(self):
+    def test_user_view_returns_fannetwork(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
         self.assertEqual(
@@ -28,7 +28,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
         with ExpectedException(PermissionDenied):
@@ -36,7 +36,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
                 fannetwork.id, user, NodePermission.edit
             )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
         with ExpectedException(PermissionDenied):
@@ -44,7 +44,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
                 fannetwork.id, user, NodePermission.admin
             )
 
-    def test__admin_view_returns_fannetwork(self):
+    def test_admin_view_returns_fannetwork(self):
         admin = factory.make_admin()
         fannetwork = factory.make_FanNetwork()
         self.assertEqual(
@@ -54,7 +54,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_fannetwork(self):
+    def test_admin_edit_returns_fannetwork(self):
         admin = factory.make_admin()
         fannetwork = factory.make_FanNetwork()
         self.assertEqual(
@@ -64,7 +64,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_fannetwork(self):
+    def test_admin_admin_returns_fannetwork(self):
         admin = factory.make_admin()
         fannetwork = factory.make_FanNetwork()
         self.assertEqual(

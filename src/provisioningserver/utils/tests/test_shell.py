@@ -39,11 +39,11 @@ class TestCallAndCheck(MAASTestCase):
         process.returncode = returncode
         return process
 
-    def test__returns_standard_output(self):
+    def test_returns_standard_output(self):
         output = factory.make_string().encode("ascii")
         self.assertEqual(output, call_and_check(["/bin/echo", "-n", output]))
 
-    def test__raises_ExternalProcessError_on_failure(self):
+    def test_raises_ExternalProcessError_on_failure(self):
         command = factory.make_name("command")
         message = factory.make_string()
         self.patch_popen(returncode=1, stderr=message)
@@ -54,7 +54,7 @@ class TestCallAndCheck(MAASTestCase):
         self.assertEqual(command, error.cmd)
         self.assertEqual(message, error.output)
 
-    def test__passes_timeout_to_communicate(self):
+    def test_passes_timeout_to_communicate(self):
         command = factory.make_name("command")
         process = self.patch_popen()
         timeout = random.randint(1, 10)
@@ -63,7 +63,7 @@ class TestCallAndCheck(MAASTestCase):
             process.communicate, MockCalledOnceWith(timeout=timeout)
         )
 
-    def test__reports_stderr_on_failure(self):
+    def test_reports_stderr_on_failure(self):
         nonfile = os.path.join(self.make_dir(), factory.make_name("nonesuch"))
         error = self.assertRaises(
             ExternalProcessError,
@@ -153,11 +153,11 @@ class TestExternalProcessError(MAASTestCase):
         self.assertIsInstance(converted_string, bytes)
         self.assertEqual(expected_byte_string, converted_string)
 
-    def test__str__returns_unicode(self):
+    def test_str__returns_unicode(self):
         error = ExternalProcessError(returncode=-1, cmd="foo-bar")
         self.assertIsInstance(error.__str__(), str)
 
-    def test__str__contains_output(self):
+    def test_str__contains_output(self):
         output = b"Mot\xf6rhead"
         unicode_output = "Mot\ufffdrhead"
         error = ExternalProcessError(
@@ -183,7 +183,7 @@ class TestExternalProcessError(MAASTestCase):
 
 
 class TestHasCommandAvailable(MAASTestCase):
-    def test__calls_which(self):
+    def test_calls_which(self):
         mock_call_and_check = self.patch(shell_module, "call_and_check")
         cmd = factory.make_name("cmd")
         has_command_available(cmd)
@@ -191,13 +191,13 @@ class TestHasCommandAvailable(MAASTestCase):
             mock_call_and_check, MockCalledOnceWith(["which", cmd])
         )
 
-    def test__returns_False_when_ExternalProcessError_raised(self):
+    def test_returns_False_when_ExternalProcessError_raised(self):
         self.patch(
             shell_module, "call_and_check"
         ).side_effect = ExternalProcessError(1, "cmd")
         self.assertFalse(has_command_available(factory.make_name("cmd")))
 
-    def test__returns_True_when_ExternalProcessError_not_raised(self):
+    def test_returns_True_when_ExternalProcessError_not_raised(self):
         self.patch(shell_module, "call_and_check")
         self.assertTrue(has_command_available(factory.make_name("cmd")))
 
@@ -222,7 +222,7 @@ LC_VAR_NAMES = {
 class TestGetEnvWithLocale(MAASTestCase):
     """Tests for `get_env_with_locale`."""
 
-    def test__sets_LANG_and_LC_ALL(self):
+    def test_sets_LANG_and_LC_ALL(self):
         self.assertThat(
             get_env_with_locale({}),
             Equals(
@@ -230,7 +230,7 @@ class TestGetEnvWithLocale(MAASTestCase):
             ),
         )
 
-    def test__overwrites_LANG(self):
+    def test_overwrites_LANG(self):
         self.assertThat(
             get_env_with_locale({"LANG": factory.make_name("LANG")}),
             Equals(
@@ -238,7 +238,7 @@ class TestGetEnvWithLocale(MAASTestCase):
             ),
         )
 
-    def test__overwrites_LANGUAGE(self):
+    def test_overwrites_LANGUAGE(self):
         self.assertThat(
             get_env_with_locale({"LANGUAGE": factory.make_name("LANGUAGE")}),
             Equals(
@@ -246,7 +246,7 @@ class TestGetEnvWithLocale(MAASTestCase):
             ),
         )
 
-    def test__removes_other_LC_variables(self):
+    def test_removes_other_LC_variables(self):
         self.assertThat(
             get_env_with_locale(
                 {name: factory.make_name(name) for name in LC_VAR_NAMES}
@@ -256,7 +256,7 @@ class TestGetEnvWithLocale(MAASTestCase):
             ),
         )
 
-    def test__passes_other_variables_through(self):
+    def test_passes_other_variables_through(self):
         basis = {
             factory.make_name("name"): factory.make_name("value")
             for _ in range(5)
@@ -268,7 +268,7 @@ class TestGetEnvWithLocale(MAASTestCase):
         observed = get_env_with_locale(basis)
         self.assertThat(observed, Equals(expected))
 
-    def test__defaults_to_process_environment(self):
+    def test_defaults_to_process_environment(self):
         name = factory.make_name("name")
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):
@@ -280,7 +280,7 @@ class TestGetEnvWithLocale(MAASTestCase):
 class TestGetEnvWithBytesLocale(MAASTestCase):
     """Tests for `get_env_with_bytes_locale`."""
 
-    def test__sets_LANG_and_LC_ALL(self):
+    def test_sets_LANG_and_LC_ALL(self):
         self.assertThat(
             get_env_with_bytes_locale({}),
             Equals(
@@ -292,7 +292,7 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
             ),
         )
 
-    def test__overwrites_LANG(self):
+    def test_overwrites_LANG(self):
         self.assertThat(
             get_env_with_bytes_locale(
                 {b"LANG": factory.make_name("LANG").encode("ascii")}
@@ -306,7 +306,7 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
             ),
         )
 
-    def test__overwrites_LANGUAGE(self):
+    def test_overwrites_LANGUAGE(self):
         self.assertThat(
             get_env_with_bytes_locale(
                 {b"LANGUAGE": factory.make_name("LANGUAGE").encode("ascii")}
@@ -320,7 +320,7 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
             ),
         )
 
-    def test__removes_other_LC_variables(self):
+    def test_removes_other_LC_variables(self):
         self.assertThat(
             get_env_with_bytes_locale(
                 {
@@ -339,7 +339,7 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
             ),
         )
 
-    def test__passes_other_variables_through(self):
+    def test_passes_other_variables_through(self):
         basis = {
             factory.make_name("name").encode("ascii"): (
                 factory.make_name("value").encode("ascii")
@@ -353,7 +353,7 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
         observed = get_env_with_bytes_locale(basis)
         self.assertThat(observed, Equals(expected))
 
-    def test__defaults_to_process_environment(self):
+    def test_defaults_to_process_environment(self):
         name = factory.make_name("name")
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):

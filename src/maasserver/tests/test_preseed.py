@@ -144,7 +144,7 @@ class TestGetNetlocAndPath(MAASServerTestCase):
 class TestGetPreseedFilenames(MAASServerTestCase):
     """Tests for `get_preseed_filenames`."""
 
-    def test__returns_filenames(self):
+    def test_returns_filenames(self):
         hostname = factory.make_string()
         prefix = factory.make_string()
         osystem = factory.make_string()
@@ -169,7 +169,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             ),
         )
 
-    def test__returns_limited_filenames_if_node_is_None(self):
+    def test_returns_limited_filenames_if_node_is_None(self):
         osystem = factory.make_string()
         release = factory.make_string()
         prefix = factory.make_string()
@@ -182,7 +182,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             list(get_preseed_filenames(None, prefix, osystem, release)),
         )
 
-    def test__supports_empty_prefix(self):
+    def test_supports_empty_prefix(self):
         hostname = factory.make_string()
         osystem = factory.make_string()
         release = factory.make_string()
@@ -199,7 +199,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             list(get_preseed_filenames(node, "", osystem, release)),
         )
 
-    def test__returns_list_without_default(self):
+    def test_returns_list_without_default(self):
         # If default=False is passed to get_preseed_filenames, the
         # returned list won't include the default template name as a
         # last resort template.
@@ -214,7 +214,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             ],
         )
 
-    def test__returns_list_with_default(self):
+    def test_returns_list_with_default(self):
         # If default=True is passed to get_preseed_filenames, the
         # returned list will include the default template name as a
         # last resort template.
@@ -229,7 +229,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             ],
         )
 
-    def test__returns_backward_compatible_name_for_ubuntu_without_prefix(self):
+    def test_returns_backward_compatible_name_for_ubuntu_without_prefix(self):
         # If the OS is Ubuntu, also include backward-compatible filenames.
         # See bug 1439366 for details.
         hostname = factory.make_string()
@@ -252,7 +252,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             list(get_preseed_filenames(node, "", osystem, release)),
         )
 
-    def test__returns_backward_compatible_name_for_ubuntu_with_prefix(self):
+    def test_returns_backward_compatible_name_for_ubuntu_with_prefix(self):
         # If the OS is Ubuntu, also include backward-compatible filenames.
         # See bug 1439366 for details.
         hostname = factory.make_string()
@@ -687,7 +687,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         [reporter_yaml] = preseeds
         return yaml.safe_load(reporter_yaml)
 
-    def test__curtin_maas_reporter_with_events_support(self):
+    def test_curtin_maas_reporter_with_events_support(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
@@ -722,7 +722,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             reporter["install"]["post_files"],
         )
 
-    def test__curtin_maas_reporter_without_events_support(self):
+    def test_curtin_maas_reporter_without_events_support(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
@@ -743,7 +743,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             token.secret, reporter["reporter"]["maas"]["token_secret"]
         )
 
-    def test__returns_list_of_yaml_strings_matching_curtin(self):
+    def test_returns_list_of_yaml_strings_matching_curtin(self):
         preseeds = compose_curtin_maas_reporter(
             make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet()
         )
@@ -760,14 +760,14 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
 
 
 class TestComposeCurtinCloudConfig(MAASServerTestCase):
-    def test__returns_curtin_cloud_config(self):
+    def test_returns_curtin_cloud_config(self):
         preseeds = compose_curtin_cloud_config(
             make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet()
         )
         self.assertIsInstance(preseeds, list)
         self.assertThat(preseeds, HasLength(1))
 
-    def test__get_curtin_cloud_config_includes_datasource_list(self):
+    def test_get_curtin_cloud_config_includes_datasource_list(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         config = get_curtin_cloud_config(make_HttpRequest(), node)
         self.assertItemsEqual(["cloudconfig"], list(config.keys()))
@@ -780,7 +780,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             Equals("datasource_list: [ MAAS ]"),
         )
 
-    def test__get_curtin_cloud_config_includes_cloudconfig(self):
+    def test_get_curtin_cloud_config_includes_cloudconfig(self):
         owner = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
         token = NodeKey.objects.get_token_for_node(node)
@@ -853,19 +853,19 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):
-    def test__returns_null_swap_size(self):
+    def test_returns_null_swap_size(self):
         node = factory.make_Node()
         self.assertEqual(node.swap_size, None)
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(swap_preseed, [])
 
-    def test__returns_set_swap_size(self):
+    def test_returns_set_swap_size(self):
         node = factory.make_Node()
         node.swap_size = 10 * 1000 ** 3
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(swap_preseed, ["swap: {size: 10000000000B}\n"])
 
-    def test__suppresses_swap_file_when_swap_on_block_device(self):
+    def test_suppresses_swap_file_when_swap_on_block_device(self):
         node = factory.make_Node()
         block_device = factory.make_BlockDevice(node=node)
         factory.make_Filesystem(
@@ -875,7 +875,7 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(swap_preseed, ["swap: {size: 0B}\n"])
 
-    def test__suppresses_swap_file_when_swap_on_partition(self):
+    def test_suppresses_swap_file_when_swap_on_partition(self):
         node = factory.make_Node()
         partition = factory.make_Partition(node=node)
         factory.make_Filesystem(
@@ -887,13 +887,13 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
 
 
 class TestComposeCurtinKernel(MAASServerTestCase):
-    def test__returns_null_kernel(self):
+    def test_returns_null_kernel(self):
         node = factory.make_Node()
         self.assertEqual(node.hwe_kernel, None)
         kernel_preseed = compose_curtin_kernel_preseed(node)
         self.assertEqual(kernel_preseed, [])
 
-    def test__returns_set_kernel(self):
+    def test_returns_set_kernel(self):
         self.patch(
             BootResource.objects, "get_kpackage_for_node"
         ).return_value = "linux-image-generic-lts-vivid"
@@ -911,11 +911,11 @@ class TestComposeCurtinKernel(MAASServerTestCase):
 
 
 class TestComposeCurtinVerbose(MAASServerTestCase):
-    def test__returns_empty_when_false(self):
+    def test_returns_empty_when_false(self):
         Config.objects.set_config("curtin_verbose", False)
         self.assertEqual([], compose_curtin_verbose_preseed())
 
-    def test__returns_verbosity_config(self):
+    def test_returns_verbosity_config(self):
         Config.objects.set_config("curtin_verbose", True)
         preseed = compose_curtin_verbose_preseed()
         self.assertEqual(
@@ -924,38 +924,38 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
 
 
 class TestGetNetworkYAMLSettings(MAASServerTestCase):
-    def test__forces_v1_if_config_option_set(self):
+    def test_forces_v1_if_config_option_set(self):
         Config.objects.set_config("force_v1_network_yaml", True)
         yaml_settings = get_network_yaml_settings("ubuntu", "bionic")
         self.assertThat(yaml_settings.version, Equals(1))
 
-    def test__returns_v1_for_trusty(self):
+    def test_returns_v1_for_trusty(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "trusty")
         self.assertThat(yaml_settings.version, Equals(1))
 
-    def test__returns_v2_with_no_source_routing_for_xenial(self):
+    def test_returns_v2_with_no_source_routing_for_xenial(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "xenial")
         self.assertThat(yaml_settings.version, Equals(2))
         self.assertThat(yaml_settings.source_routing, Equals(False))
 
-    def test__returns_v2_with_source_routing_for_bionic(self):
+    def test_returns_v2_with_source_routing_for_bionic(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "bionic")
         self.assertThat(yaml_settings.version, Equals(2))
         self.assertThat(yaml_settings.source_routing, Equals(True))
 
-    def test__returns_v2_with_source_routing_for_cosmic(self):
+    def test_returns_v2_with_source_routing_for_cosmic(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "cosmic")
         self.assertThat(yaml_settings.version, Equals(2))
         self.assertThat(yaml_settings.source_routing, Equals(True))
 
-    def test__returns_v1_with_no_source_routing_for_esxi(self):
+    def test_returns_v1_with_no_source_routing_for_esxi(self):
         yaml_settings = get_network_yaml_settings("esxi", "")
         self.assertThat(yaml_settings.version, Equals(1))
         self.assertThat(yaml_settings.source_routing, Equals(False))
 
 
 class TestGetCurtinMergedConfig(MAASServerTestCase):
-    def test__merges_configs_together(self):
+    def test_merges_configs_together(self):
         configs = [
             yaml.safe_dump({"maas": {"test": "data"}, "override": "data"}),
             yaml.safe_dump({"maas2": {"test": "data2"}, "override": "data2"}),

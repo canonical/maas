@@ -26,7 +26,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         discovery = factory.make_Discovery(mac_address="48:51:b7:00:00:00")
         self.assertThat(discovery.mac_organization, IsNonEmptyString)
 
-    def test__ignores_duplicate_macs(self):
+    def test_ignores_duplicate_macs(self):
         rack1 = factory.make_RackController()
         rack2 = factory.make_RackController()
         iface1 = factory.make_Interface(node=rack1)
@@ -40,7 +40,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         # ... the Discovery view should only display one entry.
         self.assertThat(Discovery.objects.count(), Equals(1))
 
-    def test__query_by_unknown_mac(self):
+    def test_query_by_unknown_mac(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
@@ -50,7 +50,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         # should disappear from this query.
         self.assertThat(Discovery.objects.by_unknown_mac().count(), Equals(0))
 
-    def test__query_by_unknown_ip(self):
+    def test_query_by_unknown_ip(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
@@ -60,7 +60,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         # should disappear from this query.
         self.assertThat(Discovery.objects.by_unknown_ip().count(), Equals(0))
 
-    def test__query_by_unknown_ip_and_mac__known_ip(self):
+    def test_query_by_unknown_ip_and_mac__known_ip(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
@@ -73,7 +73,7 @@ class TestDiscoveryModel(MAASServerTestCase):
             Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0)
         )
 
-    def test__query_by_unknown_ip_and_mac__known_mac(self):
+    def test_query_by_unknown_ip_and_mac__known_mac(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
@@ -86,20 +86,20 @@ class TestDiscoveryModel(MAASServerTestCase):
             Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0)
         )
 
-    def test__does_not_fail_if_cannot_find_subnet(self):
+    def test_does_not_fail_if_cannot_find_subnet(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertThat(Discovery.objects.first().subnet, Is(None))
 
-    def test__associates_known_subnet(self):
+    def test_associates_known_subnet(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         subnet = factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertThat(Discovery.objects.first().subnet, Equals(subnet))
 
-    def test__associates_best_subnet(self):
+    def test_associates_best_subnet(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         # Seems unlikely, but we'll test it anyway. ;-)
@@ -109,7 +109,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertThat(Discovery.objects.first().subnet, Equals(subnet))
         self.assertThat(Discovery.objects.count(), Equals(1))
 
-    def test__is_external_dhcp(self):
+    def test_is_external_dhcp(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
@@ -121,7 +121,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         discovery = Discovery.objects.first()
         self.assertThat(discovery.is_external_dhcp, Equals(True))
 
-    def test__exposes_mdns_when_nothing_better_available(self):
+    def test_exposes_mdns_when_nothing_better_available(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         ip = factory.make_ip_address(ipv6=False)
@@ -130,7 +130,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         discovery = Discovery.objects.first()
         self.assertThat(discovery.hostname, Equals(mdns_hostname))
 
-    def test__prefers_rdns_to_mdns(self):
+    def test_prefers_rdns_to_mdns(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         ip = factory.make_ip_address(ipv6=False)
@@ -146,7 +146,7 @@ class TestDiscoveryModel(MAASServerTestCase):
 class TestDiscoveryManagerClear(MAASServerTestCase):
     """Tests for `DiscoveryManager.clear` """
 
-    def test__clear_mdns_entries(self):
+    def test_clear_mdns_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
@@ -164,7 +164,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
             ),
         )
 
-    def test__clear_neighbour_entries(self):
+    def test_clear_neighbour_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
@@ -182,7 +182,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
             ),
         )
 
-    def test__clear_all_entries(self):
+    def test_clear_all_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
@@ -202,7 +202,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
             ),
         )
 
-    def test__clear_mdns_entries_is_noop_if_what_to_clear_is_unspecified(self):
+    def test_clear_mdns_entries_is_noop_if_what_to_clear_is_unspecified(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
         factory.make_MDNS()
@@ -216,7 +216,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         self.assertThat(Neighbour.objects.count(), Equals(2))
         self.assertThat(maaslog, MockNotCalled())
 
-    def test__clear_logs_username_if_given(self):
+    def test_clear_logs_username_if_given(self):
         user = factory.make_admin()
         maaslog = self.patch(discovery_module.maaslog, "info")
         factory.make_MDNS()
@@ -233,7 +233,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
 class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
     """Tests for `DiscoveryManager.delete_by_mac_and_ip` """
 
-    def test__deletes_neighbours_matching_mac_and_ip(self):
+    def test_deletes_neighbours_matching_mac_and_ip(self):
         neigh = factory.make_Neighbour()
         factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
         self.assertThat(Neighbour.objects.count(), Equals(2))
@@ -242,7 +242,7 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         )
         self.assertThat(Neighbour.objects.count(), Equals(0))
 
-    def test__unrelated_neighbours_remain(self):
+    def test_unrelated_neighbours_remain(self):
         neigh = factory.make_Neighbour()
         factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
         # Make an extra neighbour; this one shouldn't go away.
@@ -253,7 +253,7 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         )
         self.assertThat(Neighbour.objects.count(), Equals(1))
 
-    def test__deletes_related_mdns_entries(self):
+    def test_deletes_related_mdns_entries(self):
         neigh = factory.make_Neighbour()
         factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
         factory.make_MDNS(ip=neigh.ip)
@@ -265,7 +265,7 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         self.assertThat(Neighbour.objects.count(), Equals(0))
         self.assertThat(MDNS.objects.count(), Equals(0))
 
-    def test__deletes_related_rdns_entries(self):
+    def test_deletes_related_rdns_entries(self):
         neigh = factory.make_Neighbour()
         factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
         factory.make_RDNS(ip=neigh.ip)
@@ -277,7 +277,7 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         self.assertThat(Neighbour.objects.count(), Equals(0))
         self.assertThat(MDNS.objects.count(), Equals(0))
 
-    def test__log_entries(self):
+    def test_log_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
         user = factory.make_admin()
         neigh = factory.make_Neighbour(
