@@ -14,14 +14,13 @@ from datetime import datetime
 import functools
 import io
 import os
-from pathlib import Path
 import signal
 from sys import _current_frames as current_frames
 import threading
 from time import gmtime, strftime
 import traceback
 
-from provisioningserver.path import get_data_path
+from provisioningserver.path import get_maas_data_path
 
 _profile = None
 
@@ -32,7 +31,7 @@ def toggle_cprofile(process_name, signum=None, stack=None):
     If it's called when no profiling is enabled, profiling will start.
 
     If it's called when profiling is enabled, profiling is stopped and
-    the stats are written to MAAS_ROOT/var/lib/maas/profiling, with the
+    the stats are written to $MAAS_DATA/profiling, with the
     process name and pid in the name.
     """
     global _profile
@@ -41,12 +40,11 @@ def toggle_cprofile(process_name, signum=None, stack=None):
         _profile.enable()
         print("Profiling enabled")
     else:
-        base_dir = Path("/") / "var" / "lib" / "maas" / "profiling"
         current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
         output_filepath = (
-            base_dir / f"{process_name}-{os.getpid()}-{current_time}.pyprof"
+            f"profiling/{process_name}-{os.getpid()}-{current_time}.pyprof"
         )
-        full_filepath = get_data_path(str(output_filepath))
+        full_filepath = get_maas_data_path(str(output_filepath))
         _profile.create_stats()
         _profile.dump_stats(full_filepath)
         _profile = None

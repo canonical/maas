@@ -15,7 +15,7 @@ cd "$(dirname "$0")/../.."
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
 # HTTP settings, for driving nginx.
-export MAAS_HTTP_CONFIG_DIR="${MAAS_ROOT}/var/lib/maas/http"
+export MAAS_HTTP_CONFIG_DIR="${MAAS_DATA}/http"
 
 # Ensure that we've got a configuration directory.
 mkdir -p "${MAAS_HTTP_CONFIG_DIR}"

@@ -37,6 +37,7 @@ def run_django(is_snap, is_devenv):
                 "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
                 "MAAS_PATH": os.environ["SNAP"],
                 "MAAS_ROOT": snap_data,
+                "MAAS_DATA": os.path.join(os.environ["SNAP_COMMON"], "maas"),
                 "MAAS_REGION_CONFIG": os.path.join(snap_data, "regiond.conf"),
                 "MAAS_DNS_CONFIG_DIR": os.path.join(snap_data, "bind"),
                 "MAAS_PROXY_CONFIG_DIR": os.path.join(snap_data, "proxy"),

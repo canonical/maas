@@ -24,7 +24,11 @@ from testtools.matchers import AllMatch, IsInstance, Not
 
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
-from maastesting.fixtures import MAASRootFixture, TempDirectory
+from maastesting.fixtures import (
+    MAASDataFixture,
+    MAASRootFixture,
+    TempDirectory,
+)
 from maastesting.matchers import DocTestMatches
 from maastesting.runtest import (
     MAASCrochetRunTest,
@@ -149,6 +153,8 @@ class MAASTestCase(
         # Every test gets a pristine MAAS_ROOT, when it is defined.
         if "MAAS_ROOT" in os.environ:
             self.useFixture(MAASRootFixture())
+        if "MAAS_DATA" in os.environ:
+            self.useFixture(MAASDataFixture())
 
         # Capture Twisted logs and add them as a test detail.
         twistedLog = self.useFixture(TwistedLoggerFixture())

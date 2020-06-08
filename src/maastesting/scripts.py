@@ -31,6 +31,7 @@ def update_environ(env=None):
     os.environ.update(
         {
             "MAAS_ROOT": os.path.join(os.getcwd(), ".run"),
+            "MAAS_DATA": os.path.join(os.getcwd(), ".run/maas"),
             "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.development",
         }
     )

@@ -25,7 +25,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from provisioningserver.path import get_data_path
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.fs import (
     FileLock,
     read_text_file,
@@ -52,7 +52,7 @@ def to_bin(u):
 
 def get_shared_secret_filesystem_path():
     """Return the path to shared-secret on the filesystem."""
-    return get_data_path("var", "lib", "maas", "secret")
+    return get_maas_data_path("secret")
 
 
 def get_shared_secret_from_filesystem():

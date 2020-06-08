@@ -38,14 +38,13 @@ migrate_data() {
         cp -a /etc/maas/* "$MAAS_SNAP_DATA"
     fi
 
-    mkdir -p "$MAAS_SNAP_DATA/var/lib"
     if [ -d /var/lib/maas ]; then
-        mv /var/lib/maas "$MAAS_SNAP_DATA/var/lib"
-        chown -R root:root "$MAAS_SNAP_DATA/var/lib/maas"
+        mv /var/lib/maas "$MAAS_SNAP_COMMON/maas"
+        chown -R root:root "$MAAS_SNAP_COMMON/maas"
 
         mkdir -p "$MAAS_SNAP_DATA/root"
-        if [ -d "$MAAS_SNAP_DATA/var/lib/maas/.ssh" ]; then
-           mv "$MAAS_SNAP_DATA/var/lib/maas/.ssh" "$MAAS_SNAP_DATA/root"
+        if [ -d "$MAAS_SNAP_COMMON/maas/.ssh" ]; then
+           mv "$MAAS_SNAP_COMMON/maas/.ssh" "$MAAS_SNAP_DATA/root"
         fi
     fi
     if [ -d /var/spool/maas-proxy ]; then

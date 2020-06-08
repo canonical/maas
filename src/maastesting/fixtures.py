@@ -318,3 +318,15 @@ class MAASRootFixture(fixtures.Fixture):
             raise NotADirectoryError(
                 "Skeleton MAAS_ROOT (%s) is not a directory." % skel
             )
+
+
+class MAASDataFixture(fixtures.Fixture):
+    """Create a `MAAS_DATA` directory in a temporary location.
+
+    Also updates `MAAS_DATA` in the environment to point to this new location.
+    """
+
+    def _setUp(self):
+        self.path = self.useFixture(TempDirectory()).join("maas-data")
+        os.mkdir(self.path)
+        self.useFixture(EnvironmentVariable("MAAS_DATA", self.path))

@@ -12,13 +12,14 @@ fi
 
 # Remove the dhcp configuration so its not started unless needed.
 rm -f \
-   "$SNAP_DATA/var/lib/maas/dhcpd.sock" \
-   "$SNAP_DATA/var/lib/maas/dhcpd.conf" \
-   "$SNAP_DATA/var/lib/maas/dhcpd6.conf"
+   "$SNAP_COMMON/maas/dhcpd.sock" \
+   "$SNAP_COMMON/maas/dhcpd.conf" \
+   "$SNAP_COMMON/maas/dhcpd6.conf"
 
 # Configure MAAS to work in a snap.
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
+export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_CLUSTER_CONFIG="$SNAP_DATA/rackd.conf"
 export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"

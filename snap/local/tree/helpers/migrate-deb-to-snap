@@ -52,7 +52,7 @@ EOF
 
     log_to_file snap stop maas
     rm -rf \
-       "$MAAS_SNAP_DATA/var/lib/maas" \
+       "$MAAS_SNAP_COMMON/maas" \
        "$MAAS_SNAP_DATA/root" \
        "$MAAS_SNAP_COMMON/proxy/spool"
 }

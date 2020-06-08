@@ -16,6 +16,7 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.path
 from provisioningserver.path import (
     get_data_path,
+    get_maas_data_path,
     get_path,
     get_tentative_data_path,
 )
@@ -120,4 +121,18 @@ class TestGetPathFunctions(MAASTestCase):
         self.assertThat(
             os.path.dirname(self.get_path_function("/foo/bar")),
             DirExists() if self.ensures_directory else Not(DirExists()),
+        )
+
+
+class TestGetMAASDataPath(MAASTestCase):
+    def test_get_maas_data_path_env(self):
+        path = os.environ.get("MAAS_DATA")
+        self.assertEqual(
+            get_maas_data_path("some/path"), os.path.join(path, "some/path")
+        )
+
+    def test_get_maas_data_path_no_env(self):
+        del os.environ["MAAS_DATA"]
+        self.assertEqual(
+            get_maas_data_path("some/path"), "/var/lib/maas/some/path"
         )
