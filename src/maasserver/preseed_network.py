@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation for curtin/netplan network."""
@@ -88,6 +88,7 @@ class InterfaceConfiguration:
         self.gateways = node_config.gateways
         self.secondary_gateway_routes = []
         self.secondary_gateway_policies = []
+        self.table_id = None
         # Note: the matching routes are populated in _generate_addresses().
         # (Only routes with an on-link gateway can be configured.)
         self.matching_routes = set()
@@ -109,10 +110,13 @@ class InterfaceConfiguration:
             raise ValueError("Unknown interface type: %s" % self.type)
 
         if version == 2:
-            routes = self._generate_route_operations(
-                self.matching_routes, version=version
-            )
-            routes.extend(self.secondary_gateway_routes)
+            # Skip if routes have been already added to a policy routing table
+            if self.table_id is None:
+                routes = self._generate_route_operations(
+                    self.matching_routes, version=version
+                )
+            else:
+                routes = self.secondary_gateway_routes
             if len(routes) > 0:
                 self.config["routes"] = routes
             if len(self.secondary_gateway_policies) > 0:
@@ -268,20 +272,41 @@ class InterfaceConfiguration:
                 subnet, include_secondary=True
             )
             if secondary_gateway is not None:
-                # Allocate another routing table for this gateway.
-                table_id = self.node_config.get_next_routing_table_id()
-                self.secondary_gateway_routes.append(
+                self._set_policy_routing(network, secondary_gateway)
+
+    def _set_policy_routing(self, network, secondary_gateway):
+        # Allocate another routing table for this gateway.
+        self.table_id = self.node_config.get_next_routing_table_id()
+        self.secondary_gateway_routes.append(
+            {
+                "to": "0.0.0.0/0",
+                "via": str(secondary_gateway),
+                "table": self.table_id,
+            }
+        )
+        self.secondary_gateway_policies.append(
+            {"from": str(network), "table": self.table_id, "priority": 100}
+        )
+        self.secondary_gateway_policies.append(
+            {"from": str(network), "to": str(network), "table": 254}
+        )
+        if len(self.matching_routes) > 0:
+            for route in sorted(self.matching_routes, key=attrgetter("id")):
+                self.secondary_gateway_policies.append(
                     {
-                        "to": "0.0.0.0/0",
-                        "via": str(secondary_gateway),
-                        "table": table_id,
+                        "from": "0.0.0.0/0",
+                        "to": route.destination.cidr,
+                        "table": self.table_id,
+                        "priority": 100,
                     }
                 )
-                self.secondary_gateway_policies.append(
-                    {"from": str(network), "table": table_id, "priority": 100}
-                )
-                self.secondary_gateway_policies.append(
-                    {"from": str(network), "to": str(network), "table": 254}
+                self.secondary_gateway_routes.append(
+                    {
+                        "to": route.destination.cidr,
+                        "via": route.gateway_ip,
+                        "metric": route.metric,
+                        "table": self.table_id,
+                    }
                 )
 
     def _get_matching_routes(self, source):
@@ -326,6 +351,10 @@ class InterfaceConfiguration:
                     self.addr_family_present[
                         IPNetwork(subnet.cidr).version
                     ] = True
+                    matching_subnet_routes = self._get_matching_routes(subnet)
+                    # Keep track of routes which apply to the context of this
+                    # interface for rendering the v2 YAML.
+                    self.matching_routes.update(matching_subnet_routes)
                     # The default gateway is set on the subnet operation for
                     # the v1 YAML, but it's per-interface for the v2 YAML.
                     self._set_default_gateway(
@@ -372,7 +401,6 @@ class InterfaceConfiguration:
                         ] += subnet.dns_servers
                         v2_nameservers["addresses"] += subnet.dns_servers
 
-                    matching_subnet_routes = self._get_matching_routes(subnet)
                     if len(matching_subnet_routes) > 0 and version == 1:
                         # For the v1 YAML, the list of routes is rendered
                         # within the context of each subnet.
@@ -380,9 +408,6 @@ class InterfaceConfiguration:
                             matching_subnet_routes, version=version
                         )
                         v1_subnet_operation["routes"] = routes
-                    # Keep track of routes which apply to the context of this
-                    # interface for rendering the v2 YAML.
-                    self.matching_routes.update(matching_subnet_routes)
             if dhcp_type:
                 v1_config.append({"type": dhcp_type})
                 if dhcp_type == "dhcp":
