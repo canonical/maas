@@ -112,7 +112,7 @@ class TestTempWDFixture(MAASTestCase):
 class TestCaptureStandardIO(MAASTestCase):
     """Test `CaptureStandardIO`."""
 
-    def test__captures_stdin(self):
+    def test_captures_stdin(self):
         stdin_before = sys.stdin
         with CaptureStandardIO():
             stdin_during = sys.stdin
@@ -122,7 +122,7 @@ class TestCaptureStandardIO(MAASTestCase):
         self.expectThat(stdin_during, Not(Is(stdin_after)))
         self.expectThat(stdin_after, Is(stdin_before))
 
-    def test__captures_stdout(self):
+    def test_captures_stdout(self):
         stdout_before = sys.stdout
         with CaptureStandardIO():
             stdout_during = sys.stdout
@@ -132,7 +132,7 @@ class TestCaptureStandardIO(MAASTestCase):
         self.expectThat(stdout_during, Not(Is(stdout_after)))
         self.expectThat(stdout_after, Is(stdout_before))
 
-    def test__captures_stderr(self):
+    def test_captures_stderr(self):
         stderr_before = sys.stderr
         with CaptureStandardIO():
             stderr_during = sys.stderr
@@ -142,7 +142,7 @@ class TestCaptureStandardIO(MAASTestCase):
         self.expectThat(stderr_during, Not(Is(stderr_after)))
         self.expectThat(stderr_after, Is(stderr_before))
 
-    def test__addInput_feeds_stdin(self):
+    def test_addInput_feeds_stdin(self):
         text = factory.make_name("text")
         with CaptureStandardIO() as stdio:
             stdio.addInput(text + "111")
@@ -152,19 +152,19 @@ class TestCaptureStandardIO(MAASTestCase):
                 sys.stdin.read(), Equals(text[2:] + "111" + text + "222")
             )
 
-    def test__getInput_returns_data_waiting_to_be_read(self):
+    def test_getInput_returns_data_waiting_to_be_read(self):
         stdio = CaptureStandardIO()
         stdio.addInput("one\ntwo\n")
         with stdio:
             self.expectThat(sys.stdin.readline(), Equals("one\n"))
             self.expectThat(stdio.getInput(), Equals("two\n"))
 
-    def test__getOutput_returns_data_written_to_stdout(self):
+    def test_getOutput_returns_data_written_to_stdout(self):
         self.assert_getter_returns_data_written_to_stream(
             CaptureStandardIO.getOutput, "stdout"
         )
 
-    def test__getError_returns_data_written_to_stderr(self):
+    def test_getError_returns_data_written_to_stderr(self):
         self.assert_getter_returns_data_written_to_stream(
             CaptureStandardIO.getError, "stderr"
         )
@@ -188,7 +188,7 @@ class TestCaptureStandardIO(MAASTestCase):
             MockCallsMatch(call(before), call(end), call(after), call(end)),
         )
 
-    def test__clearInput_clears_input(self):
+    def test_clearInput_clears_input(self):
         text = factory.make_name("text")
         with CaptureStandardIO() as stdio:
             stdio.addInput(text + "111")
@@ -196,7 +196,7 @@ class TestCaptureStandardIO(MAASTestCase):
             stdio.clearInput()
             self.expectThat(sys.stdin.read(2), Equals(""))
 
-    def test__clearOutput_clears_output(self):
+    def test_clearOutput_clears_output(self):
         text = factory.make_name("text")
         with CaptureStandardIO() as stdio:
             sys.stdout.write(text)
@@ -204,7 +204,7 @@ class TestCaptureStandardIO(MAASTestCase):
             stdio.clearOutput()
             self.expectThat(stdio.getOutput(), Equals(""))
 
-    def test__clearError_clears_error(self):
+    def test_clearError_clears_error(self):
         text = factory.make_name("text")
         with CaptureStandardIO() as stdio:
             sys.stderr.write(text)
@@ -212,7 +212,7 @@ class TestCaptureStandardIO(MAASTestCase):
             stdio.clearError()
             self.expectThat(stdio.getError(), Equals(""))
 
-    def test__clearAll_clears_input_output_and_error(self):
+    def test_clearAll_clears_input_output_and_error(self):
         text = factory.make_name("text")
         with CaptureStandardIO() as stdio:
             stdio.addInput(text)
@@ -223,7 +223,7 @@ class TestCaptureStandardIO(MAASTestCase):
             self.expectThat(stdio.getOutput(), Equals(""))
             self.expectThat(stdio.getError(), Equals(""))
 
-    def test__non_text_strings_are_rejected_on_stdout(self):
+    def test_non_text_strings_are_rejected_on_stdout(self):
         with CaptureStandardIO():
             error = self.assertRaises(
                 TypeError, sys.stdout.write, sample_binary_data
@@ -232,7 +232,7 @@ class TestCaptureStandardIO(MAASTestCase):
             "write() argument must be str, not bytes", str(error)
         )
 
-    def test__non_text_strings_are_rejected_on_stderr(self):
+    def test_non_text_strings_are_rejected_on_stderr(self):
         with CaptureStandardIO():
             error = self.assertRaises(
                 TypeError, sys.stderr.write, sample_binary_data

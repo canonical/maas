@@ -631,7 +631,7 @@ class TestImportImages(MAASTestCase):
             fake_write_all_keyrings, MockCalledWith(mock.ANY, sources)
         )
 
-    def test__returns_false_when_no_images(self):
+    def test_returns_false_when_no_images(self):
         # Stop import_images() from actually doing anything.
         self.patch(boot_resources, "maaslog")
         fake_download_all_image_descriptions = self.patch(
@@ -659,7 +659,7 @@ class TestImportImages(MAASTestCase):
         )
         self.assertFalse(boot_resources.import_images(sources))
 
-    def test__returns_false_when_no_new_images(self):
+    def test_returns_false_when_no_new_images(self):
         # Stop import_images() from actually doing anything.
         self.patch(boot_resources, "maaslog")
         fake_download_all_image_descriptions = self.patch(
@@ -692,7 +692,7 @@ class TestImportImages(MAASTestCase):
         )
         self.assertFalse(boot_resources.import_images(sources))
 
-    def test__cleans_up_on_failure(self):
+    def test_cleans_up_on_failure(self):
         # Stop import_images() from actually doing anything.
         self.patch(boot_resources, "maaslog")
         fake_download_all_image_descriptions = self.patch(
@@ -733,7 +733,7 @@ class TestImportImages(MAASTestCase):
         self.assertRaises(Exception, boot_resources.import_images, sources)
         self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())
 
-    def test__runs_import_and_returns_true(self):
+    def test_runs_import_and_returns_true(self):
         # Stop import_images() from actually doing anything.
         self.patch(boot_resources, "maaslog")
         fake_download_all_image_descriptions = self.patch(

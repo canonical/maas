@@ -20,21 +20,21 @@ class TestComposeURL(MAASTestCase):
     def make_network_interface(self):
         return "eth%d" % randint(0, 100)
 
-    def test__inserts_IPv4(self):
+    def test_inserts_IPv4(self):
         ip = factory.make_ipv4_address()
         path = self.make_path()
         self.assertEqual(
             "http://%s/%s" % (ip, path), compose_URL("http:///%s" % path, ip)
         )
 
-    def test__inserts_IPv6_with_brackets(self):
+    def test_inserts_IPv6_with_brackets(self):
         ip = factory.make_ipv6_address()
         path = self.make_path()
         self.assertEqual(
             "http://[%s]/%s" % (ip, path), compose_URL("http:///%s" % path, ip)
         )
 
-    def test__escapes_IPv6_zone_index(self):
+    def test_escapes_IPv6_zone_index(self):
         ip = factory.make_ipv6_address()
         zone = self.make_network_interface()
         hostname = "%s%%%s" % (ip, zone)
@@ -44,7 +44,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("http:///%s" % path, hostname),
         )
 
-    def test__inserts_bracketed_IPv6_unchanged(self):
+    def test_inserts_bracketed_IPv6_unchanged(self):
         ip = factory.make_ipv6_address()
         hostname = "[%s]" % ip
         path = self.make_path()
@@ -53,7 +53,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("http:///%s" % path, hostname),
         )
 
-    def test__does_not_escape_bracketed_IPv6_zone_index(self):
+    def test_does_not_escape_bracketed_IPv6_zone_index(self):
         ip = factory.make_ipv6_address()
         zone = self.make_network_interface()
         path = self.make_path()
@@ -63,7 +63,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("http:///%s" % path, hostname),
         )
 
-    def test__inserts_hostname(self):
+    def test_inserts_hostname(self):
         hostname = factory.make_name("host")
         path = self.make_path()
         self.assertEqual(
@@ -71,7 +71,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("http:///%s" % path, hostname),
         )
 
-    def test__preserves_query(self):
+    def test_preserves_query(self):
         ip = factory.make_ipv4_address()
         key = factory.make_name("key")
         value = factory.make_name("value")
@@ -80,7 +80,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("https://?%s=%s" % (key, value), ip),
         )
 
-    def test__preserves_port_with_IPv4(self):
+    def test_preserves_port_with_IPv4(self):
         ip = factory.make_ipv4_address()
         port = factory.pick_port()
         self.assertEqual(
@@ -88,7 +88,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("https://:%s/" % port, ip),
         )
 
-    def test__preserves_port_with_IPv6(self):
+    def test_preserves_port_with_IPv6(self):
         ip = factory.make_ipv6_address()
         port = factory.pick_port()
         self.assertEqual(
@@ -96,7 +96,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL("https://:%s/" % port, ip),
         )
 
-    def test__preserves_port_with_hostname(self):
+    def test_preserves_port_with_hostname(self):
         hostname = factory.make_name("host")
         port = factory.pick_port()
         self.assertEqual(
@@ -118,7 +118,7 @@ class TestSplithost(MAASTestCase):
         ("ipv6_no_bracket", {"host": "::ffff", "result": ("[::ffff]", None)}),
     )
 
-    def test__result(self):
+    def test_result(self):
         self.assertEqual(self.result, splithost(self.host))
 
 

@@ -12,5 +12,5 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestPopulates(MAASServerTestCase):
     """Tests for `sampledata.populate`."""
 
-    def test__runs(self):
+    def test_runs(self):
         sampledata.populate()

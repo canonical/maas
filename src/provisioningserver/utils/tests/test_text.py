@@ -23,22 +23,22 @@ from provisioningserver.utils.text import (
 
 
 class TestNormaliseWhitespace(MAASTestCase):
-    def test__preserves_text_without_whitespace(self):
+    def test_preserves_text_without_whitespace(self):
         word = factory.make_name("word")
         self.assertEqual(word, normalise_whitespace(word))
 
-    def test__eliminates_leading_space(self):
+    def test_eliminates_leading_space(self):
         self.assertEqual("word", normalise_whitespace(" word"))
 
-    def test__eliminates_trailing_space(self):
+    def test_eliminates_trailing_space(self):
         self.assertEqual("word", normalise_whitespace("word "))
 
-    def test__replaces_any_whitespace_sequence_with_single_space(self):
+    def test_replaces_any_whitespace_sequence_with_single_space(self):
         self.assertEqual(
             "one two three", normalise_whitespace("one   two\t\nthree")
         )
 
-    def test__treats_punctuation_as_non_space(self):
+    def test_treats_punctuation_as_non_space(self):
         punctuation = ".?;:!"
         self.assertEqual(punctuation, normalise_whitespace(punctuation))
 
@@ -51,7 +51,7 @@ class TestNormaliseToCommaList(MAASTestCase):
     )
 
     @hypothesis.given(delimiters)
-    def test__normalises_space_or_comma_list_to_comma_list(self, delimiter):
+    def test_normalises_space_or_comma_list_to_comma_list(self, delimiter):
         words = [factory.make_name("word") for _ in range(5)]
         string = delimiter.join(words)
         self.assertThat(
@@ -59,11 +59,11 @@ class TestNormaliseToCommaList(MAASTestCase):
         )
 
     @hypothesis.given(delimiters)
-    def test__normalises_nothing_but_delimiter_to_empty(self, delimiter):
+    def test_normalises_nothing_but_delimiter_to_empty(self, delimiter):
         self.assertThat(normalise_to_comma_list(delimiter), Equals(""))
 
     @hypothesis.given(delimiters)
-    def test__eliminates_empty_words(self, delimiter):
+    def test_eliminates_empty_words(self, delimiter):
         word = factory.make_name("word")
         self.assertThat(
             normalise_to_comma_list(delimiter + word + delimiter), Equals(word)
@@ -113,7 +113,7 @@ class TestNormalizeToCommaListScenarios(MAASTestCase):
         ),
     )
 
-    def test__scenarios(self):
+    def test_scenarios(self):
         unquoted = normalise_to_comma_list(self.test_input)
         self.expectThat(unquoted, Equals(self.unquoted))
         quoted = normalise_to_comma_list(self.test_input, quoted=True)
@@ -128,17 +128,17 @@ class TestSplitStringList(MAASTestCase):
     )
 
     @hypothesis.given(delimiters)
-    def test__splits_at_delimiters(self, delimiter):
+    def test_splits_at_delimiters(self, delimiter):
         words = [factory.make_name("word") for _ in range(5)]
         string = delimiter.join(words)
         self.assertThat(list(split_string_list(string)), Equals(words))
 
     @hypothesis.given(delimiters)
-    def test__normalises_nothing_but_delimiter_to_empty_list(self, delimiter):
+    def test_normalises_nothing_but_delimiter_to_empty_list(self, delimiter):
         self.assertThat(list(split_string_list(delimiter)), Equals([]))
 
     @hypothesis.given(delimiters)
-    def test__eliminates_empty_words(self, delimiter):
+    def test_eliminates_empty_words(self, delimiter):
         word = factory.make_name("word")
         self.assertThat(
             list(split_string_list(delimiter + word + delimiter)),

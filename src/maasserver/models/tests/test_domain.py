@@ -26,7 +26,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestDomainManagerGetDomainOr404(MAASServerTestCase):
-    def test__user_view_returns_domain(self):
+    def test_user_view_returns_domain(self):
         user = factory.make_User()
         domain = factory.make_Domain()
         self.assertEqual(
@@ -36,7 +36,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_view_returns_domain_by_name(self):
+    def test_user_view_returns_domain_by_name(self):
         user = factory.make_User()
         domain = factory.make_Domain()
         self.assertEqual(
@@ -46,7 +46,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         domain = factory.make_Domain()
         self.assertRaises(
@@ -57,7 +57,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         domain = factory.make_Domain()
         self.assertRaises(
@@ -68,7 +68,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_view_returns_domain(self):
+    def test_admin_view_returns_domain(self):
         admin = factory.make_admin()
         domain = factory.make_Domain()
         self.assertEqual(
@@ -78,7 +78,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_view_returns_domain_by_name(self):
+    def test_admin_view_returns_domain_by_name(self):
         admin = factory.make_admin()
         domain = factory.make_Domain()
         self.assertEqual(
@@ -88,7 +88,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_domain(self):
+    def test_admin_edit_returns_domain(self):
         admin = factory.make_admin()
         domain = factory.make_Domain()
         self.assertEqual(
@@ -98,7 +98,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_domain(self):
+    def test_admin_admin_returns_domain(self):
         admin = factory.make_admin()
         domain = factory.make_Domain()
         self.assertEqual(
@@ -110,7 +110,7 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
 
 
 class TestDomainManager(MAASServerTestCase):
-    def test__default_specifier_matches_id(self):
+    def test_default_specifier_matches_id(self):
         factory.make_Domain()
         domain = factory.make_Domain()
         factory.make_Domain()
@@ -119,7 +119,7 @@ class TestDomainManager(MAASServerTestCase):
             Domain.objects.filter_by_specifiers("%s" % id), [domain]
         )
 
-    def test__default_specifier_matches_name(self):
+    def test_default_specifier_matches_name(self):
         factory.make_Domain()
         name = factory.make_name("domain-")
         domain = factory.make_Domain(name=name)
@@ -128,7 +128,7 @@ class TestDomainManager(MAASServerTestCase):
             Domain.objects.filter_by_specifiers(name), [domain]
         )
 
-    def test__name_specifier_matches_name(self):
+    def test_name_specifier_matches_name(self):
         factory.make_Domain()
         name = factory.make_name("domain-")
         domain = factory.make_Domain(name=name)

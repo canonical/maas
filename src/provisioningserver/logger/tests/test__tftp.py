@@ -17,7 +17,7 @@ from provisioningserver.logger.testing import make_event
 class TestObserveTwistedInternetTCP_Informational(MAASTestCase):
     """Tests for `observe_tftp` with informational messages."""
 
-    def test__downgrades_informational_messages(self):
+    def test_downgrades_informational_messages(self):
         event = make_event(log_level=LogLevel.info)
         with TwistedLoggerFixture() as logger:
             observe_tftp(event)
@@ -34,7 +34,7 @@ class TestObserveTwistedInternetTCP_Other(MAASTestCase):
         if log_level is not LogLevel.info
     )
 
-    def test__propagates_other_events(self):
+    def test_propagates_other_events(self):
         event = make_event(log_level=self.log_level)
         with TwistedLoggerFixture() as logger:
             observe_tftp(event)

@@ -86,7 +86,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         factory.make_boot_resource_file_with_content(resource_set)
         return resource
 
-    def test__returns_connection_error_True(self):
+    def test_returns_connection_error_True(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         mock_get_os_info = self.patch(
@@ -97,7 +97,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         self.assertTrue(json_obj["connection_error"])
 
-    def test__returns_connection_error_False(self):
+    def test_returns_connection_error_False(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         response = handler.poll({})
@@ -290,7 +290,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             json_obj["ubuntu"]["commissioning_series"],
         )
 
-    def test__returns_region_import_running_True(self):
+    def test_returns_region_import_running_True(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(
@@ -300,7 +300,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         self.assertTrue(json_obj["region_import_running"])
 
-    def test__returns_region_import_running_False(self):
+    def test_returns_region_import_running_False(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(
@@ -310,7 +310,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         self.assertFalse(json_obj["region_import_running"])
 
-    def test__returns_rack_import_running_True(self):
+    def test_returns_rack_import_running_True(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(
@@ -320,7 +320,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         self.assertTrue(json_obj["rack_import_running"])
 
-    def test__returns_rack_import_running_False(self):
+    def test_returns_rack_import_running_False(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(

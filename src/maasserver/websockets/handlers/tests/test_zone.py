@@ -89,7 +89,7 @@ class TestZoneHandler(MAASServerTestCase):
 
 
 class TestZoneHandlerDelete(MAASServerTestCase):
-    def test__delete_as_admin_success(self):
+    def test_delete_as_admin_success(self):
         user = factory.make_admin()
         handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
@@ -97,14 +97,14 @@ class TestZoneHandlerDelete(MAASServerTestCase):
         zone = reload_object(zone)
         self.assertThat(zone, Equals(None))
 
-    def test__delete_as_non_admin_asserts(self):
+    def test_delete_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({"id": zone.id})
 
-    def test__delete_default_zone_fails(self):
+    def test_delete_default_zone_fails(self):
         zone = Zone.objects.get_default_zone()
         user = factory.make_admin()
         handler = ZoneHandler(user, {}, None)

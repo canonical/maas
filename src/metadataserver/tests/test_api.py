@@ -1496,7 +1496,7 @@ class TestMAASScripts(MAASServerTestCase):
             self.assertNotIn(NETPLAN_TAR_PATH, tar.getnames())
         return meta_data
 
-    def test__returns_all_scripts_when_commissioning(self):
+    def test_returns_all_scripts_when_commissioning(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
@@ -1555,7 +1555,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__adds_for_hardware_scripts_when_commissioning_on_second_req(self):
+    def test_adds_for_hardware_scripts_when_commissioning_on_second_req(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
         )
@@ -1601,7 +1601,7 @@ class TestMAASScripts(MAASServerTestCase):
             ).script,
         )
 
-    def test__returns_testing_scripts_when_testing(self):
+    def test_returns_testing_scripts_when_testing(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True
@@ -1648,7 +1648,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__returns_commissioning_scripts_when_entering_rescue_mode(self):
+    def test_returns_commissioning_scripts_when_entering_rescue_mode(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE,
@@ -1708,7 +1708,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__returns_commissioning_scripts_when_in_rescue_mode(self):
+    def test_returns_commissioning_scripts_when_in_rescue_mode(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.RESCUE_MODE, with_empty_script_sets=True
@@ -1767,7 +1767,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__removes_scriptless_script_result(self):
+    def test_removes_scriptless_script_result(self):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True
         )
@@ -1829,7 +1829,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__only_returns_scripts_which_havnt_been_run(self):
+    def test_only_returns_scripts_which_havnt_been_run(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
@@ -1911,7 +1911,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__returns_output_when_has_started(self):
+    def test_returns_output_when_has_started(self):
         start_time = floor(time.time())
         node = factory.make_Node(status=NODE_STATUS.TESTING)
         script_set = factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING)
@@ -1960,7 +1960,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__contains_netplan_yaml_with_apply_config_networking(self):
+    def test_contains_netplan_yaml_with_apply_config_networking(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.TESTING,
@@ -2013,7 +2013,7 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test__returns_no_content_when_no_scripts(self):
+    def test_returns_no_content_when_no_scripts(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = make_node_client(node=node).get(
             reverse("maas-scripts", args=["latest"])

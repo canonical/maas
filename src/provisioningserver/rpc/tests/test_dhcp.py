@@ -564,7 +564,7 @@ class TestCreateHostMap(MAASTestCase):
 
 
 class TestUpdateHost(MAASTestCase):
-    def test__creates_omshell_with_correct_arguments(self):
+    def test_creates_omshell_with_correct_arguments(self):
         omshell = self.patch(dhcp, "Omshell")
         server = Mock()
         server.ipv6 = factory.pick_bool()
@@ -580,7 +580,7 @@ class TestUpdateHost(MAASTestCase):
             ),
         )
 
-    def test__performs_operations(self):
+    def test_performs_operations(self):
         omshell = Mock()
         self.patch(dhcp, "Omshell").return_value = omshell
         remove_host = make_host()
@@ -667,7 +667,7 @@ class TestConfigureDHCP(MAASTestCase):
         return self.patch(dhcp, "_update_hosts")
 
     @inlineCallbacks
-    def test__deletes_dhcp_config_if_no_subnets_defined(self):
+    def test_deletes_dhcp_config_if_no_subnets_defined(self):
         mock_exists = self.patch_os_exists()
         mock_exists.return_value = True
         mock_sudo_delete = self.patch_sudo_delete_file()
@@ -683,7 +683,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__stops_dhcp_server_if_no_subnets_defined(self):
+    def test_stops_dhcp_server_if_no_subnets_defined(self):
         mock_exists = self.patch_os_exists()
         mock_exists.return_value = False
         dhcp_service = dhcp.service_monitor.getServiceByName(
@@ -700,7 +700,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertThat(restart_service, MockNotCalled())
 
     @inlineCallbacks
-    def test__stops_dhcp_server_clears_state(self):
+    def test_stops_dhcp_server_clears_state(self):
         dhcp._current_server_state[self.server.dhcp_service] = sentinel.state
         mock_exists = self.patch_os_exists()
         mock_exists.return_value = False
@@ -714,7 +714,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertIsNone(dhcp._current_server_state[self.server.dhcp_service])
 
     @inlineCallbacks
-    def test__writes_config_and_calls_restart_when_no_current_state(self):
+    def test_writes_config_and_calls_restart_when_no_current_state(self):
         write_file = self.patch_sudo_write_file()
         restart_service = self.patch_restartService()
 
@@ -776,7 +776,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__writes_config_and_calls_restart_when_non_host_state_diff(self):
+    def test_writes_config_and_calls_restart_when_non_host_state_diff(self):
         write_file = self.patch_sudo_write_file()
         restart_service = self.patch_restartService()
 
@@ -848,7 +848,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__writes_config_and_calls_ensure_when_nothing_changed(self):
+    def test_writes_config_and_calls_ensure_when_nothing_changed(self):
         write_file = self.patch_sudo_write_file()
         restart_service = self.patch_restartService()
         ensure_service = self.patch_ensureService()
@@ -922,7 +922,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__writes_config_and_doesnt_use_omapi_when_was_off(self):
+    def test_writes_config_and_doesnt_use_omapi_when_was_off(self):
         write_file = self.patch_sudo_write_file()
         get_service_state = self.patch_getServiceState()
         get_service_state.return_value = ServiceState(
@@ -1007,7 +1007,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__writes_config_and_uses_omapi_to_update_hosts(self):
+    def test_writes_config_and_uses_omapi_to_update_hosts(self):
         write_file = self.patch_sudo_write_file()
         get_service_state = self.patch_getServiceState()
         get_service_state.return_value = ServiceState(
@@ -1103,7 +1103,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__writes_config_and_restarts_when_omapi_fails(self):
+    def test_writes_config_and_restarts_when_omapi_fails(self):
         write_file = self.patch_sudo_write_file()
         get_service_state = self.patch_getServiceState()
         get_service_state.return_value = ServiceState(
@@ -1208,7 +1208,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
+    def test_converts_failure_writing_file_to_CannotConfigureDHCP(self):
         self.patch_sudo_delete_file()
         self.patch_sudo_write_file().side_effect = ExternalProcessError(
             1, "sudo something"
@@ -1229,7 +1229,7 @@ class TestConfigureDHCP(MAASTestCase):
             )
 
     @inlineCallbacks
-    def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
+    def test_converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
         self.patch_sudo_delete_file()
         self.patch_restartService().side_effect = ServiceActionError()
@@ -1248,7 +1248,7 @@ class TestConfigureDHCP(MAASTestCase):
             )
 
     @inlineCallbacks
-    def test__converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
+    def test_converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
         self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = ServiceActionError()
@@ -1256,7 +1256,7 @@ class TestConfigureDHCP(MAASTestCase):
             yield self.configure(factory.make_name("key"), [], [], [], [], [])
 
     @inlineCallbacks
-    def test__does_not_log_ServiceActionError(self):
+    def test_does_not_log_ServiceActionError(self):
         self.patch_sudo_write_file()
         self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = ServiceActionError()
@@ -1268,7 +1268,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertDocTestMatches("", logger.output)
 
     @inlineCallbacks
-    def test__does_log_other_exceptions(self):
+    def test_does_log_other_exceptions(self):
         self.patch_sudo_write_file()
         self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = factory.make_exception(
@@ -1285,7 +1285,7 @@ class TestConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__does_not_log_ServiceActionError_when_restarting(self):
+    def test_does_not_log_ServiceActionError_when_restarting(self):
         self.patch_sudo_write_file()
         self.patch_restartService().side_effect = ServiceActionError()
         failover_peers = [make_failover_peer_config()]
@@ -1305,7 +1305,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertDocTestMatches("", logger.output)
 
     @inlineCallbacks
-    def test__does_log_other_exceptions_when_restarting(self):
+    def test_does_log_other_exceptions_when_restarting(self):
         self.patch_sudo_write_file()
         self.patch_restartService().side_effect = factory.make_exception(
             "DHCP is on strike today"
@@ -1371,7 +1371,7 @@ class TestValidateDHCP(MAASTestCase):
         )
         return ret
 
-    def test__good_config(self):
+    def test_good_config(self):
         omapi_key = factory.make_name("omapi_key")
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
@@ -1394,7 +1394,7 @@ class TestValidateDHCP(MAASTestCase):
             ),
         )
 
-    def test__bad_config(self):
+    def test_bad_config(self):
         omapi_key = factory.make_name("omapi_key")
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()

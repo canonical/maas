@@ -31,7 +31,7 @@ class TestRunSmartCTL(MAASTestCase):
         self.blockdevice = factory.make_name("blockdevice")
         self.args = [factory.make_name("arg") for _ in range(3)]
 
-    def test__default(self):
+    def test_default(self):
         self.assertEquals(
             self.output, smartctl.run_smartctl(self.blockdevice, self.args)
         )
@@ -44,7 +44,7 @@ class TestRunSmartCTL(MAASTestCase):
         )
         self.assertThat(self.mock_print, MockNotCalled())
 
-    def test__device(self):
+    def test_device(self):
         device = factory.make_name("device")
         self.assertEquals(
             self.output,
@@ -61,7 +61,7 @@ class TestRunSmartCTL(MAASTestCase):
         )
         self.assertThat(self.mock_print, MockNotCalled())
 
-    def test__output(self):
+    def test_output(self):
         self.assertEquals(
             self.output,
             smartctl.run_smartctl(self.blockdevice, self.args, output=True),
@@ -85,7 +85,7 @@ class TestRunStorCLI(MAASTestCase):
         self.mock_print = self.patch(smartctl, "print")
         self.args = [factory.make_name("arg") for _ in range(3)]
 
-    def test__default(self):
+    def test_default(self):
         self.assertEquals(self.output, smartctl.run_storcli(self.args))
         self.assertThat(
             self.mock_check_output,
@@ -96,7 +96,7 @@ class TestRunStorCLI(MAASTestCase):
         )
         self.assertThat(self.mock_print, MockNotCalled())
 
-    def test__using_alt_path(self):
+    def test_using_alt_path(self):
         self.patch(smartctl.os.path, "exists").return_value = True
         self.assertEquals(self.output, smartctl.run_storcli(self.args))
         self.assertThat(
@@ -108,7 +108,7 @@ class TestRunStorCLI(MAASTestCase):
         )
         self.assertThat(self.mock_print, MockNotCalled())
 
-    def test__output(self):
+    def test_output(self):
         self.assertEquals(self.output, smartctl.run_storcli(self.args, True))
         self.assertThat(
             self.mock_check_output,
@@ -121,11 +121,11 @@ class TestRunStorCLI(MAASTestCase):
 
 
 class TestMakeDeviceName(MAASTestCase):
-    def test__blockdevice(self):
+    def test_blockdevice(self):
         blockdevice = factory.make_name("blockdevice")
         self.assertEquals(blockdevice, smartctl.make_device_name(blockdevice))
 
-    def test__device(self):
+    def test_device(self):
         blockdevice = factory.make_name("blockdevice")
         device = factory.make_name("device")
         self.assertEquals(
@@ -135,7 +135,7 @@ class TestMakeDeviceName(MAASTestCase):
 
 
 class TestExitSkipped(MAASTestCase):
-    def test__default(self):
+    def test_default(self):
         result_path = factory.make_name("result_path")
         self.patch(smartctl.os, "environ", {"RESULT_PATH": result_path})
         mock_open = self.patch(smartctl, "open")
@@ -155,7 +155,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
         super().setUp()
         self.patch(smartctl, "print")
 
-    def test__no_controllers(self):
+    def test_no_controllers(self):
         mock_run_storcli = self.patch(smartctl, "run_storcli")
         mock_run_storcli.return_value = ""
         mock_exit_skipped = self.patch(smartctl, "exit_skipped")
@@ -166,7 +166,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
 
         self.assertThat(mock_exit_skipped, MockCalledOnce())
 
-    def test__found(self):
+    def test_found(self):
         scsi_id = factory.make_name()
         mock_run_storcli = self.patch(smartctl, "run_storcli")
         mock_run_storcli.side_effect = (
@@ -190,7 +190,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
             ),
         )
 
-    def test__no_matching_scsi_id(self):
+    def test_no_matching_scsi_id(self):
         mock_run_storcli = self.patch(smartctl, "run_storcli")
         mock_run_storcli.side_effect = (
             "Number of Controllers = 1",
@@ -209,12 +209,12 @@ class TestDetectMegaRAIDConfig(MAASTestCase):
         super().setUp()
         self.patch(smartctl, "print")
 
-    def test__no_storcli(self):
+    def test_no_storcli(self):
         mock_exit_skipped = self.patch(smartctl, "exit_skipped")
         smartctl.detect_megaraid_config(factory.make_name("blockdevice"))
         self.assertThat(mock_exit_skipped, MockCalledOnce())
 
-    def test__returns_scsi_bus_nums(self):
+    def test_returns_scsi_bus_nums(self):
         controller = random.randint(0, 3)
         scsi_bus_nums = [random.randint(0, 127) for _ in range(3)]
         self.patch(smartctl.os.path, "exists").return_value = True
@@ -251,7 +251,7 @@ class TestCheckSMARTSupport(MAASTestCase):
         super().setUp()
         self.patch(smartctl, "print")
 
-    def test__raises_timeoutexpired(self):
+    def test_raises_timeoutexpired(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = TimeoutExpired("smartctl", 60)
         self.assertRaises(
@@ -260,7 +260,7 @@ class TestCheckSMARTSupport(MAASTestCase):
             factory.make_name("blockdevice"),
         )
 
-    def test__raises_calledprocesserrror(self):
+    def test_raises_calledprocesserrror(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = CalledProcessError(1, "smartctl")
         self.assertRaises(
@@ -269,7 +269,7 @@ class TestCheckSMARTSupport(MAASTestCase):
             factory.make_name("blockdevice"),
         )
 
-    def test__available(self):
+    def test_available(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.return_value = (
             "Product: %s\n"
@@ -280,7 +280,7 @@ class TestCheckSMARTSupport(MAASTestCase):
             smartctl.check_SMART_support(factory.make_name("blockdevice")),
         )
 
-    def test__available_megaraid(self):
+    def test_available_megaraid(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.return_value = (
             "Product: MegaRAID\n" "SMART support is: Unavailable\n"
@@ -292,7 +292,7 @@ class TestCheckSMARTSupport(MAASTestCase):
             smartctl.check_SMART_support(factory.make_name("blockdevice")),
         )
 
-    def test__unavailable(self):
+    def test_unavailable(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.return_value = (
             "Product: %s\n"
@@ -304,7 +304,7 @@ class TestCheckSMARTSupport(MAASTestCase):
 
 
 class TestRunSmartCTLSelfTest(MAASTestCase):
-    def test__default(self):
+    def test_default(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         blockdevice = factory.make_name("blockdevice")
         test = factory.make_name("test")
@@ -317,7 +317,7 @@ class TestRunSmartCTLSelfTest(MAASTestCase):
             ),
         )
 
-    def test__raises_timeoutexpired(self):
+    def test_raises_timeoutexpired(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = TimeoutExpired("smartctl", 60)
         mock_print = self.patch(smartctl, "print")
@@ -328,7 +328,7 @@ class TestRunSmartCTLSelfTest(MAASTestCase):
         )
         self.assertThat(mock_print, MockCalledOnce())
 
-    def test__raises_calledprocesserror(self):
+    def test_raises_calledprocesserror(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = CalledProcessError(1, "smartctl")
         mock_print = self.patch(smartctl, "print")
@@ -348,7 +348,7 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
         super().setUp()
         self.patch(smartctl, "print")
 
-    def test__waits(self):
+    def test_waits(self):
         blockdevice = factory.make_name("blockdevice")
         test = factory.make_name("test")
         device = factory.make_name("device")
@@ -372,7 +372,7 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
         )
         self.assertThat(mock_sleep, MockCalledOnceWith(30))
 
-    def test__waits_alt(self):
+    def test_waits_alt(self):
         blockdevice = factory.make_name("blockdevice")
         test = factory.make_name("test")
         device = factory.make_name("device")
@@ -396,7 +396,7 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
         )
         self.assertThat(mock_sleep, MockCalledOnceWith(30))
 
-    def test__raises_timeoutexpired(self):
+    def test_raises_timeoutexpired(self):
         blockdevice = factory.make_name("blockdevice")
         test = factory.make_name("test")
         device = factory.make_name("device")
@@ -412,7 +412,7 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
         )
         self.assertThat(mock_sleep, MockNotCalled())
 
-    def test__raises_calledprocesserror(self):
+    def test_raises_calledprocesserror(self):
         blockdevice = factory.make_name("blockdevice")
         test = factory.make_name("test")
         device = factory.make_name("device")
@@ -434,7 +434,7 @@ class TestCheckSmartCTL(MAASTestCase):
         super().setUp()
         self.patch(smartctl, "print")
 
-    def test__default(self):
+    def test_default(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         blockdevice = factory.make_name("blockdevice")
         device = factory.make_name("device")
@@ -446,13 +446,13 @@ class TestCheckSmartCTL(MAASTestCase):
             ),
         )
 
-    def test__raises_timeoutexpired(self):
+    def test_raises_timeoutexpired(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = TimeoutExpired("smartctl", 60)
         blockdevice = factory.make_name("blockdevice")
         self.assertRaises(TimeoutExpired, smartctl.check_smartctl, blockdevice)
 
-    def test__ignores_returncode_four(self):
+    def test_ignores_returncode_four(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = CalledProcessError(
             4, "smartctl", factory.make_name("output").encode()
@@ -467,7 +467,7 @@ class TestCheckSmartCTL(MAASTestCase):
             ),
         )
 
-    def test__raises_calledprocesserror(self):
+    def test_raises_calledprocesserror(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = CalledProcessError(42, "smartctl")
         blockdevice = factory.make_name("blockdevice")
@@ -493,7 +493,7 @@ class TestExecuteSmartCTL(MAASTestCase):
         )
         self.mock_check_smartctl = self.patch(smartctl, "check_smartctl")
 
-    def test__returns_false_with_check_smart_support_error(self):
+    def test_returns_false_with_check_smart_support_error(self):
         self.mock_check_smart_support.side_effect = random.choice(
             [
                 TimeoutExpired("smartctl", 60),
@@ -507,7 +507,7 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.assertThat(self.mock_wait_smartctl_selftest, MockNotCalled())
         self.assertThat(self.mock_check_smartctl, MockNotCalled())
 
-    def test__returns_false_when_unable_to_check_device_support(self):
+    def test_returns_false_when_unable_to_check_device_support(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.side_effect = (
             (device, [42]),
@@ -538,7 +538,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             MockCalledOnceWith(self.blockdevice, device),
         )
 
-    def test__returns_false_when_unable_to_start_device_test(self):
+    def test_returns_false_when_unable_to_start_device_test(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
         self.mock_run_smartctl_selftest.side_effect = (
@@ -572,7 +572,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             MockCalledOnceWith(self.blockdevice, device),
         )
 
-    def test__returns_false_when_unable_to_wait_start_device_test(self):
+    def test_returns_false_when_unable_to_wait_start_device_test(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
         self.mock_wait_smartctl_selftest.side_effect = (
@@ -606,7 +606,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             MockCalledOnceWith(self.blockdevice, device),
         )
 
-    def test__returns_false_when_unable_to_check_device(self):
+    def test_returns_false_when_unable_to_check_device(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
         self.mock_check_smartctl.side_effect = (
@@ -640,7 +640,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             MockCalledOnceWith(self.blockdevice, device),
         )
 
-    def test__returns_true_with_device(self):
+    def test_returns_true_with_device(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
         device = "%s,42" % device
@@ -664,7 +664,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             MockCalledOnceWith(self.blockdevice, device),
         )
 
-    def test__tests_all_scsi_bus_nums(self):
+    def test_tests_all_scsi_bus_nums(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [1, 2, 3])
         self.assertTrue(smartctl.execute_smartctl(self.blockdevice, self.test))
@@ -702,7 +702,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             ),
         )
 
-    def test__doesnt_run_testing_when_validating_device(self):
+    def test_doesnt_run_testing_when_validating_device(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
         device = "%s,42" % device
@@ -722,7 +722,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             MockCalledOnceWith(self.blockdevice, device),
         )
 
-    def test__returns_false_when_starting_test_fails(self):
+    def test_returns_false_when_starting_test_fails(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.mock_run_smartctl_selftest.side_effect = random.choice(
             [
@@ -742,7 +742,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
         )
 
-    def test__returns_false_when_waiting_test_fails(self):
+    def test_returns_false_when_waiting_test_fails(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.mock_wait_smartctl_selftest.side_effect = random.choice(
             [
@@ -765,7 +765,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
         )
 
-    def test__returns_false_when_check_fails(self):
+    def test_returns_false_when_check_fails(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.mock_check_smartctl.side_effect = random.choice(
             [
@@ -788,7 +788,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
         )
 
-    def test__returns_true(self):
+    def test_returns_true(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.assertTrue(smartctl.execute_smartctl(self.blockdevice, self.test))
         self.assertThat(
@@ -803,7 +803,7 @@ class TestExecuteSmartCTL(MAASTestCase):
             self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
         )
 
-    def test__doesnt_run_testing_when_validating(self):
+    def test_doesnt_run_testing_when_validating(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.assertTrue(
             smartctl.execute_smartctl(self.blockdevice, "validate")

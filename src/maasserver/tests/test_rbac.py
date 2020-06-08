@@ -468,7 +468,7 @@ class TestRBACUserClient(MAASServerTestCase):
         response.json.side_effect = responses
         self.mock_request.return_value = response
 
-    def test__get_maas_product(self):
+    def test_get_maas_product(self):
         maas = {
             "$uri": "/api/rbac/v1/product/2",
             "label": "maas",

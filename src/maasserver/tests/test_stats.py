@@ -402,15 +402,15 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
 class TestStatsService(MAASTestCase):
     """Tests for `ImportStatsService`."""
 
-    def test__is_a_TimerService(self):
+    def test_is_a_TimerService(self):
         service = stats.StatsService()
         self.assertIsInstance(service, TimerService)
 
-    def test__runs_once_a_day(self):
+    def test_runs_once_a_day(self):
         service = stats.StatsService()
         self.assertEqual(86400, service.step)
 
-    def test__calls__maybe_make_stats_request(self):
+    def test_calls__maybe_make_stats_request(self):
         service = stats.StatsService()
         self.assertEqual(
             (service.maybe_make_stats_request, (), {}), service.call

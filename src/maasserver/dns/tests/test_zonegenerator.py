@@ -168,7 +168,7 @@ class TestGetDNSServerAddresses(MAASServerTestCase):
 
 
 class TestGetDNSSearchPaths(MAASServerTestCase):
-    def test__returns_all_authoritative_domains(self):
+    def test_returns_all_authoritative_domains(self):
         domain_names = get_dns_search_paths()
         domain_names.update(
             factory.make_Domain(authoritative=True).name for _ in range(3)

@@ -367,7 +367,7 @@ class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
 
 class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         # Force it to have a domain name in the middle of two others.  This
         # will confirm that sorting is working correctly.
         factory.make_Domain("aaa")
@@ -403,7 +403,7 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
 
 class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(interface_count=2)
         interfaces = list(node.interface_set.all())
         vlan = node.interface_set.first().vlan
@@ -428,7 +428,7 @@ class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
 
 class TestVLANNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(interface_count=1)
         interfaces = node.interface_set.all()
         vlan_iface = factory.make_Interface(
@@ -446,7 +446,7 @@ class TestVLANNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 class TestVLANOnBondNetworkLayout(
     MAASServerTestCase, AssertNetworkConfigMixin
 ):
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(interface_count=2)
         phys_ifaces = list(node.interface_set.all())
         phys_vlan = node.interface_set.first().vlan
@@ -475,7 +475,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
     scenarios = (("ipv4", {"ip_version": 4}), ("ipv6", {"ip_version": 6}))
 
-    def test__dhcp_configurations_rendered(self):
+    def test_dhcp_configurations_rendered(self):
         subnet = factory.make_Subnet(
             version=self.ip_version, allow_dns=True, dns_servers=["8.8.8.8"]
         )
@@ -521,7 +521,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             config_yaml["network"],
         )
 
-    def test__dhcp_configurations_rendered_includes_dns_with_static(self):
+    def test_dhcp_configurations_rendered_includes_dns_with_static(self):
         subnet = factory.make_Subnet(
             version=self.ip_version, allow_dns=True, dns_servers=["8.8.8.8"]
         )
@@ -555,7 +555,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
 
 class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         boot_interface = node.get_boot_interface()
         vlan = boot_interface.vlan
@@ -595,7 +595,7 @@ class TestNetplan(MAASServerTestCase):
             if match in line:
                 return line_num
 
-    def test__yaml_output_is_ordered(self):
+    def test_yaml_output_is_ordered(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -617,7 +617,7 @@ class TestNetplan(MAASServerTestCase):
             ethernets_line < bonds_line, "ethernets: must come before bonds:"
         )
 
-    def test__single_ethernet_interface(self):
+    def test_single_ethernet_interface(self):
         node = factory.make_Node()
         factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -642,7 +642,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__multiple_ethernet_interfaces(self):
+    def test_multiple_ethernet_interfaces(self):
         node = factory.make_Node()
         factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -675,7 +675,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__bond(self):
+    def test_bond(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -725,7 +725,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__non_lacp_bond_with_params(self):
+    def test_non_lacp_bond_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -787,7 +787,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__lacp_bond_with_params(self):
+    def test_lacp_bond_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -848,7 +848,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__active_backup_with_legacy_parameter(self):
+    def test_active_backup_with_legacy_parameter(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -909,7 +909,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__bridge(self):
+    def test_bridge(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -955,7 +955,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__bridge_standard_with_params(self):
+    def test_bridge_standard_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -1019,7 +1019,7 @@ class TestNetplan(MAASServerTestCase):
             "stp: value must be a boolean not an integer",
         )
 
-    def test__bridge_standard_fallback_with_params(self):
+    def test_bridge_standard_fallback_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -1079,7 +1079,7 @@ class TestNetplan(MAASServerTestCase):
             "stp: value must be a boolean not an integer",
         )
 
-    def test__bridge_ovs_with_params(self):
+    def test_bridge_ovs_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -1144,7 +1144,7 @@ class TestNetplan(MAASServerTestCase):
             "stp: value must be a boolean not an integer",
         )
 
-    def test__bridged_bond(self):
+    def test_bridged_bond(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name="eth0", mac_address="00:01:02:03:04:05"
@@ -1203,7 +1203,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__multiple_ethernet_interfaces_with_routes(self):
+    def test_multiple_ethernet_interfaces_with_routes(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(
@@ -1428,7 +1428,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
-    def test__multiple_ethernet_interfaces_with_dns(self):
+    def test_multiple_ethernet_interfaces_with_dns(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(
@@ -1548,7 +1548,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
-    def test__multiple_ethernet_interfaces_without_dns(self):
+    def test_multiple_ethernet_interfaces_without_dns(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(
@@ -1640,7 +1640,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
-    def test__ha__default_dns(self):
+    def test_ha__default_dns(self):
         node = factory.make_Node()
         mock_get_source_address = self.patch(
             preseed_network_module, "get_source_address"
@@ -1708,7 +1708,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
-    def test__commissioning_dhcp_config(self):
+    def test_commissioning_dhcp_config(self):
         # Verifies dhcp config is given when commissioning has run
         # or just run and no AUTOIP has been acquired.
         subnet = factory.make_Subnet(dns_servers=[])
@@ -1751,13 +1751,13 @@ class TestNetplan(MAASServerTestCase):
 
 
 class TestGetNextRoutingTableId(MAASServerTestCase):
-    def test__routing_table_index_starts_at_one(self):
+    def test_routing_table_index_starts_at_one(self):
         node = factory.make_Node()
         generator = NodeNetworkConfiguration(node)
         table_id = generator.get_next_routing_table_id()
         self.assertThat(table_id, Equals(1))
 
-    def test__raises_IndexError_for_too_many_tables(self):
+    def test_raises_IndexError_for_too_many_tables(self):
         node = factory.make_Node()
         generator = NodeNetworkConfiguration(node)
         for _ in range(252):

@@ -4279,7 +4279,7 @@ class TestMachineHandler(MAASServerTestCase):
 class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
-    def test__retrieves_and_updates_power_state(self):
+    def test_retrieves_and_updates_power_state(self):
         user = yield deferToDatabase(transactional(factory.make_User))
         machine_handler = MachineHandler(user, {}, None)
         node = yield deferToDatabase(
@@ -4294,7 +4294,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__raises_failure_for_UnknownPowerType(self):
+    def test_raises_failure_for_UnknownPowerType(self):
         user = yield deferToDatabase(transactional(factory.make_User))
         machine_handler = MachineHandler(user, {}, None)
         node = yield deferToDatabase(transactional(factory.make_Node))
@@ -4307,7 +4307,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__raises_failure_for_NotImplementedError(self):
+    def test_raises_failure_for_NotImplementedError(self):
         user = yield deferToDatabase(transactional(factory.make_User))
         machine_handler = MachineHandler(user, {}, None)
         node = yield deferToDatabase(transactional(factory.make_Node))
@@ -4320,7 +4320,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__logs_other_errors(self):
+    def test_logs_other_errors(self):
         user = yield deferToDatabase(transactional(factory.make_User))
         machine_handler = MachineHandler(user, {}, None)
         node = yield deferToDatabase(transactional(factory.make_Node))
@@ -4342,7 +4342,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
 class TestMachineHandlerMountSpecial(MAASServerTestCase):
     """Tests for MachineHandler.mount_special."""
 
-    def test__fstype_and_mount_point_is_required_but_options_is_not(self):
+    def test_fstype_and_mount_point_is_required_but_options_is_not(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
@@ -4360,7 +4360,7 @@ class TestMachineHandlerMountSpecial(MAASServerTestCase):
             ),
         )
 
-    def test__fstype_must_be_a_non_storage_type(self):
+    def test_fstype_must_be_a_non_storage_type(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
@@ -4385,7 +4385,7 @@ class TestMachineHandlerMountSpecial(MAASServerTestCase):
                 "using fstype " + fstype,
             )
 
-    def test__mount_point_must_be_absolute(self):
+    def test_mount_point_must_be_absolute(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
@@ -4455,25 +4455,25 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
             ),
         )
 
-    def test__user_mounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_user_mounts_non_storage_filesystem_on_allocated_machine(self):
         user = factory.make_User()
         self.assertCanMountFilesystem(
             user, factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         )
 
-    def test__admin_mounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_admin_mounts_non_storage_filesystem_on_allocated_machine(self):
         admin = factory.make_admin()
         self.assertCanMountFilesystem(
             admin, factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
         )
 
-    def test__admin_mounts_non_storage_filesystem_on_ready_machine(self):
+    def test_admin_mounts_non_storage_filesystem_on_ready_machine(self):
         admin = factory.make_admin()
         self.assertCanMountFilesystem(
             admin, factory.make_Node(status=NODE_STATUS.READY)
         )
 
-    def test__admin_cannot_mount_on_non_ready_or_allocated_machine(self):
+    def test_admin_cannot_mount_on_non_ready_or_allocated_machine(self):
         admin = factory.make_admin()
         handler = MachineHandler(admin, {}, None)
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
@@ -4505,7 +4505,7 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
 class TestMachineHandlerUnmountSpecial(MAASServerTestCase):
     """Tests for MachineHandler.unmount_special."""
 
-    def test__mount_point_is_required(self):
+    def test_mount_point_is_required(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
@@ -4517,7 +4517,7 @@ class TestMachineHandlerUnmountSpecial(MAASServerTestCase):
             dict(error), Equals({"mount_point": ["This field is required."]})
         )
 
-    def test__mount_point_must_be_absolute(self):
+    def test_mount_point_must_be_absolute(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
@@ -4563,25 +4563,25 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
         self.assertThat(handler.unmount_special(params), Is(None))
         self.assertThat(Filesystem.objects.filter(node=machine), HasLength(0))
 
-    def test__user_unmounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_user_unmounts_non_storage_filesystem_on_allocated_machine(self):
         user = factory.make_User()
         self.assertCanUnmountFilesystem(
             user, factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         )
 
-    def test__admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
         admin = factory.make_admin()
         self.assertCanUnmountFilesystem(
             admin, factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
         )
 
-    def test__admin_unmounts_non_storage_filesystem_on_ready_machine(self):
+    def test_admin_unmounts_non_storage_filesystem_on_ready_machine(self):
         admin = factory.make_admin()
         self.assertCanUnmountFilesystem(
             admin, factory.make_Node(status=NODE_STATUS.READY)
         )
 
-    def test__admin_cannot_unmount_on_non_ready_or_allocated_machine(self):
+    def test_admin_cannot_unmount_on_non_ready_or_allocated_machine(self):
         admin = factory.make_admin()
         handler = MachineHandler(admin, {}, None)
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
@@ -4974,7 +4974,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         blockdevice = reload_object(blockdevice)
         self.assertEqual(blockdevice.tags, [])
 
-    def test__set_script_result_suppressed(self):
+    def test_set_script_result_suppressed(self):
         owner = factory.make_admin()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
@@ -5003,7 +5003,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             script_result = reload_object(script_result)
             self.assertTrue(script_result.suppressed)
 
-    def test__set_script_result_suppressed_raises_permission_error(self):
+    def test_set_script_result_suppressed_raises_permission_error(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
@@ -5026,7 +5026,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             params,
         )
 
-    def test__set_script_result_unsuppressed(self):
+    def test_set_script_result_unsuppressed(self):
         owner = factory.make_admin()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
@@ -5057,7 +5057,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             script_result = reload_object(script_result)
             self.assertFalse(script_result.suppressed)
 
-    def test__set_script_result_unsuppressed_raises_permission_error(self):
+    def test_set_script_result_unsuppressed_raises_permission_error(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
@@ -5080,7 +5080,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             params,
         )
 
-    def test__get_unsuppressed_script_results(self):
+    def test_get_unsuppressed_script_results(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)
         node_result_handler = NodeResultHandler(owner, {}, None)

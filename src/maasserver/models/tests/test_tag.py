@@ -102,7 +102,7 @@ class TestTagIsDefined(MAASServerTestCase):
 
 
 class TestTagPopulateNodesLater(MAASServerTestCase):
-    def test__populates_if_tag_is_defined(self):
+    def test_populates_if_tag_is_defined(self):
         post_commit_do = self.patch(tag_module, "post_commit_do")
 
         tag = Tag(name=factory.make_name("tag"), definition="//foo")
@@ -122,7 +122,7 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
             ),
         )
 
-    def test__does_nothing_if_tag_is_not_defined(self):
+    def test_does_nothing_if_tag_is_not_defined(self):
         post_commit_do = self.patch(tag_module, "post_commit_do")
 
         tag = Tag(name=factory.make_name("tag"), definition="")
@@ -133,7 +133,7 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
         tag._populate_nodes_later()
         self.assertThat(post_commit_do, MockNotCalled())
 
-    def test__does_not_clear_node_set_before_populating(self):
+    def test_does_not_clear_node_set_before_populating(self):
         post_commit_do = self.patch(tag_module, "post_commit_do")
 
         tag = Tag(name=factory.make_name("tag"), definition="//foo")
@@ -154,7 +154,7 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
             ),
         )
 
-    def test__later_is_the_default(self):
+    def test_later_is_the_default(self):
         tag = Tag(name=factory.make_name("tag"))
         self.patch(tag, "_populate_nodes_later")
         self.assertThat(tag._populate_nodes_later, MockNotCalled())
@@ -163,7 +163,7 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
 
 
 class TestTagPopulateNodesNow(MAASServerTestCase):
-    def test__populates_if_tag_is_defined(self):
+    def test_populates_if_tag_is_defined(self):
         populate_multiple = self.patch_autospec(
             populate_tags, "populate_tag_for_multiple_nodes"
         )
@@ -176,7 +176,7 @@ class TestTagPopulateNodesNow(MAASServerTestCase):
         tag._populate_nodes_now()
         self.assertThat(populate_multiple, MockCalledOnceWith(tag, ANY))
 
-    def test__does_nothing_if_tag_is_not_defined(self):
+    def test_does_nothing_if_tag_is_not_defined(self):
         populate_multiple = self.patch_autospec(
             populate_tags, "populate_tag_for_multiple_nodes"
         )
@@ -189,7 +189,7 @@ class TestTagPopulateNodesNow(MAASServerTestCase):
         tag._populate_nodes_now()
         self.assertThat(populate_multiple, MockNotCalled())
 
-    def test__clears_node_set_before_populating(self):
+    def test_clears_node_set_before_populating(self):
         tag = Tag(name=factory.make_name("tag"), definition="//foo")
         tag.save(populate=False)
 

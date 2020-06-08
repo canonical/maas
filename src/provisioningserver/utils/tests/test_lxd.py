@@ -321,5 +321,5 @@ SAMPLE_LXD_RESOURCES = {
 
 
 class TestLXDUtils(MAASTestCase):
-    def test__lxd_cpu_speed(self):
+    def test_lxd_cpu_speed(self):
         self.assertEquals(2400, lxd_cpu_speed(SAMPLE_LXD_RESOURCES))

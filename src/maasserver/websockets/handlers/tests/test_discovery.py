@@ -115,7 +115,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
 
 
 class TestDiscoveryHandlerClear(MAASServerTestCase):
-    def test__raises_if_not_admin(self):
+    def test_raises_if_not_admin(self):
         user = factory.make_User()
         handler = DiscoveryHandler(user, {}, None)
         factory.make_Discovery()
@@ -124,7 +124,7 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         with ExpectedException(HandlerPermissionError):
             handler.clear()
 
-    def test__clears_all_by_default(self):
+    def test_clears_all_by_default(self):
         user = factory.make_admin()
         handler = DiscoveryHandler(user, {}, None)
         factory.make_Discovery()
@@ -134,7 +134,7 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         num_discoveries = Discovery.objects.count()
         self.assertThat(num_discoveries, Equals(0))
 
-    def test__clears_mdns_only_upon_request(self):
+    def test_clears_mdns_only_upon_request(self):
         user = factory.make_admin()
         handler = DiscoveryHandler(user, {}, None)
         factory.make_Discovery(hostname="useful-towel")
@@ -150,7 +150,7 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
 
 
 class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
-    def test__raises_if_not_admin(self):
+    def test_raises_if_not_admin(self):
         user = factory.make_User()
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
@@ -161,7 +161,7 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
                 dict(ip=disco.ip, mac=disco.mac_address)
             )
 
-    def test__raises_if_missing_ip(self):
+    def test_raises_if_missing_ip(self):
         user = factory.make_User()
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
@@ -170,7 +170,7 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         with ExpectedException(HandlerPermissionError):
             handler.delete_by_mac_and_ip(dict(mac=disco.mac_address))
 
-    def test__raises_if_missing_mac(self):
+    def test_raises_if_missing_mac(self):
         user = factory.make_User()
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
@@ -179,7 +179,7 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         with ExpectedException(HandlerPermissionError):
             handler.delete_by_mac_and_ip(dict(ip=disco.ip))
 
-    def test__deletes_discovery_and_returns_number_deleted(self):
+    def test_deletes_discovery_and_returns_number_deleted(self):
         user = factory.make_admin()
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()

@@ -503,14 +503,14 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service, IsInstance(TimerService))
         self.assertThat(service.clock, Is(sentinel.reactor))
 
-    def test__get_config_rpc_info_urls(self):
+    def test_get_config_rpc_info_urls(self):
         maas_urls = [factory.make_simple_http_url() for _ in range(3)]
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_urls))
         service = ClusterClientService(reactor)
         observed_urls = service._get_config_rpc_info_urls()
         self.assertThat(observed_urls, Equals(maas_urls))
 
-    def test__get_saved_rpc_info_urls(self):
+    def test_get_saved_rpc_info_urls(self):
         saved_urls = [factory.make_simple_http_url() for _ in range(3)]
         service = ClusterClientService(reactor)
         with open(service._get_saved_rpc_info_path(), "w") as stream:
@@ -567,7 +567,7 @@ class TestClusterClientService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__build_rpc_info_urls(self):
+    def test_build_rpc_info_urls(self):
         # Because this actually will try to resolve the URL's in the test we
         # keep them to localhost so it works on all systems.
         maas_urls = ["http://127.0.0.1:5240/" for _ in range(3)]
@@ -579,7 +579,7 @@ class TestClusterClientService(MAASTestCase):
         observed_urls = yield service._build_rpc_info_urls(maas_urls)
         self.assertThat(observed_urls, Equals(expected_urls))
 
-    def test__doUpdate_connect_503_error_is_logged_tersely(self):
+    def test_doUpdate_connect_503_error_is_logged_tersely(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = fail(web.error.Error("503"))
         self.patch(clusterservice, "Agent").return_value = mock_agent
@@ -606,7 +606,7 @@ class TestClusterClientService(MAASTestCase):
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
 
-    def test__doUpdate_makes_parallel_requests(self):
+    def test_doUpdate_makes_parallel_requests(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
             web.error.Error("503")
@@ -656,7 +656,7 @@ class TestClusterClientService(MAASTestCase):
             dump,
         )
 
-    def test__doUpdate_makes_parallel_with_serial_requests(self):
+    def test_doUpdate_makes_parallel_with_serial_requests(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
             web.error.Error("503")
@@ -728,7 +728,7 @@ class TestClusterClientService(MAASTestCase):
             dump,
         )
 
-    def test__doUpdate_falls_back_to_rpc_info_state(self):
+    def test_doUpdate_falls_back_to_rpc_info_state(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
             web.error.Error("503")
@@ -918,7 +918,7 @@ class TestClusterClientService(MAASTestCase):
         }
     ).encode("ascii")
 
-    def test__doUpdate_calls__update_connections(self):
+    def test_doUpdate_calls__update_connections(self):
         maas_url = "http://localhost/%s/" % factory.make_name("path")
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         self.patch_autospec(socket, "getaddrinfo").return_value = (
@@ -950,7 +950,7 @@ class TestClusterClientService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__update_connections_initially(self):
+    def test_update_connections_initially(self):
         service = ClusterClientService(Clock())
         mock_client = Mock()
         _make_connection = self.patch(service, "_make_connection")
@@ -980,7 +980,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertEqual([], _drop_connection.mock_calls)
 
     @inlineCallbacks
-    def test__update_connections_logs_fully_connected(self):
+    def test_update_connections_logs_fully_connected(self):
         service = ClusterClientService(Clock())
         eventloops = {
             "region1:123": [("::ffff:127.0.0.1", 1234)],
@@ -1007,7 +1007,7 @@ class TestClusterClientService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__update_connections_connect_error_is_logged_tersely(self):
+    def test_update_connections_connect_error_is_logged_tersely(self):
         service = ClusterClientService(Clock())
         _make_connection = self.patch(service, "_make_connection")
         _make_connection.side_effect = error.ConnectionRefusedError()
@@ -1031,7 +1031,7 @@ class TestClusterClientService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__update_connections_unknown_error_is_logged_with_stack(self):
+    def test_update_connections_unknown_error_is_logged_with_stack(self):
         service = ClusterClientService(Clock())
         _make_connection = self.patch(service, "_make_connection")
         _make_connection.side_effect = RuntimeError("Something went wrong.")
@@ -1058,7 +1058,7 @@ class TestClusterClientService(MAASTestCase):
             logger.dump(),
         )
 
-    def test__update_connections_when_there_are_existing_connections(self):
+    def test_update_connections_when_there_are_existing_connections(self):
         service = ClusterClientService(Clock())
         _make_connection = self.patch(service, "_make_connection")
         _drop_connection = self.patch(service, "_drop_connection")
@@ -1097,7 +1097,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(_drop_connection, MockCalledWith(host2client))
 
     @inlineCallbacks
-    def test__update_only_updates_interval_when_eventloops_are_unknown(self):
+    def test_update_only_updates_interval_when_eventloops_are_unknown(self):
         service = ClusterClientService(Clock())
         self.patch_autospec(service, "_get_config_rpc_info_urls")
         self.patch_autospec(service, "_build_rpc_info_urls")
@@ -1129,7 +1129,7 @@ class TestClusterClientService(MAASTestCase):
             logger.dump(),
         )
 
-    def test__make_connection(self):
+    def test_make_connection(self):
         service = ClusterClientService(Clock())
         connectProtocol = self.patch(clusterservice, "connectProtocol")
         service._make_connection("an-event-loop", ("a.example.com", 1111))
@@ -1162,7 +1162,7 @@ class TestClusterClientService(MAASTestCase):
             ),
         )
 
-    def test__drop_connection(self):
+    def test_drop_connection(self):
         connection = Mock()
         service = make_inert_client_service()
         service.startService()
@@ -1171,7 +1171,7 @@ class TestClusterClientService(MAASTestCase):
             connection.transport.loseConnection, MockCalledOnceWith()
         )
 
-    def test__add_connection_removes_from_try_connections(self):
+    def test_add_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1181,7 +1181,7 @@ class TestClusterClientService(MAASTestCase):
         service.add_connection(endpoint, connection)
         self.assertThat(service.try_connections, Equals({}))
 
-    def test__add_connection_adds_to_connections(self):
+    def test_add_connection_adds_to_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1190,7 +1190,7 @@ class TestClusterClientService(MAASTestCase):
         service.add_connection(endpoint, connection)
         self.assertThat(service.connections, Equals({endpoint: connection}))
 
-    def test__add_connection_calls__update_saved_rpc_info_state(self):
+    def test_add_connection_calls__update_saved_rpc_info_state(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1202,7 +1202,7 @@ class TestClusterClientService(MAASTestCase):
             service._update_saved_rpc_info_state, MockCalledOnceWith()
         )
 
-    def test__remove_connection_removes_from_try_connections(self):
+    def test_remove_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1211,7 +1211,7 @@ class TestClusterClientService(MAASTestCase):
         service.remove_connection(endpoint, connection)
         self.assertThat(service.try_connections, Equals({}))
 
-    def test__remove_connection_removes_from_connections(self):
+    def test_remove_connection_removes_from_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1220,7 +1220,7 @@ class TestClusterClientService(MAASTestCase):
         service.remove_connection(endpoint, connection)
         self.assertThat(service.connections, Equals({}))
 
-    def test__remove_connection_lowers_recheck_interval(self):
+    def test_remove_connection_lowers_recheck_interval(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1229,7 +1229,7 @@ class TestClusterClientService(MAASTestCase):
         service.remove_connection(endpoint, connection)
         self.assertEquals(service.step, service.INTERVAL_LOW)
 
-    def test__remove_connection_stops_both_dhcpd_and_dhcpd6(self):
+    def test_remove_connection_stops_both_dhcpd_and_dhcpd6(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
@@ -1311,7 +1311,7 @@ class TestClusterClientService(MAASTestCase):
         )
         return d
 
-    def test__tryUpdate_prevents_concurrent_calls_to__doUpdate(self):
+    def test_tryUpdate_prevents_concurrent_calls_to__doUpdate(self):
         service = ClusterClientService(Clock())
 
         d_doUpdate_1, d_doUpdate_2 = Deferred(), Deferred()
@@ -1412,7 +1412,7 @@ class TestClusterClientServiceIntervals(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__calculate_interval(self):
+    def test_calculate_interval(self):
         service = make_inert_client_service()
         service.startService()
         service.clock.advance(self.time_running)
@@ -2605,13 +2605,13 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         self.assertIsNotNone(
             Cluster().locateResponder(self.command.commandName)
         )
 
     @inlineCallbacks
-    def test__executes_configure_dhcp(self):
+    def test_executes_configure_dhcp(self):
         DHCPServer = self.patch_autospec(*self.dhcp_server)
         configure = self.patch_autospec(dhcp, "configure")
 
@@ -2655,7 +2655,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__limits_concurrency(self):
+    def test_limits_concurrency(self):
         self.patch_autospec(*self.dhcp_server)
 
         def check_dhcp_locked(
@@ -2687,7 +2687,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         self.assertFalse(self.concurrency_lock.locked)
 
     @inlineCallbacks
-    def test__propagates_CannotConfigureDHCP(self):
+    def test_propagates_CannotConfigureDHCP(self):
         configure = self.patch_autospec(dhcp, "configure")
         configure.side_effect = exceptions.CannotConfigureDHCP(
             "Deliberate failure"
@@ -2715,7 +2715,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             )
 
     @inlineCallbacks
-    def test__times_out(self):
+    def test_times_out(self):
         self.patch_autospec(*self.dhcp_server)
         self.patch(clusterservice, "DHCP_TIMEOUT", 1)
 
@@ -2795,13 +2795,13 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
         # configuration. This is tested elsewhere.
         self.useFixture(DHCPConfigNameResolutionDisabled())
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         self.assertIsNotNone(
             Cluster().locateResponder(self.command.commandName)
         )
 
     @inlineCallbacks
-    def test__validates_good_dhcp_config(self):
+    def test_validates_good_dhcp_config(self):
         self.patch(dhcp, "call_and_check").return_value = None
 
         omapi_key = factory.make_name("key")
@@ -2827,7 +2827,7 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
         self.assertEquals(None, response["errors"])
 
     @inlineCallbacks
-    def test__validates_bad_dhcp_config(self):
+    def test_validates_bad_dhcp_config(self):
         dhcpd_error = (
             "Internet Systems Consortium DHCP Server 4.3.3\n"
             "Copyright 2004-2015 Internet Systems Consortium.\n"
@@ -2889,7 +2889,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.EvaluateTag.commandName)
         self.assertIsNotNone(responder)
@@ -2925,7 +2925,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         self.assertEqual({}, response)
 
     @inlineCallbacks
-    def test__calls_through_to_evaluate_tag_helper(self):
+    def test_calls_through_to_evaluate_tag_helper(self):
         evaluate_tag = self.patch_autospec(clusterservice, "evaluate_tag")
 
         tag_name = factory.make_name("tag-name")
@@ -3004,7 +3004,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.RefreshRackControllerInfo.commandName
@@ -3012,7 +3012,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
-    def test__raises_refresh_already_in_progress_when_locked(self):
+    def test_raises_refresh_already_in_progress_when_locked(self):
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
         token_key = factory.make_name("token_key")
@@ -3032,7 +3032,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
                 )
 
     @inlineCallbacks
-    def test__acquires_lock_when_refreshing_releases_when_done(self):
+    def test_acquires_lock_when_refreshing_releases_when_done(self):
         def mock_refresh(*args, **kwargs):
             lock = NamedLock("refresh")
             self.assertTrue(lock.is_locked())
@@ -3058,7 +3058,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
-    def test__releases_on_error(self):
+    def test_releases_on_error(self):
         exception = factory.make_exception()
         self.patch(clusterservice, "refresh").side_effect = exception
         system_id = factory.make_name("system_id")
@@ -3098,7 +3098,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
-    def test__defers_refresh_to_thread(self):
+    def test_defers_refresh_to_thread(self):
         mock_deferToThread = self.patch_autospec(
             clusterservice, "deferToThread"
         )
@@ -3172,13 +3172,13 @@ class TestClusterProtocol_ScanNetworks(
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.ScanNetworks.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
-    def test__raises_refresh_already_in_progress_when_locked(self):
+    def test_raises_refresh_already_in_progress_when_locked(self):
         with NamedLock("scan-networks"):
             with ExpectedException(exceptions.ScanNetworksAlreadyInProgress):
                 yield call_responder(
@@ -3186,7 +3186,7 @@ class TestClusterProtocol_ScanNetworks(
                 )
 
     @inlineCallbacks
-    def test__acquires_lock_when_scanning_releases_when_done(self):
+    def test_acquires_lock_when_scanning_releases_when_done(self):
         def mock_scan(*args, **kwargs):
             lock = NamedLock("scan-networks")
             self.assertTrue(lock.is_locked())
@@ -3201,7 +3201,7 @@ class TestClusterProtocol_ScanNetworks(
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
-    def test__releases_on_error(self):
+    def test_releases_on_error(self):
         exception = factory.make_exception()
         mock_scan = self.patch(clusterservice, "executeScanNetworksSubprocess")
         mock_scan.side_effect = exception
@@ -3227,7 +3227,7 @@ class TestClusterProtocol_ScanNetworks(
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
-    def test__wraps_subprocess_scan_in_maybeDeferred(self):
+    def test_wraps_subprocess_scan_in_maybeDeferred(self):
         mock_maybeDeferred = self.patch_autospec(
             clusterservice, "maybeDeferred"
         )
@@ -3375,7 +3375,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.AddChassis.commandName)
         self.assertIsNotNone(responder)
@@ -3974,7 +3974,7 @@ class TestClusterProtocol_DiscoverPod(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.DiscoverPod.commandName)
         self.assertIsNotNone(responder)
@@ -4023,7 +4023,7 @@ class TestClusterProtocol_SendPodCommissioningResults(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.SendPodCommissioningResults.commandName
@@ -4077,7 +4077,7 @@ class TestClusterProtocol_SendPodCommissioningResults(MAASTestCase):
 
 
 class TestClusterProtocol_ComposeMachine(MAASTestCase):
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.ComposeMachine.commandName
@@ -4143,7 +4143,7 @@ class TestClusterProtocol_DecomposeMachine(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.DecomposeMachine.commandName
@@ -4184,7 +4184,7 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.DisableAndShutoffRackd.commandName
@@ -4245,13 +4245,13 @@ class TestClusterProtocol_CheckIPs(MAASTestCaseThatWaitsForDeferredThreads):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.CheckIPs.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
-    def test__reports_results(self):
+    def test_reports_results(self):
         ip_addresses = [
             {
                 # Always exists, returns exit code of `0`.

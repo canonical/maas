@@ -42,7 +42,7 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
 class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
-    def test__marks_all_possible_failed_status_as_failed(self):
+    def test_marks_all_possible_failed_status_as_failed(self):
         maaslog = self.patch(status_monitor.maaslog, "info")
         self.useFixture(SignalsDisabled("power"))
         current_time = now()
@@ -63,7 +63,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
             len(maaslog.call_args_list) / 2,
         )
 
-    def test__skips_those_that_have_not_expired(self):
+    def test_skips_those_that_have_not_expired(self):
         maaslog = self.patch(status_monitor.maaslog, "info")
         self.useFixture(SignalsDisabled("power"))
         current_time = now()

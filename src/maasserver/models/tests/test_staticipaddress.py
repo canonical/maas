@@ -1695,7 +1695,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
 
 
 class TestRenderJSON(MAASServerTestCase):
-    def test__excludes_username_and_node_summary_by_default(self):
+    def test_excludes_username_and_node_summary_by_default(self):
         ip = factory.make_StaticIPAddress(
             ip=factory.make_ipv4_address(),
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
@@ -1704,7 +1704,7 @@ class TestRenderJSON(MAASServerTestCase):
         self.expectThat(json, Not(Contains("user")))
         self.expectThat(json, Not(Contains("node_summary")))
 
-    def test__includes_username_if_requested(self):
+    def test_includes_username_if_requested(self):
         user = factory.make_User()
         ip = factory.make_StaticIPAddress(
             ip=factory.make_ipv4_address(),
@@ -1716,7 +1716,7 @@ class TestRenderJSON(MAASServerTestCase):
         self.expectThat(json, Not(Contains("node_summary")))
         self.expectThat(json["user"], Equals(user.username))
 
-    def test__includes_node_summary_if_requested(self):
+    def test_includes_node_summary_if_requested(self):
         user = factory.make_User()
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
@@ -1729,7 +1729,7 @@ class TestRenderJSON(MAASServerTestCase):
         self.expectThat(json, Not(Contains("user")))
         self.expectThat(json, Contains("node_summary"))
 
-    def test__node_summary_includes_interface_name(self):
+    def test_node_summary_includes_interface_name(self):
         user = factory.make_User()
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
@@ -1745,7 +1745,7 @@ class TestRenderJSON(MAASServerTestCase):
         self.expectThat(json, Contains("node_summary"))
         self.expectThat(json["node_summary"]["via"], Equals(iface.name))
 
-    def test__data_is_accurate_and_complete(self):
+    def test_data_is_accurate_and_complete(self):
         user = factory.make_User()
         hostname = factory.make_name("hostname")
         subnet = factory.make_Subnet()
@@ -1772,21 +1772,21 @@ class TestRenderJSON(MAASServerTestCase):
 
 
 class TestAllocTypeName(MAASServerTestCase):
-    def test__provides_human_readable_values_for_known_types(self):
+    def test_provides_human_readable_values_for_known_types(self):
         ip = factory.make_StaticIPAddress()
         self.assertThat(
             ip.alloc_type_name,
             Equals(IPADDRESS_TYPE_CHOICES_DICT[ip.alloc_type]),
         )
 
-    def test__returns_empty_string_for_unknown_types(self):
+    def test_returns_empty_string_for_unknown_types(self):
         ip = factory.make_StaticIPAddress()
         ip.alloc_type = randint(2 ** 16, 2 ** 32)
         self.assertThat(ip.alloc_type_name, Equals(""))
 
 
 class TestUniqueConstraints(MAASServerTestCase):
-    def test__rejects_duplicate_address_of_same_type(self):
+    def test_rejects_duplicate_address_of_same_type(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/8")
         factory.make_StaticIPAddress(
             ip="10.0.0.1",
@@ -1798,7 +1798,7 @@ class TestUniqueConstraints(MAASServerTestCase):
                 ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.USER_RESERVED
             )
 
-    def test__rejects_duplicate_address_for_two_different_static_types(self):
+    def test_rejects_duplicate_address_for_two_different_static_types(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/8")
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.STICKY
@@ -1810,7 +1810,7 @@ class TestUniqueConstraints(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
             )
 
-    def test__rejects_duplicate_discovered(self):
+    def test_rejects_duplicate_discovered(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/8")
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED
@@ -1822,7 +1822,7 @@ class TestUniqueConstraints(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.DISCOVERED,
             )
 
-    def test__allows_discovered_to_coexist_with_static(self):
+    def test_allows_discovered_to_coexist_with_static(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/8")
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED

@@ -82,7 +82,7 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryUpdate_updates_ntp_server(self):
+    def test_tryUpdate_updates_ntp_server(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
         refs, peers = yield deferToDatabase(self.make_example_configuration)
         configure_region = self.patch_autospec(ntp, "configure_region")
@@ -114,7 +114,7 @@ class TestRegionNetworkTimeProtocolService_Errors(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryUpdate_logs_errors_from_broken_method(self):
+    def test_tryUpdate_logs_errors_from_broken_method(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
@@ -145,7 +145,7 @@ class TestRegionNetworkTimeProtocolService_Errors(
 class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
     """Database tests for `RegionNetworkTimeProtocolService`."""
 
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
 
         # Configure example time references.

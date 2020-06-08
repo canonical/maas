@@ -20,15 +20,15 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestFindAddressesBetweenNodes(MAASServerTestCase):
     """Tests for `maasserver.routablepairs.find_addresses_between_nodes`."""
 
-    def test__yields_nothing_when_no_nodes_given(self):
+    def test_yields_nothing_when_no_nodes_given(self):
         self.assertItemsEqual([], find_addresses_between_nodes([], []))
 
-    def test__rejects_unsaved_nodes_on_the_left(self):
+    def test_rejects_unsaved_nodes_on_the_left(self):
         saved_node, unsaved_node = factory.make_Node(), Node()
         with ExpectedException(AssertionError, ".* not in the database"):
             list(find_addresses_between_nodes([unsaved_node], [saved_node]))
 
-    def test__rejects_unsaved_nodes_on_the_right(self):
+    def test_rejects_unsaved_nodes_on_the_right(self):
         saved_node, unsaved_node = factory.make_Node(), Node()
         with ExpectedException(AssertionError, ".* not in the database"):
             list(find_addresses_between_nodes([saved_node], [unsaved_node]))
@@ -40,7 +40,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         sip = factory.make_StaticIPAddress(interface=iface, subnet=subnet)
         return node, sip.get_ipaddress()
 
-    def test__yields_routes_between_nodes_on_same_space(self):
+    def test_yields_routes_between_nodes_on_same_space(self):
         space = factory.make_Space()
         network1 = factory.make_ip4_or_6_network()
         network2 = factory.make_ip4_or_6_network(version=network1.version)
@@ -56,7 +56,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             expected, find_addresses_between_nodes([node1], [node2])
         )
 
-    def test__yields_routes_between_multiple_nodes_on_same_space(self):
+    def test_yields_routes_between_multiple_nodes_on_same_space(self):
         space = factory.make_Space()
 
         lefts, rights = [], []
@@ -81,7 +81,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             ),
         )
 
-    def test__does_not_contain_routes_between_nodes_on_differing_spaces(self):
+    def test_does_not_contain_routes_between_nodes_on_differing_spaces(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         network1 = factory.make_ip4_or_6_network()
@@ -96,7 +96,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             expected, find_addresses_between_nodes([node1], [node2])
         )
 
-    def test__does_not_contain_routes_between_addrs_of_diff_network_fams(self):
+    def test_does_not_contain_routes_between_addrs_of_diff_network_fams(self):
         space = factory.make_Space()  # One space.
         network1 = factory.make_ip4_or_6_network()
         network2 = factory.make_ip4_or_6_network(
@@ -127,7 +127,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             networks.append(network)
             yield network
 
-    def test__yields_routes_with_lowest_metrics_first(self):
+    def test_yields_routes_with_lowest_metrics_first(self):
         space = factory.make_Space()
         # Ensure networks are disjoint but of the same family.
         networks = self.gen_disjoint_networks()
@@ -255,7 +255,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         )
         self.assertItemsEqual(expected_mutual, observed_mutual)
 
-    def test__doesnt_include_matches_between_undefined_spaces(self):
+    def test_doesnt_include_matches_between_undefined_spaces(self):
         network1 = next(self.gen_disjoint_networks())
         next(self.gen_disjoint_networks())
         network2 = next(self.gen_disjoint_networks())

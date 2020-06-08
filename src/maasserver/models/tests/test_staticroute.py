@@ -14,7 +14,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
-    def test__user_view_returns_staticroute(self):
+    def test_user_view_returns_staticroute(self):
         user = factory.make_User()
         route = factory.make_StaticRoute()
         self.assertEqual(
@@ -24,7 +24,7 @@ class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
             ),
         )
 
-    def test__user_edit_raises_PermissionError(self):
+    def test_user_edit_raises_PermissionError(self):
         user = factory.make_User()
         route = factory.make_StaticRoute()
         self.assertRaises(
@@ -35,7 +35,7 @@ class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
             NodePermission.edit,
         )
 
-    def test__user_admin_raises_PermissionError(self):
+    def test_user_admin_raises_PermissionError(self):
         user = factory.make_User()
         route = factory.make_StaticRoute()
         self.assertRaises(
@@ -46,7 +46,7 @@ class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
             NodePermission.admin,
         )
 
-    def test__admin_view_returns_fabric(self):
+    def test_admin_view_returns_fabric(self):
         admin = factory.make_admin()
         route = factory.make_StaticRoute()
         self.assertEqual(
@@ -56,7 +56,7 @@ class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_edit_returns_fabric(self):
+    def test_admin_edit_returns_fabric(self):
         admin = factory.make_admin()
         route = factory.make_StaticRoute()
         self.assertEqual(
@@ -66,7 +66,7 @@ class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
             ),
         )
 
-    def test__admin_admin_returns_fabric(self):
+    def test_admin_admin_returns_fabric(self):
         admin = factory.make_admin()
         route = factory.make_StaticRoute()
         self.assertEqual(

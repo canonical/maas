@@ -62,7 +62,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             extract_seamicro_parameters(context),
         )
 
-    def test__power_control_seamicro15k_ipmi_calls_call_and_check(self):
+    def test_power_control_seamicro15k_ipmi_calls_call_and_check(self):
         ip, username, password, server_id, _ = self.make_context()
         power_change = choice(["on", "off"])
         seamicro_power_driver = SeaMicroPowerDriver()
@@ -98,7 +98,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             ),
         )
 
-    def test__power_control_seamicro15k_ipmi_raises_PowerFatalError(self):
+    def test_power_control_seamicro15k_ipmi_raises_PowerFatalError(self):
         ip, username, password, server_id, _ = self.make_context()
         power_change = choice(["on", "off"])
         seamicro_power_driver = SeaMicroPowerDriver()
@@ -117,7 +117,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             power_change,
         )
 
-    def test__power_calls__power_control_seamicro15k_ipmi(self):
+    def test_power_calls__power_control_seamicro15k_ipmi(self):
         ip, username, password, server_id, context = self.make_context()
         context["power_control"] = "ipmi"
         power_change = choice(["on", "off"])
@@ -134,7 +134,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             ),
         )
 
-    def test__power_calls_power_control_seamicro15k_v09(self):
+    def test_power_calls_power_control_seamicro15k_v09(self):
         ip, username, password, server_id, context = self.make_context()
         context["power_control"] = "restapi"
         power_change = choice(["on", "off"])
@@ -151,7 +151,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             ),
         )
 
-    def test__power_calls_power_control_seamicro15k_v2(self):
+    def test_power_calls_power_control_seamicro15k_v2(self):
         ip, username, password, server_id, context = self.make_context()
         context["power_control"] = "restapi2"
         power_change = choice(["on", "off"])

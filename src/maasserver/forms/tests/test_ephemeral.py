@@ -21,13 +21,13 @@ from metadataserver.enum import SCRIPT_TYPE
 
 
 class TestTestForm(MAASServerTestCase):
-    def test__doesnt_require_anything(self):
+    def test_doesnt_require_anything(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         form = TestForm(instance=node, user=user, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__not_allowed_in_bad_state(self):
+    def test_not_allowed_in_bad_state(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         user = factory.make_admin()
         form = TestForm(instance=node, user=user, data={})
@@ -42,7 +42,7 @@ class TestTestForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__calls_start_testing_if_already_on(self):
+    def test_calls_start_testing_if_already_on(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, power_state=POWER_STATE.ON
         )
@@ -55,7 +55,7 @@ class TestTestForm(MAASServerTestCase):
             mock_start_testing, MockCalledOnceWith(user, False, [], {})
         )
 
-    def test__calls_start_testing_with_options(self):
+    def test_calls_start_testing_with_options(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         enable_ssh = factory.pick_bool()
@@ -80,7 +80,7 @@ class TestTestForm(MAASServerTestCase):
             MockCalledOnceWith(user, enable_ssh, testing_scripts, {}),
         )
 
-    def test__class_start_testing_with_storage_param(self):
+    def test_class_start_testing_with_storage_param(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_boot_disk=False
         )
@@ -116,7 +116,7 @@ class TestTestForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_testing_with_storage_param_errors(self):
+    def test_class_start_testing_with_storage_param_errors(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         script = factory.make_Script(
@@ -134,7 +134,7 @@ class TestTestForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__class_start_testing_with_interface_param(self):
+    def test_class_start_testing_with_interface_param(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED, interface=False)
         interface = factory.make_Interface(node=node)
         user = factory.make_admin()
@@ -169,7 +169,7 @@ class TestTestForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_testing_with_interface_param_errors(self):
+    def test_class_start_testing_with_interface_param_errors(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         script = factory.make_Script(
@@ -187,7 +187,7 @@ class TestTestForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__class_start_testing_with_runtime_param(self):
+    def test_class_start_testing_with_runtime_param(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         script = factory.make_Script(
@@ -211,7 +211,7 @@ class TestTestForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_testing_with_runtime_param_errors(self):
+    def test_class_start_testing_with_runtime_param_errors(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         script = factory.make_Script(
@@ -229,7 +229,7 @@ class TestTestForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__class_start_testing_with_url_param(self):
+    def test_class_start_testing_with_url_param(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         script = factory.make_Script(
@@ -253,7 +253,7 @@ class TestTestForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_testing_can_override_global_param(self):
+    def test_class_start_testing_can_override_global_param(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         bd = factory.make_PhysicalBlockDevice(node=node)
         user = factory.make_admin()
@@ -301,7 +301,7 @@ class TestTestForm(MAASServerTestCase):
             ),
         )
 
-    def test__validates_testing_scripts(self):
+    def test_validates_testing_scripts(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         form = TestForm(
@@ -311,7 +311,7 @@ class TestTestForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__testing_scripts_cannt_be_none(self):
+    def test_testing_scripts_cannt_be_none(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         form = TestForm(
@@ -319,7 +319,7 @@ class TestTestForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__cannt_run_destructive_test_on_deployed_machine(self):
+    def test_cannt_run_destructive_test_on_deployed_machine(self):
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, destructive=True
         )
@@ -330,7 +330,7 @@ class TestTestForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__cannt_run_destructive_test_on_non_machine(self):
+    def test_cannt_run_destructive_test_on_non_machine(self):
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, destructive=True
         )
@@ -347,7 +347,7 @@ class TestTestForm(MAASServerTestCase):
 
 
 class TestCommissionForm(MAASServerTestCase):
-    def test__doesnt_require_anything(self):
+    def test_doesnt_require_anything(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.OFF
         )
@@ -355,7 +355,7 @@ class TestCommissionForm(MAASServerTestCase):
         form = CommissionForm(instance=node, user=user, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__not_allowed_in_bad_state(self):
+    def test_not_allowed_in_bad_state(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, power_state=POWER_STATE.OFF
         )
@@ -372,7 +372,7 @@ class TestCommissionForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__calls_start_commissioning_if_already_on(self):
+    def test_calls_start_commissioning_if_already_on(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.ON
         )
@@ -397,7 +397,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__calls_start_commissioning_with_options(self):
+    def test_calls_start_commissioning_with_options(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.OFF
         )
@@ -442,7 +442,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_commissioning_with_storage_param(self):
+    def test_class_start_commissioning_with_storage_param(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=False
         )
@@ -512,7 +512,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_commissioning_with_storage_param_errors(self):
+    def test_class_start_commissioning_with_storage_param_errors(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         user = factory.make_admin()
         commissioning_script = factory.make_Script(
@@ -537,7 +537,7 @@ class TestCommissionForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__class_start_commissioning_with_interface_param(self):
+    def test_class_start_commissioning_with_interface_param(self):
         node = factory.make_Node(status=NODE_STATUS.READY, interface=False)
         commissioning_interface = factory.make_Interface(node=node)
         testing_interface = factory.make_Interface(node=node)
@@ -613,7 +613,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_commissioning_with_interface_param_errors(self):
+    def test_class_start_commissioning_with_interface_param_errors(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         user = factory.make_admin()
         commissioning_script = factory.make_Script(
@@ -638,7 +638,7 @@ class TestCommissionForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__class_start_commissioning_with_runtime_param(self):
+    def test_class_start_commissioning_with_runtime_param(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         user = factory.make_admin()
         commissioning_script = factory.make_Script(
@@ -684,7 +684,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_commissioning_with_runtime_param_errors(self):
+    def test_class_start_commissioning_with_runtime_param_errors(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         user = factory.make_admin()
         commissioning_script = factory.make_Script(
@@ -709,7 +709,7 @@ class TestCommissionForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__class_start_commissioning_with_url_param(self):
+    def test_class_start_commissioning_with_url_param(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         user = factory.make_admin()
         commissioning_script = factory.make_Script(
@@ -755,7 +755,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__class_start_commissioning_can_override_global_param(self):
+    def test_class_start_commissioning_can_override_global_param(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         commissioning_bd = factory.make_PhysicalBlockDevice(node=node)
         testing_bd = factory.make_PhysicalBlockDevice(node=node)
@@ -839,7 +839,7 @@ class TestCommissionForm(MAASServerTestCase):
             ),
         )
 
-    def test__validates_commissioning_scripts(self):
+    def test_validates_commissioning_scripts(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.OFF
         )
@@ -851,7 +851,7 @@ class TestCommissionForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__validates_testing_scripts(self):
+    def test_validates_testing_scripts(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.OFF
         )
@@ -863,7 +863,7 @@ class TestCommissionForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__allows_setting_testing_scripts_to_none(self):
+    def test_allows_setting_testing_scripts_to_none(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.OFF
         )

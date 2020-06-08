@@ -14,7 +14,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestCloneForm(MAASServerTestCase):
-    def test__empty_errors(self):
+    def test_empty_errors(self):
         user = factory.make_admin()
         form = CloneForm(user, data={})
         self.assertFalse(form.is_valid())
@@ -27,7 +27,7 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__source_destination_match_error(self):
+    def test_source_destination_match_error(self):
         user = factory.make_admin()
         source = factory.make_Machine(
             status=random.choice(
@@ -53,7 +53,7 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__source_destination_smaller_storage(self):
+    def test_source_destination_smaller_storage(self):
         user = factory.make_admin()
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
@@ -88,7 +88,7 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__source_destination_missing_nic(self):
+    def test_source_destination_missing_nic(self):
         user = factory.make_admin()
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_Interface(node=source, name="eth0")
@@ -119,7 +119,7 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__permission_errors(self):
+    def test_permission_errors(self):
         user = factory.make_User()
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
@@ -157,7 +157,7 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__performs_clone(self):
+    def test_performs_clone(self):
         user = factory.make_admin()
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(

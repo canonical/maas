@@ -44,7 +44,7 @@ class TestNodeDetail(MAASServerTestCase):
             ],
         )
 
-    def test__returns_all_details(self):
+    def test_returns_all_details(self):
         node = factory.make_Node(with_empty_script_sets=True)
         script_set = node.current_commissioning_script_set
         for script_name, stdout in (
@@ -60,13 +60,13 @@ class TestNodeDetail(MAASServerTestCase):
             get_single_probed_details(node),
         )
 
-    def test__returns_null_details_when_there_are_none(self):
+    def test_returns_null_details_when_there_are_none(self):
         node = factory.make_Node()
         self.assertDictEqual(
             {"lshw": None, "lldp": None}, get_single_probed_details(node)
         )
 
-    def test__returns_only_details_from_okay_commissioning_results(self):
+    def test_returns_only_details_from_okay_commissioning_results(self):
         node = factory.make_Node(with_empty_script_sets=True)
         script_set = node.current_commissioning_script_set
         for script_name, stdout, exit_status in (

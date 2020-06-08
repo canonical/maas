@@ -116,7 +116,7 @@ class TestLogFunctions(MAASTestCase):
 class TestResetRequest(MAASTestCase):
     """Tests for :py:func:`maasserver.utils.views.reset_request`."""
 
-    def test__clears_messages_from_cookies(self):
+    def test_clears_messages_from_cookies(self):
         request = make_request()
         request.COOKIES["messages"] = sentinel.messages
         request = views.reset_request(request)
@@ -126,7 +126,7 @@ class TestResetRequest(MAASTestCase):
 class TestDeleteOAuthNonce(MAASServerTestCase):
     """Tests for :py:func:`maasserver.utils.views.delete_oauth_nonce`."""
 
-    def test__deletes_nonce(self):
+    def test_deletes_nonce(self):
         oauth_consumer_key = factory.make_string(18)
         oauth_token = factory.make_string(18)
         oauth_nonce = randint(0, 99999)
@@ -149,7 +149,7 @@ class TestDeleteOAuthNonce(MAASServerTestCase):
                 key=oauth_nonce,
             )
 
-    def test__skips_missing_nonce(self):
+    def test_skips_missing_nonce(self):
         oauth_consumer_key = factory.make_string(18)
         oauth_token = factory.make_string(18)
         oauth_nonce = randint(0, 99999)
@@ -162,12 +162,12 @@ class TestDeleteOAuthNonce(MAASServerTestCase):
         # No exception is raised.
         self.assertIsNone(views.delete_oauth_nonce(request))
 
-    def test__skips_non_oauth_request(self):
+    def test_skips_non_oauth_request(self):
         request = make_request(env={"HTTP_AUTHORIZATION": ""})
         # No exception is raised.
         self.assertIsNone(views.delete_oauth_nonce(request))
 
-    def test__skips_oauth_request_with_missing_param(self):
+    def test_skips_oauth_request_with_missing_param(self):
         missing_params = ("oauth_consumer_key", "oauth_token", "oauth_nonce")
         for missing_param in missing_params:
             request = make_request(missing_oauth_param=missing_param)
@@ -183,7 +183,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         clock = self.patch(views, "clock", Clock())
         self.patch(views, "sleep", clock.advance)
 
-    def test__init_defaults(self):
+    def test_init_defaults(self):
         handler = views.WebApplicationHandler()
         self.expectThat(
             handler._WebApplicationHandler__retry_attempts, Equals(10)
@@ -196,20 +196,20 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         )
         self.expectThat(handler._WebApplicationHandler__retry, HasLength(0))
 
-    def test__init_attempts_can_be_set(self):
+    def test_init_attempts_can_be_set(self):
         attempts = randint(1, 100)
         handler = views.WebApplicationHandler(attempts)
         self.expectThat(
             handler._WebApplicationHandler__retry_attempts, Equals(attempts)
         )
 
-    def test__init_timeout_can_be_set(self):
+    def test_init_timeout_can_be_set(self):
         handler = views.WebApplicationHandler(timeout=sentinel.timeout)
         self.expectThat(
             handler._WebApplicationHandler__retry_timeout, Is(sentinel.timeout)
         )
 
-    def test__handle_uncaught_exception_notes_serialization_failure(self):
+    def test_handle_uncaught_exception_notes_serialization_failure(self):
         handler = views.WebApplicationHandler()
         request = make_request()
         request.path = factory.make_name("path")
@@ -227,7 +227,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             handler._WebApplicationHandler__retry, Contains(response)
         )
 
-    def test__handle_uncaught_exception_does_not_note_other_failure(self):
+    def test_handle_uncaught_exception_does_not_note_other_failure(self):
         handler = views.WebApplicationHandler()
         request = make_request()
         request.path = factory.make_name("path")
@@ -248,7 +248,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             handler._WebApplicationHandler__retry, Not(Contains(response))
         )
 
-    def test__handle_uncaught_exception_raises_error_on_api_exception(self):
+    def test_handle_uncaught_exception_raises_error_on_api_exception(self):
         handler = views.WebApplicationHandler()
         request = make_request()
         request.path = factory.make_name("path")
@@ -271,7 +271,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             response.status_code, Equals(http.client.INTERNAL_SERVER_ERROR)
         )
 
-    def test__get_response_catches_serialization_failures(self):
+    def test_get_response_catches_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.side_effect = (
             lambda request: self.cause_serialization_failure()
@@ -285,7 +285,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(get_response, MockCalledOnceWith(request))
         self.assertThat(response, IsInstance(HttpResponseConflict))
 
-    def test__get_response_catches_deadlock_failures(self):
+    def test_get_response_catches_deadlock_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.side_effect = make_deadlock_failure()
 
@@ -297,7 +297,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(get_response, MockCalledOnceWith(request))
         self.assertThat(response, IsInstance(HttpResponseConflict))
 
-    def test__get_response_sends_signal_on_serialization_failures(self):
+    def test_get_response_sends_signal_on_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.side_effect = (
             lambda request: self.cause_serialization_failure()
@@ -319,7 +319,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             ),
         )
 
-    def test__get_response_sends_signal_on_deadlock_failures(self):
+    def test_get_response_sends_signal_on_deadlock_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.side_effect = make_deadlock_failure()
 
@@ -339,7 +339,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             ),
         )
 
-    def test__get_response_tries_only_once(self):
+    def test_get_response_tries_only_once(self):
         response = HttpResponse(status=200)
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.return_value = response
@@ -352,7 +352,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(get_response, MockCalledOnceWith(request))
         self.assertThat(observed_response, Is(response))
 
-    def test__get_response_tries_multiple_times(self):
+    def test_get_response_tries_multiple_times(self):
         handler = views.WebApplicationHandler(3)
         # An iterable of responses, the last of which will be
         # an HttpResponseConflict (HTTP 409 - Conflict) error
@@ -392,7 +392,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             Equals(http.client.responses[http.client.CONFLICT]),
         )
 
-    def test__get_response_prepare_retry_context_before_each_try(self):
+    def test_get_response_prepare_retry_context_before_each_try(self):
         class ObserveContext:
             def __init__(self, callback, name):
                 self.callback = callback
@@ -439,7 +439,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             ),
         )
 
-    def test__get_response_logs_retry_and_resets_request(self):
+    def test_get_response_logs_retry_and_resets_request(self):
         timeout = 1.0 + (random() * 99)
         handler = views.WebApplicationHandler(2, timeout)
 
@@ -469,7 +469,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         )
         self.expectThat(reset_request, MockCalledOnceWith(request))
 
-    def test__get_response_up_calls_in_transaction(self):
+    def test_get_response_up_calls_in_transaction(self):
         handler = views.WebApplicationHandler(2)
 
         def check_in_transaction(request):
@@ -484,7 +484,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
         self.assertThat(get_response, MockCalledOnceWith(request))
 
-    def test__get_response_is_in_retry_context_in_transaction(self):
+    def test_get_response_is_in_retry_context_in_transaction(self):
         handler = views.WebApplicationHandler(2)
 
         def check_retry_context_active(request):
@@ -501,7 +501,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(retry_context.active, Is(False))
         self.assertThat(get_response, MockCalledOnceWith(request))
 
-    def test__get_response_restores_files_across_requests(self):
+    def test_get_response_restores_files_across_requests(self):
         handler = views.WebApplicationHandler(3)
         file_content = sample_binary_data
         file_name = "content"
@@ -542,7 +542,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertEqual(file_content, response.content)
         self.assertEqual(recorder, [file_content] * 3)
 
-    def test__get_response_deleted_nonces_across_requests(self):
+    def test_get_response_deleted_nonces_across_requests(self):
         handler = views.WebApplicationHandler(3)
         user = factory.make_User()
         token = user.userprofile.get_authorisation_tokens()[0]
@@ -582,7 +582,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
 
 class TestWebApplicationHandlerAtomicViews(MAASServerTestCase):
-    def test__make_view_atomic_wraps_view_with_post_commit_savepoint(self):
+    def test_make_view_atomic_wraps_view_with_post_commit_savepoint(self):
         hooks = post_commit_hooks.hooks
         savepoint_level = len(connection.savepoint_ids)
 

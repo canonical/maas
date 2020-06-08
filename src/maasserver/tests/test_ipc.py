@@ -49,21 +49,21 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestGetIPCSocketPath(MAASTestCase):
-    def test__returns_ipc_socket_env(self):
+    def test_returns_ipc_socket_env(self):
         path = factory.make_name("path")
         self.useFixture(
             EnvironmentVariableFixture("MAAS_IPC_SOCKET_PATH", path)
         )
         self.assertEquals(path, get_ipc_socket_path())
 
-    def test__returns_ipc_from_maas_root(self):
+    def test_returns_ipc_from_maas_root(self):
         path = factory.make_name("path")
         self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", path))
         self.assertEquals(
             os.path.join(path, "maas-regiond.sock"), get_ipc_socket_path()
         )
 
-    def test__returns_ipc_at_default_location(self):
+    def test_returns_ipc_at_default_location(self):
         self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", None))
         self.assertEquals(
             "/var/lib/maas/maas-regiond.sock", get_ipc_socket_path()

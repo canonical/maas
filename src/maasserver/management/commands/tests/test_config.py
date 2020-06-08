@@ -56,22 +56,22 @@ class TestConfigurationGet(MAASTestCase):
         for option, args in config.gen_configuration_options_for_getting()
     )
 
-    def test__dumps_yaml_to_stdout_by_default(self):
+    def test_dumps_yaml_to_stdout_by_default(self):
         stdio = call_get(**{self.option: True})
         settings = yaml.safe_load(stdio.getOutput())
         self.assertThat(settings, Contains(self.option))
 
-    def test__dumps_yaml_to_stdout(self):
+    def test_dumps_yaml_to_stdout(self):
         stdio = call_get(**{self.option: True, "dump": config.dump_yaml})
         settings = yaml.safe_load(stdio.getOutput())
         self.assertThat(settings, Contains(self.option))
 
-    def test__dumps_json_to_stdout(self):
+    def test_dumps_json_to_stdout(self):
         stdio = call_get(**{self.option: True, "dump": config.dump_json})
         settings = json.loads(stdio.getOutput())
         self.assertThat(settings, Contains(self.option))
 
-    def test__dumps_plain_string_to_stdout(self):
+    def test_dumps_plain_string_to_stdout(self):
         stdio = call_get(**{self.option: True, "dump": config.dump_plain})
         settings = stdio.getOutput()
         self.assertThat(settings, Not(Contains(self.option)))
@@ -88,7 +88,7 @@ class TestConfigurationReset(MAASTestCase):
         for option, args in config.gen_configuration_options_for_resetting()
     )
 
-    def test__options_are_reset(self):
+    def test_options_are_reset(self):
         self.useFixture(RegionConfigurationFixture())
         with RegionConfiguration.open_for_update() as configuration:
             # Give the option a random value.
@@ -114,7 +114,7 @@ class TestConfigurationSet(MAASTestCase):
         for option, args in config.gen_configuration_options_for_setting()
     )
 
-    def test__options_are_saved(self):
+    def test_options_are_saved(self):
         self.useFixture(RegionConfigurationFixture())
         # Set the option to a random value.
         if self.option == "database_port":
@@ -163,14 +163,14 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
     meaning that anything goes, but the port is defined with `Int`.
     """
 
-    def test__exception_when_port_is_not_an_integer(self):
+    def test_exception_when_port_is_not_an_integer(self):
         self.useFixture(RegionConfigurationFixture())
         error = self.assertRaises(CommandError, call_set, database_port="foo")
         self.assertThat(
             str(error), Equals("database-port: Please enter an integer value.")
         )
 
-    def test__exception_when_port_is_too_low(self):
+    def test_exception_when_port_is_too_low(self):
         self.useFixture(RegionConfigurationFixture())
         error = self.assertRaises(CommandError, call_set, database_port=0)
         self.assertThat(
@@ -180,7 +180,7 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
             ),
         )
 
-    def test__exception_when_port_is_too_high(self):
+    def test_exception_when_port_is_too_high(self):
         self.useFixture(RegionConfigurationFixture())
         error = self.assertRaises(
             CommandError, call_set, database_port=2 ** 16

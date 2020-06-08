@@ -25,24 +25,24 @@ class TestAddressFunctions(MAASTestCase):
         ),
     )
 
-    def test__returns_None_None_tuple_when_not_set(self):
+    def test_returns_None_None_tuple_when_not_set(self):
         self.assertEqual((None, None), self.get_address())
 
-    def test__returns_host_port_tuple_when_set(self):
+    def test_returns_host_port_tuple_when_set(self):
         host, port = factory.make_hostname(), factory.pick_port()
         context = {self.context_key: (host, port)}
         self.assertEqual((host, port), call(context, self.get_address))
 
-    def test__returns_host_port_tuple_even_when_set_longer(self):
+    def test_returns_host_port_tuple_even_when_set_longer(self):
         # Only the first two elements from the context's value are used.
         host, port = factory.make_hostname(), factory.pick_port()
         context = {self.context_key: (host, port, factory.make_name("thing"))}
         self.assertEqual((host, port), call(context, self.get_address))
 
-    def test__blows_up_when_tuple_has_no_elements(self):
+    def test_blows_up_when_tuple_has_no_elements(self):
         context = {self.context_key: ()}
         self.assertRaises(AssertionError, call, context, self.get_address)
 
-    def test__blows_up_when_tuple_has_one_element(self):
+    def test_blows_up_when_tuple_has_one_element(self):
         context = {self.context_key: (factory.make_hostname(),)}
         self.assertRaises(AssertionError, call, context, self.get_address)

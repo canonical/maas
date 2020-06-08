@@ -103,7 +103,7 @@ class TestRegisterMAASRack(MAASTestCase):
         args.__dict__.update(kwargs)
         return args
 
-    def test____sets_url(self):
+    def test_sets_url(self):
         secret = factory.make_bytes()
         expected_url = factory.make_simple_http_url()
         register_command.run(
@@ -113,7 +113,7 @@ class TestRegisterMAASRack(MAASTestCase):
             observed = config.maas_url
         self.assertEqual([expected_url], observed)
 
-    def test___prompts_user_for_url(self):
+    def test_prompts_user_for_url(self):
         expected_url = factory.make_simple_http_url()
         secret = factory.make_bytes()
 
@@ -132,14 +132,14 @@ class TestRegisterMAASRack(MAASTestCase):
         )
         self.expectThat([expected_url], Equals(observed))
 
-    def test___sets_secret(self):
+    def test_sets_secret(self):
         url = factory.make_simple_http_url()
         expected = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(expected)))
         observed = get_shared_secret_from_filesystem()
         self.assertEqual(expected, observed)
 
-    def test__prompts_user_for_secret(self):
+    def test_prompts_user_for_secret(self):
         url = factory.make_simple_http_url()
         expected_previous_value = factory.make_bytes()
         set_shared_secret_on_filesystem(expected_previous_value)
@@ -155,13 +155,13 @@ class TestRegisterMAASRack(MAASTestCase):
             InstallSharedSecretScript_mock.run, MockCalledOnceWith(args)
         )
 
-    def test__errors_out_when_piped_stdin_and_url_not_supplied(self):
+    def test_errors_out_when_piped_stdin_and_url_not_supplied(self):
         args = self.make_args(url=None)
         stdin = self.patch(register_command, "stdin")
         stdin.isatty.return_value = False
         self.assertRaises(SystemExit, register_command.run, args)
 
-    def test__crashes_on_eoferror(self):
+    def test_crashes_on_eoferror(self):
         args = self.make_args(url=None)
         stdin = self.patch(register_command, "stdin")
         stdin.isatty.return_value = True
@@ -169,7 +169,7 @@ class TestRegisterMAASRack(MAASTestCase):
         input.side_effect = EOFError
         self.assertRaises(SystemExit, register_command.run, args)
 
-    def test__crashes_on_keyboardinterrupt(self):
+    def test_crashes_on_keyboardinterrupt(self):
         args = self.make_args(url=None)
         stdin = self.patch(register_command, "stdin")
         stdin.isatty.return_value = True
@@ -177,7 +177,7 @@ class TestRegisterMAASRack(MAASTestCase):
         input.side_effect = KeyboardInterrupt
         self.assertRaises(KeyboardInterrupt, register_command.run, args)
 
-    def test__restarts_maas_rackd_service(self):
+    def test_restarts_maas_rackd_service(self):
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
@@ -190,14 +190,14 @@ class TestRegisterMAASRack(MAASTestCase):
             ),
         )
 
-    def test__deletes_maas_id_file(self):
+    def test_deletes_maas_id_file(self):
         self.useFixture(MAASIDFixture(factory.make_string()))
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
         self.assertIsNone(get_maas_id())
 
-    def test__show_service_stop_error(self):
+    def test_show_service_stop_error(self):
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
@@ -222,7 +222,7 @@ class TestRegisterMAASRack(MAASTestCase):
             ),
         )
 
-    def test__show_service_enable_error(self):
+    def test_show_service_enable_error(self):
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
@@ -247,7 +247,7 @@ class TestRegisterMAASRack(MAASTestCase):
             ),
         )
 
-    def test__show_service_start_error(self):
+    def test_show_service_start_error(self):
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))

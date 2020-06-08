@@ -355,7 +355,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):
     """Tests for `generate_ephemeral_netplan_lock_removal`."""
 
-    def test__does_nothing_if_deploying(self):
+    def test_does_nothing_if_deploying(self):
         # MAAS transitions a machine from DEPLOYING to DEPLOYED after
         # user_data has been requested. Make sure deploying nodes don't
         # get this config.
@@ -364,7 +364,7 @@ class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):
         config = dict(configuration)
         self.assertNotIn("runcmd", config)
 
-    def test__removes_lock_when_ephemeral(self):
+    def test_removes_lock_when_ephemeral(self):
         node = factory.make_Node(
             status=random.choice(COMMISSIONING_LIKE_STATUSES)
         )

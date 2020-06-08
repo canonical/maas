@@ -75,7 +75,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
         )
         return protocol
 
-    def test__creates_node(self):
+    def test_creates_node(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -97,7 +97,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             [nic.mac_address for nic in node.interface_set.all()],
         )
 
-    def test__creates_node_with_explicit_hostname(self):
+    def test_creates_node_with_explicit_hostname(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -123,7 +123,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             [nic.mac_address for nic in node.interface_set.all()],
         )
 
-    def test__create_node_fails_with_invalid_hostname(self):
+    def test_create_node_fails_with_invalid_hostname(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -141,7 +141,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
                 hostname=hostname,
             )
 
-    def test__creates_node_with_explicit_domain(self):
+    def test_creates_node_with_explicit_domain(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -174,7 +174,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             [nic.mac_address for nic in node.interface_set.all()],
         )
 
-    def test__create_node_fails_with_invalid_domain(self):
+    def test_create_node_fails_with_invalid_domain(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -191,7 +191,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
                 factory.make_name("domain"),
             )
 
-    def test__raises_validation_errors_for_invalid_data(self):
+    def test_raises_validation_errors_for_invalid_data(self):
         self.prepare_rack_rpc()
 
         self.assertRaises(
@@ -203,7 +203,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             mac_addresses=[factory.make_mac_address()],
         )
 
-    def test__raises_error_if_node_already_exists(self):
+    def test_raises_error_if_node_already_exists(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -221,7 +221,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             [mac_addresses[0]],
         )
 
-    def test__saves_power_parameters(self):
+    def test_saves_power_parameters(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -241,7 +241,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
         node = reload_object(node)
         self.assertEqual(power_parameters, node.power_parameters)
 
-    def test__forces_generic_subarchitecture_if_missing(self):
+    def test_forces_generic_subarchitecture_if_missing(self):
         self.prepare_rack_rpc()
 
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
@@ -263,7 +263,7 @@ class TestCommissionNode(MAASTransactionServerTestCase):
         protocol = fixture.makeCluster(rack_controller)
         return protocol
 
-    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+    def test_raises_NoSuchNode_if_node_doesnt_exist(self):
         self.assertRaises(
             NoSuchNode,
             commission_node,
@@ -271,7 +271,7 @@ class TestCommissionNode(MAASTransactionServerTestCase):
             factory.make_name("user"),
         )
 
-    def test__commissions_node(self):
+    def test_commissions_node(self):
         self.prepare_rack_rpc()
 
         user = factory.make_User()
@@ -283,7 +283,7 @@ class TestCommissionNode(MAASTransactionServerTestCase):
 
         self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
-    def test__raises_error_if_node_cannot_commission(self):
+    def test_raises_error_if_node_cannot_commission(self):
         self.prepare_rack_rpc()
 
         user = factory.make_User()
@@ -295,7 +295,7 @@ class TestCommissionNode(MAASTransactionServerTestCase):
 
 
 class TestMarkNodeFailed(MAASServerTestCase):
-    def test__marks_node_as_failed(self):
+    def test_marks_node_as_failed(self):
         from maasserver.models import signals  # Circular import.
 
         self.addCleanup(signals.power.signals.enable)
@@ -307,7 +307,7 @@ class TestMarkNodeFailed(MAASServerTestCase):
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status
         )
 
-    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+    def test_raises_NoSuchNode_if_node_doesnt_exist(self):
         self.assertRaises(
             NoSuchNode,
             mark_node_failed,
@@ -315,7 +315,7 @@ class TestMarkNodeFailed(MAASServerTestCase):
             factory.make_name("error"),
         )
 
-    def test__raises_NodeStateViolation_if_wrong_transition(self):
+    def test_raises_NodeStateViolation_if_wrong_transition(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         self.assertRaises(
             NodeStateViolation,
@@ -361,14 +361,14 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         )
         return node
 
-    def test__raises_NoSuchCluster_if_rack_doesnt_exist(self):
+    def test_raises_NoSuchCluster_if_rack_doesnt_exist(self):
         self.assertRaises(
             NoSuchCluster,
             list_cluster_nodes_power_parameters,
             factory.make_name("system_id"),
         )
 
-    def test__returns_only_accessible_nodes(self):
+    def test_returns_only_accessible_nodes(self):
         rack = factory.make_RackController(power_type="")
         # Accessible nodes.
         node_ids = [
@@ -384,7 +384,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         system_ids = [params["system_id"] for params in power_parameters]
         self.assertEquals(sorted(node_ids), sorted(system_ids))
 
-    def test__returns_unchecked_nodes_first(self):
+    def test_returns_unchecked_nodes_first(self):
         rack = factory.make_RackController(power_type="")
         datetime_10_minutes_ago = now() - timedelta(minutes=10)
         nodes = [
@@ -404,7 +404,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         # The unchecked node is always the first out.
         self.assertEqual(node_unchecked.system_id, system_ids[0])
 
-    def test__excludes_recently_checked_nodes(self):
+    def test_excludes_recently_checked_nodes(self):
         rack = factory.make_RackController(power_type="")
 
         node_unchecked = self.make_Node(bmc_connected_to=rack)
@@ -429,7 +429,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
             system_ids,
         )
 
-    def test__excludes_broken_nodes(self):
+    def test_excludes_broken_nodes(self):
         rack = factory.make_RackController(power_type="")
         node_queryable = self.make_Node(bmc_connected_to=rack)
 
@@ -445,7 +445,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
-    def test__excludes_no_power_type(self):
+    def test_excludes_no_power_type(self):
         rack = factory.make_RackController(power_type="")
         node_queryable = self.make_Node(bmc_connected_to=rack)
 
@@ -460,7 +460,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
-    def test__returns_checked_nodes_in_last_checked_order(self):
+    def test_returns_checked_nodes_in_last_checked_order(self):
         rack = factory.make_RackController(power_type="")
         nodes = [self.make_Node(bmc_connected_to=rack) for _ in range(5)]
 
@@ -474,7 +474,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
             [node.system_id for node in nodes_in_order], system_ids
         )
 
-    def test__returns_at_most_60kiB_of_JSON(self):
+    def test_returns_at_most_60kiB_of_JSON(self):
         # Configure the rack controller subnet to be very large so it
         # can hold that many BMC connected to the interface for the rack
         # controller.
@@ -512,7 +512,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         expected_minimum = 50 * (2 ** 10)  # 50kiB
         self.expectThat(nodes_json_length, GreaterThan(expected_minimum - 1))
 
-    def test__limited_to_10_nodes_at_a_time_by_default(self):
+    def test_limited_to_10_nodes_at_a_time_by_default(self):
         # Configure the rack controller subnet to be large enough.
         rack = factory.make_RackController(power_type="")
         rack_interface = rack.get_boot_interface()
@@ -536,7 +536,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
 
 class TestUpdateNodePowerState(MAASServerTestCase):
-    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+    def test_raises_NoSuchNode_if_node_doesnt_exist(self):
         self.assertRaises(
             NoSuchNode,
             update_node_power_state,
@@ -544,7 +544,7 @@ class TestUpdateNodePowerState(MAASServerTestCase):
             factory.make_name("power_state"),
         )
 
-    def test__updates_node_power_state(self):
+    def test_updates_node_power_state(self):
         node = factory.make_Node(power_state=POWER_STATE.OFF)
         update_node_power_state(node.system_id, POWER_STATE.ON)
         self.assertEqual(reload_object(node).power_state, POWER_STATE.ON)
@@ -553,7 +553,7 @@ class TestUpdateNodePowerState(MAASServerTestCase):
 class TestGetControllerType(MAASServerTestCase):
     """Tests for `get_controller_type`."""
 
-    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+    def test_raises_NoSuchNode_if_node_doesnt_exist(self):
         self.assertRaises(
             NoSuchNode, get_controller_type, factory.make_name("system_id")
         )
@@ -593,7 +593,7 @@ class TestGetControllerType_Scenarios(MAASServerTestCase):
         ),
     )
 
-    def test__returns_node_type(self):
+    def test_returns_node_type(self):
         node = factory.make_Node(node_type=self.node_type)
         self.assertThat(
             get_controller_type(node.system_id),
@@ -604,7 +604,7 @@ class TestGetControllerType_Scenarios(MAASServerTestCase):
 class TestGetTimeConfiguration(MAASServerTestCase):
     """Tests for `get_controller_type`."""
 
-    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+    def test_raises_NoSuchNode_if_node_doesnt_exist(self):
         self.assertRaises(
             NoSuchNode, get_time_configuration, factory.make_name("system_id")
         )
@@ -621,7 +621,7 @@ class TestGetTimeConfiguration_Scenarios(MAASServerTestCase):
         ("device", dict(node_type=NODE_TYPE.DEVICE)),
     )
 
-    def test__calls_through_to_ntp_module_returns_servers_and_peers(self):
+    def test_calls_through_to_ntp_module_returns_servers_and_peers(self):
         get_servers_for = self.patch(ntp, "get_servers_for")
         get_servers_for.return_value = frozenset({sentinel.server})
         get_peers_for = self.patch(ntp, "get_peers_for")

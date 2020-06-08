@@ -72,7 +72,7 @@ class TestStatusHandlerResource(MAASTestCase):
             request.content = BytesIO(content)
         return request
 
-    def test__init__(self):
+    def test_init__(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         self.assertIs(sentinel.status_worker, resource.worker)
         self.assertTrue(resource.isLeaf)
@@ -82,14 +82,14 @@ class TestStatusHandlerResource(MAASTestCase):
             resource.requiredMessageKeys,
         )
 
-    def test__render_POST_missing_authorization(self):
+    def test_render_POST_missing_authorization(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = DummyRequest([])
         output = resource.render_POST(request)
         self.assertEquals(b"", output)
         self.assertEquals(401, request.responseCode)
 
-    def test__render_POST_empty_authorization(self):
+    def test_render_POST_empty_authorization(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = DummyRequest([])
         request.requestHeaders.addRawHeader(b"authorization", "")
@@ -97,7 +97,7 @@ class TestStatusHandlerResource(MAASTestCase):
         self.assertEquals(b"", output)
         self.assertEquals(401, request.responseCode)
 
-    def test__render_POST_bad_authorization(self):
+    def test_render_POST_bad_authorization(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = DummyRequest([])
         request.requestHeaders.addRawHeader(
@@ -107,7 +107,7 @@ class TestStatusHandlerResource(MAASTestCase):
         self.assertEquals(b"", output)
         self.assertEquals(401, request.responseCode)
 
-    def test__render_POST_body_must_be_ascii(self):
+    def test_render_POST_body_must_be_ascii(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=b"\xe9")
         output = resource.render_POST(request)
@@ -118,7 +118,7 @@ class TestStatusHandlerResource(MAASTestCase):
         )
         self.assertEquals(400, request.responseCode)
 
-    def test__render_POST_body_must_be_valid_json(self):
+    def test_render_POST_body_must_be_valid_json(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=b"testing not json")
         output = resource.render_POST(request)
@@ -127,7 +127,7 @@ class TestStatusHandlerResource(MAASTestCase):
         )
         self.assertEquals(400, request.responseCode)
 
-    def test__render_POST_validates_required_keys(self):
+    def test_render_POST_validates_required_keys(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=json.dumps({}).encode("ascii"))
         output = resource.render_POST(request)
@@ -138,7 +138,7 @@ class TestStatusHandlerResource(MAASTestCase):
         )
         self.assertEquals(400, request.responseCode)
 
-    def test__render_POST_queue_messages(self):
+    def test_render_POST_queue_messages(self):
         status_worker = Mock()
         status_worker.queueMessage = Mock()
         status_worker.queueMessage.return_value = succeed(None)
@@ -180,20 +180,20 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             "timestamp": datetime.utcnow().timestamp(),
         }
 
-    def test__init__(self):
+    def test_init__(self):
         worker = StatusWorkerService(sentinel.dbtasks, clock=sentinel.reactor)
         self.assertEqual(sentinel.dbtasks, worker.dbtasks)
         self.assertEqual(sentinel.reactor, worker.clock)
         self.assertEqual(60, worker.step)
         self.assertEqual((worker._tryUpdateNodes, tuple(), {}), worker.call)
 
-    def test__tryUpdateNodes_returns_None_when_empty_queue(self):
+    def test_tryUpdateNodes_returns_None_when_empty_queue(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         self.assertIsNone(worker._tryUpdateNodes())
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryUpdateNodes_sends_work_to_dbtasks(self):
+    def test_tryUpdateNodes_sends_work_to_dbtasks(self):
         nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
         node_messages = {
             node: [self.make_message() for _ in range(3)]
@@ -222,7 +222,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__processMessages_fails_when_in_transaction(self):
+    def test_processMessages_fails_when_in_transaction(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         with ExpectedException(TransactionManagementError):
             yield deferToDatabase(
@@ -233,7 +233,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__processMessageNow_fails_when_in_transaction(self):
+    def test_processMessageNow_fails_when_in_transaction(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         with ExpectedException(TransactionManagementError):
             yield deferToDatabase(
@@ -244,7 +244,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__processMessages_doesnt_call_when_node_deleted(self):
+    def test_processMessages_doesnt_call_when_node_deleted(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
         mock_processMessage.return_value = False
@@ -260,7 +260,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__processMessages_calls_processMessage(self):
+    def test_processMessages_calls_processMessage(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
         yield deferToDatabase(
@@ -1068,7 +1068,7 @@ class TestCreatePodForDeployment(MAASServerTestCase):
         super().setUp()
         self.mock_PodForm = self.patch(api_twisted_module, "PodForm")
 
-    def test__marks_failed_if_no_virsh_password(self):
+    def test_marks_failed_if_no_virsh_password(self):
         node = factory.make_Node(
             interface=True,
             status=NODE_STATUS.DEPLOYING,
@@ -1081,7 +1081,7 @@ class TestCreatePodForDeployment(MAASServerTestCase):
             node.error_description, DocTestMatches("...Password not found...")
         )
 
-    def test__deletes_virsh_password_metadata_and_sets_deployed(self):
+    def test_deletes_virsh_password_metadata_and_sets_deployed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",
@@ -1096,7 +1096,7 @@ class TestCreatePodForDeployment(MAASServerTestCase):
         self.assertThat(meta, Is(None))
         self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
 
-    def test__marks_failed_if_is_valid_returns_false(self):
+    def test_marks_failed_if_is_valid_returns_false(self):
         mock_pod_form = Mock()
         self.mock_PodForm.return_value = mock_pod_form
         mock_pod_form.errors = {}
@@ -1119,7 +1119,7 @@ class TestCreatePodForDeployment(MAASServerTestCase):
             node.error_description, DocTestMatches(POD_CREATION_ERROR)
         )
 
-    def test__marks_failed_if_save_raises(self):
+    def test_marks_failed_if_save_raises(self):
         mock_pod_form = Mock()
         self.mock_PodForm.return_value = mock_pod_form
         mock_pod_form.errors = {}
@@ -1144,7 +1144,7 @@ class TestCreatePodForDeployment(MAASServerTestCase):
             node.error_description, DocTestMatches(POD_CREATION_ERROR)
         )
 
-    def test__raises_if_save_raises_database_error(self):
+    def test_raises_if_save_raises_database_error(self):
         mock_pod_form = Mock()
         self.mock_PodForm.return_value = mock_pod_form
         mock_pod_form.errors = {}

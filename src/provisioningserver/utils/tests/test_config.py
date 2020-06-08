@@ -99,13 +99,13 @@ class TestByteString(MAASTestCase):
 class TestUUIDString(MAASTestCase):
     """Tests for `UUIDString`."""
 
-    def test__validation_succeeds_when_uuid_is_good(self):
+    def test_validation_succeeds_when_uuid_is_good(self):
         example_uuid = str(uuid.uuid4())
         validator = config.UUIDString(accept_python=False)
         self.assertEqual(example_uuid, validator.from_python(example_uuid))
         self.assertEqual(example_uuid, validator.to_python(example_uuid))
 
-    def test__validation_fails_when_uuid_is_bad(self):
+    def test_validation_fails_when_uuid_is_bad(self):
         example_uuid = str(uuid.uuid4()) + "can't-be-a-uuid"
         validator = config.UUIDString(accept_python=False)
         expected_exception = ExpectedException(
@@ -167,13 +167,13 @@ class TestUnicodeString(MAASTestCase):
 class TestDirectory(MAASTestCase):
     """Tests for `DirectoryString`."""
 
-    def test__validation_succeeds_when_directory_exists(self):
+    def test_validation_succeeds_when_directory_exists(self):
         directory = self.make_dir()
         validator = config.DirectoryString(accept_python=False)
         self.assertEqual(directory, validator.from_python(directory))
         self.assertEqual(directory, validator.to_python(directory))
 
-    def test__validation_fails_when_directory_does_not_exist(self):
+    def test_validation_fails_when_directory_does_not_exist(self):
         directory = os.path.join(self.make_dir(), "not-here")
         validator = config.DirectoryString(accept_python=False)
         expected_exception = ExpectedException(
@@ -357,7 +357,7 @@ class TestExtendedURL(MAASTestCase):
 class TestOneWayStringBool(MAASTestCase):
     """Tests for `OneWayStringBool`."""
 
-    def test__from_python(self):
+    def test_from_python(self):
         validator = config.OneWayStringBool()
         self.assertFalse(validator.from_python(False))
         self.assertTrue(validator.from_python(True))

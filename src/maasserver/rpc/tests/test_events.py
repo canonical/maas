@@ -19,7 +19,7 @@ from provisioningserver.rpc.exceptions import NoSuchEventType
 
 
 class TestRegisterEventType(MAASServerTestCase):
-    def test__registers_type(self):
+    def test_registers_type(self):
         name = factory.make_name("name")
         description = factory.make_name("description")
         level = logging.DEBUG
@@ -29,7 +29,7 @@ class TestRegisterEventType(MAASServerTestCase):
 
 
 class TestSendEvent(MAASServerTestCase):
-    def test__errors_when_no_event_type(self):
+    def test_errors_when_no_event_type(self):
         name = factory.make_name("name")
         description = factory.make_name("description")
         node = factory.make_Node()
@@ -42,7 +42,7 @@ class TestSendEvent(MAASServerTestCase):
             datetime.datetime.utcnow(),
         )
 
-    def test__silent_when_no_node(self):
+    def test_silent_when_no_node(self):
         event_type = factory.make_EventType()
         description = factory.make_name("description")
         # Exception should not be raised.
@@ -53,7 +53,7 @@ class TestSendEvent(MAASServerTestCase):
             datetime.datetime.utcnow(),
         )
 
-    def test__creates_event_for_node(self):
+    def test_creates_event_for_node(self):
         event_type = factory.make_EventType()
         node = factory.make_Node()
         description = factory.make_name("description")
@@ -71,7 +71,7 @@ class TestSendEvent(MAASServerTestCase):
 
 
 class TestSendEventMACAddress(MAASServerTestCase):
-    def test__errors_when_no_event_type(self):
+    def test_errors_when_no_event_type(self):
         name = factory.make_name("name")
         description = factory.make_name("description")
         node = factory.make_Node()
@@ -84,7 +84,7 @@ class TestSendEventMACAddress(MAASServerTestCase):
             datetime.datetime.utcnow(),
         )
 
-    def test__silent_when_no_node(self):
+    def test_silent_when_no_node(self):
         event_type = factory.make_EventType()
         description = factory.make_name("description")
         # Exception should not be raised.
@@ -95,7 +95,7 @@ class TestSendEventMACAddress(MAASServerTestCase):
             datetime.datetime.utcnow(),
         )
 
-    def test__creates_event_for_node(self):
+    def test_creates_event_for_node(self):
         event_type = factory.make_EventType()
         node = factory.make_Node(interface=True)
         description = factory.make_name("description")
@@ -114,7 +114,7 @@ class TestSendEventMACAddress(MAASServerTestCase):
 
 
 class TestSendEventIPAddress(MAASServerTestCase):
-    def test__errors_when_no_event_type(self):
+    def test_errors_when_no_event_type(self):
         name = factory.make_name("name")
         description = factory.make_name("description")
         self.assertRaises(
@@ -126,7 +126,7 @@ class TestSendEventIPAddress(MAASServerTestCase):
             datetime.datetime.utcnow(),
         )
 
-    def test__silent_when_no_node(self):
+    def test_silent_when_no_node(self):
         event_type = factory.make_EventType()
         description = factory.make_name("description")
         # Exception should not be raised.
@@ -137,7 +137,7 @@ class TestSendEventIPAddress(MAASServerTestCase):
             datetime.datetime.utcnow(),
         )
 
-    def test__creates_event_for_node(self):
+    def test_creates_event_for_node(self):
         event_type = factory.make_EventType()
         node = factory.make_Node(interface=True)
         description = factory.make_name("description")
@@ -154,7 +154,7 @@ class TestSendEventIPAddress(MAASServerTestCase):
             created=timestamp,
         )
 
-    def test__creates_event_for_node_with_bridge_interface(self):
+    def test_creates_event_for_node_with_bridge_interface(self):
         event_type = factory.make_EventType()
         node = factory.make_Node(interface=True)
         eth0 = node.get_boot_interface()

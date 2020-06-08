@@ -310,13 +310,13 @@ class TestJSONPerLineProtocol(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
-    def test__propagates_exit_errors(self):
+    def test_propagates_exit_errors(self):
         proto = JSONPerLineProtocol(callback=lambda json: None)
         reactor.spawnProcess(proto, b"false", (b"false",))
         with ExpectedException(ProcessTerminated, ".* exit code 1"):
             yield proto.done
 
-    def test__parses_only_full_lines(self):
+    def test_parses_only_full_lines(self):
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
         proto.connectionMade()
@@ -333,7 +333,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         # that was sent.)
         self.expectThat(callback, MockCallsMatch(call([{}])))
 
-    def test__ignores_interspersed_zero_length_writes(self):
+    def test_ignores_interspersed_zero_length_writes(self):
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
         proto.connectionMade()
@@ -346,7 +346,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         proto.outReceived(b"{}\n")
         self.expectThat(callback, MockCallsMatch(call([{}]), call([{}])))
 
-    def test__logs_non_json_output(self):
+    def test_logs_non_json_output(self):
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
         proto.connectionMade()
@@ -356,7 +356,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
             logger.output, DocTestMatches("Failed to parse JSON: ...")
         )
 
-    def test__logs_stderr(self):
+    def test_logs_stderr(self):
         message = factory.make_name("message")
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
@@ -365,7 +365,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
             proto.errReceived((message + "\n").encode("ascii"))
         self.assertThat(logger.output, Equals(message))
 
-    def test__logs_only_full_lines_from_stderr(self):
+    def test_logs_only_full_lines_from_stderr(self):
         message = factory.make_name("message")
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
@@ -374,7 +374,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
             proto.errReceived(message.encode("ascii"))
         self.assertThat(logger.output, Equals(""))
 
-    def test__logs_stderr_at_process_end(self):
+    def test_logs_stderr_at_process_end(self):
         message = factory.make_name("message")
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
@@ -386,7 +386,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         self.assertThat(logger.output, Equals(message))
 
     @inlineCallbacks
-    def test__propagates_errors_from_command(self):
+    def test_propagates_errors_from_command(self):
         proto = JSONPerLineProtocol(callback=lambda obj: None)
         proto.connectionMade()
         reason = Failure(ProcessTerminated(1))
@@ -477,12 +477,12 @@ class TestProcessProtocolService(MAASTestCase):
             partial(services.terminateProcess, quit_after=0.2, kill_after=0.4),
         )
 
-    def test__base_class_cannot_be_used(self):
+    def test_base_class_cannot_be_used(self):
         with ExpectedException(TypeError):
             ProcessProtocolService()
 
     @inlineCallbacks
-    def test__starts_and_stops_process(self):
+    def test_starts_and_stops_process(self):
         service = SleepProcessProtocolService()
         with TwistedLoggerFixture() as logger:
             service.startService()
@@ -502,7 +502,7 @@ class TestProcessProtocolService(MAASTestCase):
             service._process.signalProcess("INT")
 
     @inlineCallbacks
-    def test__handles_normal_process_exit(self):
+    def test_handles_normal_process_exit(self):
         # If the spawned process exits with an exit code of zero this is
         # logged as "ended normally".
         service = TrueProcessProtocolService()
@@ -520,7 +520,7 @@ class TestProcessProtocolService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__handles_terminated_process_exit(self):
+    def test_handles_terminated_process_exit(self):
         # During service stop the spawned process can be terminated with a
         # signal. This is logged with a slightly different error message.
         service = SleepProcessProtocolService()
@@ -537,7 +537,7 @@ class TestProcessProtocolService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__handles_abnormal_process_exit(self):
+    def test_handles_abnormal_process_exit(self):
         # If the spawned process exits with a non-zero exit code this is
         # logged as "a probable error".
         service = FalseProcessProtocolService()
@@ -559,7 +559,7 @@ class TestProcessProtocolService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__calls_protocol_callback(self):
+    def test_calls_protocol_callback(self):
         service = EchoProcessProtocolService()
         service.startService()
         # Wait for the protocol to finish. (the echo process will stop)
@@ -574,7 +574,7 @@ class TestNeighbourDiscoveryService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__returns_expected_arguments(self):
+    def test_returns_expected_arguments(self):
         ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, Mock())
         args = service.getProcessParameters()
@@ -584,7 +584,7 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         self.assertTrue(args[2], Equals(ifname.encode("utf-8")))
 
     @inlineCallbacks
-    def test__restarts_process_after_finishing(self):
+    def test_restarts_process_after_finishing(self):
         ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, Mock())
         mock_process_params = self.patch(service, "getProcessParameters")
@@ -603,7 +603,7 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         service.stopService()
 
     @inlineCallbacks
-    def test__protocol_logs_stderr(self):
+    def test_protocol_logs_stderr(self):
         logger = self.useFixture(TwistedLoggerFixture())
         ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, lambda _: None)
@@ -631,7 +631,7 @@ class TestBeaconingService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__returns_expected_arguments(self):
+    def test_returns_expected_arguments(self):
         ifname = factory.make_name("eth")
         service = BeaconingService(ifname, Mock())
         args = service.getProcessParameters()
@@ -641,7 +641,7 @@ class TestBeaconingService(MAASTestCase):
         self.assertTrue(args[2], Equals(ifname.encode("utf-8")))
 
     @inlineCallbacks
-    def test__restarts_process_after_finishing(self):
+    def test_restarts_process_after_finishing(self):
         ifname = factory.make_name("eth")
         service = BeaconingService(ifname, Mock())
         mock_process_params = self.patch(service, "getProcessParameters")
@@ -660,7 +660,7 @@ class TestBeaconingService(MAASTestCase):
         service.stopService()
 
     @inlineCallbacks
-    def test__protocol_logs_stderr(self):
+    def test_protocol_logs_stderr(self):
         logger = self.useFixture(TwistedLoggerFixture())
         ifname = factory.make_name("eth")
         service = BeaconingService(ifname, lambda _: None)
@@ -688,7 +688,7 @@ class TestMDNSResolverService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__returns_expected_arguments(self):
+    def test_returns_expected_arguments(self):
         service = MDNSResolverService(Mock())
         args = service.getProcessParameters()
         self.assertThat(args, HasLength(2))
@@ -696,7 +696,7 @@ class TestMDNSResolverService(MAASTestCase):
         self.assertTrue(args[1], Equals(b"observe-mdns"))
 
     @inlineCallbacks
-    def test__protocol_selectively_logs_stderr(self):
+    def test_protocol_selectively_logs_stderr(self):
         logger = self.useFixture(TwistedLoggerFixture())
         service = MDNSResolverService(lambda _: None)
         protocol = service.createProcessProtocol()
@@ -762,7 +762,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=15)
 
     @inlineCallbacks
-    def test__creates_listen_port_when_run_with_IReactorMulticast(self):
+    def test_creates_listen_port_when_run_with_IReactorMulticast(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(reactor, port=0)
         self.assertThat(protocol.listen_port, Not(Is(None)))
@@ -770,7 +770,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # suite will complain about things left in the reactor.
         yield protocol.stopProtocol()
 
-    def test__skips_creating_listen_port_when_run_with_fake_reactor(self):
+    def test_skips_creating_listen_port_when_run_with_fake_reactor(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(Clock(), port=0)
         self.assertThat(protocol.listen_port, Is(None))
@@ -779,7 +779,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         self.assertThat(result, Is(None))
 
     @inlineCallbacks
-    def test__sends_and_receives_unicast_beacons(self):
+    def test_sends_and_receives_unicast_beacons(self):
         # Note: Always use a random port for testing. (port=0)
         logger = self.useFixture(TwistedLoggerFixture())
         protocol = BeaconingSocketProtocol(
@@ -827,7 +827,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
 
     @inlineCallbacks
-    def test__send_multicast_beacon_sets_ipv4_source(self):
+    def test_send_multicast_beacon_sets_ipv4_source(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -847,7 +847,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__send_multicast_beacon_sets_ipv6_source(self):
+    def test_send_multicast_beacon_sets_ipv6_source(self):
         # Due to issues beyond my control, this test doesn't do what I expected
         # it to do. But it's still useful for code coverage (to make sure no
         # blatant exceptions occur in the IPv6 path).
@@ -888,7 +888,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__hints_for_own_beacon_received_on_another_interface(self):
+    def test_hints_for_own_beacon_received_on_another_interface(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -920,7 +920,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__hints_for_own_beacon_received_on_same_interface(self):
+    def test_hints_for_own_beacon_received_on_same_interface(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -951,7 +951,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__hints_for_same_beacon_seen_on_multiple_interfaces(self):
+    def test_hints_for_same_beacon_seen_on_multiple_interfaces(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1011,7 +1011,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__hints_for_remote_unicast(self):
+    def test_hints_for_remote_unicast(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1056,7 +1056,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__hints_for_remote_multicast(self):
+    def test_hints_for_remote_multicast(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1102,7 +1102,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__getJSONTopologyHints_converts_hints_to_dictionary(self):
+    def test_getJSONTopologyHints_converts_hints_to_dictionary(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1148,7 +1148,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.stopProtocol()
 
     @inlineCallbacks
-    def test__queues_multicast_beacon_soliciations_upon_request(self):
+    def test_queues_multicast_beacon_soliciations_upon_request(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
@@ -1170,7 +1170,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
 
     @inlineCallbacks
-    def test__multicasts_at_most_once_per_five_seconds(self):
+    def test_multicasts_at_most_once_per_five_seconds(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
@@ -1214,7 +1214,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
 
     @inlineCallbacks
-    def test__multiple_beacon_requests_coalesced(self):
+    def test_multiple_beacon_requests_coalesced(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(
@@ -1237,7 +1237,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
 
     @inlineCallbacks
-    def test__solicitation_wins_when_multiple_requests_queued(self):
+    def test_solicitation_wins_when_multiple_requests_queued(self):
         # Note: Always use a random port for testing. (port=0)
         clock = Clock()
         protocol = BeaconingSocketProtocol(

@@ -141,7 +141,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__buildServices_builds_services_list(self):
+    def test_buildServices_builds_services_list(self):
         self.patch(proxyconfig, "is_config_present").return_value = True
         monitor_service = ServiceMonitorService(Clock())
         service = self.pick_service()

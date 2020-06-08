@@ -22,7 +22,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestVLANManager(MAASServerTestCase):
-    def test__default_specifier_matches_vid(self):
+    def test_default_specifier_matches_vid(self):
         # Note: this is for backward compatibility with the previous iteration
         # of constraints, which used vlan:<number> to mean VID, not represent
         # a database ID.
@@ -34,7 +34,7 @@ class TestVLANManager(MAASServerTestCase):
             VLAN.objects.filter_by_specifiers("%s" % vid), [vlan]
         )
 
-    def test__default_specifier_matches_name(self):
+    def test_default_specifier_matches_name(self):
         factory.make_VLAN()
         vlan = factory.make_VLAN(name="infinite-improbability")
         factory.make_VLAN()
@@ -42,7 +42,7 @@ class TestVLANManager(MAASServerTestCase):
             VLAN.objects.filter_by_specifiers("infinite-improbability"), [vlan]
         )
 
-    def test__name_specifier_matches_name(self):
+    def test_name_specifier_matches_name(self):
         factory.make_VLAN()
         vlan = factory.make_VLAN(name="infinite-improbability")
         factory.make_VLAN()
@@ -51,7 +51,7 @@ class TestVLANManager(MAASServerTestCase):
             [vlan],
         )
 
-    def test__vid_specifier_matches_vid(self):
+    def test_vid_specifier_matches_vid(self):
         factory.make_VLAN()
         vlan = factory.make_VLAN()
         vid = vlan.vid
@@ -60,7 +60,7 @@ class TestVLANManager(MAASServerTestCase):
             VLAN.objects.filter_by_specifiers("vid:%d" % vid), [vlan]
         )
 
-    def test__space_specifier_matches_space_by_name(self):
+    def test_space_specifier_matches_space_by_name(self):
         factory.make_VLAN()
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
@@ -69,7 +69,7 @@ class TestVLANManager(MAASServerTestCase):
             VLAN.objects.filter_by_specifiers("space:%s" % space.name), [vlan]
         )
 
-    def test__space_specifier_matches_space_by_id(self):
+    def test_space_specifier_matches_space_by_id(self):
         factory.make_VLAN()
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
@@ -78,7 +78,7 @@ class TestVLANManager(MAASServerTestCase):
             VLAN.objects.filter_by_specifiers("space:%s" % space.id), [vlan]
         )
 
-    def test__class_specifier_matches_attached_subnet(self):
+    def test_class_specifier_matches_attached_subnet(self):
         factory.make_VLAN()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
@@ -87,7 +87,7 @@ class TestVLANManager(MAASServerTestCase):
             VLAN.objects.filter_by_specifiers("subnet:%s" % subnet.id), [vlan]
         )
 
-    def test__class_specifier_matches_attached_fabric(self):
+    def test_class_specifier_matches_attached_fabric(self):
         factory.make_Fabric()
         fabric = factory.make_Fabric(name="rack42")
         factory.make_VLAN()

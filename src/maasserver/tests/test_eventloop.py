@@ -48,7 +48,7 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 class TestMAASServices(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_prepare(self):
+    def test_calls_prepare(self):
         fake_eventloop = Mock()
         calls = Mock()
         fake_eventloop.prepare = calls
@@ -63,7 +63,7 @@ class TestMAASServices(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__starts_each_service(self):
+    def test_starts_each_service(self):
         fake_eventloop = Mock()
         fake_eventloop.prepare = Mock()
         calls = Mock()
@@ -78,7 +78,7 @@ class TestMAASServices(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__sets_global_labels(self):
+    def test_sets_global_labels(self):
         mock_set_global_labels = self.patch(eventloop, "set_global_labels")
         fake_eventloop = Mock()
         services = MAASServices(fake_eventloop)

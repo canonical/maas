@@ -128,7 +128,7 @@ class TestSubnetHandler(MAASServerTestCase):
 
 
 class TestSubnetHandlerDelete(MAASServerTestCase):
-    def test__delete_as_admin_success(self):
+    def test_delete_as_admin_success(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
@@ -136,14 +136,14 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
         subnet = reload_object(subnet)
         self.assertThat(subnet, Equals(None))
 
-    def test__delete_as_non_admin_asserts(self):
+    def test_delete_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({"id": subnet.id})
 
-    def test__reloads_user(self):
+    def test_reloads_user(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
@@ -154,7 +154,7 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
 
 
 class TestSubnetHandlerCreate(MAASServerTestCase):
-    def test__create_as_admin_succeeds(self):
+    def test_create_as_admin_succeeds(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
@@ -162,7 +162,7 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         subnet = Subnet.objects.get(id=result["id"])
         self.assertThat(subnet.cidr, Equals("192.168.0.0/24"))
 
-    def test__create_as_admin_succeeds_even_with_a_specified_space(self):
+    def test_create_as_admin_succeeds_even_with_a_specified_space(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
@@ -173,14 +173,14 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         subnet = Subnet.objects.get(id=result["id"])
         self.assertThat(subnet.cidr, Equals("192.168.0.0/24"))
 
-    def test__create_as_non_admin_asserts(self):
+    def test_create_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
 
-    def test__create_reloads_user(self):
+    def test_create_reloads_user(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
@@ -191,7 +191,7 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
 
 
 class TestSubnetHandlerUpdate(MAASServerTestCase):
-    def test__update_as_admin_succeeds(self):
+    def test_update_as_admin_succeeds(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
@@ -200,7 +200,7 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         subnet = reload_object(subnet)
         self.assertThat(subnet.description, Equals(new_description))
 
-    def test__update_as_admin_succeeds_even_with_a_specified_space(self):
+    def test_update_as_admin_succeeds_even_with_a_specified_space(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(description="sad subnet")
@@ -216,14 +216,14 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         subnet = reload_object(subnet)
         self.assertThat(subnet.description, Equals(new_description))
 
-    def test__update_as_non_admin_asserts(self):
+    def test_update_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.update({"id": subnet.id})
 
-    def test__reloads_user(self):
+    def test_reloads_user(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
@@ -245,7 +245,7 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         self.user_friendly_scan_results.return_value = sentinel.result
         return super().setUp()
 
-    def test__scan_as_admin_succeeds_and_returns_user_friendly_result(self):
+    def test_scan_as_admin_succeeds_and_returns_user_friendly_result(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(version=4)
@@ -262,7 +262,7 @@ class TestSubnetHandlerScan(MAASServerTestCase):
             MockCalledOnceWith(sentinel.rpc_result),
         )
 
-    def test__scan_as_admin_logs_the_fact_that_a_scan_happened(self):
+    def test_scan_as_admin_logs_the_fact_that_a_scan_happened(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(version=4)
@@ -281,28 +281,28 @@ class TestSubnetHandlerScan(MAASServerTestCase):
             ),
         )
 
-    def test__scan_ipv6_fails(self):
+    def test_scan_ipv6_fails(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(version=6)
         with ExpectedException(ValueError, ".*only IPv4.*"):
             handler.scan({"id": subnet.id})
 
-    def test__scan_fails_if_no_rack_is_configured_with_subnet(self):
+    def test_scan_fails_if_no_rack_is_configured_with_subnet(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(version=4)
         with ExpectedException(ValueError, ".*must be configured on a rack*"):
             handler.scan({"id": subnet.id})
 
-    def test__scan_as_non_admin_asserts(self):
+    def test_scan_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.scan({"id": subnet.id})
 
-    def test__reloads_user(self):
+    def test_reloads_user(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()

@@ -52,8 +52,8 @@ class TestGetVendorForMac(MAASTestCase):
 
 
 class TestIsMac(MAASTestCase):
-    def test__true(self):
+    def test_true(self):
         self.assertTrue(is_mac(factory.make_MAC()))
 
-    def test__false(self):
+    def test_false(self):
         self.assertFalse(is_mac(factory.make_name("bad")))

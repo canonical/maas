@@ -43,26 +43,26 @@ TESTDATA_INVALID_PACKET = (
 
 
 class TestPCAP(MAASTestCase):
-    def test__raises_EOFError_for_empty_PCAP_stream(self):
+    def test_raises_EOFError_for_empty_PCAP_stream(self):
         stream = io.BytesIO(b"")
         with ExpectedException(EOFError, "No PCAP output found."):
             PCAP(stream)
 
-    def test__raises_PCAPError_for_invalid_PCAP_stream(self):
+    def test_raises_PCAPError_for_invalid_PCAP_stream(self):
         stream = io.BytesIO(b"\0" * 24)
         with ExpectedException(
             PCAPError, "Stream is not in native PCAP format."
         ):
             PCAP(stream)
 
-    def test__raises_PCAPError_for_invalid_PCAP_header(self):
+    def test_raises_PCAPError_for_invalid_PCAP_header(self):
         stream = io.BytesIO(b"\0" * 5)
         with ExpectedException(
             PCAPError, "Unexpected end of PCAP stream: invalid header."
         ):
             PCAP(stream)
 
-    def test__parses_valid_stream(self):
+    def test_parses_valid_stream(self):
         stream = io.BytesIO(TESTDATA)
         pcap = PCAP(stream)
         header = pcap.global_header
@@ -90,7 +90,7 @@ class TestPCAP(MAASTestCase):
             ),
         )
 
-    def test__raises_EOFError_for_end_of_stream(self):
+    def test_raises_EOFError_for_end_of_stream(self):
         stream = io.BytesIO(TESTDATA)
         pcap = PCAP(stream)
         pcap.read()
@@ -98,7 +98,7 @@ class TestPCAP(MAASTestCase):
         with ExpectedException(EOFError, "End of PCAP stream."):
             pcap.read()
 
-    def test__iterator(self):
+    def test_iterator(self):
         stream = io.BytesIO(TESTDATA)
         pcap = PCAP(stream)
         count = 0
@@ -107,7 +107,7 @@ class TestPCAP(MAASTestCase):
         # Expect no exception to have been thrown, and there are two packets.
         self.assertThat(count, Equals(2))
 
-    def test__raises_PCAPError_for_invalid_packet_header(self):
+    def test_raises_PCAPError_for_invalid_packet_header(self):
         stream = io.BytesIO(TESTDATA_INVALID_PACKET_HEADER)
         pcap = PCAP(stream)
         header = pcap.global_header
@@ -117,7 +117,7 @@ class TestPCAP(MAASTestCase):
         ):
             pcap.read()
 
-    def test__raises_PCAPError_for_invalid_packet(self):
+    def test_raises_PCAPError_for_invalid_packet(self):
         stream = io.BytesIO(TESTDATA_INVALID_PACKET)
         pcap = PCAP(stream)
         header = pcap.global_header

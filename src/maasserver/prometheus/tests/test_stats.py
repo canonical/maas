@@ -274,15 +274,15 @@ class TestPrometheus(MAASServerTestCase):
 class TestPrometheusService(MAASTestCase):
     """Tests for `ImportPrometheusService`."""
 
-    def test__is_a_TimerService(self):
+    def test_is_a_TimerService(self):
         service = stats.PrometheusService()
         self.assertIsInstance(service, TimerService)
 
-    def test__runs_once_an_hour_by_default(self):
+    def test_runs_once_an_hour_by_default(self):
         service = stats.PrometheusService()
         self.assertEqual(3600, service.step)
 
-    def test__calls__maybe_make_stats_request(self):
+    def test_calls__maybe_make_stats_request(self):
         service = stats.PrometheusService()
         self.assertEqual(
             (service.maybe_push_prometheus_stats, (), {}), service.call

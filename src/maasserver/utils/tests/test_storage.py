@@ -35,11 +35,11 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
         ),
     )
 
-    def test__returns_None_when_no_filesystem(self):
+    def test_returns_None_when_no_filesystem(self):
         model = self.factory()
         self.assertIsNone(get_effective_filesystem(model))
 
-    def test__returns_filesystem_if_node_not_in_acquired_state(self):
+    def test_returns_filesystem_if_node_not_in_acquired_state(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         model = self.factory(node=node)
         filesystem = factory.make_Filesystem(
@@ -47,7 +47,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
         )
         self.assertEqual(filesystem, get_effective_filesystem(model))
 
-    def test__returns_acquired_filesystem(self):
+    def test_returns_acquired_filesystem(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         model = self.factory(node=node)
         factory.make_Filesystem(**{self.filesystem_property: model})
@@ -56,7 +56,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
         )
         self.assertEqual(filesystem, get_effective_filesystem(model))
 
-    def test__returns_non_mountable_filesystem(self):
+    def test_returns_non_mountable_filesystem(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         model = self.factory(node=node)
         filesystem = factory.make_Filesystem(
@@ -67,7 +67,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
         )
         self.assertEqual(filesystem, get_effective_filesystem(model))
 
-    def test__returns_none_when_allocated_state(self):
+    def test_returns_none_when_allocated_state(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         model = self.factory(node=node)
         factory.make_Filesystem(
@@ -77,11 +77,11 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
 
 
 class TestUsedFor(MAASServerTestCase):
-    def test__unused(self):
+    def test_unused(self):
         block_device = factory.make_BlockDevice()
         self.assertEqual(used_for(block_device), "Unused")
 
-    def test__fs_formatted(self):
+    def test_fs_formatted(self):
         block_device = factory.make_BlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
         self.assertEqual(
@@ -89,7 +89,7 @@ class TestUsedFor(MAASServerTestCase):
             used_for(block_device),
         )
 
-    def test__fs_formatted_and_mounted(self):
+    def test_fs_formatted_and_mounted(self):
         block_device = factory.make_BlockDevice()
         fs = factory.make_Filesystem(
             block_device=block_device, mount_point="/mnt"
@@ -102,7 +102,7 @@ class TestUsedFor(MAASServerTestCase):
             used_for(block_device),
         )
 
-    def test__partitioned(self):
+    def test_partitioned(self):
         block_device = factory.make_BlockDevice()
         partition_table = factory.make_PartitionTable(
             block_device=block_device
@@ -117,7 +117,7 @@ class TestUsedFor(MAASServerTestCase):
             used_for(block_device),
         )
 
-    def test__lvm(self):
+    def test_lvm(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
         )
@@ -126,7 +126,7 @@ class TestUsedFor(MAASServerTestCase):
             used_for(filesystem_group.filesystems.first().block_device),
         )
 
-    def test__raid_active(self):
+    def test_raid_active(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_choice(FILESYSTEM_GROUP_RAID_TYPE_CHOICES)
         )
@@ -138,7 +138,7 @@ class TestUsedFor(MAASServerTestCase):
             used_for(filesystem_group.filesystems.first().block_device),
         )
 
-    def test__raid_spare(self):
+    def test_raid_spare(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_choice(FILESYSTEM_GROUP_RAID_TYPE_CHOICES)
         )
@@ -156,14 +156,14 @@ class TestUsedFor(MAASServerTestCase):
             used_for(slave_block_device),
         )
 
-    def test__bcache(self):
+    def test_bcache(self):
         cacheset = factory.make_CacheSet()
         blockdevice = cacheset.get_device()
         self.assertEqual(
             ("Cache device for %s" % cacheset.name), used_for(blockdevice)
         )
 
-    def test__bcache_backing(self):
+    def test_bcache_backing(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )
@@ -172,7 +172,7 @@ class TestUsedFor(MAASServerTestCase):
             used_for(filesystem_group.filesystems.first().block_device),
         )
 
-    def test__vmfs(self):
+    def test_vmfs(self):
         vmfs = factory.make_VMFS()
         part = vmfs.filesystems.first().partition
         self.assertEquals("VMFS extent for %s" % vmfs.name, used_for(part))

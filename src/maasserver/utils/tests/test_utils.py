@@ -287,27 +287,27 @@ class TestGetHostWithoutPort(MAASTestCase):
         ("dns", {"host": "maas.example.com", "expected": "maas.example.com"}),
     )
 
-    def test__returns_expected_results(self):
+    def test_returns_expected_results(self):
         self.assertThat(
             get_host_without_port(self.host), Equals(self.expected)
         )
 
 
 class TestGetDefaultRegionIP(MAASServerTestCase):
-    def test__returns_source_ip_based_on_remote_ip_if_no_Host_header(self):
+    def test_returns_source_ip_based_on_remote_ip_if_no_Host_header(self):
         # Note: the source IP should resolve to the loopback interface here.
         self.assertThat(
             get_default_region_ip(make_request("127.0.0.2")),
             Equals("127.0.0.1"),
         )
 
-    def test__returns_Host_header_if_available(self):
+    def test_returns_Host_header_if_available(self):
         self.assertThat(
             get_default_region_ip(make_request("127.0.0.1", "localhost")),
             Equals("localhost"),
         )
 
-    def test__returns_Host_header_if_available_and_strips_port(self):
+    def test_returns_Host_header_if_available_and_strips_port(self):
         self.assertThat(
             get_default_region_ip(make_request("127.0.0.1", "localhost:5240")),
             Equals("localhost"),
@@ -315,19 +315,19 @@ class TestGetDefaultRegionIP(MAASServerTestCase):
 
 
 class GetRemoteIPTest(MAASTestCase):
-    def test__gets_client_ipv4_for_HTTP_X_FORWARDED_FOR(self):
+    def test_gets_client_ipv4_for_HTTP_X_FORWARDED_FOR(self):
         ip_address = factory.make_ipv4_address()
         request = HttpRequest()
         request.META = {"HTTP_X_FORWARDED_FOR": ip_address}
         self.assertEquals(ip_address, get_remote_ip(request))
 
-    def test__gets_client_ipv6_for_HTTP_X_FORWARDED_FOR(self):
+    def test_gets_client_ipv6_for_HTTP_X_FORWARDED_FOR(self):
         ip_address = factory.make_ipv6_address()
         request = HttpRequest()
         request.META = {"HTTP_X_FORWARDED_FOR": ip_address}
         self.assertEquals(ip_address, get_remote_ip(request))
 
-    def test__gets_client_ip_for_X_FORWARDED_FOR_with_proxies(self):
+    def test_gets_client_ip_for_X_FORWARDED_FOR_with_proxies(self):
         ip_address = factory.make_ipv4_address()
         proxy1 = factory.make_ipv4_address()
         proxy2 = factory.make_ipv4_address()
@@ -337,19 +337,19 @@ class GetRemoteIPTest(MAASTestCase):
         }
         self.assertEquals(ip_address, get_remote_ip(request))
 
-    def test__gets_client_ipv4_for_REMOTE_ADDR(self):
+    def test_gets_client_ipv4_for_REMOTE_ADDR(self):
         ip_address = factory.make_ipv4_address()
         request = HttpRequest()
         request.META = {"REMOTE_ADDR": ip_address}
         self.assertEquals(ip_address, get_remote_ip(request))
 
-    def test__gets_client_ipv6_for_REMOTE_ADDR(self):
+    def test_gets_client_ipv6_for_REMOTE_ADDR(self):
         ip_address = factory.make_ipv6_address()
         request = HttpRequest()
         request.META = {"REMOTE_ADDR": ip_address}
         self.assertEquals(ip_address, get_remote_ip(request))
 
-    def test__fallsback_to_REMOTE_ADDR_for_invalid_X_FORWARDED_FOR(self):
+    def test_fallsback_to_REMOTE_ADDR_for_invalid_X_FORWARDED_FOR(self):
         ip_address = factory.make_ipv4_address()
         request = HttpRequest()
         request.META = {
@@ -358,13 +358,13 @@ class GetRemoteIPTest(MAASTestCase):
         }
         self.assertEquals(ip_address, get_remote_ip(request))
 
-    def test__returns_None_for_invalid_ip(self):
+    def test_returns_None_for_invalid_ip(self):
         ip_address = factory.make_name("garbage ip")
         request = HttpRequest()
         request.META = {"REMOTE_ADDR": ip_address}
         self.assertIsNone(get_remote_ip(request))
 
-    def test__returns_None_empty_META(self):
+    def test_returns_None_empty_META(self):
         request = HttpRequest()
         request.META = {}
         self.assertIsNone(get_remote_ip(request))

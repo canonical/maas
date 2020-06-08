@@ -68,7 +68,7 @@ def make_arp_packet(
 
 
 class TestARP(MAASTestCase):
-    def test__operation_enum__str(self):
+    def test_operation_enum__str(self):
         self.expectThat(
             str(ARP_OPERATION(ARP_OPERATION.REQUEST)), Equals("1 (request)")
         )
@@ -77,7 +77,7 @@ class TestARP(MAASTestCase):
         )
         self.expectThat(str(ARP_OPERATION(3)), Equals("3"))
 
-    def test__operation_enum__bytes(self):
+    def test_operation_enum__bytes(self):
         self.expectThat(
             bytes(ARP_OPERATION(ARP_OPERATION.REQUEST)), Equals(b"\0\x01")
         )
@@ -85,13 +85,13 @@ class TestARP(MAASTestCase):
             bytes(ARP_OPERATION(ARP_OPERATION.REPLY)), Equals(b"\0\x02")
         )
 
-    def test__operation_enum__radd(self):
+    def test_operation_enum__radd(self):
         self.expectThat(
             b"\xff" + bytes(ARP_OPERATION(ARP_OPERATION.REPLY)) + b"\xff",
             Equals(b"\xff\0\x02\xff"),
         )
 
-    def test__write(self):
+    def test_write(self):
         ts = int(time.time())
         expected_time = datetime.fromtimestamp(ts)
         pkt_sender_mac = "01:02:03:04:05:06"
@@ -134,14 +134,14 @@ class TestARP(MAASTestCase):
             Equals(expected_output.format(**locals()).strip()),
         )
 
-    def test__is_valid__succeeds_for_normal_packet(self):
+    def test_is_valid__succeeds_for_normal_packet(self):
         arp_packet = make_arp_packet(
             "192.168.0.1", "01:02:03:04:05:06", "192.168.0.2"
         )
         arp = ARP(arp_packet)
         self.assertTrue(arp.is_valid())
 
-    def test__is_valid__fails_for_invalid_packets(self):
+    def test_is_valid__fails_for_invalid_packets(self):
         arp = ARP(b"\x00" * 28)
         self.assertFalse(arp.is_valid())
         arp = ARP(
@@ -181,7 +181,7 @@ class TestARP(MAASTestCase):
         )
         self.assertFalse(arp.is_valid())
 
-    def test__properties(self):
+    def test_properties(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "192.168.0.2"
@@ -201,7 +201,7 @@ class TestARP(MAASTestCase):
         self.assertThat(arp.source_ip, Equals(IPAddress(pkt_sender_ip)))
         self.assertThat(arp.target_ip, Equals(IPAddress(pkt_target_ip)))
 
-    def test__bindings__returns_sender_for_request(self):
+    def test_bindings__returns_sender_for_request(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "192.168.0.2"
@@ -219,7 +219,7 @@ class TestARP(MAASTestCase):
             arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))]
         )
 
-    def test__bindings__returns_sender_and_target_for_reply(self):
+    def test_bindings__returns_sender_and_target_for_reply(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "192.168.0.2"
@@ -241,7 +241,7 @@ class TestARP(MAASTestCase):
             ],
         )
 
-    def test__bindings__skips_null_source_ip_for_request(self):
+    def test_bindings__skips_null_source_ip_for_request(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "0.0.0.0"
         pkt_target_ip = "192.168.0.2"
@@ -257,7 +257,7 @@ class TestARP(MAASTestCase):
         )
         self.assertItemsEqual(arp.bindings(), [])
 
-    def test__bindings__skips_null_source_ip_in_reply(self):
+    def test_bindings__skips_null_source_ip_in_reply(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "0.0.0.0"
         pkt_target_ip = "192.168.0.2"
@@ -275,7 +275,7 @@ class TestARP(MAASTestCase):
             arp.bindings(), [(IPAddress(pkt_target_ip), EUI(pkt_target_mac))]
         )
 
-    def test__bindings__skips_null_target_ip_in_reply(self):
+    def test_bindings__skips_null_target_ip_in_reply(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "0.0.0.0"
@@ -293,7 +293,7 @@ class TestARP(MAASTestCase):
             arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))]
         )
 
-    def test__bindings__skips_null_source_eui_for_request(self):
+    def test_bindings__skips_null_source_eui_for_request(self):
         pkt_sender_mac = "00:00:00:00:00:00"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "192.168.0.2"
@@ -309,7 +309,7 @@ class TestARP(MAASTestCase):
         )
         self.assertItemsEqual(arp.bindings(), [])
 
-    def test__bindings__skips_null_source_eui_in_reply(self):
+    def test_bindings__skips_null_source_eui_in_reply(self):
         pkt_sender_mac = "00:00:00:00:00:00"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "192.168.0.2"
@@ -327,7 +327,7 @@ class TestARP(MAASTestCase):
             arp.bindings(), [(IPAddress(pkt_target_ip), EUI(pkt_target_mac))]
         )
 
-    def test__bindings__skips_null_target_eui_in_reply(self):
+    def test_bindings__skips_null_target_eui_in_reply(self):
         pkt_sender_mac = "01:02:03:04:05:06"
         pkt_sender_ip = "192.168.0.1"
         pkt_target_ip = "192.168.0.2"
@@ -347,7 +347,7 @@ class TestARP(MAASTestCase):
 
 
 class TestUpdateBindingsAndGetEvent(MAASTestCase):
-    def test__new_binding(self):
+    def test_new_binding(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
@@ -367,7 +367,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
             ),
         )
 
-    def test__new_bindings_with_vid(self):
+    def test_new_bindings_with_vid(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
@@ -410,7 +410,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
             ),
         )
 
-    def test__refreshed_binding(self):
+    def test_refreshed_binding(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
@@ -436,7 +436,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
             ),
         )
 
-    def test__refreshed_binding_within_threshold_does_not_emit_event(self):
+    def test_refreshed_binding_within_threshold_does_not_emit_event(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
@@ -446,7 +446,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         self.assertThat(bindings, Equals({(vid, ip): {"mac": mac, "time": 0}}))
         self.assertIsNone(event)
 
-    def test__moved_binding(self):
+    def test_moved_binding(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac1 = EUI("00:01:02:03:04:05")
@@ -486,7 +486,7 @@ class FakeARP:
 
 
 class TestUpdateAndPrintBindings(MAASTestCase):
-    def test__prints_bindings_in_json_format(self):
+    def test_prints_bindings_in_json_format(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac1 = EUI("00:01:02:03:04:05")
@@ -567,7 +567,7 @@ test_input = (
 class TestObserveARPCommand(MAASTestCase):
     """Tests for `maas-rack observe-arp`."""
 
-    def test__requires_input_file(self):
+    def test_requires_input_file(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args([])
@@ -576,7 +576,7 @@ class TestObserveARPCommand(MAASTestCase):
         ):
             run(args)
 
-    def test__calls_subprocess_for_interface(self):
+    def test_calls_subprocess_for_interface(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
@@ -595,7 +595,7 @@ class TestObserveARPCommand(MAASTestCase):
             ),
         )
 
-    def test__calls_subprocess_for_interface_sudo(self):
+    def test_calls_subprocess_for_interface_sudo(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
@@ -614,7 +614,7 @@ class TestObserveARPCommand(MAASTestCase):
             ),
         )
 
-    def test__checks_for_pipe(self):
+    def test_checks_for_pipe(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["--input-file", "-"])
@@ -630,7 +630,7 @@ class TestObserveARPCommand(MAASTestCase):
         ):
             run(args, output=output)
 
-    def test__allows_pipe_input(self):
+    def test_allows_pipe_input(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["--input-file", "-"])
@@ -644,7 +644,7 @@ class TestObserveARPCommand(MAASTestCase):
         stdin_buffer = io.BytesIO(test_input)
         run(args, output=output, stdin_buffer=stdin_buffer)
 
-    def test__allows_file_input(self):
+    def test_allows_file_input(self):
         with NamedTemporaryFile("wb") as f:
             parser = ArgumentParser()
             add_arguments(parser)
@@ -654,7 +654,7 @@ class TestObserveARPCommand(MAASTestCase):
             output = io.StringIO()
             run(args, output=output)
 
-    def test__raises_systemexit_observe_arp_return_code(self):
+    def test_raises_systemexit_observe_arp_return_code(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
@@ -668,7 +668,7 @@ class TestObserveARPCommand(MAASTestCase):
         with ExpectedException(SystemExit, ".*37.*"):
             run(args, output=output)
 
-    def test__raises_systemexit_poll_result(self):
+    def test_raises_systemexit_poll_result(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
@@ -684,7 +684,7 @@ class TestObserveARPCommand(MAASTestCase):
         with ExpectedException(SystemExit, ".*42.*"):
             run(args, output=output)
 
-    def test__sets_self_as_process_group_leader(self):
+    def test_sets_self_as_process_group_leader(self):
         exception_type = factory.make_exception_type()
         os = self.patch(arp_module, "os")
         os.setpgrp.side_effect = exception_type

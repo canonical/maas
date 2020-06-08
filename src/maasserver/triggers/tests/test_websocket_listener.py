@@ -143,7 +143,7 @@ class TestNodeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -158,7 +158,7 @@ class TestNodeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -178,7 +178,7 @@ class TestNodeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -194,7 +194,7 @@ class TestNodeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_domain_name_change(self):
+    def test_calls_handler_on_domain_name_change(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -216,7 +216,7 @@ class TestNodeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_all_handler_on_domain_name_change(self):
+    def test_calls_all_handler_on_domain_name_change(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = DeferredValue()
@@ -248,7 +248,7 @@ class TestNodeListener(
         finally:
             yield listener.stopService()
 
-    def test__expected_number_of_fields_watched(self):
+    def test_expected_number_of_fields_watched(self):
         self.assertEqual(
             25,
             len(node_fields),
@@ -301,7 +301,7 @@ class TestControllerListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_controllerinfo_insert(self):
+    def test_calls_handler_on_controllerinfo_insert(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -319,7 +319,7 @@ class TestControllerListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_controllerinfo_version_update(self):
+    def test_calls_handler_on_controllerinfo_version_update(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -338,7 +338,7 @@ class TestControllerListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__skips_notify_on_controllerinfo_interface_update(self):
+    def test_skips_notify_on_controllerinfo_interface_update(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -358,7 +358,7 @@ class TestControllerListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_controllerinfo_delete(self):
+    def test_calls_handler_on_controllerinfo_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -381,7 +381,7 @@ class TestDeviceWithParentListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -400,7 +400,7 @@ class TestDeviceWithParentListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -420,7 +420,7 @@ class TestDeviceWithParentListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -443,7 +443,7 @@ class TestZoneListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -458,7 +458,7 @@ class TestZoneListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -479,7 +479,7 @@ class TestZoneListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -502,7 +502,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -517,7 +517,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -538,7 +538,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -554,7 +554,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_machine(self):
+    def test_calls_handler_on_create_machine(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -573,7 +573,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__no_calls_handler_on_create_device(self):
+    def test_no_calls_handler_on_create_device(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -590,7 +590,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_machine(self):
+    def test_calls_handler_on_delete_machine(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -609,7 +609,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__no_calls_handler_on_delete_device(self):
+    def test_no_calls_handler_on_delete_device(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -627,7 +627,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_machine_pool(self):
+    def test_calls_handler_on_update_machine_pool(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = dv1, dv2 = [DeferredValue(), DeferredValue()]
@@ -653,7 +653,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_machine_status_to_ready(self):
+    def test_calls_handler_on_update_machine_status_to_ready(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -683,7 +683,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_machine_status_from_ready(self):
+    def test_calls_handler_on_update_machine_status_from_ready(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -711,7 +711,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_machine_node_type_to_machine(self):
+    def test_calls_handler_on_update_machine_node_type_to_machine(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -741,7 +741,7 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_machine_node_type_from_machine(self):
+    def test_calls_handler_on_update_machine_node_type_from_machine(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -779,7 +779,7 @@ class TestTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -794,7 +794,7 @@ class TestTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -813,7 +813,7 @@ class TestTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -871,7 +871,7 @@ class TestNodeTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
@@ -889,7 +889,7 @@ class TestNodeTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
@@ -908,7 +908,7 @@ class TestNodeTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_node_handler_with_update_on_tag_rename(self):
+    def test_calls_node_handler_with_update_on_tag_rename(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
@@ -971,7 +971,7 @@ class TestNodeMetadataTriggers(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -988,7 +988,7 @@ class TestNodeMetadataTriggers(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -1006,7 +1006,7 @@ class TestNodeMetadataTriggers(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -1031,7 +1031,7 @@ class TestDeviceWithParentTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
@@ -1049,7 +1049,7 @@ class TestDeviceWithParentTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
@@ -1068,7 +1068,7 @@ class TestDeviceWithParentTagListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_node_handler_with_update_on_tag_rename(self):
+    def test_calls_node_handler_with_update_on_tag_rename(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
@@ -1100,7 +1100,7 @@ class TestUserListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -1115,7 +1115,7 @@ class TestUserListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -1136,7 +1136,7 @@ class TestUserListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         user = yield deferToDatabase(self.create_user)
@@ -1160,7 +1160,7 @@ class TestEventListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -1213,7 +1213,7 @@ class TestNodeEventListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         event_type = yield deferToDatabase(
@@ -1289,7 +1289,7 @@ class TestNodeStaticIPAddressListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -1311,7 +1311,7 @@ class TestNodeStaticIPAddressListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -1341,7 +1341,7 @@ class TestDeviceWithParentStaticIPAddressListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -1365,7 +1365,7 @@ class TestDeviceWithParentStaticIPAddressListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -1432,7 +1432,7 @@ class TestScriptSetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -1449,7 +1449,7 @@ class TestScriptSetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         result = yield deferToDatabase(self.create_scriptset, node)
@@ -1474,7 +1474,7 @@ class TestDeviceWithParentScriptSetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
@@ -1491,7 +1491,7 @@ class TestDeviceWithParentScriptSetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         result = yield deferToDatabase(self.create_scriptset, device)
@@ -1551,7 +1551,7 @@ class TestNDScriptResultListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1569,7 +1569,7 @@ class TestNDScriptResultListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1592,7 +1592,7 @@ class TestNDScriptResultListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1621,7 +1621,7 @@ class TestScriptResultListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1641,7 +1641,7 @@ class TestScriptResultListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1664,7 +1664,7 @@ class TestScriptResultListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1693,7 +1693,7 @@ class TestConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -1715,7 +1715,7 @@ class TestConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(
             transactional(Config.objects.set_config), "config_verbose", True
         )
@@ -1740,7 +1740,7 @@ class TestConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(
             transactional(Config.objects.set_config), "config_verbose", True
         )
@@ -1804,7 +1804,7 @@ class TestNodeInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -1821,7 +1821,7 @@ class TestNodeInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -1842,7 +1842,7 @@ class TestNodeInterfaceListener(
     @skip("XXX: LaMontJones 2016-06-14 bug=1592474: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -1866,7 +1866,7 @@ class TestNodeInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_old_node_on_update(self):
+    def test_calls_handler_with_update_on_old_node_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node1 = yield deferToDatabase(self.create_node, self.params)
         node2 = yield deferToDatabase(self.create_node, self.params)
@@ -1909,7 +1909,7 @@ class TestDeviceWithParentInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
@@ -1926,7 +1926,7 @@ class TestDeviceWithParentInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         interface = yield deferToDatabase(
@@ -1946,7 +1946,7 @@ class TestDeviceWithParentInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         interface = yield deferToDatabase(
@@ -1970,7 +1970,7 @@ class TestDeviceWithParentInterfaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_old_node_on_update(self):
+    def test_calls_handler_with_update_on_old_node_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device1, parent1 = yield deferToDatabase(
             self.create_device_with_parent
@@ -2017,7 +2017,7 @@ class TestFabricListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification_with_blank_name(self):
+    def test_calls_handler_on_create_notification_with_blank_name(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = [DeferredValue(), DeferredValue()]
@@ -2038,7 +2038,7 @@ class TestFabricListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification_with_name(self):
+    def test_calls_handler_on_create_notification_with_name(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2055,7 +2055,7 @@ class TestFabricListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2076,7 +2076,7 @@ class TestFabricListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2099,7 +2099,7 @@ class TestVLANListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         fabric = yield deferToDatabase(self.create_fabric)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2115,7 +2115,7 @@ class TestVLANListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         fabric = yield deferToDatabase(self.create_fabric)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2135,7 +2135,7 @@ class TestVLANListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         fabric = yield deferToDatabase(self.create_fabric)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2159,7 +2159,7 @@ class TestIPRangeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2183,7 +2183,7 @@ class TestIPRangeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2203,7 +2203,7 @@ class TestIPRangeListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2226,7 +2226,7 @@ class TestStaticRouteListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2241,7 +2241,7 @@ class TestStaticRouteListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2263,7 +2263,7 @@ class TestStaticRouteListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2286,7 +2286,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2301,7 +2301,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2322,7 +2322,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2338,7 +2338,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_ip_address_update(self):
+    def test_calls_handler_with_update_on_ip_address_update(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         params = {"node_type": NODE_TYPE.MACHINE, "domain": domain}
@@ -2375,7 +2375,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_node_ip_address_addition(self):
+    def test_calls_handler_with_update_on_node_ip_address_addition(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         params = {"node_type": NODE_TYPE.MACHINE, "domain": domain}
@@ -2407,7 +2407,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_node_ip_address_removal(self):
+    def test_calls_handler_with_update_on_node_ip_address_removal(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         params = {"node_type": NODE_TYPE.MACHINE, "domain": domain}
@@ -2440,7 +2440,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_dnsresource_create_notification(self):
+    def test_calls_handler_on_dnsresource_create_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2456,7 +2456,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_dnsresource_address_addition(self):
+    def test_calls_handler_on_dnsresource_address_addition(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2487,7 +2487,7 @@ class TestDomainListener(
 
     @wait_for(360000)
     @inlineCallbacks
-    def test__calls_handler_on_dnsresource_address_removal(self):
+    def test_calls_handler_on_dnsresource_address_removal(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         dnsrr = yield deferToDatabase(
@@ -2507,7 +2507,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_dnsresource_update_notification(self):
+    def test_calls_handler_on_dnsresource_update_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2531,7 +2531,7 @@ class TestDomainListener(
 
     @wait_for(360000)
     @inlineCallbacks
-    def test__calls_handler_on_dnsresource_delete_notification(self):
+    def test_calls_handler_on_dnsresource_delete_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         dnsrr = yield deferToDatabase(
@@ -2550,7 +2550,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_dnsdata_create_notification(self):
+    def test_calls_handler_on_dnsdata_create_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2566,7 +2566,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_dnsdata_update_notification(self):
+    def test_calls_handler_on_dnsdata_update_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2590,7 +2590,7 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_dnsdata_delete_notification(self):
+    def test_calls_handler_on_dnsdata_delete_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -2616,7 +2616,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2631,7 +2631,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2652,7 +2652,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification_for_vlan(self):
+    def test_calls_handler_on_update_notification_for_vlan(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2673,7 +2673,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2689,7 +2689,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_ip_address_insert(self):
+    def test_calls_handler_with_update_on_ip_address_insert(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(
             self.create_node,
@@ -2721,7 +2721,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_ip_address_update(self):
+    def test_calls_handler_with_update_on_ip_address_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(
             self.create_node,
@@ -2757,7 +2757,7 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_ip_address_delete(self):
+    def test_calls_handler_with_update_on_ip_address_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(
             self.create_node,
@@ -2797,7 +2797,7 @@ class TestSpaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification_with_blank_name(self):
+    def test_calls_handler_on_create_notification_with_blank_name(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = [DeferredValue(), DeferredValue()]
@@ -2818,7 +2818,7 @@ class TestSpaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification_with_name(self):
+    def test_calls_handler_on_create_notification_with_name(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2835,7 +2835,7 @@ class TestSpaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2856,7 +2856,7 @@ class TestSpaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -2927,7 +2927,7 @@ class TestNodeNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_iface_with_update_on_fabric_update(self):
+    def test_calls_handler_iface_with_update_on_fabric_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -2955,7 +2955,7 @@ class TestNodeNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_iface_with_update_on_vlan_update(self):
+    def test_calls_handler_iface_with_update_on_vlan_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -2981,7 +2981,7 @@ class TestNodeNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_subnet_update(self):
+    def test_calls_handler_with_update_on_subnet_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -3009,7 +3009,7 @@ class TestNodeNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_space_update(self):
+    def test_calls_handler_with_update_on_space_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -3037,7 +3037,7 @@ class TestNodeNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_ip_address_update(self):
+    def test_calls_handler_with_update_on_ip_address_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -3078,7 +3078,7 @@ class TestDeviceWithParentNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_iface_with_update_on_fabric_update(self):
+    def test_calls_handler_iface_with_update_on_fabric_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -3108,7 +3108,7 @@ class TestDeviceWithParentNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_iface_with_update_on_vlan_update(self):
+    def test_calls_handler_iface_with_update_on_vlan_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -3136,7 +3136,7 @@ class TestDeviceWithParentNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_subnet_update(self):
+    def test_calls_handler_with_update_on_subnet_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -3166,7 +3166,7 @@ class TestDeviceWithParentNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_space_update(self):
+    def test_calls_handler_with_update_on_space_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -3196,7 +3196,7 @@ class TestDeviceWithParentNetworkListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_ip_address_update(self):
+    def test_calls_handler_with_update_on_ip_address_update(self):
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
@@ -3238,7 +3238,7 @@ class TestStaticIPAddressSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_update_on_subnet(self):
+    def test_calls_update_on_subnet(self):
         yield deferToDatabase(register_websocket_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -3262,7 +3262,7 @@ class TestStaticIPAddressSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_update_on_old_and_new_subnet(self):
+    def test_calls_update_on_old_and_new_subnet(self):
         yield deferToDatabase(register_websocket_triggers)
         old_subnet = yield deferToDatabase(self.create_subnet)
         new_subnet = yield deferToDatabase(self.create_subnet)
@@ -3324,7 +3324,7 @@ class TestMachineBlockDeviceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -3341,7 +3341,7 @@ class TestMachineBlockDeviceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
@@ -3361,7 +3361,7 @@ class TestMachineBlockDeviceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
@@ -3385,7 +3385,7 @@ class TestMachineBlockDeviceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_physicalblockdevice_update(self):
+    def test_calls_handler_with_update_on_physicalblockdevice_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
@@ -3409,7 +3409,7 @@ class TestMachineBlockDeviceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_virtualblockdevice_update(self):
+    def test_calls_handler_with_update_on_virtualblockdevice_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
@@ -3450,7 +3450,7 @@ class TestMachinePartitionTableListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -3467,7 +3467,7 @@ class TestMachinePartitionTableListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partitiontable = yield deferToDatabase(
@@ -3489,7 +3489,7 @@ class TestMachinePartitionTableListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partitiontable = yield deferToDatabase(
@@ -3532,7 +3532,7 @@ class TestMachinePartitionListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -3549,7 +3549,7 @@ class TestMachinePartitionListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
@@ -3570,7 +3570,7 @@ class TestMachinePartitionListener(
     @skip("XXX: GavinPanella 2016-03-11 bug=1556188: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
@@ -3613,27 +3613,27 @@ class TestMachineFilesystemListener(
         super(TestMachineFilesystemListener, self).setUp()
         register_websocket_triggers()
 
-    def test__calls_handler_with_update_on_create_fs_on_partition(self):
+    def test_calls_handler_with_update_on_create_fs_on_partition(self):
         node = factory.make_Node(**self.params)
         partition = factory.make_Partition(node=node)
         with listenFor(self.channel) as get:
             factory.make_Filesystem(partition=partition)
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_create_fs_on_block_device(self):
+    def test_calls_handler_with_update_on_create_fs_on_block_device(self):
         node = factory.make_Node(**self.params)
         block_device = factory.make_BlockDevice(node=node)
         with listenFor(self.channel) as get:
             factory.make_Filesystem(block_device=block_device)
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_create_special_fs(self):
+    def test_calls_handler_with_update_on_create_special_fs(self):
         node = factory.make_Node(**self.params)
         with listenFor(self.channel) as get:
             factory.make_Filesystem(node=node)
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_delete_fs_on_partition(self):
+    def test_calls_handler_with_update_on_delete_fs_on_partition(self):
         node = factory.make_Node(**self.params)
         partition = factory.make_Partition(node=node)
         filesystem = factory.make_Filesystem(partition=partition)
@@ -3641,7 +3641,7 @@ class TestMachineFilesystemListener(
             filesystem.delete()
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_delete_fs_on_block_device(self):
+    def test_calls_handler_with_update_on_delete_fs_on_block_device(self):
         node = factory.make_Node(**self.params)
         block_device = factory.make_BlockDevice(node=node)
         filesystem = factory.make_Filesystem(block_device=block_device)
@@ -3649,14 +3649,14 @@ class TestMachineFilesystemListener(
             filesystem.delete()
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_delete_special_fs(self):
+    def test_calls_handler_with_update_on_delete_special_fs(self):
         node = factory.make_Node(**self.params)
         filesystem = factory.make_Filesystem(node=node)
         with listenFor(self.channel) as get:
             filesystem.delete()
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_update_fs_on_partition(self):
+    def test_calls_handler_with_update_on_update_fs_on_partition(self):
         node = factory.make_Node(**self.params)
         partition = factory.make_Partition(node=node)
         filesystem = factory.make_Filesystem(partition=partition)
@@ -3664,7 +3664,7 @@ class TestMachineFilesystemListener(
             filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_update_fs_on_block_device(self):
+    def test_calls_handler_with_update_on_update_fs_on_block_device(self):
         node = factory.make_Node(**self.params)
         block_device = factory.make_BlockDevice(node=node)
         filesystem = factory.make_Filesystem(block_device=block_device)
@@ -3672,7 +3672,7 @@ class TestMachineFilesystemListener(
             filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(("update", "%s" % node.system_id), get())
 
-    def test__calls_handler_with_update_on_update_special_fs(self):
+    def test_calls_handler_with_update_on_update_special_fs(self):
         node = factory.make_Node(**self.params)
         filesystem = factory.make_Filesystem(node=node)
         with listenFor(self.channel) as get:
@@ -3701,7 +3701,7 @@ class TestMachineFilesystemgroupListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(self.create_partitiontable, {"node": node})
@@ -3719,7 +3719,7 @@ class TestMachineFilesystemgroupListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(self.create_partitiontable, {"node": node})
@@ -3742,7 +3742,7 @@ class TestMachineFilesystemgroupListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(self.create_partitiontable, {"node": node})
@@ -3784,7 +3784,7 @@ class TestMachineCachesetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
@@ -3806,7 +3806,7 @@ class TestMachineCachesetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
@@ -3829,7 +3829,7 @@ class TestMachineCachesetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
+    def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
@@ -3862,7 +3862,7 @@ class TestUserTokenListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
@@ -3879,7 +3879,7 @@ class TestUserTokenListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         token = yield deferToDatabase(self.create_token, {"user": user})
@@ -3904,7 +3904,7 @@ class TestTokenListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create(self):
+    def test_calls_handler_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
@@ -3921,7 +3921,7 @@ class TestTokenListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update(self):
+    def test_calls_handler_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         token = yield deferToDatabase(self.create_token, {"user": user})
@@ -3941,7 +3941,7 @@ class TestTokenListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete(self):
+    def test_calls_handler_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         token = yield deferToDatabase(self.create_token, {"user": user})
@@ -3966,7 +3966,7 @@ class TestUserSSHKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
@@ -3983,7 +3983,7 @@ class TestUserSSHKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
@@ -4008,7 +4008,7 @@ class TestSSHKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create(self):
+    def test_calls_handler_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
@@ -4025,7 +4025,7 @@ class TestSSHKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update(self):
+    def test_calls_handler_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
@@ -4054,7 +4054,7 @@ class TestSSHKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete(self):
+    def test_calls_handler_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
@@ -4079,7 +4079,7 @@ class TestUserSSLKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
+    def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
@@ -4096,7 +4096,7 @@ class TestUserSSLKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
+    def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
@@ -4121,7 +4121,7 @@ class TestSSLKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create(self):
+    def test_calls_handler_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
@@ -4138,7 +4138,7 @@ class TestSSLKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update(self):
+    def test_calls_handler_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
@@ -4168,7 +4168,7 @@ class TestSSLKeyListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete(self):
+    def test_calls_handler_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
@@ -4193,7 +4193,7 @@ class TestDHCPSnippetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4208,7 +4208,7 @@ class TestDHCPSnippetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4229,7 +4229,7 @@ class TestDHCPSnippetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4252,7 +4252,7 @@ class TestPackageRepositoryListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4267,7 +4267,7 @@ class TestPackageRepositoryListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4288,7 +4288,7 @@ class TestPackageRepositoryListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4313,7 +4313,7 @@ class TestIPRangeSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         subnet = yield deferToDatabase(
             self.create_subnet,
@@ -4345,7 +4345,7 @@ class TestIPRangeSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         iprange = yield deferToDatabase(self.create_iprange)
         new_end_ip = factory.pick_ip_in_IPRange(
@@ -4367,7 +4367,7 @@ class TestIPRangeSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_on_old_and_new_subnet_notification(self):
+    def test_calls_handler_on_update_on_old_and_new_subnet_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         old_subnet = yield deferToDatabase(
             self.create_subnet,
@@ -4430,7 +4430,7 @@ class TestIPRangeSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         iprange = yield deferToDatabase(self.create_iprange)
 
@@ -4454,7 +4454,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
 
         listener = PostgresListenerService()
@@ -4472,7 +4472,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_same_bmc_types_notification(self):
+    def test_calls_handler_on_update_same_bmc_types_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
@@ -4493,7 +4493,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_new_POD_bmc_type_notification(self):
+    def test_calls_handler_on_update_new_POD_bmc_type_notification(self):
         bmc = yield deferToDatabase(
             self.create_bmc, {"name": factory.make_name("bmc")}
         )
@@ -4514,7 +4514,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_new_BMC_bmc_type_notification(self):
+    def test_calls_handler_on_update_new_BMC_bmc_type_notification(self):
         pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
         )
@@ -4535,7 +4535,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
         )
@@ -4554,7 +4554,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_related_interface(self):
+    def test_calls_handler_on_create_related_interface(self):
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
@@ -4573,7 +4573,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_related_interface(self):
+    def test_calls_handler_on_update_related_interface(self):
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
@@ -4600,7 +4600,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_interface_move(self):
+    def test_calls_handler_on_interface_move(self):
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
@@ -4627,7 +4627,7 @@ class TestPodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_interface_delete(self):
+    def test_calls_handler_on_interface_delete(self):
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
@@ -4656,7 +4656,7 @@ class TestNodePodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         pod = yield deferToDatabase(self.create_pod)
 
@@ -4673,7 +4673,7 @@ class TestNodePodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         old_pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
         )
@@ -4711,7 +4711,7 @@ class TestNodePodListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         pod = yield deferToDatabase(self.create_pod)
         node = yield deferToDatabase(self.create_node, {"bmc": pod})
@@ -4864,7 +4864,7 @@ class TestNodeTypeChange(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__transition_notifies(self):
+    def test_transition_notifies(self):
         yield deferToDatabase(register_websocket_triggers)
         listener1 = self.make_listener_without_delay()
         listener2 = self.make_listener_without_delay()
@@ -4928,7 +4928,7 @@ class TestSwitchListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_switch_insert(self):
+    def test_calls_handler_on_switch_insert(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4944,7 +4944,7 @@ class TestSwitchListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_switch_delete(self):
+    def test_calls_handler_on_switch_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4961,7 +4961,7 @@ class TestSwitchListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_switch_update(self):
+    def test_calls_handler_on_switch_update(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4986,7 +4986,7 @@ class TestNotificationListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5001,7 +5001,7 @@ class TestNotificationListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5023,7 +5023,7 @@ class TestNotificationListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5049,7 +5049,7 @@ class TestNotificationDismissalListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5075,7 +5075,7 @@ class TestScriptListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5090,7 +5090,7 @@ class TestScriptListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
+    def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5111,7 +5111,7 @@ class TestScriptListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
+    def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()

@@ -73,7 +73,7 @@ class TestLXDPowerDriver(MAASTestCase):
         context["power_address"] += ":1234"
         self.assertEqual(context.get("power_address"), driver.get_url(context))
 
-    def test__get_client(self):
+    def test_get_client(self):
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
@@ -148,7 +148,7 @@ class TestLXDPowerDriver(MAASTestCase):
             f"{system_id}: Failed to connect to the LXD REST API.", str(error)
         )
 
-    def test__get_machine(self):
+    def test_get_machine(self):
         context = self.make_parameters_context()
         system_id = factory.make_name("system_id")
         driver = lxd_module.LXDPowerDriver()
@@ -176,7 +176,7 @@ class TestLXDPowerDriver(MAASTestCase):
             f"{system_id}: LXD VM {instance_name} not found.", str(error)
         )
 
-    def test__power_on(self):
+    def test_power_on(self):
         context = self.make_parameters_context()
         system_id = factory.make_name("system_id")
         driver = lxd_module.LXDPowerDriver()
@@ -185,7 +185,7 @@ class TestLXDPowerDriver(MAASTestCase):
         driver.power_on(system_id, context)
         self.assertThat(mock_machine.start, MockCalledOnceWith())
 
-    def test__power_off(self):
+    def test_power_off(self):
         context = self.make_parameters_context()
         system_id = factory.make_name("system_id")
         driver = lxd_module.LXDPowerDriver()
@@ -194,7 +194,7 @@ class TestLXDPowerDriver(MAASTestCase):
         driver.power_off(system_id, context)
         self.assertThat(mock_machine.stop, MockCalledOnceWith())
 
-    def test__power_query(self):
+    def test_power_query(self):
         context = self.make_parameters_context()
         system_id = factory.make_name("system_id")
         driver = lxd_module.LXDPowerDriver()
@@ -203,7 +203,7 @@ class TestLXDPowerDriver(MAASTestCase):
         state = driver.power_query(system_id, context)
         self.assertThat(state, Equals("on"))
 
-    def test__power_query_raises_error_on_unknown_state(self):
+    def test_power_query_raises_error_on_unknown_state(self):
         context = self.make_parameters_context()
         system_id = factory.make_name("system_id")
         driver = lxd_module.LXDPowerDriver()

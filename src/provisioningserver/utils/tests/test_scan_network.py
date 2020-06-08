@@ -84,7 +84,7 @@ class TestScanNetworkCommand(MAASTestCase):
         parsed_args = self.parser.parse_args([*args])
         return run(parsed_args, stdout=self.output, stderr=self.error_output)
 
-    def test__interprets_long_arguments(self):
+    def test_interprets_long_arguments(self):
         self.run_command("--ping", "--threads", "37", "--slow")
         self.assertThat(
             self.scan_networks_mock,
@@ -96,7 +96,7 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__default_arguments(self):
+    def test_default_arguments(self):
         self.run_command()
         self.assertThat(
             self.scan_networks_mock,
@@ -108,7 +108,7 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__scans_all_interface_cidrs_when_zero_parameters_passed(self):
+    def test_scans_all_interface_cidrs_when_zero_parameters_passed(self):
         self.run_command()
         self.assertThat(
             self.scan_networks_mock,
@@ -124,7 +124,7 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__scans_all_cidrs_on_single_interface_when_ifname_passed(self):
+    def test_scans_all_cidrs_on_single_interface_when_ifname_passed(self):
         self.run_command("eth2")
         self.assertThat(
             self.scan_networks_mock,
@@ -136,7 +136,7 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__finds_correct_interface_if_passed_in_cidr_matches(self):
+    def test_finds_correct_interface_if_passed_in_cidr_matches(self):
         self.run_command("192.168.2.0/24")
         self.assertThat(
             self.scan_networks_mock,
@@ -152,7 +152,7 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__scans_specific_interface_cidr(self):
+    def test_scans_specific_interface_cidr(self):
         self.run_command("eth2", "192.168.3.0/24")
         self.assertThat(
             self.scan_networks_mock,
@@ -161,7 +161,7 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__scans_cidr_subset(self):
+    def test_scans_cidr_subset(self):
         self.run_command("192.168.3.0/28")
         self.assertThat(
             self.scan_networks_mock,
@@ -177,12 +177,12 @@ class TestScanNetworkCommand(MAASTestCase):
             ),
         )
 
-    def test__rejects_ipv6_cidr(self):
+    def test_rejects_ipv6_cidr(self):
         expected_error = ".*Not a valid IPv4 CIDR:.*"
         with ExpectedException(ActionScriptError, expected_error):
             self.run_command("eth2", "2001:db8::/64")
 
-    def test__rejects_non_interface_or_cidr(self):
+    def test_rejects_non_interface_or_cidr(self):
         expected_error = ".*First argument must be an interface or CIDR: wtf0"
         with ExpectedException(ActionScriptError, expected_error):
             self.run_command("wtf0")
@@ -211,7 +211,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         parsed_args = self.parser.parse_args([*args])
         return run(parsed_args, stdout=self.output, stderr=self.error_output)
 
-    def test__runs_ping_single_threaded(self):
+    def test_runs_ping_single_threaded(self):
         ip = factory.make_ip_address(ipv6=False)
         # Force the use of `ping` even if `nmap` is installed.
         self.run_command("--threads", "1", "--ping", "eth0", "%s/32" % ip)
@@ -227,7 +227,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             ),
         )
 
-    def test__runs_ping_e2e(self):
+    def test_runs_ping_e2e(self):
         ip = factory.make_ip_address(ipv6=False)
         # Force the use of `ping` even if `nmap` is installed.
         self.run_command("--ping", "eth0", "%s/32" % ip)
@@ -243,7 +243,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             ),
         )
 
-    def test__runs_ping_e2e_prints_summary(self):
+    def test_runs_ping_e2e_prints_summary(self):
         self.popen.return_value.returncode = 0
         # Force the use of `ping` even if `nmap` is installed.
         self.run_command("--ping", "eth1", "192.168.0.0/24")
@@ -252,7 +252,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             DocTestMatches("Pinged...hosts...second..."),
         )
 
-    def test__runs_ping_e2e_prints_warning_for_unknown_cidr(self):
+    def test_runs_ping_e2e_prints_warning_for_unknown_cidr(self):
         self.popen.return_value.returncode = 1
         # Force the use of `ping` even if `nmap` is installed.
         self.run_command("--ping", "eth1", "172.16.0.0/24")
@@ -261,7 +261,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             DocTestMatches("Warning: 172.16.0.0/24 is not present on eth1..."),
         )
 
-    def test__runs_nmap_single_threaded(self):
+    def test_runs_nmap_single_threaded(self):
         ip = factory.make_ip_address(ipv6=False)
         # Force the use of `nmap` by ensuring it is reported as available.
         self.has_command_available_mock.return_value = True
@@ -286,7 +286,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             ),
         )
 
-    def test__runs_nmap_e2e(self):
+    def test_runs_nmap_e2e(self):
         ip = factory.make_ip_address(ipv6=False)
         # Force the use of `nmap` by ensuring it is reported as available.
         self.has_command_available_mock.return_value = True
@@ -311,7 +311,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             ),
         )
 
-    def test__runs_nmap_e2e_prints_summary(self):
+    def test_runs_nmap_e2e_prints_summary(self):
         ip = factory.make_ip_address(ipv6=False)
         # Force the use of `nmap` by ensuring it is reported as available.
         self.has_command_available_mock.return_value = True
@@ -326,7 +326,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
             DocTestMatches("...scan...completed...second..."),
         )
 
-    def test__prints_error_for_missing_cidr(self):
+    def test_prints_error_for_missing_cidr(self):
         self.run_command("8.8.8.0/24")
         self.assertThat(
             self.error_output.getvalue(),
@@ -335,7 +335,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
 
 
 class TestRunPing(MAASTestCase):
-    def test__runs_popen_with_expected_parameters(self):
+    def test_runs_popen_with_expected_parameters(self):
         popen = self.patch(scan_network_module.subprocess, "Popen")
         popen.return_value.poll = Mock()
         popen.return_value.poll.return_value = None
@@ -357,7 +357,7 @@ class TestRunPing(MAASTestCase):
 
 
 class TestRunNmap(MAASTestCase):
-    def test__runs_popen_with_expected_parameters(self):
+    def test_runs_popen_with_expected_parameters(self):
         popen = self.patch(scan_network_module.subprocess, "Popen")
         popen.return_value.poll = Mock()
         popen.return_value.poll.return_value = None
@@ -377,7 +377,7 @@ class TestRunNmap(MAASTestCase):
             ),
         )
 
-    def test__runs_popen_with_expected_parameters__slow(self):
+    def test_runs_popen_with_expected_parameters__slow(self):
         popen = self.patch(scan_network_module.subprocess, "Popen")
         popen.return_value.poll = Mock()
         popen.return_value.poll.return_value = None
@@ -401,7 +401,7 @@ class TestRunNmap(MAASTestCase):
 
 
 class TestYieldNmapParameters(MAASTestCase):
-    def test__nmap__yields_ipv4_cidrs(self):
+    def test_nmap__yields_ipv4_cidrs(self):
         slow = random.choice([True, False])
         params = yield_nmap_parameters(
             {"eth0": ["2001:db8::/64", "192.168.0.1/24", "192.168.1.1/24"]},
@@ -423,7 +423,7 @@ class TestYieldNmapParameters(MAASTestCase):
 
 
 class TestYieldPingParameters(MAASTestCase):
-    def test__ping__yields_ipv4_ips(self):
+    def test_ping__yields_ipv4_ips(self):
         params = yield_ping_parameters(
             {"eth0": ["2001:db8::/64", "192.168.0.1/30"]}
         )

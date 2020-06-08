@@ -21,7 +21,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestVLANForm(MAASServerTestCase):
-    def test__requires_vid(self):
+    def test_requires_vid(self):
         fabric = factory.make_Fabric()
         form = VLANForm(fabric=fabric, data={})
         self.assertFalse(form.is_valid(), form.errors)
@@ -35,7 +35,7 @@ class TestVLANForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__vlans_already_using_relay_vlan_not_shown(self):
+    def test_vlans_already_using_relay_vlan_not_shown(self):
         fabric = Fabric.objects.get_default_fabric()
         relay_vlan = factory.make_VLAN()
         factory.make_VLAN(relay_vlan=relay_vlan)
@@ -45,19 +45,19 @@ class TestVLANForm(MAASServerTestCase):
             form.fields["relay_vlan"].queryset,
         )
 
-    def test__self_vlan_not_used_in_relay_vlan_field(self):
+    def test_self_vlan_not_used_in_relay_vlan_field(self):
         fabric = Fabric.objects.get_default_fabric()
         relay_vlan = fabric.get_default_vlan()
         form = VLANForm(instance=relay_vlan, data={})
         self.assertItemsEqual([], form.fields["relay_vlan"].queryset)
 
-    def test__no_relay_vlans_allowed_when_dhcp_on(self):
+    def test_no_relay_vlans_allowed_when_dhcp_on(self):
         vlan = factory.make_VLAN(dhcp_on=True)
         factory.make_VLAN()
         form = VLANForm(instance=vlan, data={})
         self.assertItemsEqual([], form.fields["relay_vlan"].queryset)
 
-    def test__creates_vlan(self):
+    def test_creates_vlan(self):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("vlan")
         vlan_description = factory.make_name("description")
@@ -80,7 +80,7 @@ class TestVLANForm(MAASServerTestCase):
         self.assertEqual(fabric, vlan.fabric)
         self.assertEqual(mtu, vlan.mtu)
 
-    def test__creates_vlan_with_default_mtu(self):
+    def test_creates_vlan_with_default_mtu(self):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("vlan")
         vid = random.randint(1, 1000)
@@ -92,12 +92,12 @@ class TestVLANForm(MAASServerTestCase):
         self.assertEqual(fabric, vlan.fabric)
         self.assertEqual(DEFAULT_MTU, vlan.mtu)
 
-    def test__doest_require_name_vid_or_mtu_on_update(self):
+    def test_doest_require_name_vid_or_mtu_on_update(self):
         vlan = factory.make_VLAN()
         form = VLANForm(instance=vlan, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_vlan(self):
+    def test_updates_vlan(self):
         vlan = factory.make_VLAN()
         new_name = factory.make_name("vlan")
         new_description = factory.make_name("description")
@@ -385,7 +385,7 @@ class TestVLANForm(MAASServerTestCase):
 
 
 class TestVLANFormFabricModification(MAASServerTestCase):
-    def test__cannot_move_vlan_with_overlapping_vid(self):
+    def test_cannot_move_vlan_with_overlapping_vid(self):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         fabric1_untagged = fabric1.get_default_vlan()
@@ -406,7 +406,7 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         with ExpectedException(ValueError):
             form.save()
 
-    def test__allows_moving_vlan_to_new_fabric_if_vid_is_unique(self):
+    def test_allows_moving_vlan_to_new_fabric_if_vid_is_unique(self):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         fabric1_untagged = fabric1.get_default_vlan()
@@ -417,7 +417,7 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         self.assertThat(is_valid, Equals(True))
         form.save()
 
-    def test__deletes_empty_fabrics(self):
+    def test_deletes_empty_fabrics(self):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         fabric1_untagged = fabric1.get_default_vlan()
@@ -429,7 +429,7 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         form.save()
         self.assertThat(reload_object(fabric1), Equals(None))
 
-    def test__does_not_delete_non_empty_fabrics(self):
+    def test_does_not_delete_non_empty_fabrics(self):
         fabric0 = Fabric.objects.get_default_fabric()
         fabric1 = factory.make_Fabric()
         factory.make_VLAN(fabric=fabric1)

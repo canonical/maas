@@ -29,21 +29,21 @@ from provisioningserver.utils.avahi import (
 
 
 class TestUnescapeAvahiServiceName(MAASTestCase):
-    def test__converts_escaped_decimal_characters(self):
+    def test_converts_escaped_decimal_characters(self):
         result = unescape_avahi_service_name(
             "HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041"
         )
         self.assertThat(result, Equals("HP Color LaserJet CP2025dn (test)"))
 
-    def test__converts_escaped_backslash(self):
+    def test_converts_escaped_backslash(self):
         result = unescape_avahi_service_name("\\\\\\\\samba\\\\share")
         self.assertThat(result, Equals("\\\\samba\\share"))
 
-    def test__converts_escaped_dot(self):
+    def test_converts_escaped_dot(self):
         result = unescape_avahi_service_name("example\\.com")
         self.assertThat(result, Equals("example.com"))
 
-    def test__converts_all_types_of_escape_sequences(self):
+    def test_converts_all_types_of_escape_sequences(self):
         result = unescape_avahi_service_name(
             "HP\\032Color\\032LaserJet\\032at"
             "\\032\\\\\\\\printers\\\\color\\032\\040example\\.com\\041"
@@ -55,7 +55,7 @@ class TestUnescapeAvahiServiceName(MAASTestCase):
 
 
 class TestParseAvahiEvent(MAASTestCase):
-    def test__parses_browser_new_event(self):
+    def test_parses_browser_new_event(self):
         input = (
             b"+;eth0;IPv4"
             b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
@@ -74,7 +74,7 @@ class TestParseAvahiEvent(MAASTestCase):
             },
         )
 
-    def test__parses_browser_removed_event(self):
+    def test_parses_browser_removed_event(self):
         input = (
             b"-;eth0;IPv4"
             b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
@@ -93,7 +93,7 @@ class TestParseAvahiEvent(MAASTestCase):
             },
         )
 
-    def test__parses_resolver_found_event(self):
+    def test_parses_resolver_found_event(self):
         input = (
             b"=;eth0;IPv4"
             b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
@@ -121,7 +121,7 @@ class TestParseAvahiEvent(MAASTestCase):
             },
         )
 
-    def test__parses_txt_binary(self):
+    def test_parses_txt_binary(self):
         input = (
             b"=;eth0;IPv4"
             b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
@@ -136,7 +136,7 @@ class TestParseAvahiEvent(MAASTestCase):
             b'"BluetoothAddress=\xc8i\xcdB\xe2\x09"', event["txt"]
         )
 
-    def test__returns_none_for_malformed_input(self):
+    def test_returns_none_for_malformed_input(self):
         self.assertThat(parse_avahi_event(b";;;"), Equals(None))
 
 
@@ -154,7 +154,7 @@ def observe_mdns(*, input, output, verbose=False):
 
 
 class TestObserveMDNS(MAASTestCase):
-    def test__prints_event_json_in_verbose_mode(self):
+    def test_prints_event_json_in_verbose_mode(self):
         out = io.StringIO()
         input = (
             b"+;eth0;IPv4"
@@ -175,7 +175,7 @@ class TestObserveMDNS(MAASTestCase):
         self.assertThat(lines, HasLength(1))
         self.assertThat(json.loads(lines[0]), Equals(expected_result))
 
-    def test__skips_unimportant_events_without_verbose_enabled(self):
+    def test_skips_unimportant_events_without_verbose_enabled(self):
         out = io.StringIO()
         input = (
             b"+;eth0;IPv4"
@@ -187,7 +187,7 @@ class TestObserveMDNS(MAASTestCase):
         lines = output.readlines()
         self.assertThat(lines, HasLength(0))
 
-    def test__non_verbose_removes_redundant_events_and_outputs_summary(self):
+    def test_non_verbose_removes_redundant_events_and_outputs_summary(self):
         out = io.StringIO()
         input = (
             b"=;eth0;IPv4"
@@ -213,7 +213,7 @@ class TestObserveMDNS(MAASTestCase):
             ),
         )
 
-    def test__non_verbose_removes_waits_before_emitting_duplicate_entry(self):
+    def test_non_verbose_removes_waits_before_emitting_duplicate_entry(self):
         out = io.StringIO()
         input = (
             b"=;eth0;IPv4"
@@ -268,7 +268,7 @@ class TestObserveMDNSCommand(MAASTestCase):
             b'"priority=50" "rp=RAW"\n'
         )
 
-    def test__calls_subprocess_by_default(self):
+    def test_calls_subprocess_by_default(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args([])
@@ -294,7 +294,7 @@ class TestObserveMDNSCommand(MAASTestCase):
             ),
         )
 
-    def test__allows_pipe_input(self):
+    def test_allows_pipe_input(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["--input-file", "-"])
@@ -302,7 +302,7 @@ class TestObserveMDNSCommand(MAASTestCase):
         run(args, output=output, stdin=[self.test_input_bytes])
         self.assertThat(output.getvalue(), Not(HasLength(0)))
 
-    def test__allows_file_input(self):
+    def test_allows_file_input(self):
         with NamedTemporaryFile("wb") as f:
             parser = ArgumentParser()
             add_arguments(parser)
@@ -312,7 +312,7 @@ class TestObserveMDNSCommand(MAASTestCase):
             output = io.StringIO()
             run(args, output=output)
 
-    def test__raises_systemexit(self):
+    def test_raises_systemexit(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args([])
@@ -324,7 +324,7 @@ class TestObserveMDNSCommand(MAASTestCase):
         with ExpectedException(SystemExit, ".*42.*"):
             run(args, output=output)
 
-    def test__sets_self_as_process_group_leader(self):
+    def test_sets_self_as_process_group_leader(self):
         exception_type = factory.make_exception_type()
         os = self.patch(avahi_module, "os")
         os.setpgrp.side_effect = exception_type

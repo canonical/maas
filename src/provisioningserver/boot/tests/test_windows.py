@@ -147,18 +147,18 @@ class TestRequestNodeInfoByMACAddress(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test__returns_None_when_MAC_is_None(self):
+    def test_returns_None_when_MAC_is_None(self):
         d = windows_module.request_node_info_by_mac_address(None)
         self.assertThat(extract_result(d), Is(None))
 
-    def test__returns_None_when_node_not_found(self):
+    def test_returns_None_when_node_not_found(self):
         client = self.patch(windows_module, "getRegionClient").return_value
         client.side_effect = always_fail_with(NoSuchNode())
         mac = factory.make_mac_address()
         d = windows_module.request_node_info_by_mac_address(mac)
         self.assertThat(extract_result(d), Is(None))
 
-    def test__returns_output_from_RequestNodeInfoByMACAddress(self):
+    def test_returns_output_from_RequestNodeInfoByMACAddress(self):
         client = self.patch(windows_module, "getRegionClient").return_value
         client.side_effect = always_succeed_with(sentinel.node_info)
         d = windows_module.request_node_info_by_mac_address(sentinel.mac)

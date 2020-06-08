@@ -127,7 +127,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(context.get("power_address"), driver.get_url(context))
 
     @inlineCallbacks
-    def test__get_client(self):
+    def test_get_client(self):
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
@@ -174,7 +174,7 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.get_client(pod_id, context)
 
     @inlineCallbacks
-    def test__get_machine(self):
+    def test_get_machine(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "get_client")
@@ -199,7 +199,7 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.get_machine(pod_id, context)
 
     @inlineCallbacks
-    def test__power_on(self):
+    def test_power_on(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
@@ -208,7 +208,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertThat(mock_machine.start, MockCalledOnceWith())
 
     @inlineCallbacks
-    def test__power_off(self):
+    def test_power_off(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
@@ -217,7 +217,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertThat(mock_machine.stop, MockCalledOnceWith())
 
     @inlineCallbacks
-    def test__power_query(self):
+    def test_power_query(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         mock_machine = self.patch(driver, "get_machine").return_value
@@ -251,7 +251,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__discover(self):
+    def test_discover(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
@@ -298,7 +298,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertItemsEqual([], discovered_pod.storage_pools)
 
     @inlineCallbacks
-    def test__get_discovered_pod_storage_pool(self):
+    def test_get_discovered_pod_storage_pool(self):
         driver = lxd_module.LXDPodDriver()
         mock_storage_pool = Mock()
         mock_storage_pool.name = factory.make_name("pool")
@@ -334,7 +334,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__get_discovered_machine(self):
+    def test_get_discovered_machine(self):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
@@ -491,7 +491,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEquals("unknown", discovered_machine.power_state)
 
     @inlineCallbacks
-    def test__get_commissioning_data(self):
+    def test_get_commissioning_data(self):
         driver = lxd_module.LXDPodDriver()
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")

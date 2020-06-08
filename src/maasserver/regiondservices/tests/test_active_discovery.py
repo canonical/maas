@@ -150,7 +150,7 @@ class TestRefreshDiscoveryConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__stores_correct_values_and_fires_timer(self):
+    def test_stores_correct_values_and_fires_timer(self):
         expected_last_scan = random.randint(1, 1000)
         expected_interval = random.randint(1, 1000)
         yield deferToDatabase(self.set_interval, expected_interval)
@@ -171,7 +171,7 @@ class TestRefreshDiscoveryConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__disables_discovery_if_interval_is_zero(self):
+    def test_disables_discovery_if_interval_is_zero(self):
         expected_last_scan = random.randint(1, 1000)
         expected_interval = random.randint(1, 1000)
         yield deferToDatabase(self.set_interval, expected_interval)
@@ -193,7 +193,7 @@ class TestRefreshDiscoveryConfig(MAASTransactionServerTestCase):
 
 
 class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
-    def test__returns_expected_interval(self):
+    def test_returns_expected_interval(self):
         expected_interval = random.randint(1, 1000)
         Config.objects.set_config(
             "active_discovery_interval", expected_interval
@@ -204,7 +204,7 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         # Enabled is True if interval is > 0
         self.assertThat(enabled, Equals(True))
 
-    def test__returns_expected_last_scan(self):
+    def test_returns_expected_last_scan(self):
         expected_last_scan = random.randint(1, 1000)
         Config.objects.set_config(
             "active_discovery_last_scan", expected_last_scan
@@ -213,7 +213,7 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         enabled, interval, last_scan = service.get_active_discovery_config()
         self.assertThat(last_scan, Equals(expected_last_scan))
 
-    def test__returns_disabled_if_interval_is_zero(self):
+    def test_returns_disabled_if_interval_is_zero(self):
         expected_interval = 0
         expected_last_scan = 0
         Config.objects.set_config(
@@ -226,7 +226,7 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         enabled, interval, last_scan = service.get_active_discovery_config()
         self.assertThat(enabled, Equals(False))
 
-    def test__returns_disabled_if_interval_is_invalid(self):
+    def test_returns_disabled_if_interval_is_invalid(self):
         expected_interval = factory.make_name()
         expected_last_scan = factory.make_name()
         Config.objects.set_config(
@@ -266,14 +266,14 @@ class TestTryLockAndScan(MAASTransactionServerTestCase):
             self.mock_discovery_config
         )
 
-    def test__aborts_if_passive_discovery_is_disabled(self):
+    def test_aborts_if_passive_discovery_is_disabled(self):
         self.mock_discovery_config.passive = False
         result = self.service.try_lock_and_scan()
         self.assertThat(
             result, DocTestMatches("...discovery is disabled. Skipping...")
         )
 
-    def test__aborts_if_periodic_discovery_is_disabled(self):
+    def test_aborts_if_periodic_discovery_is_disabled(self):
         self.mock_discovery_config.passive = True
         self.get_active_discovery_config.return_value = (False, 0, 0)
         result = self.service.try_lock_and_scan()
@@ -284,7 +284,7 @@ class TestTryLockAndScan(MAASTransactionServerTestCase):
             ),
         )
 
-    def test__aborts_if_periodic_discovery_if_last_scan_too_recent(self):
+    def test_aborts_if_periodic_discovery_if_last_scan_too_recent(self):
         self.mock_discovery_config.passive = True
         self.get_active_discovery_config.return_value = (True, 10, 91)
         self.getCurrentTimestamp.return_value = 100
@@ -294,7 +294,7 @@ class TestTryLockAndScan(MAASTransactionServerTestCase):
             DocTestMatches("Another region controller is already scanning..."),
         )
 
-    def test__aborts_if_periodic_discovery_if_no_subnets_enabled(self):
+    def test_aborts_if_periodic_discovery_if_no_subnets_enabled(self):
         self.mock_discovery_config.passive = True
         self.get_active_discovery_config.return_value = (True, 10, 90)
         self.getCurrentTimestamp.return_value = 100
@@ -305,7 +305,7 @@ class TestTryLockAndScan(MAASTransactionServerTestCase):
             DocTestMatches("Active scanning is not enabled on any subnet..."),
         )
 
-    def test__calls_scan_all_rack_networks_if_everything_is_okay(self):
+    def test_calls_scan_all_rack_networks_if_everything_is_okay(self):
         self.mock_discovery_config.passive = True
         self.get_active_discovery_config.return_value = (True, 10, 90)
         self.getCurrentTimestamp.return_value = 100

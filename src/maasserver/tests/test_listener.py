@@ -75,7 +75,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         listener = PostgresListenerService()
         self.assertFalse(listener.isSystemChannel(channel))
 
-    def test__raises_error_if_system_handler_registered_more_than_once(self):
+    def test_raises_error_if_system_handler_registered_more_than_once(self):
         channel = factory.make_name("sys_", sep="")
         listener = PostgresListenerService()
         listener.register(channel, lambda *args: None)
@@ -84,7 +84,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_system_handler_on_notification(self):
+    def test_calls_system_handler_on_notification(self):
         listener = PostgresListenerService()
         # Change notifications to a frozenset. This makes sure that
         # the system message does not go into the queue. Instead if should
@@ -121,7 +121,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__handles_missing_system_handler_on_notification(self):
+    def test_handles_missing_system_handler_on_notification(self):
         # Captured notifications from the database will go here.
         notices = DeferredQueue()
 
@@ -173,7 +173,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__handles_missing_notify_system_listener_on_notification(self):
+    def test_handles_missing_notify_system_listener_on_notification(self):
         listener = PostgresListenerService()
         # Change notifications to a frozenset. This makes sure that
         # the system message does not go into the queue. Instead if should
@@ -189,7 +189,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_notification(self):
+    def test_calls_handler_on_notification(self):
         listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("machine", lambda *args: dv.set(args))
@@ -204,7 +204,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_notification_with_delayed_registration(self):
+    def test_calls_handler_on_notification_with_delayed_registration(self):
         listener = PostgresListenerService()
         dv = DeferredValue()
         yield listener.startService()
@@ -221,7 +221,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_connects_to_database(self):
+    def test_tryConnection_connects_to_database(self):
         listener = PostgresListenerService()
 
         yield listener.tryConnection()
@@ -232,7 +232,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_logs_error(self):
+    def test_tryConnection_logs_error(self):
         listener = PostgresListenerService()
 
         exception_type = factory.make_exception_type()
@@ -261,7 +261,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_will_retry_in_3_seconds_if_autoReconnect_set(self):
+    def test_tryConnection_will_retry_in_3_seconds_if_autoReconnect_set(self):
         listener = PostgresListenerService()
         listener.autoReconnect = True
 
@@ -277,7 +277,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_will_not_retry_if_autoReconnect_not_set(self):
+    def test_tryConnection_will_not_retry_if_autoReconnect_not_set(self):
         listener = PostgresListenerService()
         listener.autoReconnect = False
 
@@ -296,7 +296,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_reregisters_channels(self):
+    def test_tryConnection_reregisters_channels(self):
         listener = PostgresListenerService()
         handler = object()
         listener.register("channel", handler)
@@ -317,7 +317,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__stopping_cancels_start(self):
+    def test_stopping_cancels_start(self):
         listener = PostgresListenerService()
 
         # Start then stop immediately, without waiting for start to complete.
@@ -343,20 +343,20 @@ class TestPostgresListenerService(MAASServerTestCase):
             yield starting_spy.get()
 
     @wait_for_reactor
-    def test__multiple_starts_return_same_Deferred(self):
+    def test_multiple_starts_return_same_Deferred(self):
         listener = PostgresListenerService()
         self.assertThat(listener.startService(), Is(listener.startService()))
         return listener.stopService()
 
     @wait_for_reactor
-    def test__multiple_stops_return_same_Deferred(self):
+    def test_multiple_stops_return_same_Deferred(self):
         listener = PostgresListenerService()
         self.assertThat(listener.stopService(), Is(listener.stopService()))
         return listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_adds_self_to_reactor(self):
+    def test_tryConnection_adds_self_to_reactor(self):
         listener = PostgresListenerService()
 
         # Spy on calls to reactor.addReader.
@@ -370,7 +370,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_closes_connection_on_failure(self):
+    def test_tryConnection_closes_connection_on_failure(self):
         listener = PostgresListenerService()
 
         exc_type = factory.make_exception_type()
@@ -384,7 +384,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_logs_success(self):
+    def test_tryConnection_logs_success(self):
         listener = PostgresListenerService()
 
         with TwistedLoggerFixture() as logger:
@@ -398,7 +398,7 @@ class TestPostgresListenerService(MAASServerTestCase):
                 yield listener.stopService()
 
     @wait_for_reactor
-    def test__connectionLost_logs_reason(self):
+    def test_connectionLost_logs_reason(self):
         listener = PostgresListenerService()
         failure = Failure(factory.make_exception("Treason!"))
 
@@ -417,7 +417,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         )
 
     @wait_for_reactor
-    def test__connectionLost_does_not_log_reason_when_lost_cleanly(self):
+    def test_connectionLost_does_not_log_reason_when_lost_cleanly(self):
         listener = PostgresListenerService()
 
         with TwistedLoggerFixture() as logger:
@@ -447,13 +447,13 @@ class TestPostgresListenerService(MAASServerTestCase):
         self.assertEqual([sentinel.handler], listener.listeners[channel])
         self.assertNotIn(channel, listener.registeredChannels)
 
-    def test__convertChannel_raises_exception_if_not_valid_channel(self):
+    def test_convertChannel_raises_exception_if_not_valid_channel(self):
         listener = PostgresListenerService()
         self.assertRaises(
             PostgresListenerNotifyError, listener.convertChannel, "node_create"
         )
 
-    def test__convertChannel_raises_exception_if_not_valid_action(self):
+    def test_convertChannel_raises_exception_if_not_valid_action(self):
         listener = PostgresListenerService()
         self.assertRaises(
             PostgresListenerNotifyError,
@@ -463,7 +463,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__doRead_removes_self_from_reactor_on_error(self):
+    def test_doRead_removes_self_from_reactor_on_error(self):
         listener = PostgresListenerService()
 
         connection = self.patch(listener, "connection")
@@ -490,7 +490,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         self.assertThat(failure, IsInstance(Failure))
         self.assertThat(failure.value, IsInstance(error.ConnectionLost))
 
-    def test__doRead_adds_notifies_to_notifications(self):
+    def test_doRead_adds_notifies_to_notifications(self):
         listener = PostgresListenerService()
         notifications = [
             FakeNotify(
@@ -512,7 +512,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__listener_ignores_ENOENT_when_removing_itself_from_reactor(self):
+    def test_listener_ignores_ENOENT_when_removing_itself_from_reactor(self):
         listener = PostgresListenerService()
 
         self.patch(reactor, "addReader")
@@ -533,7 +533,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__listener_waits_for_notifier_to_complete(self):
+    def test_listener_waits_for_notifier_to_complete(self):
         listener = PostgresListenerService()
 
         yield listener.startService()

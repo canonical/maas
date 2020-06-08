@@ -217,7 +217,7 @@ class TestIsResponseTextual(MAASTestCase):
 class TestPrintResponseHeaders(MAASTestCase):
     """Tests for `print_response_headers`."""
 
-    def test__prints_http_headers_in_order(self):
+    def test_prints_http_headers_in_order(self):
         # print_response_headers() prints the given headers, in order, with
         # each hyphen-delimited part of the header name capitalised, to the
         # given file, with the names right aligned, and with a 2 space left
@@ -236,7 +236,7 @@ class TestPrintResponseHeaders(MAASTestCase):
 class TestPrintResponseContent(MAASTestCase):
     """Tests for `print_response_content`."""
 
-    def test__prints_textual_response_with_newline(self):
+    def test_prints_textual_response_with_newline(self):
         # If the response content is textual and sys.stdout is connected to a
         # TTY, print_response_content() prints the response with a trailing
         # newline.
@@ -252,7 +252,7 @@ class TestPrintResponseContent(MAASTestCase):
         utils.print_response_content(response, response["content"], buf)
         self.assertEqual(response["content"] + b"\n", buf.getvalue())
 
-    def test__prints_textual_response_when_redirected(self):
+    def test_prints_textual_response_when_redirected(self):
         # If the response content is textual and sys.stdout is not connected
         # to a TTY, print_response_content() prints the response without a
         # trailing newline.
@@ -267,7 +267,7 @@ class TestPrintResponseContent(MAASTestCase):
         utils.print_response_content(response, response["content"], buf)
         self.assertEqual(response["content"], buf.getvalue())
 
-    def test__writes_binary_response(self):
+    def test_writes_binary_response(self):
         # Non-textual response content is written to the output stream
         # using write(), so it carries no trailing newline, even if
         # stdout is connected to a tty
@@ -282,7 +282,7 @@ class TestPrintResponseContent(MAASTestCase):
         utils.print_response_content(response, response["content"], buf)
         self.assertEqual(response["content"], buf.getvalue())
 
-    def test__prints_textual_response_with_success_msg(self):
+    def test_prints_textual_response_with_success_msg(self):
         # When the response has a status code of 2XX, and the response body is
         # textual print_response_content() will print a success message to the
         # TTY.

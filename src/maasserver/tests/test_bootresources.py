@@ -1536,7 +1536,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
 
 
 class TestSetGlobalDefaultReleases(MAASServerTestCase):
-    def test__doesnt_change_anything(self):
+    def test_doesnt_change_anything(self):
         commissioning_release = factory.make_name("release")
         deploy_release = factory.make_name("release")
         Config.objects.set_config(
@@ -1560,7 +1560,7 @@ class TestSetGlobalDefaultReleases(MAASServerTestCase):
             Config.objects.get(name="default_distro_series").value,
         )
 
-    def test__sets_commissioning_release(self):
+    def test_sets_commissioning_release(self):
         os, release = factory.make_name("os"), factory.make_name("release")
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name="%s/%s" % (os, release)
@@ -1578,7 +1578,7 @@ class TestSetGlobalDefaultReleases(MAASServerTestCase):
             Config.objects.get(name="commissioning_distro_series").value,
         )
 
-    def test__sets_both_commissioning_deploy_release(self):
+    def test_sets_both_commissioning_deploy_release(self):
         os, release = factory.make_name("os"), factory.make_name("release")
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name="%s/%s" % (os, release)
@@ -1769,7 +1769,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.assertThat(mock_cancel, MockCalledOnce())
         self.assertFalse(success)
 
-    def test__import_resources_exits_early_if_lock_held(self):
+    def test_import_resources_exits_early_if_lock_held(self):
         set_simplestreams_env = self.patch_autospec(
             bootresources, "set_simplestreams_env"
         )
@@ -1779,7 +1779,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         # lock is already held.
         self.assertThat(set_simplestreams_env, MockNotCalled())
 
-    def test__import_resources_holds_lock(self):
+    def test_import_resources_holds_lock(self):
         fake_write_all_keyrings = self.patch(
             bootresources, "write_all_keyrings"
         )
@@ -1793,7 +1793,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         bootresources._import_resources()
         self.assertFalse(bootresources.locks.import_images.is_locked())
 
-    def test__import_resources_calls_functions_with_correct_parameters(self):
+    def test_import_resources_calls_functions_with_correct_parameters(self):
         write_all_keyrings = self.patch(bootresources, "write_all_keyrings")
         write_all_keyrings.return_value = []
         image_descriptions = self.patch(
@@ -1829,7 +1829,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         )
         self.expectThat(set_global_default_releases, MockCalledOnceWith())
 
-    def test__import_resources_has_env_GNUPGHOME_set(self):
+    def test_import_resources_has_env_GNUPGHOME_set(self):
         fake_image_descriptions = self.patch(
             bootresources, "download_all_image_descriptions"
         )
@@ -1842,7 +1842,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         bootresources._import_resources()
         self.assertEqual(get_maas_user_gpghome(), capture.env["GNUPGHOME"])
 
-    def test__import_resources_has_env_http_and_https_proxy_set(self):
+    def test_import_resources_has_env_http_and_https_proxy_set(self):
         proxy_address = factory.make_name("proxy")
         self.patch(signals.bootsources, "post_commit_do")
         Config.objects.set_config("http_proxy", proxy_address)
@@ -1862,7 +1862,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             (capture.env["http_proxy"], capture.env["http_proxy"]),
         )
 
-    def test__import_resources_schedules_import_to_rack_controllers(self):
+    def test_import_resources_schedules_import_to_rack_controllers(self):
         from maasserver.clusterrpc import boot_images
 
         self.patch(boot_images.RackControllersImporter, "run")
@@ -1873,7 +1873,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             boot_images.RackControllersImporter.run, MockCalledOnceWith()
         )
 
-    def test__restarts_import_if_source_changed(self):
+    def test_restarts_import_if_source_changed(self):
         # Regression test for LP:1766370
         self.patch(signals.bootsources, "post_commit_do")
         boot_source = factory.make_BootSource(
@@ -1925,7 +1925,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         # write_all_keyrings is called once per
         self.assertEqual(2, mock_write_all_keyrings.call_count)
 
-    def test__restarts_import_if_selection_changed(self):
+    def test_restarts_import_if_selection_changed(self):
         # Regression test for LP:1766370
         self.patch(signals.bootsources, "post_commit_do")
         boot_source = factory.make_BootSource(
@@ -1977,7 +1977,7 @@ class TestImportImages(MAASTransactionServerTestCase):
 class TestImportResourcesInThread(MAASTestCase):
     """Tests for `_import_resources_in_thread`."""
 
-    def test__defers__import_resources_to_thread(self):
+    def test_defers__import_resources_to_thread(self):
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread()
         self.assertThat(
@@ -1993,7 +1993,7 @@ class TestImportResourcesInThread(MAASTestCase):
             MockCalledOnceWith(bootresources._import_resources, notify=None),
         )
 
-    def test__logs_errors_and_does_not_errback(self):
+    def test_logs_errors_and_does_not_errback(self):
         logger = self.useFixture(TwistedLoggerFixture())
         exception_type = factory.make_exception_type()
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
@@ -2009,7 +2009,7 @@ class TestImportResourcesInThread(MAASTestCase):
             logger.output,
         )
 
-    def test__logs_subprocess_output_on_error(self):
+    def test_logs_subprocess_output_on_error(self):
         logger = self.useFixture(TwistedLoggerFixture())
         exception = CalledProcessError(
             2, [factory.make_name("command")], factory.make_name("output")
@@ -2063,15 +2063,15 @@ class TestStopImportResources(MAASTransactionServerTestCase):
 class TestImportResourcesService(MAASTestCase):
     """Tests for `ImportResourcesService`."""
 
-    def test__is_a_TimerService(self):
+    def test_is_a_TimerService(self):
         service = bootresources.ImportResourcesService()
         self.assertIsInstance(service, TimerService)
 
-    def test__runs_once_an_hour(self):
+    def test_runs_once_an_hour(self):
         service = bootresources.ImportResourcesService()
         self.assertEqual(3600, service.step)
 
-    def test__calls__maybe_import_resources(self):
+    def test_calls__maybe_import_resources(self):
         service = bootresources.ImportResourcesService()
         self.assertEqual(
             (service.maybe_import_resources, (), {}), service.call
@@ -2089,7 +2089,7 @@ class TestImportResourcesService(MAASTestCase):
 class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
     """Tests for the async parts of `ImportResourcesService`."""
 
-    def test__imports_resources_in_thread_if_auto(self):
+    def test_imports_resources_in_thread_if_auto(self):
         self.patch(bootresources, "_import_resources_in_thread")
         self.patch(bootresources, "is_dev_environment").return_value = False
 
@@ -2104,7 +2104,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
             bootresources._import_resources_in_thread, MockCalledOnceWith()
         )
 
-    def test__no_auto_import_if_dev(self):
+    def test_no_auto_import_if_dev(self):
         self.patch(bootresources, "_import_resources_in_thread")
 
         with transaction.atomic():
@@ -2118,7 +2118,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
             bootresources._import_resources_in_thread, MockNotCalled()
         )
 
-    def test__does_not_import_resources_in_thread_if_not_auto(self):
+    def test_does_not_import_resources_in_thread_if_not_auto(self):
         self.patch(bootresources, "_import_resources_in_thread")
 
         with transaction.atomic():
@@ -2136,15 +2136,15 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 class TestImportResourcesProgressService(MAASServerTestCase):
     """Tests for `ImportResourcesProgressService`."""
 
-    def test__is_a_TimerService(self):
+    def test_is_a_TimerService(self):
         service = bootresources.ImportResourcesProgressService()
         self.assertIsInstance(service, TimerService)
 
-    def test__runs_every_three_minutes(self):
+    def test_runs_every_three_minutes(self):
         service = bootresources.ImportResourcesProgressService()
         self.assertEqual(180, service.step)
 
-    def test__calls_try_check_boot_images(self):
+    def test_calls_try_check_boot_images(self):
         service = bootresources.ImportResourcesProgressService()
         func, args, kwargs = service.call
         self.expectThat(func, Equals(service.try_check_boot_images))
@@ -2172,7 +2172,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         )
         are_cluster_func.return_value = cluster_answer
 
-    def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
+    def test_adds_warning_if_boot_images_exists_on_cluster_not_region(self):
         maas_url, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
@@ -2194,7 +2194,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
             normalise_whitespace(error_observed),
         )
 
-    def test__adds_warning_if_boot_image_import_not_started(self):
+    def test_adds_warning_if_boot_image_import_not_started(self):
         maas_url, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
@@ -2215,7 +2215,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
             normalise_whitespace(error_observed),
         )
 
-    def test__removes_warning_if_boot_image_process_started(self):
+    def test_removes_warning_if_boot_image_process_started(self):
         register_persistent_error(
             COMPONENT.IMPORT_PXE_FILES,
             "You rotten swine, you! You have deaded me!",
@@ -2230,7 +2230,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         self.assertIsNone(error)
 
-    def test__logs_all_errors(self):
+    def test_logs_all_errors(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
         exception = factory.make_exception()
@@ -2250,13 +2250,13 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
             logger.output,
         )
 
-    def test__are_boot_images_available_in_the_region(self):
+    def test_are_boot_images_available_in_the_region(self):
         service = bootresources.ImportResourcesProgressService()
         self.assertFalse(service.are_boot_images_available_in_the_region())
         factory.make_BootResource()
         self.assertTrue(service.are_boot_images_available_in_the_region())
 
-    def test__are_boot_images_available_in_any_rack_v2(self):
+    def test_are_boot_images_available_in_any_rack_v2(self):
         # Import the websocket handlers now: merely defining DeviceHandler,
         # e.g., causes a database access, which will crash if it happens
         # inside the reactor thread where database access is forbidden and
@@ -2290,7 +2290,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         cluster_rpc.ListBootImagesV2.return_value = succeed(response)
         self.assertTrue(service.are_boot_images_available_in_any_rack())
 
-    def test__are_boot_images_available_in_any_rack_v1(self):
+    def test_are_boot_images_available_in_any_rack_v1(self):
         # Import the websocket handlers now: merely defining DeviceHandler,
         # e.g., causes a database access, which will crash if it happens
         # inside the reactor thread where database access is forbidden and

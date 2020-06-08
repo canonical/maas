@@ -98,7 +98,7 @@ class TestRackHTTPService(MAASTestCase):
         return service
 
     @inlineCallbacks
-    def test__getConfiguration_returns_configuration_object(self):
+    def test_getConfiguration_returns_configuration_object(self):
         rpc_service, protocol = yield prepareRegion(self)
         region_ips = self.extract_regions(rpc_service)
         service = self.make_startable_RackHTTPService(
@@ -114,7 +114,7 @@ class TestRackHTTPService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__tryUpdate_writes_nginx_config_reloads_nginx(self):
+    def test_tryUpdate_writes_nginx_config_reloads_nginx(self):
         self.useFixture(MAASRootFixture())
         rpc_service, _ = yield prepareRegion(self)
         region_ips = self.extract_regions(rpc_service)
@@ -156,7 +156,7 @@ class TestRackHTTPService(MAASTestCase):
         self.assertThat(mock_reloadService, MockCalledOnceWith("http"))
 
     @inlineCallbacks
-    def test__getConfiguration_updates_interval_to_high(self):
+    def test_getConfiguration_updates_interval_to_high(self):
         rpc_service, protocol = yield prepareRegion(self)
         service = http.RackHTTPService(self.make_dir(), rpc_service, reactor)
         yield service.startService()
@@ -166,7 +166,7 @@ class TestRackHTTPService(MAASTestCase):
         self.assertThat(service.step, Equals(service.INTERVAL_HIGH))
         self.assertThat(service._loop.interval, Equals(service.INTERVAL_HIGH))
 
-    def test__genRegionIps_groups_by_region(self):
+    def test_genRegionIps_groups_by_region(self):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         for _ in range(3):
@@ -183,7 +183,7 @@ class TestRackHTTPService(MAASTestCase):
         region_ips = list(service._genRegionIps())
         self.assertEquals(3, len(region_ips))
 
-    def test__genRegionIps_always_returns_same_result(self):
+    def test_genRegionIps_always_returns_same_result(self):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         for _ in range(3):
@@ -201,7 +201,7 @@ class TestRackHTTPService(MAASTestCase):
         for _ in range(3):
             self.assertEquals(region_ips, frozenset(service._genRegionIps()))
 
-    def test__genRegionIps_formats_ipv6(self):
+    def test_genRegionIps_formats_ipv6(self):
         mock_rpc = Mock()
         mock_rpc.connections = {}
         ip_addresses = set()
@@ -242,7 +242,7 @@ class TestRackHTTPService_Errors(MAASTestCase):
         return service
 
     @inlineCallbacks
-    def test__tryUpdate_logs_errors_from_broken_method(self):
+    def test_tryUpdate_logs_errors_from_broken_method(self):
         # Patch the logger in the clusterservice so no log messages are printed
         # because the tests run in debug mode.
         self.patch(common.log, "debug")

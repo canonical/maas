@@ -204,7 +204,7 @@ class TestClient(MAASTestCase):
         conn.peerCertificate = None
         self.assertFalse(client.isSecure())
 
-    def test___eq__(self):
+    def test_eq__(self):
         conn, client = self.make_connection_and_client()
         self.assertThat(client, Equals(client))
         client_for_same_connection = common.Client(conn)
@@ -212,7 +212,7 @@ class TestClient(MAASTestCase):
         _, client_for_another_connection = self.make_connection_and_client()
         self.assertThat(client, Not(Equals(client_for_another_connection)))
 
-    def test___hash__(self):
+    def test_hash__(self):
         conn, client = self.make_connection_and_client()
         # The hash of a common.Client object is that of its connection.
         self.assertThat(hash(conn), Equals(hash(client)))
@@ -331,7 +331,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
 class TestMakeCommandRef(MAASTestCase):
     """Tests for `common.make_command_ref`."""
 
-    def test__command_ref_includes_host_pid_command_and_ask_sequence(self):
+    def test_command_ref_includes_host_pid_command_and_ask_sequence(self):
         host = factory.make_name("hostname")
         pid = random.randint(99, 9999999)
         cmd = factory.make_name("command").encode("ascii")
@@ -349,7 +349,7 @@ class TestMakeCommandRef(MAASTestCase):
             ),
         )
 
-    def test__replaces_missing_ask_with_none(self):
+    def test_replaces_missing_ask_with_none(self):
         box = amp.AmpBox(_command=b"command")
 
         self.patch(common, "gethostname").return_value = "host"

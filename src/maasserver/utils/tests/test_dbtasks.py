@@ -48,7 +48,7 @@ def noop():
 class TestDatabaseTaskService(MAASTestCase):
     """Tests for `DatabaseTasksService`."""
 
-    def test__init(self):
+    def test_init(self):
         service = DatabaseTasksService()
         self.assertThat(
             service,
@@ -62,17 +62,17 @@ class TestDatabaseTaskService(MAASTestCase):
             ),
         )
 
-    def test__cannot_add_task_to_unstarted_service(self):
+    def test_cannot_add_task_to_unstarted_service(self):
         service = DatabaseTasksService()
         self.assertRaises(QueueOverflow, service.addTask, noop)
 
-    def test__cannot_add_task_to_stopped_service(self):
+    def test_cannot_add_task_to_stopped_service(self):
         service = DatabaseTasksService()
         service.startService()
         service.stopService()
         self.assertRaises(QueueOverflow, service.addTask, noop)
 
-    def test__startup_creates_queue_with_previously_defined(self):
+    def test_startup_creates_queue_with_previously_defined(self):
         service = DatabaseTasksService()
         service.startService()
         try:
@@ -89,7 +89,7 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-    def test__task_is_executed_in_other_thread(self):
+    def test_task_is_executed_in_other_thread(self):
         def get_thread_ident():
             return threading.currentThread().ident
 
@@ -103,7 +103,7 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-    def test__arguments_are_passed_through_to_task(self):
+    def test_arguments_are_passed_through_to_task(self):
         def return_args(*args, **kwargs):
             return sentinel.here, args, kwargs
 
@@ -120,7 +120,7 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-    def test__tasks_are_all_run_before_shutdown_completes(self):
+    def test_tasks_are_all_run_before_shutdown_completes(self):
         service = DatabaseTasksService()
         service.startService()
         try:
@@ -145,7 +145,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__deferred_task_can_be_cancelled_when_enqueued(self):
+    def test_deferred_task_can_be_cancelled_when_enqueued(self):
         things = []  # This will NOT be populated by tasks.
 
         service = DatabaseTasksService()
@@ -162,7 +162,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__deferred_task_cannot_be_cancelled_when_running(self):
+    def test_deferred_task_cannot_be_cancelled_when_running(self):
         # DatabaseTaskAlreadyRunning is raised when attempting to cancel a
         # database task that's already running.
         service = DatabaseTasksService()
@@ -180,7 +180,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__sync_task_can_be_cancelled_when_enqueued(self):
+    def test_sync_task_can_be_cancelled_when_enqueued(self):
         things = []  # This will NOT be populated by tasks.
 
         service = DatabaseTasksService()
@@ -195,7 +195,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
         self.assertThat(things, Equals([]))
 
-    def test__sync_task_fires_with_service(self):
+    def test_sync_task_fires_with_service(self):
         service = DatabaseTasksService()
         service.startService()
         try:
@@ -203,7 +203,7 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-    def test__failure_in_deferred_task_does_not_crash_service(self):
+    def test_failure_in_deferred_task_does_not_crash_service(self):
         things = []  # This will be populated by tasks.
         exception_type = factory.make_exception_type()
 
@@ -223,7 +223,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
         self.assertThat(things, Equals([1, 2]))
 
-    def test__failure_in_added_task_does_not_crash_service(self):
+    def test_failure_in_added_task_does_not_crash_service(self):
         things = []  # This will be populated by tasks.
         exception_type = factory.make_exception_type()
 
@@ -241,7 +241,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
         self.assertThat(things, Equals([1, 2]))
 
-    def test__failure_in_task_is_logged(self):
+    def test_failure_in_task_is_logged(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = DatabaseTasksService()
@@ -265,7 +265,7 @@ class TestDatabaseTaskService(MAASTestCase):
 class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
     """Tests for `DatabaseTasksService` with the databse."""
 
-    def test__task_can_access_database_from_other_thread(self):
+    def test_task_can_access_database_from_other_thread(self):
         @transactional
         def database_task():
             # Merely being here means we've accessed the database.

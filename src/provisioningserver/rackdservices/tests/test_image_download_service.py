@@ -204,7 +204,7 @@ class TestGetBootSources(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
-    def test__get_boot_sources_calls_get_boot_sources_v2_before_v1(self):
+    def test_get_boot_sources_calls_get_boot_sources_v2_before_v1(self):
         clock = Clock()
         client_call = Mock()
         client_call.side_effect = [
@@ -221,7 +221,7 @@ class TestGetBootSources(MAASTestCase):
         )
 
     @defer.inlineCallbacks
-    def test__get_boot_sources_calls_get_boot_sources_v1_on_v2_missing(self):
+    def test_get_boot_sources_calls_get_boot_sources_v1_on_v2_missing(self):
         clock = Clock()
         client_call = Mock()
         client_call.side_effect = [
@@ -241,7 +241,7 @@ class TestGetBootSources(MAASTestCase):
         )
 
     @defer.inlineCallbacks
-    def test__get_boot_sources_v1_sets_os_to_wildcard(self):
+    def test_get_boot_sources_v1_sets_os_to_wildcard(self):
         sources = [
             {
                 "path": factory.make_url(),

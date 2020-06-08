@@ -19,7 +19,7 @@ class TestEvaluateTag(MAASTestCase):
         super(TestEvaluateTag, self).setUp()
         self.mock_url = factory.make_simple_http_url()
 
-    def test__calls_process_node_tags(self):
+    def test_calls_process_node_tags(self):
         credentials = "aaa", "bbb", "ccc"
         rack_id = factory.make_name("rack")
         process_node_tags = self.patch_autospec(tags, "process_node_tags")
@@ -44,7 +44,7 @@ class TestEvaluateTag(MAASTestCase):
             ),
         )
 
-    def test__constructs_client_with_credentials(self):
+    def test_constructs_client_with_credentials(self):
         consumer_key = factory.make_name("ckey")
         resource_token = factory.make_name("rtok")
         resource_secret = factory.make_name("rsec")
@@ -74,7 +74,7 @@ class TestEvaluateTag(MAASTestCase):
             MockCalledOnceWith(consumer_key, resource_token, resource_secret),
         )
 
-    def test__constructs_client_with_no_proxies(self):
+    def test_constructs_client_with_no_proxies(self):
         credentials = "aaa", "bbb", "ccc"
         rack_id = factory.make_name("rack")
         process_node_tags = self.patch_autospec(tags, "process_node_tags")

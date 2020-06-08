@@ -106,7 +106,7 @@ class TestOpenBMCPowerDriver(MAASTestCase):
         self.assertEquals(power_state, power_change)
 
     @inlineCallbacks
-    def test__power_on(self):
+    def test_power_on(self):
         driver = OpenBMCPowerDriver()
         system_id = factory.make_name("system_id")
         context = make_context()
@@ -134,7 +134,7 @@ class TestOpenBMCPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__power_off(self):
+    def test_power_off(self):
         driver = OpenBMCPowerDriver()
         system_id = factory.make_name("system_id")
         context = make_context()

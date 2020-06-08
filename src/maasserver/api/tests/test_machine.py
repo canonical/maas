@@ -2477,7 +2477,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def test__403_when_not_admin(self):
+    def test_403_when_not_admin(self):
         machine = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_machine_uri(machine), {"op": "set_storage_layout"}
@@ -2486,7 +2486,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
-    def test__409_when_machine_not_ready(self):
+    def test_409_when_machine_not_ready(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         response = self.client.post(
@@ -2496,7 +2496,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             http.client.CONFLICT, response.status_code, response.content
         )
 
-    def test__400_when_storage_layout_missing(self):
+    def test_400_when_storage_layout_missing(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
@@ -2510,7 +2510,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             json_load_bytes(response.content),
         )
 
-    def test__400_when_invalid_optional_param(self):
+    def test_400_when_invalid_optional_param(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         factory.make_PhysicalBlockDevice(node=machine)
@@ -2535,7 +2535,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             json_load_bytes(response.content),
         )
 
-    def test__400_when_no_boot_disk(self):
+    def test_400_when_no_boot_disk(self):
         self.become_admin()
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=False
@@ -2553,7 +2553,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET),
         )
 
-    def test__400_when_layout_error(self):
+    def test_400_when_layout_error(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         mock_set_storage_layout = self.patch(Machine, "set_storage_layout")
@@ -2572,7 +2572,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET),
         )
 
-    def test__400_when_layout_not_supported(self):
+    def test_400_when_layout_not_supported(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         factory.make_PhysicalBlockDevice(node=machine)
@@ -2589,7 +2589,7 @@ class TestSetStorageLayout(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET),
         )
 
-    def test__calls_set_storage_layout_on_machine(self):
+    def test_calls_set_storage_layout_on_machine(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         mock_set_storage_layout = self.patch(Machine, "set_storage_layout")
@@ -2613,7 +2613,7 @@ class TestMountSpecial(APITestCase.ForUser):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def test__fstype_and_mount_point_is_required_but_options_is_not(self):
+    def test_fstype_and_mount_point_is_required_but_options_is_not(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user
         )
@@ -2631,7 +2631,7 @@ class TestMountSpecial(APITestCase.ForUser):
             ),
         )
 
-    def test__fstype_must_be_a_non_storage_type(self):
+    def test_fstype_must_be_a_non_storage_type(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user
         )
@@ -2659,7 +2659,7 @@ class TestMountSpecial(APITestCase.ForUser):
                 "using fstype " + fstype,
             )
 
-    def test__mount_point_must_be_absolute(self):
+    def test_mount_point_must_be_absolute(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user
         )
@@ -2696,7 +2696,7 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def test__machine_representation_includes_non_storage_filesystem(self):
+    def test_machine_representation_includes_non_storage_filesystem(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         filesystem = factory.make_Filesystem(node=machine, fstype=self.fstype)
@@ -2729,7 +2729,7 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
             ),
         )
 
-    def test__only_acquired_special_filesystems(self):
+    def test_only_acquired_special_filesystems(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         factory.make_Filesystem(
@@ -2767,7 +2767,7 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
             ),
         )
 
-    def test__only_not_acquired_special_filesystems(self):
+    def test_only_not_acquired_special_filesystems(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         filesystem = factory.make_Filesystem(
@@ -2834,12 +2834,12 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
             ),
         )
 
-    def test__user_mounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_user_mounts_non_storage_filesystem_on_allocated_machine(self):
         self.assertCanMountFilesystem(
             factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
         )
 
-    def test__conflict_to_mount_on_non_ready_allocated_machine(self):
+    def test_conflict_to_mount_on_non_ready_allocated_machine(self):
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
         statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
         for status in statuses:
@@ -2859,19 +2859,19 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
                 "using status %d" % status,
             )
 
-    def test__admin_mounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_admin_mounts_non_storage_filesystem_on_allocated_machine(self):
         self.become_admin()
         self.assertCanMountFilesystem(
             factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
         )
 
-    def test__admin_mounts_non_storage_filesystem_on_ready_machine(self):
+    def test_admin_mounts_non_storage_filesystem_on_ready_machine(self):
         self.become_admin()
         self.assertCanMountFilesystem(
             factory.make_Node(status=NODE_STATUS.READY)
         )
 
-    def test__admin_cannot_mount_on_non_ready_or_allocated_machine(self):
+    def test_admin_cannot_mount_on_non_ready_or_allocated_machine(self):
         self.become_admin()
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
         statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
@@ -2900,7 +2900,7 @@ class TestUnmountSpecial(APITestCase.ForUser):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def test__mount_point_is_required(self):
+    def test_mount_point_is_required(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user
         )
@@ -2913,7 +2913,7 @@ class TestUnmountSpecial(APITestCase.ForUser):
             Equals({"mount_point": ["This field is required."]}),
         )
 
-    def test__mount_point_must_be_absolute(self):
+    def test_mount_point_must_be_absolute(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user
         )
@@ -2964,12 +2964,12 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
         )
         self.assertThat(Filesystem.objects.filter(node=machine), HasLength(0))
 
-    def test__user_unmounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_user_unmounts_non_storage_filesystem_on_allocated_machine(self):
         self.assertCanUnmountFilesystem(
             factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
         )
 
-    def test__conflict_to_unmount_on_non_ready_allocated_machine(self):
+    def test_conflict_to_unmount_on_non_ready_allocated_machine(self):
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
         statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
         for status in statuses:
@@ -2992,19 +2992,19 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
                 "using status %d" % status,
             )
 
-    def test__admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
+    def test_admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
         self.become_admin()
         self.assertCanUnmountFilesystem(
             factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
         )
 
-    def test__admin_unmounts_non_storage_filesystem_on_ready_machine(self):
+    def test_admin_unmounts_non_storage_filesystem_on_ready_machine(self):
         self.become_admin()
         self.assertCanUnmountFilesystem(
             factory.make_Node(status=NODE_STATUS.READY)
         )
 
-    def test__admin_cannot_unmount_on_non_ready_or_allocated_machine(self):
+    def test_admin_cannot_unmount_on_non_ready_or_allocated_machine(self):
         self.become_admin()
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
         statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
@@ -3034,7 +3034,7 @@ class TestDefaultGateways(APITestCase.ForUser):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def test__403_when_not_admin(self):
+    def test_403_when_not_admin(self):
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.ALLOCATED
         )
@@ -3045,7 +3045,7 @@ class TestDefaultGateways(APITestCase.ForUser):
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
-    def test__clears_default_gateways(self):
+    def test_clears_default_gateways(self):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.ALLOCATED
@@ -3086,7 +3086,7 @@ class TestDefaultGateways(APITestCase.ForUser):
         self.assertIsNone(machine.gateway_link_ipv4)
         self.assertIsNone(machine.gateway_link_ipv6)
 
-    def test__returns_null_gateway_if_no_explicit_gateway_exists(self):
+    def test_returns_null_gateway_if_no_explicit_gateway_exists(self):
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.ALLOCATED
         )
@@ -3128,7 +3128,7 @@ class TestDefaultGateways(APITestCase.ForUser):
             ),
         )
 
-    def test__returns_effective_gateway_if_no_explicit_gateway_set(self):
+    def test_returns_effective_gateway_if_no_explicit_gateway_set(self):
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.ALLOCATED
         )
@@ -3176,7 +3176,7 @@ class TestDefaultGateways(APITestCase.ForUser):
             ),
         )
 
-    def test__returns_links_if_set(self):
+    def test_returns_links_if_set(self):
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.ALLOCATED
         )
@@ -3233,7 +3233,7 @@ class TestGetCurtinConfig(APITestCase.ForUser):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def test__500_when_machine_not_in_deployment_state(self):
+    def test_500_when_machine_not_in_deployment_state(self):
         machine = factory.make_Node(
             owner=self.user,
             status=factory.pick_enum(
@@ -3252,7 +3252,7 @@ class TestGetCurtinConfig(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
 
-    def test__returns_curtin_config_in_yaml(self):
+    def test_returns_curtin_config_in_yaml(self):
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.DEPLOYING
         )

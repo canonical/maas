@@ -155,7 +155,7 @@ class TestLargeFile(MAASServerTestCase):
 
 
 class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
-    def test__schedules_unlink(self):
+    def test_schedules_unlink(self):
         # We're going to capture the delayed call that
         # delete_large_object_content_later() creates.
         clock = self.patch(largefile_module, "reactor", Clock())

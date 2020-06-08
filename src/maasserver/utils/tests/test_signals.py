@@ -220,7 +220,7 @@ class ConnectToFieldChangeTest(MAASLegacyTransactionServerTestCase):
 
 
 class TestSignalsManager(MAASServerTestCase):
-    def test__can_watch_fields(self):
+    def test_can_watch_fields(self):
         connect_to_field_change = self.patch_autospec(
             signals_module, "connect_to_field_change"
         )
@@ -248,7 +248,7 @@ class TestSignalsManager(MAASServerTestCase):
             ),
         )
 
-    def test__can_watch_config(self):
+    def test_can_watch_config(self):
         def callback():
             pass
 
@@ -272,7 +272,7 @@ class TestSignalsManager(MAASServerTestCase):
             ),
         )
 
-    def test__can_watch_any_signal(self):
+    def test_can_watch_any_signal(self):
         django_signal = pick_django_signal()
 
         manager = SignalsManager()
@@ -309,7 +309,7 @@ class TestSignalsManager(MAASServerTestCase):
     def make_Signal(self):
         return Signal(Mock(name="connect"), Mock(name="disconnect"))
 
-    def test__add_adds_the_signal(self):
+    def test_add_adds_the_signal(self):
         manager = SignalsManager()
         signal = self.make_Signal()
         self.assertThat(manager.add(signal), Is(signal))
@@ -319,7 +319,7 @@ class TestSignalsManager(MAASServerTestCase):
         self.assertThat(signal.connect, MockNotCalled())
         self.assertThat(signal.disconnect, MockNotCalled())
 
-    def test__add_connects_signal_if_manager_is_enabled(self):
+    def test_add_connects_signal_if_manager_is_enabled(self):
         manager = SignalsManager()
         manager.enable()
         signal = self.make_Signal()
@@ -327,7 +327,7 @@ class TestSignalsManager(MAASServerTestCase):
         self.assertThat(signal.connect, MockCalledOnceWith())
         self.assertThat(signal.disconnect, MockNotCalled())
 
-    def test__add_disconnects_signal_if_manager_is_disabled(self):
+    def test_add_disconnects_signal_if_manager_is_disabled(self):
         manager = SignalsManager()
         manager.disable()
         signal = self.make_Signal()
@@ -335,7 +335,7 @@ class TestSignalsManager(MAASServerTestCase):
         self.assertThat(signal.connect, MockNotCalled())
         self.assertThat(signal.disconnect, MockCalledOnceWith())
 
-    def test__remove_removes_the_signal(self):
+    def test_remove_removes_the_signal(self):
         manager = SignalsManager()
         signal = self.make_Signal()
         manager.add(signal)
@@ -344,7 +344,7 @@ class TestSignalsManager(MAASServerTestCase):
         self.assertThat(signal.connect, MockNotCalled())
         self.assertThat(signal.disconnect, MockNotCalled())
 
-    def test__enable_enables_all_signals(self):
+    def test_enable_enables_all_signals(self):
         manager = SignalsManager()
         signals = [self.make_Signal(), self.make_Signal()]
         for signal in signals:
@@ -364,7 +364,7 @@ class TestSignalsManager(MAASServerTestCase):
             ),
         )
 
-    def test__disable_disables_all_signals(self):
+    def test_disable_disables_all_signals(self):
         manager = SignalsManager()
         signals = [self.make_Signal(), self.make_Signal()]
         for signal in signals:

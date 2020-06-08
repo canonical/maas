@@ -14,7 +14,7 @@ from maasserver.utils.orm import reload_object
 
 
 class TestDNSDataForm(MAASServerTestCase):
-    def test__creates_dnsdata(self):
+    def test_creates_dnsdata(self):
         name = factory.make_name("dnsdata")
         (rrtype, rrdata) = factory.pick_rrset()
         dnsrr = factory.make_DNSResource(no_ip_addresses=True)
@@ -77,12 +77,12 @@ class TestDNSDataForm(MAASServerTestCase):
         self.assertEqual(rrdata, dnsdata.rrdata)
         self.assertEqual(None, dnsdata.ttl)
 
-    def test__doesnt_require_name_on_update(self):
+    def test_doesnt_require_name_on_update(self):
         dnsdata = factory.make_DNSData()
         form = DNSDataForm(instance=dnsdata, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__updates_dnsdata(self):
+    def test_updates_dnsdata(self):
         dnsdata = factory.make_DNSData()
         (rrtype, rrdata) = factory.pick_rrset()
         new_ttl = random.randint(1, 1000)

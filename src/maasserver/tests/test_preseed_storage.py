@@ -113,7 +113,7 @@ class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
     """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=node,
@@ -232,7 +232,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             bios_boot_method="uefi",
@@ -430,7 +430,7 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
@@ -562,7 +562,7 @@ class TestSimpleWithEmptyDiskLayout(
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
@@ -645,7 +645,7 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
@@ -738,7 +738,7 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
@@ -826,7 +826,7 @@ class TestGPTPXELargeBootDiskLayout(
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
@@ -1050,7 +1050,7 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             bios_boot_method="uefi",
@@ -1264,7 +1264,7 @@ class TestSimplePower8Layout(MAASServerTestCase, AssertStorageConfigMixin):
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="ppc64el/generic",
@@ -1347,7 +1347,7 @@ class TestPower8ExtraSpaceLayout(MAASServerTestCase, AssertStorageConfigMixin):
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="ppc64el/generic",
@@ -1436,7 +1436,7 @@ class TestPower8NoPartitionTableLayout(
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="ppc64el/generic",
@@ -1492,7 +1492,7 @@ def shuffled(things):
 
 
 class TestMountOrdering(MAASServerTestCase):
-    def test__mounts_are_sorted_lexically_by_path(self):
+    def test_mounts_are_sorted_lexically_by_path(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
@@ -1722,7 +1722,7 @@ class TestComplexDiskLayoutWithISCSI(
         """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             bios_boot_method="uefi",
@@ -1982,7 +1982,7 @@ class TestBootableRaidLayoutMBR(MAASServerTestCase, AssertStorageConfigMixin):
     """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
@@ -2113,7 +2113,7 @@ class TestBootableRaidLayoutUEFI(MAASServerTestCase, AssertStorageConfigMixin):
     """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
@@ -2262,7 +2262,7 @@ class TestBootableRaidLayoutGPT(MAASServerTestCase, AssertStorageConfigMixin):
     """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
@@ -2422,7 +2422,7 @@ class TestBootableRaidLayoutGPTWithPartition(
     """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",
@@ -2621,7 +2621,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
     """
     )
 
-    def test__renders_expected_output(self):
+    def test_renders_expected_output(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             architecture="amd64/generic",

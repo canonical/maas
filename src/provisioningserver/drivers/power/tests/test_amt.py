@@ -113,7 +113,7 @@ class TestAMTPowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def test__render_wsman_state_xml_renders_xml(self):
+    def test_render_wsman_state_xml_renders_xml(self):
         amt_power_driver = AMTPowerDriver()
         power_change = choice(["on", "off", "restart"])
         result = amt_power_driver._render_wsman_state_xml(power_change)
@@ -157,7 +157,7 @@ class TestAMTPowerDriver(MAASTestCase):
 
         self.assertEqual(result, "8")
 
-    def test__run_runs_command(self):
+    def test_run_runs_command(self):
         amt_power_driver = AMTPowerDriver()
         amt_power_driver.env = None
         command = (factory.make_name("command"),)
@@ -175,7 +175,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals(b"stdout"))
 
-    def test__run_raises_power_action_error(self):
+    def test_run_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         self.patch_run_command(returncode=1)
         self.assertRaises(
@@ -186,7 +186,7 @@ class TestAMTPowerDriver(MAASTestCase):
             None,
         )
 
-    def test__set_pxe_boot_sets_pxe(self):
+    def test_set_pxe_boot_sets_pxe(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
@@ -243,7 +243,7 @@ class TestAMTPowerDriver(MAASTestCase):
             ),
         )
 
-    def test__issue_amttool_command_calls__run(self):
+    def test_issue_amttool_command_calls__run(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
@@ -267,7 +267,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals(b"output"))
 
-    def test__issue_wsman_command_calls__run_for_power(self):
+    def test_issue_wsman_command_calls__run_for_power(self):
         amt_power_driver = AMTPowerDriver()
         power_change = choice(["on", "off", "restart"])
         ip_address = factory.make_ipv4_address()
@@ -315,7 +315,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals(b"output"))
 
-    def test__issue_wsman_command_calls__run_for_query(self):
+    def test_issue_wsman_command_calls__run_for_query(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
@@ -710,7 +710,7 @@ class TestAMTPowerDriver(MAASTestCase):
             power_pass,
         )
 
-    def test__get_amt_command_returns_amttool(self):
+    def test_get_amt_command_returns_amttool(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
@@ -735,7 +735,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals("amttool"))
 
-    def test__get_amt_command_returns_wsman(self):
+    def test_get_amt_command_returns_wsman(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
@@ -760,7 +760,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals("wsman"))
 
-    def test__get_amt_command_crashes_when_amttool_has_no_output(self):
+    def test_get_amt_command_crashes_when_amttool_has_no_output(self):
         amt_power_driver = AMTPowerDriver()
         self.patch_run_command(decode=True)
         self.assertRaises(
@@ -770,7 +770,7 @@ class TestAMTPowerDriver(MAASTestCase):
             sentinel.power_pass,
         )
 
-    def test__get_amt_command_crashes_when_no_version_found(self):
+    def test_get_amt_command_crashes_when_no_version_found(self):
         amt_power_driver = AMTPowerDriver()
         self.patch_run_command(stdout=b"No match here", decode=True)
         self.assertRaises(
@@ -780,7 +780,7 @@ class TestAMTPowerDriver(MAASTestCase):
             sentinel.power_pass,
         )
 
-    def test__get_amt_command_raises_power_error(self):
+    def test_get_amt_command_raises_power_error(self):
         amt_power_driver = AMTPowerDriver()
         for error, error_info in AMT_ERRORS.items():
             self.patch_run_command(stderr=error.encode("utf-8"), decode=True)
@@ -791,31 +791,31 @@ class TestAMTPowerDriver(MAASTestCase):
                 factory.make_name("power_pass"),
             )
 
-    def test__get_amttool_boot_mode_local_boot(self):
+    def test_get_amttool_boot_mode_local_boot(self):
         amt_power_driver = AMTPowerDriver()
         result = amt_power_driver._get_amttool_boot_mode("local")
         self.assertEqual(result, "")
 
-    def test__get_ammtool_boot_mode_pxe_booting(self):
+    def test_get_ammtool_boot_mode_pxe_booting(self):
         amt_power_driver = AMTPowerDriver()
         boot_mode = factory.make_name("boot_mode")
         result = amt_power_driver._get_amttool_boot_mode(boot_mode)
         self.assertEqual(result, boot_mode)
 
-    def test__get_ip_address_returns_ip_address(self):
+    def test_get_ip_address_returns_ip_address(self):
         amt_power_driver = AMTPowerDriver()
         power_address = factory.make_name("power_address")
         ip_address = factory.make_ipv4_address()
         result = amt_power_driver._get_ip_address(power_address, ip_address)
         self.assertEqual(result, ip_address)
 
-    def test__get_ip_address_returns_power_address(self):
+    def test_get_ip_address_returns_power_address(self):
         amt_power_driver = AMTPowerDriver()
         power_address = factory.make_name("power_address")
         result = amt_power_driver._get_ip_address(power_address, None)
         self.assertEqual(result, power_address)
 
-    def test__get_ip_address_raises_no_host_provided(self):
+    def test_get_ip_address_raises_no_host_provided(self):
         amt_power_driver = AMTPowerDriver()
         self.assertRaises(
             PowerFatalError, amt_power_driver._get_ip_address, None, None

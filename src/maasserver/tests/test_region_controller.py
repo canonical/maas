@@ -406,7 +406,7 @@ class TestRegionControllerService(MAASServerTestCase):
         )
 
     @wait_for_reactor
-    def test__check_serial_doesnt_raise_error_on_successful_serial_match(self):
+    def test_check_serial_doesnt_raise_error_on_successful_serial_match(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
         formatted_serial = "{0:10d}".format(result_serial)
@@ -437,7 +437,7 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__check_serial_raise_error_after_30_tries(self):
+    def test_check_serial_raise_error_after_30_tries(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
         formatted_serial = "{0:10d}".format(result_serial)
@@ -452,7 +452,7 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__check_serial_handles_ValueError(self):
+    def test_check_serial_handles_ValueError(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
         formatted_serial = "{0:10d}".format(result_serial)
@@ -467,7 +467,7 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__check_serial_handles_TimeoutError(self):
+    def test_check_serial_handles_TimeoutError(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
         formatted_serial = "{0:10d}".format(result_serial)
@@ -480,14 +480,14 @@ class TestRegionControllerService(MAASServerTestCase):
         with ExpectedException(DNSReloadError):
             yield service._checkSerial((formatted_serial, True, dns_names))
 
-    def test__getRBACClient_returns_None_when_no_url(self):
+    def test_getRBACClient_returns_None_when_no_url(self):
         service = self.make_service(sentinel.listener)
         service.rbacClient = sentinel.client
         Config.objects.set_config("rbac_url", "")
         self.assertIsNone(service._getRBACClient())
         self.assertIsNone(service.rbacClient)
 
-    def test__getRBACClient_creates_new_client_and_uses_it_again(self):
+    def test_getRBACClient_creates_new_client_and_uses_it_again(self):
         self.patch(region_controller, "get_auth_info")
         Config.objects.set_config("rbac_url", "http://rbac.example.com")
         service = self.make_service(sentinel.listener)
@@ -496,7 +496,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIs(client, service.rbacClient)
         self.assertIs(client, service._getRBACClient())
 
-    def test__getRBACClient_creates_new_client_when_url_changes(self):
+    def test_getRBACClient_creates_new_client_when_url_changes(self):
         self.patch(region_controller, "get_auth_info")
         Config.objects.set_config("rbac_url", "http://rbac.example.com")
         service = self.make_service(sentinel.listener)
@@ -507,7 +507,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIsNot(new_client, client)
         self.assertIs(new_client, service._getRBACClient())
 
-    def test__getRBACClient_creates_new_client_when_auth_info_changes(self):
+    def test_getRBACClient_creates_new_client_when_auth_info_changes(self):
         mock_get_auth_info = self.patch(region_controller, "get_auth_info")
         Config.objects.set_config("rbac_url", "http://rbac.example.com")
         service = self.make_service(sentinel.listener)
@@ -518,7 +518,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIsNot(new_client, client)
         self.assertIs(new_client, service._getRBACClient())
 
-    def test__rbacNeedsFull(self):
+    def test_rbacNeedsFull(self):
         service = self.make_service(sentinel.listener)
         changes = [
             RBACSync(action=RBAC_ACTION.ADD),
@@ -528,7 +528,7 @@ class TestRegionControllerService(MAASServerTestCase):
         ]
         self.assertTrue(service._rbacNeedsFull(changes))
 
-    def test__rbacDifference(self):
+    def test_rbacDifference(self):
         service = self.make_service(sentinel.listener)
         changes = [
             RBACSync(
@@ -659,21 +659,21 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
         self.assertThat(mock_msg, MockCalledOnceWith(expected_msg))
 
-    def test__rbacSync_returns_None_when_nothing_to_do(self):
+    def test_rbacSync_returns_None_when_nothing_to_do(self):
         RBACSync.objects.clear("resource-pool")
 
         service = RegionControllerService(sentinel.listener)
         service.rbacInit = True
         self.assertIsNone(service._rbacSync())
 
-    def test__rbacSync_returns_None_and_clears_sync_when_no_client(self):
+    def test_rbacSync_returns_None_and_clears_sync_when_no_client(self):
         RBACSync.objects.create(resource_type="resource-pool")
 
         service = RegionControllerService(sentinel.listener)
         self.assertIsNone(service._rbacSync())
         self.assertFalse(RBACSync.objects.exists())
 
-    def test__rbacSync_syncs_on_full_change(self):
+    def test_rbacSync_syncs_on_full_change(self):
         _, resources = self.make_resource_pools()
         RBACSync.objects.clear("resource-pool")
         RBACSync.objects.clear("")
@@ -696,7 +696,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertEqual(last_sync.resource_type, "resource-pool")
         self.assertEqual(last_sync.sync_id, "x-y-z")
 
-    def test__rbacSync_syncs_on_init(self):
+    def test_rbacSync_syncs_on_init(self):
         RBACSync.objects.clear("resource-pool")
         _, resources = self.make_resource_pools()
 
@@ -715,7 +715,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertEqual(last_sync.resource_type, "resource-pool")
         self.assertEqual(last_sync.sync_id, "x-y-z")
 
-    def test__rbacSync_syncs_on_changes(self):
+    def test_rbacSync_syncs_on_changes(self):
         RBACLastSync.objects.create(
             resource_type="resource-pool", sync_id="a-b-c"
         )
@@ -746,7 +746,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertEqual(last_sync.resource_type, "resource-pool")
         self.assertEqual(last_sync.sync_id, "x-y-z")
 
-    def test__rbacSync_syncs_all_on_conflict(self):
+    def test_rbacSync_syncs_all_on_conflict(self):
         RBACLastSync.objects.create(
             resource_type="resource-pool", sync_id="a-b-c"
         )
@@ -783,7 +783,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertEqual(last_sync.resource_type, "resource-pool")
         self.assertEqual(last_sync.sync_id, "x-y-z")
 
-    def test__rbacSync_update_sync_id(self):
+    def test_rbacSync_update_sync_id(self):
         rbac_sync = RBACLastSync.objects.create(
             resource_type="resource-pool", sync_id="a-b-c"
         )

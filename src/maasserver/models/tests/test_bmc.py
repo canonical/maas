@@ -2389,10 +2389,10 @@ class TestPodDefaultMACVlanMode(MAASServerTestCase):
 
 
 class TestGetRequestedIPs(MAASServerTestCase):
-    def test__returns_empty_dict_if_no_requested_machine(self):
+    def test_returns_empty_dict_if_no_requested_machine(self):
         self.assertThat(get_requested_ips(None), Equals({}))
 
-    def test__returns_empty_dict_if_no_interfaces_are_named(self):
+    def test_returns_empty_dict_if_no_interfaces_are_named(self):
         interface = RequestedMachineInterface()
         interface2 = RequestedMachineInterface()
         interfaces = [interface, interface2]
@@ -2401,7 +2401,7 @@ class TestGetRequestedIPs(MAASServerTestCase):
         )
         self.assertThat(get_requested_ips(requested_machine), Equals({}))
 
-    def test__returns_ifname_to_ip_list_dict_if_specified(self):
+    def test_returns_ifname_to_ip_list_dict_if_specified(self):
         interface = RequestedMachineInterface(
             ifname="eth0", requested_ips=["10.0.0.1", "2001:db8::1"]
         )
@@ -2422,7 +2422,7 @@ class TestGetRequestedIPs(MAASServerTestCase):
             ),
         )
 
-    def test__leaves_out_keys_with_no_assigned_ips(self):
+    def test_leaves_out_keys_with_no_assigned_ips(self):
         interface = RequestedMachineInterface(
             ifname="eth0", requested_ips=["10.0.0.1", "2001:db8::1"]
         )

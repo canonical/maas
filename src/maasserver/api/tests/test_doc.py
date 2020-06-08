@@ -436,11 +436,11 @@ class TestDescribingAPI(MAASTestCase):
 class TestGeneratePowerTypesDoc(MAASTestCase):
     """Tests for `generate_power_types_doc`."""
 
-    def test__generate_power_types_doc_generates_doc(self):
+    def test_generate_power_types_doc_generates_doc(self):
         doc = generate_power_types_doc()
         self.assertThat(doc, ContainsAll(["Power types", "IPMI", "virsh"]))
 
-    def test__generate_power_types_doc_generates_describes_power_type(self):
+    def test_generate_power_types_doc_generates_describes_power_type(self):
         power_driver = random.choice(
             [
                 driver
@@ -465,11 +465,11 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
 class TestGeneratePodTypesDoc(MAASTestCase):
     """Tests for `generate_pod_types_doc`."""
 
-    def test__generate_pod_types_doc_generates_doc(self):
+    def test_generate_pod_types_doc_generates_doc(self):
         doc = generate_pod_types_doc()
         self.assertThat(doc, ContainsAll(["Pod types", "virsh"]))
 
-    def test__generate_pod_types_doc_generates_describes_types(self):
+    def test_generate_pod_types_doc_generates_describes_types(self):
         pod_driver = random.choice([driver for _, driver in PodDriverRegistry])
         doc = generate_pod_types_doc()
         self.assertThat(
@@ -478,12 +478,12 @@ class TestGeneratePodTypesDoc(MAASTestCase):
 
 
 class TestDescribeCanonical(MAASTestCase):
-    def test__passes_True_False_and_None_through(self):
+    def test_passes_True_False_and_None_through(self):
         self.expectThat(describe_canonical(True), Is(True))
         self.expectThat(describe_canonical(False), Is(False))
         self.expectThat(describe_canonical(None), Is(None))
 
-    def test__passes_numbers_through(self):
+    def test_passes_numbers_through(self):
         self.expectThat(
             describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
         )
@@ -494,12 +494,12 @@ class TestDescribeCanonical(MAASTestCase):
             describe_canonical(1.0), MatchesAll(IsInstance(float), Equals(1.0))
         )
 
-    def test__passes_unicode_strings_through(self):
+    def test_passes_unicode_strings_through(self):
         string = factory.make_string()
         self.assertThat(string, IsInstance(str))
         self.expectThat(describe_canonical(string), Is(string))
 
-    def test__decodes_byte_strings(self):
+    def test_decodes_byte_strings(self):
         string = factory.make_string().encode("utf-8")
         self.expectThat(
             describe_canonical(string),
@@ -510,32 +510,32 @@ class TestDescribeCanonical(MAASTestCase):
             ),
         )
 
-    def test__returns_sequences_as_tuples(self):
+    def test_returns_sequences_as_tuples(self):
         self.expectThat(describe_canonical([1, 2, 3]), Equals((1, 2, 3)))
 
-    def test__recursively_calls_sequence_elements(self):
+    def test_recursively_calls_sequence_elements(self):
         self.expectThat(describe_canonical([1, [2, 3]]), Equals((1, (2, 3))))
 
-    def test__sorts_sequences(self):
+    def test_sorts_sequences(self):
         self.expectThat(describe_canonical([3, 1, 2]), Equals((1, 2, 3)))
         self.expectThat(
             describe_canonical([[1, 2], [1, 1]]), Equals(((1, 1), (1, 2)))
         )
 
-    def test__returns_mappings_as_tuples(self):
+    def test_returns_mappings_as_tuples(self):
         self.expectThat(describe_canonical({1: 2}), Equals(((1, 2),)))
 
-    def test__recursively_calls_mapping_keys_and_values(self):
+    def test_recursively_calls_mapping_keys_and_values(self):
         mapping = {"key\u1234".encode("utf-8"): ["b", "a", "r"]}
         expected = (("key\u1234", ("a", "b", "r")),)
         self.expectThat(describe_canonical(mapping), Equals(expected))
 
-    def test__sorts_mappings(self):
+    def test_sorts_mappings(self):
         self.expectThat(
             describe_canonical({2: 1, 1: 1}), Equals(((1, 1), (2, 1)))
         )
 
-    def test__sorts_mappings_by_key_and_value(self):
+    def test_sorts_mappings_by_key_and_value(self):
         class inth(int):
             """An `int` that hashes independently from its value.
 
@@ -560,20 +560,20 @@ class TestDescribeCanonical(MAASTestCase):
         )
         self.expectThat(describe_canonical(mapping), Equals(expected))
 
-    def test__rejects_other_types(self):
+    def test_rejects_other_types(self):
         self.assertRaises(TypeError, describe_canonical, lambda: None)
 
 
 class TestHashCanonical(MAASTestCase):
     """Tests for `hash_canonical`."""
 
-    def test__canonicalizes_argument(self):
+    def test_canonicalizes_argument(self):
         describe_canonical = self.patch(doc_module, "describe_canonical")
         describe_canonical.return_value = ""
         hash_canonical(sentinel.desc)
         self.assertThat(describe_canonical, MockCalledOnceWith(sentinel.desc))
 
-    def test__returns_hash_object(self):
+    def test_returns_hash_object(self):
         hasher = hash_canonical(factory.make_string())
         self.assertThat(
             hasher,
@@ -587,7 +587,7 @@ class TestHashCanonical(MAASTestCase):
             ),
         )
 
-    def test__misc_digests(self):
+    def test_misc_digests(self):
         def hexdigest(data):
             return hash_canonical(data).hexdigest()
 
@@ -634,7 +634,7 @@ class TestGetAPIDescriptionHash(MAASTestCase):
         with doc_module.api_description_hash_lock:
             doc_module.api_description_hash = None
 
-    def test__calculates_hash_from_api_description(self):
+    def test_calculates_hash_from_api_description(self):
         # Fake the API description.
         api_description = factory.make_string()
         api_description_hasher = hash_canonical(api_description)
@@ -645,7 +645,7 @@ class TestGetAPIDescriptionHash(MAASTestCase):
             Equals(api_description_hasher.hexdigest()),
         )
 
-    def test__caches_hash(self):
+    def test_caches_hash(self):
         # Fake the API description.
         api_description = factory.make_string()
         api_description_hasher = hash_canonical(api_description)

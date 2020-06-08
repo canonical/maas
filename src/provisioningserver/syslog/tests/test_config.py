@@ -59,7 +59,7 @@ class TestWriteConfig(MAASTestCase):
                 return
         self.fail("%s was not present in: %s" % (match, lines))
 
-    def test__packaging_maas_user_group_with_drop(self):
+    def test_packaging_maas_user_group_with_drop(self):
         config.write_config(False)
         matchers = [
             Contains("$FileOwner maas"),
@@ -72,7 +72,7 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=MatchesAll(*matchers)),
         )
 
-    def test__snappy_root_user_group_no_drop(self):
+    def test_snappy_root_user_group_no_drop(self):
         self.patch(snappy, "running_in_snap").return_value = True
         config.write_config(False)
         matchers = [Contains("$FileOwner root"), Contains("$FileGroup root")]
@@ -81,7 +81,7 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=MatchesAll(*matchers)),
         )
 
-    def test__udp_and_tcp(self):
+    def test_udp_and_tcp(self):
         config.write_config(False)
         matcher_one = Contains('input(type="imtcp" port="5247")')
         matcher_two = Contains('input(type="imudp" port="5247")')
@@ -90,7 +90,7 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
         )
 
-    def test__udp_and_tcp_both_use_different_port(self):
+    def test_udp_and_tcp_both_use_different_port(self):
         port = factory.pick_port()
         config.write_config(False, port=port)
         matcher_one = Contains('input(type="imtcp" port="%d")' % port)
@@ -100,7 +100,7 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
         )
 
-    def test__adds_tcp_stop(self):
+    def test_adds_tcp_stop(self):
         cidr = factory.make_ipv4_network()
         config.write_config([cidr])
         matcher = Contains(':inputname, isequal, "imtcp" stop')
@@ -109,7 +109,7 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=matcher),
         )
 
-    def test__write_local(self):
+    def test_write_local(self):
         config.write_config(True)
         matcher_one = Contains(
             ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist'
@@ -120,7 +120,7 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
         )
 
-    def test__no_write_local(self):
+    def test_no_write_local(self):
         config.write_config(False)
         matcher_one = Not(
             Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist')
@@ -137,7 +137,7 @@ class TestWriteConfig(MAASTestCase):
             ),
         )
 
-    def test__forwarders(self):
+    def test_forwarders(self):
         forwarders = [
             {
                 "ip": factory.make_ip_address(),
@@ -154,7 +154,7 @@ class TestWriteConfig(MAASTestCase):
                     'queue.filename="%s"' % host["name"], lines
                 )
 
-    def test__forwarders_diff_port(self):
+    def test_forwarders_diff_port(self):
         port = factory.pick_port()
         forwarders = [
             {
@@ -170,7 +170,7 @@ class TestWriteConfig(MAASTestCase):
                 self.assertLinesContain('target="%s"' % host["ip"], lines)
                 self.assertLinesContain('port="%d"' % port, lines)
 
-    def test__write_local_and_forwarders(self):
+    def test_write_local_and_forwarders(self):
         forwarders = [
             {
                 "ip": factory.make_ip_address(),

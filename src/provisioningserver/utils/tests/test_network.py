@@ -111,28 +111,28 @@ class TestMakeNetwork(MAASTestCase):
 
 
 class TestInetNtop(MAASTestCase):
-    def test__ipv4(self):
+    def test_ipv4(self):
         ip = factory.make_ipv4_address()
         self.assertThat(inet_ntop(IPAddress(ip).value), Equals(ip))
 
-    def test__ipv6(self):
+    def test_ipv6(self):
         ip = factory.make_ipv6_address()
         self.assertThat(inet_ntop(IPAddress(ip).value), Equals(ip))
 
 
 class TestConversionFunctions(MAASTestCase):
-    def test__bytes_to_hex(self):
+    def test_bytes_to_hex(self):
         self.assertThat(bytes_to_hex(b"\x01\xff"), Equals(b"01ff"))
         self.assertThat(bytes_to_hex(b"\x00\x01\xff"), Equals(b"0001ff"))
 
-    def test__bytes_to_int(self):
+    def test_bytes_to_int(self):
         self.assertThat(bytes_to_int(b"\xff\xff"), Equals(65535))
         self.assertThat(bytes_to_int(b"\xff\xff\xff"), Equals(16777215))
         self.assertThat(
             bytes_to_int(b"\xff\xff\xff\xff\xff\xff"), Equals(281474976710655)
         )
 
-    def test__hex_str_to_bytes(self):
+    def test_hex_str_to_bytes(self):
         self.assertThat(hex_str_to_bytes("0x0000"), Equals(b"\x00\x00"))
         self.assertThat(hex_str_to_bytes("ff:ff"), Equals(b"\xff\xff"))
         self.assertThat(hex_str_to_bytes("ff ff  "), Equals(b"\xff\xff"))
@@ -153,7 +153,7 @@ class TestConversionFunctions(MAASTestCase):
             Equals(b"\x0a\x0b\x0c\x0d\x0e\x0f"),
         )
 
-    def test__format_eui(self):
+    def test_format_eui(self):
         self.assertThat(
             format_eui(EUI("0A-0B-0C-0D-0E-0F")), Equals("0a:0b:0c:0d:0e:0f")
         )
@@ -166,7 +166,7 @@ class TestFindIPViaARP(MAASTestCase):
         fake.return_value = output.encode("ascii")
         return fake
 
-    def test__resolves_MAC_address_to_IP(self):
+    def test_resolves_MAC_address_to_IP(self):
         sample = """\
         Address HWtype  HWaddress Flags Mask            Iface
         192.168.100.20 (incomplete)                              virbr1
@@ -184,7 +184,7 @@ class TestFindIPViaARP(MAASTestCase):
         self.assertThat(call_and_check, MockCalledOnceWith(["arp", "-n"]))
         self.assertEqual("192.168.0.1", ip_address_observed)
 
-    def test__returns_consistent_output(self):
+    def test_returns_consistent_output(self):
         mac = factory.make_mac_address()
         ips = ["10.0.0.11", "10.0.0.99"]
         lines = ["%s ether %s C eth0" % (ip, mac) for ip in ips]
@@ -196,7 +196,7 @@ class TestFindIPViaARP(MAASTestCase):
         self.assertIn(one_result, ips)
         self.assertEqual(one_result, other_result)
 
-    def test__ignores_case(self):
+    def test_ignores_case(self):
         sample = """\
         192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
         """
@@ -260,7 +260,7 @@ class TestFindMACViaARP(MAASTestCase):
             "mac": mac,
         }
 
-    def test__calls_ip_neigh(self):
+    def test_calls_ip_neigh(self):
         call_and_check = self.patch_call("")
         find_mac_via_arp(factory.make_ipv4_address())
         env = get_env_with_locale(locale="C")
@@ -268,28 +268,28 @@ class TestFindMACViaARP(MAASTestCase):
             call_and_check, MockCalledOnceWith(["ip", "neigh"], env=env)
         )
 
-    def test__works_with_real_call(self):
+    def test_works_with_real_call(self):
         find_mac_via_arp(factory.make_ipv4_address())
         # No error.
         pass
 
-    def test__fails_on_nonsensical_output(self):
+    def test_fails_on_nonsensical_output(self):
         self.patch_call("Weird output...")
         self.assertRaises(
             Exception, find_mac_via_arp, factory.make_ipv4_address()
         )
 
-    def test__returns_None_if_not_found(self):
+    def test_returns_None_if_not_found(self):
         self.patch_call(self.make_output_line())
         self.assertIsNone(find_mac_via_arp(factory.make_ipv4_address()))
 
-    def test__resolves_IPv4_address_to_MAC(self):
+    def test_resolves_IPv4_address_to_MAC(self):
         sample = "10.55.60.9 dev eth0 lladdr 3c:41:92:68:2e:00 REACHABLE\n"
         self.patch_call(sample)
         mac_address_observed = find_mac_via_arp("10.55.60.9")
         self.assertEqual("3c:41:92:68:2e:00", mac_address_observed)
 
-    def test__resolves_IPv6_address_to_MAC(self):
+    def test_resolves_IPv6_address_to_MAC(self):
         sample = (
             "fd10::a76:d7fe:fe93:7cb dev eth0 lladdr 3c:41:92:6b:2e:00 "
             "REACHABLE\n"
@@ -298,22 +298,22 @@ class TestFindMACViaARP(MAASTestCase):
         mac_address_observed = find_mac_via_arp("fd10::a76:d7fe:fe93:7cb")
         self.assertEqual("3c:41:92:6b:2e:00", mac_address_observed)
 
-    def test__ignores_failed_neighbours(self):
+    def test_ignores_failed_neighbours(self):
         ip = factory.make_ipv4_address()
         self.patch_call("%s dev eth0  FAILED\n" % ip)
         self.assertIsNone(find_mac_via_arp(ip))
 
-    def test__is_not_fooled_by_prefixing(self):
+    def test_is_not_fooled_by_prefixing(self):
         self.patch_call(self.make_output_line("10.1.1.10"))
         self.assertIsNone(find_mac_via_arp("10.1.1.1"))
         self.assertIsNone(find_mac_via_arp("10.1.1.100"))
 
-    def test__is_not_fooled_by_different_notations(self):
+    def test_is_not_fooled_by_different_notations(self):
         mac = factory.make_mac_address()
         self.patch_call(self.make_output_line("9::0:05", mac=mac))
         self.assertEqual(mac, find_mac_via_arp("09:0::5"))
 
-    def test__returns_consistent_output(self):
+    def test_returns_consistent_output(self):
         ip = factory.make_ipv4_address()
         macs = ["52:54:00:02:86:4b", "90:f6:52:f6:17:92"]
         lines = [self.make_output_line(ip, mac) for mac in macs]
@@ -362,7 +362,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         ),
     ]
 
-    def test__returns_address_for_inet_class(self):
+    def test_returns_address_for_inet_class(self):
         ip = self.ip_address_factory()
         interface = factory.make_name("eth", sep="")
         patch_interfaces(
@@ -372,7 +372,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
             [ip], list(get_all_addresses_for_interface(interface))
         )
 
-    def test__ignores_non_address_information(self):
+    def test_ignores_non_address_information(self):
         network = self.network_factory()
         ip = factory.pick_ip_in_network(network)
         interface = factory.make_name("eth", sep="")
@@ -399,7 +399,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
             [ip], list(get_all_addresses_for_interface(interface))
         )
 
-    def test__ignores_link_address(self):
+    def test_ignores_link_address(self):
         interface = factory.make_name("eth", sep="")
         patch_interfaces(
             self,
@@ -416,7 +416,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         )
         self.assertEqual([], list(get_all_addresses_for_interface(interface)))
 
-    def test__ignores_interface_without_address(self):
+    def test_ignores_interface_without_address(self):
         network = self.network_factory()
         interface = factory.make_name("eth", sep="")
         patch_interfaces(
@@ -438,7 +438,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
 class TestGetAllInterfaceAddresses(MAASTestCase):
     """Tests for get_all_interface_addresses()."""
 
-    def test__includes_loopback(self):
+    def test_includes_loopback(self):
         v4_loopback_address = "127.0.0.1"
         v6_loopback_address = "::1"
         patch_interfaces(
@@ -502,17 +502,17 @@ class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
 class TestCleanUpNetifacesAddress(MAASTestCase):
     """Tests for `clean_up_netifaces_address`."""
 
-    def test__leaves_IPv4_intact(self):
+    def test_leaves_IPv4_intact(self):
         ip = str(factory.make_ipv4_address())
         interface = factory.make_name("eth")
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
-    def test__leaves_clean_IPv6_intact(self):
+    def test_leaves_clean_IPv6_intact(self):
         ip = str(factory.make_ipv6_address())
         interface = factory.make_name("eth")
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
-    def test__removes_zone_index_suffix(self):
+    def test_removes_zone_index_suffix(self):
         ip = str(factory.make_ipv6_address())
         interface = factory.make_name("eth")
         self.assertEqual(
@@ -536,7 +536,7 @@ class TestResolveHostToAddrs(MAASTestCase):
         fake.side_effect = exception
         return fake
 
-    def test__rejects_weird_IP_version(self):
+    def test_rejects_weird_IP_version(self):
         self.assertRaises(
             AssertionError,
             resolve_hostname,
@@ -544,14 +544,14 @@ class TestResolveHostToAddrs(MAASTestCase):
             ip_version=5,
         )
 
-    def test__integrates_with_getaddrinfo(self):
+    def test_integrates_with_getaddrinfo(self):
         result = resolve_hostname("localhost", 4)
         self.assertIsInstance(result, set)
         [localhost] = result
         self.assertIsInstance(localhost, IPAddress)
         self.assertIn(localhost, IPNetwork("127.0.0.0/8"))
 
-    def test__resolves_IPv4_address(self):
+    def test_resolves_IPv4_address(self):
         ip = factory.make_ipv4_address()
         fake = self.patch_getaddrinfo(ip)
         hostname = factory.make_hostname()
@@ -563,7 +563,7 @@ class TestResolveHostToAddrs(MAASTestCase):
             MockCalledOnceWith(hostname, 0, family=AF_INET, proto=IPPROTO_TCP),
         )
 
-    def test__resolves_IPv6_address(self):
+    def test_resolves_IPv6_address(self):
         ip = factory.make_ipv6_address()
         fake = self.patch_getaddrinfo(ip)
         hostname = factory.make_hostname()
@@ -577,23 +577,23 @@ class TestResolveHostToAddrs(MAASTestCase):
             ),
         )
 
-    def test__returns_empty_if_address_does_not_resolve(self):
+    def test_returns_empty_if_address_does_not_resolve(self):
         self.patch_getaddrinfo_fail(
             gaierror(EAI_NONAME, "Name or service not known")
         )
         self.assertEqual(set(), resolve_hostname(factory.make_hostname(), 4))
 
-    def test__returns_empty_if_address_resolves_to_no_data(self):
+    def test_returns_empty_if_address_resolves_to_no_data(self):
         self.patch_getaddrinfo_fail(gaierror(EAI_NODATA, "No data returned"))
         self.assertEqual(set(), resolve_hostname(factory.make_hostname(), 4))
 
-    def test__propagates_other_gaierrors(self):
+    def test_propagates_other_gaierrors(self):
         self.patch_getaddrinfo_fail(gaierror(EAI_BADFLAGS, "Bad parameters"))
         self.assertRaises(
             gaierror, resolve_hostname, factory.make_hostname(), 4
         )
 
-    def test__propagates_unexpected_errors(self):
+    def test_propagates_unexpected_errors(self):
         self.patch_getaddrinfo_fail(KeyError("Huh what?"))
         self.assertRaises(
             KeyError, resolve_hostname, factory.make_hostname(), 4
@@ -666,7 +666,7 @@ class TestIPRangeWithinNetwork(MAASTestCase):
 
 
 class TestMAASIPSet(MAASTestCase):
-    def test__contains_method(self):
+    def test_contains_method(self):
         s = MAASIPSet(
             [
                 make_iprange("10.0.0.1", "10.0.0.100"),
@@ -683,7 +683,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(s, Not(Contains(IPRange("10.0.0.99", "10.0.0.254"))))
         self.assertThat(s, Not(Contains("10.0.0.255")))
 
-    def test__normalizes_range(self):
+    def test_normalizes_range(self):
         addr1 = "10.0.0.1"
         addr2 = IPAddress("10.0.0.2")
         range1 = make_iprange("10.0.0.3", purpose="DNS")
@@ -700,7 +700,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(s, Not(Contains("10.0.0.101")))
         self.assertThat(s, Not(Contains("10.0.0.0")))
 
-    def test__normalizes_ipv6_range(self):
+    def test_normalizes_ipv6_range(self):
         addr1 = "fe80::1"
         addr2 = IPAddress("fe80::2")
         range1 = make_iprange("fe80::3", purpose="DNS")
@@ -717,7 +717,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(s, Contains("fe80::ffff:ffff:ffff:ffff"))
         self.assertThat(s, Not(Contains("fe80::1:ffff:ffff:ffff:ffff")))
 
-    def test__normalizes_range_with_iprange(self):
+    def test_normalizes_range_with_iprange(self):
         addr1 = "10.0.0.1"
         addr2 = IPAddress("10.0.0.2")
         range1 = make_iprange("10.0.0.3", purpose="DNS")
@@ -734,7 +734,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(s, Not(Contains("10.0.0.101")))
         self.assertThat(s, Not(Contains("10.0.0.0")))
 
-    def test__calculates_simple_unused_range(self):
+    def test_calculates_simple_unused_range(self):
         addr1 = "10.0.0.2"
         addr2 = IPAddress("10.0.0.3")
         range1 = make_iprange("10.0.0.4", purpose="DNS")
@@ -748,7 +748,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains("10.0.0.254"))
         self.assertThat(u, Not(Contains("10.0.0.255")))
 
-    def test__calculates_simple_unused_range_with_iprange_input(self):
+    def test_calculates_simple_unused_range_with_iprange_input(self):
         addr1 = "10.0.0.1"
         addr2 = IPAddress("10.0.0.2")
         range1 = make_iprange("10.0.0.3", purpose="DNS")
@@ -761,7 +761,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains("10.0.0.254"))
         self.assertThat(u, Contains("10.0.0.255"))
 
-    def test__calculates_unused_range_with_overlap(self):
+    def test_calculates_unused_range_with_overlap(self):
         range1 = make_iprange("10.0.0.3", purpose="DNS")
         range2 = make_iprange("10.0.0.3", "10.0.0.20", purpose="DHCP")
         rangeset = MAASIPSet([range2, range1])
@@ -773,7 +773,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Not(Contains("10.0.0.20")))
         self.assertThat(u, Contains("10.0.0.21"))
 
-    def test__calculates_unused_range_with_multiple_overlap(self):
+    def test_calculates_unused_range_with_multiple_overlap(self):
         range1 = make_iprange("10.0.0.3", purpose="DNS")
         range2 = make_iprange("10.0.0.3", purpose="WINS")
         range3 = make_iprange("10.0.0.3", "10.0.0.20", purpose="DHCP")
@@ -796,7 +796,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains("10.0.0.254"))
         self.assertThat(u, Not(Contains("10.0.0.255")))
 
-    def test__deals_with_small_gaps(self):
+    def test_deals_with_small_gaps(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_unused_ranges("10.0.0.0/24")
         self.assertThat(u, Not(Contains("10.0.0.0")))
@@ -812,7 +812,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains("10.0.0.254"))
         self.assertThat(u, Not(Contains("10.0.0.255")))
 
-    def test__calculates_ipv6_unused_range(self):
+    def test_calculates_ipv6_unused_range(self):
         addr1 = "fe80::1"
         addr2 = IPAddress("fe80::2")
         range1 = make_iprange("fe80::3", purpose="DNS")
@@ -832,7 +832,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains("fe80::99"))
         self.assertThat(u, Contains("fe80::ff"))
 
-    def test__calculates_ipv6_unused_range_for_huge_range(self):
+    def test_calculates_ipv6_unused_range_for_huge_range(self):
         addr1 = "fe80::1"
         addr2 = IPAddress("fe80::2")
         range1 = make_iprange("fe80::3", purpose="DNS")
@@ -853,7 +853,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains("fe80::ff"))
         self.assertThat(u, Contains("fe80:0:ffff:ffff:ffff:ffff:ffff:ffff"))
 
-    def test__calculates_full_range(self):
+    def test_calculates_full_range(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         for ip in range(1, 254):
@@ -862,13 +862,13 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u["10.0.0.2"].purpose, Not(Contains("unused")))
         self.assertThat(u["10.0.0.254"].purpose, Contains("unused"))
 
-    def test__calculates_full_range_for_small_ipv6(self):
+    def test_calculates_full_range_for_small_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/127")
         self.assertThat(u["2001:db8::"].purpose, Contains("unused"))
         self.assertThat(u["2001:db8::1"].purpose, Contains("unused"))
 
-    def test__supports_ior(self):
+    def test_supports_ior(self):
         s1 = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         s2 = MAASIPSet(["10.0.0.1", "10.0.0.3", "10.0.0.5", "10.0.0.7"])
         s1 |= s2
@@ -876,7 +876,7 @@ class TestMAASIPSet(MAASTestCase):
             s1, ContainsAll({ip for ip in IPRange("10.0.0.1", "10.0.0.8")})
         )
 
-    def test__ior_coalesces_adjacent_ranges(self):
+    def test_ior_coalesces_adjacent_ranges(self):
         s1 = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         s2 = MAASIPSet(["10.0.0.1", "10.0.0.3", "10.0.0.5", "10.0.0.7"])
         s1 |= s2
@@ -887,7 +887,7 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(str(IPAddress(s1.first)), Equals("10.0.0.1"))
         self.assertThat(str(IPAddress(s1.last)), Equals("10.0.0.8"))
 
-    def test__ior_doesnt_combine_adjacent_ranges_with_different_purposes(self):
+    def test_ior_doesnt_combine_adjacent_ranges_with_different_purposes(self):
         s1 = MAASIPSet(
             [
                 make_iprange("10.0.0.2", purpose="foo"),
@@ -914,7 +914,7 @@ class TestMAASIPSet(MAASTestCase):
 
 
 class TestIPRangeStatistics(MAASTestCase):
-    def test__statistics_are_accurate(self):
+    def test_statistics_are_accurate(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
@@ -927,7 +927,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("98%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__statistics_are_accurate_and_ranges_are_returned_if_desired(self):
+    def test_statistics_are_accurate_and_ranges_are_returned_if_desired(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
@@ -941,7 +941,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json, Contains("ranges"))
         self.assertThat(json["ranges"], Equals(stats.ranges.render_json()))
 
-    def test__statistics_are_accurate_for_full_slash_32(self):
+    def test_statistics_are_accurate_for_full_slash_32(self):
         s = MAASIPSet(["10.0.0.1"])
         u = s.get_full_range("10.0.0.1/32")
         stats = IPRangeStatistics(u)
@@ -954,7 +954,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("0%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__statistics_are_accurate_for_empty_slash_32(self):
+    def test_statistics_are_accurate_for_empty_slash_32(self):
         s = MAASIPSet([])
         u = s.get_full_range("10.0.0.1/32")
         stats = IPRangeStatistics(u)
@@ -967,7 +967,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("100%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__statistics_are_accurate_for_full_slash_128(self):
+    def test_statistics_are_accurate_for_full_slash_128(self):
         s = MAASIPSet(["2001:db8::1"])
         u = s.get_full_range("2001:db8::1/128")
         stats = IPRangeStatistics(u)
@@ -980,7 +980,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("0%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__statistics_are_accurate_for_empty_slash_128(self):
+    def test_statistics_are_accurate_for_empty_slash_128(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::1/128")
         stats = IPRangeStatistics(u)
@@ -993,7 +993,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("100%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__statistics_are_accurate_for_empty_slash_127(self):
+    def test_statistics_are_accurate_for_empty_slash_127(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::1/127")
         stats = IPRangeStatistics(u)
@@ -1006,7 +1006,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("100%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__statistics_are_accurate_for_empty_slash_31(self):
+    def test_statistics_are_accurate_for_empty_slash_31(self):
         s = MAASIPSet([])
         u = s.get_full_range("10.0.0.0/31")
         stats = IPRangeStatistics(u)
@@ -1019,37 +1019,37 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json["available_string"], Equals("100%"))
         self.assertThat(json, Not(Contains("ranges")))
 
-    def test__suggests_subnet_anycast_address_for_ipv6(self):
+    def test_suggests_subnet_anycast_address_for_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/64")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
 
-    def test__suggests_first_ip_as_default_gateway_if_available(self):
+    def test_suggests_first_ip_as_default_gateway_if_available(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
 
-    def test__suggests_last_ip_as_default_gateway_if_needed(self):
+    def test_suggests_last_ip_as_default_gateway_if_needed(self):
         s = MAASIPSet(["10.0.0.1", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals("10.0.0.254"))
 
-    def test__suggests_first_available_ip_as_default_gateway_if_needed(self):
+    def test_suggests_first_available_ip_as_default_gateway_if_needed(self):
         s = MAASIPSet(["10.0.0.1", "10.0.0.4", "10.0.0.6", "10.0.0.254"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals("10.0.0.2"))
 
-    def test__suggests_no_gateway_if_range_full(self):
+    def test_suggests_no_gateway_if_range_full(self):
         s = MAASIPSet(["10.0.0.1"])
         u = s.get_full_range("10.0.0.1/32")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Is(None))
 
-    def test__suggests_no_dynamic_range_if_dynamic_range_exists(self):
+    def test_suggests_no_dynamic_range_if_dynamic_range_exists(self):
         s = MAASIPSet(
             [MAASIPRange(start="10.0.0.2", end="10.0.0.99", purpose="dynamic")]
         )
@@ -1059,7 +1059,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(stats.suggested_dynamic_range, Is(None))
         self.assertThat(json["suggested_dynamic_range"], Is(None))
 
-    def test__suggests_upper_one_fourth_range_for_dynamic_by_default(self):
+    def test_suggests_upper_one_fourth_range_for_dynamic_by_default(self):
         s = MAASIPSet([])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
@@ -1074,7 +1074,7 @@ class TestIPRangeStatistics(MAASTestCase):
             stats.suggested_dynamic_range, Not(Contains("10.0.0.190"))
         )
 
-    def test__suggests_half_available_if_available_less_than_one_fourth(self):
+    def test_suggests_half_available_if_available_less_than_one_fourth(self):
         s = MAASIPSet([MAASIPRange("10.0.0.2", "10.0.0.205")])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
@@ -1090,7 +1090,7 @@ class TestIPRangeStatistics(MAASTestCase):
             stats.suggested_dynamic_range, Not(Contains("10.0.0.229"))
         )
 
-    def test__suggested_range_excludes_suggested_gateway(self):
+    def test_suggested_range_excludes_suggested_gateway(self):
         s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.204")])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
@@ -1106,7 +1106,7 @@ class TestIPRangeStatistics(MAASTestCase):
             stats.suggested_dynamic_range, Not(Contains("10.0.0.228"))
         )
 
-    def test__suggested_range_excludes_suggested_gateway_when_gw_first(self):
+    def test_suggested_range_excludes_suggested_gateway_when_gw_first(self):
         s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.203"), "10.0.0.254"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
@@ -1122,7 +1122,7 @@ class TestIPRangeStatistics(MAASTestCase):
             stats.suggested_dynamic_range, Not(Contains("10.0.0.228"))
         )
 
-    def test__suggests_upper_one_fourth_range_for_ipv6(self):
+    def test_suggests_upper_one_fourth_range_for_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/64")
         stats = IPRangeStatistics(u)
@@ -1143,26 +1143,26 @@ class TestIPRangeStatistics(MAASTestCase):
             Not(Contains("2001:db8::bfff:ffff:ffff:ffff")),
         )
 
-    def test__no_suggestion_for_small_ipv6_slash_126(self):
+    def test_no_suggestion_for_small_ipv6_slash_126(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/126")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
         self.assertThat(stats.suggested_dynamic_range, Is(None))
 
-    def test__no_suggestion_for_small_ipv6_slash_127(self):
+    def test_no_suggestion_for_small_ipv6_slash_127(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/127")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals(None))
 
-    def test__no_suggestion_and_no_gateway_for_small_ipv6_slash_128(self):
+    def test_no_suggestion_and_no_gateway_for_small_ipv6_slash_128(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/128")
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Is(None))
 
-    def test__suggests_half_available_for_ipv6(self):
+    def test_suggests_half_available_for_ipv6(self):
         s = MAASIPSet(
             [MAASIPRange("2001:db8::1", "2001:db8::ffff:ffff:ffff:ff00")]
         )
@@ -1189,20 +1189,20 @@ class TestIPRangeStatistics(MAASTestCase):
 
 
 class TestParseInteger(MAASTestCase):
-    def test__parses_decimal_integer(self):
+    def test_parses_decimal_integer(self):
         self.assertThat(parse_integer("0"), Equals(0))
         self.assertThat(parse_integer("1"), Equals(1))
         self.assertThat(parse_integer("-1"), Equals(-1))
         self.assertThat(parse_integer("1000"), Equals(1000))
         self.assertThat(parse_integer("10000000"), Equals(10000000))
 
-    def test__parses_hexadecimal_integer(self):
+    def test_parses_hexadecimal_integer(self):
         self.assertThat(parse_integer("0x0"), Equals(0))
         self.assertThat(parse_integer("0x1"), Equals(1))
         self.assertThat(parse_integer("0x1000"), Equals(0x1000))
         self.assertThat(parse_integer("0x10000000"), Equals(0x10000000))
 
-    def test__parses_binary_integer(self):
+    def test_parses_binary_integer(self):
         self.assertThat(parse_integer("0b0"), Equals(0))
         self.assertThat(parse_integer("0b1"), Equals(1))
         self.assertThat(parse_integer("0b1000"), Equals(0b1000))
@@ -1233,7 +1233,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         )
         self.assertThat(observed_result, expected_results)
 
-    def test__ignores_loopback(self):
+    def test_ignores_loopback(self):
         ip_addr = {
             "vnet": {
                 "type": "loopback",
@@ -1245,7 +1245,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
-    def test__ignores_ethernet(self):
+    def test_ignores_ethernet(self):
         ip_addr = {
             "vnet": {
                 "type": "ethernet",
@@ -1257,17 +1257,17 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
-    def test__ignores_ipip(self):
+    def test_ignores_ipip(self):
         ip_addr = {"vnet": {"type": "ipip", "flags": ["UP"], "index": 2}}
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
-    def test__ignores_tunnel(self):
+    def test_ignores_tunnel(self):
         ip_addr = {
             "vnet": {"type": "ethernet.tunnel", "flags": ["UP"], "index": 2}
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
-    def test__simple(self):
+    def test_simple(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
@@ -1296,7 +1296,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         )
         self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
 
-    def test__simple_with_default_gateway(self):
+    def test_simple_with_default_gateway(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
@@ -1332,7 +1332,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         )
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
-    def test__doesnt_ignore_ethernet_in_container(self):
+    def test_doesnt_ignore_ethernet_in_container(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet",
@@ -1363,7 +1363,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             ip_addr, {}, {}, expected_result, in_container=True
         )
 
-    def test__simple_with_dhcp(self):
+    def test_simple_with_dhcp(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
@@ -1406,7 +1406,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             ip_addr, {}, dhclient_info, expected_result
         )
 
-    def test__fixing_links(self):
+    def test_fixing_links(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
@@ -1476,7 +1476,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         )
         self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
 
-    def test__complex(self):
+    def test_complex(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
@@ -1755,14 +1755,14 @@ class InterfaceLinksTestCase(MAASTestCase):
 class TestHasIPv4Address(InterfaceLinksTestCase):
     """Tests for `has_ipv4_address()`."""
 
-    def test__returns_false_for_no_ip_address(self):
+    def test_returns_false_for_no_ip_address(self):
         ifname = factory.make_name("eth")
         self.assertThat(
             has_ipv4_address(self.make_interfaces(ifname), ifname),
             Equals(False),
         )
 
-    def test__returns_false_for_ipv6_address(self):
+    def test_returns_false_for_ipv6_address(self):
         ifname = factory.make_name("eth")
         address = "%s/64" % factory.make_ipv6_address()
         self.assertThat(
@@ -1770,7 +1770,7 @@ class TestHasIPv4Address(InterfaceLinksTestCase):
             Equals(False),
         )
 
-    def test__returns_true_for_ipv4_address(self):
+    def test_returns_true_for_ipv4_address(self):
         ifname = factory.make_name("eth")
         address = "%s/24" % factory.make_ipv4_address()
         self.assertThat(
@@ -1797,7 +1797,7 @@ class TestGetIfnameIfdataForDestination(MAASTestCase):
             network_module, "get_source_address"
         )
 
-    def test__returns_interface_for_expected_source_ip(self):
+    def test_returns_interface_for_expected_source_ip(self):
         self.get_source_address_mock.return_value = "2001:db8::1"
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "2001:db8::2", self.interfaces
@@ -1817,7 +1817,7 @@ class TestGetIfnameIfdataForDestination(MAASTestCase):
         self.assertThat(ifname, Equals("eth1"))
         self.assertThat(ifdata, Equals(self.interfaces["eth1"]))
 
-    def test__handles_loopback_addresses(self):
+    def test_handles_loopback_addresses(self):
         self.get_source_address_mock.return_value = "127.0.0.1"
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "127.0.0.1", self.interfaces
@@ -1831,12 +1831,12 @@ class TestGetIfnameIfdataForDestination(MAASTestCase):
         self.assertThat(ifname, Equals("lo"))
         self.assertThat(ifdata, Equals(LOOPBACK_INTERFACE_INFO))
 
-    def test__raises_valueerror_if_no_route_to_host(self):
+    def test_raises_valueerror_if_no_route_to_host(self):
         self.get_source_address_mock.return_value = None
         with ExpectedException(ValueError):
             get_ifname_ifdata_for_destination("2001:db8::2", self.interfaces)
 
-    def test__raises_valueerror_if_source_ip_not_found(self):
+    def test_raises_valueerror_if_source_ip_not_found(self):
         self.get_source_address_mock.return_value = "192.168.0.2"
         with ExpectedException(ValueError):
             get_ifname_ifdata_for_destination("192.168.0.3", self.interfaces)
@@ -1845,7 +1845,7 @@ class TestGetIfnameIfdataForDestination(MAASTestCase):
 class TestEnumerateAddresses(InterfaceLinksTestCase):
     """Tests for `enumerate_assigned_ips` and `enumerate_ipv4_addresses()`."""
 
-    def test__returns_appropriate_assigned_ip_addresses(self):
+    def test_returns_appropriate_assigned_ip_addresses(self):
         ifname = factory.make_name("eth")
         ipv6_address = factory.make_ipv6_address()
         ipv4_address = factory.make_ipv4_address()
@@ -1861,7 +1861,7 @@ class TestEnumerateAddresses(InterfaceLinksTestCase):
 class TestGetInterfaceChildren(MAASTestCase):
     """Tests for `get_interface_children()`."""
 
-    def test__calculates_children_from_bond_parents(self):
+    def test_calculates_children_from_bond_parents(self):
         interfaces = {
             "eth0": {"parents": []},
             "eth1": {"parents": []},
@@ -1872,7 +1872,7 @@ class TestGetInterfaceChildren(MAASTestCase):
             children_map, Equals({"eth0": {"bond0"}, "eth1": {"bond0"}})
         )
 
-    def test__calculates_children_from_vlan_parents(self):
+    def test_calculates_children_from_vlan_parents(self):
         interfaces = {
             "eth0": {"parents": []},
             "eth1": {"parents": []},
@@ -1884,7 +1884,7 @@ class TestGetInterfaceChildren(MAASTestCase):
             children_map, Equals({"eth0": {"eth0.100"}, "eth1": {"eth1.100"}})
         )
 
-    def test__calculates_children_from_bond_and_vlan_parents(self):
+    def test_calculates_children_from_bond_and_vlan_parents(self):
         interfaces = {
             "eth0": {"parents": []},
             "eth1": {"parents": []},
@@ -1904,7 +1904,7 @@ class TestGetInterfaceChildren(MAASTestCase):
 class TestInterfaceChildren(MAASTestCase):
     """Tests for `interface_children()`."""
 
-    def test__yields_each_child(self):
+    def test_yields_each_child(self):
         interfaces = {
             "eth0": {"parents": []},
             "eth1": {"parents": []},
@@ -1934,7 +1934,7 @@ class TestInterfaceChildren(MAASTestCase):
             ],
         )
 
-    def test__returns_namedtuple(self):
+    def test_returns_namedtuple(self):
         interfaces = {
             "eth0": {"parents": []},
             "eth0.100": {"parents": ["eth0"]},
@@ -1950,7 +1950,7 @@ class TestInterfaceChildren(MAASTestCase):
 class TestGetDefaultMonitoredInterfaces(MAASTestCase):
     """Tests for `get_default_monitored_interfaces()`."""
 
-    def test__returns_enabled_physical_interfaces(self):
+    def test_returns_enabled_physical_interfaces(self):
         interfaces = {
             "eth0": {"parents": [], "type": "physical", "enabled": False},
             "eth1": {"parents": [], "type": "physical", "enabled": True},
@@ -1959,7 +1959,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
             get_default_monitored_interfaces(interfaces), ["eth1"]
         )
 
-    def test__returns_enabled_bond_interfaces_instead_of_physical(self):
+    def test_returns_enabled_bond_interfaces_instead_of_physical(self):
         interfaces = {
             "eth0": {"parents": [], "type": "physical", "enabled": True},
             "eth1": {"parents": [], "type": "physical", "enabled": True},
@@ -1980,7 +1980,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
             get_default_monitored_interfaces(interfaces), ["bond0"]
         )
 
-    def test__monitors_virtual_bridges_but_not_physical_bridges(self):
+    def test_monitors_virtual_bridges_but_not_physical_bridges(self):
         interfaces = {
             "eth0": {"parents": [], "type": "physical", "enabled": True},
             "eth1": {"parents": [], "type": "physical", "enabled": True},
@@ -1992,7 +1992,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
             ["eth0", "eth1", "virbr0"],
         )
 
-    def test__monitors_physical_interfaces_but_not_child_vlans(self):
+    def test_monitors_physical_interfaces_but_not_child_vlans(self):
         interfaces = {
             "eth0": {"parents": [], "type": "physical", "enabled": True},
             "eth0.100": {"parents": ["eth0"], "type": "vlan", "enabled": True},
@@ -2005,7 +2005,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
 class TestAnnotateWithDefaultMonitoredInterfaces(MAASTestCase):
     """Tests for `get_default_monitored_interfaces()`."""
 
-    def test__adds_monitored_bool_to_interfaces_dictionary(self):
+    def test_adds_monitored_bool_to_interfaces_dictionary(self):
         interfaces = {
             "eth0": {"parents": [], "type": "physical", "enabled": False},
             "eth1": {"parents": [], "type": "physical", "enabled": True},
@@ -2129,14 +2129,14 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
 class TestPreferredHostnamesSortKey(MAASTestCase):
     """Tests for `preferred_hostnames_sort_key()`."""
 
-    def test__sorts_flat_names(self):
+    def test_sorts_flat_names(self):
         names = ("c", "b", "a", "z")
         self.assertThat(
             sorted(names, key=preferred_hostnames_sort_key),
             Equals(["a", "b", "c", "z"]),
         )
 
-    def test__sorts_more_qualified_names_first(self):
+    def test_sorts_more_qualified_names_first(self):
         names = (
             "diediedie.archive.ubuntu.com",
             "wpps.org.za",
@@ -2155,7 +2155,7 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             ),
         )
 
-    def test__sorts_by_domains_then_hostnames_within_each_domain(self):
+    def test_sorts_by_domains_then_hostnames_within_each_domain(self):
         names = (
             "www.ubuntu.com",
             "maas.ubuntu.com",
@@ -2182,7 +2182,7 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             ),
         )
 
-    def test__sorts_by_tlds_first(self):
+    def test_sorts_by_tlds_first(self):
         names = (
             "com.za",
             "com.com",
@@ -2205,7 +2205,7 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             ),
         )
 
-    def test__ignores_trailing_periods(self):
+    def test_ignores_trailing_periods(self):
         names = (
             "com.za.",
             "com.com",
@@ -2272,13 +2272,13 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=30)
 
     @inlineCallbacks
-    def test__uses_resolver_from_getResolver_by_default(self):
+    def test_uses_resolver_from_getResolver_by_default(self):
         self.set_fake_twisted_dns_reply([])
         yield reverseResolve(factory.make_ip_address())
         self.assertThat(self.getResolver, MockCalledOnceWith())
 
     @inlineCallbacks
-    def test__uses_passed_in_IResolver_if_specified(self):
+    def test_uses_passed_in_IResolver_if_specified(self):
         self.set_fake_twisted_dns_reply([])
         some_other_resolver = self.get_mock_iresolver()
         yield reverseResolve(
@@ -2288,14 +2288,14 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
         self.assertThat(some_other_resolver.lookupPointer, MockCalledOnce())
 
     @inlineCallbacks
-    def test__returns_single_domain(self):
+    def test_returns_single_domain(self):
         reverse_dns_reply = ["example.com"]
         self.set_fake_twisted_dns_reply(reverse_dns_reply)
         result = yield reverseResolve(factory.make_ip_address())
         self.expectThat(result, Equals(reverse_dns_reply))
 
     @inlineCallbacks
-    def test__returns_multiple_sorted_domains(self):
+    def test_returns_multiple_sorted_domains(self):
         reverse_dns_reply = ["ubuntu.com", "example.com"]
         self.set_fake_twisted_dns_reply(reverse_dns_reply)
         result = yield reverseResolve(factory.make_ip_address())
@@ -2307,38 +2307,38 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
         )
 
     @inlineCallbacks
-    def test__empty_list_for_empty_rrset(self):
+    def test_empty_list_for_empty_rrset(self):
         reverse_dns_reply = []
         self.set_fake_twisted_dns_reply(reverse_dns_reply)
         result = yield reverseResolve(factory.make_ip_address())
         self.expectThat(result, Equals(reverse_dns_reply))
 
     @inlineCallbacks
-    def test__returns_empty_list_for_domainerror(self):
+    def test_returns_empty_list_for_domainerror(self):
         self.lookupPointer.side_effect = DomainError
         result = yield reverseResolve(factory.make_ip_address())
         self.expectThat(result, Equals([]))
 
     @inlineCallbacks
-    def test__returns_empty_list_for_authoritativedomainerror(self):
+    def test_returns_empty_list_for_authoritativedomainerror(self):
         self.lookupPointer.side_effect = AuthoritativeDomainError
         result = yield reverseResolve(factory.make_ip_address())
         self.expectThat(result, Equals([]))
 
     @inlineCallbacks
-    def test__returns_none_for_dnsquerytimeouterror(self):
+    def test_returns_none_for_dnsquerytimeouterror(self):
         self.lookupPointer.side_effect = DNSQueryTimeoutError(None)
         result = yield reverseResolve(factory.make_ip_address())
         self.expectThat(result, Is(None))
 
     @inlineCallbacks
-    def test__returns_none_for_resolvererror(self):
+    def test_returns_none_for_resolvererror(self):
         self.lookupPointer.side_effect = ResolverError
         result = yield reverseResolve(factory.make_ip_address())
         self.expectThat(result, Is(None))
 
     @inlineCallbacks
-    def test__raises_for_unhandled_error(self):
+    def test_raises_for_unhandled_error(self):
         self.lookupPointer.side_effect = TypeError
         with ExpectedException(TypeError):
             yield reverseResolve(factory.make_ip_address())
@@ -2369,19 +2369,19 @@ class TestCoerceHostname(MAASTestCase):
 
 
 class TestGetSourceAddress(MAASTestCase):
-    def test__accepts_ipnetwork(self):
+    def test_accepts_ipnetwork(self):
         self.assertThat(
             get_source_address(IPNetwork("127.0.0.1/8")), Equals("127.0.0.1")
         )
 
-    def test__ipnetwork_works_for_ipv4_slash32(self):
+    def test_ipnetwork_works_for_ipv4_slash32(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "10.0.0.1"
         self.assertThat(
             get_source_address(IPNetwork("10.0.0.1/32")), Equals("10.0.0.1")
         )
 
-    def test__ipnetwork_works_for_ipv6_slash128(self):
+    def test_ipnetwork_works_for_ipv6_slash128(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "2001:67c:1560::1"
         self.assertThat(
@@ -2389,7 +2389,7 @@ class TestGetSourceAddress(MAASTestCase):
             Equals("2001:67c:1560::1"),
         )
 
-    def test__ipnetwork_works_for_ipv6_slash48(self):
+    def test_ipnetwork_works_for_ipv6_slash48(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "2001:67c:1560::1"
         self.assertThat(
@@ -2397,7 +2397,7 @@ class TestGetSourceAddress(MAASTestCase):
             Equals("2001:67c:1560::1"),
         )
 
-    def test__ipnetwork_works_for_ipv6_slash64(self):
+    def test_ipnetwork_works_for_ipv6_slash64(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "2001:67c:1560::1"
         self.assertThat(
@@ -2405,54 +2405,54 @@ class TestGetSourceAddress(MAASTestCase):
             Equals("2001:67c:1560::1"),
         )
 
-    def test__accepts_ipaddress(self):
+    def test_accepts_ipaddress(self):
         self.assertThat(
             get_source_address(IPAddress("127.0.0.1")), Equals("127.0.0.1")
         )
 
-    def test__accepts_string(self):
+    def test_accepts_string(self):
         self.assertThat(get_source_address("127.0.0.1"), Equals("127.0.0.1"))
 
-    def test__converts_ipv4_mapped_ipv6_to_ipv4(self):
+    def test_converts_ipv4_mapped_ipv6_to_ipv4(self):
         self.assertThat(
             get_source_address("::ffff:127.0.0.1"), Equals("127.0.0.1")
         )
 
-    def test__supports_ipv6(self):
+    def test_supports_ipv6(self):
         self.assertThat(get_source_address("::1"), Equals("::1"))
 
-    def test__returns_none_if_no_route_found(self):
+    def test_returns_none_if_no_route_found(self):
         self.assertThat(get_source_address("127.0.0.0"), Is(None))
 
-    def test__returns_appropriate_address_for_global_ip(self):
+    def test_returns_appropriate_address_for_global_ip(self):
         self.assertThat(get_source_address("8.8.8.8"), Not(Is(None)))
 
 
 class TestGenerateMACAddress(MAASTestCase):
-    def test__starts_with_virsh_prefix(self):
+    def test_starts_with_virsh_prefix(self):
         self.assertThat(generate_mac_address(), StartsWith("52:54:00:"))
 
-    def test__never_the_same(self):
+    def test_never_the_same(self):
         random_macs = [generate_mac_address() for _ in range(10)]
         for mac1, mac2 in itertools.permutations(random_macs, 2):
             self.expectThat(mac1, Not(Equals(mac2)))
 
 
 class TestConvertHostToUriStr(MAASTestCase):
-    def test__hostname(self):
+    def test_hostname(self):
         hostname = factory.make_hostname()
         self.assertEquals(hostname, convert_host_to_uri_str(hostname))
 
-    def test__ipv4(self):
+    def test_ipv4(self):
         ipv4 = factory.make_ipv4_address()
         self.assertEquals(ipv4, convert_host_to_uri_str(ipv4))
 
-    def test__ipv6_mapped(self):
+    def test_ipv6_mapped(self):
         ipv4 = factory.make_ipv4_address()
         ipv6_mapped = IPAddress(ipv4).ipv6()
         self.assertEquals(ipv4, convert_host_to_uri_str(str(ipv6_mapped)))
 
-    def test__ipv6(self):
+    def test_ipv6(self):
         ipv6 = factory.make_ipv6_address()
         self.assertEquals("[%s]" % ipv6, convert_host_to_uri_str(ipv6))
 
@@ -2486,7 +2486,7 @@ class TestGetIfnameForLabel(MAASTestCase):
         ),
     ]
 
-    def test__scenarios(self):
+    def test_scenarios(self):
         self.assertThat(
             get_ifname_for_label(self.input), Equals(self.expected)
         )

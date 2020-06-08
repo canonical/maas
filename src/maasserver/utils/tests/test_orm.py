@@ -220,25 +220,25 @@ class TestUniqueViolation(UniqueViolationTestCase):
 class TestGetPsycopg2Exception(MAASTestCase):
     """Tests for `get_psycopg2_exception`."""
 
-    def test__returns_psycopg2_error(self):
+    def test_returns_psycopg2_error(self):
         exception = psycopg2.Error()
         self.assertIs(exception, get_psycopg2_exception(exception))
 
-    def test__returns_None_for_other_error(self):
+    def test_returns_None_for_other_error(self):
         exception = factory.make_exception()
         self.assertIsNone(get_psycopg2_serialization_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause_for_serialization(self):
+    def test_returns_psycopg2_error_root_cause_for_serialization(self):
         exception = Exception()
         exception.__cause__ = orm.SerializationFailure()
         self.assertIs(exception.__cause__, get_psycopg2_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause_for_deadlock(self):
+    def test_returns_psycopg2_error_root_cause_for_deadlock(self):
         exception = Exception()
         exception.__cause__ = orm.DeadlockFailure()
         self.assertIs(exception.__cause__, get_psycopg2_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause_for_foreign_key(self):
+    def test_returns_psycopg2_error_root_cause_for_foreign_key(self):
         exception = Exception()
         exception.__cause__ = orm.ForeignKeyViolation()
         self.assertIs(exception.__cause__, get_psycopg2_exception(exception))
@@ -247,15 +247,15 @@ class TestGetPsycopg2Exception(MAASTestCase):
 class TestGetPsycopg2SerializationException(MAASTestCase):
     """Tests for `get_psycopg2_serialization_exception`."""
 
-    def test__returns_None_for_plain_psycopg2_error(self):
+    def test_returns_None_for_plain_psycopg2_error(self):
         exception = psycopg2.Error()
         self.assertIsNone(get_psycopg2_serialization_exception(exception))
 
-    def test__returns_None_for_other_error(self):
+    def test_returns_None_for_other_error(self):
         exception = factory.make_exception()
         self.assertIsNone(get_psycopg2_serialization_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause(self):
+    def test_returns_psycopg2_error_root_cause(self):
         exception = Exception()
         exception.__cause__ = orm.SerializationFailure()
         self.assertIs(
@@ -267,15 +267,15 @@ class TestGetPsycopg2SerializationException(MAASTestCase):
 class TestGetPsycopg2DeadlockException(MAASTestCase):
     """Tests for `get_psycopg2_deadlock_exception`."""
 
-    def test__returns_None_for_plain_psycopg2_error(self):
+    def test_returns_None_for_plain_psycopg2_error(self):
         exception = psycopg2.Error()
         self.assertIsNone(get_psycopg2_deadlock_exception(exception))
 
-    def test__returns_None_for_other_error(self):
+    def test_returns_None_for_other_error(self):
         exception = factory.make_exception()
         self.assertIsNone(get_psycopg2_deadlock_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause(self):
+    def test_returns_psycopg2_error_root_cause(self):
         exception = Exception()
         exception.__cause__ = orm.DeadlockFailure()
         self.assertIs(
@@ -286,15 +286,15 @@ class TestGetPsycopg2DeadlockException(MAASTestCase):
 class TestGetPsycopg2UniqueViolationException(MAASTestCase):
     """Tests for `get_psycopg2_unique_violation_exception`."""
 
-    def test__returns_None_for_plain_psycopg2_error(self):
+    def test_returns_None_for_plain_psycopg2_error(self):
         exception = psycopg2.Error()
         self.assertIsNone(get_psycopg2_unique_violation_exception(exception))
 
-    def test__returns_None_for_other_error(self):
+    def test_returns_None_for_other_error(self):
         exception = factory.make_exception()
         self.assertIsNone(get_psycopg2_unique_violation_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause(self):
+    def test_returns_psycopg2_error_root_cause(self):
         exception = Exception()
         exception.__cause__ = orm.UniqueViolation()
         self.assertIs(
@@ -306,19 +306,19 @@ class TestGetPsycopg2UniqueViolationException(MAASTestCase):
 class TestGetPsycopg2ForeignKeyException(MAASTestCase):
     """Tests for `get_psycopg2_foreign_key_violation_exception`."""
 
-    def test__returns_None_for_plain_psycopg2_error(self):
+    def test_returns_None_for_plain_psycopg2_error(self):
         exception = psycopg2.Error()
         self.assertIsNone(
             get_psycopg2_foreign_key_violation_exception(exception)
         )
 
-    def test__returns_None_for_other_error(self):
+    def test_returns_None_for_other_error(self):
         exception = factory.make_exception()
         self.assertIsNone(
             get_psycopg2_foreign_key_violation_exception(exception)
         )
 
-    def test__returns_psycopg2_error_root_cause(self):
+    def test_returns_psycopg2_error_root_cause(self):
         exception = Exception()
         exception.__cause__ = orm.ForeignKeyViolation()
         self.assertIs(
@@ -676,7 +676,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
 class TestMakeSerializationFailure(MAASTestCase):
     """Tests for `make_serialization_failure`."""
 
-    def test__makes_a_serialization_failure(self):
+    def test_makes_a_serialization_failure(self):
         exception = orm.make_serialization_failure()
         self.assertThat(
             exception,
@@ -689,7 +689,7 @@ class TestMakeSerializationFailure(MAASTestCase):
 class TestMakeDeadlockFailure(MAASTestCase):
     """Tests for `make_deadlock_failure`."""
 
-    def test__makes_a_deadlock_failure(self):
+    def test_makes_a_deadlock_failure(self):
         exception = orm.make_deadlock_failure()
         self.assertThat(
             exception,
@@ -702,7 +702,7 @@ class TestMakeDeadlockFailure(MAASTestCase):
 class TestMakeUniqueViolation(MAASTestCase):
     """Tests for `make_unique_violation`."""
 
-    def test__makes_a_unique_violation(self):
+    def test_makes_a_unique_violation(self):
         exception = orm.make_unique_violation()
         self.assertThat(
             exception,
@@ -715,7 +715,7 @@ class TestMakeUniqueViolation(MAASTestCase):
 class TestMakeForeignKeyViolation(MAASTestCase):
     """Tests for `make_foreign_key_violation`."""
 
-    def test__makes_a_foreign_key_violation(self):
+    def test_makes_a_foreign_key_violation(self):
         exception = orm.make_foreign_key_violation()
         self.assertThat(
             exception,
@@ -876,11 +876,11 @@ class TestRetryContext(MAASTestCase):
 class TestRequestTransactionRetry(MAASTestCase):
     """Tests for `request_transaction_retry`."""
 
-    def test__raises_a_retry_transaction_exception(self):
+    def test_raises_a_retry_transaction_exception(self):
         with orm.retry_context:
             self.assertRaises(orm.RetryTransaction, request_transaction_retry)
 
-    def test__adds_additional_contexts_to_retry_context(self):
+    def test_adds_additional_contexts_to_retry_context(self):
         contexts = []
         with orm.retry_context:
             self.assertRaises(
@@ -909,7 +909,7 @@ class TestGenRetryIntervals(MAASTestCase):
         full_jitter = self.patch(orm, "full_jitter")
         full_jitter.side_effect = lambda thing: thing
 
-    def test__unjittered_series_begins(self):
+    def test_unjittered_series_begins(self):
         self.remove_jitter()
         # Get the first 10 intervals, without jitter.
         intervals = islice(orm.gen_retry_intervals(), 10)
@@ -921,7 +921,7 @@ class TestGenRetryIntervals(MAASTestCase):
             Equals([25, 62, 156, 390, 976, 2441, 6103, 10000, 10000, 10000]),
         )
 
-    def test__pulls_from_exponential_series_until_maximum_is_reached(self):
+    def test_pulls_from_exponential_series_until_maximum_is_reached(self):
         self.remove_jitter()
         # repeat() is the tail-end of the interval series.
         repeat = self.patch(orm, "repeat")
@@ -935,7 +935,7 @@ class TestGenRetryIntervals(MAASTestCase):
 class TestPostCommitHooks(MAASTestCase):
     """Tests for the `post_commit_hooks` singleton."""
 
-    def test__crashes_on_enter_if_hooks_exist(self):
+    def test_crashes_on_enter_if_hooks_exist(self):
         hook = Deferred()
         post_commit_hooks.add(hook)
         with ExpectedException(TransactionManagementError):
@@ -947,7 +947,7 @@ class TestPostCommitHooks(MAASTestCase):
         # The hook list is cleared so that the exception is raised only once.
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
 
-    def test__fires_hooks_on_exit_if_no_exception(self):
+    def test_fires_hooks_on_exit_if_no_exception(self):
         self.addCleanup(post_commit_hooks.reset)
         hooks_fire = self.patch_autospec(post_commit_hooks, "fire")
         with post_commit_hooks:
@@ -955,7 +955,7 @@ class TestPostCommitHooks(MAASTestCase):
         # Hooks are fired.
         self.assertThat(hooks_fire, MockCalledOnceWith())
 
-    def test__resets_hooks_on_exit_if_exception(self):
+    def test_resets_hooks_on_exit_if_exception(self):
         self.addCleanup(post_commit_hooks.reset)
         hooks_fire = self.patch_autospec(post_commit_hooks, "fire")
         hooks_reset = self.patch_autospec(post_commit_hooks, "reset")
@@ -976,18 +976,18 @@ class TestPostCommit(MAASTestCase):
         super(TestPostCommit, self).setUp()
         self.addCleanup(post_commit_hooks.reset)
 
-    def test__adds_Deferred_as_hook(self):
+    def test_adds_Deferred_as_hook(self):
         hook = Deferred()
         hook_added = post_commit(hook)
         self.assertEqual([hook], list(post_commit_hooks.hooks))
         self.assertThat(hook_added, Is(hook))
 
-    def test__adds_new_Deferred_as_hook_when_called_without_args(self):
+    def test_adds_new_Deferred_as_hook_when_called_without_args(self):
         hook_added = post_commit()
         self.assertEqual([hook_added], list(post_commit_hooks.hooks))
         self.assertThat(hook_added, IsInstance(Deferred))
 
-    def test__adds_callable_as_hook(self):
+    def test_adds_callable_as_hook(self):
         def hook(arg):
             pass
 
@@ -995,7 +995,7 @@ class TestPostCommit(MAASTestCase):
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
         self.assertThat(hook_added, IsInstance(Deferred))
 
-    def test__fire_calls_back_with_None_to_Deferred_hook(self):
+    def test_fire_calls_back_with_None_to_Deferred_hook(self):
         hook = Deferred()
         spy = DeferredValue()
         spy.observe(hook)
@@ -1003,14 +1003,14 @@ class TestPostCommit(MAASTestCase):
         post_commit_hooks.fire()
         self.assertIsNone(extract_result(spy.get()))
 
-    def test__fire_calls_back_with_None_to_new_Deferred_hook(self):
+    def test_fire_calls_back_with_None_to_new_Deferred_hook(self):
         hook_added = post_commit()
         spy = DeferredValue()
         spy.observe(hook_added)
         post_commit_hooks.fire()
         self.assertIsNone(extract_result(spy.get()))
 
-    def test__reset_cancels_Deferred_hook(self):
+    def test_reset_cancels_Deferred_hook(self):
         hook = Deferred()
         spy = DeferredValue()
         spy.observe(hook)
@@ -1018,20 +1018,20 @@ class TestPostCommit(MAASTestCase):
         post_commit_hooks.reset()
         self.assertRaises(CancelledError, extract_result, spy.get())
 
-    def test__reset_cancels_new_Deferred_hook(self):
+    def test_reset_cancels_new_Deferred_hook(self):
         hook_added = post_commit()
         spy = DeferredValue()
         spy.observe(hook_added)
         post_commit_hooks.reset()
         self.assertRaises(CancelledError, extract_result, spy.get())
 
-    def test__fire_passes_None_to_callable_hook(self):
+    def test_fire_passes_None_to_callable_hook(self):
         hook = Mock()
         post_commit(hook)
         post_commit_hooks.fire()
         self.assertThat(hook, MockCalledOnceWith(None))
 
-    def test__reset_passes_Failure_to_callable_hook(self):
+    def test_reset_passes_Failure_to_callable_hook(self):
         hook = Mock()
         post_commit(hook)
         post_commit_hooks.reset()
@@ -1040,7 +1040,7 @@ class TestPostCommit(MAASTestCase):
         self.assertThat(arg, IsInstance(Failure))
         self.assertThat(arg.value, IsInstance(CancelledError))
 
-    def test__rejects_other_hook_types(self):
+    def test_rejects_other_hook_types(self):
         self.assertRaises(AssertionError, post_commit, sentinel.hook)
 
 
@@ -1051,14 +1051,14 @@ class TestPostCommitDo(MAASTestCase):
         super(TestPostCommitDo, self).setUp()
         self.addCleanup(post_commit_hooks.reset)
 
-    def test__adds_callable_as_hook(self):
+    def test_adds_callable_as_hook(self):
         def hook(arg):
             pass
 
         post_commit_do(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
 
-    def test__returns_actual_hook(self):
+    def test_returns_actual_hook(self):
         hook = Mock()
         hook_added = post_commit_do(hook, sentinel.foo, bar=sentinel.bar)
         self.assertThat(hook_added, IsInstance(Deferred))
@@ -1071,7 +1071,7 @@ class TestPostCommitDo(MAASTestCase):
             Equals((callOut, (hook, sentinel.foo), {"bar": sentinel.bar})),
         )
 
-    def test__fire_passes_only_args_to_hook(self):
+    def test_fire_passes_only_args_to_hook(self):
         hook = Mock()
         post_commit_do(hook, sentinel.arg, foo=sentinel.bar)
         post_commit_hooks.fire()
@@ -1079,24 +1079,24 @@ class TestPostCommitDo(MAASTestCase):
             hook, MockCalledOnceWith(sentinel.arg, foo=sentinel.bar)
         )
 
-    def test__reset_does_not_call_hook(self):
+    def test_reset_does_not_call_hook(self):
         hook = Mock()
         post_commit_do(hook)
         post_commit_hooks.reset()
         self.assertThat(hook, MockNotCalled())
 
-    def test__rejects_other_hook_types(self):
+    def test_rejects_other_hook_types(self):
         self.assertRaises(AssertionError, post_commit_do, sentinel.hook)
 
 
 class TestConnected(MAASTransactionServerTestCase):
     """Tests for the `orm.connected` context manager."""
 
-    def test__ensures_connection(self):
+    def test_ensures_connection(self):
         with orm.connected():
             self.assertThat(connection.connection, Not(Is(None)))
 
-    def test__opens_and_closes_connection_when_no_preexisting_connection(self):
+    def test_opens_and_closes_connection_when_no_preexisting_connection(self):
         connection.close()
 
         self.assertThat(connection.connection, Is(None))
@@ -1104,7 +1104,7 @@ class TestConnected(MAASTransactionServerTestCase):
             self.assertThat(connection.connection, Not(Is(None)))
         self.assertThat(connection.connection, Is(None))
 
-    def test__leaves_preexisting_connections_alone(self):
+    def test_leaves_preexisting_connections_alone(self):
         connection.ensure_connection()
         preexisting_connection = connection.connection
 
@@ -1113,7 +1113,7 @@ class TestConnected(MAASTransactionServerTestCase):
             self.assertThat(connection.connection, Is(preexisting_connection))
         self.assertThat(connection.connection, Is(preexisting_connection))
 
-    def test__disconnects_and_reconnects_if_not_usable(self):
+    def test_disconnects_and_reconnects_if_not_usable(self):
         connection.ensure_connection()
         preexisting_connection = connection.connection
 
@@ -1134,11 +1134,11 @@ class TestConnected(MAASTransactionServerTestCase):
 class TestWithConnection(MAASTransactionServerTestCase):
     """Tests for the `orm.with_connection` decorator."""
 
-    def test__exposes_original_function(self):
+    def test_exposes_original_function(self):
         function = Mock(__name__=self.getUniqueString())
         self.assertThat(orm.with_connection(function).func, Is(function))
 
-    def test__ensures_function_is_called_within_connected_context(self):
+    def test_ensures_function_is_called_within_connected_context(self):
         context = self.patch(orm, "connected").return_value = StubContext()
 
         @orm.with_connection
@@ -1156,11 +1156,11 @@ class TestWithConnection(MAASTransactionServerTestCase):
 
 
 class TestTransactional(MAASTransactionServerTestCase):
-    def test__exposes_original_function(self):
+    def test_exposes_original_function(self):
         function = Mock(__name__=self.getUniqueString())
         self.assertThat(orm.transactional(function).func, Is(function))
 
-    def test__calls_function_within_transaction_then_closes_connections(self):
+    def test_calls_function_within_transaction_then_closes_connections(self):
         # Close the database connection to begin with.
         connection.close()
 
@@ -1194,7 +1194,7 @@ class TestTransactional(MAASTransactionServerTestCase):
         self.assertFalse(connection.in_atomic_block)
         self.expectThat(connection.connection, Is(None))
 
-    def test__leaves_preexisting_connections_open(self):
+    def test_leaves_preexisting_connections_open(self):
         # Ensure there's a database connection to begin with.
         connection.ensure_connection()
 
@@ -1212,7 +1212,7 @@ class TestTransactional(MAASTransactionServerTestCase):
         self.assertFalse(connection.in_atomic_block)
         self.expectThat(connection.connection, Not(Is(None)))
 
-    def test__closes_connections_only_when_leaving_atomic_block(self):
+    def test_closes_connections_only_when_leaving_atomic_block(self):
         # Close the database connection to begin with.
         connection.close()
         self.expectThat(connection.connection, Is(None))
@@ -1234,7 +1234,7 @@ class TestTransactional(MAASTransactionServerTestCase):
         # The connection has been closed.
         self.expectThat(connection.connection, Is(None))
 
-    def test__fires_post_commit_hooks_when_done(self):
+    def test_fires_post_commit_hooks_when_done(self):
         fire = self.patch(orm.post_commit_hooks, "fire")
 
         def function():
@@ -1244,14 +1244,14 @@ class TestTransactional(MAASTransactionServerTestCase):
         self.assertIs(sentinel.something, decorated_function())
         self.assertThat(fire, MockCalledOnceWith())
 
-    def test__crashes_if_hooks_exist_before_entering_transaction(self):
+    def test_crashes_if_hooks_exist_before_entering_transaction(self):
         post_commit(lambda failure: None)
         decorated_function = orm.transactional(lambda: None)
         self.assertRaises(TransactionManagementError, decorated_function)
         # The hook list is cleared so that the exception is raised only once.
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
 
-    def test__creates_post_commit_hook_savepoint_on_inner_block(self):
+    def test_creates_post_commit_hook_savepoint_on_inner_block(self):
         hooks = post_commit_hooks.hooks
 
         @orm.transactional
@@ -1270,7 +1270,7 @@ class TestTransactional(MAASTransactionServerTestCase):
 
 
 class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
-    def test__retries_upon_serialization_failures(self):
+    def test_retries_upon_serialization_failures(self):
         function = Mock()
         function.__name__ = self.getUniqueString()
         function.side_effect = self.cause_serialization_failure
@@ -1280,7 +1280,7 @@ class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
         expected_calls = [call()] * 10
         self.assertThat(function, MockCallsMatch(*expected_calls))
 
-    def test__resets_post_commit_hooks_when_retrying(self):
+    def test_resets_post_commit_hooks_when_retrying(self):
         reset = self.patch(orm.post_commit_hooks, "reset")
 
         function = Mock()
@@ -1298,12 +1298,12 @@ class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
 class TestSavepoint(MAASTransactionServerTestCase):
     """Tests for `savepoint`."""
 
-    def test__crashes_if_not_already_within_transaction(self):
+    def test_crashes_if_not_already_within_transaction(self):
         with ExpectedException(TransactionManagementError):
             with savepoint():
                 pass
 
-    def test__creates_savepoint_for_transaction_and_post_commit_hooks(self):
+    def test_creates_savepoint_for_transaction_and_post_commit_hooks(self):
         hooks = post_commit_hooks.hooks
         with transaction.atomic():
             self.expectThat(connection.savepoint_ids, HasLength(0))
@@ -1318,39 +1318,39 @@ class TestSavepoint(MAASTransactionServerTestCase):
 class TestInTransaction(MAASTransactionServerTestCase):
     """Tests for `in_transaction`."""
 
-    def test__true_within_atomic_block(self):
+    def test_true_within_atomic_block(self):
         with transaction.atomic():
             self.assertTrue(in_transaction())
 
-    def test__false_when_no_transaction_is_active(self):
+    def test_false_when_no_transaction_is_active(self):
         self.assertFalse(in_transaction())
 
 
 class TestValidateInTransaction(MAASTransactionServerTestCase):
     """Tests for `validate_in_transaction`."""
 
-    def test__does_nothing_within_atomic_block(self):
+    def test_does_nothing_within_atomic_block(self):
         with transaction.atomic():
             validate_in_transaction(connection)
 
-    def test__explodes_when_no_transaction_is_active(self):
+    def test_explodes_when_no_transaction_is_active(self):
         self.assertRaises(
             TransactionManagementError, validate_in_transaction, connection
         )
 
 
 class TestPsqlArray(MAASTestCase):
-    def test__returns_empty_array(self):
+    def test_returns_empty_array(self):
         self.assertEqual(("ARRAY[]", []), psql_array([]))
 
-    def test__returns_params_in_array(self):
+    def test_returns_params_in_array(self):
         self.assertEqual("ARRAY[%s,%s,%s]", psql_array(["a", "a", "a"])[0])
 
-    def test__returns_params_in_tuple(self):
+    def test_returns_params_in_tuple(self):
         params = [factory.make_name("param") for _ in range(3)]
         self.assertEqual(params, psql_array(params)[1])
 
-    def test__returns_cast_to_type(self):
+    def test_returns_cast_to_type(self):
         self.assertEqual(
             ("ARRAY[]::integer[]", []), psql_array([], sql_type="integer")
         )
@@ -1401,14 +1401,14 @@ class TestDisablingDatabaseConnections(MAASTransactionServerTestCase):
 class TestTotallyDisconnected(MAASTransactionServerTestCase):
     """Tests for `TotallyDisconnected`."""
 
-    def test__enter_closes_open_connections_and_disables_new_ones(self):
+    def test_enter_closes_open_connections_and_disables_new_ones(self):
         self.addCleanup(connection.close)
         connection.ensure_connection()
         with TotallyDisconnected():
             self.assertRaises(RuntimeError, getattr, connection, "connect")
         connection.ensure_connection()
 
-    def test__exit_removes_block_on_database_connections(self):
+    def test_exit_removes_block_on_database_connections(self):
         with TotallyDisconnected():
             self.assertRaises(RuntimeError, getattr, connection, "connect")
         connection.ensure_connection()
@@ -1417,18 +1417,18 @@ class TestTotallyDisconnected(MAASTransactionServerTestCase):
 class TestExclusivelyConnected(MAASTransactionServerTestCase):
     """Tests for `ExclusivelyConnected`."""
 
-    def test__enter_blows_up_if_there_are_open_connections(self):
+    def test_enter_blows_up_if_there_are_open_connections(self):
         self.addCleanup(connection.close)
         connection.ensure_connection()
         context = ExclusivelyConnected()
         self.assertRaises(AssertionError, context.__enter__)
 
-    def test__enter_does_nothing_if_there_are_no_open_connections(self):
+    def test_enter_does_nothing_if_there_are_no_open_connections(self):
         connection.close()
         context = ExclusivelyConnected()
         context.__enter__()
 
-    def test__exit_closes_open_connections(self):
+    def test_exit_closes_open_connections(self):
         self.addCleanup(connection.close)
         connection.ensure_connection()
         self.assertThat(connection.connection, Not(Is(None)))
@@ -1446,7 +1446,7 @@ class TestFullyConnected(MAASTransactionServerTestCase):
     def assertClosed(self, alias):
         self.assertThat(connections[alias].connection, Is(None))
 
-    def test__opens_and_closes_connections(self):
+    def test_opens_and_closes_connections(self):
         for alias in connections:
             connections[alias].close()
         for alias in connections:
@@ -1457,7 +1457,7 @@ class TestFullyConnected(MAASTransactionServerTestCase):
         for alias in connections:
             self.assertClosed(alias)
 
-    def test__closes_connections_even_if_open_on_entry(self):
+    def test_closes_connections_even_if_open_on_entry(self):
         for alias in connections:
             connections[alias].ensure_connection()
         for alias in connections:
@@ -1470,20 +1470,20 @@ class TestFullyConnected(MAASTransactionServerTestCase):
 
 
 class TestGetModelObjectName(MAASServerTestCase):
-    def test__gets_model_object_name_from_manager(self):
+    def test_gets_model_object_name_from_manager(self):
         self.assertThat(get_model_object_name(Node.objects), Equals("Node"))
 
-    def test__gets_model_object_name_from_queryset(self):
+    def test_gets_model_object_name_from_queryset(self):
         self.assertThat(
             get_model_object_name(Node.objects.all()), Equals("Node")
         )
 
-    def test__gets_model_object_name_returns_none_if_not_found(self):
+    def test_gets_model_object_name_returns_none_if_not_found(self):
         self.assertThat(get_model_object_name("crazytalk"), Is(None))
 
 
 class TestCountQueries(MAASServerTestCase):
-    def test__logs_all_queries_made_by_func(self):
+    def test_logs_all_queries_made_by_func(self):
         def query_func():
             return list(Node.objects.all())
 
@@ -1502,7 +1502,7 @@ class TestCountQueries(MAASServerTestCase):
             ),
         )
 
-    def test__resets_queries_between_calls(self):
+    def test_resets_queries_between_calls(self):
         def query_func():
             return list(Node.objects.all())
 
@@ -1536,7 +1536,7 @@ class TestCountQueries(MAASServerTestCase):
             ),
         )
 
-    def test__logs_all_queries_made(self):
+    def test_logs_all_queries_made(self):
         def query_func():
             return list(Node.objects.all())
 

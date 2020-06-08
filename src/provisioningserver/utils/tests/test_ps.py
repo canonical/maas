@@ -78,7 +78,7 @@ class TestIsPIDRunning(MAASTestCase):
         ("os-error", {"result": False, "exception": OSError()}),
     )
 
-    def test__result(self):
+    def test_result(self):
         self.patch(ps_module.os, "kill").side_effect = self.exception
         self.assertEquals(
             self.result, is_pid_running(random.randint(100, 200))
@@ -96,7 +96,7 @@ class TestIsPIDInContainer(MAASTestCase):
         ("in_lxc_container", {"result": True, "cgroup": IN_LXC_CONTAINER}),
     )
 
-    def test__result(self):
+    def test_result(self):
         proc_path = self.make_dir()
         pid = random.randint(1, 1000)
         pid_path = os.path.join(proc_path, str(pid))
@@ -110,7 +110,7 @@ class TestIsPIDInContainer(MAASTestCase):
 
 
 class TestRunningInContainer(MAASTestCase):
-    def test__returns_False_when_ExternalProcessError(self):
+    def test_returns_False_when_ExternalProcessError(self):
         mock_call = self.patch(ps_module, "call_and_check")
         mock_call.side_effect = ExternalProcessError(
             1, ["systemd-detect-virt", "-c"], output="none"
@@ -118,7 +118,7 @@ class TestRunningInContainer(MAASTestCase):
         running_in_container.cache_clear()
         self.assertFalse(running_in_container())
 
-    def test__returns_True_when_not_ExternalProcessError(self):
+    def test_returns_True_when_not_ExternalProcessError(self):
         self.patch(ps_module, "call_and_check")
         running_in_container.cache_clear()
         self.assertTrue(running_in_container())

@@ -61,7 +61,7 @@ class TestStatusQueryEvent(MAASServerTestCase):
 
 
 class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
-    def test__calls_update_power_state_of_node_after_wait_time(self):
+    def test_calls_update_power_state_of_node_after_wait_time(self):
         self.patch_autospec(power, "update_power_state_of_node")
         node = factory.make_Node(power_type="virsh")
         clock = Clock()
@@ -77,21 +77,21 @@ class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
 class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__retrieves_power_state(self):
+    def test_retrieves_power_state(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
         mock_power_query = self.patch(Node, "power_query")
         mock_power_query.return_value = POWER_STATE.ON
         power_state = yield power.update_power_state_of_node(node.system_id)
         self.assertEqual(power_state, POWER_STATE.ON)
 
-    def test__traps_failure_for_Node_DoesNotExist(self):
+    def test_traps_failure_for_Node_DoesNotExist(self):
         self.assertIsNone(
             power.update_power_state_of_node(factory.make_name("system_id"))
         )
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__traps_failure_for_UnknownPowerType(self):
+    def test_traps_failure_for_UnknownPowerType(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
         mock_power_query = self.patch(Node, "power_query")
         mock_power_query.side_effect = UnknownPowerType()
@@ -100,7 +100,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__traps_failure_for_PowerProblem(self):
+    def test_traps_failure_for_PowerProblem(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
         mock_power_query = self.patch(Node, "power_query")
         mock_power_query.side_effect = PowerProblem()
@@ -109,7 +109,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__logs_other_errors(self):
+    def test_logs_other_errors(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
         mock_power_query = self.patch(Node, "power_query")
         mock_power_query.side_effect = factory.make_exception("Error")

@@ -69,7 +69,7 @@ class TestParseIPRoute(MAASTestCase):
         route_line = "%s via %s dev %s" % (subnet, gateway, interface)
         return route_line, {subnet: {"via": gateway, "dev": interface}}
 
-    def test__returns_routes_definition(self):
+    def test_returns_routes_definition(self):
         route_input, expected_output = self.make_route_line(subnet="default")
         for _ in range(3):
             route_line, output = self.make_route_line()
@@ -80,7 +80,7 @@ class TestParseIPRoute(MAASTestCase):
 
 
 class TestGetIPRoute(MAASTestCase):
-    def test__calls_methods(self):
+    def test_calls_methods(self):
         patch_call_and_check = self.patch(iproute_module, "call_and_check")
         patch_call_and_check.return_value = sentinel.ip_route_cmd
         patch_parse_ip_route = self.patch(iproute_module, "parse_ip_route")

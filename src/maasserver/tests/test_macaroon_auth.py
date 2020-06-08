@@ -664,14 +664,14 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):
-    def test__get_macaroon_oven_key(self):
+    def test_get_macaroon_oven_key(self):
         key = _get_macaroon_oven_key()
         self.assertEqual(
             Config.objects.get_config("macaroon_private_key"),
             key.serialize().decode("ascii"),
         )
 
-    def test__get_macaroon_oven_key_existing(self):
+    def test_get_macaroon_oven_key_existing(self):
         key = _get_macaroon_oven_key()
         self.assertEqual(_get_macaroon_oven_key(), key)
 

@@ -17,11 +17,11 @@ from maasserver.utils.orm import reload_object
 
 
 class TestIPRangeForm(MAASServerTestCase):
-    def test__empty_form_fails_validation(self):
+    def test_empty_form_fails_validation(self):
         form = IPRangeForm({})
         self.assertFalse(form.is_valid(), dict(form.errors))
 
-    def test__requires_start_ip(self):
+    def test_requires_start_ip(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         comment = factory.make_name("comment")
         form = IPRangeForm(
@@ -37,7 +37,7 @@ class TestIPRangeForm(MAASServerTestCase):
             form.errors["start_ip"], Contains("This field is required.")
         )
 
-    def test__requires_end_ip(self):
+    def test_requires_end_ip(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         comment = factory.make_name("comment")
         form = IPRangeForm(
@@ -53,7 +53,7 @@ class TestIPRangeForm(MAASServerTestCase):
             form.errors["end_ip"], Contains("This field is required.")
         )
 
-    def test__requires_type(self):
+    def test_requires_type(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         comment = factory.make_name("comment")
         form = IPRangeForm(
@@ -69,7 +69,7 @@ class TestIPRangeForm(MAASServerTestCase):
             form.errors["type"], Contains("This field is required.")
         )
 
-    def test__requires_subnet(self):
+    def test_requires_subnet(self):
         comment = factory.make_name("comment")
         form = IPRangeForm(
             {
@@ -84,7 +84,7 @@ class TestIPRangeForm(MAASServerTestCase):
             form.errors["subnet"], Contains("This field is required.")
         )
 
-    def test__subnet_optional_if_it_can_be_found(self):
+    def test_subnet_optional_if_it_can_be_found(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         comment = factory.make_name("comment")
         form = IPRangeForm(
@@ -99,7 +99,7 @@ class TestIPRangeForm(MAASServerTestCase):
         iprange = form.save()
         self.assertEqual(iprange.subnet, subnet)
 
-    def test__comment_optional(self):
+    def test_comment_optional(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         form = IPRangeForm(
             {
@@ -113,7 +113,7 @@ class TestIPRangeForm(MAASServerTestCase):
         iprange = form.save()
         self.assertThat(iprange.comment, Equals(""))
 
-    def test__creates_iprange(self):
+    def test_creates_iprange(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         comment = factory.make_name("comment")
         form = IPRangeForm(
@@ -133,7 +133,7 @@ class TestIPRangeForm(MAASServerTestCase):
         self.assertEqual(iprange.type, IPRANGE_TYPE.RESERVED)
         self.assertEqual(iprange.comment, comment)
 
-    def test__creates_iprange_with_user(self):
+    def test_creates_iprange_with_user(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         comment = factory.make_name("comment")
         request = Mock()
@@ -157,7 +157,7 @@ class TestIPRangeForm(MAASServerTestCase):
         self.assertEqual(iprange.comment, comment)
         self.assertEqual(iprange.user, request.user)
 
-    def test__updates_iprange(self):
+    def test_updates_iprange(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.get_dynamic_ranges().first()
         new_comment = factory.make_name("comment")

@@ -657,17 +657,17 @@ class TestDetectSwitchVendorModelDMIScenarios(MAASServerTestCase):
         ),
     )
 
-    def test__detect_switch_vendor_model(self):
+    def test_detect_switch_vendor_model(self):
         detected = detect_switch_vendor_model(self.dmi_data)
         self.assertThat(detected, Equals(self.result))
 
-    def test__get_dmi_data(self):
+    def test_get_dmi_data(self):
         dmi_data = get_dmi_data(self.modaliases)
         self.assertThat(dmi_data, Equals(self.dmi_data))
 
 
 class TestDetectSwitchVendorModel(MAASServerTestCase):
-    def test__detect_switch_vendor_model_returns_none_by_default(self):
+    def test_detect_switch_vendor_model_returns_none_by_default(self):
         detected = detect_switch_vendor_model(set())
         self.assertThat(detected, Equals((None, None)))
 
@@ -831,7 +831,7 @@ class TestFilterModaliases(MAASTestCase):
         ),
     )
 
-    def test__filter_modaliases(self):
+    def test_filter_modaliases(self):
         matches = filter_modaliases(
             self.modaliases, self.candidates, pci=self.pci, usb=self.usb
         )
@@ -925,7 +925,7 @@ class TestDetectHardware(MAASServerTestCase):
         },
     ]
 
-    def test__determine_hardware_matches(self):
+    def test_determine_hardware_matches(self):
         discovered, ruled_out = determine_hardware_matches(
             self.modaliases, self.hardware_database
         )
@@ -948,7 +948,7 @@ class TestDetectHardware(MAASServerTestCase):
         self.assertThat(discovered, Equals(expected_matches))
         self.assertThat(ruled_out, Equals(expected_ruled_out))
 
-    def test__retag_node_for_hardware_by_modalias__precreate_parent(self):
+    def test_retag_node_for_hardware_by_modalias__precreate_parent(self):
         node = factory.make_Node()
         parent_tag = factory.make_Tag()
         parent_tag_name = parent_tag.name
@@ -982,7 +982,7 @@ class TestDetectHardware(MAASServerTestCase):
         )
         self.assertThat(added, Equals(expected_added))
 
-    def test__retag_node_for_hardware_by_modalias__adds_parent_tag(self):
+    def test_retag_node_for_hardware_by_modalias__adds_parent_tag(self):
         node = factory.make_Node()
         parent_tag_name = "parent-tag-name"
         added, _ = retag_node_for_hardware_by_modalias(
@@ -1067,7 +1067,7 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
         ),
     )
 
-    def test__tags_node_appropriately(self):
+    def test_tags_node_appropriately(self):
         node = factory.make_Node()
         create_metadata_by_modalias(node, self.modaliases, 0)
         tags = set(node.tags.all().values_list("name", flat=True))
@@ -1203,7 +1203,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         self.assertDictEqual(data, pulled_data)
 
-    def test__errors_if_not_supported_lxd_api_ver(self):
+    def test_errors_if_not_supported_lxd_api_ver(self):
         node = factory.make_Node()
         self.assertRaises(
             AssertionError,
@@ -1215,7 +1215,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             0,
         )
 
-    def test__errors_if_missing_api_extension(self):
+    def test_errors_if_missing_api_extension(self):
         node = factory.make_Node()
         required_extensions = set(
             ["resources", "resources_v2", "api_os", "resources_system"]
@@ -1230,7 +1230,7 @@ class TestProcessLXDResults(MAASServerTestCase):
                 0,
             )
 
-    def test__sets_architecture(self):
+    def test_sets_architecture(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
         kernel_arch, deb_arch = random.choice(
@@ -1250,7 +1250,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = reload_object(node)
         self.assertEquals(deb_arch, node.architecture)
 
-    def test__sets_os_hostname_for_controller(self):
+    def test_sets_os_hostname_for_controller(self):
         rack = factory.make_RackController()
         create_IPADDR_OUTPUT_NAME_script(rack, IP_ADDR_OUTPUT)
         ubuntu_info = UbuntuDistroInfo()
@@ -1271,7 +1271,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals(ubuntu_release["series"], rack.distro_series)
         self.assertEquals(server_name, rack.hostname)
 
-    def test__doesnt_set_os_for_controller_if_blank(self):
+    def test_doesnt_set_os_for_controller_if_blank(self):
         osystem = factory.make_name("osystem")
         distro_series = factory.make_name("distro_series")
         rack = factory.make_RackController(
@@ -1285,7 +1285,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals(osystem, rack.osystem)
         self.assertEquals(distro_series, rack.distro_series)
 
-    def test__sets_os_for_pod(self):
+    def test_sets_os_for_pod(self):
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
@@ -1309,7 +1309,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals("ubuntu", node.osystem)
         self.assertEquals(ubuntu_release["series"], node.distro_series)
 
-    def test__ignores_os_for_machine(self):
+    def test_ignores_os_for_machine(self):
         node = factory.make_Node(osystem="centos", distro_series="8")
         hostname = node.hostname
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
@@ -1319,7 +1319,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEquals("8", node.distro_series)
         self.assertEquals(hostname, node.hostname)
 
-    def test__does_not_update_node_network_information_if_rack(self):
+    def test_does_not_update_node_network_information_if_rack(self):
         rack = factory.make_RackController()
         mock_update_node_network_information = self.patch(
             hooks_module, "update_node_network_information"
@@ -1327,7 +1327,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(rack, make_lxd_output_json(), 0)
         self.assertThat(mock_update_node_network_information, MockNotCalled())
 
-    def test__does_not_update_node_network_information_if_region(self):
+    def test_does_not_update_node_network_information_if_region(self):
         region = factory.make_RegionController()
         mock_update_node_network_information = self.patch(
             hooks_module, "update_node_network_information"
@@ -1335,7 +1335,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(region, make_lxd_output_json(), 0)
         self.assertThat(mock_update_node_network_information, MockNotCalled())
 
-    def test__does_not_initialize_node_network_information_if_pod(self):
+    def test_does_not_initialize_node_network_information_if_pod(self):
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
@@ -1352,7 +1352,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             [iface.vendor for iface in node.interface_set.all()],
         )
 
-    def test__updates_memory(self):
+    def test_updates_memory(self):
         node = factory.make_Node()
         node.memory = random.randint(4096, 8192)
         node.save()
@@ -1362,7 +1362,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(round(16691519488 / 1024 / 1024), node.memory)
 
-    def test__updates_model_and_cpu_speed_from_name(self):
+    def test_updates_model_and_cpu_speed_from_name(self):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
@@ -1374,7 +1374,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         nmd = NodeMetadata.objects.get(node=node, key="cpu_model")
         self.assertEqual("Intel(R) Core(TM) i7-4700MQ CPU", nmd.value)
 
-    def test__updates_cpu_speed_with_max_frequency_when_not_in_name(self):
+    def test_updates_cpu_speed_with_max_frequency_when_not_in_name(self):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
@@ -1388,7 +1388,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(3400, node.cpu_speed)
 
-    def test__updates_cpu_speed_with_current_frequency_when_not_in_name(self):
+    def test_updates_cpu_speed_with_current_frequency_when_not_in_name(self):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
@@ -1401,7 +1401,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(3200, node.cpu_speed)
 
-    def test__updates_memory_numa_nodes(self):
+    def test_updates_memory_numa_nodes(self):
         expected_memory = int(16691519488 / 2 / 1024 / 1024)
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
@@ -1414,7 +1414,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         for numa_node in numa_nodes:
             self.assertEqual(expected_memory, numa_node.memory)
 
-    def test__updates_memory_numa_nodes_missing(self):
+    def test_updates_memory_numa_nodes_missing(self):
         total_memory = SAMPLE_LXD_RESOURCES_NO_NUMA["memory"]["total"]
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
@@ -1427,7 +1427,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         for numa_node in numa_nodes:
             self.assertEqual(int(total_memory / 1024 / 1024), numa_node.memory)
 
-    def test__accepts_numa_node_zero_memory(self):
+    def test_accepts_numa_node_zero_memory(self):
         # Regression test for LP:1878923
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
@@ -1463,7 +1463,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             [32158, 0], [numa.memory for numa in node.numanode_set.all()]
         )
 
-    def test__updates_cpu_numa_nodes(self):
+    def test_updates_cpu_numa_nodes(self):
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
 
@@ -1473,7 +1473,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual([0, 1, 2, 3], numa_nodes[0].cores)
         self.assertEqual([4, 5, 6, 7], numa_nodes[1].cores)
 
-    def test__updates_cpu_numa_nodes_per_thread(self):
+    def test_updates_cpu_numa_nodes_per_thread(self):
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")
 
@@ -1489,7 +1489,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual([0, 2, 4, 6], numa_nodes[0].cores)
         self.assertEqual([1, 3, 5, 7], numa_nodes[1].cores)
 
-    def test__updates_network_numa_nodes(self):
+    def test_updates_network_numa_nodes(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
@@ -1503,7 +1503,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
         self.assertEqual(node_interfaces[2].numa_node, numa_nodes[0])
 
-    def test__updates_storage_numa_nodes(self):
+    def test_updates_storage_numa_nodes(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
@@ -1516,7 +1516,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
 
-    def test__updates_interfaces_speed(self):
+    def test_updates_interfaces_speed(self):
         node = factory.make_Node()
         iface = factory.make_Interface(
             node=node,
@@ -1541,21 +1541,21 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(0, iface3.link_speed)
         self.assertEqual(0, iface3.interface_speed)
 
-    def test__ipaddr_script_before(self):
+    def test_ipaddr_script_before(self):
         self.assertLess(
             IPADDR_OUTPUT_NAME,
             LXD_OUTPUT_NAME,
             "The LXD script hook depends on the IPADDR script result",
         )
 
-    def test__processes_system_information(self):
+    def test_processes_system_information(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
         output = make_lxd_output()
         process_lxd_results(node, json.dumps(output).encode(), 0)
         self.assertSystemInformation(node, output)
 
-    def test__ignores_system_information_placeholders(self):
+    def test_ignores_system_information_placeholders(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
         modified_sample_lxd_data = make_lxd_output()
@@ -1576,7 +1576,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             node.nodemetadata_set.exclude(key="cpu_model").exists()
         )
 
-    def test__handles_none_system_information(self):
+    def test_handles_none_system_information(self):
         # Regression test for LP:1881116
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
@@ -1595,7 +1595,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             ).count(),
         )
 
-    def test__removes_missing_nodemetadata(self):
+    def test_removes_missing_nodemetadata(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
         process_lxd_results(node, make_lxd_output_json(), 0)
@@ -1611,7 +1611,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             node.nodemetadata_set.exclude(key="cpu_model").exists()
         )
 
-    def test__removes_virtual_tag(self):
+    def test_removes_virtual_tag(self):
         node = factory.make_Node()
         tag, _ = Tag.objects.get_or_create(name="virtual")
         node.tags.add(tag)
@@ -1621,7 +1621,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         )
         self.assertFalse(node.tags.filter(name="virtual").exists())
 
-    def test__syncs_pods(self):
+    def test_syncs_pods(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)
@@ -1638,7 +1638,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
-    def test__idempotent_block_devices(self):
+    def test_idempotent_block_devices(self):
         device_names = [
             device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
@@ -1657,20 +1657,20 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             self.assertEqual(device.numa_node, numa_nodes[index])
         self.assertItemsEqual(device_names, created_names)
 
-    def test__does_nothing_if_skip_storage(self):
+    def test_does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNotNone(reload_object(block_device))
         self.assertFalse(reload_object(node).skip_storage)
 
-    def test__removes_previous_physical_block_devices(self):
+    def test_removes_previous_physical_block_devices(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNone(reload_object(block_device))
 
-    def test__creates_physical_block_devices(self):
+    def test_creates_physical_block_devices(self):
         device_names = [
             device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
@@ -1684,7 +1684,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertItemsEqual(device_names, created_names)
 
-    def test__skips_read_only_and_cdroms(self):
+    def test_skips_read_only_and_cdroms(self):
         node = factory.make_Node()
         READ_ONLY_AND_CDROM = deepcopy(SAMPLE_LXD_RESOURCES)
         READ_ONLY_AND_CDROM["storage"]["disks"][0]["read_only"] = "true"
@@ -1698,7 +1698,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertItemsEqual([], created_names)
 
-    def test__handles_renamed_block_device(self):
+    def test_handles_renamed_block_device(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1716,7 +1716,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertItemsEqual(device_names, created_names)
 
-    def test__handles_new_block_device_in_front(self):
+    def test_handles_new_block_device_in_front(self):
         # First simulate a node being commissioned with two disks. For
         # this test, there need to be at least two disks in order to
         # simulate a condition like the one in bug #1662343.
@@ -1766,7 +1766,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device_names,
         )
 
-    def test__only_updates_physical_block_devices(self):
+    def test_only_updates_physical_block_devices(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1784,7 +1784,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertItemsEqual(created_ids_two, created_ids_one)
 
-    def test__doesnt_reset_boot_disk(self):
+    def test_doesnt_reset_boot_disk(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1797,7 +1797,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
         self.assertEqual(boot_disk, reload_object(node).boot_disk)
 
-    def test__clears_boot_disk(self):
+    def test_clears_boot_disk(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1805,7 +1805,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNone(reload_object(node).boot_disk)
 
-    def test__creates_physical_block_devices_in_order(self):
+    def test_creates_physical_block_devices_in_order(self):
         device_names = [
             device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
@@ -1821,7 +1821,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertEqual(device_names, created_names)
 
-    def test__creates_physical_block_device(self):
+    def test_creates_physical_block_device(self):
         # Check first device from SAMPLE_LXD_RESOURCES
         device = SAMPLE_LXD_RESOURCES["storage"]["disks"][0]
         name = device["id"]
@@ -1848,7 +1848,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ),
         )
 
-    def test__creates_physical_block_device_with_default_block_size(self):
+    def test_creates_physical_block_device_with_default_block_size(self):
         SAMPLE_LXD_DEFAULT_BLOCK_SIZE = deepcopy(SAMPLE_LXD_RESOURCES)
         # Set block_size to zero.
         SAMPLE_LXD_DEFAULT_BLOCK_SIZE["storage"]["disks"][0]["block_size"] = 0
@@ -1877,7 +1877,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ),
         )
 
-    def test__creates_physical_block_device_with_path(self):
+    def test_creates_physical_block_device_with_path(self):
         NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_RESOURCES)
         NO_DEVICE_PATH["storage"]["disks"][0]["device_id"] = ""
         device = NO_DEVICE_PATH["storage"]["disks"][0]
@@ -1904,7 +1904,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ),
         )
 
-    def test__creates_physical_block_device_with_path_for_missing_serial(self):
+    def test_creates_physical_block_device_with_path_for_missing_serial(self):
         NO_SERIAL = deepcopy(SAMPLE_LXD_RESOURCES)
         NO_SERIAL["storage"]["disks"][0]["serial"] = ""
         device = NO_SERIAL["storage"]["disks"][0]
@@ -1928,7 +1928,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ),
         )
 
-    def test__creates_physical_block_device_only_for_node(self):
+    def test_creates_physical_block_device_only_for_node(self):
         node = factory.make_Node(with_boot_disk=False)
         other_node = factory.make_Node(with_boot_disk=False)
         update_node_physical_block_devices(
@@ -1940,7 +1940,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             "Created physical block device for the incorrect node.",
         )
 
-    def test__creates_physical_block_device_with_rotary_tag(self):
+    def test_creates_physical_block_device_with_rotary_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1954,7 +1954,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Not(Contains("ssd")),
         )
 
-    def test__creates_physical_block_device_with_rotary_and_rpm_tags(self):
+    def test_creates_physical_block_device_with_rotary_and_rpm_tags(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1968,7 +1968,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Contains("5400rpm"),
         )
 
-    def test__creates_physical_block_device_with_ssd_tag(self):
+    def test_creates_physical_block_device_with_ssd_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1982,7 +1982,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Not(Contains("rotary")),
         )
 
-    def test__creates_physical_block_device_without_removable_tag(self):
+    def test_creates_physical_block_device_without_removable_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -1992,7 +1992,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Not(Contains("removable")),
         )
 
-    def test__creates_physical_block_device_with_removable_tag(self):
+    def test_creates_physical_block_device_with_removable_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -2002,7 +2002,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Contains("removable"),
         )
 
-    def test__creates_physical_block_device_without_sata_tag(self):
+    def test_creates_physical_block_device_without_sata_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -2012,7 +2012,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Not(Contains("sata")),
         )
 
-    def test__creates_physical_block_device_with_sata_tag(self):
+    def test_creates_physical_block_device_with_sata_tag(self):
         node = factory.make_Node()
         update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
@@ -2022,7 +2022,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Contains("sata"),
         )
 
-    def test__ignores_min_block_device_size_devices(self):
+    def test_ignores_min_block_device_size_devices(self):
         UNDER_MIN_BLOCK_SIZE = deepcopy(SAMPLE_LXD_RESOURCES)
         UNDER_MIN_BLOCK_SIZE["storage"]["disks"][0]["size"] = random.randint(
             1, MIN_BLOCK_DEVICE_SIZE
@@ -2038,7 +2038,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             0, len(PhysicalBlockDevice.objects.filter(node=node))
         )
 
-    def test__regenerates_testing_script_set(self):
+    def test_regenerates_testing_script_set(self):
         node = factory.make_Node()
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING,
@@ -2078,7 +2078,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             script_result.parameters,
         )
 
-    def test__sets_default_configuration(self):
+    def test_sets_default_configuration(self):
         node = factory.make_Node()
 
         update_node_physical_block_devices(
@@ -2090,7 +2090,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Config.objects.get_config("default_storage_layout"), layout
         )
 
-    def test__doesnt_set_storage_layout_if_pod(self):
+    def test_doesnt_set_storage_layout_if_pod(self):
         pod = factory.make_Pod()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
@@ -2159,7 +2159,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                 Equals(expected_interfaces[interface.name]),
             )
 
-    def test__does_nothing_if_skip_networking(self):
+    def test_does_nothing_if_skip_networking(self):
         node = factory.make_Node(interface=True, skip_networking=True)
         boot_interface = node.get_boot_interface()
         update_node_network_information(
@@ -2168,7 +2168,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIsNotNone(reload_object(boot_interface))
         self.assertFalse(reload_object(node).skip_networking)
 
-    def test__does_nothing_if_duplicate_mac_on_controller(self):
+    def test_does_nothing_if_duplicate_mac_on_controller(self):
         mock_iface_get = self.patch(
             hooks_module.PhysicalInterface.objects, "get"
         )
@@ -2184,7 +2184,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         self.assertThat(mock_iface_get, MockNotCalled())
 
-    def test__does_nothing_if_duplicate_mac_on_pod(self):
+    def test_does_nothing_if_duplicate_mac_on_pod(self):
         mock_iface_get = self.patch(
             hooks_module.PhysicalInterface.objects, "get"
         )
@@ -2204,7 +2204,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         self.assertThat(mock_iface_get, MockNotCalled())
 
-    def test__raises_exception_if_duplicate_mac_on_machine(self):
+    def test_raises_exception_if_duplicate_mac_on_machine(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
         mac = factory.make_mac_address()
@@ -2220,7 +2220,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             create_numa_nodes(node),
         )
 
-    def test__add_all_interfaces(self):
+    def test_add_all_interfaces(self):
         """Test a node that has no previously known interfaces on which we
         need to add a series of interfaces.
         """
@@ -2236,7 +2236,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__interfaces_for_all_ports(self):
+    def test_interfaces_for_all_ports(self):
         """Interfaces are created for all ports in a network card.
         """
         node = factory.make_Node()
@@ -2262,7 +2262,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__add_all_interfaces_xenial(self):
+    def test_add_all_interfaces_xenial(self):
         """Test a node that has no previously known interfaces on which we
         need to add a series of interfaces.
         """
@@ -2357,7 +2357,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIsNone(nic.product)
         self.assertIsNone(nic.firmware_version)
 
-    def test__one_mac_missing(self):
+    def test_one_mac_missing(self):
         """Test whether we correctly detach a NIC that no longer appears to be
         connected to the node.
         """
@@ -2381,7 +2381,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ]
         self.assertNotIn(MAC("01:23:45:67:89:ab"), db_macaddresses)
 
-    def test__reassign_mac(self):
+    def test_reassign_mac(self):
         """Test whether we can assign a MAC address previously connected to a
         different node to the current one"""
         node1 = factory.make_Node()
@@ -2403,7 +2403,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertItemsEqual([], Interface.objects.filter(node=node1))
         self.assertItemsEqual([], Interface.objects.filter(node=node1))
 
-    def test__reassign_interfaces(self):
+    def test_reassign_interfaces(self):
         """Test whether we can assign interfaces previously connected to a
         different node to the current one"""
         node1 = factory.make_Node()
@@ -2435,7 +2435,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # ... and ensure that the interface was deleted.
         self.assertItemsEqual([], Interface.objects.filter(id=interface_id))
 
-    def test__deletes_virtual_interfaces_with_shared_mac(self):
+    def test_deletes_virtual_interfaces_with_shared_mac(self):
         # Note: since this VLANInterface will be linked to the default VLAN
         # ("vid 0", which is actually invalid) the VLANInterface will
         # automatically get the name "vlan0".
@@ -2471,7 +2471,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__interface_name_changed(self):
+    def test_interface_name_changed(self):
         ETH0_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
@@ -2489,7 +2489,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # This will ensure that the interface was renamed appropriately.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__mac_id_is_preserved(self):
+    def test_mac_id_is_preserved(self):
         """Test whether MAC address entities are preserved and not recreated"""
         ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
         node = factory.make_Node()
@@ -2504,7 +2504,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         self.assertIsNotNone(reload_object(iface_to_be_preserved))
 
-    def test__legacy_model_upgrade_preserves_interfaces(self):
+    def test_legacy_model_upgrade_preserves_interfaces(self):
         ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
         node = factory.make_Node()
@@ -2520,7 +2520,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__legacy_model_with_extra_mac(self):
+    def test_legacy_model_with_extra_mac(self):
         ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
         ETH2_MAC = self.EXPECTED_INTERFACES["eth2"].get_raw()
@@ -2546,7 +2546,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Make sure the interface that no longer exists has been removed.
         self.assertIsNone(reload_object(eth3))
 
-    def test__deletes_virtual_interfaces_with_unique_mac(self):
+    def test_deletes_virtual_interfaces_with_unique_mac(self):
         ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
         BOND_MAC = "00:00:00:00:01:02"
@@ -2567,7 +2567,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__deletes_virtual_interfaces_linked_to_removed_macs(self):
+    def test_deletes_virtual_interfaces_linked_to_removed_macs(self):
         VLAN_MAC = "00:00:00:00:01:01"
         BOND_MAC = "00:00:00:00:01:02"
         node = factory.make_Node()
@@ -2590,7 +2590,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-    def test__creates_discovered_ip_address(self):
+    def test_creates_discovered_ip_address(self):
         node = factory.make_Node()
         cidr = "192.168.0.3/24"
         subnet = factory.make_Subnet(
@@ -2611,7 +2611,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             ),
         )
 
-    def test__creates_discovered_ip_address_on_xenial(self):
+    def test_creates_discovered_ip_address_on_xenial(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT_XENIAL)
         cidr = "172.16.100.108/24"
@@ -2635,7 +2635,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # First IP is DISCOVERED second is AUTO configured.
         self.assertThat(ens3.ip_addresses.count(), Equals(2))
 
-    def test__handles_disconnected_interfaces(self):
+    def test_handles_disconnected_interfaces(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT_XENIAL)
         XENIAL_NETWORK = deepcopy(SAMPLE_LXD_RESOURCES)
@@ -2646,7 +2646,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ens12 = Interface.objects.get(node=node, name="ens12")
         self.assertThat(ens12.vlan, Is(None))
 
-    def test__disconnects_previously_connected_interface(self):
+    def test_disconnects_previously_connected_interface(self):
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT_XENIAL)
         subnet = factory.make_Subnet()
@@ -2665,7 +2665,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ens12 = Interface.objects.get(node=node, name="ens12")
         self.assertThat(ens12.vlan, Is(None))
 
-    def test__ignores_openbmc_interface(self):
+    def test_ignores_openbmc_interface(self):
         """Ensure that OpenBMC interface is ignored."""
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
@@ -2686,7 +2686,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         all_macs = [interface.mac_address for interface in node_interfaces]
         self.assertNotIn(SWITCH_OPENBMC_MAC, all_macs)
 
-    def test__sets_boot_interface(self):
+    def test_sets_boot_interface(self):
         """Test a node will have its boot_interface set if none are defined."""
         subnet = factory.make_Subnet(cidr="192.168.0.3/24")
         node = factory.make_Node()
@@ -2707,7 +2707,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             node.boot_interface.vlan.subnet_set.filter(id=subnet.id).first()
         )
 
-    def test__regenerates_testing_script_set(self):
+    def test_regenerates_testing_script_set(self):
         factory.make_Subnet(cidr="192.168.0.3/24")
         node = factory.make_Node(boot_cluster_ip="192.168.0.1")
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
@@ -2745,7 +2745,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             script_result.parameters,
         )
 
-    def test__sets_default_configuration(self):
+    def test_sets_default_configuration(self):
         factory.make_Subnet(cidr="192.168.0.3/24")
         node = factory.make_Node(boot_cluster_ip="192.168.0.1")
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
@@ -2768,7 +2768,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
         super().setUp()
         self.hook = NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]["hook"]
 
-    def test__sets_boot_interface_bootif(self):
+    def test_sets_boot_interface_bootif(self):
         node = factory.make_Node()
         Interface.objects.filter(node_id=node.id).delete()
         nic1 = factory.make_Interface(node=node)
@@ -2788,7 +2788,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(nic2, node.boot_interface)
 
-    def test__boot_interface_bootif_no_such_mac(self):
+    def test_boot_interface_bootif_no_such_mac(self):
         node = factory.make_Node()
         Interface.objects.filter(node_id=node.id).delete()
         kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
@@ -2803,7 +2803,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
             "BOOTIF interface 11:22:33:44:55:66 doesn't exist", logger.output
         )
 
-    def test__no_bootif(self):
+    def test_no_bootif(self):
         node = factory.make_Node()
         Interface.objects.filter(node_id=node.id).delete()
         nic = factory.make_Interface(node=node)
@@ -2815,7 +2815,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
 
         self.assertEqual(nic, node.boot_interface)
 
-    def test__non_zero_exit_status(self):
+    def test_non_zero_exit_status(self):
         node = factory.make_Node()
         Interface.objects.filter(node_id=node.id).delete()
         nic = factory.make_Interface(node=node)

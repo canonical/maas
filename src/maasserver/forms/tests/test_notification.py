@@ -18,7 +18,7 @@ categories = "info", "success", "warning", "error"
 
 
 class TestNotificationForm(MAASServerTestCase):
-    def test__notification_can_be_created_with_just_message(self):
+    def test_notification_can_be_created_with_just_message(self):
         notification_message = factory.make_name("message")
         form = NotificationForm({"message": notification_message})
         self.assertTrue(form.is_valid(), form.errors)
@@ -36,7 +36,7 @@ class TestNotificationForm(MAASServerTestCase):
             ),
         )
 
-    def test__notification_can_be_created_with_empty_fields(self):
+    def test_notification_can_be_created_with_empty_fields(self):
         notification_message = factory.make_name("message")
         form = NotificationForm(
             {
@@ -65,7 +65,7 @@ class TestNotificationForm(MAASServerTestCase):
             ),
         )
 
-    def test__notification_can_be_created_with_all_fields(self):
+    def test_notification_can_be_created_with_all_fields(self):
         user = factory.make_User()
         data = {
             "ident": factory.make_name("ident"),
@@ -92,7 +92,7 @@ class TestNotificationForm(MAASServerTestCase):
         )
         self.assertThat(notification, MatchesStructure.byEquality(**expected))
 
-    def test__notification_can_be_updated(self):
+    def test_notification_can_be_updated(self):
         notification = factory.make_Notification()
         user = factory.make_User()
         data = {

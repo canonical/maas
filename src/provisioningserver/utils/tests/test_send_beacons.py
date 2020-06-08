@@ -62,7 +62,7 @@ class TestSendBeaconsCommand(SendBeaconsTestCase):
         super().setUp()
         self.send_beacons_mock = self.patch(send_beacons_module.do_beaconing)
 
-    def test__default_arguments(self):
+    def test_default_arguments(self):
         self.run_command()
         self.assertThat(
             self.send_beacons_mock,
@@ -74,7 +74,7 @@ class TestSendBeaconsCommand(SendBeaconsTestCase):
             ),
         )
 
-    def test__interprets_long_arguments(self):
+    def test_interprets_long_arguments(self):
         self.run_command(
             "--verbose",
             "--source",
@@ -98,7 +98,7 @@ class TestSendBeaconsCommand(SendBeaconsTestCase):
             ),
         )
 
-    def test__interprets_short_arguments(self):
+    def test_interprets_short_arguments(self):
         self.run_command(
             "-v", "-s", "1.1.1.1", "-t", "42", "-p", "4242", "2.2.2.2"
         )
@@ -141,7 +141,7 @@ class TestSendBeaconsProtocolInteraction(
         self.reactor_mock = self.patch(internet, "reactor", Clock())
         self.patch(self.reactor_mock, "run")
 
-    def test__sends_multicast_beacons_by_default(self):
+    def test_sends_multicast_beacons_by_default(self):
         self.run_command()
         self.assertThat(
             self.protocol_mock,
@@ -160,7 +160,7 @@ class TestSendBeaconsProtocolInteraction(
             MockCalledOnceWith(TEST_INTERFACES, verbose=False),
         )
 
-    def test__sends_multicast_beacons_with_verbose_flag(self):
+    def test_sends_multicast_beacons_with_verbose_flag(self):
         self.run_command(
             "--verbose",
             "--source",
@@ -187,7 +187,7 @@ class TestSendBeaconsProtocolInteraction(
             MockCalledOnceWith(TEST_INTERFACES, verbose=True),
         )
 
-    def test__sends_unicast_beacon(self):
+    def test_sends_unicast_beacon(self):
         self.run_command(
             "-v", "-s", "1.1.1.1", "-t", "42", "-p", "4242", "127.0.0.1"
         )

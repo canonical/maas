@@ -406,7 +406,7 @@ class TestReleases(MAASServerTestCase):
 
 
 class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
-    def test__raises_error_of_osystem_and_distro_series_dont_match(self):
+    def test_raises_error_of_osystem_and_distro_series_dont_match(self):
         os = factory.make_name("os")
         release = "%s/%s" % (
             factory.make_name("os"),
@@ -421,7 +421,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             error.message,
         )
 
-    def test__raises_error_if_not_supported_osystem(self):
+    def test_raises_error_if_not_supported_osystem(self):
         os = factory.make_name("os")
         release = factory.make_name("release")
         error = self.assertRaises(
@@ -431,7 +431,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             "%s is not a supported operating system." % os, error.message
         )
 
-    def test__raises_error_if_not_supported_release(self):
+    def test_raises_error_if_not_supported_release(self):
         factory.make_Node()
         osystem = make_usable_osystem(self)
         release = factory.make_name("release")
@@ -447,7 +447,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             error.message,
         )
 
-    def test__returns_osystem_and_release_with_license_key_stripped(self):
+    def test_returns_osystem_and_release_with_license_key_stripped(self):
         factory.make_Node()
         osystem = make_usable_osystem(self)
         release = osystem["default_release"]

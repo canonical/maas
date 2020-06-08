@@ -55,7 +55,7 @@ class TestDLIPowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def test__set_outlet_state_calls_wget(self):
+    def test_set_outlet_state_calls_wget(self):
         driver = dli_module.DLIPowerDriver()
         env = get_env_with_locale()
         power_change = factory.make_name("power_change")
@@ -84,7 +84,7 @@ class TestDLIPowerDriver(MAASTestCase):
             ),
         )
 
-    def test__set_outlet_state_crashes_when_wget_exits_nonzero(self):
+    def test_set_outlet_state_crashes_when_wget_exits_nonzero(self):
         driver = dli_module.DLIPowerDriver()
         call_and_check_mock = self.patch(dli_module, "call_and_check")
         call_and_check_mock.side_effect = ExternalProcessError(
@@ -100,7 +100,7 @@ class TestDLIPowerDriver(MAASTestCase):
             sentinel.power_address,
         )
 
-    def test__query_outlet_state_queries_on(self):
+    def test_query_outlet_state_queries_on(self):
         driver = dli_module.DLIPowerDriver()
         env = get_env_with_locale()
         outlet_id = choice(["1", "2", "3", "4", "5", "6", "7", "8"])
@@ -127,7 +127,7 @@ class TestDLIPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals("on"))
 
-    def test__query_outlet_state_queries_off(self):
+    def test_query_outlet_state_queries_off(self):
         driver = dli_module.DLIPowerDriver()
         env = get_env_with_locale()
         outlet_id = choice(["1", "2", "3", "4", "5", "6", "7", "8"])
@@ -154,7 +154,7 @@ class TestDLIPowerDriver(MAASTestCase):
         )
         self.expectThat(result, Equals("off"))
 
-    def test__query_outlet_state_crashes_when_state_not_found(self):
+    def test_query_outlet_state_crashes_when_state_not_found(self):
         driver = dli_module.DLIPowerDriver()
         call_and_check_mock = self.patch(dli_module, "call_and_check")
         call_and_check_mock.return_value = b"Rubbish"
@@ -167,7 +167,7 @@ class TestDLIPowerDriver(MAASTestCase):
             sentinel.power_address,
         )
 
-    def test__query_outlet_state_crashes_when_wget_exits_nonzero(self):
+    def test_query_outlet_state_crashes_when_wget_exits_nonzero(self):
         driver = dli_module.DLIPowerDriver()
         call_and_check_mock = self.patch(dli_module, "call_and_check")
         call_and_check_mock.side_effect = ExternalProcessError(

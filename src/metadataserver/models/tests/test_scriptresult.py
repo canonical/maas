@@ -33,18 +33,18 @@ from provisioningserver.events import EVENT_TYPES
 class TestScriptResult(MAASServerTestCase):
     """Test the ScriptResult model."""
 
-    def test__name_returns_script_name(self):
+    def test_name_returns_script_name(self):
         script_result = factory.make_ScriptResult()
         self.assertEquals(script_result.script.name, script_result.name)
 
-    def test__name_returns_model_script_name_when_no_script(self):
+    def test_name_returns_model_script_name_when_no_script(self):
         script_result = factory.make_ScriptResult()
         script_result.script = None
         script_name = factory.make_name("script_name")
         script_result.script_name = script_name
         self.assertEquals(script_name, script_result.name)
 
-    def test__name_returns_unknown_when_no_script_or_model_script_name(self):
+    def test_name_returns_unknown_when_no_script_or_model_script_name(self):
         script_result = factory.make_ScriptResult()
         script_result.script = None
         script_result.script_name = None

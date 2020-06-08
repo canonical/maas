@@ -122,7 +122,7 @@ def make_ipv6_packet(
 
 
 class TestIPv4(MAASTestCase):
-    def test__parses_ipv4_packet(self):
+    def test_parses_ipv4_packet(self):
         payload = factory.make_bytes(48)
         packet = make_ipv4_packet(payload=payload)
         ipv4 = IPv4(packet)
@@ -131,7 +131,7 @@ class TestIPv4(MAASTestCase):
         self.assertThat(ipv4.ihl, Equals(20))
         self.assertThat(ipv4.payload, Equals(payload))
 
-    def test__fails_for_non_ipv4_packet(self):
+    def test_fails_for_non_ipv4_packet(self):
         payload = factory.make_bytes(48)
         packet = make_ipv4_packet(payload=payload, version=5)
         ipv4 = IPv4(packet)
@@ -140,7 +140,7 @@ class TestIPv4(MAASTestCase):
             ipv4.invalid_reason, DocTestMatches("Invalid version...")
         )
 
-    def test__fails_for_bad_ihl(self):
+    def test_fails_for_bad_ihl(self):
         payload = factory.make_bytes(48)
         packet = make_ipv4_packet(payload=payload, ihl=0)
         ipv4 = IPv4(packet)
@@ -149,7 +149,7 @@ class TestIPv4(MAASTestCase):
             ipv4.invalid_reason, DocTestMatches("Invalid IPv4 IHL...")
         )
 
-    def test__fails_for_truncated_packet(self):
+    def test_fails_for_truncated_packet(self):
         packet = make_ipv4_packet(truncated=True)
         ipv4 = IPv4(packet)
         self.assertThat(ipv4.is_valid(), Equals(False))
@@ -157,7 +157,7 @@ class TestIPv4(MAASTestCase):
 
 
 class TestIPv6(MAASTestCase):
-    def test__parses_ipv6_packet(self):
+    def test_parses_ipv6_packet(self):
         payload = factory.make_bytes(48)
         packet = make_ipv6_packet(payload=payload)
         ipv6 = IPv6(packet)
@@ -166,7 +166,7 @@ class TestIPv6(MAASTestCase):
         self.assertThat(ipv6.packet.payload_length, Equals(len(payload)))
         self.assertThat(ipv6.payload, Equals(payload))
 
-    def test__fails_for_non_ipv6_packet(self):
+    def test_fails_for_non_ipv6_packet(self):
         payload = factory.make_bytes(48)
         packet = make_ipv6_packet(payload=payload, version=5)
         ipv6 = IPv6(packet)
@@ -175,7 +175,7 @@ class TestIPv6(MAASTestCase):
             ipv6.invalid_reason, DocTestMatches("Invalid version...")
         )
 
-    def test__fails_for_truncated_packet(self):
+    def test_fails_for_truncated_packet(self):
         packet = make_ipv6_packet(truncated=True)
         ipv6 = IPv6(packet)
         self.assertThat(ipv6.is_valid(), Equals(False))
@@ -221,14 +221,14 @@ def make_udp_packet(
 
 
 class TestUDP(MAASTestCase):
-    def test__parses_udp_packet(self):
+    def test_parses_udp_packet(self):
         payload = factory.make_bytes(48)
         packet = make_udp_packet(payload=payload)
         udp = UDP(packet)
         self.assertThat(udp.is_valid(), Equals(True))
         self.assertThat(udp.payload, Equals(payload))
 
-    def test__fails_for_truncated_udp_header(self):
+    def test_fails_for_truncated_udp_header(self):
         packet = make_udp_packet(truncated_header=True)
         udp = UDP(packet)
         self.assertThat(udp.is_valid(), Equals(False))
@@ -236,7 +236,7 @@ class TestUDP(MAASTestCase):
             udp.invalid_reason, DocTestMatches("Truncated UDP header...")
         )
 
-    def test__fails_for_bad_length(self):
+    def test_fails_for_bad_length(self):
         payload = factory.make_bytes(48)
         packet = make_udp_packet(total_length=0, payload=payload)
         udp = UDP(packet)
@@ -246,7 +246,7 @@ class TestUDP(MAASTestCase):
             DocTestMatches("Invalid UDP packet; got length..."),
         )
 
-    def test__fails_for_truncated_payload(self):
+    def test_fails_for_truncated_payload(self):
         payload = factory.make_bytes(48)
         packet = make_udp_packet(truncated_payload=True, payload=payload)
         udp = UDP(packet)
@@ -343,7 +343,7 @@ EXPECTED_PAYLOAD = (
 
 
 class TestDecodeEthernetUDPPacket(MAASTestCase):
-    def test__gets_time_from_pcap_header(self):
+    def test_gets_time_from_pcap_header(self):
         pcap_file = BytesIO(GOOD_ETHERNET_IPV4_UDP_PCAP)
         pcap = PCAP(pcap_file)
         for header, packet_bytes in pcap:
@@ -351,41 +351,41 @@ class TestDecodeEthernetUDPPacket(MAASTestCase):
             self.expectThat(packet.timestamp, Equals(EXPECTED_PCAP_TIME))
             self.expectThat(packet.payload, Equals(EXPECTED_PAYLOAD))
 
-    def test__decodes_ipv4_from_bytes(self):
+    def test_decodes_ipv4_from_bytes(self):
         expected_time = EXPECTED_PCAP_TIME + randint(1, 100)
         self.patch(time, "time").return_value = expected_time
         packet = decode_ethernet_udp_packet(GOOD_ETHERNET_IPV4_UDP_PACKET)
         self.expectThat(packet.timestamp, Equals(expected_time))
         self.expectThat(packet.payload, Equals(EXPECTED_PAYLOAD))
 
-    def test__fails_for_bad_ethertype(self):
+    def test_fails_for_bad_ethertype(self):
         with ExpectedException(PacketProcessingError, ".*Invalid ethertype.*"):
             decode_ethernet_udp_packet(BAD_ETHERNET_ETHERTYPE)
 
-    def test__fails_for_bad_ethernet_packet(self):
+    def test_fails_for_bad_ethernet_packet(self):
         with ExpectedException(PacketProcessingError, ".*Invalid Ethernet.*"):
             decode_ethernet_udp_packet(BAD_ETHERNET_TRUNCATED_HEADER)
 
-    def test__fails_for_bad_ipv4_udp_header(self):
+    def test_fails_for_bad_ipv4_udp_header(self):
         with ExpectedException(PacketProcessingError, ".*Truncated UDP.*"):
             decode_ethernet_udp_packet(BAD_IPV4_TRUNCATED_UDP_HEADER)
 
-    def test__fails_if_not_udp_protocol_ipv4(self):
+    def test_fails_if_not_udp_protocol_ipv4(self):
         with ExpectedException(PacketProcessingError, ".*Invalid protocol*"):
             decode_ethernet_udp_packet(BAD_IPV4_NOT_UDP_PROTOCOL)
 
-    def test__fails_if_ipv4_udp_packet_truncated(self):
+    def test_fails_if_ipv4_udp_packet_truncated(self):
         with ExpectedException(PacketProcessingError, ".*UDP packet trunc.*"):
             decode_ethernet_udp_packet(BAD_ETHERNET_IPV4_TRUNCATED_UDP_PAYLOAD)
 
-    def test__fails_for_bad_ipv6_udp_header(self):
+    def test_fails_for_bad_ipv6_udp_header(self):
         with ExpectedException(PacketProcessingError, ".*Truncated UDP.*"):
             decode_ethernet_udp_packet(BAD_IPV6_TRUNCATED_UDP_HEADER)
 
-    def test__fails_if_not_udp_protocol_ipv6(self):
+    def test_fails_if_not_udp_protocol_ipv6(self):
         with ExpectedException(PacketProcessingError, ".*Invalid protocol*"):
             decode_ethernet_udp_packet(BAD_IPV6_NOT_UDP_PROTOCOL)
 
-    def test__fails_if_ipv6_udp_packet_truncated(self):
+    def test_fails_if_ipv6_udp_packet_truncated(self):
         with ExpectedException(PacketProcessingError, ".*UDP packet trunc.*"):
             decode_ethernet_udp_packet(BAD_ETHERNET_IPV6_TRUNCATED_UDP_PAYLOAD)

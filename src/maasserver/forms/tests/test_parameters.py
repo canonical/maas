@@ -43,14 +43,14 @@ class TestParametersForm(MAASServerTestCase):
             ]
         )
 
-    def test__validates_parameters_is_dict(self):
+    def test_validates_parameters_is_dict(self):
         form = ParametersForm(data=[factory.make_name() for _ in range(3)])
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
             {"parameters": ["Must be a dictionary"]}, form.errors
         )
 
-    def test__validates_parameter_is_str(self):
+    def test_validates_parameter_is_str(self):
         param = random.randint(0, 1000)
         form = ParametersForm(data={param: {"type": "storage"}})
         self.assertFalse(form.is_valid())
@@ -59,7 +59,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_type_is_str(self):
+    def test_validates_parameter_field_type_is_str(self):
         param_type = random.randint(0, 1000)
         form = ParametersForm(
             data={"storage": {"type": param_type, "required": False}}
@@ -70,7 +70,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_min_is_int(self):
+    def test_validates_parameter_field_min_is_int(self):
         param_min = factory.make_name("min")
         form = ParametersForm(
             data={"runtime": {"type": "runtime", "min": param_min}}
@@ -81,7 +81,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_max_is_int(self):
+    def test_validates_parameter_field_max_is_int(self):
         param_max = factory.make_name("max")
         form = ParametersForm(
             data={"runtime": {"type": "runtime", "max": param_max}}
@@ -92,7 +92,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_title_is_str(self):
+    def test_validates_parameter_field_title_is_str(self):
         form = ParametersForm(
             data={"storage": {"type": "storage", "title": True}}
         )
@@ -101,7 +101,7 @@ class TestParametersForm(MAASServerTestCase):
             {"parameters": ["True: title must be a string"]}, form.errors
         )
 
-    def test__validates_parameter_field_description_is_str(self):
+    def test_validates_parameter_field_description_is_str(self):
         form = ParametersForm(
             data={"storage": {"type": "storage", "description": True}}
         )
@@ -110,7 +110,7 @@ class TestParametersForm(MAASServerTestCase):
             {"parameters": ["True: description must be a string"]}, form.errors
         )
 
-    def test__validates_parameter_field_argument_format_is_str(self):
+    def test_validates_parameter_field_argument_format_is_str(self):
         form = ParametersForm(
             data={"storage": {"type": "storage", "argument_format": []}}
         )
@@ -120,7 +120,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_argument_format_for_storage_type(self):
+    def test_validates_parameter_field_argument_format_for_storage_type(self):
         form = ParametersForm(
             data={
                 "storage": {
@@ -140,7 +140,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_argument_format_for_interface(self):
+    def test_validates_parameter_field_argument_format_for_interface(self):
         form = ParametersForm(
             data={
                 "storage": {
@@ -160,7 +160,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_argument_format_non_runtime_type(self):
+    def test_validates_parameter_field_argument_format_non_runtime_type(self):
         form = ParametersForm(
             data={
                 "runtime": {
@@ -175,7 +175,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_default_is_str(self):
+    def test_validates_parameter_field_default_is_str(self):
         param_default = random.randint(0, 1000)
         form = ParametersForm(
             data={"storage": {"type": "storage", "default": param_default}}
@@ -186,7 +186,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_required_is_boolean(self):
+    def test_validates_parameter_field_required_is_boolean(self):
         param_required = factory.make_name("required")
         form = ParametersForm(
             data={"storage": {"type": "storage", "required": param_required}}
@@ -201,7 +201,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_allow_list_is_boolean(self):
+    def test_validates_parameter_field_allow_list_is_boolean(self):
         param_allow_list = factory.make_name("allow_list")
         form = ParametersForm(
             data={"url": {"type": "url", "allow_list": param_allow_list}}
@@ -216,7 +216,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_parameter_field_allow_list_only_for_url(self):
+    def test_validates_parameter_field_allow_list_only_for_url(self):
         ptype = random.choice(["storage", "interface", "runtime"])
         form = ParametersForm(
             data={ptype: {"type": ptype, "allow_list": factory.pick_bool()}}
@@ -227,7 +227,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__checks_for_supported_parameter_types(self):
+    def test_checks_for_supported_parameter_types(self):
         form = ParametersForm(
             data={
                 "storage": {"type": "storage"},
@@ -238,7 +238,7 @@ class TestParametersForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid())
 
-    def test__validates_against_unsupported_parameter_types(self):
+    def test_validates_against_unsupported_parameter_types(self):
         unsupported_type = factory.make_name("unsupported")
         form = ParametersForm(data={"storage": {"type": unsupported_type}})
         self.assertFalse(form.is_valid())
@@ -252,14 +252,14 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_unsupported_parameter_types_if_not_required(self):
+    def test_validates_unsupported_parameter_types_if_not_required(self):
         unsupported_type = factory.make_name("unsupported")
         form = ParametersForm(
             data={"storage": {"type": unsupported_type, "required": False}}
         )
         self.assertTrue(form.is_valid())
 
-    def test__validates_storage_interface_type_has_no_min_or_max(self):
+    def test_validates_storage_interface_type_has_no_min_or_max(self):
         ptype = random.choice(["storage", "interface"])
         form = ParametersForm(
             data={ptype: {"type": ptype, "min": random.randint(0, 1000)}}
@@ -269,7 +269,7 @@ class TestParametersForm(MAASServerTestCase):
             {"parameters": ["Type doesn't support min or max"]}, form.errors
         )
 
-    def test__validates_runtime_type_min_greater_than_zero(self):
+    def test_validates_runtime_type_min_greater_than_zero(self):
         form = ParametersForm(
             data={
                 "runtime": {"type": "runtime", "min": random.randint(-100, -1)}
@@ -281,7 +281,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__validates_min_less_than_max(self):
+    def test_validates_min_less_than_max(self):
         form = ParametersForm(
             data={
                 "runtime": {
@@ -296,7 +296,7 @@ class TestParametersForm(MAASServerTestCase):
             {"parameters": ["min must be less than max"]}, form.errors
         )
 
-    def test__input_errors_on_unknown_paramater(self):
+    def test_input_errors_on_unknown_paramater(self):
         script = factory.make_Script()
         bad_param = factory.make_name("bad_param")
         form = ParametersForm(
@@ -314,7 +314,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__input_runtime(self):
+    def test_input_runtime(self):
         script = factory.make_Script(
             parameters={"runtime": {"type": "runtime"}}
         )
@@ -329,7 +329,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_runtime_gets_default_from_script_timeout(self):
+    def test_input_runtime_gets_default_from_script_timeout(self):
         script = factory.make_Script(
             parameters={"runtime": {"type": "runtime"}}
         )
@@ -341,7 +341,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_runtime_requires_int(self):
+    def test_input_runtime_requires_int(self):
         script = factory.make_Script(
             parameters={"runtime": {"type": "runtime"}}
         )
@@ -353,7 +353,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"runtime": ["Must be an int"]}, form.errors)
 
-    def test__input_runtime_validates_required(self):
+    def test_input_runtime_validates_required(self):
         script = factory.make_Script(
             parameters={
                 "runtime": {
@@ -367,7 +367,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"runtime": ["Field is required"]}, form.errors)
 
-    def test__input_runtime_validates_min(self):
+    def test_input_runtime_validates_min(self):
         min_runtime = random.randint(1, 100)
         script = factory.make_Script(
             parameters={"runtime": {"type": "runtime", "min": min_runtime}}
@@ -381,7 +381,7 @@ class TestParametersForm(MAASServerTestCase):
             {"runtime": ["Must be greater than %s" % min_runtime]}, form.errors
         )
 
-    def test__input_runtime_validates_max(self):
+    def test_input_runtime_validates_max(self):
         max_runtime = random.randint(0, 100)
         script = factory.make_Script(
             parameters={"runtime": {"type": "runtime", "max": max_runtime}}
@@ -395,7 +395,7 @@ class TestParametersForm(MAASServerTestCase):
             {"runtime": ["Must be less than %s" % max_runtime]}, form.errors
         )
 
-    def test__input_storage_validates_required(self):
+    def test_input_storage_validates_required(self):
         script = factory.make_Script(
             parameters={
                 "storage": {
@@ -409,7 +409,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"storage": ["Field is required"]}, form.errors)
 
-    def test__input_storage_defaults_all_with_no_disks(self):
+    def test_input_storage_defaults_all_with_no_disks(self):
         script = factory.make_Script(
             parameters={
                 "runtime": {"type": "runtime"},
@@ -434,7 +434,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_storage_all(self):
+    def test_input_storage_all(self):
         node = factory.make_Node()
         for _ in range(3):
             factory.make_PhysicalBlockDevice(node=node)
@@ -466,7 +466,7 @@ class TestParametersForm(MAASServerTestCase):
                 i["storage"]["value"],
             )
 
-    def test__input_storage_id(self):
+    def test_input_storage_id(self):
         node = factory.make_Node()
         for _ in range(3):
             factory.make_PhysicalBlockDevice(node=node)
@@ -497,7 +497,7 @@ class TestParametersForm(MAASServerTestCase):
             input[0]["storage"]["value"],
         )
 
-    def test__input_storage_id_errors(self):
+    def test_input_storage_id_errors(self):
         node = factory.make_Node()
         for _ in range(3):
             factory.make_PhysicalBlockDevice(node=node)
@@ -517,7 +517,7 @@ class TestParametersForm(MAASServerTestCase):
             {"storage": ["Physical block id does not exist"]}, form.errors
         )
 
-    def test__input_storage_list(self):
+    def test_input_storage_list(self):
         node = factory.make_Node()
         for _ in range(10):
             factory.make_PhysicalBlockDevice(node=node)
@@ -560,7 +560,7 @@ class TestParametersForm(MAASServerTestCase):
                 i["storage"]["value"],
             )
 
-    def test__input_storage_name_errors(self):
+    def test_input_storage_name_errors(self):
         node = factory.make_Node()
         for _ in range(3):
             factory.make_PhysicalBlockDevice(node=node)
@@ -586,7 +586,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__input_interface_validates_required(self):
+    def test_input_interface_validates_required(self):
         script = factory.make_Script(
             parameters={
                 "interface": {
@@ -600,7 +600,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"interface": ["Field is required"]}, form.errors)
 
-    def test__input_interface_defaults_all_with_no_nics(self):
+    def test_input_interface_defaults_all_with_no_nics(self):
         script = factory.make_Script(
             parameters={"interface": {"type": "interface"}}
         )
@@ -614,7 +614,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_interface_defaults_boot_interface_during_commiss(self):
+    def test_input_interface_defaults_boot_interface_during_commiss(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.COMMISSIONING
         )
@@ -635,7 +635,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0]["interface"]["value"],
         )
 
-    def test__input_interface_all(self):
+    def test_input_interface_all(self):
         node = factory.make_Node()
         subnet = factory.make_Subnet()
         usable_interfaces = [
@@ -672,7 +672,7 @@ class TestParametersForm(MAASServerTestCase):
                 i["interface"]["value"],
             )
 
-    def test__input_interface_all_only_includes_children(self):
+    def test_input_interface_all_only_includes_children(self):
         node = factory.make_Node(interface=False)
         subnet = factory.make_Subnet()
         bond = factory.make_Interface(
@@ -701,7 +701,7 @@ class TestParametersForm(MAASServerTestCase):
             input[0]["interface"]["value"],
         )
 
-    def test__input_interface_id(self):
+    def test_input_interface_id(self):
         node = factory.make_Node()
         subnet = factory.make_Subnet()
         for _ in range(3):
@@ -731,7 +731,7 @@ class TestParametersForm(MAASServerTestCase):
             input[0]["interface"]["value"],
         )
 
-    def test__input_interface_id_errors(self):
+    def test_input_interface_id_errors(self):
         node = factory.make_Node()
         for _ in range(3):
             factory.make_Interface(node=node)
@@ -748,7 +748,7 @@ class TestParametersForm(MAASServerTestCase):
             {"interface": ["Interface id does not exist"]}, form.errors
         )
 
-    def test__input_interface_id_errors_on_parent(self):
+    def test_input_interface_id_errors_on_parent(self):
         node = factory.make_Node(interface=False)
         parents = [factory.make_Interface(node=node) for _ in range(2)]
         factory.make_Interface(
@@ -767,7 +767,7 @@ class TestParametersForm(MAASServerTestCase):
             {"interface": ["Interface id does not exist"]}, form.errors
         )
 
-    def test__input_interface_id_errors_on_unconfigured_or_disabled(self):
+    def test_input_interface_id_errors_on_unconfigured_or_disabled(self):
         node = factory.make_Node()
         bad_interface = random.choice(
             [
@@ -783,7 +783,7 @@ class TestParametersForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__input_interface_list(self):
+    def test_input_interface_list(self):
         node = factory.make_Node()
         subnet = factory.make_Subnet()
         for _ in range(10):
@@ -826,7 +826,7 @@ class TestParametersForm(MAASServerTestCase):
                 i["interface"]["value"],
             )
 
-    def test__input_interface_name_errors(self):
+    def test_input_interface_name_errors(self):
         node = factory.make_Node()
         for _ in range(3):
             factory.make_Interface(node=node)
@@ -849,7 +849,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__input_interface_name_errors_on_parent(self):
+    def test_input_interface_name_errors_on_parent(self):
         node = factory.make_Node(interface=False)
         parents = [factory.make_Interface(node=node) for _ in range(2)]
         factory.make_Interface(
@@ -874,7 +874,7 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test__input_interface_name_errors_on_unconfigured_or_disabled(self):
+    def test_input_interface_name_errors_on_unconfigured_or_disabled(self):
         node = factory.make_Node()
         bad_interface = random.choice(
             [
@@ -890,7 +890,7 @@ class TestParametersForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
 
-    def test__input_url_validates_required(self):
+    def test_input_url_validates_required(self):
         script = factory.make_Script(
             parameters={"url": {"type": "url", "required": True}}
         )
@@ -898,13 +898,13 @@ class TestParametersForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"url": ["Field is required"]}, form.errors)
 
-    def test__input_url_defaults_empty_with_no_input(self):
+    def test_input_url_defaults_empty_with_no_input(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         form = ParametersForm(data={}, script=script, node=factory.make_Node())
         self.assertTrue(form.is_valid())
         self.assertDictEqual({}, form.cleaned_data["input"][0])
 
-    def test__input_url_allows_ipv4(self):
+    def test_input_url_allows_ipv4(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         input = factory.make_ipv4_address()
         form = ParametersForm(
@@ -916,7 +916,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_allows_ipv4_url(self):
+    def test_input_url_allows_ipv4_url(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         input = "%s://%s:%d/%s" % (
             self.pick_scheme(),
@@ -933,7 +933,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_allows_ipv6(self):
+    def test_input_url_allows_ipv6(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         input = factory.make_ipv6_address()
         form = ParametersForm(
@@ -945,7 +945,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_allows_ipv6_url(self):
+    def test_input_url_allows_ipv6_url(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         input = "%s://[%s]:%d/%s" % (
             self.pick_scheme(),
@@ -962,7 +962,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_allows_hostname(self):
+    def test_input_url_allows_hostname(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         input = factory.make_hostname()
         form = ParametersForm(
@@ -974,7 +974,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_allows_hostname_url(self):
+    def test_input_url_allows_hostname_url(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         input = factory.make_url(scheme=self.pick_scheme())
         form = ParametersForm(
@@ -986,7 +986,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_allows_list(self):
+    def test_input_url_allows_list(self):
         script = factory.make_Script(
             parameters={"url": {"type": "url", "allow_list": True}}
         )
@@ -1021,7 +1021,7 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0],
         )
 
-    def test__input_url_list_requires_allow_list(self):
+    def test_input_url_list_requires_allow_list(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         inputs = ",".join(
             [
@@ -1051,7 +1051,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"url": ["Invalid URL"]}, form.errors)
 
-    def test__input_url_list_errors(self):
+    def test_input_url_list_errors(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         form = ParametersForm(
             data={"url": factory.make_name("bad!")},

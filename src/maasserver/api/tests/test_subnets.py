@@ -413,7 +413,7 @@ class TestSubnetAPI(APITestCase.ForUser):
 class TestSubnetAPIAuth(APITestCase.ForAnonymous):
     """Authorization tests for subnet API."""
 
-    def test__reserved_ip_ranges_fails_if_not_logged_in(self):
+    def test_reserved_ip_ranges_fails_if_not_logged_in(self):
         subnet = factory.make_Subnet()
         response = self.client.get(
             get_subnet_uri(subnet), {"op": "reserved_ip_ranges"}
@@ -424,7 +424,7 @@ class TestSubnetAPIAuth(APITestCase.ForAnonymous):
             explain_unexpected_response(http.client.UNAUTHORIZED, response),
         )
 
-    def test__unreserved_ip_ranges_fails_if_not_logged_in(self):
+    def test_unreserved_ip_ranges_fails_if_not_logged_in(self):
         subnet = factory.make_Subnet()
         response = self.client.get(
             get_subnet_uri(subnet), {"op": "unreserved_ip_ranges"}
@@ -437,7 +437,7 @@ class TestSubnetAPIAuth(APITestCase.ForAnonymous):
 
 
 class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
-    def test__returns_empty_list_for_empty_ipv4_subnet(self):
+    def test_returns_empty_list_for_empty_ipv4_subnet(self):
         subnet = factory.make_Subnet(version=4, dns_servers=[], gateway_ip="")
         response = self.client.get(
             get_subnet_uri(subnet), {"op": "reserved_ip_ranges"}
@@ -450,7 +450,7 @@ class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(result, Equals([]))
 
-    def test__returns_reserved_anycast_for_empty_ipv6_subnet(self):
+    def test_returns_reserved_anycast_for_empty_ipv6_subnet(self):
         subnet = factory.make_Subnet(version=6, dns_servers=[], gateway_ip="")
         response = self.client.get(
             get_subnet_uri(subnet), {"op": "reserved_ip_ranges"}
@@ -465,7 +465,7 @@ class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
         self.assertThat(result[0]["num_addresses"], Equals(1))
         self.assertThat(result[0]["purpose"], Contains("rfc-4291-2.6.1"))
 
-    def test__accounts_for_reserved_ip_address(self):
+    def test_accounts_for_reserved_ip_address(self):
         subnet = factory.make_Subnet(dns_servers=[], gateway_ip="")
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         factory.make_StaticIPAddress(
@@ -494,7 +494,7 @@ class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
 
 
 class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
-    def test__returns_full_list_for_empty_subnet(self):
+    def test_returns_full_list_for_empty_subnet(self):
         subnet = factory.make_Subnet(
             cidr=factory.make_ipv4_network(), dns_servers=[], gateway_ip=""
         )
@@ -548,7 +548,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         )
         self.assertThat(result, Equals([]), str(subnet.get_ipranges_in_use()))
 
-    def test__returns_empty_list_for_full_ipv4_subnet(self):
+    def test_returns_empty_list_for_full_ipv4_subnet(self):
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
         network = subnet.get_ipnetwork()
@@ -556,7 +556,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         last_address = inet_ntop(network.last - 1)  # Skip broadcast.
         self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
 
-    def test__returns_empty_list_for_full_ipv6_subnet(self):
+    def test_returns_empty_list_for_full_ipv6_subnet(self):
         network = factory.make_ipv6_network(slash=random.randint(112, 119))
         subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
         network = subnet.get_ipnetwork()
@@ -565,7 +565,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
 
     # Slash-64 ipv6 subnets get a special range put in them - test separately.
-    def test__returns_empty_list_for_full_ipv6_slash_64_subnet(self):
+    def test_returns_empty_list_for_full_ipv6_slash_64_subnet(self):
         network = factory.make_ipv6_network(slash=64)
         subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
         network = subnet.get_ipnetwork()
@@ -575,7 +575,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         last_address = inet_ntop(network.last)
         self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
 
-    def test__accounts_for_reserved_ip_address(self):
+    def test_accounts_for_reserved_ip_address(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
             with_dynamic_range=False, dns_servers=[], with_router=False
         )
@@ -635,7 +635,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
 
 
 class TestSubnetStatisticsAPI(APITestCase.ForUser):
-    def test__default_does_not_include_ranges(self):
+    def test_default_does_not_include_ranges(self):
         subnet = factory.make_Subnet()
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet
@@ -654,7 +654,7 @@ class TestSubnetStatisticsAPI(APITestCase.ForUser):
         expected_result = statistics.render_json(include_ranges=False)
         self.assertThat(result, Equals(expected_result))
 
-    def test__with_include_ranges(self):
+    def test_with_include_ranges(self):
         subnet = factory.make_Subnet()
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet
@@ -674,7 +674,7 @@ class TestSubnetStatisticsAPI(APITestCase.ForUser):
         expected_result = statistics.render_json(include_ranges=True)
         self.assertThat(result, Equals(expected_result))
 
-    def test__without_include_ranges(self):
+    def test_without_include_ranges(self):
         subnet = factory.make_Subnet()
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet
@@ -696,7 +696,7 @@ class TestSubnetStatisticsAPI(APITestCase.ForUser):
 
 
 class TestSubnetIPAddressesAPI(APITestCase.ForUser):
-    def test__default_parameters(self):
+    def test_default_parameters(self):
         subnet = factory.make_Subnet()
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -725,7 +725,7 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
         )
         self.assertThat(result, Equals(expected_result))
 
-    def test__with_username_false(self):
+    def test_with_username_false(self):
         subnet = factory.make_Subnet()
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -755,7 +755,7 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
         )
         self.assertThat(result, Equals(expected_result))
 
-    def test__with_summary_false(self):
+    def test_with_summary_false(self):
         subnet = factory.make_Subnet()
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -785,7 +785,7 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
         )
         self.assertThat(result, Equals(expected_result))
 
-    def test__with_deprecated_node_summary_false(self):
+    def test_with_deprecated_node_summary_false(self):
         subnet = factory.make_Subnet()
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(

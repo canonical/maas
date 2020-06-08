@@ -249,7 +249,7 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__doesnt_raises_other_errors(self):
+    def test_doesnt_raises_other_errors(self):
         uuid = factory.make_name("uuid")
 
         # Cause a random exception
@@ -545,7 +545,7 @@ class TestRegionProtocol_ListNodePowerParameters(
     def get_node_power_parameters(self, node):
         return node.get_effective_power_parameters()
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(
             ListNodePowerParameters.commandName
@@ -554,7 +554,7 @@ class TestRegionProtocol_ListNodePowerParameters(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__returns_correct_arguments(self):
+    def test_returns_correct_arguments(self):
         rack = yield deferToDatabase(
             self.create_rack_controller, power_type=""
         )
@@ -594,7 +594,7 @@ class TestRegionProtocol_ListNodePowerParameters(
         self.assertItemsEqual(nodes, response["nodes"])
 
     @wait_for_reactor
-    def test__raises_exception_if_nodegroup_doesnt_exist(self):
+    def test_raises_exception_if_nodegroup_doesnt_exist(self):
         uuid = factory.make_UUID()
 
         d = call_responder(Region(), ListNodePowerParameters, {"uuid": uuid})
@@ -613,14 +613,14 @@ class TestRegionProtocol_UpdateNodePowerState(MAASTransactionServerTestCase):
         node = Node.objects.get(system_id=system_id)
         return node.power_state
 
-    def test__is_registered(self):
+    def test_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(UpdateNodePowerState.commandName)
         self.assertIsNotNone(responder)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__changes_power_state(self):
+    def test_changes_power_state(self):
         power_state = factory.pick_enum(POWER_STATE)
         node = yield deferToDatabase(self.create_node, power_state)
 
@@ -637,7 +637,7 @@ class TestRegionProtocol_UpdateNodePowerState(MAASTransactionServerTestCase):
         self.assertEqual(new_state, db_state)
 
     @wait_for_reactor
-    def test__errors_if_node_cannot_be_found(self):
+    def test_errors_if_node_cannot_be_found(self):
         system_id = factory.make_name("unknown-system-id")
         power_state = factory.pick_enum(POWER_STATE)
 
@@ -1060,7 +1060,7 @@ class TestRegionProtocol_UpdateServices(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_update_services_in_database_thread(self):
+    def test_calls_update_services_in_database_thread(self):
         system_id = factory.make_name("system_id")
         services = [
             {

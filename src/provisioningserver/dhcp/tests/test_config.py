@@ -199,7 +199,7 @@ class TestGetConfig(MAASTestCase):
         ("v6", dict(template="dhcpd6.conf.template", ipv6=True)),
     ]
 
-    def test__uses_branch_template_by_default(self):
+    def test_uses_branch_template_by_default(self):
         # Since the branch comes with dhcp templates in etc/maas, we can
         # instantiate those templates without any hackery.
         self.assertIsNotNone(
@@ -208,7 +208,7 @@ class TestGetConfig(MAASTestCase):
             )
         )
 
-    def test__complains_if_too_few_parameters(self):
+    def test_complains_if_too_few_parameters(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         del params["hosts"][0]["mac"]
 
@@ -238,7 +238,7 @@ class TestGetConfig(MAASTestCase):
             "".join(tbe.format()),
         )
 
-    def test__includes_compose_conditional_bootloader(self):
+    def test_includes_compose_conditional_bootloader(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rack_ip = params["shared_networks"][0]["subnets"][0]["router_ip"]
         self.patch(net_utils, "get_all_interface_addresses").return_value = [
@@ -251,7 +251,7 @@ class TestGetConfig(MAASTestCase):
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertThat(rendered, Contains(bootloader))
 
-    def test__renders_dns_servers_as_comma_separated_list(self):
+    def test_renders_dns_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
@@ -266,7 +266,7 @@ class TestGetConfig(MAASTestCase):
         dns_servers_observed = re.findall(dns_servers_pattern, rendered)
         self.assertEqual(dns_servers_expected, dns_servers_observed)
 
-    def test__renders_without_dns_servers_set(self):
+    def test_renders_without_dns_servers_set(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         for network in params["shared_networks"]:
             for subnet in network["subnets"]:
@@ -276,7 +276,7 @@ class TestGetConfig(MAASTestCase):
         self.assertNotIn("dhcp6.name-servers", rendered)  # IPv6
         self.assertNotIn("domain-name-servers", rendered)  # IPv4
 
-    def test__renders_search_list_as_quoted_comma_separated_list(self):
+    def test_renders_search_list_as_quoted_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         for network in params["shared_networks"]:
             for subnet in network["subnets"]:
@@ -294,7 +294,7 @@ class TestGetConfig(MAASTestCase):
         dns_servers_observed = re.findall(dns_servers_pattern, rendered)
         self.assertEqual(dns_servers_expected, dns_servers_observed)
 
-    def test__renders_without_search_list_set(self):
+    def test_renders_without_search_list_set(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         for network in params["shared_networks"]:
             for subnet in network["subnets"]:
@@ -304,7 +304,7 @@ class TestGetConfig(MAASTestCase):
         self.assertNotIn("dhcp6.domain-search", rendered)  # IPv6
         self.assertNotIn("domain-search", rendered)  # IPv4
 
-    def test__renders_ntp_servers_as_comma_separated_list(self):
+    def test_renders_ntp_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
@@ -325,7 +325,7 @@ class TestGetConfig(MAASTestCase):
         ]
         self.assertItemsEqual(ntp_servers_expected, ntp_servers_observed)
 
-    def test__renders_without_ntp_servers_set(self):
+    def test_renders_without_ntp_servers_set(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         for network in params["shared_networks"]:
             for subnet in network["subnets"]:
@@ -334,7 +334,7 @@ class TestGetConfig(MAASTestCase):
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertNotIn("ntp-servers", rendered)
 
-    def test__silently_discards_unresolvable_ntp_servers(self):
+    def test_silently_discards_unresolvable_ntp_servers(self):
         params = make_sample_params_only(ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
@@ -354,7 +354,7 @@ class TestGetConfig(MAASTestCase):
         ]
         self.assertItemsEqual(ntp_servers_expected, ntp_servers_observed)
 
-    def test__renders_router_ip_if_present(self):
+    def test_renders_router_ip_if_present(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         router_ip = factory.make_ipv4_address()
         params["shared_networks"][0]["subnets"][0]["router_ip"] = router_ip
@@ -362,7 +362,7 @@ class TestGetConfig(MAASTestCase):
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertThat(rendered, Contains(router_ip))
 
-    def test__renders_with_empty_string_router_ip(self):
+    def test_renders_with_empty_string_router_ip(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         for network in params["shared_networks"]:
             for subnet in network["subnets"]:
@@ -377,7 +377,7 @@ class TestGetConfig(MAASTestCase):
         )
         self.assertNotIn("option routers", rendered)
 
-    def test__renders_with_hosts(self):
+    def test_renders_with_hosts(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         self.assertThat(
             params["hosts"], AfterPreprocessing(len, GreaterThanOrEqual(1))
@@ -397,7 +397,7 @@ class TestGetConfig(MAASTestCase):
             ContainsAll([host["ip"] for host in params["hosts"]]),
         )
 
-    def test__renders_global_dhcp_snippets(self):
+    def test_renders_global_dhcp_snippets(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
@@ -411,7 +411,7 @@ class TestGetConfig(MAASTestCase):
             ),
         )
 
-    def test__renders_subnet_dhcp_snippets(self):
+    def test_renders_subnet_dhcp_snippets(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
@@ -427,7 +427,7 @@ class TestGetConfig(MAASTestCase):
                     ),
                 )
 
-    def test__renders_node_dhcp_snippets(self):
+    def test_renders_node_dhcp_snippets(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
@@ -442,7 +442,7 @@ class TestGetConfig(MAASTestCase):
                 ),
             )
 
-    def test__renders_subnet_cidr(self):
+    def test_renders_subnet_cidr(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
@@ -461,7 +461,7 @@ class TestGetConfig(MAASTestCase):
 class TestGetConfigIPv4(MAASTestCase):
     """Tests for `get_config`."""
 
-    def test__includes_next_server_in_config_from_all_addresses(self):
+    def test_includes_next_server_in_config_from_all_addresses(self):
         params = make_sample_params(self, ipv6=False)
         subnet = params["shared_networks"][0]["subnets"][0]
         next_server_ip = factory.pick_ip_in_network(
@@ -476,7 +476,7 @@ class TestGetConfigIPv4(MAASTestCase):
             config_output, Contains("next-server %s;" % next_server_ip)
         )
 
-    def test__includes_next_server_in_config_from_interface_addresses(self):
+    def test_includes_next_server_in_config_from_interface_addresses(self):
         params = make_sample_params(self, ipv6=False, with_interface=True)
         subnet = params["shared_networks"][0]["subnets"][0]
         next_server_ip = factory.pick_ip_in_network(
@@ -545,7 +545,7 @@ class Test_process_shared_network_v6(MAASTestCase):
         ),
     )
 
-    def test__adjusts_parameters_for_primary(self):
+    def test_adjusts_parameters_for_primary(self):
         shared_networks = [
             {
                 "name": "vlan-5020",
@@ -591,7 +591,7 @@ class Test_process_shared_network_v6(MAASTestCase):
 class TestComposeConditionalBootloader(MAASTestCase):
     """Tests for `compose_conditional_bootloader`."""
 
-    def test__composes_bootloader_section_v4(self):
+    def test_composes_bootloader_section_v4(self):
         ip = factory.make_ipv4_address()
         output = config.compose_conditional_bootloader(False, ip)
         for name, method in BootMethodRegistry:
@@ -624,7 +624,7 @@ class TestComposeConditionalBootloader(MAASTestCase):
                     Contains('option vendor-class-identifier "HTTPClient";'),
                 )
 
-    def test__composes_bootloader_section_v6(self):
+    def test_composes_bootloader_section_v6(self):
         ip = factory.make_ipv6_address()
         output = config.compose_conditional_bootloader(True, ip)
         for name, method in BootMethodRegistry:
@@ -660,7 +660,7 @@ class TestComposeConditionalBootloader(MAASTestCase):
 class TestGetAddresses(MAASTestCase):
     """Tests for `_get_addresses`."""
 
-    def test__ip_addresses_are_passed_through(self):
+    def test_ip_addresses_are_passed_through(self):
         address4 = factory.make_ipv4_address()
         address6 = factory.make_ipv6_address()
         self.assertThat(
@@ -668,7 +668,7 @@ class TestGetAddresses(MAASTestCase):
             Equals(([address4], [address6])),
         )
 
-    def test__ignores_resolution_failures(self):
+    def test_ignores_resolution_failures(self):
         # Some ISPs configure their DNS to resolve to an ads page when a domain
         # doesn't exist. This ensures resolving fails so the test passes.
         self.patch(config, "_gen_addresses_where_possible").return_value = []
@@ -677,7 +677,7 @@ class TestGetAddresses(MAASTestCase):
             Equals(([], [])),
         )
 
-    def test__logs_resolution_failures(self):
+    def test_logs_resolution_failures(self):
         # Some ISPs configure their DNS to resolve to an ads page when a domain
         # doesn't exist. This ensures resolving fails so the test passes.
         exception = socket.gaierror()

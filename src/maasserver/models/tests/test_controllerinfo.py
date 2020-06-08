@@ -45,7 +45,7 @@ class TestControllerInfo(MAASServerTestCase):
 
 
 class TestGetControllerVersionInfo(MAASServerTestCase):
-    def test__sorts_controllerversioninfo_by_most_recent_version_first(self):
+    def test_sorts_controllerversioninfo_by_most_recent_version_first(self):
         c1 = factory.make_RegionRackController()
         ControllerInfo.objects.set_version(c1, "2.3.0")
         c2 = factory.make_RegionRackController()
@@ -65,7 +65,7 @@ class TestGetControllerVersionInfo(MAASServerTestCase):
 
 
 class TestCreateOrUpdateVersionNotification(MAASServerTestCase):
-    def test__create(self):
+    def test_create(self):
         system_id = "xyzzy"
         create_or_update_version_notification(
             system_id,
@@ -80,7 +80,7 @@ class TestCreateOrUpdateVersionNotification(MAASServerTestCase):
             Equals("Fix your MAAS, you slacker! It's only version 1.9."),
         )
 
-    def test__update(self):
+    def test_update(self):
         system_id = "xyzzy"
         create_or_update_version_notification(
             system_id,
@@ -109,7 +109,7 @@ def get_version_notifications():
 
 
 class TestUpdateVersionNotifications(MAASServerTestCase):
-    def test__single_controller_never_generates_notifications(self):
+    def test_single_controller_never_generates_notifications(self):
         c1 = factory.make_RegionRackController()
         self.assertThat(get_version_notifications().count(), Equals(0))
         ControllerInfo.objects.set_version(c1, "2.3.0")
@@ -119,7 +119,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
         ControllerInfo.objects.set_version(c1, "")
         self.assertThat(get_version_notifications().count(), Equals(0))
 
-    def test__out_of_date_controller_generates_concise_notification(self):
+    def test_out_of_date_controller_generates_concise_notification(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionRackController()
         ControllerInfo.objects.set_version(c1, "2.3.0-500-g1")
@@ -134,7 +134,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
             ),
         )
 
-    def test__version_qualifiers_considered(self):
+    def test_version_qualifiers_considered(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionRackController()
         # Note: the revno and git revision are intentionally identical here,
@@ -154,7 +154,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
             ),
         )
 
-    def test__assumes_old_controller_if_version_unknown(self):
+    def test_assumes_old_controller_if_version_unknown(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionRackController()
         ControllerInfo.objects.set_version(c1, "2.3.0")
@@ -168,7 +168,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
             ),
         )
 
-    def test__revno_differences_cause_full_version_to_be_shown(self):
+    def test_revno_differences_cause_full_version_to_be_shown(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionRackController()
         ControllerInfo.objects.set_version(c1, "2.3.0~beta2-6000-g123abc")
@@ -185,7 +185,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
             ),
         )
 
-    def test__upgrading_controller_causes_old_notifications_to_go_away(self):
+    def test_upgrading_controller_causes_old_notifications_to_go_away(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionController()
         ControllerInfo.objects.set_version(c1, "2.3.0~beta2-6000-g123abc")
@@ -194,7 +194,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
         ControllerInfo.objects.set_version(c1, "2.3.0~beta2-6001-g234bcd")
         self.assertThat(get_version_notifications().count(), Equals(0))
 
-    def test__deleting_controller_causes_old_notifications_to_go_away(self):
+    def test_deleting_controller_causes_old_notifications_to_go_away(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionController()
         ControllerInfo.objects.set_version(c1, "2.3.0~beta2-6000-g123abc")

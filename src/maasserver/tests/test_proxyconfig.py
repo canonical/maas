@@ -49,7 +49,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__only_enabled_subnets_are_present(self):
+    def test_only_enabled_subnets_are_present(self):
         self.patch(settings, "PROXY_CONNECT", True)
         disabled = yield deferToDatabase(self.make_subnet, allow_proxy=False)
         enabled = yield deferToDatabase(self.make_subnet)
@@ -69,7 +69,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__with_use_peer_proxy_with_http_proxy(self):
+    def test_with_use_peer_proxy_with_http_proxy(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
             transactional(Config.objects.set_config), "enable_http_proxy", True
@@ -95,7 +95,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__with_use_peer_proxy_without_http_proxy(self):
+    def test_with_use_peer_proxy_without_http_proxy(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
             transactional(Config.objects.set_config), "enable_http_proxy", True
@@ -116,7 +116,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__without_use_peer_proxy(self):
+    def test_without_use_peer_proxy(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
             transactional(Config.objects.set_config), "enable_http_proxy", True
@@ -139,7 +139,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__with_prefer_v4_proxy_False(self):
+    def test_with_prefer_v4_proxy_False(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
             transactional(Config.objects.set_config), "prefer_v4_proxy", False
@@ -151,7 +151,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__with_prefer_v4_proxy_True(self):
+    def test_with_prefer_v4_proxy_True(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(
             transactional(Config.objects.set_config), "prefer_v4_proxy", True
@@ -163,7 +163,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__with_new_maas_proxy_port_changes_port(self):
+    def test_with_new_maas_proxy_port_changes_port(self):
         self.patch(settings, "PROXY_CONNECT", True)
         port = random.randint(1, 65535)
         yield deferToDatabase(
@@ -176,7 +176,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_reloadService(self):
+    def test_calls_reloadService(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
@@ -187,7 +187,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_restartService(self):
+    def test_calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
         self.patch(snappy, "running_in_snap").return_value = True
         yield deferToDatabase(self.make_subnet)
@@ -199,7 +199,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__doesnt_call_reloadService_when_PROXY_CONNECT_False(self):
+    def test_doesnt_call_reloadService_when_PROXY_CONNECT_False(self):
         self.patch(settings, "PROXY_CONNECT", False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
@@ -207,7 +207,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__doesnt_call_reloadService_when_reload_proxy_False(self):
+    def test_doesnt_call_reloadService_when_reload_proxy_False(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)

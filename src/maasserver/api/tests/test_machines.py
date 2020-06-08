@@ -3539,7 +3539,7 @@ class TestPowerState(APITransactionTestCase.ForUser):
         )  # Wait for all pending tasks to run.
         self.assertThat(reload_object(machine).power_state, Equals(state))
 
-    def test__returns_actual_state(self):
+    def test_returns_actual_state(self):
         machine = factory.make_Node_with_Interface_on_Subnet(power_type="ipmi")
         random_state = random.choice(["on", "off", "error"])
         self.prepare_rpc(

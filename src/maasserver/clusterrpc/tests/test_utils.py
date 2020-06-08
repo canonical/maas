@@ -42,7 +42,7 @@ class MockFailure(Failure):
 class TestCallClusters(MAASServerTestCase):
     """Tests for `utils.call_clusters`."""
 
-    def test__gets_clients(self):
+    def test_gets_clients(self):
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
@@ -55,7 +55,7 @@ class TestCallClusters(MAASServerTestCase):
         self.assertItemsEqual([], utils.call_clusters(sentinel.command))
         self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
 
-    def test__with_successful_callbacks(self):
+    def test_with_successful_callbacks(self):
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
@@ -87,7 +87,7 @@ class TestCallClusters(MAASServerTestCase):
         self.assertThat(failed_callback, MockNotCalled())
         self.assertThat(timeout_callback, MockNotCalled())
 
-    def test__with_unavailable_callbacks(self):
+    def test_with_unavailable_callbacks(self):
         logger = self.useFixture(FakeLogger("maasserver"))
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
@@ -121,7 +121,7 @@ class TestCallClusters(MAASServerTestCase):
             logger.output, DocTestMatches("...Unable to get RPC connection...")
         )
 
-    def test__with_failed_callbacks(self):
+    def test_with_failed_callbacks(self):
         logger = self.useFixture(FakeLogger("maasserver"))
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
@@ -160,7 +160,7 @@ class TestCallClusters(MAASServerTestCase):
             ),
         )
 
-    def test__with_timeout_callbacks(self):
+    def test_with_timeout_callbacks(self):
         logger = self.useFixture(FakeLogger("maasserver"))
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
@@ -198,7 +198,7 @@ class TestCallClusters(MAASServerTestCase):
 class TestCallRacksSynchronously(MAASServerTestCase):
     """Tests for `utils.call_rakcks_synchronously`."""
 
-    def test__gets_clients(self):
+    def test_gets_clients(self):
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None

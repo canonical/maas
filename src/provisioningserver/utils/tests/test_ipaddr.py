@@ -454,13 +454,13 @@ class FakeSysProcTestCase(MAASTestCase):
 
 
 class TestGetInterfaceType(FakeSysProcTestCase):
-    def test__identifies_missing_interface(self):
+    def test_identifies_missing_interface(self):
         self.assertThat(
             get_interface_type("eth0", sys_class_net=self.tmp_sys_net),
             Equals("missing"),
         )
 
-    def test__identifies_bridge_interface(self):
+    def test_identifies_bridge_interface(self):
         self.createEthernetInterface("br0", is_bridge=True)
         self.assertThat(
             get_interface_type(
@@ -471,7 +471,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet.bridge"),
         )
 
-    def test__identifies_tunnel_interface(self):
+    def test_identifies_tunnel_interface(self):
         self.createEthernetInterface("vnet0", is_tunnel=True)
         self.assertThat(
             get_interface_type(
@@ -482,7 +482,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet.tunnel"),
         )
 
-    def test__identifies_bond_interface(self):
+    def test_identifies_bond_interface(self):
         self.createEthernetInterface("bond0", is_bond=True)
         self.assertThat(
             get_interface_type(
@@ -493,7 +493,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet.bond"),
         )
 
-    def test__identifies_bonded_interfaces(self):
+    def test_identifies_bonded_interfaces(self):
         self.createEthernetInterface(
             "bond0", is_bond=True, bonded_interfaces=["eth0", "eth1"]
         )
@@ -502,7 +502,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals(["eth0", "eth1"]),
         )
 
-    def test__identifies_vlan_interface(self):
+    def test_identifies_vlan_interface(self):
         self.createEthernetInterface("vlan42", is_vlan=True)
         self.assertThat(
             get_interface_type(
@@ -513,7 +513,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet.vlan"),
         )
 
-    def test__identifies_physical_ethernet_interface(self):
+    def test_identifies_physical_ethernet_interface(self):
         self.createEthernetInterface("eth0", is_physical=True)
         self.assertThat(
             get_interface_type(
@@ -524,7 +524,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet.physical"),
         )
 
-    def test__identifies_wireless_ethernet_interface(self):
+    def test_identifies_wireless_ethernet_interface(self):
         self.createEthernetInterface("wlan0", is_wireless=True)
         self.assertThat(
             get_interface_type(
@@ -535,7 +535,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet.wireless"),
         )
 
-    def test__identifies_other_ethernet_interface(self):
+    def test_identifies_other_ethernet_interface(self):
         self.createEthernetInterface("eth1")
         self.assertThat(
             get_interface_type(
@@ -546,7 +546,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ethernet"),
         )
 
-    def test__identifies_loopback_interface(self):
+    def test_identifies_loopback_interface(self):
         self.createLoopbackInterface("lo")
         self.assertThat(
             get_interface_type(
@@ -557,7 +557,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("loopback"),
         )
 
-    def test__identifies_ipip_interface(self):
+    def test_identifies_ipip_interface(self):
         self.createIpIpInterface("tun0")
         self.assertThat(
             get_interface_type(
@@ -568,7 +568,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             Equals("ipip"),
         )
 
-    def test__unknown_interfaces_type_includes_id(self):
+    def test_unknown_interfaces_type_includes_id(self):
         self.createInterfaceType("avian0", 1149)
         self.assertThat(
             get_interface_type(
@@ -581,7 +581,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
 
 
 class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
-    def test__populates_interface_type_for_each_interface(self):
+    def test_populates_interface_type_for_each_interface(self):
         # Note: this is more of an end-to-end test, since we call
         # "/sbin/ip addr" on the host running the tests.
         ip_addr_output = check_output(["ip", "addr"])
@@ -597,7 +597,7 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
             elif iface["type"] == "ethernet.bridge":
                 self.expectThat(iface, Contains("bridged_interfaces"))
 
-    def test__finds_bond_members_original_mac_addresses(self):
+    def test_finds_bond_members_original_mac_addresses(self):
         testdata = dedent(
             """\
             Ethernet Channel Bonding Driver: v3.7.1 (April 27, 2011)
@@ -647,7 +647,7 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
             interfaces,
         )
 
-    def test__ignores_missing_proc_net_bonding(self):
+    def test_ignores_missing_proc_net_bonding(self):
         os.rmdir(os.path.join(self.tmp_proc_net, "bonding"))
         interfaces = {
             "ens3": {"mac": "00:01:02:03:04:05"},

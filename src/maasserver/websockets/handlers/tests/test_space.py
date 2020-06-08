@@ -70,7 +70,7 @@ class TestSpaceHandler(MAASServerTestCase):
 
 
 class TestSpaceHandlerDelete(MAASServerTestCase):
-    def test__delete_as_admin_success(self):
+    def test_delete_as_admin_success(self):
         user = factory.make_admin()
         handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
@@ -78,14 +78,14 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
         space = reload_object(space)
         self.assertThat(space, Equals(None))
 
-    def test__delete_as_non_admin_asserts(self):
+    def test_delete_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({"id": space.id})
 
-    def test__reloads_user(self):
+    def test_reloads_user(self):
         user = factory.make_admin()
         handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
