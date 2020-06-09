@@ -38,7 +38,7 @@ if os.getuid() != 0 and os.geteuid() != 0:
     root = os.environ.get("MAAS_ROOT")
     if root is not None:
         CONF_FILES = {
-            os.path.abspath(os.path.join(root, path))
+            os.path.abspath(os.path.join(root, path.lstrip("/")))
             for path in CONF_FILES
         }
 
