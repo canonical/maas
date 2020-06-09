@@ -576,14 +576,14 @@ class TestSudoWriteFileScript(MAASTestCase):
         self.script = load_script(self.script_path)
         self.script.atomic_write = create_autospec(self.script.atomic_write)
 
-    def test_white_list_is_a_non_empty_set_of_file_names(self):
-        self.assertThat(self.script.whitelist, IsInstance(set))
-        self.assertThat(self.script.whitelist, Not(HasLength(0)))
-        self.assertThat(self.script.whitelist, AllMatch(IsInstance(str)))
+    def test_allowed_list_is_a_non_empty_set_of_file_names(self):
+        self.assertThat(self.script.WRITABLE_FILES, IsInstance(set))
+        self.assertThat(self.script.WRITABLE_FILES, Not(HasLength(0)))
+        self.assertThat(self.script.WRITABLE_FILES, AllMatch(IsInstance(str)))
 
-    def test_accepts_file_names_on_white_list(self):
+    def test_accepts_file_names_on_allowed_list(self):
         calls_expected = []
-        for filename in self.script.whitelist:
+        for filename in self.script.WRITABLE_FILES:
             content = factory.make_bytes()  # It's binary safe.
             mode = random.randint(0o000, 0o777)  # Inclusive of endpoints.
             args = self.script.arg_parser.parse_args([filename, oct(mode)])
@@ -595,7 +595,7 @@ class TestSudoWriteFileScript(MAASTestCase):
             self.script.atomic_write, MockCallsMatch(*calls_expected)
         )
 
-    def test_rejects_file_name_not_on_white_list(self):
+    def test_rejects_file_name_not_on_allowed_list(self):
         filename = factory.make_name("/some/where", sep="/")
         mode = random.randint(0o000, 0o777)  # Inclusive of endpoints.
         args = self.script.arg_parser.parse_args([filename, oct(mode)])
@@ -610,12 +610,12 @@ class TestSudoWriteFileScript(MAASTestCase):
             stdio.getError(),
             DocTestMatches(
                 "usage: ... Given filename ... is not in the "
-                "white list. Choose from: ..."
+                "allowed list. Choose from: ..."
             ),
         )
 
     def test_rejects_file_mode_with_high_bits_set(self):
-        filename = random.choice(list(self.script.whitelist))
+        filename = random.choice(list(self.script.WRITABLE_FILES))
         mode = random.randint(0o1000, 0o7777)  # Inclusive of endpoints.
         args = self.script.arg_parser.parse_args([filename, oct(mode)])
         with CaptureStandardIO() as stdio:
@@ -643,14 +643,14 @@ class TestSudoDeleteFileScript(MAASTestCase):
         self.script = load_script(self.script_path)
         self.script.atomic_delete = create_autospec(self.script.atomic_delete)
 
-    def test_white_list_is_a_non_empty_set_of_file_names(self):
-        self.assertThat(self.script.whitelist, IsInstance(set))
-        self.assertThat(self.script.whitelist, Not(HasLength(0)))
-        self.assertThat(self.script.whitelist, AllMatch(IsInstance(str)))
+    def test_allowed_list_is_a_non_empty_set_of_file_names(self):
+        self.assertThat(self.script.DELETABLE_FILES, IsInstance(set))
+        self.assertThat(self.script.DELETABLE_FILES, Not(HasLength(0)))
+        self.assertThat(self.script.DELETABLE_FILES, AllMatch(IsInstance(str)))
 
-    def test_accepts_file_names_on_white_list(self):
+    def test_accepts_file_names_on_allowed_list(self):
         calls_expected = []
-        for filename in self.script.whitelist:
+        for filename in self.script.DELETABLE_FILES:
             args = self.script.arg_parser.parse_args([filename])
             self.script.main(args)
             calls_expected.append(call(filename))
@@ -659,7 +659,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
         )
 
     def test_is_okay_when_the_file_does_not_exist(self):
-        filename = random.choice(list(self.script.whitelist))
+        filename = random.choice(list(self.script.DELETABLE_FILES))
         args = self.script.arg_parser.parse_args([filename])
         self.script.atomic_delete.side_effect = FileNotFoundError
         self.script.main(args)
@@ -667,7 +667,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
             self.script.atomic_delete, MockCalledOnceWith(filename)
         )
 
-    def test_rejects_file_name_not_on_white_list(self):
+    def test_rejects_file_name_not_on_allowed_list(self):
         filename = factory.make_name("/some/where", sep="/")
         args = self.script.arg_parser.parse_args([filename])
         with CaptureStandardIO() as stdio:
@@ -679,7 +679,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
             stdio.getError(),
             DocTestMatches(
                 "usage: ... Given filename ... is not in the "
-                "white list. Choose from: ..."
+                "allowed list. Choose from: ..."
             ),
         )
 
