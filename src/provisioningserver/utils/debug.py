@@ -41,10 +41,10 @@ def toggle_cprofile(process_name, signum=None, stack=None):
         print("Profiling enabled")
     else:
         current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
-        output_filepath = (
-            f"profiling/{process_name}-{os.getpid()}-{current_time}.pyprof"
-        )
-        full_filepath = get_maas_data_path(str(output_filepath))
+        profiling_dir = get_maas_data_path("profiling")
+        os.makedirs(profiling_dir, exist_ok=True)
+        output_filename = f"{process_name}-{os.getpid()}-{current_time}.pyprof"
+        full_filepath = os.path.join(profiling_dir, output_filename)
         _profile.create_stats()
         _profile.dump_stats(full_filepath)
         _profile = None
