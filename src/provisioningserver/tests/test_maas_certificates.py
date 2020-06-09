@@ -22,21 +22,27 @@ class TestMAASCertificates(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.certificates_dir = self.useFixture(TempDirectory()).path
+        self.orig_maas_private_key = maas_certificates.MAAS_PRIVATE_KEY
         maas_certificates.MAAS_PRIVATE_KEY = os.path.join(
             self.certificates_dir, "maas.key"
         )
+        self.orig_maas_public_key = maas_certificates.MAAS_PUBLIC_KEY
         maas_certificates.MAAS_PUBLIC_KEY = os.path.join(
             self.certificates_dir, "maas.pub"
         )
+        self.orig_maas_certificate = maas_certificates.MAAS_CERTIFICATE
         maas_certificates.MAAS_CERTIFICATE = os.path.join(
             self.certificates_dir, "maas.crt"
         )
-
-    def tearDown(self):
-        super().tearDown()
         maas_certificates._cert_not_before = None
         maas_certificates._cert_not_after = None
         maas_certificates._cert_mtime = None
+
+    def tearDown(self):
+        super().tearDown()
+        maas_certificates.MAAS_PRIVATE_KEY = self.orig_maas_private_key
+        maas_certificates.MAAS_PUBLIC_KEY = self.orig_maas_public_key
+        maas_certificates.MAAS_CERTIFICATE = self.orig_maas_certificate
 
     def test_generate_rsa_if_needed(self):
         self.assertTrue(maas_certificates.generate_rsa_keys_if_needed())
