@@ -48,10 +48,11 @@ class FakePowerDriverBase(PowerDriverBase):
     ip_extractor = None
     queryable = True
 
-    def __init__(self, name, description, settings):
+    def __init__(self, name, description, settings, chassis=False):
         self.name = name
         self.description = description
         self.settings = settings
+        self.chassis = chassis
         super(FakePowerDriverBase, self).__init__()
 
     def on(self, system_id, context):
@@ -70,14 +71,16 @@ class FakePowerDriverBase(PowerDriverBase):
         return []
 
 
-def make_power_driver_base(name=None, description=None, settings=None):
+def make_power_driver_base(
+    name=None, description=None, settings=None, chassis=False
+):
     if name is None:
         name = factory.make_name("diskless")
     if description is None:
         description = factory.make_name("description")
     if settings is None:
         settings = []
-    return FakePowerDriverBase(name, description, settings)
+    return FakePowerDriverBase(name, description, settings, chassis)
 
 
 class TestFakePowerDriverBase(MAASTestCase):
