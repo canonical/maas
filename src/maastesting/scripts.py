@@ -110,12 +110,13 @@ def run_region_legacy():
 def run_rack():
     """Entry point for rack test runner."""
     options = [
+        "--with-crochet",
+        "--crochet-no-setup",
         "--with-resources",
         "--with-scenarios",
         "--with-select",
-        "--select-dir=src/apiclient",
-        "--select-dir=src/maascli",
-        "--cover-package=apiclient,maascli",
+        "--select-dir=src/provisioningserver",
+        "--cover-package=provisioningserver",
         "--cover-branches",
     ]
     inject_test_options(options)
