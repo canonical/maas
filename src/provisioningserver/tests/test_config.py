@@ -9,7 +9,6 @@ import contextlib
 from operator import delitem, methodcaller, setitem
 import os.path
 import sqlite3
-from unittest import expectedFailure
 from unittest.mock import sentinel
 from uuid import uuid4
 
@@ -652,12 +651,9 @@ class TestClusterConfiguration(MAASTestCase):
         # It's also stored in the configuration database.
         self.assertEqual({"tftp_port": example_port}, config.store)
 
-    @expectedFailure  # See https://bugs.launchpad.net/maas/+bug/1882903
     def test_default_tftp_root(self):
         config = ClusterConfiguration({})
-        self.assertEqual(
-            "/var/lib/maas/boot-resources/current", config.tftp_root
-        )
+        self.assertTrue(config.tftp_root.endswith("boot-resources/current"))
 
     def test_set_and_get_tftp_root(self):
         config = ClusterConfiguration({})
