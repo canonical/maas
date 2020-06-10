@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed_network`."""
@@ -1336,13 +1336,14 @@ class TestNetplan(MAASServerTestCase):
                                 "addresses": ["10.0.1.4/24"],
                                 "routes": [
                                     {
+                                        "to": "0.0.0.0/0",
+                                        "via": "10.0.1.1",
+                                        "table": 1,
+                                    },
+                                    {
                                         "to": "192.168.0.0/24",
                                         "via": "10.0.1.3",
                                         "metric": 43,
-                                    },
-                                    {
-                                        "to": "0.0.0.0/0",
-                                        "via": "10.0.1.1",
                                         "table": 1,
                                     },
                                 ],
@@ -1356,6 +1357,12 @@ class TestNetplan(MAASServerTestCase):
                                         "from": "10.0.1.0/24",
                                         "table": 254,
                                         "to": "10.0.1.0/24",
+                                    },
+                                    {
+                                        "from": "0.0.0.0/0",
+                                        "priority": 100,
+                                        "table": 1,
+                                        "to": "192.168.0.0/24",
                                     },
                                 ],
                                 "nameservers": {
