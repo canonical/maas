@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The BootResource handler for the WebSocket connection."""
@@ -682,36 +682,28 @@ class BootResourceHandler(Handler):
 
         @transactional
         def update_source(params):
-            os = "ubuntu"
-            releases = params["releases"]
-            arches = params["arches"]
             boot_source = self.get_bootsource(params, from_db=True)
 
-            # Remove all selections, that are not of release.
-            BootSourceSelection.objects.filter(
-                boot_source=boot_source, os=os
-            ).exclude(release__in=releases).delete()
-
-            if len(releases) > 0:
-                # Create or update the selections.
-                for release in releases:
-                    selection, _ = BootSourceSelection.objects.get_or_create(
-                        boot_source=boot_source, os=os, release=release
-                    )
-                    selection.arches = arches
-                    selection.subarches = ["*"]
-                    selection.labels = ["*"]
-                    selection.save()
-            else:
-                # Create a selection that will cause nothing to be downloaded,
-                # since no releases are selected.
+            releases = set()
+            for osystem in params.get("osystems", []):
+                release = osystem.get("release")
+                if release:
+                    releases.add(release)
+                else:
+                    continue
                 selection, _ = BootSourceSelection.objects.get_or_create(
-                    boot_source=boot_source, os=os, release=""
+                    boot_source=boot_source, os="ubuntu", release=release
                 )
-                selection.arches = arches
+                selection.arches = osystem.get("arches", ["*"])
                 selection.subarches = ["*"]
                 selection.labels = ["*"]
                 selection.save()
+
+            if releases:
+                # Remove all selections, that are not of release.
+                BootSourceSelection.objects.filter(
+                    boot_source=boot_source, os="ubuntu"
+                ).exclude(release__in=releases).delete()
 
         notify = Deferred()
         d = stop_import_resources()
