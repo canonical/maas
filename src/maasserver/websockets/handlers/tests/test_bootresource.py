@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.bootresource`"""
@@ -872,28 +872,6 @@ class TestBootResourceSaveUbuntu(
         self.assertThat(mock_stop_import, MockCalledOnceWith())
         self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
 
-    def test_sets_empty_selections(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        self.patch_get_os_info_from_boot_sources([source])
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
-        handler.save_ubuntu({"url": source.url, "releases": [], "arches": []})
-
-        selections = BootSourceSelection.objects.filter(boot_source=source)
-        self.assertThat(selections, HasLength(1))
-        self.assertEqual(
-            (
-                selections[0].os,
-                selections[0].release,
-                selections[0].arches,
-                selections[0].subarches,
-                selections[0].labels,
-            ),
-            ("ubuntu", "", [], ["*"], ["*"]),
-        )
-
     def test_sets_release_selections(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
@@ -903,7 +881,13 @@ class TestBootResourceSaveUbuntu(
         self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_ubuntu(
-            {"url": source.url, "releases": releases, "arches": []}
+            {
+                "url": source.url,
+                "osystems": [
+                    {"osystem": "ubuntu", "release": release, "arches": []}
+                    for release in releases
+                ],
+            }
         )
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
@@ -916,20 +900,29 @@ class TestBootResourceSaveUbuntu(
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
-        releases = [factory.make_name("release") for _ in range(3)]
-        arches = [factory.make_name("arches") for _ in range(3)]
+        osystems = [
+            {
+                "osystem": "ubuntu",
+                "release": factory.make_name("release"),
+                "arches": [factory.make_name("arch") for _ in range(i + 1)],
+            }
+            for i in range(3)
+        ]
         self.patch_get_os_info_from_boot_sources([source])
         self.patch_stop_import_resources()
         self.patch_import_resources()
-        handler.save_ubuntu(
-            {"url": source.url, "releases": releases, "arches": arches}
-        )
-
+        handler.save_ubuntu({"url": source.url, "osystems": osystems})
         selections = BootSourceSelection.objects.filter(boot_source=source)
-        self.assertThat(selections, HasLength(len(releases)))
         self.assertItemsEqual(
-            [arches, arches, arches],
-            [selection.arches for selection in selections],
+            [
+                {
+                    "osystem": selection.os,
+                    "release": selection.release,
+                    "arches": selection.arches,
+                }
+                for selection in selections
+            ],
+            osystems,
         )
 
     def test_removes_old_selections(self):
@@ -949,7 +942,12 @@ class TestBootResourceSaveUbuntu(
         self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_ubuntu(
-            {"url": source.url, "releases": [release], "arches": []}
+            {
+                "url": source.url,
+                "osystems": [
+                    {"osystem": "ubuntu", "release": release, "arches": []}
+                ],
+            }
         )
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
