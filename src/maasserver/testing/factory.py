@@ -1364,9 +1364,15 @@ class Factory(maastesting.factory.Factory):
             )
         network = None
         if cidr is None:
-            network = factory.make_ip4_or_6_network(
-                version=version, host_bits=host_bits
-            )
+            while True:
+                network = factory.make_ip4_or_6_network(
+                    version=version, host_bits=host_bits
+                )
+                # Loopback networks are special, so don't create them
+                # randomly. If someone wants a loopback network, they
+                # can pass in the cidr manually.
+                if not network.is_loopback():
+                    break
             cidr = str(network.cidr)
         if gateway_ip is RANDOM:
             network = IPNetwork(cidr) if network is None else network
