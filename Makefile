@@ -49,6 +49,7 @@ bin/maas \
 bin/maas-common \
 bin/maas-rack \
 bin/maas-region \
+bin/maas-power \
 bin/postgresfixture \
 bin/rackd \
 bin/regiond \
@@ -443,11 +444,11 @@ services/database/@deps: bin/database
 
 services/http/@deps: bin/py
 
-services/rackd/@deps: bin/rackd bin/maas-rack bin/maas-common
+services/rackd/@deps: bin/rackd bin/maas-rack bin/maas-common bin/maas-power
 
 services/reloader/@deps:
 
-services/regiond/@deps: bin/maas-region bin/maas-rack bin/maas-common
+services/regiond/@deps: bin/maas-region bin/maas-rack bin/maas-common bin/maas-power
 
 #
 # Package building

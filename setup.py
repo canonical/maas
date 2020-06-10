@@ -35,6 +35,7 @@ setup(
             "maas = maascli:main",
             "maas-common = provisioningserver.rack_script:run",
             "maas-rack = provisioningserver.rack_script:run",
+            "maas-power = provisioningserver.power_driver_command:run",
             "maas-region = maasserver.region_script:run",
             "rackd = provisioningserver.server:run",
             "regiond = maasserver.server:run",

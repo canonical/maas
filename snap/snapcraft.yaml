@@ -55,6 +55,11 @@ apps:
         - network-bind # for connecting to PostgreSQL
         - network-observe # to get default URL
 
+  power:
+    command: $SNAP/bin/maas-power
+    plugs:
+        - network
+
 parts:
   maas-pypi:
     # Keep the pypi dependencies separate from the deb dependencies, so

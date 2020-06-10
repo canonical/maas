@@ -349,8 +349,7 @@ class VirshSSH(pexpect.spawn):
                 " is not supported."
             )
 
-        # Append unverified-ssh command if user has not
-        # supplied their own extra parameters.  See,
+        # Append unverified-ssh command. See,
         # https://bugs.launchpad.net/maas/+bug/1807231
         # for more details.
         poweraddr = (
