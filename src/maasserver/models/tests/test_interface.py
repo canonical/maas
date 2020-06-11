@@ -1338,11 +1338,15 @@ class InterfaceTest(MAASServerTestCase):
         #: Test is this doesn't raise an exception
         interface.remove_tag(tag)
 
-    def test_save_link_speed_may_not_exceed_interface_speed(self):
+    def test_save_link_speed_may_exceed_interface_speed(self):
+        # LP:1877158 - Interfaces which use aggregate physical links do
+        # not report the full max interface speed.
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.interface_speed = 100
         interface.link_speed = 1000
-        self.assertRaises(ValidationError, interface.save)
+        interface.save()
+        self.assertEquals(100, interface.interface_speed)
+        self.assertEquals(1000, interface.link_speed)
 
     def test_save_link_speed_may_exceed_unknown_interface_speed(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

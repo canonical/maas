@@ -1632,11 +1632,6 @@ class Interface(CleanSave, TimestampedModel):
         }
 
     def save(self, *args, **kwargs):
-        if (
-            self.link_speed > self.interface_speed
-            and self.interface_speed != 0
-        ):
-            raise ValidationError("link_speed may not exceed interface_speed")
         if not self.link_connected:
             self.link_speed = 0
         return super().save(*args, **kwargs)
