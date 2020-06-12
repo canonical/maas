@@ -67,6 +67,12 @@ class TestRegistry(MAASTestCase):
         Registry.register_item("resource", sentinel.resource)
         self.assertIn("resource", Registry)
 
+    def test_duplicate_key(self):
+        Registry.register_item("resource", sentinel.resource)
+        self.assertRaises(
+            KeyError, Registry.register_item, "resource", sentinel.resource
+        )
+
     def test_registered_items_are_stored_separately_by_registry(self):
         class RegistryOne(Registry):
             """A registry distinct from the base `Registry`."""

@@ -39,7 +39,8 @@ class TestLicenseKeyForm(MAASServerTestCase):
         distro_series = "%s/%s" % (osystem, release)
         drv = WindowsOS()
         drv.title = osystem_title
-        OperatingSystemRegistry.register_item(osystem, drv)
+        if osystem not in OperatingSystemRegistry:
+            OperatingSystemRegistry.register_item(osystem, drv)
         factory.make_BootResource(
             name=distro_series,
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,

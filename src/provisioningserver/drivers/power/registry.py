@@ -14,7 +14,6 @@ from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.dli import DLIPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
-from provisioningserver.drivers.power.lxd import LXDPowerDriver
 from provisioningserver.drivers.power.manual import ManualPowerDriver
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
@@ -25,7 +24,6 @@ from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
-from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 from provisioningserver.drivers.power.wedge import WedgePowerDriver
 from provisioningserver.utils.registry import Registry
@@ -55,7 +53,6 @@ power_drivers = [
     DLIPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
-    LXDPowerDriver(),
     ManualPowerDriver(),
     MoonshotIPMIPowerDriver(),
     MSCMPowerDriver(),
@@ -66,7 +63,6 @@ power_drivers = [
     RedfishPowerDriver(),
     SeaMicroPowerDriver(),
     UCSMPowerDriver(),
-    VirshPowerDriver(),
     VMwarePowerDriver(),
     WedgePowerDriver(),
 ]

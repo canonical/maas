@@ -27,6 +27,10 @@ class RegistryType(type):
         return _registry[cls].get(name, default)
 
     def register_item(cls, name, item):
+        if name in _registry[cls]:
+            raise KeyError(
+                "Key '{}' is already present in the registry".format(name)
+            )
         _registry[cls][name] = item
 
     def unregister_item(cls, name):
