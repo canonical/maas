@@ -30,6 +30,7 @@ class UCSMPowerDriver(PowerDriver):
 
     name = "ucsm"
     chassis = True
+    can_probe = True
     description = "Cisco UCS Manager"
     settings = [
         make_setting_field(

@@ -38,6 +38,7 @@ class VMwarePowerDriver(PowerDriver):
 
     name = "vmware"
     chassis = True
+    can_probe = True
     description = "VMware"
     settings = [
         make_setting_field(

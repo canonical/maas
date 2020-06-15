@@ -93,6 +93,7 @@ class LXDPodDriver(PodDriver):
 
     name = "lxd"
     chassis = True
+    can_probe = False
     description = "LXD (virtual systems)"
     settings = [
         make_setting_field("power_address", "LXD address", required=True),

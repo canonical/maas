@@ -94,6 +94,7 @@ def add_power_driver_parameters(
     name,
     description,
     chassis,
+    can_probe,
     fields,
     missing_packages,
     parameters_set,
@@ -111,6 +112,8 @@ def add_power_driver_parameters(
     :type description: string
     :param chassis: Whether the power driver is for a chassis
     :type chassis: bool
+    :param can_probe: Whether the power driver supports add_chassis
+    :type can_probe: bool
     :param fields: The fields that make up the parameters for the power
         type. Will be validated against
         SETTING_PARAMETER_FIELD_SCHEMA.
@@ -137,6 +140,7 @@ def add_power_driver_parameters(
         "fields": fields,
         "missing_packages": missing_packages,
         "chassis": chassis,
+        "can_probe": can_probe,
     }
     if queryable is not None:
         params["queryable"] = queryable
@@ -262,6 +266,7 @@ def get_all_power_types(controllers=None, ignore_errors=True):
         fields = power_type.get("fields", [])
         description = power_type["description"]
         chassis = power_type["chassis"]
+        can_probe = power_type["can_probe"]
         missing_packages = power_type["missing_packages"]
         queryable = power_type.get("queryable")
         add_power_driver_parameters(
@@ -269,6 +274,7 @@ def get_all_power_types(controllers=None, ignore_errors=True):
             name,
             description,
             chassis,
+            can_probe,
             fields,
             missing_packages,
             merged_types,

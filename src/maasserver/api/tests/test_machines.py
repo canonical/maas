@@ -2665,6 +2665,21 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertEqual(b"No provided chassis_type!", response.content)
 
+    def test_POST_add_chassis_invalid_chasis_type(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse("machines_handler"),
+            {"op": "add_chassis", "chassis_type": "invalid"},
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.assertTrue(
+            response.content.startswith(
+                b"Invalid chassis_type: Value must be one of: "
+            )
+        )
+
     def test_POST_add_chassis_requires_hostname(self):
         self.become_admin()
         response = self.client.post(
@@ -3058,7 +3073,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 ),
             )
 
-    def test_POST_add_chasis_only_allows_port_with_vmware_and_msftocs(self):
+    def test_POST_add_chassis_only_allows_port_with_vmware_and_msftocs(self):
         self.become_admin()
         for chassis_type in (
             "mscm",
@@ -3088,7 +3103,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 response.content,
             )
 
-    def test_POST_add_chasis_checks_port_too_high(self):
+    def test_POST_add_chassis_checks_port_too_high(self):
         self.become_admin()
         for chassis_type in ("msftocs", "recs_box", "vmware"):
             params = {
@@ -3110,7 +3125,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 response.content,
             )
 
-    def test_POST_add_chasis_checks_port_too_low(self):
+    def test_POST_add_chassis_checks_port_too_low(self):
         self.become_admin()
         for chassis_type in ("msftocs", "recs_box", "vmware"):
             params = {
@@ -3175,7 +3190,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             ),
         )
 
-    def test_POST_add_chasis_only_allows_protocol_with_vmware(self):
+    def test_POST_add_chassis_only_allows_protocol_with_vmware(self):
         self.become_admin()
         for chassis_type in (
             "mscm",

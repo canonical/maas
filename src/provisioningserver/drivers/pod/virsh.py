@@ -1292,6 +1292,7 @@ class VirshPodDriver(PodDriver):
 
     name = "virsh"
     description = "Virsh (virtual systems)"
+    can_probe = True
     settings = [
         make_setting_field("power_address", "Address", required=True),
         make_setting_field(

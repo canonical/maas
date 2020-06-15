@@ -15,6 +15,27 @@ from provisioningserver import power_driver_command
 from provisioningserver.drivers.power import PowerDriver
 
 
+class FakeDriver(PowerDriver):
+    # These are required by the base class, but unused in this test.
+    chassis = False
+    can_probe = False
+    description = None
+    detect_missing_packages = None
+    ip_extractor = None
+    name = None
+    settings = []
+    _state = "off"
+
+    def power_on(self, *args, **kwargs):
+        self._state = "on"
+
+    def power_off(self, *args, **kwargs):
+        self._state = "off"
+
+    def power_query(self, *args, **kwargs):
+        return self._state
+
+
 class TestPowerDriverCommand(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
@@ -89,25 +110,6 @@ class TestPowerDriverCommand(MAASTestCase):
         args = Namespace()
         args.command = "on"
         args.driver = "fake"
-
-        class FakeDriver(PowerDriver):
-            # These are required by the base class, but unused in this test.
-            chassis = None
-            description = None
-            detect_missing_packages = None
-            ip_extractor = None
-            name = None
-            settings = []
-            _state = "off"
-
-            def power_on(self, *args, **kwargs):
-                self._state = "on"
-
-            def power_off(self, *args, **kwargs):
-                self._state = "off"
-
-            def power_query(self, *args, **kwargs):
-                return self._state
 
         driver = FakeDriver()
         registry = {"fake": driver}

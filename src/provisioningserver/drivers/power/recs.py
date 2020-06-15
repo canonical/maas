@@ -206,6 +206,7 @@ class RECSPowerDriver(PowerDriver):
 
     name = "recs_box"
     chassis = True
+    can_probe = True
     description = "Christmann RECS|Box Power Driver"
     settings = [
         make_setting_field(

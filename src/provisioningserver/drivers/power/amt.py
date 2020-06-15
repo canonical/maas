@@ -47,6 +47,7 @@ class AMTPowerDriver(PowerDriver):
 
     name = "amt"
     chassis = False
+    can_probe = False
     description = "Intel AMT"
     settings = [
         make_setting_field(

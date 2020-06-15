@@ -874,6 +874,7 @@ class FakePodDriverBase(PodDriverBase):
 
     name = ""
     chassis = True
+    can_probe = True
     description = ""
     settings = []
     ip_extractor = None
@@ -1020,6 +1021,7 @@ class TestPodDriverBase(MAASTestCase):
                 "queryable": fake_driver.queryable,
                 "missing_packages": [],
                 "chassis": True,
+                "can_probe": True,
             },
             fake_driver.get_schema(),
         )

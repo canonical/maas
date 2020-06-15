@@ -43,6 +43,7 @@ class FakePowerDriverBase(PowerDriverBase):
 
     name = ""
     chassis = False
+    can_probe = False
     description = ""
     settings = []
     ip_extractor = None
@@ -183,6 +184,7 @@ class TestPowerDriverBase(MAASTestCase):
                 "name": fake_name,
                 "description": fake_description,
                 "chassis": fake_chassis,
+                "can_probe": False,
                 "fields": fake_settings,
                 "queryable": fake_driver.queryable,
                 "missing_packages": fake_driver.detect_missing_packages(),
@@ -251,6 +253,7 @@ class FakePowerDriver(PowerDriver):
 
     name = ""
     chassis = False
+    can_probe = False
     description = ""
     settings = []
     ip_extractor = None
@@ -264,7 +267,7 @@ class FakePowerDriver(PowerDriver):
         self.settings = settings
         if wait_time is not None:
             self.wait_time = wait_time
-        super(FakePowerDriver, self).__init__(clock)
+        super().__init__(clock)
 
     def detect_missing_packages(self):
         return []

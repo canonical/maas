@@ -39,6 +39,7 @@ REG_MODE = {"data": "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular"}
 class OpenBMCPowerDriver(PowerDriver):
 
     chassis = False
+    can_probe = False
 
     name = "openbmc"
     description = "OpenBMC Power Driver"

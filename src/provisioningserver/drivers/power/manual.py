@@ -17,6 +17,7 @@ class ManualPowerDriver(PowerDriver):
 
     name = "manual"
     chassis = False
+    can_probe = False
     description = "Manual"
     settings = []
     ip_extractor = None

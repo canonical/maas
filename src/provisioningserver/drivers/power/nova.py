@@ -39,6 +39,7 @@ class NovaPowerDriver(PowerDriver):
 
     name = "nova"
     chassis = True
+    can_probe = False
     description = "OpenStack Nova"
     settings = [
         make_setting_field(

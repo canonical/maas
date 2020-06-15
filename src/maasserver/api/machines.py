@@ -43,6 +43,7 @@ from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
 )
+from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import (
     BMC_TYPE,
     BRIDGE_TYPE,
@@ -2508,6 +2509,34 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 machine.constraints_by_type["verbose_interfaces"] = interfaces
             return machine
 
+    def _get_chassis_param(self, request):
+        power_type_names = [
+            pt["name"] for pt in get_all_power_types() if pt["can_probe"]
+        ]
+
+        # NOTE: The http API accepts two additional names for backwards
+        # compatability. Previously the hardcoded list of chassis_type's was
+        # stored here and included powerkvm and seamicro15k. Neither of these
+        # are valid power driver names but they can be treated as virsh and
+        # sm15k.
+        power_type_names.extend(["powerkvm", "seamicro15k"])
+
+        chassis_type = get_mandatory_param(
+            request.POST,
+            "chassis_type",
+            validator=validators.OneOf(power_type_names),
+        )
+
+        # Convert sm15k to seamicro15k. This code was written to work with
+        # 'seamicro15k' but the power driver name in the provisioningserver is
+        # 'sm15k'. The following code expects the longer name. See the NOTE
+        # above for more context. Both powerkvm and virsh were previously
+        # supported so they don't need to be converted.
+        if chassis_type == "sm15k":
+            chassis_type = "seamicro15k"
+
+        return chassis_type
+
     @admin_method
     @operation(idempotent=False)
     def add_chassis(self, request):
@@ -2521,7 +2550,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         - ``msftocs``: Microsoft OCS Chassis Manager.
         - ``powerkvm``: Virtual Machines on Power KVM, managed by Virsh.
         - ``recs_box``: Christmann RECS|Box servers.
-        - ``seamicro15k``: Seamicro 1500 Chassis.
+        - ``sm15k``: Seamicro 1500 Chassis.
         - ``ucsm``: Cisco UCS Manager.
         - ``virsh``: virtual machines managed by Virsh.
         - ``vmware`` is the type for virtual machines managed by VMware.
@@ -2585,22 +2614,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @error (http-status-code) "400" 400
         @error (content) "bad-params" Required parameters are missing.
         """
-        chassis_type = get_mandatory_param(
-            request.POST,
-            "chassis_type",
-            validator=validators.OneOf(
-                [
-                    "mscm",
-                    "msftocs",
-                    "powerkvm",
-                    "recs_box",
-                    "seamicro15k",
-                    "ucsm",
-                    "virsh",
-                    "vmware",
-                ]
-            ),
-        )
+
+        chassis_type = self._get_chassis_param(request)
+
         hostname = get_mandatory_param(request.POST, "hostname")
 
         if chassis_type in (

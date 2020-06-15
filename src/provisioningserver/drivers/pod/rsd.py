@@ -68,6 +68,7 @@ RSD_NODE_POWER_STATE = {"PoweredOn": "on", "PoweredOff": "off"}
 class RSDPodDriver(RedfishPowerDriverBase, PodDriverBase):
 
     chassis = True  # Pods are always a chassis
+    can_probe = False
 
     # RSDPodDriver inherits from RedfishPowerDriver.
     # Power parameters will need to be changed to reflect this.

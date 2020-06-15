@@ -18,7 +18,7 @@ from provisioningserver.utils.testing import RegistryFixture
 
 class TestPowerDriverRegistry(MAASTestCase):
     def setUp(self):
-        super(TestPowerDriverRegistry, self).setUp()
+        super().setUp()
         # Ensure the global registry is empty for each test run.
         self.useFixture(RegistryFixture())
 
@@ -49,6 +49,7 @@ class TestPowerDriverRegistry(MAASTestCase):
                     "name": fake_driver_one.name,
                     "description": fake_driver_one.description,
                     "chassis": fake_driver_one.chassis,
+                    "can_probe": fake_driver_one.can_probe,
                     "fields": [],
                     "queryable": fake_driver_one.queryable,
                     "missing_packages": fake_driver_one.detect_missing_packages(),
@@ -58,6 +59,7 @@ class TestPowerDriverRegistry(MAASTestCase):
                     "name": fake_driver_two.name,
                     "description": fake_driver_two.description,
                     "chassis": fake_driver_two.chassis,
+                    "can_probe": fake_driver_two.can_probe,
                     "fields": [],
                     "queryable": fake_driver_two.queryable,
                     "missing_packages": fake_driver_two.detect_missing_packages(),
@@ -67,6 +69,7 @@ class TestPowerDriverRegistry(MAASTestCase):
                     "name": fake_pod_driver.name,
                     "description": fake_pod_driver.description,
                     "chassis": fake_pod_driver.chassis,
+                    "can_probe": fake_pod_driver.can_probe,
                     "fields": [],
                     "queryable": fake_pod_driver.queryable,
                     "missing_packages": fake_pod_driver.detect_missing_packages(),

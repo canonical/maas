@@ -40,6 +40,7 @@ class SeaMicroPowerDriver(PowerDriver):
 
     name = "sm15k"
     chassis = True
+    can_probe = True
     description = "SeaMicro 15000"
     settings = [
         make_setting_field(

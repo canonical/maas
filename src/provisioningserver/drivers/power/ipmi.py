@@ -203,6 +203,7 @@ class IPMIPowerDriver(PowerDriver):
 
     name = "ipmi"
     chassis = False
+    can_probe = False
     description = "IPMI"
     settings = [
         make_setting_field(

@@ -134,6 +134,7 @@ class RedfishPowerDriverBase(PowerDriver):
 class RedfishPowerDriver(RedfishPowerDriverBase):
 
     chassis = True  # Redfish API endpoints can be probed and enlisted.
+    can_probe = False
 
     name = "redfish"
     description = "Redfish"

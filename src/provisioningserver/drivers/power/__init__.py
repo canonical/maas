@@ -49,6 +49,7 @@ JSON_POWER_DRIVER_SCHEMA = {
         "driver_type": {"type": "string"},
         "name": {"type": "string"},
         "chassis": {"type": "boolean"},
+        "can_probe": {"type": "boolean"},
         "description": {"type": "string"},
         "fields": {"type": "array", "items": SETTING_PARAMETER_FIELD_SCHEMA},
         "ip_extractor": IP_EXTRACTOR_SCHEMA,
@@ -168,6 +169,10 @@ class PowerDriverBase(metaclass=ABCMeta):
     def chassis(self):
         """Return True if the power driver is for a chassis."""
 
+    @abstractproperty
+    def can_probe(self):
+        """Return True if the power driver can be used with add_chassis."""
+
     @abstractmethod
     def detect_missing_packages(self):
         """Implement this method for the actual implementation
@@ -220,6 +225,7 @@ class PowerDriverBase(metaclass=ABCMeta):
             name=self.name,
             description=self.description,
             chassis=self.chassis,
+            can_probe=self.can_probe,
             fields=self.settings,
             queryable=self.queryable,
             missing_packages=(
