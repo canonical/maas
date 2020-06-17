@@ -8,9 +8,13 @@
 # It's possible to override the packge build revision with DEB_BUILD_REV=n (by
 # default it's 1)
 #
+# If SKIP_UI_BUILD=1 is specified, the UI tree won't be rebuilt.
+#
 
 # The package build revision
 DEB_BUILD_REV=${DEB_BUILD_REV:-1}
+# Whether to skip the UI build
+SKIP_UI_BUILD=${SKIP_UI_BUILD:-0}
 
 declare -A SUPPORTED_RELEASES=(
     [bionic]=18.04
@@ -40,7 +44,9 @@ check_releases() {
 }
 
 build_source_package() {
-    make -C "$ROOTDIR/src/maasui" clean build  # ensure the UI is updated
+    if [ "$SKIP_UI_BUILD" != 1 ]; then
+        make -C "$ROOTDIR/src/maasui" clean build  # ensure the UI is updated
+    fi
     make -C "$ROOTDIR" package-tree
 }
 
