@@ -12,7 +12,7 @@ __all__ = [
     "is_import_boot_images_running",
 ]
 
-from collections import Sequence
+from collections.abc import Sequence
 from functools import partial
 from urllib.parse import ParseResult, urlparse
 

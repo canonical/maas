@@ -5,7 +5,7 @@
 
 __all__ = ["DNSResourceForm"]
 
-from collections import Iterable
+from collections.abc import Iterable
 
 from django import forms
 from netaddr import IPAddress

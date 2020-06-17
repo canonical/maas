@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from collections import Iterable
+from collections.abc import Iterable
 import random
 from unittest.mock import sentinel
 

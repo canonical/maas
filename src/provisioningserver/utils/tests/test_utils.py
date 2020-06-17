@@ -7,7 +7,7 @@
 
 __all__ = []
 
-from collections import Iterator
+from collections.abc import Iterator
 from copy import deepcopy
 import os
 from unittest.mock import sentinel

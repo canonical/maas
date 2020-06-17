@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from collections import Iterable
+from collections.abc import Iterable
 from datetime import datetime
 import random
 

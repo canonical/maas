@@ -5,7 +5,8 @@
 
 __all__ = []
 
-from collections import Counter, Iterator
+from collections import Counter
+from collections.abc import Iterator
 
 from testtools.matchers import (
     AfterPreprocessing,

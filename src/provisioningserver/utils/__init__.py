@@ -17,7 +17,7 @@ __all__ = [
     "typed",
 ]
 
-from collections import Iterable
+from collections.abc import Iterable
 from functools import lru_cache, reduce
 from itertools import chain
 import os

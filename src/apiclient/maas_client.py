@@ -5,7 +5,7 @@
 
 __all__ = ["MAASClient", "MAASDispatcher", "MAASOAuth"]
 
-import collections
+from collections.abc import Sequence
 import gzip
 from io import BytesIO
 import random
@@ -218,7 +218,7 @@ class MAASClient:
         for name, value in kwargs.items():
             if isinstance(value, (bytes, str)):
                 yield name, value
-            elif isinstance(value, collections.Sequence):
+            elif isinstance(value, Sequence):
                 for iterable_item in value:
                     yield name, iterable_item
             else:

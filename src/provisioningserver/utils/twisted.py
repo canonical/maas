@@ -29,7 +29,8 @@ __all__ = [
     "ThreadUnpool",
 ]
 
-from collections import defaultdict, Iterable
+from collections import defaultdict
+from collections.abc import Iterable
 from functools import partial, wraps
 from http import HTTPStatus
 from itertools import chain, repeat, starmap

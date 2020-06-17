@@ -6,7 +6,7 @@
 __all__ = ["MAASRunTest", "MAASTestCase", "MAASTwistedRunTest"]
 
 import abc
-from collections import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from functools import wraps
 from importlib import import_module

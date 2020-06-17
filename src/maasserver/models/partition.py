@@ -5,7 +5,7 @@
 
 __all__ = ["Partition"]
 
-from collections import Iterable
+from collections.abc import Iterable
 from operator import attrgetter
 from uuid import uuid4
 

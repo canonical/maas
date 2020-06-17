@@ -12,7 +12,7 @@ __all__ = [
     "get_api_description_hash",
 ]
 
-from collections import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from functools import partial
 import hashlib
 from inspect import getdoc

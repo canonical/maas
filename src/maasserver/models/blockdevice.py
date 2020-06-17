@@ -5,7 +5,7 @@
 
 __all__ = ["BlockDevice"]
 
-from collections import Iterable
+from collections.abc import Iterable
 import re
 import string
 
