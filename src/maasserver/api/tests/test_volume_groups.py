@@ -11,6 +11,7 @@ import random
 import uuid
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
@@ -26,7 +27,6 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     round_size_to_nearest_block,
 )
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

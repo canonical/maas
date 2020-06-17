@@ -10,6 +10,7 @@ import http.client
 from itertools import chain
 import random
 
+from django.urls import reverse
 from piston3.utils import rc
 
 from maasserver.models import Event
@@ -17,7 +18,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
     SCRIPT_STATUS,

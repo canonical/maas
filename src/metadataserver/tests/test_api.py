@@ -21,6 +21,7 @@ from unittest.mock import ANY, Mock
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.urls import reverse
 from netaddr import IPNetwork
 from testtools.matchers import (
     Contains,
@@ -103,12 +104,6 @@ from provisioningserver.refresh.node_info_scripts import (
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.utils.network import get_source_address
-
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
-
 
 LooksLikeCloudInit = ContainsDict({"cloud-init": StartsWith("#cloud-config")})
 

@@ -8,13 +8,13 @@ __all__ = []
 from base64 import b64decode
 import http.client
 
+from django.urls import reverse
 from testtools.matchers import Contains, Equals, MatchesListwise
 
 from maasserver.models import FileStorage
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maastesting.utils import sample_binary_data
 
 

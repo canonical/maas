@@ -8,13 +8,14 @@ __all__ = []
 import http.client
 import random
 
+from django.urls import reverse
+
 from maasserver import forms
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models.licensekey import LicenseKey
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import get_one, reload_object
 from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,

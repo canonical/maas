@@ -11,6 +11,7 @@ from unittest import skip
 from unittest.mock import ANY, call
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import MatchesStructure
 
 from apiclient.creds import convert_tuple_to_string
@@ -26,7 +27,6 @@ from maasserver.models.user import (
 from maasserver.testing.api import APITestCase, make_worker_client
 from maasserver.testing.factory import factory
 from maasserver.testing.testclient import MAASSensibleOAuthClient
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch

@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import random
 
+from django.urls import reverse
 from testtools.matchers import (
     Contains,
     ContainsDict,
@@ -31,7 +32,6 @@ from maasserver.models import Interface
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 

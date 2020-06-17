@@ -9,6 +9,7 @@ import http.client
 import random
 import uuid
 
+from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, NODE_STATUS
@@ -21,7 +22,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.converters import human_readable_bytes, json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

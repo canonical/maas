@@ -6,6 +6,7 @@
 __all__ = ["PodHandler", "PodsHandler", "VmHostHandler", "VmHostsHandler"]
 
 from django.core.exceptions import PermissionDenied
+from django.urls import reverse
 from formencode.validators import String
 from piston3.utils import rc
 
@@ -15,7 +16,6 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.pods import ComposeMachineForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.permissions import PodPermission
-from maasserver.utils.django_urls import reverse
 from provisioningserver.drivers.pod import Capabilities
 
 # Pod fields exposed on the API.

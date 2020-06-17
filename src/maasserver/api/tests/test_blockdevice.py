@@ -9,6 +9,7 @@ import http.client
 import uuid
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import (
     Contains,
     ContainsDict,
@@ -23,7 +24,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

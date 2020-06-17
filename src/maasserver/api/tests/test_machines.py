@@ -12,6 +12,7 @@ from unittest import skip
 
 from django.conf import settings
 from django.test import RequestFactory
+from django.urls import reverse
 from testtools.matchers import Contains, Equals, Not
 
 from maasserver import eventloop, middleware
@@ -45,7 +46,6 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import ignore_unused
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (

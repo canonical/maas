@@ -11,6 +11,7 @@ from operator import itemgetter
 import random
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.content import text_content
 from testtools.matchers import (
     AfterPreprocessing,
@@ -31,7 +32,6 @@ from maasserver.testing.osystems import (
     make_usable_osystem,
     patch_usable_osystems,
 )
-from maasserver.utils.django_urls import reverse
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 

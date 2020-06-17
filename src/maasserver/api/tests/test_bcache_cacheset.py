@@ -9,6 +9,7 @@ import http.client
 import random
 from unittest.mock import ANY
 
+from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals
 
 from maasserver.api import bcache_cacheset as bcache_cacheset_module
@@ -16,7 +17,6 @@ from maasserver.enum import ENDPOINT, FILESYSTEM_GROUP_TYPE, NODE_STATUS
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import EVENT_TYPES

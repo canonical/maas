@@ -10,6 +10,7 @@ import json
 import random
 
 from django.conf import settings
+from django.urls import reverse
 
 from maasserver.api import machines as machines_module
 from maasserver.clusterrpc import boot_images
@@ -21,7 +22,6 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import get_one, reload_object
 from maastesting.matchers import MockNotCalled
 

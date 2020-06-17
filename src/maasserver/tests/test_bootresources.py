@@ -24,6 +24,7 @@ from crochet import wait_for
 from django.conf import settings
 from django.db import connections, transaction
 from django.http import StreamingHttpResponse
+from django.urls import reverse
 from fixtures import FakeLogger, Fixture
 from testtools.matchers import Contains, ContainsAll, Equals, HasLength, Not
 from twisted.application.internet import TimerService
@@ -76,7 +77,6 @@ from maasserver.testing.testcase import (
 )
 from maasserver.testing.testclient import MAASSensibleClient
 from maasserver.utils import absolute_reverse, get_maas_user_agent
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,

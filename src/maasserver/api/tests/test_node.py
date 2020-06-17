@@ -12,6 +12,7 @@ from unittest.mock import ANY, Mock
 
 import bson
 from django.conf import settings
+from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver.api import auth
@@ -28,7 +29,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import osystems
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from metadataserver.enum import (

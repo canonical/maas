@@ -7,13 +7,13 @@ __all__ = ["NodeResultsHandler"]
 
 from base64 import b64encode
 
+from django.urls import reverse
 from formencode.validators import Int
 
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_optional_list, get_optional_param
 from maasserver.models import Node
 from maasserver.permissions import NodePermission
-from maasserver.utils.django_urls import reverse
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import ScriptResult
 

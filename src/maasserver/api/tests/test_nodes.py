@@ -11,6 +11,7 @@ import random
 
 from django.conf import settings
 from django.http import QueryDict
+from django.urls import reverse
 
 from maasserver.api import auth
 from maasserver.api import nodes as nodes_module
@@ -27,7 +28,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils import ignore_unused
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

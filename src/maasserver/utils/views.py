@@ -19,6 +19,7 @@ from django.core.handlers.wsgi import WSGIHandler
 from django.db import transaction
 from django.http import HttpResponse
 from django.template.response import SimpleTemplateResponse
+from django.urls import get_resolver
 from django.utils.module_loading import import_string
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
@@ -27,7 +28,6 @@ from requests.structures import CaseInsensitiveDict
 from twisted.internet import reactor as clock
 from twisted.web import wsgi
 
-from maasserver.utils.django_urls import get_resolver
 from maasserver.utils.orm import (
     gen_retry_intervals,
     is_retryable_failure,

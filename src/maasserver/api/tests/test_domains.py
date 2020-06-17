@@ -10,6 +10,7 @@ import json
 import random
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals
 
 from maasserver.models import GlobalDefault
@@ -18,7 +19,6 @@ from maasserver.models.domain import Domain
 from maasserver.sequence import INT_MAX
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

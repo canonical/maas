@@ -6,6 +6,7 @@
 import http.client
 from unittest.mock import call
 
+from django.urls import reverse
 from django.utils.http import urlencode
 
 from maasserver.api import rackcontrollers
@@ -17,7 +18,6 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnce,

@@ -11,6 +11,7 @@ from urllib.parse import urlencode, urljoin
 
 from django.http import HttpRequest
 from django.test.client import RequestFactory
+from django.urls import reverse
 from testtools.matchers import Contains, Equals, Not
 
 from maasserver.models import Config, RegionController
@@ -29,7 +30,6 @@ from maasserver.utils import (
     strip_domain,
     synchronised,
 )
-from maasserver.utils.django_urls import reverse
 from maastesting.matchers import IsNonEmptyString
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.config import ClusterConfigurationFixture

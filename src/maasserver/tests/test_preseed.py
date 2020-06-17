@@ -15,6 +15,7 @@ from unittest.mock import ANY, sentinel
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -83,7 +84,6 @@ from maasserver.testing.testcase import (
 )
 from maasserver.third_party_drivers import DriversConfig
 from maasserver.utils.curtin import curtin_supports_webhook_events
-from maasserver.utils.django_urls import reverse
 from maastesting.http import make_HttpRequest
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase

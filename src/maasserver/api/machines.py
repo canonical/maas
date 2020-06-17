@@ -20,6 +20,7 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseNotFound,
 )
+from django.urls import reverse
 from formencode import validators
 from formencode.validators import Int, StringBool
 from piston3.utils import rc
@@ -101,7 +102,6 @@ from maasserver.storage_layouts import (
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import get_first, reload_object
 

@@ -6,6 +6,7 @@
 import http.client
 from unittest.mock import call
 
+from django.urls import reverse
 from django.utils.http import urlencode
 
 from maasserver.enum import NODE_TYPE
@@ -13,7 +14,6 @@ from maasserver.models.bmc import Pod
 from maasserver.testing.api import APITestCase, explain_unexpected_response
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCallsMatch, MockNotCalled
 

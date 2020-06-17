@@ -5,6 +5,7 @@
 
 __all__ = ["NetworkHandler", "NetworksHandler"]
 
+from django.urls import reverse
 from piston3.utils import rc
 
 from maasserver.api.support import admin_method, operation, OperationsHandler
@@ -12,7 +13,6 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import NetworksListingForm
 from maasserver.models import Interface, Node, Subnet
 from maasserver.permissions import NodePermission
-from maasserver.utils.django_urls import reverse
 
 
 def convert_to_network_name(subnet):

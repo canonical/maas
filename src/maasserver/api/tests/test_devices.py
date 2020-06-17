@@ -8,6 +8,8 @@ __all__ = []
 import http.client
 import random
 
+from django.urls import reverse
+
 from maasserver.api import auth
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.models import Device, Domain
@@ -16,7 +18,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnce
 

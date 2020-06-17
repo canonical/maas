@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
@@ -35,7 +36,6 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import BootResourceForm, BootResourceNoContentForm
 from maasserver.models import BootResource, BootResourceFile
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import post_commit_do
 
 TYPE_MAPPING = {

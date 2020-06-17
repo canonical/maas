@@ -9,6 +9,7 @@ import http.client
 import json
 import random
 
+from django.urls import reverse
 from testtools.matchers import (
     AfterPreprocessing,
     ContainsDict,
@@ -25,7 +26,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

@@ -13,6 +13,7 @@ from random import randint
 from urllib.parse import parse_qsl, urlparse
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
@@ -34,7 +35,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.utils import ignore_unused
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from provisioningserver.events import AUDIT

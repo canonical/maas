@@ -13,6 +13,7 @@ from unittest.mock import ANY, call
 
 from django.conf import settings
 from django.db import transaction
+from django.urls import reverse
 from django.utils.http import urlencode
 from netaddr import IPNetwork
 from testtools.matchers import (
@@ -65,7 +66,6 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import post_commit, reload_object
 from maastesting.matchers import (
     Equals,

@@ -10,6 +10,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.urls import reverse
 from testtools.matchers import ContainsAll, Equals
 
 import maasserver.api.auth
@@ -19,7 +20,6 @@ from maasserver.models.event import Event
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import get_one
 from provisioningserver.events import AUDIT
 

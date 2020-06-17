@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 
+from django.urls import reverse
 from testtools.matchers import Contains, MatchesStructure, Not
 
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
@@ -15,7 +16,6 @@ from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 

@@ -25,7 +25,7 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
 )
-from django.urls import get_resolver, get_urlconf
+from django.urls import get_resolver, get_urlconf, reverse
 from django.utils import six
 from django.utils.encoding import force_str
 from django.utils.http import urlquote_plus
@@ -42,7 +42,6 @@ from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.rbac import rbac
 from maasserver.rpc import getAllClients
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import is_retryable_failure
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,

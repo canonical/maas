@@ -12,6 +12,7 @@ import random
 from unittest.mock import ANY
 
 from django.conf import settings
+from django.urls import reverse
 from netaddr import IPNetwork
 from testtools.matchers import Equals, HasLength
 from twisted.python.failure import Failure
@@ -30,7 +31,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.django_urls import reverse
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import cluster

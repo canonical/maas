@@ -10,6 +10,7 @@ import http.client
 
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
+from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals, MatchesSetwise
 
 from maasserver.models.config import Config
@@ -19,7 +20,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from provisioningserver.events import AUDIT
 
 

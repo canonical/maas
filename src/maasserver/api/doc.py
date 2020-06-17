@@ -21,11 +21,7 @@ from itertools import zip_longest
 import json
 from threading import RLock
 
-from django.core.urlresolvers import (
-    get_resolver,
-    RegexURLPattern,
-    RegexURLResolver,
-)
+from django.urls import get_resolver, RegexURLPattern, RegexURLResolver
 from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler

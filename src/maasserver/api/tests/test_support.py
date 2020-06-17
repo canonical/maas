@@ -11,6 +11,7 @@ import http.client
 from unittest.mock import call, Mock, sentinel
 
 from django.core.exceptions import PermissionDenied
+from django.urls import reverse
 from piston3.authentication import NoAuthentication
 from testtools.matchers import Equals, Is
 
@@ -26,7 +27,6 @@ from maasserver.models.config import Config, ConfigManager
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.django_urls import reverse
 from maastesting.testcase import MAASTestCase
 
 

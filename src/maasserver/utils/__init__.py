@@ -18,10 +18,10 @@ from functools import wraps
 from urllib.parse import urlencode, urljoin, urlsplit
 
 from django.conf import settings
+from django.urls import reverse
 from netaddr import valid_ipv4, valid_ipv6
 
 from maasserver.config import RegionConfiguration
-from maasserver.utils.django_urls import reverse
 from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.url import compose_URL

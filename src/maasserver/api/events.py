@@ -7,6 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from django.urls import reverse
 from formencode.validators import Int
 
 from maasserver.api.nodes import filtered_nodes_list_from_request
@@ -16,7 +17,6 @@ from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Event
 from maasserver.models.eventtype import LOGGING_LEVELS, LOGGING_LEVELS_BY_NAME
-from maasserver.utils.django_urls import reverse
 from provisioningserver.events import AUDIT
 
 MAX_EVENT_LOG_COUNT = 1000

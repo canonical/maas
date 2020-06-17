@@ -8,6 +8,7 @@ __all__ = []
 import json
 
 from crochet import wait_for
+from django.urls import reverse
 from testtools.matchers import (
     Equals,
     GreaterThan,
@@ -26,7 +27,6 @@ from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.django_urls import reverse
 from provisioningserver.utils.testing import MAASIDFixture
 
 is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2 ** 16))

@@ -8,6 +8,7 @@ import http.client
 import json
 
 from django.conf import settings
+from django.urls import reverse
 
 from maasserver.api import auth
 from maasserver.models import ResourcePool
@@ -15,7 +16,6 @@ from maasserver.rbac import ALL_RESOURCES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

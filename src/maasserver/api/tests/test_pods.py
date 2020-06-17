@@ -9,6 +9,7 @@ import http.client
 import random
 from unittest.mock import MagicMock
 
+from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver.enum import NODE_CREATION_TYPE
@@ -19,7 +20,6 @@ from maasserver.models.tag import Tag
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (

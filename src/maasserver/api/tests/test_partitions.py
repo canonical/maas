@@ -11,6 +11,7 @@ import random
 from uuid import uuid4
 
 from django.conf import settings
+from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals, Is, MatchesStructure
 
 from maasserver.enum import NODE_STATUS
@@ -22,7 +23,6 @@ from maasserver.utils.converters import (
     json_load_bytes,
     round_size_to_nearest_block,
 )
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

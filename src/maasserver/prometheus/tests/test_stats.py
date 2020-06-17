@@ -10,6 +10,7 @@ import json
 from unittest import mock
 
 from django.db import transaction
+from django.urls import reverse
 import prometheus_client
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
@@ -27,7 +28,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.django_urls import reverse
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,

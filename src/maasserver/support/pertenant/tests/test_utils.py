@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from django.urls import reverse
+
 from maasserver.support.pertenant.utils import (
     extract_bootstrap_node_system_id,
     get_bootstrap_node_owner,
@@ -12,7 +14,6 @@ from maasserver.support.pertenant.utils import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.django_urls import reverse
 from maastesting.utils import sample_binary_data
 
 

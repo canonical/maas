@@ -96,6 +96,7 @@ from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import _user_has_perm, User, UserManager
 from django.core.exceptions import ViewDoesNotExist
 from django.db.models.signals import post_save
+from django.urls import get_callable, get_resolver, get_script_prefix
 from piston3.doc import HandlerDocumentation
 
 from maasserver import logger
@@ -198,11 +199,6 @@ from maasserver.permissions import (
     NodePermission,
     PodPermission,
     ResourcePoolPermission,
-)
-from maasserver.utils.django_urls import (
-    get_callable,
-    get_resolver,
-    get_script_prefix,
 )
 from provisioningserver.utils import is_instance_or_subclass
 

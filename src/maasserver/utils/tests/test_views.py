@@ -18,6 +18,7 @@ from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler, WSGIRequest
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
+from django.urls import get_resolver
 from fixtures import FakeLogger
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
@@ -34,7 +35,6 @@ from maasserver.testing.testcase import (
     SerializationFailureTestCase,
 )
 from maasserver.utils import views
-from maasserver.utils.django_urls import get_resolver
 from maasserver.utils.orm import (
     make_deadlock_failure,
     post_commit_hooks,

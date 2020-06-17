@@ -13,6 +13,7 @@ import string
 from unittest.mock import ANY, Mock
 
 from django.conf import settings
+from django.urls import reverse
 from piston3.doc import generate_doc
 from requests.exceptions import RequestException
 from testtools.matchers import Contains, Equals, MatchesListwise
@@ -38,7 +39,6 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.django_urls import reverse
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maastesting.matchers import (
