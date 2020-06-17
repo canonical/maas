@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = ["ScriptSet", "get_status_from_qs", "translate_result_type"]
@@ -145,9 +145,13 @@ class ScriptSetManager(Manager):
             # all by default excluding for_hardware scripts.
             qs = Script.objects.filter(
                 script_type=SCRIPT_TYPE.COMMISSIONING, for_hardware=[]
-            )
+            ).exclude(tags__contains=["noauto"])
             for script in qs:
                 script_set.add_pending_script(script, script_input)
+        elif "none" in scripts:
+            # Don't add any scripts besides the ones that come with MAAS but
+            # do perform cleanup below.
+            pass
         else:
             self._add_user_selected_scripts(script_set, scripts, script_input)
 
