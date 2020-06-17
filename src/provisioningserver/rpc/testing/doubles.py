@@ -29,7 +29,7 @@ class DummyConnection:
     """
 
 
-@attr.s(cmp=False)
+@attr.s(eq=False, order=False)
 @implementer(IConnection)
 class FakeConnection:
     "A fake `IConnection`." ""
@@ -45,7 +45,7 @@ class FakeConnection:
 verifyObject(IConnection, FakeConnection())
 
 
-@attr.s(cmp=False)
+@attr.s(eq=False, order=False)
 @implementer(IConnectionToRegion)
 class FakeConnectionToRegion:
     "A fake `IConnectionToRegion`." ""

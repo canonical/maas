@@ -52,7 +52,7 @@ def pick_log_time(noise=float(60 * 60)):
 
 # Matches lines like: 2016-10-18 14:23:55 namespace: [level] message
 find_log_lines_re = re.compile(
-    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (.*?): [[](.*)[]] (.*)$",
+    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (.*?): \[(.*)\] (.*)$",
     re.MULTILINE,
 )
 

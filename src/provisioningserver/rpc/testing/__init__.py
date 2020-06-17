@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
-import collections
+from collections.abc import Sequence
 import itertools
 from os import path
 from unittest.mock import Mock
@@ -88,8 +88,7 @@ are_valid_tls_parameters = MatchesDict(
     {
         "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
         "tls_verifyAuthorities": MatchesAll(
-            IsInstance(collections.Sequence),
-            AllMatch(IsInstance(ssl.Certificate)),
+            IsInstance(Sequence), AllMatch(IsInstance(ssl.Certificate))
         ),
     }
 )
