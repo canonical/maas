@@ -78,7 +78,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestProvisioningServiceMaker, self).setUp()
+        super().setUp()
         self.useFixture(ClusterConfigurationFixture())
         self.patch(provisioningserver, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")

@@ -63,7 +63,7 @@ class VLANQueriesMixin(MAASQueriesMixin):
             "space": (Space.objects, "vlan"),
             "vid": self._add_vid_query,
         }
-        return super(VLANQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
@@ -274,7 +274,7 @@ class VLAN(CleanSave, TimestampedModel):
             )
         self.manage_connected_interfaces()
         self.manage_connected_subnets()
-        super(VLAN, self).delete()
+        super().delete()
 
     def save(self, *args, **kwargs):
         # Bug 1555759: Raise a Notification if there are no VLANs with DHCP

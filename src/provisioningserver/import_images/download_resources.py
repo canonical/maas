@@ -203,7 +203,7 @@ class RepoWriter(BasicMirrorWriter):
         self.root_path = root_path
         self.store = store
         self.product_mapping = product_mapping
-        super(RepoWriter, self).__init__(
+        super().__init__(
             config={
                 # Only download the latest version. Without this all versions
                 # will be downloaded from simplestreams.

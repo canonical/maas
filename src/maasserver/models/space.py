@@ -44,7 +44,7 @@ class SpaceQueriesMixin(MAASQueriesMixin):
             "name": "__name",
             "subnet": (Subnet.objects, "vlan__space"),
         }
-        return super(SpaceQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
@@ -170,7 +170,7 @@ class Space(CleanSave, TimestampedModel):
             self.save()
 
     def clean(self, *args, **kwargs):
-        super(Space, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         self.clean_name()
 
     @property

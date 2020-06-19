@@ -75,7 +75,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     run_tests_with = MAASCrochetRunTest
 
     def setUp(self):
-        super(TestIPCCommunication, self).setUp()
+        super().setUp()
         self.ipc_path = os.path.join(
             self.useFixture(TempDirectory()).path, "maas-regiond.sock"
         )

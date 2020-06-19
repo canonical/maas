@@ -55,7 +55,7 @@ class Sequence:
         :param cycle: If this sequence should cycle or not.
         :param owner: The table.column that owns this sequence.
         """
-        super(Sequence, self).__init__()
+        super().__init__()
         self.name = name
         self.increment = increment
         self.minvalue = minvalue

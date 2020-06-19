@@ -157,7 +157,7 @@ def checksum_sha256(data):
 
 class TestMain(MAASTestCase):
     def setUp(self):
-        super(TestMain, self).setUp()
+        super().setUp()
         self.useFixture(ClusterConfigurationFixture())
         self.storage = self.make_dir()
         current_dir = os.path.join(self.storage, "current") + os.sep

@@ -37,7 +37,7 @@ class cmd_login(Command):
     """
 
     def __init__(self, parser):
-        super(cmd_login, self).__init__(parser)
+        super().__init__(parser)
         parser.add_argument(
             "profile_name",
             metavar="profile-name",
@@ -150,7 +150,7 @@ class cmd_logout(Command):
     """
 
     def __init__(self, parser):
-        super(cmd_logout, self).__init__(parser)
+        super().__init__(parser)
         parser.add_argument(
             "profile_name",
             metavar="profile-name",

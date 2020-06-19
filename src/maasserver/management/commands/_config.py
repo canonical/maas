@@ -153,7 +153,7 @@ class GetCommand(LocalConfigCommand):
     # output.
 
     def add_arguments(self, parser):
-        super(GetCommand, self).add_arguments(parser)
+        super().add_arguments(parser)
 
         for option_name, kwargs in gen_configuration_options_for_getting():
             parser.add_argument(option_name, **kwargs)
@@ -203,7 +203,7 @@ class GetCommand(LocalConfigCommand):
 
 class ResetCommand(LocalConfigCommand):
     def add_arguments(self, parser):
-        super(ResetCommand, self).add_arguments(parser)
+        super().add_arguments(parser)
 
         for option_name, kwargs in gen_configuration_options_for_resetting():
             parser.add_argument(option_name, **kwargs)
@@ -222,7 +222,7 @@ class SetCommand(LocalConfigCommand):
     help = "Set local configuration for the MAAS region controller."
 
     def add_arguments(self, parser):
-        super(SetCommand, self).add_arguments(parser)
+        super().add_arguments(parser)
 
         for option_name, kwargs in gen_configuration_options_for_setting():
             parser.add_argument(option_name, **kwargs)

@@ -14,7 +14,7 @@ from provisioningserver.utils.testing import RegistryFixture
 
 class TestRegistry(MAASTestCase):
     def setUp(self):
-        super(TestRegistry, self).setUp()
+        super().setUp()
         # Ensure the global registry is empty for each test run.
         self.useFixture(RegistryFixture())
 

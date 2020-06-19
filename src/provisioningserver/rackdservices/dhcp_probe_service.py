@@ -40,9 +40,7 @@ class DHCPProbeService(TimerService):
 
     def __init__(self, client_service, reactor):
         # Call self.try_probe_dhcp() every self.check_interval.
-        super(DHCPProbeService, self).__init__(
-            self.check_interval, self.try_probe_dhcp
-        )
+        super().__init__(self.check_interval, self.try_probe_dhcp)
         self.clock = reactor
         self.client_service = client_service
 

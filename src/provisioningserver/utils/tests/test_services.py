@@ -469,7 +469,7 @@ class TestProcessProtocolService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=15)
 
     def setUp(self):
-        super(TestProcessProtocolService, self).setUp()
+        super().setUp()
         # Alter timings of terminateProcess so we don't have to wait so long.
         self.patch(
             services,

@@ -27,7 +27,7 @@ def set_max_workers_count(worker_count):
 
 class WorkerProcess(protocol.ProcessProtocol):
     def __init__(self, service, runningImport=False):
-        super(WorkerProcess, self).__init__()
+        super().__init__()
         self.service = service
         self.runningImport = runningImport
 
@@ -55,7 +55,7 @@ class WorkersService(service.Service, object):
     """
 
     def __init__(self, reactor, *, worker_count=None, worker_cmd=None):
-        super(WorkersService, self).__init__()
+        super().__init__()
         self.reactor = reactor
         self.stopping = False
         self.worker_count = worker_count
@@ -68,7 +68,7 @@ class WorkersService(service.Service, object):
 
     def startService(self):
         """Start the workers."""
-        super(WorkersService, self).startService()
+        super().startService()
         self.spawnWorkers()
 
     def stopService(self):

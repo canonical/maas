@@ -23,7 +23,7 @@ class OAuthUnauthorized(Unauthorized):
     """Unauthorized error for OAuth signed requests with invalid tokens."""
 
     def __init__(self, error):
-        super(OAuthUnauthorized, self).__init__()
+        super().__init__()
         self.error = error
         # When the error is an authentication error, use a more
         # user-friendly error message.

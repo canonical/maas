@@ -145,7 +145,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         return "Partition table for {bd}".format(bd=self.block_device)
 
     def clean(self, *args, **kwargs):
-        super(PartitionTable, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         # Circular imports.
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
 

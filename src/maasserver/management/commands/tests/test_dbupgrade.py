@@ -66,7 +66,7 @@ class TestDBUpgrade(MAASTestCase):
 
     def setUp(self):
         """Setup a special database cluster to perform the tests."""
-        super(TestDBUpgrade, self).setUp()
+        super().setUp()
         self.datadir = self.useFixture(TempDirectory()).path
         self.cluster = self.useFixture(ClusterFixture(self.datadir))
         self.useFixture(

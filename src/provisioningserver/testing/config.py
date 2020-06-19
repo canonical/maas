@@ -32,12 +32,12 @@ class ConfigFixtureBase(Fixture):
     schema = None  # Customise this in subclasses.
 
     def __init__(self, config=None, name="config.yaml"):
-        super(ConfigFixtureBase, self).__init__()
+        super().__init__()
         self.config = {} if config is None else config
         self.name = name
 
     def setUp(self):
-        super(ConfigFixtureBase, self).setUp()
+        super().setUp()
         # Create a real configuration file, and populate it.
         self.dir = self.useFixture(TempDirectory()).path
         self.filename = path.join(self.dir, self.name)
@@ -64,7 +64,7 @@ class BootSourcesFixture(ConfigFixtureBase):
     schema = BootSources
 
     def __init__(self, sources=None, name="sources.yaml"):
-        super(BootSourcesFixture, self).__init__(config=sources, name=name)
+        super().__init__(config=sources, name=name)
 
 
 class ConfigurationFixtureBase(Fixture):
@@ -80,11 +80,11 @@ class ConfigurationFixtureBase(Fixture):
     configuration = None  # Customise this in subclasses.
 
     def __init__(self, **options):
-        super(ConfigurationFixtureBase, self).__init__()
+        super().__init__()
         self.options = options
 
     def setUp(self):
-        super(ConfigurationFixtureBase, self).setUp()
+        super().setUp()
         # Create a real configuration file, and populate it.
         self.path = path.join(
             self.useFixture(TempDirectory()).path,

@@ -27,16 +27,16 @@ class StaticRouteHandler(TimestampedModelHandler):
         """Create a static route."""
         if not self.user.is_superuser:
             raise PermissionDenied()
-        return super(StaticRouteHandler, self).create(params)
+        return super().create(params)
 
     def update(self, params):
         """Update this static route."""
         if not self.user.is_superuser:
             raise PermissionDenied()
-        return super(StaticRouteHandler, self).update(params)
+        return super().update(params)
 
     def delete(self, params):
         """Delete this static route."""
         if not self.user.is_superuser:
             raise PermissionDenied()
-        return super(StaticRouteHandler, self).delete(params)
+        return super().delete(params)

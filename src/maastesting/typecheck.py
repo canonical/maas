@@ -29,7 +29,7 @@ class ArgumentTypeError(TypeError):
     """An argument was of the wrong type."""
 
     def __init__(self, func, name, value, expected):
-        super(ArgumentTypeError, self).__init__(
+        super().__init__(
             "In %s, for argument '%s', %r is not of type %s; "
             "it is of type %s."
             % (
@@ -46,7 +46,7 @@ class ReturnTypeError(TypeError):
     """The return value was of the wrong type."""
 
     def __init__(self, func, value, expected):
-        super(ReturnTypeError, self).__init__(
+        super().__init__(
             "In %s, the returned value %r is not of type %s; "
             "it is of type %s."
             % (

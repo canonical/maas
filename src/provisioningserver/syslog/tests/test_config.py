@@ -46,7 +46,7 @@ class TestWriteConfig(MAASTestCase):
     """Tests for `write_config`."""
 
     def setUp(self):
-        super(TestWriteConfig, self).setUp()
+        super().setUp()
         self.tmpdir = self.make_dir()
         self.syslog_path = Path(self.tmpdir) / config.MAAS_SYSLOG_CONF_NAME
         self.useFixture(

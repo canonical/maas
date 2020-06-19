@@ -60,7 +60,7 @@ def get_ports_archive_url():
 @implementer(IReader)
 class BytesReader:
     def __init__(self, data):
-        super(BytesReader, self).__init__()
+        super().__init__()
         self.buffer = BytesIO(data)
         self.size = len(data)
 
@@ -280,7 +280,7 @@ class BootMethod(metaclass=ABCMeta):
             self._find_and_copy_bootloaders(destination)
 
     def __init__(self):
-        super(BootMethod, self).__init__()
+        super().__init__()
         # Check the types of subclasses' properties.
         assert isinstance(self.name, str)
         assert isinstance(self.bios_boot_method, str)

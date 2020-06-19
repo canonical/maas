@@ -262,7 +262,7 @@ class RackControllersImporter:
         :param proxy: The HTTP/HTTPS proxy to use, or `None`
         :type proxy: :class:`urlparse.ParseResult` or string
         """
-        super(RackControllersImporter, self).__init__()
+        super().__init__()
         self.system_ids = tuple(flatten(system_ids))
         if isinstance(sources, Sequence):
             self.sources = sources

@@ -130,7 +130,7 @@ class PowerDriverBase(metaclass=ABCMeta):
     """Base driver for a power driver."""
 
     def __init__(self):
-        super(PowerDriverBase, self).__init__()
+        super().__init__()
         validate(
             self.get_schema(detect_missing_packages=False),
             JSON_POWER_DRIVER_SCHEMA,

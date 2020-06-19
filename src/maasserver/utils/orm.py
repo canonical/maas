@@ -378,7 +378,7 @@ class RetryStack(ExitStack):
     """An exit stack specialised to the retry machinery."""
 
     def __init__(self):
-        super(RetryStack, self).__init__()
+        super().__init__()
         self._cm_pending = deque()
         self._cm_seen = set()
 
@@ -414,7 +414,7 @@ class RetryContext(threading.local):
     """
 
     def __init__(self):
-        super(RetryContext, self).__init__()
+        super().__init__()
         self.stack = None
 
     @property

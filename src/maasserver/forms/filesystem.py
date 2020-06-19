@@ -25,7 +25,7 @@ class MountFilesystemForm(Form):
 
     @typed
     def __init__(self, filesystem: Optional[Filesystem], *args, **kwargs):
-        super(MountFilesystemForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.filesystem = filesystem
         self.setup()
 
@@ -36,7 +36,7 @@ class MountFilesystemForm(Form):
             self.fields["mount_options"] = StrippedCharField(required=False)
 
     def clean(self):
-        cleaned_data = super(MountFilesystemForm, self).clean()
+        cleaned_data = super().clean()
         if self.filesystem is None:
             self.add_error(
                 None,
@@ -76,7 +76,7 @@ class MountNonStorageFilesystemForm(Form):
 
     @typed
     def __init__(self, node: Node, *args, **kwargs):
-        super(MountNonStorageFilesystemForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
 
     @typed
@@ -99,11 +99,11 @@ class UnmountNonStorageFilesystemForm(Form):
 
     @typed
     def __init__(self, node: Node, *args, **kwargs):
-        super(UnmountNonStorageFilesystemForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
 
     def clean(self):
-        cleaned_data = super(UnmountNonStorageFilesystemForm, self).clean()
+        cleaned_data = super().clean()
         if "mount_point" in cleaned_data:
             try:
                 self.filesystem = Filesystem.objects.get(

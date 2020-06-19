@@ -33,7 +33,7 @@ class HasStatusCode(Matcher):
     """
 
     def __init__(self, status_code):
-        super(HasStatusCode, self).__init__()
+        super().__init__()
         self.status_code = status_code
 
     def match(self, response):
@@ -70,4 +70,4 @@ class MatchesSetwiseWithAll(MatchesSetwise):
     """
 
     def match(self, observed):
-        return super(MatchesSetwiseWithAll, self).match(observed.all())
+        return super().match(observed.all())

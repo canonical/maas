@@ -177,7 +177,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def setUp(self):
         self.patch(windows_module, "get_hivex_module")
-        super(TestWindowsPXEBootMethod, self).setUp()
+        super().setUp()
 
     def test_clean_path(self):
         method = WindowsPXEBootMethod()

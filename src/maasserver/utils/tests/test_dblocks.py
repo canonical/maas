@@ -81,7 +81,7 @@ class TestDatabaseLock(MAASTransactionServerTestCase):
         return dblocks.DatabaseLock(objid, mode=self.mode)
 
     def tearDown(self):
-        super(TestDatabaseLock, self).tearDown()
+        super().tearDown()
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT pg_advisory_unlock_all()")
 

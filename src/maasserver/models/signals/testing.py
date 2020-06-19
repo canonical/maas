@@ -29,7 +29,7 @@ class SignalsDisabled(Fixture):
             are specified, ALL managers will be disabled. If the manager is
             already disabled it will not be enabled at clean-up.
         """
-        super(SignalsDisabled, self).__init__()
+        super().__init__()
         if len(disable) == 0:
             self.disable = self.managers.values()
         else:
@@ -38,7 +38,7 @@ class SignalsDisabled(Fixture):
             }
 
     def setUp(self):
-        super(SignalsDisabled, self).setUp()
+        super().setUp()
         for manager in self.disable:
             if manager.enabled:
                 self.addCleanup(manager.enable)

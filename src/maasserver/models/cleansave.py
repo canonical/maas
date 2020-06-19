@@ -18,7 +18,7 @@ class CleanSaveModelState(ModelState):
     """Provides helpers on `_state` attribute on a model."""
 
     def __init__(self, db=None):
-        super(CleanSaveModelState, self).__init__(db=db)
+        super().__init__(db=db)
         self._changed_fields = {}
 
     def get_changed(self):
@@ -64,7 +64,7 @@ class CleanSave:
 
     @classmethod
     def from_db(cls, db, field_names, values):
-        new = super(CleanSave, cls).from_db(db, field_names, values)
+        new = super().from_db(db, field_names, values)
         new._state._changed_fields = {}
         return new
 
@@ -104,9 +104,9 @@ class CleanSave:
             # if a field has changed.
             value.__class__ = CleanSaveModelState
             value._changed_fields = {}
-            return super(CleanSave, self).__setattr__(name, value)
+            return super().__setattr__(name, value)
         if not hasattr(self, "_state"):
-            return super(CleanSave, self).__setattr__(name, value)
+            return super().__setattr__(name, value)
 
         try:
             field = self._meta.get_field(name)
@@ -117,7 +117,7 @@ class CleanSave:
                     raise AttributeError("can't set attribute")
                 prop_obj.fset(self, value)
             else:
-                super(CleanSave, self).__setattr__(name, value)
+                super().__setattr__(name, value)
         else:
 
             def _wrap_setattr():
@@ -149,13 +149,13 @@ class CleanSave:
                     # Field that holds the actual referenced objects. Ignore
                     # tracking because the related descriptor will set the
                     # related primary key for the field.
-                    super(CleanSave, self).__setattr__(name, value)
+                    super().__setattr__(name, value)
                 else:
                     raise AttributeError(
                         "Unknown field(%s) for: %s" % (name, field)
                     )
             else:
-                super(CleanSave, self).__setattr__(name, value)
+                super().__setattr__(name, value)
 
     def save(self, *args, **kwargs):
         """Perform `full_clean` before save and only save changed fields."""
@@ -185,7 +185,7 @@ class CleanSave:
                 exclude=exclude_clean_fields, validate_unique=False
             )
             self.validate_unique(exclude=[self._meta.pk.name])
-            return super(CleanSave, self).save(*args, **kwargs)
+            return super().save(*args, **kwargs)
         elif self._state._changed_fields:
             # This is the new path where saving only updates the fields
             # that have actually changed.
@@ -223,7 +223,7 @@ class CleanSave:
                 for key, value in self._state._changed_fields.items()
                 if value is not FieldUnset
             }
-            return super(CleanSave, self).save(*args, **kwargs)
+            return super().save(*args, **kwargs)
         else:
             # Nothing changed so nothing needs to be saved.
             return self
@@ -254,7 +254,7 @@ class CleanSave:
                 }
             )
             update_fields = frozenset(update_fields)
-        res = super(CleanSave, self)._save_table(
+        res = super()._save_table(
             raw=raw,
             cls=cls,
             force_insert=force_insert,

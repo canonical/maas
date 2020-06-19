@@ -161,7 +161,7 @@ class MAASTestCase(
         self.addDetail("Twisted logs", twistedLog.getContent())
 
         self.maybeCloseDatabaseConnections()
-        super(MAASTestCase, self).setUp()
+        super().setUp()
         self.setUpResources()
         self.addCleanup(self.tearDownResources)
 
@@ -171,7 +171,7 @@ class MAASTestCase(
         )
 
     def tearDown(self):
-        super(MAASTestCase, self).tearDown()
+        super().tearDown()
         self.checkDatabaseUse()
 
     def maybeCloseDatabaseConnections(self):
@@ -280,11 +280,11 @@ class MAASTestCase(
 
     def run(self, result=None):
         with active_test(result, self):
-            super(MAASTestCase, self).run(result)
+            super().run(result)
 
     def __call__(self, result=None):
         with active_test(result, self):
-            super(MAASTestCase, self).__call__(result)
+            super().__call__(result)
 
     def patch(
         self, obj, attribute=None, value=mock.sentinel.unset
@@ -310,7 +310,7 @@ class MAASTestCase(
             obj = import_module(obj.__module__)
         if value is mock.sentinel.unset:
             value = MagicMock(__name__=attribute)
-        super(MAASTestCase, self).patch(obj, attribute, value)
+        super().patch(obj, attribute, value)
         return value
 
     def patch_autospec(
@@ -329,7 +329,7 @@ class MAASTestCase(
                 % (_get_name(obj), attribute, spec)
             )
         value = mock.create_autospec(spec, spec_set, instance)
-        super(MAASTestCase, self).patch(obj, attribute, value)
+        super().patch(obj, attribute, value)
         return value
 
 

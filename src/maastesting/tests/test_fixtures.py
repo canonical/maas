@@ -257,7 +257,7 @@ class TestMAASRootFixture(MAASTestCase):
     """Tests for `MAASRootFixture`."""
 
     def setUp(self):
-        super(TestMAASRootFixture, self).setUp()
+        super().setUp()
         self.skel = os.path.join(root, "run-skel")
         self.useFixture(EnvironmentVariable("MAAS_ROOT", "/"))
 

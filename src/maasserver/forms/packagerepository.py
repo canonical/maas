@@ -176,7 +176,7 @@ class PackageRepositoryForm(MAASModelForm):
         return values
 
     def save(self, endpoint, request):
-        package_repository = super(PackageRepositoryForm, self).save()
+        package_repository = super().save()
         create_audit_event(
             EVENT_TYPES.SETTINGS,
             endpoint,

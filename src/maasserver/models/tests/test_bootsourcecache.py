@@ -13,7 +13,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestBootSourceCache(MAASServerTestCase):
     def setUp(self):
-        super(TestBootSourceCache, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

@@ -470,7 +470,7 @@ class SystemLock:
     PROCESS_LOCK = threading.Lock()
 
     def __init__(self, path, reactor=None):
-        super(SystemLock, self).__init__()
+        super().__init__()
         self._fslock = FilesystemLock(path)
         self.reactor = reactor
         if self.reactor is None:
@@ -561,7 +561,7 @@ class FileLock(SystemLock):
 
     def __init__(self, path, reactor=None):
         lockpath = FilePath(path).asTextMode().path + ".lock"
-        super(FileLock, self).__init__(lockpath, reactor=reactor)
+        super().__init__(lockpath, reactor=reactor)
 
 
 class RunLock(SystemLock):
@@ -579,7 +579,7 @@ class RunLock(SystemLock):
         abspath = FilePath(path).asTextMode().path.lstrip("/")
         discriminator = abspath.replace(":", "::").replace("/", ":")
         lockpath = get_data_path("run", "lock", "maas@%s" % discriminator)
-        super(RunLock, self).__init__(lockpath, reactor=reactor)
+        super().__init__(lockpath, reactor=reactor)
 
 
 class NamedLock(SystemLock):
@@ -607,4 +607,4 @@ class NamedLock(SystemLock):
             )
         else:
             lockpath = get_data_path("run", "lock", "maas:%s" % name)
-            super(NamedLock, self).__init__(lockpath, reactor=reactor)
+            super().__init__(lockpath, reactor=reactor)

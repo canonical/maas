@@ -978,7 +978,7 @@ class TestDeviceManager(MAASServerTestCase):
 
 class TestNode(MAASServerTestCase):
     def setUp(self):
-        super(TestNode, self).setUp()
+        super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
 
     def disable_node_query(self):
@@ -5612,7 +5612,7 @@ class TestNode(MAASServerTestCase):
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
-        super(TestNodePowerParameters, self).setUp()
+        super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
 
     def test_power_parameters_are_stored(self):
@@ -8137,7 +8137,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
     """Tests for Node.start()."""
 
     def setUp(self):
-        super(TestNode_Start, self).setUp()
+        super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
 
     def make_acquired_node_with_interface(
@@ -9051,7 +9051,7 @@ class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""
 
     def setUp(self):
-        super(TestNode_Stop, self).setUp()
+        super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
 
     def make_acquired_node_with_interface(

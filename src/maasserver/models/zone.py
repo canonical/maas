@@ -80,7 +80,7 @@ class Zone(CleanSave, TimestampedModel):
             raise ValidationError(
                 "This zone is the default zone, it cannot be deleted."
             )
-        super(Zone, self).delete()
+        super().delete()
 
     @property
     def node_only_set(self):

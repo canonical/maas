@@ -32,7 +32,7 @@ def get_boot_source_selection_uri(boot_source_selection):
 
 class TestBootSourceSelectionAPI(APITestCase.ForUser):
     def setUp(self):
-        super(TestBootSourceSelectionAPI, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -138,7 +138,7 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
     """Test the the boot source selections API."""
 
     def setUp(self):
-        super(TestBootSourceSelectionsAPI, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

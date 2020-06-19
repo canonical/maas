@@ -170,7 +170,7 @@ class TestMAASModelForm(MAASLegacyTransactionServerTestCase):
             """
 
             def __init__(self, *args, **kwargs):
-                super(EarlyFieldMixin, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
                 self.fields["early_field"] = CharField(required=False)
 
         class TestForm(EarlyFieldMixin, MAASModelForm):

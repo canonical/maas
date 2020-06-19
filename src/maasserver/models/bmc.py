@@ -298,11 +298,11 @@ class BMC(CleanSave, TimestampedModel):
     def delete(self):
         """Delete this BMC."""
         maaslog.info("%s: Deleting BMC", self)
-        super(BMC, self).delete()
+        super().delete()
 
     def save(self, *args, **kwargs):
         """Save this BMC."""
-        super(BMC, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
         # We let name be blank for the initial save, but fix it before the
         # save completes.  This is because set_random_name() operates by
         # trying to re-save the BMC with a random hostname, and retrying until
@@ -635,7 +635,7 @@ class Pod(BMC):
     def __init__(self, *args, **kwargs):
         if "pool" not in kwargs:
             kwargs["pool"] = ResourcePool.objects.get_default_resource_pool()
-        super(Pod, self).__init__(bmc_type=BMC_TYPE.POD, *args, **kwargs)
+        super().__init__(bmc_type=BMC_TYPE.POD, *args, **kwargs)
 
     def clean(self):
         super().clean()

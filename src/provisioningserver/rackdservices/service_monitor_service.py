@@ -39,9 +39,7 @@ class ServiceMonitorService(TimerService, object):
 
     def __init__(self, client_service, clock):
         # Call self.monitorServices() every self.check_interval.
-        super(ServiceMonitorService, self).__init__(
-            self.check_interval, self.monitorServices
-        )
+        super().__init__(self.check_interval, self.monitorServices)
         self.client_service = client_service
         self.clock = clock
 

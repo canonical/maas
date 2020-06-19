@@ -329,7 +329,7 @@ class TestZoneGenerator(MAASServerTestCase):
     """Tests for :class:`ZoneGenerator`."""
 
     def setUp(self):
-        super(TestZoneGenerator, self).setUp()
+        super().setUp()
         self.useFixture(RegionConfigurationFixture())
 
     def test_empty_yields_nothing(self):

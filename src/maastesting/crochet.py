@@ -19,7 +19,7 @@ class EventualResultCatchingMixin:
     """
 
     def setUp(self):
-        super(EventualResultCatchingMixin, self).setUp()
+        super().setUp()
         try:
             # Every EventualResult that crochet creates is registered into
             # this registry. We'll check it after the test has finished.

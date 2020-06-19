@@ -38,7 +38,7 @@ class DiscoveryHandler(ViewModelHandler):
         """
         if "start" in params:
             params["start"] = datetime.fromtimestamp(float(params["start"]))
-        return super(DiscoveryHandler, self).list(params)
+        return super().list(params)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""

@@ -993,7 +993,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         )
 
     def clean(self, *args, **kwargs):
-        super(StaticIPAddress, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         self.clean_subnet_and_ip_consistent()
 
     def validate_unique(self, exclude=None):

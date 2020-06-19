@@ -52,7 +52,7 @@ class Choice(amp.Argument):
             the wire the Python objects will be represented by those
             byte strings, and mapped back at the receiving end.
         """
-        super(Choice, self).__init__(optional=optional)
+        super().__init__(optional=optional)
         if not isinstance(choices, collections.Mapping):
             raise TypeError("Not a mapping: %r" % (choices,))
         not_byte_strings = [
@@ -149,7 +149,7 @@ class AmpList(amp.AmpList):
         :type optional: bool
         """
         subargs = tuple((_toByteString(name), arg) for name, arg in subargs)
-        super(AmpList, self).__init__(subargs, optional)
+        super().__init__(subargs, optional)
 
 
 class CompressedAmpList(AmpList):
@@ -161,11 +161,11 @@ class CompressedAmpList(AmpList):
     """
 
     def toStringProto(self, inObject, proto):
-        toStringProto = super(CompressedAmpList, self).toStringProto
+        toStringProto = super().toStringProto
         return zlib.compress(toStringProto(inObject, proto))
 
     def fromStringProto(self, inString, proto):
-        fromStringProto = super(CompressedAmpList, self).fromStringProto
+        fromStringProto = super().fromStringProto
         return fromStringProto(zlib.decompress(inString), proto)
 
 
@@ -218,13 +218,13 @@ class AmpDiscoveredPod(StructureAsJSON):
 
         if not isinstance(inObject, DiscoveredPod):
             raise TypeError("%r is not of type DiscoveredPod." % inObject)
-        return super(AmpDiscoveredPod, self).toString(inObject.asdict())
+        return super().toString(inObject.asdict())
 
     def fromString(self, inString):
         # Circular imports.
         from provisioningserver.drivers.pod import DiscoveredPod
 
-        data = super(AmpDiscoveredPod, self).fromString(inString)
+        data = super().fromString(inString)
         return DiscoveredPod.fromdict(data)
 
 
@@ -237,13 +237,13 @@ class AmpDiscoveredPodHints(StructureAsJSON):
 
         if not isinstance(inObject, DiscoveredPodHints):
             raise TypeError("%r is not of type DiscoveredPodHints." % inObject)
-        return super(AmpDiscoveredPodHints, self).toString(inObject.asdict())
+        return super().toString(inObject.asdict())
 
     def fromString(self, inString):
         # Circular imports.
         from provisioningserver.drivers.pod import DiscoveredPodHints
 
-        data = super(AmpDiscoveredPodHints, self).fromString(inString)
+        data = super().fromString(inString)
         return DiscoveredPodHints.fromdict(data)
 
 
@@ -256,13 +256,13 @@ class AmpDiscoveredMachine(StructureAsJSON):
 
         if not isinstance(inObject, DiscoveredMachine):
             raise TypeError("%r is not of type DiscoveredMachine." % inObject)
-        return super(AmpDiscoveredMachine, self).toString(inObject.asdict())
+        return super().toString(inObject.asdict())
 
     def fromString(self, inString):
         # Circular imports.
         from provisioningserver.drivers.pod import DiscoveredMachine
 
-        data = super(AmpDiscoveredMachine, self).fromString(inString)
+        data = super().fromString(inString)
         return DiscoveredMachine.fromdict(data)
 
 
@@ -275,11 +275,11 @@ class AmpRequestedMachine(StructureAsJSON):
 
         if not isinstance(inObject, RequestedMachine):
             raise TypeError("%r is not of type RequestedMachine." % inObject)
-        return super(AmpRequestedMachine, self).toString(inObject.asdict())
+        return super().toString(inObject.asdict())
 
     def fromString(self, inString):
         # Circular imports.
         from provisioningserver.drivers.pod import RequestedMachine
 
-        data = super(AmpRequestedMachine, self).fromString(inString)
+        data = super().fromString(inString)
         return RequestedMachine.fromdict(data)

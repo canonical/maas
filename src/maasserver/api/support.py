@@ -53,7 +53,7 @@ class OperationsResource(Resource):
         return False
 
     def __call__(self, request, *args, **kwargs):
-        upcall = super(OperationsResource, self).__call__
+        upcall = super().__call__
         response = upcall(request, *args, **kwargs)
         response["X-MAAS-API-Hash"] = get_api_description_hash()
         return response
@@ -96,14 +96,12 @@ class RestrictedResource(OperationsResource):
           handler = RestrictedResource(HandlerClass, authentication=[])
 
         """
-        super(RestrictedResource, self).__init__(handler, authentication)
+        super().__init__(handler, authentication)
         if not self.is_authentication_attempted:
             raise AssertionError("Authentication must be attempted.")
 
     def authenticate(self, request, rm):
-        actor, anonymous = super(RestrictedResource, self).authenticate(
-            request, rm
-        )
+        actor, anonymous = super().authenticate(request, rm)
         if not anonymous and not request.user.is_active:
             raise PermissionDenied("User is not allowed access to this API.")
         else:
@@ -114,9 +112,7 @@ class AdminRestrictedResource(RestrictedResource):
     """A resource that's restricted to administrators."""
 
     def authenticate(self, request, rm):
-        actor, anonymous = super(AdminRestrictedResource, self).authenticate(
-            request, rm
-        )
+        actor, anonymous = super().authenticate(request, rm)
         if anonymous or not request.user.is_superuser:
             raise PermissionDenied("User is not allowed access to this API.")
         else:

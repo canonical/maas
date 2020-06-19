@@ -161,7 +161,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
 
     @asynchronous(timeout=15)
     def setUp(self):
-        super(MockClusterToRegionRPCFixtureBase, self).setUp()
+        super().setUp()
         # Use an inert clock with ClusterClientService so it doesn't update
         # itself except when we ask it to.
         self.rpc_service = ClusterClientService(Clock())
@@ -175,7 +175,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
 
     @asynchronous(timeout=15)
     def cleanUp(self):
-        super(MockClusterToRegionRPCFixtureBase, self).cleanUp()
+        super().cleanUp()
         # Return the Deferred so that callers from threads outside of the
         # reactor will block. In the reactor thread, a supporting test
         # framework may know how to handle this sanely.
@@ -359,10 +359,10 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
     def setUp(self):
         self.sockdir = TempDirectory()  # Place for UNIX sockets.
         self.socknames = map(str, itertools.count(1))
-        return super(MockLiveClusterToRegionRPCFixture, self).setUp()
+        return super().setUp()
 
     def asyncStart(self):
-        super(MockLiveClusterToRegionRPCFixture, self).asyncStart()
+        super().asyncStart()
 
         def started(result):
             self.sockdir.setUp()
@@ -371,7 +371,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         self.starting.addCallback(started)
 
     def asyncStop(self):
-        super(MockLiveClusterToRegionRPCFixture, self).asyncStop()
+        super().asyncStop()
 
         def stopped(result):
             self.sockdir.cleanUp()

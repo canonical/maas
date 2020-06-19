@@ -175,7 +175,7 @@ class TestResourceOverlay(MAASTestCase):
 
 class TestWebApplicationService(MAASTestCase):
     def setUp(self):
-        super(TestWebApplicationService, self).setUp()
+        super().setUp()
         # Patch the getServiceNamed so the WebSocketFactory does not
         # error trying to register for events from the RPC service. In this
         # test the RPC service is not started.

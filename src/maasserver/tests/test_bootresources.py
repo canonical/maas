@@ -133,7 +133,7 @@ class SimplestreamsEnvFixture(Fixture):
     simplestreams."""
 
     def setUp(self):
-        super(SimplestreamsEnvFixture, self).setUp()
+        super().setUp()
         prior_env = {}
         for key in ["GNUPGHOME", "http_proxy", "https_proxy"]:
             prior_env[key] = os.environ.get(key, "")
@@ -565,7 +565,7 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
 
         class AssertConnectionWrapper(bootresources.ConnectionWrapper):
             def _set_up(self):
-                super(AssertConnectionWrapper, self)._set_up()
+                super()._set_up()
                 # Capture the created connection
                 AssertConnectionWrapper.connection = self._connection
 
@@ -1603,7 +1603,7 @@ class TestSetGlobalDefaultReleases(MAASServerTestCase):
 
 class TestImportImages(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestImportImages, self).setUp()
+        super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
         # Don't create the gnupg home directory.
         self.patch_autospec(bootresources, "create_gnupg_home")

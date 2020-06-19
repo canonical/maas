@@ -236,7 +236,7 @@ class Notification(CleanSave, TimestampedModel):
         )
 
     def clean(self):
-        super(Notification, self).clean()
+        super().clean()
         # Elementary cleaning that Django can't seem to do for us, mainly
         # because setting blank=False causes any number of problems.
         if self.ident == "":

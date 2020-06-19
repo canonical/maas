@@ -267,7 +267,7 @@ class RemoteSyslogField(forms.CharField):
     """
 
     def clean(self, value):
-        value = super(RemoteSyslogField, self).clean(value)
+        value = super().clean(value)
         if not value:
             return None
         host, port = splithost(value)

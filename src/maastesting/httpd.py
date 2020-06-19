@@ -144,7 +144,7 @@ class HTTPServerFixture(Fixture):
     """
 
     def __init__(self, host="localhost", port=0):
-        super(HTTPServerFixture, self).__init__()
+        super().__init__()
         self.server = ThreadingHTTPServer(
             (host, port), SilentHTTPRequestHandler
         )
@@ -154,6 +154,6 @@ class HTTPServerFixture(Fixture):
         return "http://%s:%d/" % self.server.server_address
 
     def setUp(self):
-        super(HTTPServerFixture, self).setUp()
+        super().setUp()
         threading.Thread(target=self.server.serve_forever).start()
         self.addCleanup(self.server.shutdown)

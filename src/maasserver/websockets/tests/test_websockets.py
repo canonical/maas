@@ -357,7 +357,7 @@ class WebSocketsProtocolTest(MAASTestCase):
     """
 
     def setUp(self):
-        super(WebSocketsProtocolTest, self).setUp()
+        super().setUp()
         self.receiver = SavingEchoReceiver()
         self.protocol = WebSocketsProtocol(self.receiver)
         self.factory = Factory.forProtocol(lambda: self.protocol)
@@ -451,7 +451,7 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
     """
 
     def setUp(self):
-        super(WebSocketsProtocolWrapperTest, self).setUp()
+        super().setUp()
         self.accumulatingProtocol = AccumulatingProtocol()
         self.protocol = WebSocketsProtocolWrapper(self.accumulatingProtocol)
         self.transport = StringTransportWithDisconnection()
@@ -542,7 +542,7 @@ class WebSocketsResourceTest(MAASTestCase):
     """
 
     def setUp(self):
-        super(WebSocketsResourceTest, self).setUp()
+        super().setUp()
 
         class SavingEchoFactory(Factory):
             def buildProtocol(oself, addr):

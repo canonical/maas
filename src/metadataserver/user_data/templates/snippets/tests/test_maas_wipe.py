@@ -168,7 +168,7 @@ Security:
 
 class TestMAASWipe(MAASTestCase):
     def setUp(self):
-        super(TestMAASWipe, self).setUp()
+        super().setUp()
         self.print_flush = self.patch(maas_wipe, "print_flush")
 
     def make_empty_file(self, path, content=b"\0"):

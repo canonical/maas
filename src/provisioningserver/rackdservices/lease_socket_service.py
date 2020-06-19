@@ -45,7 +45,7 @@ class LeaseSocketService(Service, DatagramProtocol):
 
     def startService(self):
         """Start the service."""
-        super(LeaseSocketService, self).startService()
+        super().startService()
         # Listen for packets from the `dhcpd.sock`.
         self.port = self.reactor.listenUNIXDatagram(self.address, self)
 
@@ -54,7 +54,7 @@ class LeaseSocketService(Service, DatagramProtocol):
 
     def stopService(self):
         """Stop the service."""
-        super(LeaseSocketService, self).stopService()
+        super().stopService()
         # Close the connection.
         self.port.connectionLost()
         del self.port

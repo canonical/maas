@@ -88,7 +88,7 @@ class TestMAASID(MAASTestCase):
     """Tests for `env.get_maas_id` and `env.set_maas_id`."""
 
     def setUp(self):
-        super(TestMAASID, self).setUp()
+        super().setUp()
         self.maas_id_path = get_maas_data_path("maas_id")
         self.addCleanup(env.set_maas_id, None)
         env.set_maas_id(None)

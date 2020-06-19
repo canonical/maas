@@ -46,7 +46,7 @@ class TwistedLoggerFixture(Fixture):
     """
 
     def __init__(self):
-        super(TwistedLoggerFixture, self).__init__()
+        super().__init__()
         self.events = []
 
     @property
@@ -118,7 +118,7 @@ class TwistedLoggerFixture(Fixture):
         return Content(UTF8_TEXT, render)
 
     def setUp(self):
-        super(TwistedLoggerFixture, self).setUp()
+        super().setUp()
         # First remove all observers via the legacy API.
         for observer in list(log.theLogPublisher.observers):
             self.addCleanup(log.theLogPublisher.addObserver, observer)

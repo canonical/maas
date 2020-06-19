@@ -84,7 +84,7 @@ def make_context():
 
 class TestAMTPowerDriver(MAASTestCase):
     def setUp(self):
-        super(TestAMTPowerDriver, self).setUp()
+        super().setUp()
         self.patch(amt_module, "sleep")
 
     def patch_run_command(

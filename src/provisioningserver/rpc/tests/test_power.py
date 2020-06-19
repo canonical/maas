@@ -65,7 +65,7 @@ class TestPowerHelpers(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestPowerHelpers, self).setUp()
+        super().setUp()
         self.useFixture(EventTypesAllRegistered())
 
     def patch_rpc_methods(self):
@@ -159,7 +159,7 @@ class TestChangePowerState(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestChangePowerState, self).setUp()
+        super().setUp()
         self.useFixture(EventTypesAllRegistered())
 
     @inlineCallbacks
@@ -435,7 +435,7 @@ class TestMaybeChangePowerState(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestMaybeChangePowerState, self).setUp()
+        super().setUp()
         self.patch(power, "power_action_registry", {})
         for _, power_driver in PowerDriverRegistry:
             self.patch(
@@ -749,7 +749,7 @@ class TestPowerQuery(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestPowerQuery, self).setUp()
+        super().setUp()
         self.useFixture(EventTypesAllRegistered())
         self.patch(power, "deferToThread", maybeDeferred)
         for _, power_driver in PowerDriverRegistry:
@@ -1018,7 +1018,7 @@ class TestPowerQueryAsync(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestPowerQueryAsync, self).setUp()
+        super().setUp()
 
     def make_node(self, power_type=None):
         system_id = factory.make_name("system_id")

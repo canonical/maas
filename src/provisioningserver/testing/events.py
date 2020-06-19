@@ -17,7 +17,7 @@ class EventTypesAllRegistered(Fixture):
     """
 
     def setUp(self):
-        super(EventTypesAllRegistered, self).setUp()
+        super().setUp()
         types_registered = events.nodeEventHub._types_registered
         types_registered.update(events.EVENT_DETAILS)
         self.addCleanup(types_registered.clear)

@@ -87,7 +87,7 @@ class VLANHandler(TimestampedModelHandler):
 
             return create_vlan_form
         else:
-            return super(VLANHandler, self).get_form_class(action)
+            return super().get_form_class(action)
 
     def delete(self, parameters):
         """Delete this VLAN."""
@@ -98,7 +98,7 @@ class VLANHandler(TimestampedModelHandler):
 
     def update(self, parameters):
         """Delete this VLAN."""
-        return super(VLANHandler, self).update(parameters)
+        return super().update(parameters)
 
     def _configure_iprange_and_gateway(self, parameters):
         if "subnet" in parameters and parameters["subnet"] is not None:

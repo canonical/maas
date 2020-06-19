@@ -197,7 +197,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
             "vid": self._add_vlan_vid_query,
             "vlan": (VLAN.objects, "subnet"),
         }
-        return super(SubnetQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,

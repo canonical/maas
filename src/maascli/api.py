@@ -92,7 +92,7 @@ class Action(Command):
     op = property(lambda self: self.action["op"])
 
     def __init__(self, parser):
-        super(Action, self).__init__(parser)
+        super().__init__(parser)
         for param in self.handler["params"]:
             parser.add_argument(param)
         parser.add_argument("data", type=self.name_value_pair, nargs="*")

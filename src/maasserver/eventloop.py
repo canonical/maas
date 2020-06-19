@@ -392,7 +392,7 @@ class RegionEventLoop:
     }
 
     def __init__(self):
-        super(RegionEventLoop, self).__init__()
+        super().__init__()
         self.services = MAASServices(self)
         self.handle = None
         self.master = False

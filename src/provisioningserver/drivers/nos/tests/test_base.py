@@ -32,7 +32,7 @@ class FakeNOSDriverBase(NOSDriverBase):
         self.name = name
         self.description = description
         self.settings = settings
-        super(FakeNOSDriverBase, self).__init__()
+        super().__init__()
 
     def is_switch_supported(self, vendor, model):
         raise NotImplementedError()
@@ -141,7 +141,7 @@ class FakeNOSDriver(NOSDriver):
         self.name = name
         self.description = description
         self.settings = settings
-        super(FakeNOSDriver, self).__init__(clock)
+        super().__init__(clock)
 
     def is_switch_supported(self, vendor, model):
         if vendor == "Canonical" and model == "BigSwitch":

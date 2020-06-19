@@ -45,7 +45,7 @@ class FabricQueriesMixin(MAASQueriesMixin):
             "name": "__name",
             "class": "__class_type",
         }
-        return super(FabricQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
@@ -208,7 +208,7 @@ class Fabric(CleanSave, TimestampedModel):
                 "Can't delete fabric; the following interfaces are "
                 "still connected: %s" % (", ".join(descriptions))
             )
-        super(Fabric, self).delete()
+        super().delete()
 
     def _create_default_vlan(self):
         # Circular imports.
@@ -222,7 +222,7 @@ class Fabric(CleanSave, TimestampedModel):
         # Name will get set by clean_name() if None or empty, and there is an
         # id. We just need to handle names here for creation.
         created = self.id is None
-        super(Fabric, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
         if self.name is None or self.name == "":
             # If we got here, then we have a newly created fabric that needs a
             # default name.

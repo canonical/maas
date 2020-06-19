@@ -15,7 +15,7 @@ class TestRBACSync(MAASServerTestCase):
     """Test `RBACSync`."""
 
     def setUp(self):
-        super(TestRBACSync, self).setUp()
+        super().setUp()
         # These tests expect the RBACSync table to be empty.
         RBACSync.objects.all().delete()
 

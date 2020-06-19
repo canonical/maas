@@ -28,7 +28,7 @@ class PreseedRPCMixin:
     """
 
     def setUp(self):
-        super(PreseedRPCMixin, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         self.rpc_fixture = MockLiveRegionToClusterRPCFixture()

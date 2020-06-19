@@ -200,7 +200,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
         self._other_mapping = kwargs.pop("other_mapping", {})
         self._ipv4_ttl = kwargs.pop("ipv4_ttl", None)
         self._ipv6_ttl = kwargs.pop("ipv6_ttl", None)
-        super(DNSForwardZoneConfig, self).__init__(
+        super().__init__(
             domain, zone_info=[DomainInfo(None, domain)], **kwargs
         )
 
@@ -340,9 +340,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
         self._dynamic_ranges = kwargs.pop("dynamic_ranges", [])
         self._rfc2317_ranges = kwargs.pop("rfc2317_ranges", [])
         zone_info = self.compose_zone_info(self._network)
-        super(DNSReverseZoneConfig, self).__init__(
-            domain, zone_info=zone_info, **kwargs
-        )
+        super().__init__(domain, zone_info=zone_info, **kwargs)
 
     @classmethod
     def compose_zone_info(cls, network):

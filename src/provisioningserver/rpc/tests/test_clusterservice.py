@@ -1429,7 +1429,7 @@ class TestClusterClient(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestClusterClient, self).setUp()
+        super().setUp()
         self.useFixture(
             ClusterConfigurationFixture(
                 maas_url=factory.make_simple_http_url(),
@@ -2790,7 +2790,7 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestClusterProtocol_ValidateDHCP, self).setUp()
+        super().setUp()
         # Temporarily prevent hostname resolution when generating DHCP
         # configuration. This is tested elsewhere.
         self.useFixture(DHCPConfigNameResolutionDisabled())

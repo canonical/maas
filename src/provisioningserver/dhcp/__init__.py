@@ -47,7 +47,7 @@ class DHCPServer(metaclass=ABCMeta):
     ipv6 = abstractproperty()
 
     def __init__(self, omapi_key):
-        super(DHCPServer, self).__init__()
+        super().__init__()
         self.omapi_key = omapi_key
 
 

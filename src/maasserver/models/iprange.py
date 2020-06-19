@@ -45,7 +45,7 @@ class IPRangeQueriesMixin(MAASQueriesMixin):
             "start_ip": "__start_ip",
             "end_ip": "__end_ip",
         }
-        return super(IPRangeQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,

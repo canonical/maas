@@ -82,7 +82,7 @@ class Matches:
     """
 
     def __init__(self, matcher):
-        super(Matches, self).__init__()
+        super().__init__()
         self.matcher = matcher
 
     def __eq__(self, other):
@@ -110,7 +110,7 @@ class Provides(MatchesPredicate):
     """Match if the given interface is provided."""
 
     def __init__(self, iface):
-        super(Provides, self).__init__(
+        super().__init__(
             iface.providedBy, "%%r does not provide %s" % iface.getName()
         )
 
@@ -119,7 +119,7 @@ class HasAttribute(Matcher):
     """Match if the given attribute is available."""
 
     def __init__(self, attribute):
-        super(HasAttribute, self).__init__()
+        super().__init__()
         self.attribute = attribute
 
     def match(self, something):
@@ -332,7 +332,7 @@ class IsUnfiredDeferred(Matcher):
 
 class MatchesPartialCall(Matcher):
     def __init__(self, func, *args, **keywords):
-        super(MatchesPartialCall, self).__init__()
+        super().__init__()
         if len(keywords) > 0:
             self.expected = partial(func, *args, **keywords)
         else:
@@ -367,7 +367,7 @@ class DocTestMatches(matchers.DocTestMatches):
     DEFAULT_FLAGS = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
     def __init__(self, example, flags=DEFAULT_FLAGS):
-        super(DocTestMatches, self).__init__(example, flags)
+        super().__init__(example, flags)
 
 
 class FileContains(Matcher):
@@ -446,7 +446,7 @@ class TextEquals(Matcher):
     """
 
     def __init__(self, expected):
-        super(TextEquals, self).__init__()
+        super().__init__()
         self.expected = expected
 
     def match(self, observed):
@@ -488,7 +488,7 @@ class ContainedBy(Matcher):
     """Test if the matchee is in the given container."""
 
     def __init__(self, haystack):
-        super(ContainedBy, self).__init__()
+        super().__init__()
         self.haystack = haystack
 
     def __str__(self):

@@ -165,7 +165,7 @@ class DeferredHooks(threading.local):
     """
 
     def __init__(self):
-        super(DeferredHooks, self).__init__()
+        super().__init__()
         self.hooks = deque()
 
     @synchronous

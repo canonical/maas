@@ -17,7 +17,7 @@ from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 
 class TestStatusTransitionEvent(MAASServerTestCase):
     def setUp(self):
-        super(TestStatusTransitionEvent, self).setUp()
+        super().setUp()
         # Circular imports.
         from maasserver.models import signals
 

@@ -282,7 +282,7 @@ class TestFindImage(MAASTestCase):
 
 class TestOperatingSystemRegistry(MAASTestCase):
     def setUp(self):
-        super(TestOperatingSystemRegistry, self).setUp()
+        super().setUp()
         # Ensure the global registry is empty for each test run.
         self.useFixture(RegistryFixture())
 

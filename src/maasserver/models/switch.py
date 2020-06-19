@@ -55,4 +55,4 @@ class Switch(CleanSave, TimestampedModel):
     def delete(self):
         """Delete this switch."""
         maaslog.info("%s: Deleting switch", self)
-        super(Switch, self).delete()
+        super().delete()

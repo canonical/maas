@@ -627,7 +627,7 @@ class PowerOff(NodeAction):
             raise NodeActionError(exception)
 
     def is_actionable(self):
-        is_actionable = super(PowerOff, self).is_actionable()
+        is_actionable = super().is_actionable()
         return is_actionable and (self.node.power_state != POWER_STATE.OFF)
 
 
@@ -699,7 +699,7 @@ class MarkBroken(NodeAction):
 
     def is_permitted(self):
         """Must also be owned to mark it broken."""
-        permitted = super(MarkBroken, self).is_permitted()
+        permitted = super().is_permitted()
         return permitted and self.node.owner_id == self.user.id
 
 

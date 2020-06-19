@@ -42,11 +42,7 @@ class BaseFilesystemGroupManager(Manager):
     extra_filters = {}
 
     def get_queryset(self):
-        return (
-            super(BaseFilesystemGroupManager, self)
-            .get_queryset()
-            .filter(**self.extra_filters)
-        )
+        return super().get_queryset().filter(**self.extra_filters)
 
     def get_object_or_404(self, system_id, filesystem_group_id, user, perm):
         """Fetch a `FilesystemGroup` by its `Node`'s system_id and its id.
@@ -559,7 +555,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         )
 
     def clean(self, *args, **kwargs):
-        super(FilesystemGroup, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
 
         # We allow the initial save to skip model validation, any
         # additional saves required filesystems linked. This is because the
@@ -751,7 +747,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             self.name = FilesystemGroup.objects.get_available_name_for(self)
         if not self.uuid:
             self.uuid = uuid4()
-        super(FilesystemGroup, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         # Update or create the virtual block device when the filesystem group
         # is saved. Does nothing if group_type is LVM_VG. Virtual block device
@@ -791,7 +787,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         # Possible that the virtual block device has already deleted the
         # filesystem group. Skip the call if no id is set.
         if self.id is not None:
-            super(FilesystemGroup, self).delete()
+            super().delete()
 
     def get_nice_name(self):
         """Return the nice name for the filesystem group.
@@ -856,7 +852,7 @@ class VolumeGroup(FilesystemGroup):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(VolumeGroup, self).__init__(
+        super().__init__(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, *args, **kwargs
         )
 
@@ -934,7 +930,7 @@ class RAID(FilesystemGroup):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(RAID, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.group_type not in FILESYSTEM_GROUP_RAID_TYPES:
             raise ValueError("group_type must be a valid RAID type.")
 
@@ -1039,7 +1035,7 @@ class Bcache(FilesystemGroup):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(Bcache, self).__init__(
+        super().__init__(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE, *args, **kwargs
         )
 

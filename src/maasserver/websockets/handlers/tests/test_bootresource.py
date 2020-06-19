@@ -58,7 +58,7 @@ class PatchOSInfoMixin:
 
 class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def setUp(self):
-        super(TestBootResourcePoll, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -837,7 +837,7 @@ class TestBootResourceSaveUbuntu(
     MAASTransactionServerTestCase, PatchOSInfoMixin
 ):
     def setUp(self):
-        super(TestBootResourceSaveUbuntu, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -1044,7 +1044,7 @@ class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
 
 class TestBootResourceSaveOther(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestBootResourceSaveOther, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

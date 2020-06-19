@@ -47,7 +47,7 @@ class DatabaseTasksService(Service, object):
 
     def __init__(self):
         """Initialise a new `DatabaseTasksService`."""
-        super(DatabaseTasksService, self).__init__()
+        super().__init__()
         # Start with a queue that rejects puts.
         self.queue = DeferredQueue(size=0, backlog=1)
 
@@ -122,7 +122,7 @@ class DatabaseTasksService(Service, object):
 
         :return: `None`
         """
-        super(DatabaseTasksService, self).startService()
+        super().startService()
         self.queue.size = None  # Open queue to puts.
         self.coop = cooperate(self._generateTasks())
 
@@ -132,7 +132,7 @@ class DatabaseTasksService(Service, object):
 
         :return: :class:`Deferred` which fires once all tasks have been run.
         """
-        super(DatabaseTasksService, self).stopService()
+        super().stopService()
         # Feed the cooperative task so that it can shutdown.
         self.queue.put(self.sentinel)  # See _generateTasks.
         self.queue.size = 0  # Now close queue to puts.

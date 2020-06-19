@@ -54,9 +54,7 @@ class StorageLayoutBase(Form):
     root_size = BytesOrPercentageField(required=False)
 
     def __init__(self, node, params: dict = None):
-        super(StorageLayoutBase, self).__init__(
-            data=({} if params is None else params)
-        )
+        super().__init__(data=({} if params is None else params))
         self.node = node
         self.block_devices = self._load_physical_block_devices()
         self.boot_disk = node.get_boot_disk()
@@ -141,7 +139,7 @@ class StorageLayoutBase(Form):
 
     def clean(self):
         """Validate the data."""
-        cleaned_data = super(StorageLayoutBase, self).clean()
+        cleaned_data = super().clean()
         if len(self.block_devices) == 0:
             raise StorageLayoutMissingBootDiskError(
                 "Node doesn't have any storage devices to configure."
@@ -425,7 +423,7 @@ class LVMStorageLayout(StorageLayoutBase):
 
     def clean(self):
         """Validate the lv_size."""
-        cleaned_data = super(LVMStorageLayout, self).clean()
+        cleaned_data = super().clean()
         lv_size = self.get_lv_size()
         if lv_size is not None:
             root_size = self.get_root_size()
@@ -634,7 +632,7 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
         # Circular imports.
         from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 
-        cleaned_data = super(BcacheStorageLayoutBase, self).clean()
+        cleaned_data = super().clean()
         cache_device = self.get_cache_device()
         cache_size = self.get_cache_size()
         cache_no_part = self.get_cache_no_part()
@@ -680,9 +678,7 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
     """
 
     def __init__(self, node, params: dict = None):
-        super(BcacheStorageLayout, self).__init__(
-            node, params=({} if params is None else params)
-        )
+        super().__init__(node, params=({} if params is None else params))
         self.setup_cache_device_field()
 
     def configure_storage(self, allow_fallback):
@@ -695,9 +691,7 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
         if cache_block_device is None:
             if allow_fallback:
                 # No cache device so just configure using the flat layout.
-                return super(BcacheStorageLayout, self).configure_storage(
-                    allow_fallback
-                )
+                return super().configure_storage(allow_fallback)
             else:
                 raise StorageLayoutError(
                     "Node doesn't have an available cache device to "
@@ -958,7 +952,7 @@ class StorageLayoutForm(Form):
 
     def __init__(self, *args, **kwargs):
         required = kwargs.pop("required", False)
-        super(StorageLayoutForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setup_field(required=required)
 
     def setup_field(self, required=False):

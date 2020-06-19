@@ -108,7 +108,7 @@ class TestAddArguments(MAASTestCase):
 
 class TestUpdateMaasClusterConf(MAASTestCase):
     def setUp(self):
-        super(TestUpdateMaasClusterConf, self).setUp()
+        super().setUp()
         self.useFixture(ClusterConfigurationFixture())
 
     def make_args(self, **kwargs):

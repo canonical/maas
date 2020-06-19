@@ -92,7 +92,7 @@ class TestDNSPublicationManager(MAASServerTestCase):
     """Test `DNSPublicationManager`."""
 
     def setUp(self):
-        super(TestDNSPublicationManager, self).setUp()
+        super().setUp()
         # These tests expect the DNSPublication table to be empty.
         DNSPublication.objects.all().delete()
 

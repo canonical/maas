@@ -94,7 +94,7 @@ class NoSleepMixin(unittest.TestCase):
     """Test case mix-in to prevent real sleeps in the `orm` module."""
 
     def setUp(self):
-        super(NoSleepMixin, self).setUp()
+        super().setUp()
         self.patch(orm, "sleep", lambda _: None)
 
 
@@ -973,7 +973,7 @@ class TestPostCommit(MAASTestCase):
     """Tests for the `post_commit` function."""
 
     def setUp(self):
-        super(TestPostCommit, self).setUp()
+        super().setUp()
         self.addCleanup(post_commit_hooks.reset)
 
     def test_adds_Deferred_as_hook(self):
@@ -1048,7 +1048,7 @@ class TestPostCommitDo(MAASTestCase):
     """Tests for the `post_commit_do` function."""
 
     def setUp(self):
-        super(TestPostCommitDo, self).setUp()
+        super().setUp()
         self.addCleanup(post_commit_hooks.reset)
 
     def test_adds_callable_as_hook(self):

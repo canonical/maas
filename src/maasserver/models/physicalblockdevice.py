@@ -91,7 +91,7 @@ class PhysicalBlockDevice(BlockDevice):
             raise ValidationError(
                 "serial/model are required if id_path is not provided."
             )
-        super(PhysicalBlockDevice, self).clean()
+        super().clean()
 
     def __str__(self):
         return "{model} S/N {serial} {size} attached to {node}".format(

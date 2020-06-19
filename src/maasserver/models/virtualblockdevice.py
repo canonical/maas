@@ -82,7 +82,7 @@ class VirtualBlockDevice(BlockDevice):
             return self.name
 
     def clean(self, *args, **kwargs):
-        super(VirtualBlockDevice, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
 
         # First time called the node might not be set, so we handle the
         # DoesNotExist exception accordingly.
@@ -131,7 +131,7 @@ class VirtualBlockDevice(BlockDevice):
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid4()
-        return super(VirtualBlockDevice, self).save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def get_parents(self):
         """Return the blockdevices and partition which make up this device."""

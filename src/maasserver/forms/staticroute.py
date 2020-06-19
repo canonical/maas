@@ -36,7 +36,7 @@ class StaticRouteForm(MAASModelForm):
         fields = ("source", "destination", "gateway_ip", "metric")
 
     def __init__(self, *args, **kwargs):
-        super(StaticRouteForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Metric field is not a required field, but is required in the model.
         self.fields["metric"].required = False
 

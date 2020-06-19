@@ -57,7 +57,7 @@ class TestGetServersFor_ExternalOnly(MAASServerTestCase):
     )
 
     def setUp(self):
-        super(TestGetServersFor_ExternalOnly, self).setUp()
+        super().setUp()
         Config.objects.set_config("ntp_external_only", True)
 
     def test_yields_nothing_when_no_ntp_servers_defined(self):
@@ -79,7 +79,7 @@ class TestGetServersFor_Common(MAASServerTestCase):
     """
 
     def setUp(self):
-        super(TestGetServersFor_Common, self).setUp()
+        super().setUp()
         Config.objects.set_config("ntp_external_only", False)
 
 
@@ -259,7 +259,7 @@ class TestGetServersFor_Selection(MAASServerTestCase):
     )
 
     def setUp(self):
-        super(TestGetServersFor_Selection, self).setUp()
+        super().setUp()
         Config.objects.set_config("ntp_external_only", False)
 
     def test_prefers_closest_addresses(self):

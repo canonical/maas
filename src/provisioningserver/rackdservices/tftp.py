@@ -141,9 +141,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         """
         if not isinstance(base_path, FilePath):
             base_path = FilePath(base_path)
-        super(TFTPBackend, self).__init__(
-            base_path, can_read=True, can_write=False
-        )
+        super().__init__(base_path, can_read=True, can_write=False)
         self.client_to_remote = {}
         self.client_service = client_service
         self.fetcher = RPCFetcher()
@@ -330,7 +328,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
     def handle_boot_method(self, file_name: TFTPPath, result):
         boot_method, params = result
         if boot_method is None:
-            return super(TFTPBackend, self).get_reader(file_name)
+            return super().get_reader(file_name)
 
         # Map pxe namespace architecture names to MAAS's.
         arch = params.get("arch")
@@ -493,7 +491,7 @@ class TFTPService(MultiService, object):
         :param port: The port on which each server should be started.
         :param client_service: The RPC client service for the rack controller.
         """
-        super(TFTPService, self).__init__()
+        super().__init__()
         self.backend = TFTPBackend(resource_root, client_service)
         self.port = port
         # Establish a periodic call to self.updateServers() every 45

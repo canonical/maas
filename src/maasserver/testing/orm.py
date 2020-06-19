@@ -44,7 +44,7 @@ class PostCommitHooksTestMixin(testtools.TestCase):
 
     def setUp(self):
         try:
-            super(PostCommitHooksTestMixin, self).setUp()
+            super().setUp()
             description_of_hooks = "\n".join(
                 gen_description_of_hooks(post_commit_hooks.hooks)
             )
@@ -71,7 +71,7 @@ class PostCommitHooksTestMixin(testtools.TestCase):
                 "One or more post-commit tasks were present at the end of "
                 "this test.\n" + description_of_hooks,
             )
-            super(PostCommitHooksTestMixin, self).tearDown()
+            super().tearDown()
         finally:
             # By this point we will have reported the leaked post-commit
             # tasks, so always reset them; we don't want to report them again,

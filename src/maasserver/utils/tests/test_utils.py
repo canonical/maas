@@ -114,7 +114,7 @@ class TestBuildAbsoluteURI(MAASTestCase):
     """Tests for `build_absolute_uri`."""
 
     def setUp(self):
-        super(TestBuildAbsoluteURI, self).setUp()
+        super().setUp()
         self.useFixture(RegionConfigurationFixture())
 
     def make_request(

@@ -69,7 +69,7 @@ class RackControllerService(Service):
         :param postgresListener: The `PostgresListenerService` that is running
             in this regiond process.
         """
-        super(RackControllerService, self).__init__()
+        super().__init__()
         self.clock = clock
         self.starting = None
         self.processing = LoopingCall(self.process)
@@ -83,7 +83,7 @@ class RackControllerService(Service):
     @asynchronous(timeout=FOREVER)
     def startService(self):
         """Start listening for messages."""
-        super(RackControllerService, self).startService()
+        super().startService()
 
         def cb_registerWithPostgres(processId):
             # Register the coreHandler with postgres.
@@ -135,7 +135,7 @@ class RackControllerService(Service):
     @asynchronous(timeout=FOREVER)
     def stopService(self):
         """Close the controller."""
-        super(RackControllerService, self).stopService()
+        super().stopService()
 
         def cleanUp():
             # Unregister the core handler.

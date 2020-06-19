@@ -1898,7 +1898,7 @@ class Node(CleanSave, TimestampedModel):
             )
 
     def clean(self, *args, **kwargs):
-        super(Node, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         self.prev_bmc_id = self._state.get_old_value("bmc_id")
         if self._state.has_changed("hostname"):
             self.clean_hostname_domain()
@@ -1951,7 +1951,7 @@ class Node(CleanSave, TimestampedModel):
             ):
                 kwargs["update_fields"].append("status_expires")
 
-        super(Node, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         # We let hostname be blank for the initial save, but fix it before the
         # save completes.  This is because set_random_hostname() operates by
@@ -2949,7 +2949,7 @@ class Node(CleanSave, TimestampedModel):
                 )
                 self.bmc.delete()
 
-            super(Node, self).delete(*args, **kwargs)
+            super().delete(*args, **kwargs)
 
     def set_random_hostname(self):
         """Set a random `hostname`."""
@@ -6082,9 +6082,7 @@ class Machine(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(Machine, self).__init__(
-            node_type=NODE_TYPE.MACHINE, *args, **kwargs
-        )
+        super().__init__(node_type=NODE_TYPE.MACHINE, *args, **kwargs)
 
     def delete(self, force=False):
         """Deletes this Machine.
@@ -6107,7 +6105,7 @@ class Controller(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(Controller, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _was_probably_machine(self):
         """Best guess if a rack was a machine.
@@ -6941,9 +6939,7 @@ class RackController(Controller):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(RackController, self).__init__(
-            node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs
-        )
+        super().__init__(node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
     @inlineCallbacks
     def refresh(self):
@@ -7307,7 +7303,7 @@ class RegionController(Controller):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(RegionController, self).__init__(
+        super().__init__(
             node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs
         )
 
@@ -7378,9 +7374,7 @@ class Device(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(Device, self).__init__(
-            node_type=NODE_TYPE.DEVICE, *args, **kwargs
-        )
+        super().__init__(node_type=NODE_TYPE.DEVICE, *args, **kwargs)
 
 
 class NodeGroupToRackController(CleanSave, Model):

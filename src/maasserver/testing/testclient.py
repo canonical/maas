@@ -39,7 +39,7 @@ class MAASSensibleGetPathMixin:
         script_path = settings.FORCE_SCRIPT_NAME.rstrip("/")
         if parsed.path.startswith(script_path):
             parsed = parsed._replace(path=parsed.path[len(script_path) :])
-        return super(MAASSensibleGetPathMixin, self)._get_path(parsed)
+        return super()._get_path(parsed)
 
 
 class MAASSensibleRequestFactory(MAASSensibleGetPathMixin, RequestFactory):
@@ -60,7 +60,7 @@ class MAASSensibleClient(MAASSensibleGetPathMixin, SensibleClient):
         # Make sure that requests are done within a transaction. Some kinds of
         # tests will already have a transaction in progress, in which case
         # this will act like a sub-transaction, but that's fine.
-        upcall = transactional(super(MAASSensibleClient, self).request)
+        upcall = transactional(super().request)
         # If we're outside of a transaction right now then the transactional()
         # wrapper above will ensure that post-commit hooks are run or reset on
         # return from the request. However, we want to ensure that post-commit
@@ -71,7 +71,7 @@ class MAASSensibleClient(MAASSensibleGetPathMixin, SensibleClient):
     @transactional
     def login(self, *, user=None, **credentials):
         if user is None:
-            return super(MAASSensibleClient, self).login(**credentials)
+            return super().login(**credentials)
         elif user.is_anonymous:
             self.logout()
             return False
@@ -80,7 +80,7 @@ class MAASSensibleClient(MAASSensibleGetPathMixin, SensibleClient):
             credentials["username"] = user.username
             user.set_password(password)
             user.save()
-            return super(MAASSensibleClient, self).login(**credentials)
+            return super().login(**credentials)
 
 
 class MAASSensibleOAuthClient(MAASSensibleClient):
@@ -95,7 +95,7 @@ class MAASSensibleOAuthClient(MAASSensibleClient):
             no `token` is given, the user's first token will be used.
         :type token: oauth.oauth.OAuthToken
         """
-        super(MAASSensibleOAuthClient, self).__init__()
+        super().__init__()
         if user is not None or token is not None:
             self.login(user=user, token=token)
         else:
@@ -158,4 +158,4 @@ class MAASSensibleOAuthClient(MAASSensibleClient):
         url = self._compose_url(kwargs["PATH_INFO"])
         if self.consumer is not None:
             kwargs.update(self._compose_auth_header(url))
-        return super(MAASSensibleOAuthClient, self).request(**kwargs)
+        return super().request(**kwargs)

@@ -320,7 +320,7 @@ class BlockDevice(CleanSave, TimestampedModel):
                     "Cannot delete block device because its part of "
                     "a %s." % filesystem_group.get_nice_name()
                 )
-        super(BlockDevice, self).delete()
+        super().delete()
 
     @staticmethod
     def _get_block_name_from_idx(idx, prefix="sd"):

@@ -50,7 +50,7 @@ def get_service_in_eventloop(name):
 @implementer(IConnection)
 class FakeConnection:
     def __init__(self, ident):
-        super(FakeConnection, self).__init__()
+        super().__init__()
         self.protocol = clusterservice.Cluster()
         self.ident = ident
 
@@ -72,7 +72,7 @@ class ClusterRPCFixture(fixtures.Fixture):
     """
 
     def __init__(self):
-        super(ClusterRPCFixture, self).__init__()
+        super().__init__()
         warn(
             (
                 "ClusterRPCFixture is deprecated; use "
@@ -82,7 +82,7 @@ class ClusterRPCFixture(fixtures.Fixture):
         )
 
     def setUp(self):
-        super(ClusterRPCFixture, self).setUp()
+        super().setUp()
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(
@@ -110,7 +110,7 @@ class RunningClusterRPCFixture(fixtures.Fixture):
     """
 
     def setUp(self):
-        super(RunningClusterRPCFixture, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         self.useFixture(ClusterRPCFixture())
@@ -148,7 +148,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
     """
 
     def setUp(self):
-        super(MockRegionToClusterRPCFixture, self).setUp()
+        super().setUp()
         # Ensure there's a shared-secret.
         self.secret = security.get_shared_secret()
         # We need the event-loop up and running.
@@ -277,7 +277,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         self.rpc.startService().wait(10)
 
     def setUp(self):
-        super(MockLiveRegionToClusterRPCFixture, self).setUp()
+        super().setUp()
         self.monkey = MonkeyPatcher()
         # We need the event-loop up and running.
         if not eventloop.loop.running:

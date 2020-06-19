@@ -173,7 +173,7 @@ class VMwareAPI(metaclass=ABCMeta):
 
 class VMwarePyvmomiAPI(VMwareAPI):
     def __init__(self, host, username, password, port=None, protocol=None):
-        super(VMwarePyvmomiAPI, self).__init__(
+        super().__init__(
             host, username, password, port=port, protocol=protocol
         )
         self.service_instance = None

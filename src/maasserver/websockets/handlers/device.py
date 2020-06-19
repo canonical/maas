@@ -257,7 +257,7 @@ class DeviceHandler(NodeHandler):
             for key, value in new_params.items()
             if value is not None
         }
-        return super(DeviceHandler, self).preprocess_form(action, new_params)
+        return super().preprocess_form(action, new_params)
 
     def _configure_interface(self, interface, params):
         """Configure the interface based on the selection."""
@@ -299,7 +299,7 @@ class DeviceHandler(NodeHandler):
 
         # Create the object with the form and then create all of the interfaces
         # based on the users choices.
-        data = super(DeviceHandler, self).create(params)
+        data = super().create(params)
         device_obj = Device.objects.get(system_id=data["system_id"])
         interfaces = list(device_obj.interface_set.all())
 

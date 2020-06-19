@@ -25,7 +25,7 @@ class StubContext:
     """
 
     def __init__(self):
-        super(StubContext, self).__init__()
+        super().__init__()
         self.entered = False
         self.exited = False
 

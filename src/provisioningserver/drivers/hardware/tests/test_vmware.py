@@ -60,7 +60,7 @@ class FakeVmomiVMConfigHardwareDevice:
 
 class FakeVmomiNic(FakeVmomiVMConfigHardwareDevice):
     def __init__(self):
-        super(FakeVmomiNic, self).__init__()
+        super().__init__()
         self.macAddress = factory.make_mac_address()
 
     @property
@@ -240,7 +240,7 @@ class TestVMwarePyvmomi(MAASTestCase):
         return mock_vmomi_api
 
     def setUp(self):
-        super(TestVMwarePyvmomi, self).setUp()
+        super().setUp()
         if vmware.try_pyvmomi_import() is False:
             self.skipTest("cannot test VMware without python3-pyvmomi")
 

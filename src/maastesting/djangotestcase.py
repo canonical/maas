@@ -197,7 +197,7 @@ class DjangoTestCase(django.test.TestCase, MAASTestCase):
     legacy = True
 
     def _fixture_teardown(self):
-        super(DjangoTestCase, self)._fixture_teardown()
+        super()._fixture_teardown()
         # TODO blake_r: Fix so this is not disabled. Currently not
         # working with Django 1.8.
         # Don't let unfinished database activity get away with it.
@@ -232,7 +232,7 @@ class DjangoTransactionTestCase(django.test.TransactionTestCase, MAASTestCase):
     legacy = True
 
     def _fixture_teardown(self):
-        super(DjangoTransactionTestCase, self)._fixture_teardown()
+        super()._fixture_teardown()
         # TODO blake_r: Fix so this is not disabled. Currently not
         # working with Django 1.8.
         # Don't let unfinished database activity get away with it.

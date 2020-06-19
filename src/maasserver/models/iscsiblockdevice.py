@@ -66,4 +66,4 @@ class ISCSIBlockDevice(BlockDevice):
     def save(self, *args, **kwargs):
         # Normilize the target to always include a 'iscsi:' at the start.
         self.target = get_iscsi_target(self.target)
-        return super(ISCSIBlockDevice, self).save(*args, **kwargs)
+        return super().save(*args, **kwargs)

@@ -47,7 +47,7 @@ class NOSDriverBase(metaclass=ABCMeta):
     """Base driver for a NOS driver."""
 
     def __init__(self):
-        super(NOSDriverBase, self).__init__()
+        super().__init__()
         validate(self.get_schema(), JSON_NOS_DRIVER_SCHEMA)
 
     @abstractproperty

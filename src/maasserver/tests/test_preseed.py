@@ -334,7 +334,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
     """Tests for `load_preseed_template`."""
 
     def setUp(self):
-        super(TestLoadPreseedTemplate, self).setUp()
+        super().setUp()
         self.location = self.make_dir()
         self.patch(settings, "PRESEED_TEMPLATE_LOCATIONS", [self.location])
 

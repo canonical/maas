@@ -304,7 +304,7 @@ class VerbosityOptions(usage.Options):
     _verbosity_min = min(DEFAULT_TWISTED_VERBOSITY_LEVELS)
 
     def __init__(self):
-        super(VerbosityOptions, self).__init__()
+        super().__init__()
         self["verbosity"] = DEFAULT_LOG_VERBOSITY
         self.longOpt.sort()  # https://twistedmatrix.com/trac/ticket/8866
 

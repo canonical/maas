@@ -17,7 +17,7 @@ class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
     def __init__(
         self, signal, receiver, sender=None, weak=True, dispatch_uid=None
     ):
-        super(SignalDisconnected, self).__init__()
+        super().__init__()
         self.signal = signal
         self.receiver = receiver
         self.sender = sender
@@ -25,7 +25,7 @@ class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
         self.dispatch_uid = dispatch_uid
 
     def setUp(self):
-        super(SignalDisconnected, self).setUp()
+        super().setUp()
         self.addCleanup(
             self.signal.connect,
             receiver=self.receiver,
@@ -49,11 +49,11 @@ class SignalsDisconnected(fixtures.Fixture):  # DEPRECATED
     """
 
     def __init__(self, *signals):
-        super(SignalsDisconnected, self).__init__()
+        super().__init__()
         self.signals = signals
 
     def setUp(self):
-        super(SignalsDisconnected, self).setUp()
+        super().setUp()
 
         def restore(signal, receivers):
             with signal.lock:

@@ -32,7 +32,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
     """Tests for `maasserver.proxyconfig`."""
 
     def setUp(self):
-        super(TestProxyUpdateConfig, self).setUp()
+        super().setUp()
         self.tmpdir = self.make_dir()
         self.proxy_path = Path(self.tmpdir) / config.MAAS_PROXY_CONF_NAME
         self.service_monitor = self.patch(proxyconfig, "service_monitor")

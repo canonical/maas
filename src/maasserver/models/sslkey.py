@@ -91,9 +91,7 @@ class SSLKey(CleanSave, TimestampedModel):
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ("user", "key"):
             return "This key has already been added for this user."
-        return super(SSLKey, self).unique_error_message(
-            model_class, unique_check
-        )
+        return super().unique_error_message(model_class, unique_check)
 
     def __str__(self):
         return self.key

@@ -817,7 +817,7 @@ class TestCallInReactorWithTimeout(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestCallInReactorWithTimeout, self).setUp()
+        super().setUp()
         self.deferWithTimeout = self.patch(twisted_module, "deferWithTimeout")
         self.deferWithTimeout.side_effect = self.returnThreadIdent
 
@@ -1496,7 +1496,7 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
 
 class ContextBrokenOnEntry:
     def __init__(self, exception):
-        super(ContextBrokenOnEntry, self).__init__()
+        super().__init__()
         self.exception = exception
 
     def __enter__(self):
@@ -1508,7 +1508,7 @@ class ContextBrokenOnEntry:
 
 class ContextBrokenOnExit:
     def __init__(self, exception):
-        super(ContextBrokenOnExit, self).__init__()
+        super().__init__()
         self.exception = exception
 
     def __enter__(self):
@@ -1921,7 +1921,7 @@ class SignalPrinterProtocol(ProcessProtocol):
     """Process protocol for use with `signal_printer`."""
 
     def __init__(self):
-        super(SignalPrinterProtocol, self).__init__()
+        super().__init__()
         self.ready = Deferred()
         self.done = Deferred()
         self.out = io.BytesIO()
@@ -1945,7 +1945,7 @@ class TestTerminateProcess(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=10)
 
     def setUp(self):
-        super(TestTerminateProcess, self).setUp()
+        super().setUp()
         # Allow spying on calls to os.kill and os.killpg by terminateProcess.
         self.assertThat(twisted_module._os_kill, Is(os.kill))
         self.patch(

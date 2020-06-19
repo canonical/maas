@@ -77,7 +77,7 @@ class Tag(CleanSave, TimestampedModel):
     objects = TagManager()
 
     def __init__(self, *args, **kwargs):
-        super(Tag, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Track what the original definition is, so we can detect when it
         # changes and we need to repopulate the node<=>tag mapping.
         # We have to check for self.id, otherwise we don't see the creation of
@@ -145,7 +145,7 @@ class Tag(CleanSave, TimestampedModel):
         :param populate: Whether or not to call `populate_nodes` if the
             definition has changed.
         """
-        super(Tag, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
         if populate and (self.definition != self._original_definition):
             self.populate_nodes()
         self._original_definition = self.definition

@@ -30,7 +30,7 @@ class NeighbourQueriesMixin(MAASQueriesMixin):
             "ip": "__ip",
             "mac": "__mac_address",
         }
-        return super(NeighbourQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,

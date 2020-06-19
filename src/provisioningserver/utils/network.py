@@ -113,7 +113,7 @@ class MAASIPRange(IPRange):
         if type(start) == IPRange:
             end = start.last
             start = start.first
-        super(MAASIPRange, self).__init__(start, end, flags=flags)
+        super().__init__(start, end, flags=flags)
         self.flags = flags
         if type(purpose) != set:
             purpose = {purpose}

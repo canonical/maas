@@ -186,7 +186,7 @@ class DjangoDatabasesManager(TestResourceManager):
     resources = (("templates", DjangoPristineDatabaseManager()),)
 
     def __init__(self, assume_dirty=True):
-        super(DjangoDatabasesManager, self).__init__()
+        super().__init__()
         self._count = count(1)
         self.dirty = assume_dirty
 

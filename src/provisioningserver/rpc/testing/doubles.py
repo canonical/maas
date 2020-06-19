@@ -82,7 +82,7 @@ class StubOS(OperatingSystem):
         :param name: A string name, usually all lowercase.
         :param releases: A list of (name, title) tuples.
         """
-        super(StubOS, self).__init__()
+        super().__init__()
         self.name = name
         self.title = name.capitalize()
         self.releases = releases

@@ -69,7 +69,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
     """Tests for `RegionSyslogService`."""
 
     def setUp(self):
-        super(TestRegionSyslogService, self).setUp()
+        super().setUp()
         self.useFixture(MAASRootFixture())
 
     @transactional

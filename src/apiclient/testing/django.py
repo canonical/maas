@@ -23,7 +23,7 @@ class APIClientTestCase(MAASTestCase):
     """
 
     def setUp(self):
-        super(APIClientTestCase, self).setUp()
+        super().setUp()
         # Django 1.8 and 1.11 need to be configured before we can use
         # WSGIRequest and MultiPartParser.
         if not django.conf.settings.configured:
@@ -33,7 +33,7 @@ class APIClientTestCase(MAASTestCase):
         # Reset django settings after each test since configuring Django breaks
         # tests for maascli commands which attempt to really load Django.
         django.conf.settings = django.conf.LazySettings()
-        super(APIClientTestCase, self).tearDown()
+        super().tearDown()
 
     @classmethod
     def parse_headers_and_body_with_django(cls, headers, body):

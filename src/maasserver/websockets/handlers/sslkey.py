@@ -32,9 +32,7 @@ class SSLKeyHandler(TimestampedModelHandler):
 
     def get_object(self, params, permission=None):
         """Only allow getting keys owned by the user."""
-        obj = super(SSLKeyHandler, self).get_object(
-            params, permission=permission
-        )
+        obj = super().get_object(params, permission=permission)
         if obj.user != self.user:
             raise HandlerDoesNotExistError(params[self._meta.pk])
         else:

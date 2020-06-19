@@ -1050,7 +1050,7 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
     """Tests for the metadata user-data API endpoint."""
 
     def setUp(self):
-        super(TestMetadataUserDataStateChanges, self).setUp()
+        super().setUp()
         self.useFixture(SignalsDisabled("power"))
 
     def test_request_does_not_cause_status_change_if_not_deploying(self):
@@ -1115,7 +1115,7 @@ class TestCurtinMetadataUserData(
 
 class TestInstallingAPI(MAASServerTestCase):
     def setUp(self):
-        super(TestInstallingAPI, self).setUp()
+        super().setUp()
         self.useFixture(SignalsDisabled("power"))
 
     def test_other_user_than_node_cannot_signal_installation_result(self):
@@ -2023,7 +2023,7 @@ class TestMAASScripts(MAASServerTestCase):
 
 class TestCommissioningAPI(MAASServerTestCase):
     def setUp(self):
-        super(TestCommissioningAPI, self).setUp()
+        super().setUp()
         self.useFixture(SignalsDisabled("power"))
 
     def test_commissioning_scripts(self):
@@ -3193,7 +3193,7 @@ class TestNewAPI(MAASServerTestCase):
 
 class TestDiskErasingAPI(MAASServerTestCase):
     def setUp(self):
-        super(TestDiskErasingAPI, self).setUp()
+        super().setUp()
         self.useFixture(SignalsDisabled("power"))
 
     def test_signaling_erasing_failure_makes_node_failed_erasing(self):
@@ -3223,7 +3223,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
 
 class TestRescueModeAPI(MAASServerTestCase):
     def setUp(self):
-        super(TestRescueModeAPI, self).setUp()
+        super().setUp()
         self.useFixture(SignalsDisabled("power"))
 
     def test_signaling_rescue_mode_failure_makes_failed_status(self):

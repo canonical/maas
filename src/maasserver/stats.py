@@ -266,7 +266,7 @@ class StatsService(TimerService, object):
     """
 
     def __init__(self, interval=STATS_SERVICE_PERIOD):
-        super(StatsService, self).__init__(
+        super().__init__(
             interval.total_seconds(), self.maybe_make_stats_request
         )
 

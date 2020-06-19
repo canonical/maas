@@ -32,7 +32,7 @@ class NoConnectionsAvailable(Exception):
     """There is no connection available."""
 
     def __init__(self, message="", uuid=None):
-        super(NoConnectionsAvailable, self).__init__(message)
+        super().__init__(message)
         self.uuid = uuid
 
 

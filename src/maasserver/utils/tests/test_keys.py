@@ -33,7 +33,7 @@ from maastesting.matchers import MockCalledOnceWith
 
 class TestKeys(MAASServerTestCase):
     def setUp(self):
-        super(TestKeys, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources_signals.enable)
         bootsources_signals.disable()

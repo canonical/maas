@@ -31,7 +31,7 @@ class ResourcePoolQueriesMixin(MAASQueriesMixin):
             "name": "__name",
             "id": "__id",
         }
-        return super(ResourcePoolQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,

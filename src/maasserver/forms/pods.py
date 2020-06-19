@@ -211,7 +211,7 @@ class PodForm(MAASModelForm):
         self.is_new = instance is None
         self.request = request
         self.user = user
-        super(PodForm, self).__init__(data=data, instance=instance, **kwargs)
+        super().__init__(data=data, instance=instance, **kwargs)
         if data is None:
             data = {}
         type_value = data.get("type", self.initial.get("type"))
@@ -253,7 +253,7 @@ class PodForm(MAASModelForm):
         """Override to dynamically add fields based on the value of `type`
         field."""
         # Process the built-in fields first.
-        super(PodForm, self)._clean_fields()
+        super()._clean_fields()
         # If no errors then we re-process with the fields required by the
         # selected type for the pod.
         if len(self.errors) == 0:
@@ -268,10 +268,10 @@ class PodForm(MAASModelForm):
                 for key, value in self.instance.power_parameters.items():
                     if key not in self.data:
                         self.data[key] = value
-            super(PodForm, self)._clean_fields()
+            super()._clean_fields()
 
     def clean(self):
-        cleaned_data = super(PodForm, self).clean()
+        cleaned_data = super().clean()
         if len(self.drivers) == 0:
             set_form_error(
                 self,
@@ -508,7 +508,7 @@ class ComposeMachineForm(forms.Form):
         self.pod = kwargs.pop("pod", None)
         if self.pod is None:
             raise ValueError("'pod' kwargs is required.")
-        super(ComposeMachineForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Build the fields based on the pod and current pod hints.
         self.fields["cores"] = IntegerField(
@@ -858,7 +858,7 @@ class ComposeMachineForPodsForm(forms.Form):
         self.pods = kwargs.pop("pods", None)
         if self.pods is None:
             raise ValueError("'pods' kwargs is required.")
-        super(ComposeMachineForPodsForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.pod_forms = [
             ComposeMachineForm(request=self.request, data=self.data, pod=pod)
             for pod in self.pods

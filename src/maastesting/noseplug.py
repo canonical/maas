@@ -47,7 +47,7 @@ class Crochet(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(Crochet, self).options(parser, env)
+        super().options(parser, env)
         parser.add_option(
             "--%s-no-setup" % self.name,
             dest=self.option_no_setup,
@@ -61,7 +61,7 @@ class Crochet(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(Crochet, self).configure(options, conf)
+        super().configure(options, conf)
         if self.enabled:
             import crochet
 
@@ -79,7 +79,7 @@ class Crochet(Plugin):
                     if timeout is None:
                         raise AssertionError("A time-out must be specified.")
                     else:
-                        return super(EventualResult, self)._result(timeout)
+                        return super()._result(timeout)
 
             # Patch it back into crochet.
             crochet._eventloop.EventualResult = EventualResult
@@ -197,7 +197,7 @@ class Select(Plugin):
     log = logging.getLogger("nose.plugins.%s" % name)
 
     def __init__(self):
-        super(Select, self).__init__()
+        super().__init__()
         self.dirs = frozenset()
 
     def options(self, parser, env):
@@ -205,7 +205,7 @@ class Select(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(Select, self).options(parser, env)
+        super().options(parser, env)
         parser.add_option(
             "--%s-dir" % self.name,
             "--%s-directory" % self.name,
@@ -226,7 +226,7 @@ class Select(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(Select, self).configure(options, conf)
+        super().configure(options, conf)
         if self.enabled:
             # Process --${name}-dir.
             for path in getattr(options, self.option_dirs):
@@ -305,7 +305,7 @@ class SelectBucket(Plugin):
         if "django_nose" in sys.modules:
             return
 
-        super(SelectBucket, self).options(parser, env)
+        super().options(parser, env)
         parser.add_option(
             "--%s" % self.name,
             dest=self.option_selected_bucket,
@@ -327,7 +327,7 @@ class SelectBucket(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(SelectBucket, self).configure(options, conf)
+        super().configure(options, conf)
         if self.enabled:
             bucket_buckets = getattr(options, self.option_selected_bucket)
             if bucket_buckets is None:
@@ -396,7 +396,7 @@ class SelectiveTestRunner:
     """Wrap a test runner in order to filter the test suite to run."""
 
     def __init__(self, runner, select):
-        super(SelectiveTestRunner, self).__init__()
+        super().__init__()
         self._runner = runner
         self._select = select
 
@@ -427,7 +427,7 @@ class Subunit(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(Subunit, self).options(parser, env)
+        super().options(parser, env)
         parser.add_option(
             "--%s-fd" % self.name,
             type=int,
@@ -446,7 +446,7 @@ class Subunit(Plugin):
 
         :attention: This is part of the Nose plugin contract.
         """
-        super(Subunit, self).configure(options, conf)
+        super().configure(options, conf)
         if self.enabled:
             # Process --${name}-fd.
             fd = getattr(options, self.option_fd)

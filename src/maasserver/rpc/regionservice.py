@@ -807,7 +807,7 @@ class RegionServer(Region):
                 return
 
     def connectionMade(self):
-        super(RegionServer, self).connectionMade()
+        super().connectionMade()
         self.connid = str(uuid.uuid4())
         if self.factory.service.running:
             return self.performHandshake().addErrback(self.handshakeFailed)
@@ -824,7 +824,7 @@ class RegionServer(Region):
             )
         self.factory.service._removeConnectionFor(self.ident, self)
         log.msg("Rack controller '%s' disconnected." % self.ident)
-        super(RegionServer, self).connectionLost(reason)
+        super().connectionLost(reason)
 
 
 def _get_call_latency_metric_labels(client, cmd, *args, **kwargs):
@@ -841,7 +841,7 @@ class RackClient(common.Client):
     cache_calls = [cluster.DescribePowerTypes, cluster.DescribeNOSTypes]
 
     def __init__(self, connection, cache):
-        super(RackClient, self).__init__(connection)
+        super().__init__(connection)
         self.cache = cache
 
     def _getCallCache(self):
@@ -866,7 +866,7 @@ class RackClient(common.Client):
         """
         call_cache = self._getCallCache()
         if cmd not in self.cache_calls:
-            return super(RackClient, self).__call__(cmd, *args, **kwargs)
+            return super().__call__(cmd, *args, **kwargs)
         if cmd in call_cache:
             # Call has already been made over this connection, just return
             # the original result.
@@ -880,7 +880,7 @@ class RackClient(common.Client):
                 call_cache[cmd] = result
                 return result
 
-            d = super(RackClient, self).__call__(cmd, *args, **kwargs)
+            d = super().__call__(cmd, *args, **kwargs)
             d.addCallback(cb_cache)
             return d
 
@@ -907,7 +907,7 @@ class RegionService(service.Service, object):
     starting = None
 
     def __init__(self, ipcWorker):
-        super(RegionService, self).__init__()
+        super().__init__()
         self.ipcWorker = ipcWorker
         self.endpoints = [
             [TCP6ServerEndpoint(reactor, port) for port in range(5250, 5260)]
@@ -1031,7 +1031,7 @@ class RegionService(service.Service, object):
     @asynchronous
     def startService(self):
         """Start listening on an ephemeral port."""
-        super(RegionService, self).startService()
+        super().startService()
         self.starting = defer.DeferredList(
             (
                 self._bindFirst(endpoint_options, self.factory)
@@ -1076,7 +1076,7 @@ class RegionService(service.Service, object):
                     yield conn.transport.loseConnection()
                 except Exception:
                     log.err(None, "Failure when closing RPC connection.")
-        yield super(RegionService, self).stopService()
+        yield super().stopService()
 
     @asynchronous(timeout=FOREVER)
     def getPort(self):

@@ -27,7 +27,7 @@ class RegionEventLoopFixture(Fixture):
     """
 
     def __init__(self, *services):
-        super(RegionEventLoopFixture, self).__init__()
+        super().__init__()
         self.services = services
 
     def checkEventLoopClean(self):
@@ -52,7 +52,7 @@ class RegionEventLoopFixture(Fixture):
         eventloop.loop.services._set_globals = self.original_set_globals
 
     def setUp(self):
-        super(RegionEventLoopFixture, self).setUp()
+        super().setUp()
         # Patch start_up in the eventloop.
         self.original_prepare = eventloop.loop.prepare
         self.original_set_globals = eventloop.loop.services._set_globals
@@ -108,7 +108,7 @@ class RunningEventLoopFixture(Fixture):
         eventloop.loop.services._set_globals = self.original_set_globals
 
     def setUp(self):
-        super(RunningEventLoopFixture, self).setUp()
+        super().setUp()
         # Patch start_up in the eventloop.
         self.original_prepare = eventloop.loop.prepare
         self.original_set_globals = eventloop.loop.services._set_globals

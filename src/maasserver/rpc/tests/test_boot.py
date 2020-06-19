@@ -82,7 +82,7 @@ class TestKparamsMerge(MAASServerTestCase):
 
 class TestGetConfig(MAASServerTestCase):
     def setUp(self):
-        super(TestGetConfig, self).setUp()
+        super().setUp()
         self.useFixture(RegionConfigurationFixture())
 
     def tearDown(self):

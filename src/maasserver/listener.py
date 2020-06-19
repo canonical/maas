@@ -97,13 +97,13 @@ class PostgresListenerService(Service, object):
 
     def startService(self):
         """Start the listener."""
-        super(PostgresListenerService, self).startService()
+        super().startService()
         self.autoReconnect = True
         return self.tryConnection()
 
     def stopService(self):
         """Stop the listener."""
-        super(PostgresListenerService, self).stopService()
+        super().stopService()
         self.autoReconnect = False
         return self.loseConnection()
 

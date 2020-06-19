@@ -396,7 +396,7 @@ class TestMakeSettingField(MAASTestCase):
 
 class TestRegistries(MAASTestCase):
     def setUp(self):
-        super(TestRegistries, self).setUp()
+        super().setUp()
         # Ensure the global registry is empty for each test run.
         self.useFixture(RegistryFixture())
 

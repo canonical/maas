@@ -40,9 +40,7 @@ class TFTPOffloadService(StreamServerEndpointService):
         :param endpoint: A Twisted endpoint.
         :param backend: An instance of `TFTPBackend`.
         """
-        super(TFTPOffloadService, self).__init__(
-            endpoint, TFTPOffloadProtocolFactory(backend)
-        )
+        super().__init__(endpoint, TFTPOffloadProtocolFactory(backend))
 
 
 @implementer(interfaces.IProtocolFactory)
@@ -56,7 +54,7 @@ class TFTPOffloadProtocolFactory:
     """
 
     def __init__(self, backend):
-        super(TFTPOffloadProtocolFactory, self).__init__()
+        super().__init__()
         self.backend = backend
 
     def buildProtocol(self, addr):
@@ -120,7 +118,7 @@ class TFTPOffloadProtocol(protocol.Protocol):
         """
         :param backend: An instance of `TFTPBackend`.
         """
-        super(TFTPOffloadProtocol, self).__init__()
+        super().__init__()
         self.backend = backend
         self.store = store
 

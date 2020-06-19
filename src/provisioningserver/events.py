@@ -429,7 +429,7 @@ class NodeEventHub:
     """
 
     def __init__(self):
-        super(NodeEventHub, self).__init__()
+        super().__init__()
         self._types_registering = dict()
         self._types_registered = set()
 

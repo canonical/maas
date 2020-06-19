@@ -133,9 +133,7 @@ def request_headers(request):
 
 class MAASDjangoTemplateResponse(SimpleTemplateResponse):
     def __init__(self, response=None):
-        super(MAASDjangoTemplateResponse, self).__init__(
-            "%d.html" % self.status_code
-        )
+        super().__init__("%d.html" % self.status_code)
 
         # If we are passed an original response object 'response',
         # transfer over the content from the original response
@@ -167,7 +165,7 @@ class WebApplicationHandler(WSGIHandler):
     """
 
     def __init__(self, attempts=10, timeout=90.0):
-        super(WebApplicationHandler, self).__init__()
+        super().__init__()
         assert attempts >= 1, "The minimum attempts is 1, not %d" % attempts
         self.__retry_attempts = attempts
         self.__retry_timeout = timeout
@@ -284,7 +282,7 @@ class WebApplicationHandler(WSGIHandler):
         with this savepoint will be discarded.
 
         """
-        view_atomic = super(WebApplicationHandler, self).make_view_atomic(view)
+        view_atomic = super().make_view_atomic(view)
 
         def view_atomic_with_post_commit_savepoint(*args, **kwargs):
             with post_commit_hooks.savepoint():
@@ -300,7 +298,7 @@ class WebApplicationHandler(WSGIHandler):
         will *not* run within the same transaction, or any transaction at all
         by default.
         """
-        django_get_response = super(WebApplicationHandler, self).get_response
+        django_get_response = super().get_response
 
         def get_response(request):
             # Up-call to Django's get_response() in a transaction. This

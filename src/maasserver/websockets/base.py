@@ -122,9 +122,7 @@ class HandlerMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
         # Construct the class with the _meta field.
-        new_class = super(HandlerMetaclass, cls).__new__(
-            cls, name, bases, attrs
-        )
+        new_class = super().__new__(cls, name, bases, attrs)
         new_class._meta = HandlerOptions(getattr(new_class, "Meta", None))
 
         # Setup the handlers name based on the naming of the class.

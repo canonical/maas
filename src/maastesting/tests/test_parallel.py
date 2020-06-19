@@ -42,7 +42,7 @@ class TestSelectorArguments(MAASTestCase):
     """Tests for arguments that select scripts."""
 
     def setUp(self):
-        super(TestSelectorArguments, self).setUp()
+        super().setUp()
         self.stdio = self.useFixture(CaptureStandardIO())
         self.patch_autospec(parallel, "test")
         parallel.test.return_value = True
@@ -132,7 +132,7 @@ class TestSubprocessArguments(MAASTestCase):
     """Tests for arguments that adjust subprocess behaviour."""
 
     def setUp(self):
-        super(TestSubprocessArguments, self).setUp()
+        super().setUp()
         self.stdio = self.useFixture(CaptureStandardIO())
         self.patch_autospec(parallel, "test")
         parallel.test.return_value = True
@@ -209,7 +209,7 @@ class TestEmissionArguments(MAASTestCase):
     """Tests for arguments that adjust result emission behaviour."""
 
     def setUp(self):
-        super(TestEmissionArguments, self).setUp()
+        super().setUp()
         self.stdio = self.useFixture(CaptureStandardIO())
         self.patch_autospec(parallel, "test")
         parallel.test.return_value = True

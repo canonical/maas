@@ -99,7 +99,7 @@ class TestTryMatchXPathScenarios(MAASTestCase):
     )
 
     def setUp(self):
-        super(TestTryMatchXPathScenarios, self).setUp()
+        super().setUp()
         self.logger = self.useFixture(FakeLogger())
 
     def test(self):

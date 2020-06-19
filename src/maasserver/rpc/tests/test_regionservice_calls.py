@@ -239,7 +239,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
 
 class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestRegionProtocol_UpdateLease, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("database-tasks"))
 
     def test_update_lease_is_registered(self):
@@ -714,7 +714,7 @@ class TestRegionProtocol_RegisterEventType(MAASTransactionServerTestCase):
 
 class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestRegionProtocol_SendEvent, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("database-tasks"))
 
     def test_send_event_is_registered(self):
@@ -881,7 +881,7 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
 
 class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestRegionProtocol_SendEventMACAddress, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("database-tasks"))
 
     def test_send_event_mac_address_is_registered(self):
@@ -1050,7 +1050,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
 
 class TestRegionProtocol_UpdateServices(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestRegionProtocol_UpdateServices, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("database-tasks"))
 
     def test_update_services_is_registered(self):

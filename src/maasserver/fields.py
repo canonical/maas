@@ -56,7 +56,7 @@ class Field(_BrokenField):
 
     def __init__(self, *args, validators=None, **kwargs):
         kwargs["validators"] = [] if validators is None else validators
-        super(Field, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 MAC_RE = re.compile(
@@ -105,7 +105,7 @@ class StrippedCharField(forms.CharField):
 
     def clean(self, value):
         value = self.to_python(value).strip()
-        return super(StrippedCharField, self).clean(value)
+        return super().clean(value)
 
 
 class UnstrippedCharField(forms.CharField):
@@ -119,7 +119,7 @@ class UnstrippedCharField(forms.CharField):
     def __init__(self, *args, **kwargs):
         # Instead of relying on a version check, we check for CharField
         # constructor having a strip kwarg instead.
-        parent_init = super(UnstrippedCharField, self).__init__
+        parent_init = super().__init__
         if "strip" in parent_init.__code__.co_varnames:
             parent_init(*args, strip=False, **kwargs)
         else:
@@ -135,7 +135,7 @@ class VerboseRegexField(forms.CharField):
         :param regex: Either a string or a compiled regular expression object.
         :param message: Error message to use when the validation fails.
         """
-        super(VerboseRegexField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.validators.append(
             VerboseRegexValidator(regex=regex, message=message)
         )
@@ -145,9 +145,7 @@ class MACAddressFormField(VerboseRegexField):
     """Form field type: MAC address."""
 
     def __init__(self, *args, **kwargs):
-        super(MACAddressFormField, self).__init__(
-            regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs
-        )
+        super().__init__(regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs)
 
 
 class MACAddressField(Field):
@@ -167,7 +165,7 @@ class MACAddressField(Field):
         return MAC(value)
 
     def get_prep_value(self, value):
-        value = super(MACAddressField, self).get_prep_value(value)
+        value = super().get_prep_value(value)
         # Convert empty string to None.
         if not value:
             return None
@@ -188,9 +186,9 @@ class MAC:
         if value is None:
             return None
         elif isinstance(value, (bytes, str)):
-            return None if len(value) == 0 else super(MAC, cls).__new__(cls)
+            return None if len(value) == 0 else super().__new__(cls)
         else:
-            return super(MAC, cls).__new__(cls)
+            return super().__new__(cls)
 
     def __init__(self, value):
         """Wrap a MAC address, or None, into a `MAC`.
@@ -362,7 +360,7 @@ class EditableBinaryField(BinaryField):
     """
 
     def __init__(self, *args, **kwargs):
-        super(EditableBinaryField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.editable = True
 
     def deconstruct(self):
@@ -493,7 +491,7 @@ class LargeObjectField(IntegerField):
 
     def __init__(self, *args, **kwargs):
         self.block_size = kwargs.pop("block_size", 1 << 16)
-        super(LargeObjectField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def validators(self):
@@ -508,7 +506,7 @@ class LargeObjectField(IntegerField):
 
     def contribute_to_class(self, cls, name):
         """Set the descriptor for the large object."""
-        super(LargeObjectField, self).contribute_to_class(cls, name)
+        super().contribute_to_class(cls, name)
         setattr(cls, self.name, LargeObjectDescriptor(self))
 
     def get_db_prep_value(self, value, connection=None, prepared=False):
@@ -574,7 +572,7 @@ class CIDRField(Field):
     def formfield(self, **kwargs):
         defaults = {"form_class": forms.CharField}
         defaults.update(kwargs)
-        return super(CIDRField, self).formfield(**defaults)
+        return super().formfield(**defaults)
 
 
 class IPv4CIDRField(CIDRField):
@@ -750,7 +748,7 @@ class CaseInsensitiveChoiceField(forms.ChoiceField):
     def to_python(self, value):
         if value not in self.empty_values:
             value = value.lower()
-        return super(CaseInsensitiveChoiceField, self).to_python(value)
+        return super().to_python(value)
 
 
 class SpecifierOrModelChoiceField(forms.ModelChoiceField):
@@ -760,7 +758,7 @@ class SpecifierOrModelChoiceField(forms.ModelChoiceField):
 
     def to_python(self, value):
         try:
-            return super(SpecifierOrModelChoiceField, self).to_python(value)
+            return super().to_python(value)
         except ValidationError as e:
             if isinstance(value, str):
                 object_id = self.queryset.get_object_id(value)
@@ -794,10 +792,10 @@ class DomainNameField(CharField):
         validators = kwargs.pop("validators", [])
         validators.append(validate_domain_name)
         kwargs["validators"] = validators
-        super(DomainNameField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def deconstruct(self):
-        name, path, args, kwargs = super(DomainNameField, self).deconstruct()
+        name, path, args, kwargs = super().deconstruct()
         del kwargs["validators"]
         return name, path, args, kwargs
 
@@ -808,7 +806,7 @@ class DomainNameField(CharField):
     # https://docs.djangoproject.com/en/1.6/ref/forms/validation/
     # https://code.djangoproject.com/ticket/6362
     def to_python(self, value):
-        value = super(DomainNameField, self).to_python(value)
+        value = super().to_python(value)
         if value is None:
             return None
         value = value.strip().rstrip(".")

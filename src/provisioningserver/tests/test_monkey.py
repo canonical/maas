@@ -24,7 +24,7 @@ class TestAugmentDeferToThreadPool(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestAugmentDeferToThreadPool, self).setUp()
+        super().setUp()
         augment_twisted_deferToThreadPool()
 
     def test_functions_returning_Deferreds_from_threads_crash(self):

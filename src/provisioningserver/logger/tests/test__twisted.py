@@ -440,7 +440,7 @@ class TestEventLogger(MAASTestCase):
     )
 
     def setUp(self):
-        super(TestEventLogger, self).setUp()
+        super().setUp()
         self.output = io.StringIO()
         self.log = EventLogger(self.output)
         self.get_logs = lambda: find_log_lines(self.output.getvalue())

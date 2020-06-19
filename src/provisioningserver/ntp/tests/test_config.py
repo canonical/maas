@@ -73,7 +73,7 @@ class TestConfigure(MAASTestCase):
     """Tests for `p.ntp.config.configure`."""
 
     def setUp(self):
-        super(TestConfigure, self).setUp()
+        super().setUp()
         self.useFixture(MAASRootFixture())
 
     def test_configure(self):

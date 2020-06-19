@@ -221,7 +221,7 @@ JUJU_ACQUIRE_FORM_FIELDS_MAPPING = {
 # XXX JeroenVermeulen 2014-02-06: Can we document this please?
 class RenamableFieldsForm(forms.Form):
     def __init__(self, *args, **kwargs):
-        super(RenamableFieldsForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.field_mapping = {name: name for name in self.fields}
 
     def get_field_name(self, name):
@@ -599,7 +599,7 @@ def nodes_by_interface(
 
 class LabeledConstraintMapField(Field):
     def __init__(self, *args, **kwargs):
-        super(LabeledConstraintMapField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.validators.insert(
             0,
             lambda constraint_map: constraint_map.validate(

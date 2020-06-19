@@ -236,7 +236,7 @@ class SettingConfigTest(MAASServerTestCase):
     scenarios = tuple((name, {"name": name}) for name in get_default_config())
 
     def setUp(self):
-        super(SettingConfigTest, self).setUp()
+        super().setUp()
         # Some of these setting we have to be careful about.
         if self.name in {"enable_http_proxy", "http_proxy"}:
             manager = signals.bootsources.signals

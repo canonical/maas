@@ -55,7 +55,7 @@ def make_sources():
 
 class TestListBootImages(MAASTestCase):
     def setUp(self):
-        super(TestListBootImages, self).setUp()
+        super().setUp()
         self.tftp_root = self.make_dir()
         self.useFixture(ClusterConfigurationFixture(tftp_root=self.tftp_root))
 

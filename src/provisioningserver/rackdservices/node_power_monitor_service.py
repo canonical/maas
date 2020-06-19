@@ -33,9 +33,7 @@ class NodePowerMonitorService(TimerService, object):
 
     def __init__(self, clock=None):
         # Call self.query_nodes() every self.check_interval.
-        super(NodePowerMonitorService, self).__init__(
-            self.check_interval, self.try_query_nodes
-        )
+        super().__init__(self.check_interval, self.try_query_nodes)
         self.clock = clock
 
     def try_query_nodes(self):

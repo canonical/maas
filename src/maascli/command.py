@@ -21,7 +21,7 @@ class Command(metaclass=ABCMeta):
     hidden = False
 
     def __init__(self, parser):
-        super(Command, self).__init__()
+        super().__init__()
         self.parser = parser
 
     @abstractmethod

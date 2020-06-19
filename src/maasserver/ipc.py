@@ -146,7 +146,7 @@ class IPCMasterService(service.Service, object):
     connections = None
 
     def __init__(self, reactor, workers=None, socket_path=None):
-        super(IPCMasterService, self).__init__()
+        super().__init__()
         self.reactor = reactor
         self.workers = workers
         self.socket_path = socket_path
@@ -164,7 +164,7 @@ class IPCMasterService(service.Service, object):
     @asynchronous
     def startService(self):
         """Start listening on UNIX socket and create the region controller."""
-        super(IPCMasterService, self).startService()
+        super().startService()
         self.starting = self.endpoint.listen(self.factory)
 
         def save_port(port):
@@ -221,7 +221,7 @@ class IPCMasterService(service.Service, object):
 
         yield deferToDatabase(delete_all_processes)
         yield stop_update_loop()
-        yield super(IPCMasterService, self).stopService()
+        yield super().stopService()
 
     @asynchronous
     def registerWorker(self, pid, conn):
@@ -612,7 +612,7 @@ class IPCWorker(RPCProtocol):
     """The IPC client side of the protocol."""
 
     def connectionMade(self):
-        super(IPCWorker, self).connectionMade()
+        super().connectionMade()
 
         # Identify with the master process.
         d = self.callRemote(WorkerIdentify, pid=os.getpid())
@@ -635,7 +635,7 @@ class IPCWorkerService(service.Service, object):
     """
 
     def __init__(self, reactor, socket_path=None):
-        super(IPCWorkerService, self).__init__()
+        super().__init__()
         self.reactor = reactor
         self.socket_path = socket_path
         if self.socket_path is None:
@@ -648,7 +648,7 @@ class IPCWorkerService(service.Service, object):
     @asynchronous
     def startService(self):
         """Connect to UNIX socket."""
-        super(IPCWorkerService, self).startService()
+        super().startService()
         protocol = IPCWorker()
         protocol.service = self
         self.starting = connectProtocol(self.endpoint, protocol)
@@ -681,7 +681,7 @@ class IPCWorkerService(service.Service, object):
             self._protocol, protocol = None, self._protocol
             if protocol.transport:
                 protocol.transport.loseConnection()
-        return super(IPCWorkerService, self).stopService()
+        return super().stopService()
 
     @asynchronous
     def rpcPublish(self, port):

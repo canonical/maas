@@ -55,7 +55,7 @@ class LogSQL(fixtures.Fixture):
     """
 
     def __init__(self, include_stacktrace=False):
-        super(LogSQL, self).__init__()
+        super().__init__()
         self.include_stacktrace = include_stacktrace
 
     def _setUp(self):

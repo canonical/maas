@@ -19,7 +19,7 @@ class MAASClusterFixture(ClusterFixture):
         self.connection = connections[
             DEFAULT_DB_ALIAS if database is None else database
         ]
-        super(MAASClusterFixture, self).__init__(
+        super().__init__(
             datadir=self.connection.settings_dict["HOST"], preserve=True
         )
 
@@ -28,5 +28,5 @@ class MAASClusterFixture(ClusterFixture):
         return self.connection.settings_dict["NAME"]
 
     def setUp(self):
-        super(MAASClusterFixture, self).setUp()
+        super().setUp()
         self.createdb(self.dbname)

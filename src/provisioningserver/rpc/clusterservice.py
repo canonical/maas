@@ -1070,7 +1070,7 @@ class ClusterClient(Cluster):
     service = None
 
     def __init__(self, address, eventloop, service):
-        super(ClusterClient, self).__init__()
+        super().__init__()
         self.address = address
         self.eventloop = eventloop
         self.service = service
@@ -1207,7 +1207,7 @@ class ClusterClient(Cluster):
             self.ready.fail(failure)
 
     def connectionMade(self):
-        super(ClusterClient, self).connectionMade()
+        super().connectionMade()
 
         if not self.service.running:
             log.msg(
@@ -1234,7 +1234,7 @@ class ClusterClient(Cluster):
 
     def connectionLost(self, reason):
         self.service.remove_connection(self.eventloop, self)
-        super(ClusterClient, self).connectionLost(reason)
+        super().connectionLost(reason)
 
     @inlineCallbacks
     def secureConnection(self):
@@ -1280,9 +1280,7 @@ class ClusterClientService(TimerService, object):
     time_started = None
 
     def __init__(self, reactor):
-        super(ClusterClientService, self).__init__(
-            self._calculate_interval(None, None), self._tryUpdate
-        )
+        super().__init__(self._calculate_interval(None, None), self._tryUpdate)
         self.connections = {}
         self.try_connections = {}
         self._previous_work = (None, None)
@@ -1306,7 +1304,7 @@ class ClusterClientService(TimerService, object):
 
     def startService(self):
         self.time_started = self.clock.seconds()
-        super(ClusterClientService, self).startService()
+        super().startService()
 
     def getClient(self):
         """Returns a :class:`common.Client` connected to a region.
@@ -1905,7 +1903,7 @@ class ClusterClientCheckerService(TimerService, object):
     """
 
     def __init__(self, client_service, reactor):
-        super(ClusterClientCheckerService, self).__init__(30, self.tryLoop)
+        super().__init__(30, self.tryLoop)
         self.client_service = client_service
         self.clock = reactor
 

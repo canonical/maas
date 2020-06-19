@@ -30,7 +30,7 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 
 class TestProcessResponse(MAASTestCase):
     def setUp(self):
-        super(TestProcessResponse, self).setUp()
+        super().setUp()
         self.useFixture(FakeLogger())
 
     def test_process_OK_response_with_JSON_content(self):
@@ -84,10 +84,10 @@ class EqualsXML(Equals):
         return etree.tostring(xml, pretty_print=True)
 
     def __init__(self, tree):
-        super(EqualsXML, self).__init__(self.normalise(tree))
+        super().__init__(self.normalise(tree))
 
     def match(self, other):
-        return super(EqualsXML, self).match(self.normalise(other))
+        return super().match(self.normalise(other))
 
 
 class TestMergeDetailsCleanly(MAASTestCase):
@@ -95,7 +95,7 @@ class TestMergeDetailsCleanly(MAASTestCase):
     do_merge_details = staticmethod(tags.merge_details_cleanly)
 
     def setUp(self):
-        super(TestMergeDetailsCleanly, self).setUp()
+        super().setUp()
         self.logger = self.useFixture(FakeLogger("maas"))
 
     def test_merge_with_no_details(self):
@@ -497,7 +497,7 @@ class TestGenNodeDetails(MAASTestCase):
 
 class TestTagUpdating(MAASTestCase):
     def setUp(self):
-        super(TestTagUpdating, self).setUp()
+        super().setUp()
         self.useFixture(FakeLogger())
 
     def fake_client(self):

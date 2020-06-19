@@ -156,7 +156,7 @@ class TestGetBootImages(MAASServerTestCase):
     """Tests for `get_boot_images`."""
 
     def setUp(self):
-        super(TestGetBootImages, self).setUp()
+        super().setUp()
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_calls_ListBootImagesV2_before_ListBootImages(self):
@@ -189,7 +189,7 @@ class TestGetBootImagesTxn(MAASTransactionServerTestCase):
     """Transactional tests for `get_boot_images`."""
 
     def setUp(self):
-        super(TestGetBootImagesTxn, self).setUp()
+        super().setUp()
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_returns_boot_images(self):
@@ -227,7 +227,7 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
     )
 
     def setUp(self):
-        super(TestGetAvailableBootImages, self).setUp()
+        super().setUp()
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_returns_boot_images_for_one_cluster(self):
@@ -337,7 +337,7 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
     """Tests for `get_boot_images_for`."""
 
     def setUp(self):
-        super(TestGetBootImagesFor, self).setUp()
+        super().setUp()
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def make_boot_images(self):
@@ -564,7 +564,7 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
     """Live tests for `RackControllersImporter`."""
 
     def setUp(self):
-        super(TestRackControllersImporterInAction, self).setUp()
+        super().setUp()
         # Limit the region's event loop to only the "rpc" service.
         self.useFixture(RegionEventLoopFixture("rpc"))
         # Now start the region's event loop.

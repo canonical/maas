@@ -612,7 +612,7 @@ class TestConfigureDHCP(MAASTestCase):
     )
 
     def setUp(self):
-        super(TestConfigureDHCP, self).setUp()
+        super().setUp()
         # The service monitor is an application global and so are the services
         # it monitors, and tests must leave them as they found them.
         self.addCleanup(dhcp.service_monitor.getServiceByName("dhcpd").off)
@@ -1338,7 +1338,7 @@ class TestValidateDHCP(MAASTestCase):
     )
 
     def setUp(self):
-        super(TestValidateDHCP, self).setUp()
+        super().setUp()
         # Temporarily prevent hostname resolution when generating DHCP
         # configuration. This is tested elsewhere.
         self.useFixture(DHCPConfigNameResolutionDisabled())

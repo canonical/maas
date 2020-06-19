@@ -57,7 +57,7 @@ class InterfaceLinkForm(forms.Form):
         ]
 
         self.instance = kwargs.pop("instance")
-        super(InterfaceLinkForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Create the mode field and setup the queryset on the subnet.
         self.fields["mode"] = CaseInsensitiveChoiceField(
@@ -87,7 +87,7 @@ class InterfaceLinkForm(forms.Form):
                         "bond(%s)." % (self.instance.name, interface_set.name)
                     ),
                 )
-        cleaned_data = super(InterfaceLinkForm, self).clean()
+        cleaned_data = super().clean()
         mode = cleaned_data.get("mode", None)
         if mode is None:
             return cleaned_data
@@ -240,7 +240,7 @@ class InterfaceUnlinkForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.instance = kwargs.pop("instance")
-        super(InterfaceUnlinkForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.set_up_id_field()
 
     def set_up_id_field(self):
@@ -266,7 +266,7 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.instance = kwargs.pop("instance")
-        super(InterfaceSetDefaultGatwayForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.links = self.get_valid_links()
         self.set_up_link_id_field()
 
@@ -327,7 +327,7 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
 
     def clean(self):
         self._clean_has_gateways()
-        cleaned_data = super(InterfaceSetDefaultGatwayForm, self).clean()
+        cleaned_data = super().clean()
         link_id = cleaned_data.get("link_id", None)
         if not link_id:
             self._clean_ipv4_and_ipv6_gateways()

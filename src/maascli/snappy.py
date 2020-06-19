@@ -848,7 +848,7 @@ class cmd_init(SnappyCommand):
     """
 
     def __init__(self, parser):
-        super(cmd_init, self).__init__(parser)
+        super().__init__(parser)
         monkey_patch_for_all_mode_bw_compatability(parser)
         subparsers = parser.add_subparsers(
             metavar=None, title="run modes", dest="run_mode"
@@ -1116,7 +1116,7 @@ class cmd_config(SnappyCommand):
     }
 
     def __init__(self, parser):
-        super(cmd_config, self).__init__(parser)
+        super().__init__(parser)
         parser.add_argument(
             "--show",
             action="store_true",
@@ -1298,7 +1298,7 @@ class cmd_migrate(SnappyCommand):
     """Perform migrations on connected database."""
 
     def __init__(self, parser):
-        super(cmd_migrate, self).__init__(parser)
+        super().__init__(parser)
         # '--configure' is hidden and only called from snap hooks to update the
         # database when running in "all" mode
         parser.add_argument(

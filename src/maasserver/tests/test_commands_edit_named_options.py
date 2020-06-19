@@ -86,7 +86,7 @@ OPTIONS_FILE_WITH_EXTRA_AND_DUP_FORWARDER = textwrap.dedent(
 
 class TestEditNamedOptionsCommand(MAASServerTestCase):
     def setUp(self):
-        super(TestEditNamedOptionsCommand, self).setUp()
+        super().setUp()
         self.stdout = StringIO()
 
     def assertFailsWithMessage(self, config_path, message):

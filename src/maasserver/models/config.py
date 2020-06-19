@@ -147,7 +147,7 @@ class ConfigManager(Manager):
     """
 
     def __init__(self):
-        super(ConfigManager, self).__init__()
+        super().__init__()
         self._config_changed_connections = defaultdict(set)
 
     def get_config(self, name, default=None):

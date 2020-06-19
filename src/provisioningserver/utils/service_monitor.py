@@ -174,7 +174,7 @@ class ToggleableService(Service):
     """Service can be toggled on or off."""
 
     def __init__(self):
-        super(ToggleableService, self).__init__()
+        super().__init__()
         self.expected_state = SERVICE_STATE.OFF
         self.expected_state_reason = None
 

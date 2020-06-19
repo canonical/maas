@@ -144,7 +144,7 @@ class MAASCrochetDirtyThreadsError(Exception):
     """
 
     def __init__(self, threadpools, stacks):
-        super(MAASCrochetDirtyThreadsError, self).__init__()
+        super().__init__()
         self.threadpools = threadpools
         self.stacks = stacks
 
@@ -172,7 +172,7 @@ class MAASCrochetDirtyReactorError(Exception):
     """
 
     def __init__(self, delayedCalls, selectables):
-        super(MAASCrochetDirtyReactorError, self).__init__()
+        super().__init__()
         self.delayedCalls = delayedCalls
         self.selectables = selectables
 
@@ -209,7 +209,7 @@ class MAASCrochetRunTest(MAASRunTest):
         that does more advanced things with the reactor. This just simply
         checks if its clean.
         """
-        super(MAASCrochetRunTest, self)._run_core()
+        super()._run_core()
         try:
             self._clean()
         except Exception:

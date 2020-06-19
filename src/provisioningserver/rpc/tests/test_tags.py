@@ -16,7 +16,7 @@ from provisioningserver.rpc import tags
 
 class TestEvaluateTag(MAASTestCase):
     def setUp(self):
-        super(TestEvaluateTag, self).setUp()
+        super().setUp()
         self.mock_url = factory.make_simple_http_url()
 
     def test_calls_process_node_tags(self):

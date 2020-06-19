@@ -136,7 +136,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     client = None
 
     def __init__(self, *args, **kwargs):
-        super(APITestCaseBase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Create scenarios for userfactories and clientfactories.
         scenarios_users = tuple(
             ("user=%s" % name, {"userfactory": self.userfactories[name]})
@@ -172,7 +172,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
             raise AssertionError(
                 "Do not set client; set clientfactory instead."
             )
-        super(APITestCaseBase, self).setUp()
+        super().setUp()
         self.user = self.userfactory()
         self.client = self.clientfactory()
         self.client.login(user=self.user)

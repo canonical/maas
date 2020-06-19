@@ -248,7 +248,7 @@ class Filesystem(CleanSave, TimestampedModel):
         return self.fstype in self.TYPES_REQUIRING_STORAGE
 
     def clean(self, *args, **kwargs):
-        super(Filesystem, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         parents = self.partition, self.block_device, self.node
 
         # You have to specify either a partition, block device, or node.
@@ -337,4 +337,4 @@ class Filesystem(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid4()
-        super(Filesystem, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)

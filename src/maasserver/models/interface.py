@@ -107,7 +107,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             "tag": self._add_tag_query,
             "link_speed": "__link_speed__gte",
         }
-        return super(InterfaceQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
@@ -202,7 +202,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         :returns: tuple (set, dict)
 
         """
-        return super(InterfaceQueriesMixin, self).get_matching_object_map(
+        return super().get_matching_object_map(
             specifiers, "node__id", include_filter=include_filter
         )
 
@@ -428,9 +428,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 if matches(rel.child):
                     return rel.child, False
 
-        interface, created = super(InterfaceManager, self).get_or_create(
-            *args, **kwargs
-        )
+        interface, created = super().get_or_create(*args, **kwargs)
 
         if created:
             for parent in parents:
@@ -627,7 +625,7 @@ class Interface(CleanSave, TimestampedModel):
         type = kwargs.get("type", self.get_type())
         kwargs["type"] = type
         # Derive the concrete class from the interface's type.
-        super(Interface, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         klass = INTERFACE_TYPE_MAPPING.get(self.type)
         if klass:
             self.__class__ = klass
@@ -1462,7 +1460,7 @@ class Interface(CleanSave, TimestampedModel):
         return all_related
 
     def clean(self):
-        super(Interface, self).clean()
+        super().clean()
 
         # Verify that the MAC address is legal if it is not empty.
         if self.mac_address:
@@ -1483,7 +1481,7 @@ class Interface(CleanSave, TimestampedModel):
         # lease then.
         if not remove_ip_address:
             self._skip_ip_address_removal = True
-        super(Interface, self).delete()
+        super().delete()
 
     def add_tag(self, tag):
         """Add tag to interface."""
@@ -1658,7 +1656,7 @@ class PhysicalInterface(Interface):
         return INTERFACE_TYPE.PHYSICAL
 
     def clean(self):
-        super(PhysicalInterface, self).clean()
+        super().clean()
         # Node and MAC address is always required for a physical interface.
         validation_errors = {}
         if self.node is None:
@@ -1845,7 +1843,7 @@ class BondInterface(ChildInterface):
         return INTERFACE_TYPE.BOND
 
     def clean(self):
-        super(BondInterface, self).clean()
+        super().clean()
         # Validate that the MAC address is not None.
         if not self.mac_address:
             raise ValidationError(
@@ -1867,7 +1865,7 @@ class BondInterface(ChildInterface):
         self.node = self.get_node()
         # Set the enabled status based on its parents.
         self.enabled = self.is_enabled()
-        super(BondInterface, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
 def build_vlan_interface_name(parent, vlan):
@@ -1933,7 +1931,7 @@ class VLANInterface(ChildInterface):
         return "vlan%s" % vid
 
     def clean(self):
-        super(VLANInterface, self).clean()
+        super().clean()
         if self.id is not None:
             # Use the precache here instead of the count() method.
             parents = self.parents.all()
@@ -2002,7 +2000,7 @@ class VLANInterface(ChildInterface):
             new_name = self.get_name()
             if self.name != new_name:
                 self.name = new_name
-        return super(VLANInterface, self).save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
 
 class UnknownInterface(Interface):
@@ -2019,7 +2017,7 @@ class UnknownInterface(Interface):
         return None
 
     def clean(self):
-        super(UnknownInterface, self).clean()
+        super().clean()
         if self.node is not None:
             raise ValidationError({"node": ["This field must be blank."]})
 

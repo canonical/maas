@@ -23,7 +23,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
     )
 
     def setUp(self):
-        super(TestUpdateMaasClusterConf, self).setUp()
+        super().setUp()
         self.mock_calls = 0
         self.last_args = None
         self.last_kwargs = None

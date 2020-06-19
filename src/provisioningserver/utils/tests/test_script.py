@@ -26,7 +26,7 @@ class TestActionScript(MAASTestCase):
     factory = ActionScript
 
     def setUp(self):
-        super(TestActionScript, self).setUp()
+        super().setUp()
         # ActionScript.setup() is not safe to run in the test suite.
         self.patch(ActionScript, "setup", lambda self: None)
         # ArgumentParser sometimes likes to print to stdout/err.

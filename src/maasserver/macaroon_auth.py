@@ -301,7 +301,7 @@ class CandidClient(MacaroonClient):
         if auth_info is None:
             auth_info = get_auth_info()
         url = auth_info.agents[0].url
-        super(CandidClient, self).__init__(url, auth_info)
+        super().__init__(url, auth_info)
 
     def get_user_details(self, username: str) -> UserDetails:
         """Return details about a user."""

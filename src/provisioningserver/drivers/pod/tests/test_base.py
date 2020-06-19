@@ -884,7 +884,7 @@ class FakePodDriverBase(PodDriverBase):
         self.name = name
         self.description = description
         self.settings = settings
-        super(FakePodDriverBase, self).__init__()
+        super().__init__()
 
     def discover(self, context, pod_id=None):
         raise NotImplementedError

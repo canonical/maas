@@ -102,6 +102,4 @@ class NonceCleanupService(TimerService, object):
 
     def __init__(self, interval=(24 * 60 * 60)):
         cleanup = synchronous(transactional(cleanup_old_nonces))
-        super(NonceCleanupService, self).__init__(
-            interval, deferToDatabase, cleanup
-        )
+        super().__init__(interval, deferToDatabase, cleanup)

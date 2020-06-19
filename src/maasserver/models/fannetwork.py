@@ -160,6 +160,6 @@ class FanNetwork(CleanSave, TimestampedModel):
             )
 
     def clean(self, *args, **kwargs):
-        super(FanNetwork, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         self.clean_overlay()
         self.clean_host_reserve()

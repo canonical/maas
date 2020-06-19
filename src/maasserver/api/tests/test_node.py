@@ -69,7 +69,7 @@ class NodesAPILoggedInTest(APITestCase.ForUserAndAdmin):
     """A logged-in user can access the API."""
 
     def setUp(self):
-        super(NodesAPILoggedInTest, self).setUp()
+        super().setUp()
         self.patch(node_module, "wait_for_power_command")
 
     def test_nodes_GET_logged_in(self):

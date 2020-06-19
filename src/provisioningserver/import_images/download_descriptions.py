@@ -126,7 +126,7 @@ class RepoDumper(BasicMirrorWriter):
     """
 
     def __init__(self, boot_images_dict, validate_products=True):
-        super(RepoDumper, self).__init__(
+        super().__init__(
             config={
                 # Only download the latest version. Without this all versions
                 # will be read, causing miss matches in versions.
@@ -199,7 +199,7 @@ class RepoDumper(BasicMirrorWriter):
 
     def sync(self, reader, path):
         try:
-            super(RepoDumper, self).sync(reader, path)
+            super().sync(reader, path)
         except IOError:
             maaslog.warning(
                 "I/O error while syncing boot images. If this problem "

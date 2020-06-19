@@ -761,7 +761,7 @@ class TemplateNotFoundError(Exception):
     """The template has not been found."""
 
     def __init__(self, name):
-        super(TemplateNotFoundError, self).__init__(name)
+        super().__init__(name)
         self.name = name
 
 

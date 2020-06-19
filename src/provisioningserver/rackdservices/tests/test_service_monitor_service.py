@@ -34,7 +34,7 @@ class TestServiceMonitorService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestServiceMonitorService, self).setUp()
+        super().setUp()
         # Reset the all the toggleable services to off.
         for service in service_monitor._services.values():
             if isinstance(service, ToggleableService):

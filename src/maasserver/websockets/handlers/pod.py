@@ -90,7 +90,7 @@ class PodHandler(TimestampedModelHandler):
             for key, value in new_params.items()
             if value is not None
         }
-        return super(PodHandler, self).preprocess_form(action, new_params)
+        return super().preprocess_form(action, new_params)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""

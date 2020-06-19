@@ -16,7 +16,7 @@ from maastesting.factory import factory
 
 class TestGetProxies(MAASServerTestCase):
     def setUp(self):
-        super(TestGetProxies, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

@@ -177,7 +177,7 @@ class TestDeleteOAuthNonce(MAASServerTestCase):
 
 class TestWebApplicationHandler(SerializationFailureTestCase):
     def setUp(self):
-        super(TestWebApplicationHandler, self).setUp()
+        super().setUp()
         # Wire time.sleep() directly up to clock.advance() to avoid needless
         # sleeps, and to simulate the march of time without intervention.
         clock = self.patch(views, "clock", Clock())

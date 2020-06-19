@@ -43,7 +43,7 @@ class SwitchHandler(NodeHandler):
 
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
-        obj = super(SwitchHandler, self).get_object(params)
+        obj = super().get_object(params)
         if self.user.is_superuser or obj.owner == self.user:
             return obj
         raise HandlerDoesNotExistError(params[self._meta.pk])

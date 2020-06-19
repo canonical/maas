@@ -39,9 +39,7 @@ class ImageDownloadService(TimerService, object):
         :param tftp_root: The path to the TFTP root directory.
         :param reactor: An `IReactor` instance.
         """
-        super(ImageDownloadService, self).__init__(
-            self.check_interval, self.try_download
-        )
+        super().__init__(self.check_interval, self.try_download)
         self.client_service = client_service
         self.tftp_root = tftp_root
         self.clock = reactor

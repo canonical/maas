@@ -121,10 +121,10 @@ class DatabaseLockBase(tuple):
     objid = property(itemgetter(1))
 
     def __new__(cls, objid, mode=None):
-        return super(DatabaseLockBase, cls).__new__(cls, (classid, objid))
+        return super().__new__(cls, (classid, objid))
 
     def __init__(self, objid, mode=None):
-        super(DatabaseLockBase, self).__init__()
+        super().__init__()
         if mode is None:
             self.lock, self.unlock = self.MODE_DEFAULT
         elif mode in self.MODE_CHOICES:

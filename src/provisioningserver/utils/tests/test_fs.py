@@ -571,7 +571,7 @@ class TestSudoWriteFileScript(MAASTestCase):
     """Tests for `scripts/maas-write-file`."""
 
     def setUp(self):
-        super(TestSudoWriteFileScript, self).setUp()
+        super().setUp()
         self.script_path = os.path.join(root, "scripts/maas-write-file")
         self.script = load_script(self.script_path)
         self.script.atomic_write = create_autospec(self.script.atomic_write)
@@ -638,7 +638,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
     """Tests for `scripts/maas-delete-file`."""
 
     def setUp(self):
-        super(TestSudoDeleteFileScript, self).setUp()
+        super().setUp()
         self.script_path = os.path.join(root, "scripts/maas-delete-file")
         self.script = load_script(self.script_path)
         self.script.atomic_delete = create_autospec(self.script.atomic_delete)

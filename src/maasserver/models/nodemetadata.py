@@ -64,4 +64,4 @@ class NodeMetadata(CleanSave, TimestampedModel):
     def delete(self):
         """Delete this node metadata entry."""
         maaslog.info("%s: deleting key '%s'.", self, self.key)
-        super(NodeMetadata, self).delete()
+        super().delete()

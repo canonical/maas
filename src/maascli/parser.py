@@ -35,7 +35,7 @@ class ArgumentParser(argparse.ArgumentParser):
         kwargs.setdefault(
             "formatter_class", argparse.RawDescriptionHelpFormatter
         )
-        super(ArgumentParser, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def add_subparsers(self, title="drill down", metavar="COMMAND", **kwargs):
         assert (

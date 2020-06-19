@@ -473,7 +473,7 @@ class DeferredValue:
     """
 
     def __init__(self):
-        super(DeferredValue, self).__init__()
+        super().__init__()
         self.waiters = set()
         self.capturing = None
         self.observing = None
@@ -655,7 +655,7 @@ class RPCFetcher:
     """
 
     def __init__(self):
-        super(RPCFetcher, self).__init__()
+        super().__init__()
         self.pending = defaultdict(dict)
 
     def __call__(self, client, *args, **kwargs):
@@ -748,7 +748,7 @@ class ThreadUnpool:
     started = None
 
     def __init__(self, lock, contextFactory=None):
-        super(ThreadUnpool, self).__init__()
+        super().__init__()
         self.contextFactory = contextFactory
         self.lock = lock
 
@@ -832,7 +832,7 @@ class ThreadPool(threadpool.ThreadPool, object):
     def __init__(
         self, minthreads=5, maxthreads=20, name=None, contextFactory=None
     ):
-        super(ThreadPool, self).__init__(minthreads, maxthreads, name)
+        super().__init__(minthreads, maxthreads, name)
         self.context = ThreadWorkerContext(
             NullContext if contextFactory is None else contextFactory
         )
@@ -867,7 +867,7 @@ class ThreadPool(threadpool.ThreadPool, object):
                 if ct in self.threads:
                     self.threads.remove(ct)
 
-        return super(ThreadPool, self).threadFactory(
+        return super().threadFactory(
             name=name, target=worker, args=(self.log, self.context, target)
         )
 
@@ -885,7 +885,7 @@ class ThreadPool(threadpool.ThreadPool, object):
             context.enter()  # Delayed until now.
             return func(*args, **kwargs)
 
-        return super(ThreadPool, self).callInThreadWithCallback(
+        return super().callInThreadWithCallback(
             onResult, callInContext, self.context, func, *args, **kwargs
         )
 
@@ -904,7 +904,7 @@ class ThreadWorkerContext(threading.local):
     """
 
     def __init__(self, contextFactory):
-        super(ThreadWorkerContext, self).__init__()
+        super().__init__()
         self.contextFactory = contextFactory
         self.context = None
 
@@ -941,7 +941,7 @@ class ThreadPoolLimiter:
     """
 
     def __init__(self, pool, lock, clock=None):
-        super(ThreadPoolLimiter, self).__init__()
+        super().__init__()
         self.pool = pool
         self.lock = lock
         self.clock = clock

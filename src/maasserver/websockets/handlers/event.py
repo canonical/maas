@@ -30,7 +30,7 @@ class EventHandler(TimestampedModelHandler):
         listen_channels = ["event"]
 
     def __init__(self, *args, **kwargs):
-        super(EventHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if "node_ids" not in self.cache:
             self.cache["node_ids"] = []
 

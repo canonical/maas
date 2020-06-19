@@ -26,7 +26,7 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
     """Rack service to monitor network interfaces for configuration changes."""
 
     def __init__(self, clientService, *args, **kwargs):
-        super(RackNetworksMonitoringService, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.clientService = clientService
 
     def getDiscoveryState(self):

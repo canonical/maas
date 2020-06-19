@@ -46,7 +46,7 @@ class VLANForm(MAASModelForm):
 
     def __init__(self, *args, **kwargs):
         self.fabric = kwargs.pop("fabric", None)
-        super(VLANForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         instance = kwargs.get("instance")
         if instance is None and self.fabric is None:
             raise ValueError("Form requires either a instance or a fabric.")
@@ -99,7 +99,7 @@ class VLANForm(MAASModelForm):
         )
 
     def clean(self):
-        cleaned_data = super(VLANForm, self).clean()
+        cleaned_data = super().clean()
         # Automatically promote the secondary rack controller to the primary
         # if the primary is removed.
         if (
@@ -199,7 +199,7 @@ class VLANForm(MAASModelForm):
 
     def save(self):
         """Persist the VLAN into the database."""
-        vlan = super(VLANForm, self).save(commit=False)
+        vlan = super().save(commit=False)
         if self.fabric is not None:
             vlan.fabric = self.fabric
         if "space" in self.data and not self.cleaned_data.get("space"):

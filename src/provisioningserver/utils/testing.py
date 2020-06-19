@@ -17,7 +17,7 @@ class RegistryFixture(Fixture):
     """Clears the global registry on entry, restores on exit."""
 
     def setUp(self):
-        super(RegistryFixture, self).setUp()
+        super().setUp()
         self.addCleanup(_registry.update, _registry.copy())
         self.addCleanup(_registry.clear)
         _registry.clear()
@@ -27,11 +27,11 @@ class MAASIDFixture(Fixture):
     """Populate the `maas_id` file."""
 
     def __init__(self, system_id):
-        super(MAASIDFixture, self).__init__()
+        super().__init__()
         self.system_id = system_id
 
     def _setUp(self):
-        super(MAASIDFixture, self)._setUp()
+        super()._setUp()
         self.addCleanup(env.set_maas_id, env.get_maas_id())
         env.set_maas_id(self.system_id)
 

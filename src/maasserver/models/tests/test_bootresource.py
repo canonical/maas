@@ -348,7 +348,7 @@ class TestBootResourceManager(MAASServerTestCase):
 
 class TestGetAvailableCommissioningResources(MAASServerTestCase):
     def setUp(self):
-        super(TestGetAvailableCommissioningResources, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

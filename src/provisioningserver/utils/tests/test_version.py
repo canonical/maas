@@ -346,7 +346,7 @@ class TestVersionTestCase(MAASTestCase):
     """MAASTestCase that resets the cache used by utility methods."""
 
     def setUp(self):
-        super(TestVersionTestCase, self).setUp()
+        super().setUp()
         for attribute in vars(version).values():
             if hasattr(attribute, "cache_clear"):
                 attribute.cache_clear()

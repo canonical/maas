@@ -24,7 +24,7 @@ class TestBootSource(MAASServerTestCase):
     """Tests for the `BootSource` model."""
 
     def setUp(self):
-        super(TestBootSource, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

@@ -23,7 +23,7 @@ from maastesting.testcase import MAASTestCase
 
 class TestHTTPServerFixture(MAASTestCase):
     def setUp(self):
-        super(TestHTTPServerFixture, self).setUp()
+        super().setUp()
         self.useFixture(ProxiesDisabledFixture())
 
     @skip("XXX: bigjools 2013-09-13 bug=1224837: Causes intermittent failures")

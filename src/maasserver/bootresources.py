@@ -1090,7 +1090,7 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         assert isinstance(store, BootResourceStore)
         self.store = store
         self.product_mapping = product_mapping
-        super(BootResourceRepoWriter, self).__init__(
+        super().__init__(
             config={
                 # Only download the latest version. Without this all versions
                 # will be downloaded from simplestreams.
@@ -1507,9 +1507,7 @@ class ImportResourcesService(TimerService, object):
     """
 
     def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
-        super(ImportResourcesService, self).__init__(
-            interval.total_seconds(), self.maybe_import_resources
-        )
+        super().__init__(interval.total_seconds(), self.maybe_import_resources)
 
     def maybe_import_resources(self):
         def determine_auto():
@@ -1543,9 +1541,7 @@ class ImportResourcesProgressService(TimerService, object):
     """Service to periodically check on the progress of boot imports."""
 
     def __init__(self, interval=timedelta(minutes=3)):
-        super(ImportResourcesProgressService, self).__init__(
-            interval.total_seconds(), self.try_check_boot_images
-        )
+        super().__init__(interval.total_seconds(), self.try_check_boot_images)
 
     def try_check_boot_images(self):
         return self.check_boot_images().addErrback(

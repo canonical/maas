@@ -21,7 +21,7 @@ class TestBootSourceForm(MAASServerTestCase):
     """Tests for `BootSourceForm`."""
 
     def setUp(self):
-        super(TestBootSourceForm, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

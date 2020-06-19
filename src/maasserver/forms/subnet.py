@@ -57,11 +57,11 @@ class SubnetForm(MAASModelForm):
         )
 
     def __init__(self, *args, **kwargs):
-        super(SubnetForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.fields["name"].required = False
 
     def clean(self):
-        cleaned_data = super(SubnetForm, self).clean()
+        cleaned_data = super().clean()
         if "space" in self.data:
             set_form_error(
                 self,

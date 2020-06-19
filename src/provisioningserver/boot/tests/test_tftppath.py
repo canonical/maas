@@ -48,7 +48,7 @@ from provisioningserver.testing.os import make_osystem
 
 class TestTFTPPath(MAASTestCase):
     def setUp(self):
-        super(TestTFTPPath, self).setUp()
+        super().setUp()
         self.tftproot = self.make_dir()
         self.useFixture(ClusterConfigurationFixture(tftp_root=self.tftproot))
 

@@ -191,7 +191,7 @@ class TestExtendedURL(MAASTestCase):
     """Tests for `ExtendedURL`."""
 
     def setUp(self):
-        super(TestExtendedURL, self).setUp()
+        super().setUp()
         self.validator = config.ExtendedURL(
             require_tld=False, accept_python=False
         )

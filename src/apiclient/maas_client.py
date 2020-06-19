@@ -75,11 +75,7 @@ class RequestWithMethod(urllib.request.Request):
         urllib.request.Request.__init__(self, *args, **kwargs)
 
     def get_method(self):
-        return (
-            self._method
-            if self._method
-            else super(RequestWithMethod, self).get_method()
-        )
+        return self._method if self._method else super().get_method()
 
 
 class MAASDispatcher:

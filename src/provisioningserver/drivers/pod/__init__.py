@@ -431,7 +431,7 @@ class PodDriverBase(PowerDriverBase):
 
         Calculates the missing packages on each invoke.
         """
-        schema = super(PodDriverBase, self).get_schema(
+        schema = super().get_schema(
             detect_missing_packages=detect_missing_packages
         )
         schema["driver_type"] = "pod"

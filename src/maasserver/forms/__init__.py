@@ -210,7 +210,7 @@ class APIEditMixin:
         self.data = get_overridden_query_dict(
             self.initial, self.data, self.fields
         )
-        super(APIEditMixin, self).full_clean()
+        super().full_clean()
 
     def _post_clean(self):
         """Override Django's private hook _post_save to remove None values
@@ -221,7 +221,7 @@ class APIEditMixin:
         before that.
         """
         self.cleaned_data = remove_None_values(self.cleaned_data)
-        super(APIEditMixin, self)._post_clean()
+        super()._post_clean()
 
 
 class WithPowerTypeMixin:
@@ -232,7 +232,7 @@ class WithPowerTypeMixin:
     """
 
     def __init__(self, *args, **kwargs):
-        super(WithPowerTypeMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.data = self.data.copy()
         WithPowerTypeMixin.set_up_power_fields(self, self.data)
 
@@ -377,12 +377,12 @@ class WithPowerTypeMixin:
             )
 
     def clean(self):
-        cleaned_data = super(WithPowerTypeMixin, self).clean()
+        cleaned_data = super().clean()
         return WithPowerTypeMixin.check_driver(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
-        node = super(WithPowerTypeMixin, self).save()
+        node = super().save()
         WithPowerTypeMixin.set_values(self, node)
         node.save()
         return node
@@ -423,7 +423,7 @@ class MAASModelForm(
     """
 
     def __init__(self, data=None, files=None, ui_submission=False, **kwargs):
-        super(MAASModelForm, self).__init__(data=data, files=files, **kwargs)
+        super().__init__(data=data, files=files, **kwargs)
         self.is_update = bool(kwargs.get("instance", None))
         if ui_submission:
             # Add the ui_submission field.  Insert it before the other fields,
@@ -448,7 +448,7 @@ class MAASModelForm(
             error_dict = errors
         else:
             error_dict = ValidationError({NON_FIELD_ERRORS: errors})
-        super(MAASModelForm, self)._update_errors(error_dict)
+        super()._update_errors(error_dict)
 
     def use_perms(self):
         """Return True if the form should use permissions."""
@@ -607,7 +607,7 @@ class CheckboxInputTrueDefault(CheckboxInput):
 
 class NodeForm(MAASModelForm):
     def __init__(self, request=None, *args, **kwargs):
-        super(NodeForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
@@ -711,7 +711,7 @@ class NodeForm(MAASModelForm):
 
 class MachineForm(NodeForm):
     def __init__(self, request=None, requires_arch=False, *args, **kwargs):
-        super(MachineForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
@@ -817,7 +817,7 @@ class MachineForm(NodeForm):
         return validate_min_hwe_kernel(min_hwe_kernel)
 
     def clean(self):
-        cleaned_data = super(MachineForm, self).clean()
+        cleaned_data = super().clean()
 
         if not self.instance.hwe_kernel:
             osystem = cleaned_data.get("osystem")
@@ -838,7 +838,7 @@ class MachineForm(NodeForm):
         return cleaned_data
 
     def is_valid(self):
-        is_valid = super(MachineForm, self).is_valid()
+        is_valid = super().is_valid()
         if not is_valid:
             return False
         if len(list_all_usable_architectures()) == 0:
@@ -922,7 +922,7 @@ class MachineForm(NodeForm):
         commission = not self.instance.id and self.cleaned_data["commission"]
         if commission:
             self.instance.status = NODE_STATUS.COMMISSIONING
-        machine = super(MachineForm, self).save(*args, **kwargs)
+        machine = super().save(*args, **kwargs)
         # For a ScriptSet to be created it must be associated with a Node
         # object in the database.
         if commission:
@@ -975,7 +975,7 @@ class DeviceForm(NodeForm):
         fields = NodeForm.Meta.fields + ("description", "parent", "zone")
 
     def __init__(self, request=None, *args, **kwargs):
-        super(DeviceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.request = request
 
         instance = kwargs.get("instance")
@@ -988,7 +988,7 @@ class DeviceForm(NodeForm):
         return user.has_perm(NodePermission.view)
 
     def save(self, commit=True):
-        device = super(DeviceForm, self).save(commit=False)
+        device = super().save(commit=False)
         device.node_type = NODE_TYPE.DEVICE
         if self.new_node:
             # Set the owner: devices are owned by their creator.
@@ -1032,21 +1032,19 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
     )
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
-        super(ControllerForm, self).__init__(
-            data=data, instance=instance, **kwargs
-        )
+        super().__init__(data=data, instance=instance, **kwargs)
         WithPowerTypeMixin.set_up_power_fields(self, data, instance)
         if instance is not None:
             self.initial["zone"] = instance.zone.name
             self.initial["domain"] = instance.domain.name
 
     def clean(self):
-        cleaned_data = super(ControllerForm, self).clean()
+        cleaned_data = super().clean()
         return WithPowerTypeMixin.check_driver(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
-        controller = super(ControllerForm, self).save(commit=False)
+        controller = super().save(commit=False)
         zone = self.cleaned_data.get("zone")
         if zone:
             controller.zone = zone
@@ -1094,9 +1092,7 @@ class AdminNodeForm(NodeForm):
         fields = NodeForm.Meta.fields + ("cpu_count", "description", "memory")
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
-        super(AdminNodeForm, self).__init__(
-            data=data, instance=instance, **kwargs
-        )
+        super().__init__(data=data, instance=instance, **kwargs)
         self.request = request
         self.set_up_initial_zone(instance)
         # The zone field is not required because we want to be able
@@ -1119,7 +1115,7 @@ class AdminNodeForm(NodeForm):
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
-        node = super(AdminNodeForm, self).save(commit=False)
+        node = super().save(commit=False)
         zone = self.cleaned_data.get("zone")
         if zone:
             node.zone = zone
@@ -1145,18 +1141,16 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         )
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
-        super(AdminMachineForm, self).__init__(
-            data=data, instance=instance, **kwargs
-        )
+        super().__init__(data=data, instance=instance, **kwargs)
         WithPowerTypeMixin.set_up_power_fields(self, data, instance)
 
     def clean(self):
-        cleaned_data = super(AdminMachineForm, self).clean()
+        cleaned_data = super().clean()
         return WithPowerTypeMixin.check_driver(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
-        machine = super(AdminMachineForm, self).save(commit=False)
+        machine = super().save(commit=False)
         zone = self.cleaned_data.get("zone")
         if zone:
             machine.zone = zone
@@ -1188,7 +1182,7 @@ class KeyForm(MAASModelForm):
     """Base class for `SSHKeyForm` and `SSLKeyForm`."""
 
     def __init__(self, user, *args, **kwargs):
-        super(KeyForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.user = user
 
     def validate_unique(self):
@@ -1233,7 +1227,7 @@ class SSHKeyForm(MAASModelForm):
         self.instance.user = user
 
     def save(self, endpoint, request):
-        sshkey = super(SSHKeyForm, self).save()
+        sshkey = super().save()
         if self.instance.user is request.user:
             description = "Created SSH key."
         else:
@@ -1260,7 +1254,7 @@ class SSLKeyForm(KeyForm):
         fields = ["key"]
 
     def save(self, endpoint, request):
-        sslkey = super(SSLKeyForm, self).save()
+        sslkey = super().save()
         create_audit_event(
             EVENT_TYPES.AUTHORISATION,
             endpoint,
@@ -1274,7 +1268,7 @@ class SSLKeyForm(KeyForm):
 class MultipleMACAddressField(forms.MultiValueField):
     def __init__(self, nb_macs=1, *args, **kwargs):
         fields = [MACAddressFormField() for _ in range(nb_macs)]
-        super(MultipleMACAddressField, self).__init__(fields, *args, **kwargs)
+        super().__init__(fields, *args, **kwargs)
 
     def compress(self, data_list):
         if data_list:
@@ -1326,7 +1320,7 @@ class WithMACAddressesMixin:
     """
 
     def __init__(self, *args, **kwargs):
-        super(WithMACAddressesMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # This is a workaround for a Django bug in which self.data (which is
         # supposed to be a QueryDict) ends up being a normal Python dict.
         # This class requires a QueryDict (which it seems like Django should
@@ -1344,7 +1338,7 @@ class WithMACAddressesMixin:
         self.data["mac_addresses"] = macs
 
     def is_valid(self):
-        valid = super(WithMACAddressesMixin, self).is_valid()
+        valid = super().is_valid()
         # If the number of MAC address fields is > 1, provide a unified
         # error message if the validation has failed.
         reformat_mac_address_error = (
@@ -1396,7 +1390,7 @@ class WithMACAddressesMixin:
 
         This implementation of `save` does not support the `commit` argument.
         """
-        node = super(WithMACAddressesMixin, self).save()
+        node = super().save()
         architecture = self.cleaned_data.get("architecture")
         power_type = self.cleaned_data.get("power_type")
         # If a new node with an IPMI BMC is created the user doesn't have
@@ -1516,7 +1510,7 @@ class NewUserCreationForm(UserCreationForm):
             self.cleaned_data["password2"] = None
 
     def save(self, commit=True):
-        user = super(NewUserCreationForm, self).save(commit=False)
+        user = super().save(commit=False)
         if self.cleaned_data.get("is_superuser", False):
             user.is_superuser = True
         new_last_name = self.cleaned_data.get("last_name", None)
@@ -1555,7 +1549,7 @@ class EditUserForm(UserChangeForm):
         fields = ("username", "last_name", "email", "is_superuser")
 
     def __init__(self, *args, **kwargs):
-        super(EditUserForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Django 1.4 overrides the field 'password' thus adding it
         # post-facto to the list of the selected fields (Meta.fields).
         # Here we don't want to use this form to edit the password.
@@ -1583,7 +1577,7 @@ class ConfigForm(Form):
     config_fields = None
 
     def __init__(self, *args, **kwargs):
-        super(ConfigForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if "initial" not in kwargs:
             self._load_initials()
 
@@ -1757,7 +1751,7 @@ class DeployForm(ConfigForm):
         return field
 
     def _load_initials(self):
-        super(DeployForm, self)._load_initials()
+        super()._load_initials()
         initial_os = self.fields["default_osystem"].initial
         initial_series = self.fields["default_distro_series"].initial
         self.initial["default_distro_series"] = "%s/%s" % (
@@ -1792,7 +1786,7 @@ class UbuntuForm(Form):
     )
 
     def __init__(self, *args, **kwargs):
-        super(UbuntuForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._load_initials()
 
     def _load_initials(self):
@@ -1912,7 +1906,7 @@ class ValidatorMultipleChoiceField(MultipleChoiceField):
     """A MultipleChoiceField validating each given choice with a validator."""
 
     def __init__(self, validator, **kwargs):
-        super(ValidatorMultipleChoiceField, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.validator = validator
 
     def validate(self, values):
@@ -1950,7 +1944,7 @@ class InstanceListField(UnconstrainedMultipleChoiceField):
             the names that didn't correspond to a valid instance
             respectively.
         """
-        super(InstanceListField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.model_class = model_class
         self.field_name = field_name
         if text_for_invalid_object is None:
@@ -1989,7 +1983,7 @@ class BulkNodeSetZoneForm(Form):
     system_id = UnconstrainedMultipleChoiceField()
 
     def __init__(self, user, request=None, *args, **kwargs):
-        super(BulkNodeSetZoneForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.user = user
         self.request = request
         self.fields["zone"] = forms.ModelChoiceField(
@@ -2114,7 +2108,7 @@ class BootSourceForm(MAASModelForm):
     )
 
     def __init__(self, **kwargs):
-        super(BootSourceForm, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def clean_keyring_data(self):
         """Process 'keyring_data' field.
@@ -2144,14 +2138,14 @@ class BootSourceSelectionForm(MAASModelForm):
     labels = UnconstrainedMultipleChoiceField(label="Label list")
 
     def __init__(self, boot_source=None, **kwargs):
-        super(BootSourceSelectionForm, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if "instance" in kwargs:
             self.boot_source = kwargs["instance"].boot_source
         else:
             self.boot_source = boot_source
 
     def clean(self):
-        cleaned_data = super(BootSourceSelectionForm, self).clean()
+        cleaned_data = super().clean()
 
         # Don't filter on OS if not provided. This is to maintain
         # backwards compatibility for when OS didn't exist in the API.
@@ -2216,9 +2210,7 @@ class BootSourceSelectionForm(MAASModelForm):
         return cleaned_data
 
     def save(self, *args, **kwargs):
-        boot_source_selection = super(BootSourceSelectionForm, self).save(
-            commit=False
-        )
+        boot_source_selection = super().save(commit=False)
         boot_source_selection.boot_source = self.boot_source
         if kwargs.get("commit", True):
             boot_source_selection.save()
@@ -2233,7 +2225,7 @@ class LicenseKeyForm(MAASModelForm):
         fields = ("osystem", "distro_series", "license_key")
 
     def __init__(self, *args, **kwargs):
-        super(LicenseKeyForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.set_up_osystem_and_distro_series_fields(kwargs.get("instance"))
 
     def set_up_osystem_and_distro_series_fields(self, instance):
@@ -2286,7 +2278,7 @@ class LicenseKeyForm(MAASModelForm):
         for selected operating system and series."""
         # Get the clean_data, check that all of the fields we need are
         # present. If not then the form will error, so no reason to continue.
-        cleaned_data = super(LicenseKeyForm, self).clean()
+        cleaned_data = super().clean()
         required_fields = ["license_key", "osystem", "distro_series"]
         for field in required_fields:
             if field not in cleaned_data:
@@ -2357,7 +2349,7 @@ class BootResourceForm(MAASModelForm):
     keep_old = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
-        super(BootResourceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.set_up_architecture_field()
 
     def set_up_architecture_field(self):
@@ -2502,7 +2494,7 @@ class BootResourceForm(MAASModelForm):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        resource = super(BootResourceForm, self).save(commit=False)
+        resource = super().save(commit=False)
         resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
         resource = self.get_existing_resource(resource)
         resource.extra = {"subarches": resource.architecture.split("/")[1]}
@@ -2546,7 +2538,7 @@ class BootResourceNoContentForm(BootResourceForm):
     size = forms.IntegerField(label="Size", required=True)
 
     def __init__(self, *args, **kwargs):
-        super(BootResourceNoContentForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Remove content field, as this form does not use it
         del self.fields["content"]
 
@@ -2609,7 +2601,7 @@ class UUID4Field(forms.RegexField):
         )
         kwargs["min_length"] = 32
         kwargs["max_length"] = 36
-        super(UUID4Field, self).__init__(regex, *args, **kwargs)
+        super().__init__(regex, *args, **kwargs)
 
 
 class AbsolutePathField(forms.RegexField):
@@ -2632,7 +2624,7 @@ class AbsolutePathField(forms.RegexField):
         # large.
         #
         kwargs["max_length"] = 4095
-        super(AbsolutePathField, self).__init__(regex, *args, **kwargs)
+        super().__init__(regex, *args, **kwargs)
 
 
 class BytesField(forms.RegexField):
@@ -2648,7 +2640,7 @@ class BytesField(forms.RegexField):
         else:
             self.max_value = None
         regex = r"^-?[0-9]+([KkMmGgTtPpEe]{1})?$"
-        super(BytesField, self).__init__(regex, *args, **kwargs)
+        super().__init__(regex, *args, **kwargs)
 
     def to_python(self, value):
         if value is not None:
@@ -2657,7 +2649,7 @@ class BytesField(forms.RegexField):
         return value
 
     def clean(self, value):
-        value = super(BytesField, self).clean(value)
+        value = super().clean(value)
         if value is not None:
             value = machine_readable_bytes(value)
 
@@ -2683,7 +2675,7 @@ class FormatBlockDeviceForm(Form):
     label = forms.CharField(required=False)
 
     def __init__(self, block_device, *args, **kwargs):
-        super(FormatBlockDeviceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.block_device = block_device
         self.node = block_device.get_node()
 
@@ -2691,7 +2683,7 @@ class FormatBlockDeviceForm(Form):
         """Validate block device doesn't have a partition table."""
         # Get the clean_data, check that all of the fields we need are
         # present. If not then the form will error, so no reason to continue.
-        cleaned_data = super(FormatBlockDeviceForm, self).clean()
+        cleaned_data = super().clean()
         if "fstype" not in cleaned_data:
             return cleaned_data
         partition_table = PartitionTable.objects.filter(
@@ -2743,7 +2735,7 @@ class AddPartitionForm(Form):
     uuid = UUID4Field(required=False)
 
     def __init__(self, block_device, *args, **kwargs):
-        super(AddPartitionForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.block_device = block_device
         self.set_up_fields()
 
@@ -2779,7 +2771,7 @@ class FormatPartitionForm(Form):
     label = forms.CharField(required=False)
 
     def __init__(self, partition, *args, **kwargs):
-        super(FormatPartitionForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.partition = partition
         self.node = partition.get_node()
 
@@ -3001,7 +2993,7 @@ class UpdateVirtualBlockDeviceForm(
         fields = ["name", "uuid", "size"]
 
     def clean(self):
-        cleaned_data = super(UpdateVirtualBlockDeviceForm, self).clean()
+        cleaned_data = super().clean()
         is_logical_volume = self.instance.filesystem_group.is_lvm()
         size_has_changed = (
             "size" in self.cleaned_data
@@ -3158,12 +3150,12 @@ class CreateCacheSetForm(Form):
     clean_cache_partition = clean_partition_name_to_id("cache_partition")
 
     def __init__(self, node, *args, **kwargs):
-        super(CreateCacheSetForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
         self._set_up_field_choices()
 
     def clean(self):
-        cleaned_data = super(CreateCacheSetForm, self).clean()
+        cleaned_data = super().clean()
         cache_device = self.cleaned_data.get("cache_device")
         cache_partition = self.cleaned_data.get("cache_partition")
         if cache_device and cache_partition:
@@ -3234,13 +3226,13 @@ class UpdateCacheSetForm(Form):
     clean_cache_partition = clean_partition_name_to_id("cache_partition")
 
     def __init__(self, cache_set, *args, **kwargs):
-        super(UpdateCacheSetForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.cache_set = cache_set
         self.node = cache_set.get_node()
         self._set_up_field_choices()
 
     def clean(self):
-        cleaned_data = super(UpdateCacheSetForm, self).clean()
+        cleaned_data = super().clean()
         if self.cleaned_data.get("cache_device") and self.cleaned_data.get(
             "cache_partition"
         ):
@@ -3321,13 +3313,13 @@ class CreateBcacheForm(Form):
     clean_cache_set = clean_cache_set_name_to_id("cache_set")
 
     def __init__(self, node, *args, **kwargs):
-        super(CreateBcacheForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
         self._set_up_field_choices()
 
     def clean(self):
         """Makes sure the Bcache is sensible."""
-        cleaned_data = super(CreateBcacheForm, self).clean()
+        cleaned_data = super().clean()
         Bcache.objects.validate_bcache_creation_parameters(
             cache_set=self.cleaned_data.get("cache_set"),
             cache_mode=self.cleaned_data.get("cache_mode"),
@@ -3407,7 +3399,7 @@ class UpdateBcacheForm(Form):
     clean_cache_set = clean_cache_set_name_to_id("cache_set")
 
     def __init__(self, bcache, *args, **kwargs):
-        super(UpdateBcacheForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.bcache = bcache
         self.node = bcache.get_node()
         self._set_up_field_choices()
@@ -3572,12 +3564,12 @@ class CreateRaidForm(Form):
         self.fields["spare_partitions"].choices = partition_choices
 
     def __init__(self, node, *args, **kwargs):
-        super(CreateRaidForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
         self._set_up_field_choices()
 
     def clean(self):
-        cleaned_data = super(CreateRaidForm, self).clean()
+        cleaned_data = super().clean()
         # It is not possible to create a RAID without any devices or
         # partitions, but we catch this situation here in order to provide a
         # clearer error message.
@@ -3678,7 +3670,7 @@ class UpdateRaidForm(Form):
     )
 
     def __init__(self, raid, *args, **kwargs):
-        super(UpdateRaidForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.raid = raid
         self.set_up_field_choices()
 
@@ -3858,7 +3850,7 @@ class CreateVolumeGroupForm(Form):
     clean_partitions = clean_partition_names_to_ids("partitions")
 
     def __init__(self, node, *args, **kwargs):
-        super(CreateVolumeGroupForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
         self.set_up_choice_fields()
 
@@ -3885,7 +3877,7 @@ class CreateVolumeGroupForm(Form):
 
     def clean(self):
         """Validate that at least one block device or partition is given."""
-        cleaned_data = super(CreateVolumeGroupForm, self).clean()
+        cleaned_data = super().clean()
         if "name" not in cleaned_data:
             return cleaned_data
         has_block_devices = (
@@ -3951,7 +3943,7 @@ class UpdateVolumeGroupForm(Form):
     clean_remove_partitions = clean_partition_names_to_ids("remove_partitions")
 
     def __init__(self, volume_group, *args, **kwargs):
-        super(UpdateVolumeGroupForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.volume_group = volume_group
         self.set_up_choice_fields()
 
@@ -4047,7 +4039,7 @@ class CreateLogicalVolumeForm(Form):
     uuid = UUID4Field(required=False)
 
     def __init__(self, volume_group, *args, **kwargs):
-        super(CreateLogicalVolumeForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.volume_group = volume_group
         self.set_up_fields()
 
@@ -4064,7 +4056,7 @@ class CreateLogicalVolumeForm(Form):
 
     def clean(self):
         """Validate that at least one block device or partition is given."""
-        cleaned_data = super(CreateLogicalVolumeForm, self).clean()
+        cleaned_data = super().clean()
         if self.volume_group.get_lvm_free_space() < MIN_BLOCK_DEVICE_SIZE:
             # Remove the size errors. They are confusing because the
             # minimum is larger than the maximum.

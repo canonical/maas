@@ -189,11 +189,9 @@ class NodeActionError(MAASException):
         from maasserver.clusterrpc.utils import get_error_message_for_exception
 
         if isinstance(error, Exception):
-            super(NodeActionError, self).__init__(
-                get_error_message_for_exception(error)
-            )
+            super().__init__(get_error_message_for_exception(error))
         else:
-            super(NodeActionError, self).__init__(error)
+            super().__init__(error)
 
 
 class UnresolvableHost(MAASException):

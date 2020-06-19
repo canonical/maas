@@ -70,12 +70,12 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
     @classmethod
     def setUpClass(cls):
-        super(MAASRegionTestCaseBase, cls).setUpClass()
+        super().setUpClass()
         register_mac_type(connection.cursor())
 
     def setUp(self):
         reset_queries()  # Formerly this was handled by... Django?
-        super(MAASRegionTestCaseBase, self).setUp()
+        super().setUp()
 
     def setUpFixtures(self):
         """This should be called by a subclass once other set-up is done."""
@@ -106,11 +106,11 @@ class MAASLegacyServerTestCase(MAASRegionTestCaseBase, DjangoTestCase):
     """
 
     def setUp(self):
-        super(MAASLegacyServerTestCase, self).setUp()
+        super().setUp()
         self.setUpFixtures()
 
     def setUpFixtures(self):
-        super(MAASLegacyServerTestCase, self).setUpFixtures()
+        super().setUpFixtures()
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(PackageRepositoryFixture())
 
@@ -124,11 +124,11 @@ class MAASLegacyTransactionServerTestCase(
     """
 
     def setUp(self):
-        super(MAASLegacyTransactionServerTestCase, self).setUp()
+        super().setUp()
         self.setUpFixtures()
 
     def setUpFixtures(self):
-        super(MAASLegacyTransactionServerTestCase, self).setUpFixtures()
+        super().setUpFixtures()
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(PackageRepositoryFixture())
 
@@ -142,7 +142,7 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     database_use_permitted = True
 
     def setUp(self):
-        super(MAASServerTestCase, self).setUp()
+        super().setUp()
         self.beginTransaction()
         self.addCleanup(self.endTransaction)
         self.setUpFixtures()
@@ -179,7 +179,7 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     database_use_permitted = True
 
     def setUp(self):
-        super(MAASTransactionServerTestCase, self).setUp()
+        super().setUp()
         self.assertNotInTransaction()
         self.addCleanup(self.assertNotInTransaction)
         self.setUpFixtures()
@@ -197,7 +197,7 @@ class SerializationFailureTestCase(
             cursor.execute("DROP TABLE IF EXISTS stest")
 
     def setUp(self):
-        super(SerializationFailureTestCase, self).setUp()
+        super().setUp()
         self.create_stest_table()
         # Put something into the stest table upon which to trigger a
         # serialization failure.
@@ -206,7 +206,7 @@ class SerializationFailureTestCase(
                 cursor.execute("INSERT INTO stest VALUES (1)")
 
     def tearDown(self):
-        super(SerializationFailureTestCase, self).tearDown()
+        super().tearDown()
         self.drop_stest_table()
 
     def cause_serialization_failure(self):
@@ -282,12 +282,12 @@ class UniqueViolationTestCase(
             cursor.execute("DROP TABLE IF EXISTS uvtest")
 
     def setUp(self):
-        super(UniqueViolationTestCase, self).setUp()
+        super().setUp()
         self.conflicting_values = count(1)
         self.create_uvtest_table()
 
     def tearDown(self):
-        super(UniqueViolationTestCase, self).tearDown()
+        super().tearDown()
         self.drop_uvtest_table()
 
     def cause_unique_violation(self):

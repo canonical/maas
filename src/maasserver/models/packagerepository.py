@@ -32,7 +32,7 @@ class PackageRepositoryQueriesMixin(MAASQueriesMixin):
             "id": "__id",
             "name": "__name",
         }
-        return super(PackageRepositoryQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,

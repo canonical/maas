@@ -112,7 +112,7 @@ class DNSResourceQueriesMixin(MAASQueriesMixin):
             "name": "__name",
             "domain": (Domain.objects, "domain"),
         }
-        return super(DNSResourceQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
@@ -340,7 +340,7 @@ class DNSResource(CleanSave, TimestampedModel):
             ).count()
             if num_cname > 0:
                 raise ValidationError("Cannot add address: CNAME present.")
-        super(DNSResource, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
 
     def render_json(self, system_id):
         """Render json.  System_id is the system_id for the node, if one

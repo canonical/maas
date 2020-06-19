@@ -275,7 +275,7 @@ class TestDescribingAPI(MAASTestCase):
     """Tests for functions that describe a Piston API."""
 
     def setUp(self):
-        super(TestDescribingAPI, self).setUp()
+        super().setUp()
         # Override config maas url so that it's stable for testing.
         self.useFixture(
             RegionConfigurationFixture(maas_url="http://example.com/")
@@ -625,7 +625,7 @@ class TestGetAPIDescriptionHash(MAASTestCase):
     """Tests for `get_api_description_hash`."""
 
     def setUp(self):
-        super(TestGetAPIDescriptionHash, self).setUp()
+        super().setUp()
         self.addCleanup(self.clear_hash_cache)
         self.clear_hash_cache()
 

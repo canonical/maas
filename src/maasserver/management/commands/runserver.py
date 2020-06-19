@@ -18,7 +18,7 @@ class Command(BaseRunserverCommand):
     """Customized "runserver" command that wraps the WSGI handler."""
 
     def add_arguments(self, parser):
-        super(Command, self).add_arguments(parser)
+        super().add_arguments(parser)
 
         parser.add_argument(
             "--threading",
@@ -40,4 +40,4 @@ class Command(BaseRunserverCommand):
             setattr(basehttp, "WSGIServer", ThreadedWSGIServer)
 
         start_up()
-        return super(Command, self).run(*args, **options)
+        return super().run(*args, **options)

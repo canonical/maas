@@ -37,7 +37,7 @@ class BootSource(CleanSave, TimestampedModel):
     )
 
     def clean(self, *args, **kwargs):
-        super(BootSource, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
 
         # You have to specify one of {keyring_data, keyring_filename}.
         if len(self.keyring_filename) == 0 and len(self.keyring_data) == 0:

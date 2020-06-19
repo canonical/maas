@@ -134,7 +134,7 @@ class DHCPSnippetForm(MAASModelForm):
         return valid
 
     def save(self, endpoint, request):
-        dhcp_snippet = super(DHCPSnippetForm, self).save()
+        dhcp_snippet = super().save()
         create_audit_event(
             EVENT_TYPES.SETTINGS,
             endpoint,

@@ -146,7 +146,7 @@ class LargeFile(CleanSave, TimestampedModel):
         for link in links:
             if getattr(self, link).exists():
                 return
-        super(LargeFile, self).delete(*args, **kwargs)
+        super().delete(*args, **kwargs)
 
 
 @asynchronous(timeout=FOREVER)

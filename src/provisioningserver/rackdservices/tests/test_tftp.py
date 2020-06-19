@@ -200,7 +200,7 @@ class TestTFTPBackend(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestTFTPBackend, self).setUp()
+        super().setUp()
         self.useFixture(ClusterConfigurationFixture())
         self.patch(boot, "find_mac_via_arp")
         self.patch(tftp_module, "log_request")

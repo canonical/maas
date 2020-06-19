@@ -39,7 +39,7 @@ class lazydict(dict):
     __slots__ = ("factory",)
 
     def __init__(self, factory):
-        super(lazydict, self).__init__()
+        super().__init__()
         self.factory = factory
 
     def __missing__(self, key):

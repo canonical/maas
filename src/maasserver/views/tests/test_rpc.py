@@ -34,7 +34,7 @@ is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
 
 class RPCViewTest(MAASTransactionServerTestCase):
     def setUp(self):
-        super(RPCViewTest, self).setUp()
+        super().setUp()
         self.maas_id = None
 
         def set_maas_id(maas_id):

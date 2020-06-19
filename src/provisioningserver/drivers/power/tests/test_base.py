@@ -54,7 +54,7 @@ class FakePowerDriverBase(PowerDriverBase):
         self.description = description
         self.settings = settings
         self.chassis = chassis
-        super(FakePowerDriverBase, self).__init__()
+        super().__init__()
 
     def on(self, system_id, context):
         raise NotImplementedError
@@ -306,7 +306,7 @@ class AsyncFakePowerDriver(FakePowerDriver):
         clock=reactor,
         query_result=None,
     ):
-        super(AsyncFakePowerDriver, self).__init__(
+        super().__init__(
             name, description, settings, wait_time=None, clock=reactor
         )
         self.power_query_result = query_result
@@ -509,7 +509,7 @@ class TestPowerDriverQuery(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        super(TestPowerDriverQuery, self).setUp()
+        super().setUp()
         self.patch(power, "pause")
 
     @inlineCallbacks

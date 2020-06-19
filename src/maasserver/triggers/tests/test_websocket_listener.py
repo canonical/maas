@@ -3610,7 +3610,7 @@ class TestMachineFilesystemListener(
     )
 
     def setUp(self):
-        super(TestMachineFilesystemListener, self).setUp()
+        super().setUp()
         register_websocket_triggers()
 
     def test_calls_handler_with_update_on_create_fs_on_partition(self):

@@ -28,7 +28,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
     """A test-like object that wraps one of the `bin/test.*` scripts."""
 
     def __init__(self, lock, script, with_subunit=True, has_script=True):
-        super(TestScriptBase, self).__init__()
+        super().__init__()
         self.lock = lock
         assert isinstance(script, str)
         self.script = script
@@ -249,7 +249,7 @@ class TestProcessor:
     """
 
     def __init__(self, queue):
-        super(TestProcessor, self).__init__()
+        super().__init__()
         self.queue = queue
 
     def run(self, result):

@@ -27,7 +27,7 @@ def get_boot_source_uri(boot_source):
 
 class TestBootSourceAPI(APITestCase.ForUser):
     def setUp(self):
-        super(TestBootSourceAPI, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -116,7 +116,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
     """Test the the boot source API."""
 
     def setUp(self):
-        super(TestBootSourcesAPI, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

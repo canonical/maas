@@ -441,7 +441,7 @@ class TestLXDPodDriver(MAASTestCase):
 
     @inlineCallbacks
     def test_get_discovered_machine_sets_power_state_to_unknown_for_unknown(
-        self
+        self,
     ):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
@@ -612,7 +612,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     def test_get_usable_storage_pool_filters_on_default_pool_name_raises_invalid(
-        self
+        self,
     ):
         driver = lxd_module.LXDPodDriver()
         pools = [

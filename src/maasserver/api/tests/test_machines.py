@@ -815,7 +815,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
             def __init__(self, *args, **kwargs):
                 passed_pods.extend(kwargs["pods"])
-                super(FakeComposer, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
 
             def compose(self):
                 return factory.make_Node(
@@ -3529,7 +3529,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
 class TestPowerState(APITransactionTestCase.ForUser):
     def setUp(self):
-        super(TestPowerState, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("database-tasks", "rpc"))
         self.useFixture(RunningEventLoopFixture())
 

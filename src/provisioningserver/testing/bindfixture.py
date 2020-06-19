@@ -138,7 +138,7 @@ class BINDServerResources(fixtures.Fixture):
         log_file=None,
         include_in_options=None,
     ):
-        super(BINDServerResources, self).__init__()
+        super().__init__()
         self._defaults = dict(
             port=port,
             rndc_port=rndc_port,
@@ -148,7 +148,7 @@ class BINDServerResources(fixtures.Fixture):
         )
 
     def setUp(self, overwrite_config=False):
-        super(BINDServerResources, self).setUp()
+        super().setUp()
         self.__dict__.update(self._defaults)
         self.set_up_config()
         self.set_up_named(overwrite_config=overwrite_config)
@@ -232,12 +232,12 @@ class BINDServerRunner(fixtures.Fixture):
         :param config: An object exporting the variables
             `BINDServerResources` exports.
         """
-        super(BINDServerRunner, self).__init__()
+        super().__init__()
         self.config = config
         self.process = None
 
     def setUp(self):
-        super(BINDServerRunner, self).setUp()
+        super().setUp()
         self._start()
 
     def is_running(self):
@@ -332,11 +332,11 @@ class BINDServer(fixtures.Fixture):
     """
 
     def __init__(self, config=None):
-        super(BINDServer, self).__init__()
+        super().__init__()
         self.config = config
 
     def setUp(self):
-        super(BINDServer, self).setUp()
+        super().setUp()
         if self.config is None:
             self.config = BINDServerResources()
         self.useFixture(self.config)

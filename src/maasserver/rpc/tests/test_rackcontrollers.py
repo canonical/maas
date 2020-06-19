@@ -107,7 +107,7 @@ class TestHandleUpgrade(MAASServerTestCase):
 
 class TestRegisterRackController(MAASServerTestCase):
     def setUp(self):
-        super(TestRegisterRackController, self).setUp()
+        super().setUp()
         self.this_region = factory.make_RegionController()
         mock_running = self.patch(
             RegionController.objects, "get_running_controller"

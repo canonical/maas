@@ -47,11 +47,11 @@ class TestStartUp(MAASTransactionServerTestCase):
     """
 
     def setUp(self):
-        super(TestStartUp, self).setUp()
+        super().setUp()
         self.useFixture(RegionEventLoopFixture())
 
     def tearDown(self):
-        super(TestStartUp, self).tearDown()
+        super().tearDown()
         # start_up starts the Twisted event loop, so we need to stop it.
         eventloop.reset().wait(5)
 
@@ -93,7 +93,7 @@ class TestInnerStartUp(MAASServerTestCase):
     """Tests for the actual work done in `inner_start_up`."""
 
     def setUp(self):
-        super(TestInnerStartUp, self).setUp()
+        super().setUp()
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
         self.patch_autospec(start_up, "load_builtin_scripts")

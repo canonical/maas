@@ -101,7 +101,7 @@ class NginxServerResources(fixtures.Fixture):
     def __init__(
         self, homedir=None, access_log_file=None, error_log_file=None
     ):
-        super(NginxServerResources, self).__init__()
+        super().__init__()
         self._defaults = dict(
             homedir=homedir,
             access_log_file=access_log_file,
@@ -109,7 +109,7 @@ class NginxServerResources(fixtures.Fixture):
         )
 
     def setUp(self, overwrite_config=False):
-        super(NginxServerResources, self).setUp()
+        super().setUp()
         self.__dict__.update(self._defaults)
         self.set_up_config()
         self.set_up_named(overwrite_config=overwrite_config)
@@ -171,12 +171,12 @@ class NginxServerRunner(fixtures.Fixture):
         :param config: An object exporting the variables
             `NginxServerResources` exports.
         """
-        super(NginxServerRunner, self).__init__()
+        super().__init__()
         self.config = config
         self.process = None
 
     def setUp(self):
-        super(NginxServerRunner, self).setUp()
+        super().setUp()
         self._start()
 
     def _start(self):
@@ -224,11 +224,11 @@ class NginxServer(fixtures.Fixture):
     """
 
     def __init__(self, config=None):
-        super(NginxServer, self).__init__()
+        super().__init__()
         self.config = config
 
     def setUp(self):
-        super(NginxServer, self).setUp()
+        super().setUp()
         if self.config is None:
             self.config = NginxServerResources()
         self.useFixture(self.config)

@@ -26,7 +26,7 @@ from maastesting.testcase import MAASTestCase
 
 class TestHelpers(MAASTestCase):
     def setUp(self):
-        super(TestHelpers, self).setUp()
+        super().setUp()
         snap_common = self.make_dir()
         snap_data = self.make_dir()
         self.environ = {"SNAP_COMMON": snap_common, "SNAP_DATA": snap_data}
@@ -197,7 +197,7 @@ class TestRenderSupervisord(MAASTestCase):
     )
 
     def setUp(self):
-        super(TestRenderSupervisord, self).setUp()
+        super().setUp()
         snap = self.make_dir()
         maas_share = os.path.join(snap, "usr", "share", "maas")
         os.makedirs(maas_share)
@@ -304,7 +304,7 @@ class TestSupervisordHelpers(MAASTestCase):
 
 class TestConfigHelpers(MAASTestCase):
     def setUp(self):
-        super(TestConfigHelpers, self).setUp()
+        super().setUp()
         snap_data = self.make_dir()
         self.environ = {"SNAP_DATA": snap_data}
         self.regiond_path = os.path.join(snap_data, "regiond.conf")

@@ -536,7 +536,7 @@ class ScriptForm(ModelForm):
     def save(self, *args, **kwargs):
         request = kwargs.pop("request", None)
         endpoint = kwargs.pop("endpoint", None)
-        script = super(ScriptForm, self).save(*args, **kwargs)
+        script = super().save(*args, **kwargs)
 
         # Create audit event log if endpoint and request supplied.
         if request is not None and endpoint is not None:

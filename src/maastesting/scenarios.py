@@ -29,4 +29,4 @@ class WithScenarios(testscenarios.WithScenarios):
             for test in testscenarios.generate_scenarios(self):
                 test.__call__(result)
         else:
-            super(WithScenarios, self).__call__(result)
+            super().__call__(result)

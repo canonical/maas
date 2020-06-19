@@ -68,7 +68,7 @@ class DomainQueriesMixin(MAASQueriesMixin):
             "name": "__name",
             "id": "__id",
         }
-        return super(DomainQueriesMixin, self).get_specifiers_q(
+        return super().get_specifiers_q(
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
@@ -344,11 +344,11 @@ class Domain(CleanSave, TimestampedModel):
             raise ValidationError(
                 "This domain is the default domain, it cannot be deleted."
             )
-        super(Domain, self).delete()
+        super().delete()
 
     def save(self, *args, **kwargs):
         created = self.id is None
-        super(Domain, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
         if created:
             self.update_kms_srv()
         # If there is a DNSResource in our parent domain that matches this
@@ -367,7 +367,7 @@ class Domain(CleanSave, TimestampedModel):
             self.name = self.name[:-1]
 
     def clean(self, *args, **kwargs):
-        super(Domain, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
         self.clean_name()
 
     def render_json_for_related_rrdata(

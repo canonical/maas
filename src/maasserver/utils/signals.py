@@ -132,7 +132,7 @@ class SignalsManager:
     """
 
     def __init__(self):
-        super(SignalsManager, self).__init__()
+        super().__init__()
         self._signals = set()
         self._signals_connected = set()
         self._signals_disconnected = set()

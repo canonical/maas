@@ -52,9 +52,7 @@ class CleanPathRequest(Request, object):
         path, sep, args = path.partition(b"?")
         path = re.sub(rb"/+", b"/", path)
         path = b"".join([path, sep, args])
-        return super(CleanPathRequest, self).requestReceived(
-            command, path, version
-        )
+        return super().requestReceived(command, path, version)
 
 
 class OverlaySite(Site):
@@ -93,7 +91,7 @@ class OverlaySite(Site):
                     raise
 
         postpath = copy.copy(request.postpath)
-        result = super(OverlaySite, self).getResourceFor(request)
+        result = super().getResourceFor(request)
         if isinstance(result, NoResource) and self.underlay is not None:
             return call_underlay(request)
         else:
@@ -123,7 +121,7 @@ class ResourceOverlay(Resource, object):
     """
 
     def __init__(self, basis):
-        super(ResourceOverlay, self).__init__()
+        super().__init__()
         self.basis = basis
 
     def getChild(self, path, request):
@@ -197,7 +195,7 @@ class WebApplicationService(StreamServerEndpointService):
         self.site.requestFactory = CleanPathRequest
         # `endpoint` is set in `privilegedStartService`, at this point the
         # `endpoint` is None.
-        super(WebApplicationService, self).__init__(None, self.site)
+        super().__init__(None, self.site)
         self.websocket = WebSocketFactory(listener)
         self.threadpool = ThreadPoolLimiter(
             reactor.threadpoolForDatabase, concurrency.webapp
@@ -319,14 +317,14 @@ class WebApplicationService(StreamServerEndpointService):
         self.endpoint = self._makeEndpoint()
 
         # Start the service now that the endpoint has been created.
-        super(WebApplicationService, self).privilegedStartService()
+        super().privilegedStartService()
 
     @asynchronous(timeout=30)
     def stopService(self):
         def _cleanup(_):
             self.starting = False
 
-        d = super(WebApplicationService, self).stopService()
+        d = super().stopService()
         d.addCallback(lambda _: self.websocket.stopFactory())
         d.addCallback(_cleanup)
         return d

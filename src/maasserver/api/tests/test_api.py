@@ -148,7 +148,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
     """Tests for `store_node_power_parameters`."""
 
     def setUp(self):
-        super(TestStoreNodeParameters, self).setUp()
+        super().setUp()
         self.node = factory.make_Node()
         self.save = self.patch(self.node, "save")
         self.request = Mock()

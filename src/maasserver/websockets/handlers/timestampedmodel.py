@@ -13,7 +13,7 @@ class TimestampedModelHandler(Handler):
         abstract = True
 
     def __new__(cls, *args, **kwargs):
-        cls = super(TimestampedModelHandler, cls).__new__(cls)
+        cls = super().__new__(cls)
         if cls._meta.non_changeable is None:
             cls._meta.non_changeable = []
         for field in ["created", "updated"]:

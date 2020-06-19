@@ -79,7 +79,7 @@ class UCSM_XML_API_Error(Exception):
     """Failure talking to a Cisco UCS Manager."""
 
     def __init__(self, msg, code=None):
-        super(UCSM_XML_API_Error, self).__init__(msg)
+        super().__init__(msg)
         self.code = code
 
 

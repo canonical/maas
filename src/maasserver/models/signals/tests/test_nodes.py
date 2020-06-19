@@ -52,7 +52,7 @@ class TestNodePreviousStatus(MAASServerTestCase):
     """Test that `previous_status` is set when the status is changed."""
 
     def setUp(self):
-        super(TestNodePreviousStatus, self).setUp()
+        super().setUp()
         # Disable power signals: some status transitions prompt a power check.
         self.addCleanup(power.signals.enable)
         power.signals.disable()
@@ -97,7 +97,7 @@ class TestNodeClearsOwnerNEWOrREADYStatus(MAASServerTestCase):
     """
 
     def setUp(self):
-        super(TestNodeClearsOwnerNEWOrREADYStatus, self).setUp()
+        super().setUp()
         # Disable power signals: some status transitions prompt a power check.
         self.addCleanup(power.signals.enable)
         power.signals.disable()

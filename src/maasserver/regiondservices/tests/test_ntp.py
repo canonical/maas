@@ -63,7 +63,7 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
     """Tests for `RegionNetworkTimeProtocolService`."""
 
     def setUp(self):
-        super(TestRegionNetworkTimeProtocolService, self).setUp()
+        super().setUp()
         self.useFixture(MAASRootFixture())
 
     @transactional

@@ -91,7 +91,7 @@ class TestDNSServer(MAASServerTestCase):
     """
 
     def setUp(self):
-        super(TestDNSServer, self).setUp()
+        super().setUp()
         # Ensure there's an initial DNS publication. Outside of tests this is
         # guaranteed by a migration.
         DNSPublication(source="Initial").save()
@@ -482,7 +482,7 @@ class TestGetTrustedAcls(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_trusted_acls()"""
 
     def setUp(self):
-        super(TestGetTrustedAcls, self).setUp()
+        super().setUp()
         self.useFixture(RegionConfigurationFixture())
 
     def test_returns_empty_string_if_no_networks(self):
@@ -511,7 +511,7 @@ class TestGetTrustedNetworks(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_trusted_networks()"""
 
     def setUp(self):
-        super(TestGetTrustedNetworks, self).setUp()
+        super().setUp()
         self.useFixture(RegionConfigurationFixture())
 
     def test_returns_empty_string_if_no_networks(self):

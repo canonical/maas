@@ -41,7 +41,7 @@ class SeaMicroAPIV09Error(SeaMicroError):
     """Failure talking to a SeaMicro API v0.9. """
 
     def __init__(self, msg, response_code=None):
-        super(SeaMicroAPIV09Error, self).__init__(msg)
+        super().__init__(msg)
         self.response_code = response_code
 
 

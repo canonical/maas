@@ -44,7 +44,7 @@ class Bin(bytes):
             raise AssertionError(
                 "Not a binary string: '%s'" % repr(initializer)
             )
-        return super(Bin, cls).__new__(cls, initializer)
+        return super().__new__(cls, initializer)
 
     def __emittable__(self):
         """Emit base-64 encoded bytes.

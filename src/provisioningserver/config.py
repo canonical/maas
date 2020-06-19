@@ -462,7 +462,7 @@ class ConfigurationFile:
     """
 
     def __init__(self, path, *, mutable=False):
-        super(ConfigurationFile, self).__init__()
+        super().__init__()
         self.config = {}
         self.dirty = False
         self.path = path
@@ -671,10 +671,10 @@ class Configuration:
 
         :param store: A dict-like object.
         """
-        super(Configuration, self).__init__()
+        super().__init__()
         # Use the super-class's __setattr__() because it's redefined later on
         # to prevent accidentally setting attributes that are not options.
-        super(Configuration, self).__setattr__("store", store)
+        super().__setattr__("store", store)
 
     def __setattr__(self, name, value):
         """Prevent setting unrecognised options.
@@ -685,7 +685,7 @@ class Configuration:
         This is as much about preventing typos as anything else.
         """
         if hasattr(self.__class__, name):
-            super(Configuration, self).__setattr__(name, value)
+            super().__setattr__(name, value)
         else:
             raise AttributeError(
                 "%r object has no attribute %r"
@@ -725,7 +725,7 @@ class ConfigurationOption:
         :param doc: A description of the option. This is mandatory.
         :param validator: A `formencode.validators.Validator`.
         """
-        super(ConfigurationOption, self).__init__()
+        super().__init__()
 
         assert isinstance(name, str)
         assert isinstance(doc, str)

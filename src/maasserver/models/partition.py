@@ -261,12 +261,12 @@ class Partition(CleanSave, TimestampedModel):
         """Save partition."""
         if not self.uuid:
             self.uuid = uuid4()
-        return super(Partition, self).save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def clean(self, *args, **kwargs):
         self._round_size()
         self._validate_enough_space()
-        super(Partition, self).clean(*args, **kwargs)
+        super().clean(*args, **kwargs)
 
     def __str__(self):
         return "{size} partition on {bd}".format(
@@ -379,7 +379,7 @@ class Partition(CleanSave, TimestampedModel):
                 "VMware ESXi partitions may not be removed. To remove select "
                 "a different storage layout."
             )
-        super(Partition, self).delete()
+        super().delete()
 
     def add_tag(self, tag):
         """Add tag to partition."""

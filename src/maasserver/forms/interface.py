@@ -92,7 +92,7 @@ class InterfaceForm(MAASModelForm):
 
     def __init__(self, *args, **kwargs):
         self.node = kwargs.pop("node", None)
-        super(InterfaceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         instance = kwargs.get("instance")
         if instance is not None:
             self.node = instance.get_node()
@@ -109,12 +109,12 @@ class InterfaceForm(MAASModelForm):
         # get the validation to pass on a newly created interface is to set the
         # node in the interface here.
         self.instance.node = self.node
-        return super(InterfaceForm, self)._get_validation_exclusions()
+        return super()._get_validation_exclusions()
 
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
         created = self.instance.id is None
-        interface = super(InterfaceForm, self).save(commit=True)
+        interface = super().save(commit=True)
         if "parents" in self.data:
             parents = self.cleaned_data.get("parents")
             existing_parents = set(interface.parents.all())
@@ -194,7 +194,7 @@ class InterfaceForm(MAASModelForm):
             )
 
     def clean(self):
-        cleaned_data = super(InterfaceForm, self).clean()
+        cleaned_data = super().clean()
         self.clean_parents_all_same_node(cleaned_data.get("parents"))
         if self.node.node_type == NODE_TYPE.DEVICE:
             cleaned_data = self.clean_device(cleaned_data)
@@ -235,14 +235,14 @@ class ControllerInterfaceForm(MAASModelForm):
         fields = ("vlan", "link_connected", "interface_speed", "link_speed")
 
     def __init__(self, *args, **kwargs):
-        super(ControllerInterfaceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         instance = kwargs.get("instance")
         if instance is not None:
             self.link_connected = instance.link_connected
 
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
-        interface = super(ControllerInterfaceForm, self).save(commit=False)
+        interface = super().save(commit=False)
         # Allow setting the VLAN to None.
         new_vlan = self.cleaned_data.get("vlan")
         vlan_was_set = "vlan" in self.data
@@ -285,7 +285,7 @@ class DeployedInterfaceForm(MAASModelForm):
         )
 
     def __init__(self, *args, **kwargs):
-        super(DeployedInterfaceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         instance = kwargs.get("instance")
         if instance is not None:
             self.link_connected = instance.link_connected
@@ -400,7 +400,7 @@ class VLANInterfaceForm(InterfaceForm):
         return new_vlan
 
     def clean(self):
-        cleaned_data = super(VLANInterfaceForm, self).clean()
+        cleaned_data = super().clean()
         if self.fields_ok(["vlan", "parents"]):
             new_vlan = self.cleaned_data.get("vlan")
             if new_vlan:

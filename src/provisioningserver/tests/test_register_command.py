@@ -92,7 +92,7 @@ class TestAddArguments(MAASTestCase):
 
 class TestRegisterMAASRack(MAASTestCase):
     def setUp(self):
-        super(TestRegisterMAASRack, self).setUp()
+        super().setUp()
         self.useFixture(ClusterConfigurationFixture())
         self.mock_call_and_check = self.patch_autospec(
             register_command, "call_and_check"

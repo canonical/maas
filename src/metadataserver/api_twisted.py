@@ -234,9 +234,7 @@ class StatusWorkerService(TimerService, object):
 
     def __init__(self, dbtasks, clock=reactor):
         # Call self._tryUpdateNodes() every self.check_interval.
-        super(StatusWorkerService, self).__init__(
-            self.check_interval, self._tryUpdateNodes
-        )
+        super().__init__(self.check_interval, self._tryUpdateNodes)
         self.dbtasks = dbtasks
         self.clock = clock
         self.queue = defaultdict(list)

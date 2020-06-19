@@ -134,7 +134,7 @@ class PXEBootMethod(BootMethod):
 
         :param destination: path to install bootloader
         """
-        super(PXEBootMethod, self).link_bootloader(destination)
+        super().link_bootloader(destination)
         # When lpxelinux.0 doesn't exist we run find and copy to add that file
         # in the correct place.
         lpxelinux = os.path.join(destination, "lpxelinux.0")

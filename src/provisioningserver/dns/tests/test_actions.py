@@ -157,7 +157,7 @@ class TestConfiguration(MAASTestCase):
     """Tests for the `bind_write_*` functions."""
 
     def setUp(self):
-        super(TestConfiguration, self).setUp()
+        super().setUp()
         # Ensure that files are written to a temporary directory.
         self.dns_conf_dir = self.make_dir()
         patch_dns_config_path(self, self.dns_conf_dir)

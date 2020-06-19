@@ -26,7 +26,7 @@ class MAASDjangoTestRunner(NoseTestSuiteRunner):
                 if database["HOST"] == self.cluster.datadir:
                     self.cluster.createdb(database["NAME"])
             # Call-up to super-classes.
-            up = super(MAASDjangoTestRunner, self)
+            up = super()
             return up.setup_databases(*args, **kwargs)
         except Exception:
             # Clean-up the cluster now, or it'll be left running; django-nose
@@ -43,5 +43,5 @@ class MAASDjangoTestRunner(NoseTestSuiteRunner):
         the test databases, hence there is also tear-down code embedded in
         `setup_databases`.
         """
-        super(MAASDjangoTestRunner, self).teardown_databases(*args, **kwargs)
+        super().teardown_databases(*args, **kwargs)
         self.cluster.cleanUp()

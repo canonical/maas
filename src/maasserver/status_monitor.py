@@ -220,6 +220,4 @@ class StatusMonitorService(TimerService, object):
     """
 
     def __init__(self, interval=60):
-        super(StatusMonitorService, self).__init__(
-            interval, deferToDatabase, check_status
-        )
+        super().__init__(interval, deferToDatabase, check_status)

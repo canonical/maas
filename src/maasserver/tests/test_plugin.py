@@ -64,7 +64,7 @@ class TestServiceMaker(MAASTestCase):
     """Mixin with helpers for all the service marker tests."""
 
     def setUp(self):
-        super(TestServiceMaker, self).setUp()
+        super().setUp()
         self.patch(eventloop.loop, "services", MultiService())
         # Prevent setting the pdeathsig in tests.
         self.patch_autospec(RegionWorkerServiceMaker, "_set_pdeathsig")
@@ -75,7 +75,7 @@ class TestServiceMaker(MAASTestCase):
         import_websocket_handlers()
 
     def tearDown(self):
-        super(TestServiceMaker, self).tearDown()
+        super().tearDown()
         # Disable database access in the reactor again.
         asynchronous(disable_all_database_connections, timeout=5)()
 

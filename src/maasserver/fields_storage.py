@@ -38,7 +38,7 @@ class BytesOrPercentageField(forms.RegexField):
         self.min_value = kwargs.pop("min_value", None)
         self.max_value = kwargs.pop("max_value", None)
         regex = r"^(%s|%s)$" % (PERCENTAGE_REGEX, BYTES_REGEX)
-        super(BytesOrPercentageField, self).__init__(regex, *args, **kwargs)
+        super().__init__(regex, *args, **kwargs)
 
     def to_python(self, value):
         if value is not None:
@@ -47,7 +47,7 @@ class BytesOrPercentageField(forms.RegexField):
         return value
 
     def clean(self, value):
-        value = super(BytesOrPercentageField, self).clean(value)
+        value = super().clean(value)
         if value is not None:
             # Exit early if this is percentage value.
             if is_percentage(value):

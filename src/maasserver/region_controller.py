@@ -79,7 +79,7 @@ class RegionControllerService(Service):
         :param postgresListener: The `PostgresListenerService` that is running
             in this regiond process.
         """
-        super(RegionControllerService, self).__init__()
+        super().__init__()
         self.clock = clock
         self.retryOnFailure = retryOnFailure
         self.rbacRetryOnFailureDelay = rbacRetryOnFailureDelay
@@ -103,7 +103,7 @@ class RegionControllerService(Service):
     @asynchronous(timeout=FOREVER)
     def startService(self):
         """Start listening for messages."""
-        super(RegionControllerService, self).startService()
+        super().startService()
         self.postgresListener.register("sys_dns", self.markDNSForUpdate)
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
@@ -114,7 +114,7 @@ class RegionControllerService(Service):
     @asynchronous(timeout=FOREVER)
     def stopService(self):
         """Close the controller."""
-        super(RegionControllerService, self).stopService()
+        super().stopService()
         self.postgresListener.events.connected.unregisterHandler(
             self.markAllForUpdate
         )

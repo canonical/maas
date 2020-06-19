@@ -191,7 +191,7 @@ class Schema(formencode.Schema):
         if isinstance(value, bytes):
             return False
         else:
-            return super(Schema, self)._value_is_iterator(value)
+            return super()._value_is_iterator(value)
 
 
 class OneWayStringBool(formencode.validators.StringBool):

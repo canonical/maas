@@ -81,7 +81,7 @@ class VirshSSH(pexpect.spawn):
     I_PROMPT_PASSWORD = PROMPTS.index(PROMPT_PASSWORD)
 
     def __init__(self, timeout=30, maxread=2000, dom_prefix=None):
-        super(VirshSSH, self).__init__(
+        super().__init__(
             None, timeout=timeout, maxread=maxread, env=get_env_with_locale()
         )
         self.name = "<virssh>"

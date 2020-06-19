@@ -99,7 +99,7 @@ def make_boot_image_mapping(image_specs=None):
 
 class TestHelpers(MAASServerTestCase):
     def setUp(self):
-        super(TestHelpers, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources_signals.enable)
         bootsources_signals.disable()
@@ -224,7 +224,7 @@ class TestHelpers(MAASServerTestCase):
 
 class TestGetOSInfoFromBootSources(MAASServerTestCase):
     def setUp(self):
-        super(TestGetOSInfoFromBootSources, self).setUp()
+        super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources_signals.enable)
         bootsources_signals.disable()
@@ -265,7 +265,7 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
 
 class TestPrivateUpdateCache(MAASServerTestCase):
     def setUp(self):
-        super(TestPrivateUpdateCache, self).setUp()
+        super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
         # Disable boot source cache signals.
         self.addCleanup(bootsources_signals.enable)
@@ -344,7 +344,7 @@ class TestPrivateUpdateCache(MAASServerTestCase):
 
 class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestPrivateCacheBootSources, self).setUp()
+        super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
         # Disable boot source cache signals.
         self.addCleanup(bootsources_signals.enable)
@@ -553,7 +553,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
 
 class TestBadConnectionHandling(MAASTransactionServerTestCase):
     def setUp(self):
-        super(TestBadConnectionHandling, self).setUp()
+        super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
         # Disable boot source cache signals.
         self.addCleanup(bootsources_signals.enable)

@@ -67,7 +67,7 @@ class UserHandler(Handler):
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for users only viewable by `user`."""
-        users = super(UserHandler, self).get_queryset(for_list=for_list)
+        users = super().get_queryset(for_list=for_list)
         if self.user.is_superuser:
             # Super users can view all users, except for the built-in users
             return users.exclude(username__in=SYSTEM_USERS)

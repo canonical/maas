@@ -42,12 +42,12 @@ class ImportErrorFixture(fixtures.Fixture):
     """
 
     def __init__(self, module_name, sub_name):
-        super(ImportErrorFixture, self).__init__()
+        super().__init__()
         self.module_name = module_name
         self.sub_name = sub_name
 
     def setUp(self):
-        super(ImportErrorFixture, self).setUp()
+        super().setUp()
 
         def mock_import(name, *import_args, **kwargs):
             if name == self.module_name:
@@ -75,12 +75,12 @@ class LoggerSilencerFixture(fixtures.Fixture):
     """
 
     def __init__(self, names, level=logging.ERROR):
-        super(LoggerSilencerFixture, self).__init__()
+        super().__init__()
         self.names = names
         self.level = level
 
     def setUp(self):
-        super(LoggerSilencerFixture, self).setUp()
+        super().setUp()
         for name in self.names:
             logger = logging.getLogger(name)
             self.addCleanup(logger.setLevel, logger.level)
@@ -91,7 +91,7 @@ class ProxiesDisabledFixture(fixtures.Fixture):
     """Disables all HTTP/HTTPS proxies set in the environment."""
 
     def setUp(self):
-        super(ProxiesDisabledFixture, self).setUp()
+        super().setUp()
         self.useFixture(EnvironmentVariable("http_proxy"))
         self.useFixture(EnvironmentVariable("https_proxy"))
 
@@ -100,7 +100,7 @@ class TempDirectory(fixtures.TempDir):
     """Create a temporary directory, ensuring Unicode paths."""
 
     def setUp(self):
-        super(TempDirectory, self).setUp()
+        super().setUp()
         if isinstance(self.path, bytes):
             encoding = sys.getfilesystemencoding()
             self.path = self.path.decode(encoding)
@@ -114,7 +114,7 @@ class TempWDFixture(TempDirectory):
 
     def setUp(self):
         cwd = os.getcwd()
-        super(TempWDFixture, self).setUp()
+        super().setUp()
         self.addCleanup(os.chdir, cwd)
         os.chdir(self.path)
 
@@ -148,7 +148,7 @@ class CaptureStandardIO(fixtures.Fixture):
     stderr = None
 
     def __init__(self, encoding="utf-8"):
-        super(CaptureStandardIO, self).__init__()
+        super().__init__()
         self.codec = codecs.lookup(encoding)
         self.encoding = encoding
         # Create new buffers.
@@ -157,7 +157,7 @@ class CaptureStandardIO(fixtures.Fixture):
         self._buf_err = BytesIO()
 
     def setUp(self):
-        super(CaptureStandardIO, self).setUp()
+        super().setUp()
         self.patcher = MonkeyPatcher()
         self.addCleanup(self.patcher.restore)
         # Patch sys.std* and self.std*. Use TextIOWrapper to provide an
@@ -254,7 +254,7 @@ class DetectLeakedFileDescriptors(fixtures.Fixture):
     """
 
     def setUp(self):
-        super(DetectLeakedFileDescriptors, self).setUp()
+        super().setUp()
         self.fdpath = "/proc/%d/fd" % os.getpid()
         self.addCleanup(self.check, os.listdir(self.fdpath))
 

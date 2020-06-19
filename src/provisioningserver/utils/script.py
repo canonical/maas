@@ -24,7 +24,7 @@ class ActionScript:
     """A command-line script that follows a command+verb pattern."""
 
     def __init__(self, description):
-        super(ActionScript, self).__init__()
+        super().__init__()
         # See http://docs.python.org/release/2.7/library/argparse.html.
         self.parser = ArgumentParser(description=description)
         self.subparsers = self.parser.add_subparsers(title="actions")

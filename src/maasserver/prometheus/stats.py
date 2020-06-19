@@ -252,7 +252,7 @@ class PrometheusService(TimerService, object):
     """
 
     def __init__(self, interval=PROMETHEUS_SERVICE_PERIOD):
-        super(PrometheusService, self).__init__(
+        super().__init__(
             interval.total_seconds(), self.maybe_push_prometheus_stats
         )
 

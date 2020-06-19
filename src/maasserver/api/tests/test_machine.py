@@ -94,7 +94,7 @@ class MachinesAPILoggedInTest(APITestCase.ForUserAndAdmin):
     """A logged-in user can access the API."""
 
     def setUp(self):
-        super(MachinesAPILoggedInTest, self).setUp()
+        super().setUp()
         self.patch(node_module, "wait_for_power_command")
         self.patch(node_module.Node, "_start")
 
@@ -121,7 +121,7 @@ class TestMachineAPI(APITestCase.ForUser):
     clientfactories = {"oauth": MAASSensibleOAuthClient}
 
     def setUp(self):
-        super(TestMachineAPI, self).setUp()
+        super().setUp()
         self.patch(node_module.Node, "_pc_power_control_node")
 
     def test_handler_path(self):

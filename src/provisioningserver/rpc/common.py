@@ -87,7 +87,7 @@ class Client:
     """
 
     def __init__(self, conn):
-        super(Client, self).__init__()
+        super().__init__()
         assert IConnection.providedBy(
             conn
         ), "%r does not provide IConnection" % (conn,)
@@ -243,23 +243,23 @@ class RPCProtocol(amp.AMP, object):
     """
 
     def __init__(self):
-        super(RPCProtocol, self).__init__()
+        super().__init__()
         self.onConnectionMade = Deferred()
         self.onConnectionLost = Deferred()
 
     def connectionMade(self):
-        super(RPCProtocol, self).connectionMade()
+        super().connectionMade()
         self.onConnectionMade.callback(None)
 
     def connectionLost(self, reason):
-        super(RPCProtocol, self).connectionLost(reason)
+        super().connectionLost(reason)
         self.onConnectionLost.callback(None)
 
     def _sendBoxCommand(self, command, box, requiresAnswer=True):
         """Override `_sendBoxCommand` to log the sent RPC message."""
         box[amp.COMMAND] = command
         log.debug("[RPC -> sent] {box}", box=box)
-        return super(RPCProtocol, self)._sendBoxCommand(
+        return super()._sendBoxCommand(
             command, box, requiresAnswer=requiresAnswer
         )
 
@@ -277,7 +277,7 @@ class RPCProtocol(amp.AMP, object):
         """
         log.debug("[RPC <- received] {box}", box=box)
 
-        d = super(RPCProtocol, self).dispatchCommand(box)
+        d = super().dispatchCommand(box)
 
         def coerce_error(failure):
             if failure.check(amp.RemoteAmpError):
@@ -311,21 +311,21 @@ class RPCProtocol(amp.AMP, object):
         Override `_safeEmit` to log the RPC response.
         """
         log.debug("[RPC -> responding] {box}", box=box)
-        return super(RPCProtocol, self)._safeEmit(box)
+        return super()._safeEmit(box)
 
     def _answerReceived(self, box):
         """
         Override `_answerRecieved` to log recieving RPC response.
         """
         log.debug("[RPC <- recieved] {box}", box=box)
-        return super(RPCProtocol, self)._answerReceived(box)
+        return super()._answerReceived(box)
 
     def _errorReceived(self, box):
         """
         Override `_errorReceived` to log recieving RPC response.
         """
         log.debug("[RPC <- error] {box}", box=box)
-        return super(RPCProtocol, self)._errorReceived(box)
+        return super()._errorReceived(box)
 
     def unhandledError(self, failure):
         """Terminal errback, after application code has seen the failure.

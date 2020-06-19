@@ -76,6 +76,4 @@ class LicenseKey(TimestampedModel):
                 "License key with this operating system and distro series",
                 "already exists.",
             )
-        return super(LicenseKey, self).unique_error_message(
-            model_class, unique_check
-        )
+        return super().unique_error_message(model_class, unique_check)

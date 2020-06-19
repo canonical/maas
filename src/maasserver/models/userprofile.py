@@ -93,7 +93,7 @@ class UserProfile(CleanSave, Model):
             self.user.filestorage_set.all().delete()
         self.user.consumers.all().delete()
         self.user.delete()
-        super(UserProfile, self).delete()
+        super().delete()
 
     def transfer_resources(self, new_owner):
         """Transfer owned resources to another user.

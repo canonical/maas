@@ -27,7 +27,7 @@ class MAASJSONEncoder(django.core.serializers.json.DjangoJSONEncoder):
         if isinstance(value, MAC):
             return value.get_raw()
         else:
-            return super(MAASJSONEncoder, self).default(value)
+            return super().default(value)
 
 
 class Serializer(django.core.serializers.json.Serializer):
