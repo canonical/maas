@@ -801,7 +801,7 @@ class DomainNameField(CharField):
         del kwargs["validators"]
         return name, path, args, kwargs
 
-    # Here we are using (abusing?) the to_pytion() function to coerce and
+    # Here we are using (abusing?) the to_python() function to coerce and
     # normalize this type. Django does not have a function intended purely
     # to normalize before saving to the database, so to_python() is the next
     # closest alternative. For more information, see:
