@@ -28,7 +28,7 @@ from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
-class MicrosoftOCSState(object):
+class MicrosoftOCSState:
     ON = "ON"
     OFF = "OFF"
 

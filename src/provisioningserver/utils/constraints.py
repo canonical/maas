@@ -8,7 +8,7 @@ __all__ = ["parse_labeled_constraint_map"]
 import re
 
 
-class LabeledConstraintMap(object):
+class LabeledConstraintMap:
     """Class to encapsulate a labeled constraint map, so that it only
     needs to be parsed once.
     """

@@ -50,7 +50,7 @@ class FakeResponse:
         return self.response
 
 
-class FakeServer(object):
+class FakeServer:
     def __init__(self, id):
         self.id = id
         self.nic = {}
@@ -62,7 +62,7 @@ class FakeServer(object):
         return [nic["macAddr"] for nic in self.nic.values()]
 
 
-class FakeSeaMicroServerManager(object):
+class FakeSeaMicroServerManager:
     def __init__(self):
         self.servers = []
 
@@ -76,7 +76,7 @@ class FakeSeaMicroServerManager(object):
         return self.servers
 
 
-class FakeSeaMicroClient(object):
+class FakeSeaMicroClient:
     pass
 
 

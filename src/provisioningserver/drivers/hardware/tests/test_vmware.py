@@ -24,7 +24,7 @@ from provisioningserver.drivers.hardware.vmware import (
 from provisioningserver.utils.twisted import asynchronous
 
 
-class FakeVmomiVMSummaryConfig(object):
+class FakeVmomiVMSummaryConfig:
     def __init__(self, name, has_instance_uuid=None, has_uuid=None):
         self.name = name
         self.guestId = random.choice(["otherLinux64Guest", "otherLinuxGuest"])
@@ -38,14 +38,14 @@ class FakeVmomiVMSummaryConfig(object):
             self.uuid = factory.make_UUID()
 
 
-class FakeVmomiVMSummary(object):
+class FakeVmomiVMSummary:
     def __init__(self, name, has_instance_uuid=None, has_uuid=None):
         self.config = FakeVmomiVMSummaryConfig(
             name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid
         )
 
 
-class FakeVmomiVMRuntime(object):
+class FakeVmomiVMRuntime:
     def __init__(self):
         # add an invalid power state into the mix
         self.powerState = random.choice(
@@ -53,7 +53,7 @@ class FakeVmomiVMRuntime(object):
         )
 
 
-class FakeVmomiVMConfigHardwareDevice(object):
+class FakeVmomiVMConfigHardwareDevice:
     def __init__(self):
         pass
 
@@ -68,7 +68,7 @@ class FakeVmomiNic(FakeVmomiVMConfigHardwareDevice):
         return id(self)
 
 
-class FakeVmomiVMConfigHardware(object):
+class FakeVmomiVMConfigHardware:
     def __init__(self, nics=None):
         self.device = []
 
@@ -85,12 +85,12 @@ class FakeVmomiVMConfigHardware(object):
         random.shuffle(self.device)
 
 
-class FakeVmomiVMConfig(object):
+class FakeVmomiVMConfig:
     def __init__(self, nics=None):
         self.hardware = FakeVmomiVMConfigHardware(nics=nics)
 
 
-class FakeVmomiVM(object):
+class FakeVmomiVM:
     def __init__(
         self, name=None, nics=None, has_instance_uuid=None, has_uuid=None
     ):
@@ -116,7 +116,7 @@ class FakeVmomiVM(object):
         pass
 
 
-class FakeVmomiVmFolder(object):
+class FakeVmomiVmFolder:
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.childEntity = []
         for i in range(0, servers):
@@ -126,7 +126,7 @@ class FakeVmomiVmFolder(object):
             self.childEntity.append(vm)
 
 
-class FakeVmomiDatacenter(object):
+class FakeVmomiDatacenter:
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.vmFolder = FakeVmomiVmFolder(
             servers=servers,
@@ -135,7 +135,7 @@ class FakeVmomiDatacenter(object):
         )
 
 
-class FakeVmomiRootFolder(object):
+class FakeVmomiRootFolder:
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.childEntity = [
             FakeVmomiDatacenter(
@@ -146,7 +146,7 @@ class FakeVmomiRootFolder(object):
         ]
 
 
-class FakeVmomiSearchIndex(object):
+class FakeVmomiSearchIndex:
     def __init__(self, content):
         self.vms_by_instance_uuid = {}
         self.vms_by_uuid = {}
@@ -186,7 +186,7 @@ class FakeVmomiSearchIndex(object):
             return self.vms_by_uuid[uuid]
 
 
-class FakeVmomiContent(object):
+class FakeVmomiContent:
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.rootFolder = FakeVmomiRootFolder(
             servers=servers,
@@ -196,7 +196,7 @@ class FakeVmomiContent(object):
         self.searchIndex = FakeVmomiSearchIndex(self)
 
 
-class FakeVmomiServiceInstance(object):
+class FakeVmomiServiceInstance:
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.content = FakeVmomiContent(
             servers=servers,

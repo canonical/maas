@@ -66,7 +66,7 @@ class HandlerPermissionError(HandlerError):
         super().__init__("Permission denied")
 
 
-class HandlerOptions(object):
+class HandlerOptions:
     """Configuraton class for `Handler`.
 
     Provides the needed defaults to the internal `Meta` class used on

@@ -336,7 +336,7 @@ class TestFrameHelpers(MAASTestCase):
 
 
 @implementer(IWebSocketsFrameReceiver)
-class SavingEchoReceiver(object):
+class SavingEchoReceiver:
     """
     A test receiver saving the data received and sending it back.
     """

@@ -1007,7 +1007,7 @@ def get_model_object_name(queryset):
     return None
 
 
-class MAASQueriesMixin(object):
+class MAASQueriesMixin:
     """Contains utility functions that any mixin for model object manager
     queries may need to make use of."""
 

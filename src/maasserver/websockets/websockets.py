@@ -309,7 +309,7 @@ class IWebSocketsFrameReceiver(Interface):
         """
 
 
-class WebSocketsTransport(object):
+class WebSocketsTransport:
     """
     A frame transport for WebSockets.
 
@@ -569,7 +569,7 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
 
 
 @implementer(IResource)
-class WebSocketsResource(object):
+class WebSocketsResource:
     """
     A resource for serving a protocol through WebSockets.
 

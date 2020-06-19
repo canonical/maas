@@ -464,7 +464,7 @@ class LargeObjectFile:
         return r
 
 
-class LargeObjectDescriptor(object):
+class LargeObjectDescriptor:
     """LargeObjectField descriptor."""
 
     def __init__(self, field):
