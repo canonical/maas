@@ -1,3 +1,9 @@
+maas (2.8.0~rc6-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.8.0 RC6.
+
+ -- Alberto Donato <alberto.donato@canonical.com>  Mon, 22 Jun 2020 09:23:56 +0000
+
 maas (2.8.0~rc5-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.8.0 RC5.
