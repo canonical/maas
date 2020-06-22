@@ -65,8 +65,6 @@ class TestUserHandler(MAASServerTestCase):
         # testtools' assertRaises predates unittest's which has
         # support for context-manager
         self.assertRaises = super(TestCase, self).assertRaises
-        # likewise assertEqual in unittest has gotten much better
-        self.assertEqual = super(TestCase, self).assertEqual
 
     def dehydrate_user(self, user, for_self=False):
         data = {

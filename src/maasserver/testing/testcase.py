@@ -23,6 +23,7 @@ from django.db import (
     transaction,
 )
 from django.db.utils import IntegrityError, OperationalError
+from testtools.testcase import TestCase
 
 from maasserver.fields import register_mac_type
 from maasserver.testing.fixtures import (
@@ -142,6 +143,7 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     database_use_permitted = True
 
     def setUp(self):
+        self.assertEqual = super(TestCase, self).assertEqual
         super().setUp()
         self.beginTransaction()
         self.addCleanup(self.endTransaction)
