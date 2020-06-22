@@ -16,6 +16,7 @@ from twisted.internet.defer import inlineCallbacks
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver import maas_certificates
 from provisioningserver.drivers.pod import (
     RequestedMachine,
     RequestedMachineBlockDevice,
@@ -168,6 +169,9 @@ class TestLXDPodDriver(MAASTestCase):
         pod_id = factory.make_name("pod_id")
         Client = self.patch(lxd_module, "Client")
         Client.side_effect = lxd_module.ClientConnectionFailed()
+        # Getting the cert tuple can cause a certificate to be generated which
+        # can be slow but isn't needed for this test.
+        self.patch(maas_certificates, "get_maas_cert_tuple")
         driver = lxd_module.LXDPodDriver()
         error_msg = f"Pod {pod_id}: Failed to connect to the LXD REST API."
         with ExpectedException(lxd_module.LXDPodError, error_msg):
