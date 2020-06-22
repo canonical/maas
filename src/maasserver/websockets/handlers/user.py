@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The user handler for the WebSocket connection."""
@@ -35,7 +35,8 @@ class UserHandler(Handler):
         queryset = (
             User.objects.filter(is_active=True)
             .annotate(
-                sshkeys_count=Count("sshkey"), machines_count=Count("node")
+                sshkeys_count=Count("sshkey", distinct=True),
+                machines_count=Count("node", distinct=True),
             )
             .select_related("userprofile")
         )
