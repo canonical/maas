@@ -95,11 +95,13 @@ lldp_output_interface_template = """
 """
 
 
-def make_lxd_system_info(virt_type=None):
+def make_lxd_system_info(virt_type=None, uuid=None):
     if not virt_type:
         virt_type = random.choice(["physical", "container", "virtual-machine"])
+    if uuid is None:
+        uuid = factory.make_UUID()
     return {
-        "uuid": factory.make_UUID(),
+        "uuid": uuid,
         "vendor": factory.make_name("system_vendor"),
         "product": factory.make_name("system_product"),
         "family": factory.make_name("system_family"),
@@ -532,6 +534,7 @@ def make_lxd_output(
     server_name=None,
     virt_type=None,
     with_xenial_network=False,
+    uuid=None,
 ):
     if not resources:
         resources = deepcopy(SAMPLE_LXD_RESOURCES)
@@ -547,7 +550,7 @@ def make_lxd_output(
         ),
         "resources": resources,
     }
-    ret["resources"]["system"] = make_lxd_system_info(virt_type)
+    ret["resources"]["system"] = make_lxd_system_info(virt_type, uuid)
     if with_xenial_network:
         ret["resources"]["network"] = deepcopy(SAMPLE_LXD_XENIAL_NETWORK)
     return ret
@@ -1249,6 +1252,26 @@ class TestProcessLXDResults(MAASServerTestCase):
         )
         node = reload_object(node)
         self.assertEquals(deb_arch, node.architecture)
+
+    def test_sets_uuid(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        uuid = factory.make_UUID()
+        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+        node = reload_object(node)
+        self.assertEquals(uuid, node.hardware_uuid)
+
+    def test_sets_empty_uuid(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        # LXD reports the uuid as "" if the machine doesn't have one
+        # set.
+        uuid = ""
+        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+        node = reload_object(node)
+        # In the DB, we store the missing UUID as None, so that the
+        # check for unique UUIDs isn't triggered.
+        self.assertIsNone(node.hardware_uuid)
 
     def test_sets_os_hostname_for_controller(self):
         rack = factory.make_RackController()

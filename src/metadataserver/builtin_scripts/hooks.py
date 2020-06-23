@@ -413,7 +413,9 @@ def _process_system_information(node, system_data):
         else:
             NodeMetadata.objects.filter(node=node, key=key).delete()
 
-    node.hardware_uuid = system_data.get("uuid")
+    uuid = system_data.get("uuid")
+    # Convert "" to None, so that the unique check isn't triggered.
+    node.hardware_uuid = None if uuid == "" else uuid
 
     # Gather system information. Custom built machines and some Supermicro
     # servers do not provide this information.
