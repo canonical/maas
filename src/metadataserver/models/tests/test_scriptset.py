@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -181,6 +181,10 @@ class TestScriptSetManager(MAASServerTestCase):
 
     def test_create_commissioning_script_set_adds_all_user_scripts(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        # Scripts tagged with noauto must be specified by name.
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["noauto"]
+        )
         node = factory.make_Node()
         expected_scripts = list(NODE_INFO_SCRIPTS)
         expected_scripts.append(script.name)
@@ -189,6 +193,23 @@ class TestScriptSetManager(MAASServerTestCase):
 
         self.assertItemsEqual(
             expected_scripts,
+            [script_result.name for script_result in script_set],
+        )
+        self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition
+        )
+
+    def test_create_commissioning_script_set_adds_no_user_scripts(self):
+        factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        node = factory.make_Node()
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, scripts="none"
+        )
+
+        self.assertItemsEqual(
+            list(NODE_INFO_SCRIPTS),
             [script_result.name for script_result in script_set],
         )
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
