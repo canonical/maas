@@ -31,6 +31,14 @@ from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
+def make_SystemNodeMetadata(node):
+    # Any of these prefixes should work
+    prefix = random.choice(["system", "mainboard", "firmware", "chassis"])
+    key = factory.make_name(f"{prefix}_")
+    nmd = factory.make_NodeMetadata(node=node, key=key)
+    return f"{key}:{nmd.value}"
+
+
 class TestTranslateResultType(MAASServerTestCase):
     """Test translate_result_type."""
 
@@ -221,21 +229,7 @@ class TestScriptSetManager(MAASServerTestCase):
         self,
     ):
         node = factory.make_Node()
-        system_vendor = factory.make_NodeMetadata(
-            node=node, key="system_vendor"
-        )
-        system_product = factory.make_NodeMetadata(
-            node=node, key="system_product"
-        )
-        system_version = factory.make_NodeMetadata(
-            node=node, key="system_version"
-        )
-        mainboard_vendor = factory.make_NodeMetadata(
-            node=node, key="mainboard_vendor"
-        )
-        mainboard_product = factory.make_NodeMetadata(
-            node=node, key="mainboard_product"
-        )
+        for_hardware_key = make_SystemNodeMetadata(node)
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=[
@@ -244,11 +238,7 @@ class TestScriptSetManager(MAASServerTestCase):
                         "usb:174c:07d1",
                         "pci:8086:1918",
                         "modalias:pci:v00001A03d00001150sv000015D9*",
-                        "system_vendor:%s" % system_vendor.value,
-                        "system_product:%s" % system_product.value,
-                        "system_version:%s" % system_version.value,
-                        "mainboard_vendor:%s" % mainboard_vendor.value,
-                        "mainboard_product:%s" % mainboard_product.value,
+                        for_hardware_key,
                     ]
                 )
             ],
@@ -284,21 +274,7 @@ class TestScriptSetManager(MAASServerTestCase):
         self,
     ):
         node = factory.make_Node()
-        system_vendor = factory.make_NodeMetadata(
-            node=node, key="system_vendor"
-        )
-        system_product = factory.make_NodeMetadata(
-            node=node, key="system_product"
-        )
-        system_version = factory.make_NodeMetadata(
-            node=node, key="system_version"
-        )
-        mainboard_vendor = factory.make_NodeMetadata(
-            node=node, key="mainboard_vendor"
-        )
-        mainboard_product = factory.make_NodeMetadata(
-            node=node, key="mainboard_product"
-        )
+        for_hardware_key = make_SystemNodeMetadata(node)
         factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=[
@@ -307,11 +283,7 @@ class TestScriptSetManager(MAASServerTestCase):
                         "usb:174c:07d1",
                         "pci:8086:1918",
                         "modalias:pci:v00001A03d00001150sv000015D9*",
-                        "system_vendor:%s" % system_vendor.value,
-                        "system_product:%s" % system_product.value,
-                        "system_version:%s" % system_version.value,
-                        "mainboard_vendor:%s" % mainboard_vendor.value,
-                        "mainboard_product:%s" % mainboard_product.value,
+                        for_hardware_key,
                     ]
                 )
             ],
@@ -1177,21 +1149,7 @@ class TestScriptSet(MAASServerTestCase):
 
     def test_select_for_hardware_scripts_adds_modalias(self):
         node = factory.make_Node()
-        system_vendor = factory.make_NodeMetadata(
-            node=node, key="system_vendor"
-        )
-        system_product = factory.make_NodeMetadata(
-            node=node, key="system_product"
-        )
-        system_version = factory.make_NodeMetadata(
-            node=node, key="system_version"
-        )
-        mainboard_vendor = factory.make_NodeMetadata(
-            node=node, key="mainboard_vendor"
-        )
-        mainboard_product = factory.make_NodeMetadata(
-            node=node, key="mainboard_product"
-        )
+        for_hardware_key = make_SystemNodeMetadata(node)
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=[
@@ -1200,11 +1158,7 @@ class TestScriptSet(MAASServerTestCase):
                         "usb:174c:07d1",
                         "pci:8086:1918",
                         "modalias:pci:v00001A03d00001150sv000015D9*",
-                        "system_vendor:%s" % system_vendor.value,
-                        "system_product:%s" % system_product.value,
-                        "system_version:%s" % system_version.value,
-                        "mainboard_vendor:%s" % mainboard_vendor.value,
-                        "mainboard_product:%s" % mainboard_product.value,
+                        for_hardware_key,
                     ]
                 )
             ],
@@ -1231,34 +1185,10 @@ class TestScriptSet(MAASServerTestCase):
 
     def test_select_for_hardware_scripts_adds_system_mainboard(self):
         node = factory.make_Node()
-        system_vendor = factory.make_NodeMetadata(
-            node=node, key="system_vendor"
-        )
-        system_product = factory.make_NodeMetadata(
-            node=node, key="system_product"
-        )
-        system_version = factory.make_NodeMetadata(
-            node=node, key="system_version"
-        )
-        mainboard_vendor = factory.make_NodeMetadata(
-            node=node, key="mainboard_vendor"
-        )
-        mainboard_product = factory.make_NodeMetadata(
-            node=node, key="mainboard_product"
-        )
+        for_hardware_key = make_SystemNodeMetadata(node)
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
-            for_hardware=[
-                random.choice(
-                    [
-                        "system_vendor:%s" % system_vendor.value,
-                        "system_product:%s" % system_product.value,
-                        "system_version:%s" % system_version.value,
-                        "mainboard_vendor:%s" % mainboard_vendor.value,
-                        "mainboard_product:%s" % mainboard_product.value,
-                    ]
-                )
-            ],
+            for_hardware=[for_hardware_key],
         )
         script_set = ScriptSet.objects.create_commissioning_script_set(
             node, [random.choice(script.tags)]
