@@ -261,7 +261,7 @@ class CommissionForm(TestForm):
                     self.data[script_field] = value.split(",")
 
         choices = {
-            SCRIPT_TYPE.COMMISSIONING: [],
+            SCRIPT_TYPE.COMMISSIONING: [("none", "none")],
             SCRIPT_TYPE.TESTING: [("none", "none")],
         }
         scripts = Script.objects.all()
