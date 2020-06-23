@@ -230,17 +230,13 @@ class ScriptSetManager(Manager):
         )
         modaliases = script_set.node.modaliases
         regexes = []
-        for nmd in script_set.node.nodemetadata_set.all():
-            if nmd.key in [
-                "system_vendor",
-                "system_product",
-                "system_version",
-                "mainboard_vendor",
-                "mainboard_product",
-            ]:
-                regexes.append(
-                    "%s:%s" % (nmd.key, fnmatch.translate(nmd.value))
-                )
+        for nmd in script_set.node.nodemetadata_set.filter(
+            Q(key__startswith="system_")
+            | Q(key__startswith="mainboard_")
+            | Q(key__startswith="firmware_")
+            | Q(key__startswith="chassis_")
+        ):
+            regexes.append("%s:%s" % (nmd.key, fnmatch.translate(nmd.value)))
         if len(regexes) > 0:
             node_hw_regex = re.compile("^%s$" % "|".join(regexes), re.I)
         else:
@@ -474,17 +470,13 @@ class ScriptSet(CleanSave, Model):
             modaliases = self.node.modaliases
 
         regexes = []
-        for nmd in self.node.nodemetadata_set.all():
-            if nmd.key in [
-                "system_vendor",
-                "system_product",
-                "system_version",
-                "mainboard_vendor",
-                "mainboard_product",
-            ]:
-                regexes.append(
-                    "%s:%s" % (nmd.key, fnmatch.translate(nmd.value))
-                )
+        for nmd in self.node.nodemetadata_set.filter(
+            Q(key__startswith="system_")
+            | Q(key__startswith="mainboard_")
+            | Q(key__startswith="firmware_")
+            | Q(key__startswith="chassis_")
+        ):
+            regexes.append("%s:%s" % (nmd.key, fnmatch.translate(nmd.value)))
         if len(regexes) > 0:
             node_hw_regex = re.compile("^%s$" % "|".join(regexes), re.I)
         else:
