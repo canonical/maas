@@ -123,38 +123,46 @@ def _parse_interfaces(node, data):
     else:
         ip_addr_info = parse_ip_addr(script_result.output)
 
+    def process_port(card, port):
+        mac = port.get("address")
+        if mac in (None, SWITCH_OPENBMC_MAC):
+            # Ignore loopback (with no MAC) and OpenBMC interfaces on switches
+            # which all share the same, hard-coded OpenBMC MAC address.
+            return
+
+        interface = {
+            "name": port.get("id"),
+            "link_connected": port.get("link_detected"),
+            "interface_speed": _parse_interface_speed(port),
+            "link_speed": port.get("link_speed", 0),
+            "numa_node": card.get("numa_node", 0),
+            "vendor": card.get("vendor"),
+            "product": card.get("product"),
+            "firmware_version": card.get("firmware_version"),
+            "sriov_max_vf": card.get("sriov", {}).get("maximum_vfs", 0),
+        }
+        # Assign the IP addresses to this interface
+        link = ip_addr_info.get(interface["name"], {})
+        interface["ips"] = link.get("inet", []) + link.get("inet6", [])
+
+        if mac in interfaces:
+            raise DuplicateMACs(
+                f"Duplicated MAC address({mac}) on "
+                f"{interfaces[mac]['name']} and {interface['name']}"
+            )
+
+        interfaces[mac] = interface
+
     network_cards = data.get("network", {}).get("cards", {})
     for card in network_cards:
-        for port in card.get("ports", {}):
-            mac = port.get("address")
-            if mac in (None, SWITCH_OPENBMC_MAC):
-                # Ignore loopback (with no MAC) and OpenBMC interfaces on
-                # switches which all share the same, hard-coded OpenBMC MAC
-                # address.
-                continue
+        for port in card.get("ports", []):
+            process_port(card, port)
 
-            interface = {
-                "name": port.get("id"),
-                "link_connected": port.get("link_detected"),
-                "interface_speed": _parse_interface_speed(port),
-                "link_speed": port.get("link_speed", 0),
-                "numa_node": card.get("numa_node", 0),
-                "vendor": card.get("vendor"),
-                "product": card.get("product"),
-                "firmware_version": card.get("firmware_version"),
-                "sriov_max_vf": card.get("sriov", {}).get("maximum_vfs", 0),
-            }
-            # Assign the IP addresses to this interface
-            link = ip_addr_info.get(interface["name"], {})
-            interface["ips"] = link.get("inet", []) + link.get("inet6", [])
-
-            if mac in interfaces:
-                raise DuplicateMACs(
-                    f"Duplicated MAC address({mac}) on "
-                    "{interfaces[mac]['name']} and {interface['name']}"
-                )
-            else:
-                interfaces[mac] = interface
+        # entry can be present but None
+        vfs = card.get("sriov", {}).get("vfs") or {}
+        for vf in vfs:
+            for vf_port in vf.get("ports", []):
+                process_port(vf, vf_port)
 
     return interfaces
 

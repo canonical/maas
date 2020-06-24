@@ -2356,6 +2356,57 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertEqual(nic2.tags, [])
         self.assertEqual(nic3.tags, [])
 
+    def test_adds_ifaces_under_sriov(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        resources["network"]["cards"].append(
+            {
+                "driver": "thunder-nic",
+                "driver_version": "1.0",
+                "sriov": {
+                    "current_vfs": 30,
+                    "maximum_vfs": 128,
+                    "vfs": [
+                        {
+                            "driver": "thunder-nicvf",
+                            "driver_version": "1.0",
+                            "ports": [
+                                {
+                                    "id": "enP2p1s0f1",
+                                    "address": "01:01:01:01:01:01",
+                                    "port": 0,
+                                    "protocol": "ethernet",
+                                    "auto_negotiation": False,
+                                    "link_detected": False,
+                                }
+                            ],
+                            "numa_node": 0,
+                            "vendor": "Cavium, Inc.",
+                            "vendor_id": "177d",
+                            "product": "THUNDERX Network Interface Controller virtual function",
+                            "product_id": "a034",
+                        }
+                    ],
+                },
+                "numa_node": 0,
+                "pci_address": "0002:01:00.0",
+                "vendor": "Cavium, Inc.",
+                "vendor_id": "177d",
+                "product": "THUNDERX Network Interface Controller",
+                "product_id": "a01e",
+            }
+        )
+        update_node_network_information(
+            node, resources, create_numa_nodes(node)
+        )
+        nic = Interface.objects.get(mac_address="01:01:01:01:01:01")
+        self.assertEqual(nic.vendor, "Cavium, Inc.")
+
     def test_ignores_missing_vendor_data(self):
         """Test a node that has no previously known interfaces gets info from
         lshw added.
