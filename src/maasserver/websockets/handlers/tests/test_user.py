@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.user`"""
@@ -10,6 +10,7 @@ import datetime
 from django.contrib.auth.models import User
 from testtools.testcase import TestCase
 
+from maasserver.enum import NODE_STATUS
 from maasserver.models.event import Event
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.permissions import (
@@ -64,15 +65,17 @@ class TestUserHandler(MAASServerTestCase):
         # testtools' assertRaises predates unittest's which has
         # support for context-manager
         self.assertRaises = super(TestCase, self).assertRaises
+        # likewise assertEqual in unittest has gotten much better
+        self.assertEqual = super(TestCase, self).assertEqual
 
-    def dehydrate_user(self, user, sshkeys_count=0, for_self=False):
+    def dehydrate_user(self, user, for_self=False):
         data = {
             "id": user.id,
             "username": user.username,
             "last_name": user.last_name,
             "email": user.email,
             "is_superuser": user.is_superuser,
-            "sshkeys_count": sshkeys_count,
+            "sshkeys_count": user.sshkey_set.count(),
             "last_login": dehydrate_datetime(user.last_login),
             "is_local": user.userprofile.is_local,
             "completed_intro": user.userprofile.completed_intro,
@@ -162,6 +165,21 @@ class TestUserHandler(MAASServerTestCase):
         self.assertItemsEqual(
             [self.dehydrate_user(user, for_self=True)], handler.list({})
         )
+
+    def test_list_with_sshkeys_and_machines(self):
+        user, keys = factory.make_user_with_keys()
+        num_machines = 3
+        for _ in range(num_machines):
+            node = factory.make_Node(status=NODE_STATUS.READY)
+            node.acquire(user)
+        handler = UserHandler(user, {}, None)
+        users_from_ws = handler.list({})
+        self.assertEqual(
+            [self.dehydrate_user(user, for_self=True)], users_from_ws
+        )
+        user_from_ws = users_from_ws[0]
+        self.assertEqual(user_from_ws["sshkeys_count"], len(keys))
+        self.assertEqual(user_from_ws["machines_count"], num_machines)
 
     def test_auth_user(self):
         user = factory.make_User()
