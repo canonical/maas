@@ -13,9 +13,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import uuid
 
-import oauth.oauth as oauth
+from oauthlib import oauth1
 
 from apiclient.encode_json import encode_json_data
 from apiclient.multipart import encode_multipart_data
@@ -26,12 +25,9 @@ class MAASOAuth:
     """Helper class to OAuth-sign an HTTP request."""
 
     def __init__(self, consumer_key, resource_token, resource_secret):
-        resource_tok_string = "oauth_token_secret=%s&oauth_token=%s" % (
-            resource_secret,
-            resource_token,
-        )
-        self.resource_token = oauth.OAuthToken.from_string(resource_tok_string)
-        self.consumer_token = oauth.OAuthConsumer(consumer_key, "")
+        self._consumer_key = consumer_key
+        self._resource_token = resource_token
+        self._resource_secret = resource_secret
 
     def sign_request(self, url, headers):
         """Sign a request.
@@ -40,18 +36,14 @@ class MAASOAuth:
         @param headers: The headers in the request.  These will be updated
             with the signature.
         """
-        oauth_request = oauth.OAuthRequest.from_consumer_and_token(
-            self.consumer_token,
-            token=self.resource_token,
-            http_url=url,
-            parameters={"oauth_nonce": uuid.uuid4().hex},
+        client = oauth1.Client(
+            self._consumer_key,
+            resource_owner_key=self._resource_token,
+            resource_owner_secret=self._resource_secret,
+            signature_method=oauth1.SIGNATURE_PLAINTEXT,
         )
-        oauth_request.sign_request(
-            oauth.OAuthSignatureMethod_PLAINTEXT(),
-            self.consumer_token,
-            self.resource_token,
-        )
-        headers.update(oauth_request.to_header())
+        _, signed_headers, _ = client.sign(url)
+        headers.update(signed_headers)
 
 
 class NoAuth:

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
-from oauth import oauth
+from piston3 import oauth
 from testtools.matchers import Contains
 
 from maasserver.api import auth as api_auth

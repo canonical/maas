@@ -8,8 +8,8 @@ __all__ = ["cleanup_old_nonces", "NonceCleanupService"]
 
 import time
 
-from oauth.oauth import OAuthServer
 from piston3.models import Nonce
+from piston3.oauth import OAuthServer
 from twisted.application.internet import TimerService
 
 from maasserver.utils.orm import transactional

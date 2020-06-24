@@ -69,7 +69,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         self.patch(action, "prepare_initial_payload").return_value = ("", {})
         self.assertEqual(
             content.encode("ascii"),
-            action.initial_request(sentinel.uri, Mock()),
+            action.initial_request("http://example.com", Mock()),
         )
 
     def test_initial_request_raises_CommandError_on_error(self):
@@ -79,7 +79,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action = self.make_boot_resources_create_action()
         self.patch(action, "prepare_initial_payload").return_value = ("", {})
         self.assertRaises(
-            CommandError, action.initial_request, sentinel.uri, Mock()
+            CommandError, action.initial_request, "http://example.com", Mock()
         )
 
     def test_prepare_initial_payload_raises_CommandError_missing_content(self):
@@ -154,7 +154,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         self.configure_http_request(500, b"")
         action = self.make_boot_resources_create_action()
         self.assertRaises(
-            CommandError, action.put_upload, sentinel.upload_uri, b""
+            CommandError, action.put_upload, "http://example.com", b""
         )
 
     def test_put_upload_sends_content_type_and_length_headers(self):
@@ -164,7 +164,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action = self.make_boot_resources_create_action()
         self.patch(action, "sign")
         data = factory.make_bytes()
-        action.put_upload(sentinel.upload_uri, data)
+        action.put_upload("http://example.com", data)
         headers = {
             "Content-Type": "application/octet-stream",
             "Content-Length": "%s" % len(data),
@@ -172,7 +172,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         self.assertThat(
             mock_request,
             MockCalledOnceWith(
-                sentinel.upload_uri,
+                "http://example.com",
                 "PUT",
                 body=ANY,
                 headers=headers,

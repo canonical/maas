@@ -9,7 +9,7 @@ from time import time
 
 from django.conf import settings
 from django.test.client import RequestFactory
-from oauth.oauth import (
+from piston3.oauth import (
     generate_nonce,
     OAuthConsumer,
     OAuthRequest,

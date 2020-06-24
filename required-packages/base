@@ -39,7 +39,6 @@ python3-mimeparse
 python3-novaclient
 python3-netaddr
 python3-netifaces
-python3-oauth
 python3-oauthlib
 python3-openssl
 python3-paramiko

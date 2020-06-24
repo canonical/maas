@@ -139,7 +139,6 @@ parts:
       - python3-yaml
       - python3-simplestreams
       - python3-curtin
-      - python3-oauth
       - python3-oauthlib
       - python3-attr
       - python3-simplejson

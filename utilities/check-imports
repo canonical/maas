@@ -268,7 +268,6 @@ RegionControllerRule = Rule(
     Allow("metadataserver|metadataserver.**"),
     Allow("mimeparse"),
     Allow("netaddr|netaddr.**"),
-    Allow("oauth|oauth.**"),
     Allow("OpenSSL|OpenSSL.**"),
     Allow("petname"),
     Allow("piston3|piston3.**"),
@@ -327,7 +326,7 @@ checks = [
         Rule(
             Allow("apiclient|apiclient.**"),
             Allow("django.utils.**"),
-            Allow("oauth.oauth"),
+            Allow("oauthlib.oauth1"),
             Allow(StandardLibraries),
         ),
     ),
@@ -336,7 +335,7 @@ checks = [
         Rule(
             Allow("apiclient|apiclient.**"),
             Allow("django.**"),
-            Allow("oauth.oauth"),
+            Allow("oauthlib.oauth1"),
             Allow("piston3|piston3.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
