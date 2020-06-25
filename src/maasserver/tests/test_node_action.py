@@ -653,9 +653,7 @@ class TestDeployAction(MAASServerTestCase):
             power_type="manual",
             owner=user,
         )
-        mock_get_curtin_config = self.patch(
-            node_action_module, "get_curtin_config"
-        )
+        self.patch(node_action_module, "get_curtin_config")
         mock_node_start = self.patch(node, "start")
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
@@ -663,11 +661,35 @@ class TestDeployAction(MAASServerTestCase):
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
-        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
-        self.expectThat(mock_node_start, MockCalledOnceWith(user))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user, user_data=None)
+        )
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description, "Started deploying '%s'." % node.hostname
+        )
+
+    def test_Deploy_passes_user_data(self):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            owner=user,
+        )
+        self.patch(node_action_module, "get_curtin_config")
+        mock_node_start = self.patch(node, "start")
+        osystem = make_usable_osystem(self)
+        os_name = osystem["name"]
+        release_name = osystem["releases"][0]["name"]
+        Config.objects.set_config("default_osystem", os_name)
+        Config.objects.set_config("default_distro_series", release_name)
+        extra = {"user_data": "foo: bar"}
+        Deploy(node, user, request).execute(**extra)
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user, user_data="foo: bar")
         )
 
     def test_Deploy_raises_NodeActionError_for_no_curtin_config(self):
@@ -726,17 +748,13 @@ class TestDeployAction(MAASServerTestCase):
             power_type="manual",
             owner=user,
         )
-        mock_get_curtin_config = self.patch(
-            node_action_module, "get_curtin_config"
-        )
-        mock_node_start = self.patch(node, "start")
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
         extra = {"osystem": os_name, "distro_series": release_name}
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
-        self.expectThat(mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
         self.expectThat(node.distro_series, Equals(release_name))
 
@@ -751,18 +769,14 @@ class TestDeployAction(MAASServerTestCase):
             power_type="manual",
             owner=user,
         )
-        mock_get_curtin_config = self.patch(
-            node_action_module, "get_curtin_config"
-        )
-        mock_node_start = self.patch(node, "start")
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
-        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
-        self.expectThat(mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
         self.expectThat(node.distro_series, Equals(release_name))
 
@@ -776,10 +790,8 @@ class TestDeployAction(MAASServerTestCase):
             power_type="manual",
             owner=None,
         )
-        mock_get_curtin_config = self.patch(
-            node_action_module, "get_curtin_config"
-        )
-        mock_node_start = self.patch(node, "start")
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
         mock_node_acquire = self.patch(node, "acquire")
         mock_validate_os = self.patch(
             node_action_module, "validate_osystem_and_distro_series"
@@ -791,10 +803,8 @@ class TestDeployAction(MAASServerTestCase):
         mock_validate_hwe.side_effect = lambda *args, **kwargs: args[0]
         extra = {"install_kvm": True}
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         # Make sure we set bridge_all when we acquire the Node.
         self.expectThat(mock_node_acquire, MockCalledOnceWith(user))
-        self.expectThat(mock_node_start, MockCalledOnceWith(user))
         # Make sure ubuntu/bionic is selected if KVM pod deployment has been
         # selected.
         self.expectThat(node.osystem, Equals("ubuntu"))
@@ -843,17 +853,13 @@ class TestDeployAction(MAASServerTestCase):
             power_type="manual",
             owner=user,
         )
-        mock_get_curtin_config = self.patch(
-            node_action_module, "get_curtin_config"
-        )
-        mock_node_start = self.patch(node, "start")
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
         extra = {"osystem": os_name, "distro_series": release_name + "*"}
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
-        self.expectThat(mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
         self.expectThat(node.distro_series, Equals(release_name))
 
@@ -862,10 +868,8 @@ class TestDeployAction(MAASServerTestCase):
         request = factory.make_fake_request("/")
         request.user = user
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
-        mock_get_curtin_config = self.patch(
-            node_action_module, "get_curtin_config"
-        )
-        mock_node_start = self.patch(node, "start")
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
@@ -874,8 +878,6 @@ class TestDeployAction(MAASServerTestCase):
         action = Deploy(node, user, request)
         action.execute()
 
-        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
-        self.expectThat(mock_node_start, MockCalledOnceWith(user))
         self.expectThat(user, Equals(node.owner))
         self.expectThat(NODE_STATUS.ALLOCATED, Equals(node.status))
 

@@ -475,6 +475,7 @@ class Deploy(NodeAction):
         distro_series=None,
         hwe_kernel=None,
         install_kvm=False,
+        user_data=None,
     ):
         """See `NodeAction.execute`."""
         if install_kvm:
@@ -552,7 +553,7 @@ class Deploy(NodeAction):
             raise NodeActionError("Failed to retrieve curtin config: %s" % e)
 
         try:
-            self.node.start(self.user)
+            self.node.start(self.user, user_data=user_data)
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
@@ -970,11 +971,8 @@ def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):
         for consistent display.
     """
     actions = (action_class(node, user, request) for action_class in classes)
-    applicable_actions = (
-        action for action in actions if action.is_actionable()
-    )
     return OrderedDict(
         (action.name, action)
-        for action in applicable_actions
-        if action.is_permitted()
+        for action in actions
+        if action.is_actionable() and action.is_permitted()
     )
