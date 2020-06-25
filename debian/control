@@ -125,6 +125,7 @@ Package: python3-maas-provisioningserver
 Section: python
 Architecture: all
 Depends: archdetect-deb,
+         lsb-release,
          lshw,
          openssh-client,
          python3-attr,

@@ -210,6 +210,7 @@ RackControllerRule = Rule(
     Allow("distro_info|distro_info.*"),
     Allow("formencode|formencode.**"),
     Allow("jsonschema|jsonschema.**"),
+    Allow("lsb_release|lsb_release.*"),
     Allow("lxml|lxml.**"),
     # This is only allowed because of how `regiond` needs imports done
     # after the reactor has been installed. The code handles those imports
