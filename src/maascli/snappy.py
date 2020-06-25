@@ -15,6 +15,7 @@ import argparse
 from collections import OrderedDict
 import grp
 import os
+from pathlib import Path
 import pwd
 import signal
 import subprocess
@@ -246,34 +247,31 @@ def print_config_value(config, key, hidden=False):
     print_msg(template.format(key=key, value=config.get(key)))
 
 
+def _get_rpc_secret_path() -> Path:
+    """Get the path for the shared secret file."""
+    base_path = os.getenv("MAAS_DATA", "/var/lib/maas")
+    return Path(base_path) / "secret"
+
+
 def get_rpc_secret():
     """Get the current RPC secret."""
     secret = None
-    secret_path = os.path.join(
-        os.environ["SNAP_DATA"], "var", "lib", "maas", "secret"
-    )
-    if os.path.exists(secret_path):
-        with open(secret_path, "r") as fp:
-            secret = fp.read().strip()
+    secret_path = _get_rpc_secret_path()
+    if secret_path.exists():
+        secret = secret_path.read_text().strip()
     if secret:
         return secret
-    else:
-        return None
 
 
 def set_rpc_secret(secret):
     """Write/delete the RPC secret."""
-    secret_path = os.path.join(
-        os.environ["SNAP_DATA"], "var", "lib", "maas", "secret"
-    )
+    secret_path = _get_rpc_secret_path()
     if secret:
-        # Write the secret.
-        with open(secret_path, "w") as fp:
-            fp.write(secret)
+        secret_path.write_text(secret)
     else:
         # Delete the secret.
-        if os.path.exists(secret_path):
-            os.remove(secret_path)
+        if secret_path.exists():
+            secret_path.unlink()
 
 
 def print_config(
