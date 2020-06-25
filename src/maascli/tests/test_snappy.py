@@ -6,6 +6,7 @@
 __all__ = []
 
 import os
+from pathlib import Path
 import random
 import signal
 import subprocess
@@ -13,6 +14,7 @@ from textwrap import dedent
 import time
 from unittest.mock import MagicMock
 
+from fixtures import EnvironmentVariableFixture
 import netifaces
 from testtools.matchers import Contains, Not
 
@@ -304,11 +306,10 @@ class TestSupervisordHelpers(MAASTestCase):
 
 class TestConfigHelpers(MAASTestCase):
     def setUp(self):
-        super(TestConfigHelpers, self).setUp()
-        snap_data = self.make_dir()
-        self.environ = {"SNAP_DATA": snap_data}
-        self.regiond_path = os.path.join(snap_data, "regiond.conf")
-        self.patch(os, "environ", self.environ)
+        super().setUp()
+        maas_data = self.make_dir()
+        self.secret_file = Path(maas_data) / "secret"
+        self.useFixture(EnvironmentVariableFixture("MAAS_DATA", maas_data))
 
     def test_print_config_value(self):
         mock_print = self.patch(snappy, "print_msg")
@@ -331,50 +332,28 @@ class TestConfigHelpers(MAASTestCase):
         )
 
     def test_get_rpc_secret_returns_secret(self):
-        maas_dir = os.path.join(
-            self.environ["SNAP_DATA"], "var", "lib", "maas"
-        )
-        os.makedirs(maas_dir)
-        secret_path = os.path.join(maas_dir, "secret")
         secret = factory.make_string()
-        with open(secret_path, "w") as stream:
-            stream.write(secret)
-        self.assertEqual(secret, snappy.get_rpc_secret())
+        self.secret_file.write_text(secret)
+        self.assertEqual(snappy.get_rpc_secret(), secret)
 
     def test_get_rpc_secret_returns_None_when_no_file(self):
-        maas_dir = os.path.join(
-            self.environ["SNAP_DATA"], "var", "lib", "maas"
-        )
-        os.makedirs(maas_dir)
         self.assertIsNone(snappy.get_rpc_secret())
 
     def test_get_rpc_secret_returns_None_when_empty_file(self):
-        maas_dir = os.path.join(
-            self.environ["SNAP_DATA"], "var", "lib", "maas"
-        )
-        os.makedirs(maas_dir)
-        secret_path = os.path.join(maas_dir, "secret")
-        open(secret_path, "w").close()
+        self.secret_file.write_text("")
         self.assertIsNone(snappy.get_rpc_secret())
 
     def test_set_rpc_secret_sets_secret(self):
-        maas_dir = os.path.join(
-            self.environ["SNAP_DATA"], "var", "lib", "maas"
-        )
-        os.makedirs(maas_dir)
         secret = factory.make_string()
         snappy.set_rpc_secret(secret)
         self.assertEquals(secret, snappy.get_rpc_secret())
 
     def test_set_rpc_secret_clears_secret(self):
-        maas_dir = os.path.join(
-            self.environ["SNAP_DATA"], "var", "lib", "maas"
-        )
-        os.makedirs(maas_dir)
         secret = factory.make_string()
         snappy.set_rpc_secret(secret)
         snappy.set_rpc_secret(None)
         self.assertIsNone(snappy.get_rpc_secret())
+        self.assertFalse(self.secret_file.exists())
 
 
 class TestCmdInit(MAASTestCase):
