@@ -195,16 +195,6 @@ class cmd_init(Command):
             help="Skip the admin creation.",
         )
         add_create_admin_options(parser)
-        parser.add_argument(
-            "--enable-candid",
-            default=False,
-            action="store_true",
-            help=(
-                "Enable configuring the use of an external Candid server. "
-                "If this isn't enabled, all --candid-* arguments "
-                "will be ignored."
-            ),
-        )
         add_candid_options(parser)
         add_rbac_options(parser)
 

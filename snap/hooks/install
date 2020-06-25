@@ -2,8 +2,29 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+# _EPOCH_: migration out of all mode. This should be dropped when bumping epoch
+# to 3
+maas_snap_mode() {
+    cat "$SNAP_COMMON/snap_mode" 2>/dev/null || echo "none"
+}
+if [ "$(maas_snap_mode)" = "all" ]; then
+    cat | tee -a "$SNAP_COMMON/log/maas.log"<<EOF
+The snap is configured in "all" mode (running the PostgreSQL database within
+the snap), which is no longer supported.
+
+It won't be possible to refresh the snap to this new version until the
+installation is converted to a supported mode (e.g "region+rack").
+
+Please run the following script to migrate the database to the host system:
+
+  sudo /snap/maas/current/helpers/migrate-snap-database
+
+EOF
+    exit 1
+fi
+
 # _EPOCH_: data migrations in the snap. This should be dropped when bumping
-# epoch to 2
+# epoch to 3
 migrate_data() {
     # move chrony log and driftfile
     if  [ -f "$SNAP_DATA/var/lib/chrony/chrony.drift" ]; then
@@ -33,29 +54,18 @@ fi
 
 migrate_data
 
-# Always overwrite sample preseeds to ensure samples are up-to-date in case
-# we do changes that need to be reflected.
+# Always overwrite sample preseeds to ensure samples are up-to-date in case we
+# make changes that need to be reflected.
 mkdir -p "$SNAP_DATA/preseeds"
-cp "$SNAP/etc/maas/preseeds/curtin_userdata" "$SNAP_DATA/preseeds/curtin_userdata.sample"
-cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_userdata_centos.sample"
-cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"
-cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
-
-maas_snap_mode() {
-    cat "$SNAP_COMMON/snap_mode" 2>/dev/null || echo "none"
-}
-
-if [ "$(maas_snap_mode)" = "all" ]; then
-    # When running in all mode and not disabled, start services to ensure
-    # PostgreSQL is running to perform migrations
-    service="${SNAP_INSTANCE_NAME}.supervisor"
-    if snapctl services "$service"  | grep -q disabled; then
-        echo "Can't refresh snap in 'all' mode while disabled." >&2
-        exit 1
-    else
-        snapctl start "$service"
-    fi
-fi
+declare -a PRESEEDS=(
+    curtin_userdata
+    curtin_userdata_centos
+    curtin_userdata_custom
+    curtin_userdata_windows
+)
+for preseed in "${PRESEEDS[@]}"; do
+    echo cp "$SNAP/etc/maas/preseeds/$preseed" "$SNAP_DATA/preseeds/${preseed}.sample"
+done
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 "$SNAP/bin/maas-wrapper" migrate --configure

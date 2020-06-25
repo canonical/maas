@@ -136,9 +136,6 @@ class TestRenderSupervisord(MAASTestCase):
 
     TEST_TEMPLATE = dedent(
         """\
-    {{if postgresql}}
-    HAS_POSTGRESQL
-    {{endif}}
     {{if regiond}}
     HAS_REGIOND
     {{endif}}
@@ -150,50 +147,12 @@ class TestRenderSupervisord(MAASTestCase):
 
     scenarios = (
         (
-            "all",
-            {
-                "mode": "all",
-                "postgresql": True,
-                "regiond": True,
-                "rackd": True,
-            },
-        ),
-        (
             "region+rack",
-            {
-                "mode": "region+rack",
-                "postgresql": False,
-                "regiond": True,
-                "rackd": True,
-            },
+            {"mode": "region+rack", "regiond": True, "rackd": True},
         ),
-        (
-            "region",
-            {
-                "mode": "region",
-                "postgresql": False,
-                "regiond": True,
-                "rackd": False,
-            },
-        ),
-        (
-            "rack",
-            {
-                "mode": "rack",
-                "postgresql": False,
-                "regiond": False,
-                "rackd": True,
-            },
-        ),
-        (
-            "none",
-            {
-                "mode": "none",
-                "postgresql": False,
-                "regiond": False,
-                "rackd": False,
-            },
-        ),
+        ("region", {"mode": "region", "regiond": True, "rackd": False}),
+        ("rack", {"mode": "rack", "regiond": False, "rackd": True}),
+        ("none", {"mode": "none", "regiond": False, "rackd": False}),
     )
 
     def setUp(self):
@@ -222,10 +181,6 @@ class TestRenderSupervisord(MAASTestCase):
     def test_template_rended_correctly(self):
         snappy.render_supervisord(self.mode)
         output = self.get_rendered_config()
-        if self.postgresql:
-            self.assertThat(output, Contains("HAS_POSTGRESQL"))
-        else:
-            self.assertThat(output, Not(Contains("HAS_POSTGRESQL")))
         if self.regiond:
             self.assertThat(output, Contains("HAS_REGIOND"))
         else:
@@ -416,55 +371,6 @@ class TestCmdInit(MAASTestCase):
             }
         )
 
-    def test_init_snap_db_options_prompt_deprecated(self):
-        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        self.patch(snappy, "set_rpc_secret")
-        self.patch(snappy.cmd_init, "_finalize_init")
-
-        self.mock_read_input.side_effect = [
-            "postgres://maas:pwd@localhost/db",
-            "http://localhost:5240/MAAS",
-        ]
-        options = self.parser.parse_args(["--mode=region+rack"])
-        self.cmd(options)
-        self.mock_maas_configuration().update.assert_called_once_with(
-            {
-                "maas_url": "http://localhost:5240/MAAS",
-                "database_host": "localhost",
-                "database_name": "db",
-                "database_user": "maas",
-                "database_pass": "pwd",
-            }
-        )
-
-    def test_init_db_options_port(self):
-        self.patch(snappy, "print_msg")
-        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        self.patch(snappy, "set_rpc_secret")
-        self.patch(snappy.cmd_init, "_finalize_init")
-
-        self.mock_read_input.side_effect = [
-            "localhost",
-            "db",
-            "maas",
-            "pwd",
-            "http://localhost:5240/MAAS",
-        ]
-        options = self.parser.parse_args(
-            ["region+rack", "--database-port", "5432"]
-        )
-        self.cmd(options)
-        self.mock_maas_configuration().update.assert_called_once_with(
-            {
-                "maas_url": "http://localhost:5240/MAAS",
-                "database_host": "localhost",
-                "database_name": "db",
-                "database_user": "maas",
-                "database_pass": "pwd",
-                "database_port": 5432,
-            }
-        )
-
     def test_init_db_parse_error(self):
         self.patch(snappy, "print_msg")
         self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
@@ -488,100 +394,6 @@ class TestCmdInit(MAASTestCase):
             str(error),
         )
         self.mock_maas_configuration().update.assert_not_called()
-
-    def test_init_db_options_port_deprecated(self):
-        self.patch(snappy, "print_msg")
-        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        self.patch(snappy, "set_rpc_secret")
-        self.patch(snappy.cmd_init, "_finalize_init")
-
-        self.mock_read_input.side_effect = [
-            "localhost",
-            "db",
-            "maas",
-            "pwd",
-            "http://localhost:5240/MAAS",
-        ]
-        options = self.parser.parse_args(
-            ["--mode=region+rack", "--database-port", "5432"]
-        )
-        self.cmd(options)
-        self.mock_maas_configuration().update.assert_called_once_with(
-            {
-                "maas_url": "http://localhost:5240/MAAS",
-                "database_host": "localhost",
-                "database_name": "db",
-                "database_user": "maas",
-                "database_pass": "pwd",
-                "database_port": 5432,
-            }
-        )
-
-    def test_init_all_mode_logs_deprecation(self):
-        mock_print = self.patch(snappy, "print_msg")
-        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        self.patch(snappy, "set_rpc_secret")
-        self.patch(snappy.cmd_init, "_finalize_init")
-        options = self.parser.parse_args(
-            [
-                "--mode=all",
-                "--maas-url",
-                "localhost",
-                "--database-uri",
-                "postgres://dbuser:pwd@dbhost/",
-                "--database-name",
-                "dbname",
-            ]
-        )
-        self.cmd(options)
-        mock_print.assert_called_once_with(
-            "\nWARNING: Passing --mode=all is deprecated and "
-            "will be removed in the 2.9 release.\n"
-            "See https://maas.io/deprecations/MD1 for more details.\n",
-            stderr=True,
-        )
-
-    def test_get_database_settings_uri_and_deprecated(self):
-        options = self.parser.parse_args(
-            [
-                "region+rack",
-                "--database-uri",
-                "postgres://dbuser:pwd@dbhost/",
-                "--database-name",
-                "dbname",
-            ]
-        )
-        error = self.assertRaises(
-            snappy.DatabaseSettingsError, snappy.get_database_settings, options
-        )
-        self.assertEqual(
-            "Can't use deprecated --database-* parameters together with "
-            "--database-uri",
-            str(error),
-        )
-
-    def test_get_database_settings_logs_deprecated(self):
-        mock_print = self.patch(snappy, "print_msg")
-        options = self.parser.parse_args(
-            [
-                "region+rack",
-                "--database-host",
-                "localhost",
-                "--database-name",
-                "dbname",
-                "--database-user",
-                "maas",
-                "--database-pass",
-                "secret",
-            ]
-        )
-        snappy.get_database_settings(options)
-        mock_print.assert_called_once_with(
-            "\nWARNING: Passing individual database configs is deprecated "
-            "and will be removed in the 2.9 release.\n"
-            "Please use --database-uri instead.\n",
-            stderr=True,
-        )
 
     def test_get_database_settings_no_prompt_dsn(self):
         options = self.parser.parse_args(
@@ -768,97 +580,6 @@ class TestCmdInit(MAASTestCase):
             "Database URI needs to be either 'maas-test-db:///' or start with "
             "'postgres://'",
             str(error),
-        )
-
-    def test_deprecated_get_database_settings_prompt_all_but_host(self):
-        self.patch(snappy, "print_msg")
-        self.mock_read_input.side_effect = ["dbname", "dbuser", "pwd"]
-        options = self.parser.parse_args(
-            ["region+rack", "--database-host", "myhost"]
-        )
-        settings = snappy.get_database_settings(options)
-        self.assertEqual(
-            {
-                "database_host": "myhost",
-                "database_name": "dbname",
-                "database_user": "dbuser",
-                "database_pass": "pwd",
-            },
-            settings,
-        )
-
-    def test_deprecated_get_database_settings_prompt_all_but_name(self):
-        self.patch(snappy, "print_msg")
-        self.mock_read_input.side_effect = ["dbhost", "dbuser", "pwd"]
-        options = self.parser.parse_args(
-            ["region+rack", "--database-name", "myname"]
-        )
-        settings = snappy.get_database_settings(options)
-        self.assertEqual(
-            {
-                "database_host": "dbhost",
-                "database_name": "myname",
-                "database_user": "dbuser",
-                "database_pass": "pwd",
-            },
-            settings,
-        )
-
-    def test_deprecated_get_database_settings_prompt_all_but_user(self):
-        self.patch(snappy, "print_msg")
-        self.mock_read_input.side_effect = ["dbhost", "dbname", "pwd"]
-        options = self.parser.parse_args(
-            ["region+rack", "--database-user", "myuser"]
-        )
-        settings = snappy.get_database_settings(options)
-        self.assertEqual(
-            {
-                "database_host": "dbhost",
-                "database_name": "dbname",
-                "database_user": "myuser",
-                "database_pass": "pwd",
-            },
-            settings,
-        )
-
-    def test_deprecated_get_database_settings_prompt_all_but_pass(self):
-        self.patch(snappy, "print_msg")
-        self.mock_read_input.side_effect = ["dbhost", "dbname", "dbuser"]
-        options = self.parser.parse_args(
-            ["region+rack", "--database-pass", "mypwd"]
-        )
-        settings = snappy.get_database_settings(options)
-        self.assertEqual(
-            {
-                "database_host": "dbhost",
-                "database_name": "dbname",
-                "database_user": "dbuser",
-                "database_pass": "mypwd",
-            },
-            settings,
-        )
-
-    def test_deprecated_get_database_settings_prompt_all_but_port(self):
-        self.patch(snappy, "print_msg")
-        self.mock_read_input.side_effect = [
-            "dbhost",
-            "dbname",
-            "dbuser",
-            "pwd",
-        ]
-        options = self.parser.parse_args(
-            ["region+rack", "--database-port", "1234"]
-        )
-        settings = snappy.get_database_settings(options)
-        self.assertEqual(
-            {
-                "database_host": "dbhost",
-                "database_name": "dbname",
-                "database_user": "dbuser",
-                "database_pass": "pwd",
-                "database_port": 1234,
-            },
-            settings,
         )
 
 

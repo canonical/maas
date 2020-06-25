@@ -4,7 +4,6 @@
 __all__ = ["get_deprecations", "log_deprecations"]
 
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils import snappy
 
 DEPRECATION_URL = "https://maas.io/deprecations/{id}"
 
@@ -30,25 +29,12 @@ class Deprecation:
 
 
 # all known deprecation notices
-DEPRECATIONS = {
-    "NO_ALL_MODE": Deprecation(
-        id="MD1",
-        since="2.8",
-        description=(
-            "The setup for this MAAS is deprecated and not suitable for production "
-            "environments, as the database is running inside the snap."
-        ),
-        link_text="How to migrate the database out of the snap",
-    )
-}
+DEPRECATIONS = {}
 
 
 def get_deprecations():
     """Return a list of currently active deprecation notices."""
-    deprecations = []
-    if snappy.running_in_snap() and snappy.get_snap_mode() == "all":
-        deprecations.append(DEPRECATIONS["NO_ALL_MODE"])
-    return deprecations
+    return []
 
 
 def log_deprecations(logger=None):

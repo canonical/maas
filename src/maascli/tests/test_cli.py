@@ -218,20 +218,11 @@ class TestCmdInit(MAASTestCase):
         self.assertIsNone(options.admin_password)
         self.assertIsNone(options.admin_email)
         self.assertIsNone(options.admin_ssh_import)
-        self.assertFalse(options.enable_candid)
         self.assertIsNone(options.candid_agent_file)
         self.assertIsNone(options.rbac_url)
 
-    def test_init_maas_no_candid(self):
+    def test_init_maas_calls_subcommands(self):
         options = self.parser.parse_args([])
-        self.cmd(options)
-        [createadmin_call] = self.call_mock.mock_calls
-        _, args, kwargs = createadmin_call
-        self.assertEqual(([self.maas_region_path, "createadmin"],), args)
-        self.assertEqual({}, kwargs)
-
-    def test_init_maas_with_candid(self):
-        options = self.parser.parse_args(["--enable-candid"])
         self.cmd(options)
         configauth_call, createadmin_call = self.call_mock.mock_calls
         _, args1, kwargs1 = configauth_call

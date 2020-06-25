@@ -252,9 +252,8 @@ def print_msg(msg="", newline=True, stderr=False):
 
 
 def init_maas(options):
-    if options.enable_candid:
-        print_msg("Configuring authentication")
-        configure_authentication(options)
+    print_msg("Configuring authentication")
+    configure_authentication(options)
     if not options.skip_admin:
         auth_config = get_current_auth_config()
         if auth_config["external_auth_url"]:

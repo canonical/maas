@@ -16,18 +16,6 @@ user=root
 serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
 
 
-{{if postgresql}}
-[program:postgresql]
-process_name=postgresql
-command=%(ENV_SNAP)s/bin/ld-preload %(ENV_SNAP)s/bin/run-postgres
-stopasgroup=true
-killasgroup=true
-redirect_stderr=true
-stdout_logfile=%(ENV_SNAP_COMMON)s/log/postgresql.log
-startsecs=10
-{{endif}}
-
-
 {{if regiond}}
 [program:regiond]
 process_name=regiond

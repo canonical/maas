@@ -5,11 +5,9 @@
 
 __all__ = []
 
-from pathlib import Path
 import random
 from unittest.mock import call
 
-from fixtures import EnvironmentVariable
 from testtools.matchers import HasLength, Is, IsInstance, Not
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
@@ -199,20 +197,15 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(uuid, Not(Is(None)))
 
     def test_syncs_deprecation_notifications(self):
-        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
-        snap_common_path = Path(self.make_dir())
-        self.useFixture(
-            EnvironmentVariable("SNAP_COMMON", str(snap_common_path))
-        )
-        snap_common_path.joinpath("snap_mode").write_text("all", "utf-8")
-
+        Notification(ident="deprecation_test", message="some text").save()
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
+        # existing deprecations are removed since none is active
         self.assertEqual(
             Notification.objects.filter(
                 ident__startswith="deprecation_"
             ).count(),
-            2,
+            0,
         )
 
 

@@ -11,11 +11,11 @@ assumes:
 system-usernames:
   snap_daemon: shared
 # epochs:
-#
-# 0: MAAS 2.5 PostgreSQL 9.5
-# 1: MAAS 2.6+ PostgreSQL 10
-# 2: MAAS 2.8+ Move MAAS data to $SNAP_COMMON
-epoch: 2*
+# 0: (2.5) PostgreSQL 9.5
+# 1: (2.6) PostgreSQL 10
+# 2: (2.8) move MAAS data to $SNAP_COMMON
+# 3: (2.9) drop "all" mode and builtin PostgresSQL server
+epoch: 3*
 
 plugs:
   maas-cli:
@@ -52,7 +52,6 @@ apps:
         - home
         - mount-observe  # to read /proc/*/mounts
         - network # for external authentication
-        - network-bind # for connecting to PostgreSQL
         - network-observe # to get default URL
 
   power:
@@ -110,7 +109,6 @@ parts:
       - chrony
       - nginx-core
       - openssh-client
-      - postgresql
       - python3-bson
       - python3-crochet
       - python3-django
@@ -183,10 +181,6 @@ parts:
     override-build: |
       set -e
       snapcraftctl build
-      ln -s -f ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
-      ln -s -f ../usr/lib/postgresql/10/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
-      ln -s -f ../usr/lib/postgresql/10/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
-      ln -s -f ../usr/lib/postgresql/10/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
       # If python3-netaddr contains absolute symlinks.
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
       ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt

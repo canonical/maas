@@ -13,14 +13,10 @@ __all__ = [
 
 import argparse
 from collections import OrderedDict
-from contextlib import contextmanager
 import grp
 import os
 import pwd
-import random
-import shutil
 import signal
-import string
 import subprocess
 import sys
 from textwrap import dedent
@@ -38,22 +34,10 @@ from maascli.init import (
     add_candid_options,
     add_create_admin_options,
     add_rbac_options,
-    init_maas,
     print_msg,
     prompt_for_choices,
     read_input,
 )
-
-
-def add_deprecated_mode_argument(parser):
-    """Add the --mode argument that is deprecated for 2.8"""
-    parser.add_argument(
-        "--mode",
-        choices=["all", "region+rack", "region", "rack", "none"],
-        help=argparse.SUPPRESS,
-        dest="deprecated_mode",
-    )
-
 
 ARGUMENTS = OrderedDict(
     [
@@ -78,30 +62,6 @@ ARGUMENTS = OrderedDict(
                 ),
                 "for_mode": ["region+rack", "region"],
             },
-        ),
-        (
-            "database-host",
-            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
-        ),
-        (
-            "database-port",
-            {
-                "type": int,
-                "help": argparse.SUPPRESS,
-                "for_mode": ["region+rack", "region"],
-            },
-        ),
-        (
-            "database-name",
-            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
-        ),
-        (
-            "database-user",
-            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
-        ),
-        (
-            "database-pass",
-            {"help": argparse.SUPPRESS, "for_mode": ["region+rack", "region"]},
         ),
         (
             "secret",
@@ -206,11 +166,6 @@ def get_current_mode():
         return "none"
 
 
-def get_base_db_dir():
-    """Return the base dir for postgres."""
-    return os.path.join(os.environ["SNAP_COMMON"], "postgres")
-
-
 def set_current_mode(mode):
     """Set the current mode of the snap."""
     with open(get_mode_filepath(), "w") as fp:
@@ -219,12 +174,10 @@ def set_current_mode(mode):
 
 def render_supervisord(mode):
     """Render the 'supervisord.conf' based on the mode."""
-    conf_vars = {"postgresql": False, "regiond": False, "rackd": False}
-    if mode == "all":
-        conf_vars["postgresql"] = True
-    if mode in ["all", "region+rack", "region"]:
+    conf_vars = {"regiond": False, "rackd": False}
+    if mode in ["region+rack", "region"]:
         conf_vars["regiond"] = True
-    if mode in ["all", "region+rack", "rack"]:
+    if mode in ["region+rack", "rack"]:
         conf_vars["rackd"] = True
     template = tempita.Template.from_filename(
         os.path.join(
@@ -372,130 +325,6 @@ def change_user(username, effective=False):
         os.setuid(running_uid)
 
 
-@contextmanager
-def privileges_dropped():
-    """Context manager to run things as non-root user."""
-    change_user(NON_ROOT_USER, effective=True)
-    yield
-    change_user("root", effective=True)
-
-
-def run_with_drop_privileges(cmd, *args, **kwargs):
-    """Runs `cmd` in child process with lower privileges."""
-    pid = os.fork()
-
-    if pid == 0:
-        change_user(NON_ROOT_USER)
-        cmd(*args, **kwargs)
-        sys.exit(0)
-    else:
-
-        def signal_handler(signal, frame):
-            with privileges_dropped():
-                os.kill(pid, signal)
-
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-        _, code = os.waitpid(pid, 0)
-        if code:
-            # fail if the child process failed (the error will be reported
-            # there)
-            sys.exit(1)
-
-
-def run_sql(sql):
-    """Run sql command through `psql`."""
-    subprocess.check_output(
-        [
-            os.path.join(os.environ["SNAP"], "bin", "psql"),
-            "-h",
-            os.path.join(get_base_db_dir(), "sockets"),
-            "-d",
-            "postgres",
-            "-U",
-            "postgres",
-            "-c",
-            sql,
-        ],
-        stderr=subprocess.STDOUT,
-    )
-
-
-def wait_for_postgresql(timeout=60):
-    """Wait for postgresql to be running."""
-    end_time = time.time() + timeout
-    while True:
-        try:
-            run_sql("SELECT now();")
-        except subprocess.CalledProcessError:
-            if time.time() > end_time:
-                raise TimeoutError(
-                    "Unable to connect to postgresql after %s seconds."
-                    % timeout
-                )
-            else:
-                time.sleep(1)
-        else:
-            break
-
-
-def start_postgres():
-    """Start postgresql."""
-    base_db_dir = get_base_db_dir()
-    subprocess.check_output(
-        [
-            os.path.join(os.environ["SNAP"], "bin", "pg_ctl"),
-            "start",
-            "-w",
-            "-D",
-            os.path.join(base_db_dir, "data"),
-            "-l",
-            os.path.join(
-                os.environ["SNAP_COMMON"], "log", "postgresql-init.log"
-            ),
-            "-o",
-            '-k "%s" -h ""' % os.path.join(base_db_dir, "sockets"),
-        ],
-        stderr=subprocess.STDOUT,
-    )
-    wait_for_postgresql()
-
-
-def stop_postgres():
-    """Stop postgresql."""
-    subprocess.check_output(
-        [
-            os.path.join(os.environ["SNAP"], "bin", "pg_ctl"),
-            "stop",
-            "-w",
-            "-D",
-            os.path.join(get_base_db_dir(), "data"),
-        ],
-        stderr=subprocess.STDOUT,
-    )
-
-
-def create_db(config):
-    """Create the database and user."""
-    run_sql(
-        "CREATE USER %s WITH PASSWORD '%s';"
-        % (config["database_user"], config["database_pass"])
-    )
-    run_sql("CREATE DATABASE %s;" % config["database_name"])
-    run_sql(
-        "GRANT ALL PRIVILEGES ON DATABASE %s to %s;"
-        % (config["database_name"], config["database_user"])
-    )
-
-
-@contextmanager
-def with_postgresql():
-    """Start or stop postgresql."""
-    start_postgres()
-    yield
-    stop_postgres()
-
-
 def migrate_db(capture=False):
     """Migrate the database."""
     if capture:
@@ -522,53 +351,6 @@ def migrate_db(capture=False):
                 "dbupgrade",
             ]
         )
-
-
-def init_db():
-    """Initialize the database."""
-    config_data = MAASConfiguration().get()
-    base_db_dir = get_base_db_dir()
-    db_path = os.path.join(base_db_dir, "data")
-    if not os.path.exists(base_db_dir):
-        os.mkdir(base_db_dir)
-        # allow both root and non-root user to create/delete directories under
-        # this one
-        shutil.chown(base_db_dir, group=NON_ROOT_USER)
-        os.chmod(base_db_dir, 0o770)
-    if os.path.exists(db_path):
-        run_with_drop_privileges(shutil.rmtree, db_path)
-    os.mkdir(db_path)
-    shutil.chown(db_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
-    log_path = os.path.join(
-        os.environ["SNAP_COMMON"], "log", "postgresql-init.log"
-    )
-    if not os.path.exists(log_path):
-        open(log_path, "a").close()
-    shutil.chown(log_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
-    socket_path = os.path.join(get_base_db_dir(), "sockets")
-    if not os.path.exists(socket_path):
-        os.mkdir(socket_path)
-        os.chmod(socket_path, 0o775)
-        shutil.chown(socket_path, user=NON_ROOT_USER)  # keep root as group
-
-    def _init_db():
-        subprocess.check_output(
-            [
-                os.path.join(os.environ["SNAP"], "bin", "initdb"),
-                "-D",
-                os.path.join(get_base_db_dir(), "data"),
-                "-U",
-                "postgres",
-                "-E",
-                "UTF8",
-                "--locale=C",
-            ],
-            stderr=subprocess.STDOUT,
-        )
-        with with_postgresql():
-            create_db(config_data)
-
-    run_with_drop_privileges(_init_db)
 
 
 def clear_line():
@@ -661,52 +443,6 @@ class SnappyCommand(Command):
             raise exc
 
 
-def monkey_patch_for_all_mode_bw_compatability(parser):
-    """Allow 'maas init --mode=$mode' to keep working for 2.8.
-
-    If --mode=$mode is specified, prepend the appropriate sub command to
-    the arg list.
-
-    --mode=$mode is deprecated and will be removed in 2.9.
-    """
-
-    def _parse_known_args(arg_strings, namespace):
-        mode_parser = argparse.ArgumentParser(add_help=False)
-        add_deprecated_mode_argument(mode_parser)
-        options, rest = mode_parser.parse_known_args(arg_strings)
-        if options.deprecated_mode is not None:
-            if options.deprecated_mode == "all":
-                print_msg(
-                    "\nWARNING: Passing --mode=all is deprecated and "
-                    "will be removed in the 2.9 release.\n"
-                    "See https://maas.io/deprecations/MD1 for more details.\n",
-                    stderr=True,
-                )
-            sub_command = (
-                "region+rack"
-                if options.deprecated_mode in ["all", "none"]
-                else options.deprecated_mode
-            )
-            arg_strings = [
-                f"--mode={options.deprecated_mode}",
-                sub_command,
-            ] + rest
-        return real_parse_known_args(arg_strings, namespace)
-
-    real_parse_known_args = parser._parse_known_args
-    parser._parse_known_args = _parse_known_args
-
-
-def using_deprecated_database_options(options):
-    return (
-        options.database_host is not None
-        or options.database_name is not None
-        or options.database_user is not None
-        or options.database_pass is not None
-        or options.database_port is not None
-    )
-
-
 class DatabaseSettingsError(Exception):
     """Something was wrong with the database settings."""
 
@@ -717,118 +453,65 @@ MAAS_TEST_DB_URI = "maas-test-db:///"
 def get_database_settings(options):
     """Get the database setting to use.
 
-    If some of the deprecated --database-foo options were used, it
-    prompts for the missing data.
+    It will either read --database-uri from the options, or prompt for it.
+    When prompting for it, it will default to the maas-test-db URI if the
+    maas-test-db snap is installed and connected.
 
-    Else, it will either read --database-uri from the options, or prompt
-    for it. Whem prompting for it, it will default to the maas-test-db
-    URI if the maas-test-db snap is installed and connected.
     """
-
-    if using_deprecated_database_options(options):
-        if options.database_uri:
-            raise DatabaseSettingsError(
-                "Can't use deprecated --database-* parameters together with "
-                "--database-uri"
-            )
-        if using_deprecated_database_options(options):
-            print_msg(
-                "\nWARNING: Passing individual database configs is deprecated "
-                "and will be removed in the 2.9 release.\n"
-                "Please use --database-uri instead.\n",
-                stderr=True,
-            )
-        database_host = options.database_host
-        if not database_host:
-            database_host = required_prompt(
-                "Database host", help_text=ARGUMENTS["database-host"]["help"]
-            )
-        database_name = options.database_name
-        if not database_name:
-            database_name = required_prompt(
-                "Database name", help_text=ARGUMENTS["database-name"]["help"]
-            )
-        database_user = options.database_user
-        if not database_user:
-            database_user = required_prompt(
-                "Database user", help_text=ARGUMENTS["database-user"]["help"]
-            )
-        database_pass = options.database_pass
-        if not database_pass:
-            database_pass = required_prompt(
-                "Database password",
-                help_text=ARGUMENTS["database-pass"]["help"],
-            )
-        database_settings = {
-            "database_host": database_host,
-            "database_name": database_name,
-            "database_user": database_user,
-            "database_pass": database_pass,
-        }
-        # Add the port to the configuration if exists. By default
-        # MAAS handles picking the port automatically in the backend
-        # if none provided.
-        if options.database_port is not None:
-            database_settings["database_port"] = options.database_port
-    else:
-        database_uri = options.database_uri
-        test_db_socket = os.path.join(
-            os.environ["SNAP_COMMON"], "test-db-socket"
+    database_uri = options.database_uri
+    test_db_socket = os.path.join(os.environ["SNAP_COMMON"], "test-db-socket")
+    test_db_uri = f"postgres:///maasdb?host={test_db_socket}&user=maas"
+    if database_uri is None:
+        default_uri = None
+        if os.path.exists(test_db_socket):
+            default_uri = MAAS_TEST_DB_URI
+        database_uri = required_prompt(
+            f"Database URI",
+            default=default_uri,
+            help_text=ARGUMENTS["database-uri"]["help"],
         )
-        test_db_uri = f"postgres:///maasdb?host={test_db_socket}&user=maas"
-        if database_uri is None:
-            default_uri = None
-            if os.path.exists(test_db_socket):
-                default_uri = MAAS_TEST_DB_URI
-            database_uri = required_prompt(
-                f"Database URI",
-                default=default_uri,
-                help_text=ARGUMENTS["database-uri"]["help"],
-            )
-            if not database_uri:
-                database_uri = test_db_uri
-        # parse_dsn gives very confusing error messages if you pass in
-        # an invalid URI, so let's make sure the URI is of the form
-        # postgres://... before calling parse_dsn.
-        if database_uri != MAAS_TEST_DB_URI and not database_uri.startswith(
-            "postgres://"
-        ):
-            raise DatabaseSettingsError(
-                f"Database URI needs to be either '{MAAS_TEST_DB_URI}' or "
-                "start with 'postgres://'"
-            )
-        if database_uri == MAAS_TEST_DB_URI:
+        if not database_uri:
             database_uri = test_db_uri
-        try:
-            parsed_dsn = parse_dsn(database_uri)
-        except psycopg2.ProgrammingError as error:
-            raise DatabaseSettingsError(
-                "Error parsing database URI: " + str(error).strip()
-            )
-        unsupported_params = set(parsed_dsn.keys()).difference(
-            ["user", "password", "host", "dbname", "port"]
+    # parse_dsn gives very confusing error messages if you pass in
+    # an invalid URI, so let's make sure the URI is of the form
+    # postgres://... before calling parse_dsn.
+    if database_uri != MAAS_TEST_DB_URI and not database_uri.startswith(
+        "postgres://"
+    ):
+        raise DatabaseSettingsError(
+            f"Database URI needs to be either '{MAAS_TEST_DB_URI}' or "
+            "start with 'postgres://'"
         )
-        if unsupported_params:
-            raise DatabaseSettingsError(
-                "Error parsing database URI: Unsupported parameters: "
-                + ", ".join(sorted(unsupported_params))
-            )
-        if "user" not in parsed_dsn:
-            raise DatabaseSettingsError(
-                f"No user found in URI: {database_uri}"
-            )
-        if "host" not in parsed_dsn:
-            parsed_dsn["host"] = "localhost"
-        if "dbname" not in parsed_dsn:
-            parsed_dsn["dbname"] = parsed_dsn["user"]
-        database_settings = {
-            "database_host": parsed_dsn["host"],
-            "database_name": parsed_dsn["dbname"],
-            "database_user": parsed_dsn.get("user", ""),
-            "database_pass": parsed_dsn.get("password"),
-        }
-        if "port" in parsed_dsn:
-            database_settings["database_port"] = int(parsed_dsn["port"])
+    if database_uri == MAAS_TEST_DB_URI:
+        database_uri = test_db_uri
+    try:
+        parsed_dsn = parse_dsn(database_uri)
+    except psycopg2.ProgrammingError as error:
+        raise DatabaseSettingsError(
+            "Error parsing database URI: " + str(error).strip()
+        )
+    unsupported_params = set(parsed_dsn.keys()).difference(
+        ["user", "password", "host", "dbname", "port"]
+    )
+    if unsupported_params:
+        raise DatabaseSettingsError(
+            "Error parsing database URI: Unsupported parameters: "
+            + ", ".join(sorted(unsupported_params))
+        )
+    if "user" not in parsed_dsn:
+        raise DatabaseSettingsError(f"No user found in URI: {database_uri}")
+    if "host" not in parsed_dsn:
+        parsed_dsn["host"] = "localhost"
+    if "dbname" not in parsed_dsn:
+        parsed_dsn["dbname"] = parsed_dsn["user"]
+    database_settings = {
+        "database_host": parsed_dsn["host"],
+        "database_name": parsed_dsn["dbname"],
+        "database_user": parsed_dsn.get("user", ""),
+        "database_pass": parsed_dsn.get("password"),
+    }
+    if "port" in parsed_dsn:
+        database_settings["database_port"] = int(parsed_dsn["port"])
     return database_settings
 
 
@@ -849,7 +532,6 @@ class cmd_init(SnappyCommand):
 
     def __init__(self, parser):
         super().__init__(parser)
-        monkey_patch_for_all_mode_bw_compatability(parser)
         subparsers = parser.add_subparsers(
             metavar=None, title="run modes", dest="run_mode"
         )
@@ -880,8 +562,7 @@ class cmd_init(SnappyCommand):
                     "--%s" % argument, **kwargs
                 )
 
-        add_deprecated_mode_argument(parser)
-        for for_mode in ["region+rack", "region", "rack"]:
+        for for_mode in ("region+rack", "region", "rack"):
             subparsers_map[for_mode].add_argument(
                 "--force",
                 action="store_true",
@@ -890,12 +571,6 @@ class cmd_init(SnappyCommand):
                     "already been performed."
                 ),
             )
-        parser.add_argument(
-            "--enable-candid",
-            default=False,
-            action="store_true",
-            help=argparse.SUPPRESS,
-        )
         for for_mode in ["region+rack", "region"]:
             add_candid_options(subparsers_map[for_mode], suppress_help=True)
             add_rbac_options(subparsers_map[for_mode], suppress_help=True)
@@ -911,8 +586,6 @@ class cmd_init(SnappyCommand):
             raise SystemExit("The 'init' command must be run by root.")
 
         mode = options.run_mode
-        if options.deprecated_mode:
-            mode = options.deprecated_mode
         current_mode = get_current_mode()
         if current_mode != "none":
             if not options.force:
@@ -930,44 +603,8 @@ class cmd_init(SnappyCommand):
                 if initialize == "no":
                     sys.exit(0)
 
-        if current_mode == "all" and mode != "all" and not options.force:
-            print_msg(
-                "This will disconnect your MAAS from the running database."
-            )
-            disconnect = prompt_for_choices(
-                "Are you sure you want to disconnect the database "
-                "(yes/no) [default=no]? ",
-                ["yes", "no"],
-                default="no",
-            )
-            if disconnect == "no":
-                return 0
-        elif current_mode == "all" and mode == "all" and not options.force:
-            print_msg(
-                "This will re-initialize your entire database and all "
-                "current data will be lost."
-            )
-            reinit_db = prompt_for_choices(
-                "Are you sure you want to re-initialize the database "
-                "(yes/no) [default=no]? ",
-                ["yes", "no"],
-                default="no",
-            )
-            if reinit_db == "no":
-                return 0
-
         rpc_secret = None
-        if mode == "all":
-            database_settings = {
-                "database_host": os.path.join(get_base_db_dir(), "sockets"),
-                "database_name": "maasdb",
-                "database_user": "maas",
-                "database_pass": "".join(
-                    random.choice(string.ascii_uppercase + string.digits)
-                    for _ in range(10)
-                ),
-            }
-        elif mode in ["region", "region+rack"]:
+        if mode in ("region", "region+rack"):
             try:
                 database_settings = get_database_settings(options)
             except DatabaseSettingsError as error:
@@ -988,7 +625,6 @@ class cmd_init(SnappyCommand):
                     "Secret", help_text=ARGUMENTS["secret"]["help"]
                 )
 
-        # Stop all services if in another mode.
         if current_mode != "none":
 
             def stop_services():
@@ -1008,10 +644,6 @@ class cmd_init(SnappyCommand):
         self._finalize_init(mode, options)
 
     def _finalize_init(self, mode, options):
-        # When in 'all' mode configure the database.
-        if mode == "all":
-            perform_work("Initializing database", init_db)
-
         # Configure mode.
         def start_services():
             render_supervisord(mode)
@@ -1023,16 +655,7 @@ class cmd_init(SnappyCommand):
             start_services,
         )
 
-        if mode == "all":
-            # When in 'all' mode configure the database and create admin user.
-            perform_work("Waiting for postgresql", wait_for_postgresql)
-            perform_work(
-                "Performing database migrations",
-                migrate_db,
-                capture=sys.stdout.isatty(),
-            )
-            init_maas(options)
-        elif mode in ["region", "region+rack"]:
+        if mode in ("region", "region+rack"):
             # When in 'region' or 'region+rack' the migrations for the database
             # must be at the same level as this controller.
             perform_work(
@@ -1212,6 +835,11 @@ class cmd_config(SnappyCommand):
             # Validate the mode and flags.
             self._validate_flags(options, running_mode)
 
+            if options.mode != running_mode:
+                render_supervisord(options.mode)
+                set_current_mode(options.mode)
+                restart_required = True
+
             current_config = config_manager.get()
             # Only update the passed settings.
             for flag in self.setting_flags:
@@ -1310,11 +938,10 @@ class cmd_migrate(SnappyCommand):
             raise SystemExit("The 'migrate' command must be run by root.")
 
         current_mode = get_current_mode()
+        # Hidden parameter that is only called from the configure hook. Updates
+        # the database when running in all mode.
         if options.configure:
-            if current_mode == "all":
-                wait_for_postgresql()
-                sys.exit(migrate_db())
-            elif current_mode in ["region", "region+rack"]:
+            if current_mode in ["region", "region+rack"]:
                 sys.exit(migrate_db())
             else:
                 # In 'rack' or 'none' mode, nothing to do.
