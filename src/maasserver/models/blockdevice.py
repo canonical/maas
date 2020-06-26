@@ -16,7 +16,6 @@ from django.db.models import (
     BigIntegerField,
     CASCADE,
     CharField,
-    FilePathField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -116,7 +115,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         help_text="Name of block device. (e.g. sda)",
     )
 
-    id_path = FilePathField(
+    id_path = CharField(
         blank=True,
         null=True,
         max_length=4096,

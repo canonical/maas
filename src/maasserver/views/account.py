@@ -10,8 +10,8 @@ import json
 from django import forms
 from django.contrib.auth import authenticate as dj_authenticate
 from django.contrib.auth import login as auth_login
+from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.views import logout as dj_logout
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -84,7 +84,7 @@ def logout(request):
                     % ("admin" if request.user.is_superuser else "user")
                 ),
             )
-            dj_logout(request)
+            auth_logout(request)
             return HttpResponse(status=204)
         return HttpResponseBadRequest(
             json.dumps(form.errors), content_type="application/json"

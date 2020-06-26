@@ -7,7 +7,7 @@ __all__ = ["BootSource"]
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import FilePathField, URLField
+from django.db.models import CharField, URLField
 
 from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
@@ -25,7 +25,7 @@ class BootSource(CleanSave, TimestampedModel):
         blank=False, unique=True, help_text="The URL of the BootSource."
     )
 
-    keyring_filename = FilePathField(
+    keyring_filename = CharField(
         blank=True,
         max_length=4096,
         help_text="The path to the keyring file for this BootSource.",
@@ -40,14 +40,14 @@ class BootSource(CleanSave, TimestampedModel):
         super().clean(*args, **kwargs)
 
         # You have to specify one of {keyring_data, keyring_filename}.
-        if len(self.keyring_filename) == 0 and len(self.keyring_data) == 0:
+        if not self.keyring_filename and not self.keyring_data:
             raise ValidationError(
                 "One of keyring_data or keyring_filename must be specified."
             )
 
         # You can have only one of {keyring_filename, keyring_data}; not
         # both.
-        if len(self.keyring_filename) > 0 and len(self.keyring_data) > 0:
+        if self.keyring_filename and self.keyring_data:
             raise ValidationError(
                 "Only one of keyring_filename or keyring_data can be "
                 "specified."
