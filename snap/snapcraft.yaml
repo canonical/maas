@@ -105,7 +105,6 @@ parts:
       - libatm1
       - libpq5
       - libxtables12
-      - lsb-release
       - lshw
       - chrony
       - nginx-core

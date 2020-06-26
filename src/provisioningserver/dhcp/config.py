@@ -10,7 +10,7 @@ import logging
 import socket
 from typing import Sequence
 
-from lsb_release import get_distro_information
+from curtin.distro import lsb_release
 from netaddr import IPAddress, IPNetwork, IPRange
 import tempita
 
@@ -415,7 +415,7 @@ def get_config_v4(
         IPv4 template.
     :return: A full configuration, as a string.
     """
-    platform_codename = get_distro_information()["CODENAME"]
+    platform_codename = lsb_release()["codename"]
     template = load_template("dhcp", template_name)
     dhcp_socket = get_maas_data_path("dhcpd.sock")
 
@@ -476,7 +476,7 @@ def get_config_v6(
         IPv6 template.
     :return: A full configuration, as a string.
     """
-    platform_codename = get_distro_information()["CODENAME"]
+    platform_codename = lsb_release()["codename"]
     template = load_template("dhcp", template_name)
     # Helper functions to stuff into the template namespace.
     helpers = {
