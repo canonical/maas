@@ -30,6 +30,20 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
 
+# No need to test multiple authentication mechanisms
+
+
+class PodAPITestForUser(APITestCase.ForUser):
+    def __init__(self, *args, **kwargs):
+        self.clientfactories.pop("user+pass", None)
+        super().__init__(*args, **kwargs)
+
+
+class PodAPITestForAdmin(APITestCase.ForAdmin):
+    def __init__(self, *args, **kwargs):
+        self.clientfactories.pop("user+pass", None)
+        super().__init__(*args, **kwargs)
+
 
 class PodMixin:
     """Mixin to fake pod discovery."""
@@ -87,7 +101,7 @@ class PodMixin:
         )
 
 
-class TestPodsAPI(APITestCase.ForUser, PodMixin):
+class TestPodsAPIUser(PodAPITestForUser, PodMixin):
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/pods/", reverse("pods_handler"))
 
@@ -185,8 +199,10 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
+
+class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
     def test_create_creates_pod(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         response = self.client.post(reverse("pods_handler"), pod_info)
@@ -195,7 +211,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(parsed_result["type"], pod_info["type"])
 
     def test_create_creates_pod_with_default_resource_pool(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
@@ -206,7 +222,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(pool.id, parsed_result["pool"]["id"])
 
     def test_create_duplicate_provides_nice_error(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         pod_info = self.make_pod_info()
         discovered_pod, _, _ = self.fake_pod_discovery()
         response = self.client.post(reverse("pods_handler"), pod_info)
@@ -215,7 +231,6 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_create_proper_return_on_exception(self):
-        self.become_admin()
         failed_rack = factory.make_RackController()
         self.patch(pods, "discover_pod").return_value = (
             {},
@@ -233,46 +248,48 @@ def get_pod_uri(pod):
     return reverse("pod_handler", args=[pod.id])
 
 
-class TestPodAPI(APITestCase.ForUser, PodMixin):
-    def make_pod_with_hints(self):
-        architectures = [
-            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
-            for _ in range(3)
-        ]
-        cores = random.randint(8, 16)
-        memory = random.randint(4096, 8192)
-        cpu_speed = random.randint(2000, 3000)
-        pod = factory.make_Pod(
-            architectures=architectures,
-            cores=cores,
-            memory=memory,
-            cpu_speed=cpu_speed,
-        )
-        pod.capabilities = [Capabilities.COMPOSABLE]
-        pod.save()
-        pod.hints.cores = pod.cores
-        pod.hints.memory = pod.memory
-        pod.hints.save()
-        return pod
+def make_pod_with_hints():
+    architectures = [
+        "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+        for _ in range(3)
+    ]
+    cores = random.randint(8, 16)
+    memory = random.randint(4096, 8192)
+    cpu_speed = random.randint(2000, 3000)
+    pod = factory.make_Pod(
+        architectures=architectures,
+        cores=cores,
+        memory=memory,
+        cpu_speed=cpu_speed,
+    )
+    pod.capabilities = [Capabilities.COMPOSABLE]
+    pod.save()
+    pod.hints.cores = pod.cores
+    pod.hints.memory = pod.memory
+    pod.hints.save()
+    return pod
 
-    def make_compose_machine_result(self, pod):
-        composed_machine = DiscoveredMachine(
-            hostname=factory.make_name("hostname"),
-            architecture=pod.architectures[0],
-            cores=1,
-            memory=1024,
-            cpu_speed=300,
-            block_devices=[],
-            interfaces=[],
-        )
-        pod_hints = DiscoveredPodHints(
-            cores=random.randint(0, 10),
-            memory=random.randint(1024, 4096),
-            cpu_speed=random.randint(1000, 3000),
-            local_storage=0,
-        )
-        return composed_machine, pod_hints
 
+def make_compose_machine_result(pod):
+    composed_machine = DiscoveredMachine(
+        hostname=factory.make_name("hostname"),
+        architecture=pod.architectures[0],
+        cores=1,
+        memory=1024,
+        cpu_speed=300,
+        block_devices=[],
+        interfaces=[],
+    )
+    pod_hints = DiscoveredPodHints(
+        cores=random.randint(0, 10),
+        memory=random.randint(1024, 4096),
+        cpu_speed=random.randint(1000, 3000),
+        local_storage=0,
+    )
+    return composed_machine, pod_hints
+
+
+class TestPodAPI(PodAPITestForUser, PodMixin):
     def test_handler_path(self):
         pod_id = random.randint(0, 10)
         self.assertEqual(
@@ -296,8 +313,58 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
+    def test_refresh_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.post(get_pod_uri(pod), {"op": "refresh"})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_parameters_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.get(get_pod_uri(pod), {"op": "parameters"})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_compose_requires_admin(self):
+        pod = make_pod_with_hints()
+        response = self.client.post(get_pod_uri(pod), {"op": "compose"})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_DELETE_rejects_deletion_if_not_permitted(self):
+        pod = factory.make_Pod()
+        response = self.client.delete(get_pod_uri(pod))
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(pod, reload_object(pod))
+
+    def test_add_tag_requires_admin(self):
+        pod = make_pod_with_hints()
+        response = self.client.post(
+            get_pod_uri(pod),
+            {"op": "add_tag", "tag": factory.make_name("tag")},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_remove_tag_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.post(
+            get_pod_uri(pod),
+            {"op": "remove_tag", "tag": factory.make_name("tag")},
+        )
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+
+class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
     def test_PUT_updates(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         pod = factory.make_Pod(pod_type="virsh")
         new_name = factory.make_name("pod")
         new_tags = [
@@ -335,7 +402,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(new_zone, pod.zone)
 
     def test_PUT_updates_discovers_syncs_and_returns_pod(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         pod_info = self.make_pod_info()
         pod = factory.make_Pod(pod_type=pod_info["type"])
         new_name = factory.make_name("pod")
@@ -358,7 +425,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(discovered_pod.cores, parsed_output["total"]["cores"])
 
     def test_PUT_update_minimal(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         pod_info = self.make_pod_info()
         power_parameters = {
             "power_address": pod_info["power_address"],
@@ -379,7 +446,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(power_parameters, pod.power_parameters)
 
     def test_PUT_update_updates_pod_default_macvlan_mode(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         pod_info = self.make_pod_info()
         pod = factory.make_Pod(pod_type=pod_info["type"])
         default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
@@ -393,15 +460,8 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         pod.refresh_from_db()
         self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
 
-    def test_refresh_requires_admin(self):
-        pod = factory.make_Pod()
-        response = self.client.post(get_pod_uri(pod), {"op": "refresh"})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content
-        )
-
     def test_refresh_discovers_syncs_and_returns_pod(self):
-        self.become_admin()
+        self.patch(pods, "post_commit_do")
         pod = factory.make_Pod()
         discovered_pod, _, _ = self.fake_pod_discovery()
         response = self.client.post(get_pod_uri(pod), {"op": "refresh"})
@@ -411,15 +471,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         parsed_output = json_load_bytes(response.content)
         self.assertEqual(discovered_pod.cores, parsed_output["total"]["cores"])
 
-    def test_parameters_requires_admin(self):
-        pod = factory.make_Pod()
-        response = self.client.get(get_pod_uri(pod), {"op": "parameters"})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content
-        )
-
     def test_parameters_returns_pod_parameters(self):
-        self.become_admin()
         pod = factory.make_Pod()
         pod.power_parameters = {
             factory.make_name("key"): factory.make_name("value")
@@ -432,16 +484,8 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         parsed_params = json_load_bytes(response.content)
         self.assertEqual(pod.power_parameters, parsed_params)
 
-    def test_compose_requires_admin(self):
-        pod = self.make_pod_with_hints()
-        response = self.client.post(get_pod_uri(pod), {"op": "compose"})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content
-        )
-
     def test_compose_not_allowed_on_none_composable_pod(self):
-        self.become_admin()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
         pod.capabilities = []
         pod.save()
         response = self.client.post(get_pod_uri(pod), {"op": "compose"})
@@ -453,8 +497,8 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         )
 
     def test_compose_composes_with_defaults(self):
-        self.become_admin()
-        pod = self.make_pod_with_hints()
+        self.patch(pods, "post_commit_do")
+        pod = make_pod_with_hints()
         pod.pool = factory.make_ResourcePool()
         pod.save()
 
@@ -464,7 +508,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
-        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        composed_machine, pod_hints = make_compose_machine_result(pod)
         mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints)
@@ -485,8 +529,8 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(machine.pool, pod.pool)
 
     def test_compose_composes_with_pool(self):
-        self.become_admin()
-        pod = self.make_pod_with_hints()
+        self.patch(pods, "post_commit_do")
+        pod = make_pod_with_hints()
 
         # Mock the RPC client.
         client = MagicMock()
@@ -494,7 +538,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
-        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        composed_machine, pod_hints = make_compose_machine_result(pod)
         mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints)
@@ -518,8 +562,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(machine.pool, pool)
 
     def test_compose_raises_error_when_to_large_request(self):
-        self.become_admin()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
 
         response = self.client.post(
             get_pod_uri(pod), {"op": "compose", "cores": pod.hints.cores + 1}
@@ -529,7 +572,6 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         )
 
     def test_DELETE_calls_async_delete(self):
-        self.become_admin()
         pod = factory.make_Pod()
         for _ in range(3):
             factory.make_Machine(
@@ -552,24 +594,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         )
         self.assertThat(mock_eventual.wait, MockCalledOnceWith(60 * 7))
 
-    def test_DELETE_rejects_deletion_if_not_permitted(self):
-        pod = factory.make_Pod()
-        response = self.client.delete(get_pod_uri(pod))
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertEqual(pod, reload_object(pod))
-
-    def test_add_tag_requires_admin(self):
-        pod = self.make_pod_with_hints()
-        response = self.client.post(
-            get_pod_uri(pod),
-            {"op": "add_tag", "tag": factory.make_name("tag")},
-        )
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content
-        )
-
     def test_add_tag_to_pod(self):
-        self.become_admin()
         pod = factory.make_Pod()
         tag_to_be_added = factory.make_name("tag")
         response = self.client.post(
@@ -584,19 +609,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         pod = reload_object(pod)
         self.assertIn(tag_to_be_added, pod.tags)
 
-    def test_remove_tag_requires_admin(self):
-        pod = factory.make_Pod()
-        response = self.client.post(
-            get_pod_uri(pod),
-            {"op": "remove_tag", "tag": factory.make_name("tag")},
-        )
-
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content
-        )
-
     def test_remove_tag_from_pod(self):
-        self.become_admin()
         pod = factory.make_Pod(
             tags=[factory.make_name("tag") for _ in range(3)]
         )
