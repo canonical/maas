@@ -19,6 +19,9 @@ class NUMANode(CleanSave, TimestampedModel):
     class Meta:
         unique_together = [("node", "index")]
 
+    def __repr__(self):
+        return f"<NUMANode of {self.index} {self.node!r} cores: {self.cores!r} {self.memory}>"
+
 
 def create_default_numanode(machine):
     """Create the default "0" NUMA node for a machine."""
