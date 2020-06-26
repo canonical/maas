@@ -949,9 +949,13 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
     def test_storage_single_contraint_allows_root_on_virtual(self):
         node1 = factory.make_Node(with_boot_disk=False)
-        physical = factory.make_PhysicalBlockDevice(node=node1)
+        physical = factory.make_PhysicalBlockDevice(
+            node=node1, size=(6 * (1000 ** 3))
+        )
         partition_table = factory.make_PartitionTable(block_device=physical)
-        partition = factory.make_Partition(partition_table=partition_table)
+        partition = factory.make_Partition(
+            partition_table=partition_table, size=5 * (1000 ** 3)
+        )
         pv = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition
         )

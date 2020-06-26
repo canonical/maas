@@ -130,7 +130,7 @@ class TestRegisterCommands(MAASTestCase):
         self.assertIsNone(subparser)
 
     def test_hidden_commands(self):
-        environ = {"SNAP": "snap-path"}
+        environ = {"SNAP": "snap-path", "SNAP_COMMON": "snap-common"}
         self.patch(os, "environ", environ)
         stdout = self.patch(sys, "stdout", StringIO())
         parser = ArgumentParser()

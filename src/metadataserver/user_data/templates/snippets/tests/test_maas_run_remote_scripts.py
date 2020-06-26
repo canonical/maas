@@ -1564,6 +1564,10 @@ class TestCustomNetworking(MAASTestCase):
 
 
 class TestParseParameters(MAASTestCase):
+    def tearDown(self):
+        super().tearDown()
+        maas_run_remote_scripts._block_devices = None
+
     def test_get_block_devices(self):
         expected_blockdevs = [
             {
@@ -2272,6 +2276,10 @@ class TestRunScript(MAASTestCase):
         )
         self.args = {"status": "WORKING", "send_result": True}
         self.patch(maas_run_remote_scripts.sys.stdout, "write")
+
+    def tearDown(self):
+        super().tearDown()
+        maas_run_remote_scripts._block_devices = None
 
     def test_run_script(self):
         scripts_dir = self.useFixture(TempDirectory()).path
