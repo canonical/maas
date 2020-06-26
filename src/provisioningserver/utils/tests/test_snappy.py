@@ -76,10 +76,6 @@ class TestSnappyUtils(MAASTestCase):
 
     def test_get_snap_version_loads_yaml_safely(self):
         snap_yaml = "version: !!python/object/apply:os.getcwd []"
-        # The YAML with unsafe !!python notation can be loaded.
-        yaml_load_unsafe = getattr(yaml, "load")  # Avoid tripping alarms.
-        self.assertEqual({"version": os.getcwd()}, yaml_load_unsafe(snap_yaml))
-        # However, it will not be loaded by get_snap_version.
         self.assertRaises(yaml.YAMLError, self._get_snap_version, snap_yaml)
 
     def _write_snap_mode(self, mode):

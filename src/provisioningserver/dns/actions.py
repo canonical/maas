@@ -12,7 +12,7 @@ __all__ = [
     "bind_write_zones",
 ]
 
-import collections
+from collections.abc import Sequence
 from subprocess import CalledProcessError, TimeoutExpired
 from time import sleep
 
@@ -114,7 +114,7 @@ def bind_write_configuration(zones, trusted_networks):
     # netmask. These assertions are here to prevent code that assumes that
     # slipping through.
     assert not isinstance(trusted_networks, (bytes, str))
-    assert isinstance(trusted_networks, collections.Sequence)
+    assert isinstance(trusted_networks, Sequence)
 
     dns_config = DNSConfig(zones=zones)
     dns_config.write_config(trusted_networks=trusted_networks)
@@ -129,7 +129,7 @@ def bind_write_options(upstream_dns, dnssec_validation):
     # upstream_dns was formerly specified as a single IP address. These
     # assertions are here to prevent code that assumes that slipping through.
     assert not isinstance(upstream_dns, (bytes, str))
-    assert isinstance(upstream_dns, collections.Sequence)
+    assert isinstance(upstream_dns, Sequence)
 
     set_up_options_conf(
         upstream_dns=upstream_dns, dnssec_validation=dnssec_validation
