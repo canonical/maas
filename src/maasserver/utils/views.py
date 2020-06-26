@@ -319,7 +319,7 @@ class WebApplicationHandler(WSGIHandler):
                 # Response is good, but the transaction needed to be rolled
                 # back because the response was a 500 error.
                 return exc.response
-            except Exception:
+            except BaseException:
                 # Catch *everything* else, also reproducing behaviour found in
                 # Django's BaseHandler. In practice, we should only really see
                 # transaction failures here from the outermost atomic block as
