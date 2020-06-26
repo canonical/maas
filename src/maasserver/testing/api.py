@@ -22,10 +22,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.testing.testclient import (
-    MAASSensibleClient,
-    MAASSensibleOAuthClient,
-)
+from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase, MAASTestType
@@ -122,10 +119,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     # test the API with different authentication mechanisms. Subclasses can
     # override this... but avoid _reducing_ this list; MAASAPIAuthentication
     # explicitly allows disparate authentication mechanisms.
-    clientfactories = {
-        "user+pass": MAASSensibleClient,
-        "oauth": MAASSensibleOAuthClient,
-    }
+    clientfactories = {"oauth": MAASSensibleOAuthClient}
 
     # A no-arg callable that creates a client. This is set by scenarios to be
     # each factory from clientfactories.

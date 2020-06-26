@@ -37,7 +37,10 @@ from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.testing.testclient import MAASSensibleOAuthClient
+from maasserver.testing.testclient import (
+    MAASSensibleClient,
+    MAASSensibleOAuthClient,
+)
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
@@ -287,6 +290,12 @@ class TestStoreNodeParameters(APITestCase.ForUser):
 
 
 class AccountAPITest(APITestCase.ForUser):
+
+    clientfactories = {
+        "user+pass": MAASSensibleClient,
+        "oauth": MAASSensibleOAuthClient,
+    }
+
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/account/", reverse("account_handler"))
 
@@ -757,6 +766,12 @@ class MAASAPIAnonTest(APITestCase.ForAnonymous):
 
 
 class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
+
+    clientfactories = {
+        "user+pass": MAASSensibleClient,
+        "oauth": MAASSensibleOAuthClient,
+    }
+
     def test_api_version_handler_path(self):
         self.assertEqual("/MAAS/api/version/", reverse("api_version"))
 
@@ -781,6 +796,12 @@ class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
 
 
 class MAASAPITest(APITestCase.ForUser):
+
+    clientfactories = {
+        "user+pass": MAASSensibleClient,
+        "oauth": MAASSensibleOAuthClient,
+    }
+
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/maas/", reverse("maas_handler"))
 
