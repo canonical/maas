@@ -18,7 +18,6 @@ from maasserver.regiondservices.networks_monitoring import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import DocTestMatches
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
 
@@ -55,12 +54,8 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             yield service.stopService()
 
         # Nothing was logged.
-        self.assertThat(
-            logger.output,
-            DocTestMatches(
-                "Networks monitoring service: "
-                "Process ID ... assumed responsibility."
-            ),
+        self.assertIn(
+            "Networks monitoring service: Process ID ", logger.output
         )
 
         def get_interfaces():
@@ -80,16 +75,16 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
     @wait_for(30)
     @inlineCallbacks
     def test_logs_error_when_running_region_controller_cannot_be_found(self):
-        service = RegionNetworksMonitoringService(reactor)
+        service = RegionNetworksMonitoringService(
+            reactor, enable_beaconing=False
+        )
 
         with TwistedLoggerFixture() as logger:
             service.startService()
             yield service.stopService()
 
-        self.assertThat(
+        self.assertIn(
+            "Failed to update and/or record network interface configuration: "
+            "RegionController matching query does not exist",
             logger.output,
-            DocTestMatches(
-                "...Failed to update and/or record network interface "
-                "configuration: RegionController matching query does not exist..."
-            ),
         )

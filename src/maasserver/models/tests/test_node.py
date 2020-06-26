@@ -13791,38 +13791,28 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_acquires_and_releases_lock(self):
-        def mock_refresh(*args, **kwargs):
-            lock = NamedLock("refresh")
-            self.assertTrue(lock.is_locked())
-
-        self.patch(node_module, "refresh", mock_refresh)
         region = yield deferToDatabase(factory.make_RegionController)
-        self.patch(node_module, "get_maas_id").return_value = region.system_id
-        self.patch(node_module, "get_sys_info").return_value = {
-            "hostname": region.hostname,
-            "architecture": region.architecture,
-            "osystem": "",
-            "distro_series": "",
-            "interfaces": {},
-        }
+        mock_lock = self.patch_autospec(node_module, "NamedLock", NamedLock)
+        self.patch_autospec(node_module, "refresh")
+        self.patch_autospec(
+            node_module, "get_maas_id"
+        ).return_value = region.system_id
+
         yield region.refresh()
-        lock = NamedLock("refresh")
-        self.assertFalse(lock.is_locked())
+        mock_lock.assert_called_once_with("refresh")
+        mock_lock("refresh").__enter__.assert_called_once_with()
+        mock_lock("refresh").__exit__.assert_called_once_with(None, None, None)
 
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_lock_released_on_error(self):
         exception = factory.make_exception()
-        self.patch(node_module, "refresh").side_effect = exception
+        self.patch_autospec(node_module, "refresh").side_effect = exception
         region = yield deferToDatabase(factory.make_RegionController)
-        self.patch(node_module, "get_maas_id").return_value = region.system_id
-        self.patch(node_module, "get_sys_info").return_value = {
-            "hostname": region.hostname,
-            "architecture": region.architecture,
-            "osystem": "",
-            "distro_series": "",
-            "interfaces": {},
-        }
+        self.patch_autospec(
+            node_module, "get_maas_id"
+        ).return_value = region.system_id
+
         with ExpectedException(type(exception)):
             yield region.refresh()
         lock = NamedLock("refresh")
@@ -13842,15 +13832,10 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_logs_user_request(self):
         region = yield deferToDatabase(factory.make_RegionController)
-        self.patch(node_module, "get_maas_id").return_value = region.system_id
-        self.patch(node_module, "refresh")
-        self.patch(node_module, "get_sys_info").return_value = {
-            "hostname": region.hostname,
-            "architecture": region.architecture,
-            "osystem": "",
-            "distro_series": "",
-            "interfaces": {},
-        }
+        self.patch_autospec(
+            node_module, "get_maas_id"
+        ).return_value = region.system_id
+        self.patch_autospec(node_module, "refresh")
         register_event = self.patch(region, "_register_request_event")
 
         yield region.refresh()
