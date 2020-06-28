@@ -23,7 +23,7 @@ def lxd_cpu_speed(data):
 class NUMANode:
 
     memory: int = attr.ib(default=0)
-    cores: list = attr.ib(factory=list)
+    cores: list = attr.ib(default=attr.Factory(list))
 
 
 def parse_lxd_cpuinfo(data):
