@@ -1062,7 +1062,7 @@ class Node(CleanSave, TimestampedModel):
     # Power parameters specific to this node instance. Global power parameters
     # are stored in this node's BMC.
     instance_power_parameters = JSONField(
-        max_length=(2 ** 15), blank=True, default=""
+        max_length=(2 ** 15), blank=True, default=str
     )
 
     power_state = CharField(
