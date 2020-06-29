@@ -34,6 +34,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
     UnknownInterface,
 )
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASLegacyTransactionServerTestCase,
@@ -5210,6 +5211,7 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_insert_http_proxy(self):
+        self.useFixture(SignalsDisabled("bootsources"))
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -5286,6 +5288,7 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_update_http_proxy(self):
+        self.useFixture(SignalsDisabled("bootsources"))
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
             self.create_config, "http_proxy", "http://proxy1.example.com"
