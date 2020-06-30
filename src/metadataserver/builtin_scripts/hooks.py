@@ -464,10 +464,7 @@ def _process_lxd_resources(node, data):
         NUMANode.objects.update_or_create(
             node=node,
             index=numa_index,
-            defaults={
-                "memory": numa_data["memory"],
-                "cores": numa_data["cores"],
-            },
+            defaults={"memory": numa_data.memory, "cores": numa_data.cores},
         )[0]
         for numa_index, numa_data in numa_nodes.items()
     ]
@@ -494,7 +491,7 @@ def _parse_memory(memory, numa_nodes):
     default_numa_node = {"numa_node": 0, "total": total_memory}
 
     for memory_node in memory.get("nodes", [default_numa_node]):
-        numa_nodes[memory_node["numa_node"]]["memory"] = int(
+        numa_nodes[memory_node["numa_node"]].memory = int(
             memory_node.get("total", 0) / 1024 ** 2
         )
 

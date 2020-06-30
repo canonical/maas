@@ -1486,6 +1486,53 @@ class TestProcessLXDResults(MAASServerTestCase):
             [32158, 0], [numa.memory for numa in node.numanode_set.all()]
         )
 
+    def test_updates_memory_no_corresponding_cpu_numa_node(self):
+        # Regression test for LP:1885157
+        node = factory.make_Node()
+        self.patch(hooks_module, "update_node_network_information")
+        data = make_lxd_output()
+        data["resources"]["memory"] = {
+            "nodes": [
+                {
+                    "numa_node": 252,
+                    "hugepages_used": 0,
+                    "hugepages_total": 0,
+                    "used": 1314131968,
+                    "total": 33720463360,
+                },
+                {
+                    "numa_node": 253,
+                    "hugepages_used": 0,
+                    "hugepages_total": 0,
+                    "used": 0,
+                    "total": 0,
+                },
+                {
+                    "numa_node": 254,
+                    "hugepages_used": 0,
+                    "hugepages_total": 0,
+                    "used": 0,
+                    "total": 0,
+                },
+                {
+                    "numa_node": 255,
+                    "hugepages_used": 0,
+                    "hugepages_total": 0,
+                    "used": 0,
+                    "total": 0,
+                },
+            ],
+            "hugepages_total": 0,
+            "hugepages_used": 0,
+            "hugepages_size": 2097152,
+            "used": 602902528,
+            "total": 33720463360,
+        }
+
+        process_lxd_results(node, json.dumps(data).encode(), 0)
+        numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
+        self.assertEqual(6, len(numa_nodes))
+
     def test_updates_cpu_numa_nodes(self):
         node = factory.make_Node()
         self.patch(hooks_module, "update_node_network_information")

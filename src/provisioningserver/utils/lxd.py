@@ -5,7 +5,10 @@
 
 __all__ = ["parse_lxd_cpuinfo"]
 
+from collections import defaultdict
 import re
+
+import attr
 
 
 # This is needed on the rack controller in the LXDPodDriver to set
@@ -16,6 +19,13 @@ def lxd_cpu_speed(data):
     return cpu_speed
 
 
+@attr.s
+class NUMANode:
+
+    memory: int = attr.ib(default=0)
+    cores: list = attr.ib(default=attr.Factory(list))
+
+
 def parse_lxd_cpuinfo(data):
     cpu_speed = 0
     cpu_model = None
@@ -23,7 +33,7 @@ def parse_lxd_cpuinfo(data):
     # Only update the cpu_model if all the socket names match.
     sockets = data.get("cpu", {}).get("sockets", [])
     names = []
-    numa_nodes = {}
+    numa_nodes = defaultdict(NUMANode)
     for socket in sockets:
         name = socket.get("name")
         if name is not None:
@@ -32,10 +42,7 @@ def parse_lxd_cpuinfo(data):
             for thread in core.get("threads", []):
                 thread_id = thread["id"]
                 numa_node = thread["numa_node"]
-                if numa_node in numa_nodes:
-                    numa_nodes[numa_node]["cores"].append(thread_id)
-                else:
-                    numa_nodes[numa_node] = {"cores": [thread_id]}
+                numa_nodes[numa_node].cores.append(thread_id)
 
     if len(names) > 0 and all(name == names[0] for name in names):
         cpu = names[0]
