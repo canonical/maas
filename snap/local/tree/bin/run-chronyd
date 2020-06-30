@@ -7,8 +7,9 @@ mkdir -p \
       "$SNAP_COMMON/chrony" \
       "$SNAP_COMMON/log/ntpstats"
 
-# ensure config file is up to date
-cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"
+if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
+    cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"
+fi
 
 CHRONY_OPTS="-u root -d -f $SNAP_DATA/etc/chrony/chrony.conf"
 if [ -f /run/systemd/container ]; then
