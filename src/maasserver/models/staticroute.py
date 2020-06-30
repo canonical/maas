@@ -7,11 +7,16 @@ __all__ = ["StaticRoute"]
 
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import CASCADE, ForeignKey, Manager, PositiveIntegerField
+from django.db.models import (
+    CASCADE,
+    ForeignKey,
+    GenericIPAddressField,
+    Manager,
+    PositiveIntegerField,
+)
 from django.shortcuts import get_object_or_404
 
 from maasserver import DefaultMeta
-from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -60,7 +65,7 @@ class StaticRoute(CleanSave, TimestampedModel):
         "Subnet", blank=False, null=False, related_name="+", on_delete=CASCADE
     )
 
-    gateway_ip = MAASIPAddressField(
+    gateway_ip = GenericIPAddressField(
         unique=False,
         null=False,
         blank=False,

@@ -10,6 +10,7 @@ from django.db.models import (
     DateTimeField,
     DO_NOTHING,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
     NullBooleanField,
@@ -17,12 +18,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 
 from maasserver import DefaultViewMeta
-from maasserver.fields import (
-    CIDRField,
-    DomainNameField,
-    MAASIPAddressField,
-    MACAddressField,
-)
+from maasserver.fields import CIDRField, DomainNameField, MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.viewmodel import ViewModel
 from maasserver.utils.orm import MAASQueriesMixin
@@ -205,7 +201,7 @@ class Discovery(CleanSave, ViewModel):
     )
 
     # Observed IP address.
-    ip = MAASIPAddressField(
+    ip = GenericIPAddressField(
         unique=False,
         null=True,
         editable=False,

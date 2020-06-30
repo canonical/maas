@@ -10,7 +10,6 @@ __all__ = [
     "HostListFormField",
     "IPListFormField",
     "IPv4CIDRField",
-    "MAASIPAddressField",
     "MAC",
     "MACAddressField",
     "MACAddressFormField",
@@ -368,30 +367,6 @@ class EditableBinaryField(BinaryField):
         # field: the Django migration module assumes the field has its default
         # value (False).
         return Field.deconstruct(self)
-
-
-class MAASIPAddressField(GenericIPAddressField):
-    """A version of GenericIPAddressField with a custom get_internal_type().
-
-    This class exists to work around a bug in Django that inserts a HOST() cast
-    on the IP, causing the wrong comparison on the IP field.  See
-    https://code.djangoproject.com/ticket/11442 for details.
-    """
-
-    def get_internal_type(self):
-        """Returns a value different from 'GenericIPAddressField' and
-        'IPAddressField' to force Django not to use a HOST() case when
-        performing operation on this field.
-        """
-        return "IPField"
-
-    def db_type(self, connection):
-        """Returns the database column data type for IPAddressField.
-
-        Override the default implementation which uses get_internal_type()
-        and force a 'inet' type field.
-        """
-        return "inet"
 
 
 class LargeObjectFile:

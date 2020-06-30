@@ -12,7 +12,6 @@ __all__ = [
     "IPv4CIDRTestModel",
     "JSONFieldModel",
     "LargeObjectFieldModel",
-    "MAASIPAddressFieldModel",
     "MessagesTestModel",
     "TimestampedModelTestModel",
     "XMLFieldModel",
@@ -31,7 +30,6 @@ from maasserver.fields import (
     IPv4CIDRField,
     JSONObjectField,
     LargeObjectField,
-    MAASIPAddressField,
     XMLField,
 )
 from maasserver.models.cleansave import CleanSave
@@ -95,10 +93,6 @@ class BulkManagerTestModel(Model):
     )
 
     objects = BulkManager()
-
-
-class MAASIPAddressFieldModel(Model):
-    ip_address = MAASIPAddressField()
 
 
 class LargeObjectFieldModel(Model):

@@ -3,8 +3,6 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
-import maasserver.fields
-
 # IPs must be unique across the entire table, except DISCOVERED addresses
 # (which are type 6). The unique_together ensures that IP addresses are also
 # unique amongst their own alloc_type. This index strengthens that.
@@ -23,7 +21,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="staticipaddress",
             name="ip",
-            field=maasserver.fields.MAASIPAddressField(
+            field=models.GenericIPAddressField(
                 editable=False,
                 verbose_name="IP",
                 blank=True,

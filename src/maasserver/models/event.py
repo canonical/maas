@@ -11,6 +11,7 @@ from django.db.models import (
     CharField,
     DO_NOTHING,
     ForeignKey,
+    GenericIPAddressField,
     Index,
     IntegerField,
     Manager,
@@ -20,7 +21,6 @@ from django.db.models import (
 
 from maasserver import DefaultMeta
 from maasserver.enum import ENDPOINT, ENDPOINT_CHOICES
-from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
@@ -155,7 +155,7 @@ class Event(CleanSave, TimestampedModel):
     username = CharField(max_length=150, blank=True, default="")
 
     # IP address of the request that caused this event.
-    ip_address = MAASIPAddressField(
+    ip_address = GenericIPAddressField(
         unique=False, null=True, editable=False, blank=True, default=None
     )
 

@@ -15,6 +15,7 @@ from django.db.models import (
     BooleanField,
     CharField,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
     PROTECT,
@@ -36,7 +37,7 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import CIDRField, MAASIPAddressField
+from maasserver.fields import CIDRField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -361,7 +362,7 @@ class Subnet(CleanSave, TimestampedModel):
         choices=RDNS_MODE_CHOICES, editable=True, default=RDNS_MODE.DEFAULT
     )
 
-    gateway_ip = MAASIPAddressField(blank=True, editable=True, null=True)
+    gateway_ip = GenericIPAddressField(blank=True, editable=True, null=True)
 
     dns_servers = ArrayField(
         TextField(), blank=True, editable=True, null=True, default=list

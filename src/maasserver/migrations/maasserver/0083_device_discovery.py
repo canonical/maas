@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         verbose_name="IP",
                         editable=False,
                         blank=True,

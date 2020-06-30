@@ -31,13 +31,10 @@ class _NODEGROUPINTERFACE_MANAGEMENT:
 def _get_cidr(ip, subnet_mask):
     """Returns a unicode CIDR for the specified (ip, subnet mask) tuple.
     """
-    # Nullness check for GenericIPAddress fields is deliberately kept
-    # vague: MAASIPAddressField seems to represent nulls as empty
-    # strings.
     if subnet_mask:
         return str(IPNetwork("%s/%s" % (ip, subnet_mask)).cidr)
-    else:
-        return None
+
+    return None
 
 
 def _get_cidr_for_nodegroupinterface(ngi):

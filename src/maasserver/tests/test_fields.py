@@ -50,7 +50,6 @@ from maasserver.tests.models import (
     IPv4CIDRTestModel,
     JSONFieldModel,
     LargeObjectFieldModel,
-    MAASIPAddressFieldModel,
     XMLFieldModel,
 )
 from maasserver.utils.orm import reload_object
@@ -369,20 +368,6 @@ class TestEditableBinaryField(MAASServerTestCase):
 
     def test_is_editable(self):
         self.assertTrue(EditableBinaryField().editable)
-
-
-class TestMAASIPAddressField(MAASLegacyServerTestCase):
-
-    apps = ["maasserver.tests"]
-
-    def test_uses_ip_comparison(self):
-        ip_object = MAASIPAddressFieldModel.objects.create(
-            ip_address="192.0.2.99"
-        )
-        results = MAASIPAddressFieldModel.objects.filter(
-            ip_address__lte="192.0.2.100"
-        )
-        self.assertItemsEqual([ip_object], results)
 
 
 class TestLargeObjectField(MAASLegacyServerTestCase):

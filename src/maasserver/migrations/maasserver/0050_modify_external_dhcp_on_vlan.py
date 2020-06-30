@@ -4,8 +4,6 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 import maasserver.fields
-import maasserver.models.interface
-import maasserver.models.subnet
 
 
 class Migration(migrations.Migration):
@@ -19,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="vlan",
             name="external_dhcp",
-            field=maasserver.fields.MAASIPAddressField(
+            field=models.GenericIPAddressField(
                 null=True, editable=False, default=None, blank=True
             ),
         ),

@@ -21,6 +21,7 @@ from django.db.models import (
     CASCADE,
     DateTimeField,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
     PROTECT,
@@ -39,7 +40,6 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
@@ -795,8 +795,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     # IP can be none when a DHCP lease has expired: in this case the entry
     # in the StaticIPAddress only materializes the connection between an
-    # interface and a subnet.
-    ip = MAASIPAddressField(
+    # interface and asubnet.
+    ip = GenericIPAddressField(
         unique=False,
         null=True,
         editable=False,

@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ("updated", models.DateTimeField(editable=False)),
                 (
                     "ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         editable=False, verbose_name="IP"
                     ),
                 ),

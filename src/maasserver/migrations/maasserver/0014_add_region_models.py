@@ -4,7 +4,6 @@ import django.core.validators
 from django.db import migrations, models
 import django.db.models.deletion
 
-import maasserver.fields
 import maasserver.models.cleansave
 import maasserver.models.node
 
@@ -47,10 +46,7 @@ class Migration(migrations.Migration):
                 ),
                 ("created", models.DateTimeField(editable=False)),
                 ("updated", models.DateTimeField(editable=False)),
-                (
-                    "address",
-                    maasserver.fields.MAASIPAddressField(editable=False),
-                ),
+                ("address", models.GenericIPAddressField(editable=False)),
                 (
                     "port",
                     models.IntegerField(

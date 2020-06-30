@@ -6,10 +6,14 @@
 __all__ = ["RegionControllerProcessEndpoint"]
 
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db.models import CASCADE, ForeignKey, IntegerField
+from django.db.models import (
+    CASCADE,
+    ForeignKey,
+    GenericIPAddressField,
+    IntegerField,
+)
 
 from maasserver import DefaultMeta
-from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -37,7 +41,7 @@ class RegionControllerProcessEndpoint(CleanSave, TimestampedModel):
         related_name="endpoints",
         on_delete=CASCADE,
     )
-    address = MAASIPAddressField(null=False, blank=False, editable=False)
+    address = GenericIPAddressField(null=False, blank=False, editable=False)
     port = IntegerField(
         default=0, validators=[MinValueValidator(0), MaxValueValidator(65535)]
     )

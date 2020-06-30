@@ -4,8 +4,6 @@ from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
 
-import maasserver.fields
-
 
 class Migration(migrations.Migration):
 
@@ -15,14 +13,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="iprange",
             name="end_ip",
-            field=maasserver.fields.MAASIPAddressField(verbose_name="End IP"),
+            field=models.GenericIPAddressField(verbose_name="End IP"),
         ),
         migrations.AlterField(
             model_name="iprange",
             name="start_ip",
-            field=maasserver.fields.MAASIPAddressField(
-                verbose_name="Start IP"
-            ),
+            field=models.GenericIPAddressField(verbose_name="Start IP"),
         ),
         migrations.AlterField(
             model_name="iprange",

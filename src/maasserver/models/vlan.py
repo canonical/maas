@@ -14,6 +14,7 @@ from django.db.models import (
     Count,
     deletion,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
     Q,
@@ -25,7 +26,7 @@ from netaddr import AddrFormatError
 
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
-from maasserver.fields import MAASIPAddressField, MODEL_NAME_VALIDATOR
+from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import VLANInterface
 from maasserver.models.notification import Notification
@@ -172,7 +173,7 @@ class VLAN(CleanSave, TimestampedModel):
 
     dhcp_on = BooleanField(default=False, editable=True)
 
-    external_dhcp = MAASIPAddressField(
+    external_dhcp = GenericIPAddressField(
         null=True, editable=False, blank=True, default=None
     )
 

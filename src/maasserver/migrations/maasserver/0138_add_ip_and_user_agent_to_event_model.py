@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
-import maasserver.fields
-
 
 class Migration(migrations.Migration):
 
@@ -15,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="event",
             name="ip_address",
-            field=maasserver.fields.MAASIPAddressField(
+            field=models.GenericIPAddressField(
                 blank=True, default=None, editable=False, null=True
             ),
         ),

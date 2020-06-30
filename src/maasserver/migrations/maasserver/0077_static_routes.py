@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 # -*- coding: utf-8 -*-
 from django.db import migrations, models
 
-import maasserver.fields
 import maasserver.models.cleansave
 
 
@@ -26,9 +25,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "gateway_ip",
-                    maasserver.fields.MAASIPAddressField(
-                        verbose_name="Gateway IP"
-                    ),
+                    models.GenericIPAddressField(verbose_name="Gateway IP"),
                 ),
                 ("metric", models.PositiveIntegerField()),
                 (

@@ -45,6 +45,7 @@ from django.db.models import (
     CharField,
     DateTimeField,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
     ManyToManyField,
@@ -110,7 +111,7 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
     StorageClearProblem,
 )
-from maasserver.fields import MAASIPAddressField, MAC
+from maasserver.fields import MAC
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bootresource import BootResource
 from maasserver.models.cacheset import CacheSet
@@ -1126,7 +1127,7 @@ class Node(CleanSave, TimestampedModel):
     # download the image to install. Since the node just contacted the cluster
     # using this IP address then it will be able to access the images at this
     # IP address.
-    boot_cluster_ip = MAASIPAddressField(
+    boot_cluster_ip = GenericIPAddressField(
         unique=False, null=True, editable=False, blank=True, default=None
     )
 

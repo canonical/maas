@@ -10,13 +10,13 @@ from django.db.models import (
     CASCADE,
     CharField,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
 )
 from netaddr import IPAddress
 
 from maasserver import DefaultMeta
-from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one, UniqueViolation
@@ -102,7 +102,7 @@ class MDNS(CleanSave, TimestampedModel):
         verbose_name_plural = "mDNS bindings"
 
     # Observed IP address.
-    ip = MAASIPAddressField(
+    ip = GenericIPAddressField(
         unique=False,
         null=True,
         editable=False,

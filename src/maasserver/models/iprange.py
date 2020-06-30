@@ -14,6 +14,7 @@ from django.db.models import (
     CASCADE,
     CharField,
     ForeignKey,
+    GenericIPAddressField,
     Manager,
     PROTECT,
     QuerySet,
@@ -22,7 +23,6 @@ import netaddr
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
 from maasserver.enum import IPRANGE_TYPE, IPRANGE_TYPE_CHOICES
-from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin, transactional
@@ -103,11 +103,11 @@ class IPRange(CleanSave, TimestampedModel):
         blank=False,
     )
 
-    start_ip = MAASIPAddressField(
+    start_ip = GenericIPAddressField(
         null=False, editable=True, blank=False, verbose_name="Start IP"
     )
 
-    end_ip = MAASIPAddressField(
+    end_ip = GenericIPAddressField(
         null=False, editable=True, blank=False, verbose_name="End IP"
     )
 

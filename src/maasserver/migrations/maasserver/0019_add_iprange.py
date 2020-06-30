@@ -4,7 +4,6 @@ from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
 
-import maasserver.fields
 import maasserver.models.cleansave
 
 
@@ -46,13 +45,13 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "start_ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         verbose_name="Start IP", editable=False
                     ),
                 ),
                 (
                     "end_ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         verbose_name="End IP", editable=False
                     ),
                 ),

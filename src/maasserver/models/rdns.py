@@ -8,10 +8,16 @@ __all__ = ["RDNS", "RDNSManager"]
 
 from typing import List
 
-from django.db.models import CASCADE, CharField, ForeignKey, Manager
+from django.db.models import (
+    CASCADE,
+    CharField,
+    ForeignKey,
+    GenericIPAddressField,
+    Manager,
+)
 
 from maasserver import DefaultMeta
-from maasserver.fields import JSONObjectField, MAASIPAddressField
+from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import LegacyLogger
@@ -112,7 +118,7 @@ class RDNS(CleanSave, TimestampedModel):
     objects = RDNSManager()
 
     # IP address for the reverse-DNS entry.
-    ip = MAASIPAddressField(
+    ip = GenericIPAddressField(
         unique=False,
         null=False,
         editable=False,

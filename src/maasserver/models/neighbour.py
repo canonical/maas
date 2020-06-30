@@ -5,11 +5,17 @@
 
 __all__ = ["Neighbour"]
 
-from django.db.models import CASCADE, ForeignKey, IntegerField, Manager
+from django.db.models import (
+    CASCADE,
+    ForeignKey,
+    GenericIPAddressField,
+    IntegerField,
+    Manager,
+)
 from django.db.models.query import QuerySet
 
 from maasserver import DefaultMeta
-from maasserver.fields import MAASIPAddressField, MACAddressField
+from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -157,7 +163,7 @@ class Neighbour(CleanSave, TimestampedModel):
         unique_together = ("interface", "vid", "mac_address", "ip")
 
     # Observed IP address.
-    ip = MAASIPAddressField(
+    ip = GenericIPAddressField(
         unique=False,
         null=True,
         editable=False,

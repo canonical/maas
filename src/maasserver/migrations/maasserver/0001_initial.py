@@ -1096,7 +1096,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "boot_cluster_ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         default=None, null=True, editable=False, blank=True
                     ),
                 ),
@@ -1201,7 +1201,7 @@ class Migration(migrations.Migration):
                 ("updated", models.DateTimeField(editable=False)),
                 (
                     "ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         help_text="Static IP Address of the interface",
                         verbose_name="IP",
                     ),
@@ -1242,7 +1242,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "ip_range_low",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         default=None,
                         blank=True,
                         help_text="Lowest IP number of the range for dynamic IPs, used for enlistment, commissioning and unknown devices.",
@@ -1252,7 +1252,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "ip_range_high",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         default=None,
                         blank=True,
                         help_text="Highest IP number of the range for dynamic IPs, used for enlistment, commissioning and unknown devices.",
@@ -1262,7 +1262,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "static_ip_range_low",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         default=None,
                         blank=True,
                         help_text="Lowest IP number of the range for IPs given to allocated nodes, must be in same network as dynamic range.",
@@ -1272,7 +1272,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "static_ip_range_high",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         default=None,
                         blank=True,
                         help_text="Highest IP number of the range for IPs given to allocated nodes, must be in same network as dynamic range.",
@@ -1282,7 +1282,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "foreign_dhcp_ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         default=None, null=True, blank=True
                     ),
                 ),
@@ -1466,7 +1466,7 @@ class Migration(migrations.Migration):
                 ("updated", models.DateTimeField(editable=False)),
                 (
                     "ip",
-                    maasserver.fields.MAASIPAddressField(
+                    models.GenericIPAddressField(
                         null=True,
                         default=None,
                         editable=False,
@@ -1522,9 +1522,7 @@ class Migration(migrations.Migration):
                 ("cidr", maasserver.fields.CIDRField(unique=True)),
                 (
                     "gateway_ip",
-                    maasserver.fields.MAASIPAddressField(
-                        null=True, blank=True
-                    ),
+                    models.GenericIPAddressField(null=True, blank=True),
                 ),
                 (
                     "dns_servers",
