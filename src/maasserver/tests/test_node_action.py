@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import base64
 import random
 from unittest.mock import ANY
 
@@ -687,9 +688,10 @@ class TestDeployAction(MAASServerTestCase):
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         extra = {"user_data": "foo: bar"}
+        expected = base64.encodebytes(b"foo: bar")
         Deploy(node, user, request).execute(**extra)
         self.expectThat(
-            mock_node_start, MockCalledOnceWith(user, user_data="foo: bar")
+            mock_node_start, MockCalledOnceWith(user, user_data=expected)
         )
 
     def test_Deploy_raises_NodeActionError_for_no_curtin_config(self):

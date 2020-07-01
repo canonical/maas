@@ -15,6 +15,7 @@ order as they do in `ACTION_CLASSES`.
 __all__ = ["compile_node_actions"]
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+import base64
 from collections import OrderedDict
 
 from crochet import TimeoutError
@@ -534,6 +535,9 @@ class Deploy(NodeAction):
         except ValidationError as e:
             raise NodeActionError(e)
 
+        encoded_user_data = (
+            base64.encodebytes(user_data.encode()) if user_data else None
+        )
         request = self.request
         if request is None:
             # `compile_node_actions` is the path by which the node
@@ -553,7 +557,7 @@ class Deploy(NodeAction):
             raise NodeActionError("Failed to retrieve curtin config: %s" % e)
 
         try:
-            self.node.start(self.user, user_data=user_data)
+            self.node.start(self.user, user_data=encoded_user_data)
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
