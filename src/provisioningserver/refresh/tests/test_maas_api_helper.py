@@ -613,12 +613,6 @@ class TestSignal(MAASTestCase):
 
 
 class TestCaptureScriptOutput(MAASTestCase):
-
-    # Iterate multiple times to shake out spurious failures.
-    scenarios = [
-        ("iteration %d" % iteration, {}) for iteration in range(1, 21)
-    ]
-
     def setUp(self):
         super().setUp()
         # Make sure output isn't shown when running tests through a console
