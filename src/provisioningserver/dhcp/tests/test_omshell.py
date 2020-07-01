@@ -3,28 +3,18 @@
 
 """Tests for the omshell.py file."""
 
-__all__ = []
-
-from itertools import product
-import os
+import base64
 import subprocess
-import tempfile
 from textwrap import dedent
 from unittest.mock import ANY, Mock
 
-from testtools.matchers import EndsWith, MatchesStructure
+from testtools.matchers import MatchesStructure
 
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.dhcp import omshell
-from provisioningserver.dhcp.omshell import (
-    call_dnssec_keygen,
-    generate_omapi_key,
-    Omshell,
-)
+from provisioningserver.dhcp.omshell import generate_omapi_key, Omshell
 from provisioningserver.utils.shell import ExternalProcessError
 
 
@@ -459,96 +449,6 @@ class Test_Omshell_nullify_lease(MAASTestCase):
 
 
 class Test_generate_omapi_key(MAASTestCase):
-    """Tests for omshell.generate_omapi_key"""
-
-    def test_generate_omapi_key_returns_a_key(self):
+    def test_generate_key(self):
         key = generate_omapi_key()
-        # Could test for != None here, but the keys end in == for a 512
-        # bit length key, so that's a better check that the script was
-        # actually run and produced output.
-        self.assertThat(key, EndsWith("=="))
-
-    def test_generate_omapi_key_leaves_no_temp_files(self):
-        tmpdir = self.useFixture(TempDirectory()).path
-        # Make mkdtemp() in omshell nest all directories within tmpdir.
-        self.patch(tempfile, "tempdir", tmpdir)
-        generate_omapi_key()
-        self.assertEqual([], os.listdir(tmpdir))
-
-    def test_generate_omapi_key_raises_assertionerror_on_no_output(self):
-        self.patch(omshell, "call_dnssec_keygen", FakeMethod())
-        self.assertRaises(AssertionError, generate_omapi_key)
-
-    def test_generate_omapi_key_raises_assertionerror_on_bad_output(self):
-        def returns_junk(tmpdir):
-            key_name = factory.make_string()
-            factory.make_file(tmpdir, "%s.private" % key_name)
-            return key_name.encode("ascii")
-
-        self.patch(omshell, "call_dnssec_keygen", returns_junk)
-        self.assertRaises(AssertionError, generate_omapi_key)
-
-    def test_run_repeated_keygen(self):
-        bad_patterns = {"+no", "/no", "no+", "no/", "+NO", "/NO", "NO+", "NO/"}
-        bad_patterns_templates = {"foo%sbar", "one\ntwo\n%s\nthree\n", "%s"}
-        # Test that a known bad key is ignored and we generate a new one
-        # to replace it.
-        bad_keys = {
-            # This key is known to fail with omshell.
-            "YXY5pr+No/8NZeodSd27wWbI8N6kIjMF/nrnFIlPwVLuByJKkQcBRtfDrD"
-            "LLG2U9/ND7/bIlJxEGTUnyipffHQ=="
-        }
-        # Fabricate a range of keys containing the known-bad pattern.
-        bad_keys.update(
-            template % pattern
-            for template, pattern in product(
-                bad_patterns_templates, bad_patterns
-            )
-        )
-        # An iterator that we can exhaust without mutating bad_keys.
-        iter_bad_keys = iter(bad_keys)
-        # Reference to the original parse_key_value_file, before we patch.
-        parse_key_value_file = omshell.parse_key_value_file
-
-        # Patch parse_key_value_file to return each of the known-bad keys
-        # we've created, followed by reverting to its usual behaviour.
-        def side_effect(*args, **kwargs):
-            try:
-                return {"Key": next(iter_bad_keys)}
-            except StopIteration:
-                return parse_key_value_file(*args, **kwargs)
-
-        mock = self.patch(omshell, "parse_key_value_file")
-        mock.side_effect = side_effect
-
-        # generate_omapi_key() does not return a key known to be bad.
-        self.assertNotIn(generate_omapi_key(), bad_keys)
-
-
-class TestCallDnsSecKeygen(MAASTestCase):
-    """Tests for omshell.call_dnssec_keygen."""
-
-    def test_runs_external_script(self):
-        call_and_check = self.patch(omshell, "call_and_check")
-        target_dir = self.make_dir()
-        path = os.environ.get("PATH", "").split(os.pathsep)
-        path.append("/usr/sbin")
-        call_dnssec_keygen(target_dir)
-        call_and_check.assert_called_once_with(
-            [
-                "dnssec-keygen",
-                "-r",
-                "/dev/urandom",
-                "-a",
-                "HMAC-MD5",
-                "-b",
-                "512",
-                "-n",
-                "HOST",
-                "-K",
-                target_dir,
-                "-q",
-                "omapi_key",
-            ],
-            env=ANY,
-        )
+        self.assertEqual(len(base64.decodebytes(key.encode("ascii"))), 64)

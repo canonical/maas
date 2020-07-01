@@ -30,7 +30,6 @@ from provisioningserver.utils import (
     kernel_to_debian_architecture,
     locate_config,
     locate_template,
-    parse_key_value_file,
     Safe,
     ShellTemplate,
     sorttop,
@@ -109,49 +108,6 @@ class TestSafe(MAASTestCase):
         string = factory.make_string()
         safe = Safe(string)
         self.assertEqual("<Safe %r>" % string, repr(safe))
-
-
-class ParseConfigTest(MAASTestCase):
-    """Testing for `parse_key_value_file`."""
-
-    def test_parse_key_value_file_parses_config_file(self):
-        contents = """
-            key1: value1
-            key2  :  value2
-            """
-        file_name = self.make_file(contents=contents)
-        self.assertEqual(
-            {"key1": "value1", "key2": "value2"},
-            parse_key_value_file(file_name),
-        )
-
-    def test_parse_key_value_copes_with_empty_lines(self):
-        contents = """
-            key1: value1
-
-            """
-        file_name = self.make_file(contents=contents)
-        self.assertEqual({"key1": "value1"}, parse_key_value_file(file_name))
-
-    def test_parse_key_value_file_parse_alternate_separator(self):
-        contents = """
-            key1= value1
-            key2   =  value2
-            """
-        file_name = self.make_file(contents=contents)
-        self.assertEqual(
-            {"key1": "value1", "key2": "value2"},
-            parse_key_value_file(file_name, separator="="),
-        )
-
-    def test_parse_key_value_additional_eparator(self):
-        contents = """
-            key1: value1:value11
-            """
-        file_name = self.make_file(contents=contents)
-        self.assertEqual(
-            {"key1": "value1:value11"}, parse_key_value_file(file_name)
-        )
 
 
 class TestShellTemplate(MAASTestCase):

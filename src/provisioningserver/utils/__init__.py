@@ -10,7 +10,6 @@ __all__ = [
     "debian_to_kernal_architecture",
     "locate_config",
     "locate_template",
-    "parse_key_value_file",
     "ShellTemplate",
     "sorttop",
     "sudo",
@@ -88,20 +87,6 @@ def split_lines(input, separator):
 def strip_pairs(input):
     """Strip whitespace of each key/value pair in input."""
     return ((key.strip(), value.strip()) for (key, value) in input)
-
-
-def parse_key_value_file(file_name, separator=":"):
-    """Parse a text file into a dict of key/value pairs.
-
-    Use this for simple key:value or key=value files. There are no sections,
-    as required for python's ConfigParse. Whitespace and empty lines are
-    ignored, and it is assumed that the file is encoded as UTF-8.
-
-    :param file_name: Name of file to parse.
-    :param separator: The text that separates each key from its value.
-    """
-    with open(file_name, "r", encoding="utf-8") as input:
-        return dict(strip_pairs(split_lines(input, separator)))
 
 
 class Safe:
