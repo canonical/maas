@@ -2304,14 +2304,14 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
         # A remote NotImplementedError exception is re-raised locally.
         # Choose an operating system which has not overridden the
         # default compose_preseed.
-        osystem_name = next(
+        osystem_name, *_ = [
             osystem_name
             for osystem_name, osystem in OperatingSystemRegistry
-            if osystem.compose_preseed == OperatingSystem.compose_preseed
-        )
+            if type(osystem).compose_preseed == OperatingSystem.compose_preseed
+        ]
         arguments = self.make_arguments()
         arguments["osystem"] = osystem_name
-        with ExpectedException(exceptions.NoSuchOperatingSystem):
+        with ExpectedException(NotImplementedError):
             yield call_responder(Cluster(), cluster.GetPreseedData, arguments)
 
 
