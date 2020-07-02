@@ -2032,7 +2032,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         binary_script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             script=VersionedTextFile.objects.create(
-                data=base64.b64encode(sample_binary_data)
+                data=base64.b64encode(sample_binary_data).decode()
             ),
         )
         text_script = factory.make_Script(

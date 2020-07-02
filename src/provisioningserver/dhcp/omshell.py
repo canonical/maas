@@ -26,8 +26,7 @@ def generate_omapi_key():
     :return: The shared key suitable for OMAPI access.
     :type: string
     """
-    encoded = base64.encodebytes(secrets.token_bytes(64))
-    return encoded.decode("ascii").replace("\n", "")
+    return base64.b64encode(secrets.token_bytes(64)).decode("ascii")
 
 
 class Omshell:
