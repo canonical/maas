@@ -980,6 +980,14 @@ class TestCustomNetworking(MAASTestCase):
             maas_run_remote_scripts.dbus, "SystemBus"
         )
 
+    def tearDown(self):
+        super().tearDown()
+        # Reset the modules global state for each test.
+        maas_run_remote_scripts._dbus = None
+        maas_run_remote_scripts._systemd_interface = None
+        maas_run_remote_scripts._networkd_interface = None
+        maas_run_remote_scripts._networkd_properties_interface = None
+
     def test_enter_does_nothing_if_not_required(self):
         custom_networking = CustomNetworking(
             make_scripts(apply_configured_networking=False), self.config_dir
@@ -1502,9 +1510,13 @@ class TestCustomNetworking(MAASTestCase):
             scripts_dir=self.base_dir, apply_configured_networking=True
         )
         custom_networking = CustomNetworking(scripts, self.config_dir)
-
-        # Returns False as mock prevents connection to dbus
-        self.assertFalse(custom_networking._wait_for_networkd(1))
+        maas_run_remote_scripts._dbus = object()
+        self.patch(maas_run_remote_scripts, "_networkd_interface")
+        mock_networkd_properties_interface = self.patch(
+            maas_run_remote_scripts, "_networkd_properties_interface"
+        )
+        mock_networkd_properties_interface.Get.return_value = "active"
+        self.assertTrue(custom_networking._wait_for_networkd(1))
         self.assertThat(self.mock_systembus, MockNotCalled())
 
     def test_wait_for_networkd_restarts_networkd(self):
