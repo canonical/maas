@@ -6,7 +6,8 @@
 __all__ = ["ZoneGenerator"]
 
 
-import collections
+from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from itertools import chain
 import socket
 
@@ -54,9 +55,9 @@ def sequence(thing):
     list of its elements. Otherwise, return `thing` as the sole element in a
     new list.
     """
-    if isinstance(thing, collections.Sequence):
+    if isinstance(thing, Sequence):
         return thing
-    elif isinstance(thing, collections.Iterable):
+    elif isinstance(thing, Iterable):
         return list(thing)
     else:
         return [thing]
@@ -308,7 +309,7 @@ class ZoneGenerator:
         # Create the forward zone config for the internal domains.
         for internal_domain in internal_domains:
             # Use other_mapping to create the domain resources.
-            other_mapping = collections.defaultdict(HostnameRRsetMapping)
+            other_mapping = defaultdict(HostnameRRsetMapping)
             for resource in internal_domain.resources:
                 resource_mapping = other_mapping[resource.name]
                 for record in resource.records:

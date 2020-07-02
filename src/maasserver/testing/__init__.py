@@ -11,7 +11,7 @@ __all__ = [
     "NoReceivers",
 ]
 
-import collections
+from collections.abc import Iterable
 from contextlib import contextmanager
 import http.client
 from itertools import chain
@@ -115,7 +115,7 @@ def NoReceivers(signals):
     :type signal: django.dispatch.Signal
     """
     saved = dict()
-    if not isinstance(signals, collections.Iterable):
+    if not isinstance(signals, Iterable):
         signals = [signals]
     for signal in signals:
         saved[signal] = signal.receivers

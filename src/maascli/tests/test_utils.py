@@ -5,7 +5,7 @@
 
 __all__ = []
 
-import collections
+from collections import OrderedDict
 import http.client
 import io
 import random
@@ -222,7 +222,7 @@ class TestPrintResponseHeaders(MAASTestCase):
         # each hyphen-delimited part of the header name capitalised, to the
         # given file, with the names right aligned, and with a 2 space left
         # margin.
-        headers = collections.OrderedDict()
+        headers = OrderedDict()
         headers["two-two"] = factory.make_name("two")
         headers["one"] = factory.make_name("one")
         buf = io.StringIO()

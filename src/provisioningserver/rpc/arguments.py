@@ -12,7 +12,7 @@ __all__ = [
     "StructureAsJSON",
 ]
 
-import collections
+from collections.abc import Mapping
 import json
 import urllib.parse
 import zlib
@@ -53,7 +53,7 @@ class Choice(amp.Argument):
             byte strings, and mapped back at the receiving end.
         """
         super().__init__(optional=optional)
-        if not isinstance(choices, collections.Mapping):
+        if not isinstance(choices, Mapping):
             raise TypeError("Not a mapping: %r" % (choices,))
         not_byte_strings = [
             value for value in choices.values() if not isinstance(value, bytes)
