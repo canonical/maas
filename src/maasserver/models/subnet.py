@@ -810,8 +810,9 @@ class Subnet(CleanSave, TimestampedModel):
         # The purpose of this is to that we ensure we always get an IP address
         # from the *smallest* free contiguous range. This way, larger ranges
         # can be preserved in case they need to be used for applications
-        # requiring them.
-        free_range = min(free_ranges, key=attrgetter("num_addresses"))
+        # requiring them. If two ranges have the same number of IPs, choose the
+        # lowest one.
+        free_range = min(free_ranges, key=attrgetter("num_addresses", "first"))
         return str(IPAddress(free_range.first))
 
     def render_json_for_related_ips(

@@ -183,13 +183,10 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 subnet, alloc_type=IPADDRESS_TYPE.USER_RESERVED
             )
 
-    def test_allocate_new_compares_by_IP_not_alphabetically(self):
-        # Django has a bug that casts IP addresses with HOST(), which
-        # results in alphabetical comparisons of strings instead of IP
-        # addresses.  See https://bugs.launchpad.net/maas/+bug/1338452
+    def test_allocate_new_returns_lowest_available_ip(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24", gateway_ip="10.0.0.1")
-        factory.make_IPRange(subnet, "10.0.0.2", "10.0.0.97")
         factory.make_IPRange(subnet, "10.0.0.101", "10.0.0.254")
+        factory.make_IPRange(subnet, "10.0.0.2", "10.0.0.97")
         factory.make_StaticIPAddress("10.0.0.99", subnet=subnet)
         subnet = reload_object(subnet)
         ipaddress = StaticIPAddress.objects.allocate_new(subnet)
