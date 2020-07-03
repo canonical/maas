@@ -2608,7 +2608,7 @@ class Factory(maastesting.factory.Factory):
             # in maasserver/models/tests/test_filesystemgroup.py.
             size = round_size_to_nearest_block(
                 random.randint(
-                    max(MIN_BLOCK_DEVICE_SIZE, MIN_PARTITION_SIZE) * 16,
+                    max(MIN_BLOCK_DEVICE_SIZE, MIN_PARTITION_SIZE) * 64,
                     MIN_BLOCK_DEVICE_SIZE * 1024,
                 ),
                 block_size,
