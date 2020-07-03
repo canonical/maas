@@ -830,7 +830,7 @@ class BootResourceStore(ObjectStore):
         threads = []
         while True:
             # Update list to only those that are still running.
-            threads = [thread for thread in threads if thread.isAlive()]
+            threads = [thread for thread in threads if thread.is_alive()]
             if len(threads) >= self.write_threads:
                 # Cannot start any more threads as the maximum is already
                 # running. Lets wait a second and try again.
