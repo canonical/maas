@@ -799,7 +799,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             factory.make_Tag("eggs"),
             factory.make_Tag("ham"),
         ]
-        tagged_node.tags = tags
+        tagged_node.tags.set(tags)
         partially_tagged_node = factory.make_Node()
         partially_tagged_node.tags.add(tags[0])
 

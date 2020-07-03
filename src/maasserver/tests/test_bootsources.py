@@ -385,8 +385,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             self
         )
         factory.make_BootSource(
-            keyring_data=b"1234",
-            url=b"http://192.168.1.100:8080/ephemeral-v3/",
+            keyring_data=b"1234", url="http://192.168.1.100:8080/ephemeral-v3/"
         )
         cache_boot_sources()
         no_proxy_hosts = "127.0.0.1,localhost,192.168.1.100"

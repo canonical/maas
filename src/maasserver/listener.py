@@ -390,12 +390,8 @@ class PostgresListenerService(Service, object):
         registeredChannels, and a call to unlisten for all channels that
         are in registeredChannels but not in listeners.
         """
-        to_register = set(self.listeners.keys()).difference(
-            self.registeredChannels
-        )
-        to_unregister = self.registeredChannels.difference(
-            set(self.listeners.keys())
-        )
+        to_register = set(self.listeners).difference(self.registeredChannels)
+        to_unregister = self.registeredChannels.difference(self.listeners)
         # If there's nothing to do, we can stop the loop. If there is
         # any work to be done, we do the work, and then check
         # whether we should stop at the beginning of the next loop

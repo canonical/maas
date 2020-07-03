@@ -863,7 +863,9 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
         node = factory.make_Node()
         node.swap_size = 10 * 1000 ** 3
         swap_preseed = compose_curtin_swap_preseed(node)
-        self.assertEqual(swap_preseed, ["swap: {size: 10000000000B}\n"])
+        self.assertEqual(
+            swap_preseed, [yaml.safe_dump({"swap": {"size": "10000000000B"}})]
+        )
 
     def test_suppresses_swap_file_when_swap_on_block_device(self):
         node = factory.make_Node()
@@ -873,7 +875,9 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
         )
         node.swap_size = None
         swap_preseed = compose_curtin_swap_preseed(node)
-        self.assertEqual(swap_preseed, ["swap: {size: 0B}\n"])
+        self.assertEqual(
+            swap_preseed, [yaml.safe_dump({"swap": {"size": "0B"}})]
+        )
 
     def test_suppresses_swap_file_when_swap_on_partition(self):
         node = factory.make_Node()
@@ -883,7 +887,9 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
         )
         node.swap_size = None
         swap_preseed = compose_curtin_swap_preseed(node)
-        self.assertEqual(swap_preseed, ["swap: {size: 0B}\n"])
+        self.assertEqual(
+            swap_preseed, [yaml.safe_dump({"swap": {"size": "0B"}})]
+        )
 
 
 class TestComposeCurtinKernel(MAASServerTestCase):

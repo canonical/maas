@@ -166,7 +166,7 @@ class TestPostgresListenerService(MAASServerTestCase):
                 if notice.channel == channel:
                     self.assertThat(notice.payload, Equals(payload))
                     # Our channel has been deleted from the listeners map.
-                    self.assertFalse(channel in listener.listeners)
+                    self.assertNotIn(channel, listener.listeners)
                     break
         finally:
             yield listener.stopService()
@@ -593,8 +593,8 @@ class TestPostgresListenerService(MAASServerTestCase):
         channel = factory.make_name("channel", sep="_").lower()
         listener.register(channel, sentinel.handler)
         listener.register(channel, sentinel.other_handler)
-        listener.registeredChannels = True
-        listener.connection = sentinel.connection
+        listener.registeredChannels = set()
+        listener.connection = MagicMock()
         mock_unregisterChannel = self.patch(listener, "unregisterChannel")
         listener.unregister(channel, sentinel.handler)
         self.assertThat(mock_unregisterChannel, MockNotCalled())
