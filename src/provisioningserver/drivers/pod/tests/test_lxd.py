@@ -75,6 +75,12 @@ class TestLXDPodDriver(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    def setUp(self):
+        super().setUp()
+        # Generating the cert tuple can be slow and aren't necessary
+        # for the tests.
+        self.patch(maas_certificates, "generate_certificate_if_needed")
+
     def test_missing_packages(self):
         driver = lxd_module.LXDPodDriver()
         missing = driver.detect_missing_packages()
@@ -169,9 +175,6 @@ class TestLXDPodDriver(MAASTestCase):
         pod_id = factory.make_name("pod_id")
         Client = self.patch(lxd_module, "Client")
         Client.side_effect = lxd_module.ClientConnectionFailed()
-        # Getting the cert tuple can cause a certificate to be generated which
-        # can be slow but isn't needed for this test.
-        self.patch(maas_certificates, "get_maas_cert_tuple")
         driver = lxd_module.LXDPodDriver()
         error_msg = f"Pod {pod_id}: Failed to connect to the LXD REST API."
         with ExpectedException(lxd_module.LXDPodError, error_msg):
