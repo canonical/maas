@@ -346,13 +346,14 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         resource = factory.make_usable_boot_resource()
+        resource_updated = handler.get_last_update_for_resources([resource])
         response = handler.poll({})
         json_obj = json.loads(response)
         json_updated = datetime.datetime.strptime(
             json_obj["resources"][0]["lastUpdate"], "%a, %d %b. %Y %H:%M:%S"
         )
         self.assertEqual(
-            resource.updated.timetuple(), json_updated.timetuple()
+            resource_updated.timetuple(), json_updated.timetuple()
         )
 
     def test_returns_resource_attributes(self):
