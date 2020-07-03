@@ -3,6 +3,9 @@ snapcraft := SNAPCRAFT_BUILD_INFO=1 /snap/bin/snapcraft
 
 VENV := .ve
 
+# PPA used by MAAS dependencies. It can be overridden by the env
+MAAS_PPA ?= ppa:maas/2.8
+
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
 export PYTHONWARNINGS = \
@@ -93,9 +96,11 @@ list_required = $(shell sort -u required-packages/$1 | sed '/^\#/d')
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
 install-dependencies: release := $(shell lsb_release -c -s)
+install-dependencies: apt_install := sudo DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y
 install-dependencies:
-	sudo DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y \
-		$(foreach deps,$(REQUIRED_DEPS_FILES),$(call list_required,$(deps)))
+	$(apt_install) software-properties-common
+	if [ -n "$(MAAS_PPA)" ]; then sudo apt-add-repository -y $(MAAS_PPA); fi
+	$(apt_install) $(foreach deps,$(REQUIRED_DEPS_FILES),$(call list_required,$(deps)))
 	sudo DEBIAN_FRONTEND=noninteractive apt purge -y \
 		$(foreach deps,$(FORBIDDEN_DEPS_FILES),$(call list_required,$(deps)))
 	if [ -x /usr/bin/snap ]; then cat required-packages/snaps | xargs -L1 sudo snap install; fi
