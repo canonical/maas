@@ -70,7 +70,8 @@ src/maascli \
 src/maasserver \
 src/maastesting \
 src/metadataserver \
-src/provisioningserver
+src/provisioningserver \
+utilities/release-upload
 endef
 
 UI_BUILD := src/maasui/build
