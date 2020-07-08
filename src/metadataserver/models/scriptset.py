@@ -3,6 +3,7 @@
 
 __all__ = ["ScriptSet", "get_status_from_qs", "translate_result_type"]
 
+from contextlib import suppress
 from datetime import timedelta
 import fnmatch
 import re
@@ -21,6 +22,7 @@ from django.db.models import (
     Q,
     TextField,
 )
+from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 
 from maasserver.enum import POWER_STATE, POWER_STATE_CHOICES
@@ -417,14 +419,17 @@ class ScriptSet(CleanSave, Model):
     def find_script_result(self, script_result_id=None, script_name=None):
         """Find a script result in the current set."""
         if script_result_id is not None:
-            try:
+            with suppress(ObjectDoesNotExist):
                 return self.scriptresult_set.get(id=script_result_id)
-            except ObjectDoesNotExist:
-                pass
-        else:
-            for script_result in self:
-                if script_result.name == script_name:
-                    return script_result
+        elif script_name:
+            return (
+                self.scriptresult_set.annotate(
+                    scriptname=Coalesce("script_name", "script__name")
+                )
+                .filter(scriptname=script_name)
+                .order_by("-id")
+                .first()
+            )
         return None
 
     def add_pending_script(self, script, script_input=None):
