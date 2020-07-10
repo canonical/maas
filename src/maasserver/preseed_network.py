@@ -519,7 +519,7 @@ class InterfaceConfiguration:
                     "bridge_type", BRIDGE_TYPE.STANDARD
                 )
                 if bridge_type == BRIDGE_TYPE.OVS:
-                    bridge_operation.update({"renderer": "openvswitch"})
+                    bridge_operation.update({"openvswitch": {}})
             bridge_params = get_netplan_bridge_parameters(
                 self._get_bridge_params(version=version)
             )
@@ -755,6 +755,44 @@ def compose_curtin_network_config(node, version=1, source_routing=False):
         "network_commands": {"builtin": ["curtin", "net-meta", "custom"]}
     }
     curtin_config.update(generator.config)
+    install_openvswitch = False
+    for bridge in curtin_config["network"].get("bridges", {}).values():
+        if "openvswitch" in bridge:
+            install_openvswitch = True
+            break
+    if install_openvswitch:
+        # TODO: When netplan is backported to focal, it should be enough
+        #       to install openvswitch. The netplan apply may or may not
+        #       be needed.
+        # XXX: Figure out what to do if non-Ubuntu or non-focal is
+        #      deployed
+        curtin_config["late_commands"] = {
+            "openvswitch_01": [
+                "curtin",
+                "in-target",
+                "--",
+                "add-apt-repository",
+                "ppa:sil2100/ovs",
+            ],
+            "openvswitch_02": [
+                "curtin",
+                "in-target",
+                "--",
+                "apt-get",
+                "-y",
+                "install",
+                "openvswitch-switch",
+                "netplan.io",
+            ],
+            "openvswitch_03": [
+                "curtin",
+                "in-target",
+                "--",
+                "netplan",
+                "apply",
+            ],
+        }
+
     # Render the resulting YAML.
     curtin_config_yaml = yaml.safe_dump(
         curtin_config, default_flow_style=False
