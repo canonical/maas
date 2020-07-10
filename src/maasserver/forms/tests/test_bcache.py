@@ -23,8 +23,8 @@ class TestCreateBcacheForm(MAASServerTestCase):
         form = CreateBcacheForm(node=node, data={})
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {"cache_mode": ["This field is required."]}, form.errors
+        self.assertEqual(
+            form.errors["cache_mode"], ["This field is required."]
         )
 
     def test_choices_are_being_populated_correctly(self):
@@ -192,9 +192,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         )
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {"cache_set": ["This field is required."]}, form.errors
-        )
+        self.assertEqual(form.errors["cache_set"], ["This field is required."])
 
     def test_bcache_creation_without_cache_set_fails(self):
         node = factory.make_Node()
@@ -211,9 +209,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         )
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {"cache_set": ["This field is required."]}, form.errors
-        )
+        self.assertEqual(form.errors["cache_set"], ["This field is required."])
 
     def test_bcache_creation_without_backing_fails(self):
         node = factory.make_Node()
@@ -227,14 +223,12 @@ class TestCreateBcacheForm(MAASServerTestCase):
         )
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {
-                "__all__": [
-                    "Either backing_device or backing_partition must be "
-                    "specified."
-                ]
-            },
-            form.errors,
+        self.assertEqual(
+            form.errors["__all__"],
+            [
+                "Either backing_device or backing_partition must be "
+                "specified."
+            ],
         )
 
 

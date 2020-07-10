@@ -468,9 +468,8 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         machine = reload_object(machine)
         self.assertEqual(hostname, machine.hostname)
         self.assertEqual(architecture, machine.architecture)
-        self.assertDictContainsSubset(
-            machine.bmc.power_parameters, power_parameters
-        )
+        for key, value in machine.bmc.power_parameters.items():
+            self.assertEqual(power_parameters[key], value)
         self.assertThat(mock_create_machine, MockNotCalled())
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]

@@ -58,9 +58,7 @@ class TestCreateRaidForm(MAASServerTestCase):
         node = factory.make_Node()
         form = CreateRaidForm(node=node, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {"level": ["This field is required."]}, form.errors
-        )
+        self.assertEqual(form.errors["level"], ["This field is required."])
 
     def test_choices_are_being_populated_correctly(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -241,15 +239,13 @@ class TestCreateRaidForm(MAASServerTestCase):
                 },
             )
             self.assertFalse(form.is_valid())
-            self.assertDictContainsSubset(
-                {
-                    "__all__": [
-                        "At least one block device or partition must "
-                        "be added to the array."
-                    ]
-                },
-                form.errors,
-            )
+        self.assertEqual(
+            form.errors["__all__"],
+            [
+                "At least one block device or partition must "
+                "be added to the array."
+            ],
+        )
 
 
 class TestUpdateRaidForm(MAASServerTestCase):

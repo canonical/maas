@@ -16,13 +16,9 @@ class TestCreateCacheSetForm(MAASServerTestCase):
         form = CreateCacheSetForm(node=node, data={})
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {
-                "__all__": [
-                    "Either cache_device or cache_partition must be specified."
-                ]
-            },
-            form.errors,
+        self.assertEqual(
+            form.errors["__all__"],
+            ["Either cache_device or cache_partition must be specified."],
         )
 
     def test_choices_are_being_populated_correctly(self):
@@ -106,9 +102,9 @@ class TestCreateCacheSetForm(MAASServerTestCase):
         )
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertDictContainsSubset(
-            {"__all__": ["Cannot set both cache_device and cache_partition."]},
-            form.errors,
+        self.assertEqual(
+            form.errors["__all__"],
+            ["Cannot set both cache_device and cache_partition."],
         )
 
 

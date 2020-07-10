@@ -130,9 +130,7 @@ class TestBlockDevices(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_devices = json_load_bytes(response.content)
-        self.assertDictContainsSubset(
-            {"model": block_device.model}, parsed_devices[0]
-        )
+        self.assertEqual(parsed_devices[0]["model"], block_device.model)
 
     def test_read_returns_filesystem(self):
         node = factory.make_Node()
@@ -145,14 +143,10 @@ class TestBlockDevices(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_devices = json_load_bytes(response.content)
-        self.assertDictContainsSubset(
-            {
-                "fstype": filesystem.fstype,
-                "uuid": filesystem.uuid,
-                "mount_point": filesystem.mount_point,
-            },
-            parsed_devices[1]["filesystem"],
-        )
+        fsdata = parsed_devices[1]["filesystem"]
+        self.assertEqual(fsdata["fstype"], filesystem.fstype)
+        self.assertEqual(fsdata["uuid"], filesystem.uuid)
+        self.assertEqual(fsdata["mount_point"], filesystem.mount_point)
 
     def test_read_returns_storage_pool(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -410,14 +404,16 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_device = json_load_bytes(response.content)
-        self.assertDictContainsSubset(
-            {
-                "fstype": filesystem.fstype,
-                "uuid": filesystem.uuid,
-                "mount_point": filesystem.mount_point,
-                "mount_options": filesystem.mount_options,
-            },
-            parsed_device["filesystem"],
+        self.assertEqual(
+            parsed_device["filesystem"]["fstype"], filesystem.fstype
+        )
+        self.assertEqual(parsed_device["filesystem"]["uuid"], filesystem.uuid)
+        self.assertEqual(
+            parsed_device["filesystem"]["mount_point"], filesystem.mount_point
+        )
+        self.assertEqual(
+            parsed_device["filesystem"]["mount_options"],
+            filesystem.mount_options,
         )
 
     def test_read_returns_partitions(self):
@@ -713,10 +709,9 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_device = json_load_bytes(response.content)
-        self.assertDictContainsSubset(
-            {"fstype": fstype, "uuid": fsuuid, "mount_point": None},
-            parsed_device["filesystem"],
-        )
+        self.assertEqual(parsed_device["filesystem"]["fstype"], fstype)
+        self.assertEqual(parsed_device["filesystem"]["uuid"], fsuuid)
+        self.assertIsNone(parsed_device["filesystem"]["mount_point"])
         block_device = reload_object(block_device)
         self.assertIsNotNone(block_device.get_effective_filesystem())
 
@@ -734,10 +729,9 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_device = json_load_bytes(response.content)
-        self.assertDictContainsSubset(
-            {"fstype": fstype, "uuid": fsuuid, "mount_point": None},
-            parsed_device["filesystem"],
-        )
+        self.assertEqual(parsed_device["filesystem"]["fstype"], fstype)
+        self.assertEqual(parsed_device["filesystem"]["uuid"], fsuuid)
+        self.assertIsNone(parsed_device["filesystem"]["mount_point"])
         block_device = reload_object(block_device)
         self.assertIsNotNone(block_device.get_effective_filesystem())
 
