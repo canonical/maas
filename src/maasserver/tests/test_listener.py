@@ -588,6 +588,8 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         self.assertNotIn(channel, listener.registeredChannels)
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_unregister_doesnt_call_unregisterChannel_multi_handlers(self):
         listener = PostgresListenerService()
         channel = factory.make_name("channel", sep="_").lower()
@@ -597,6 +599,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         listener.connection = MagicMock()
         mock_unregisterChannel = self.patch(listener, "unregisterChannel")
         listener.unregister(channel, sentinel.handler)
+        yield listener.channelRegistrarDone
         self.assertThat(mock_unregisterChannel, MockNotCalled())
 
     def test_registerChannel_calls_listen_once_for_system_channel(self):
