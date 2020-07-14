@@ -201,19 +201,9 @@ class MAASCrochetRunTest(MAASRunTest):
     to working with a reactor running under crochet's control.
     """
 
-    def _run_core(self):
-        """Override testtools' `_run_core`.
-
-        Check that the reactor is clean and that no delayed calls are still
-        laying around. This is different from `AsynchronousDeferredRunTest`
-        that does more advanced things with the reactor. This just simply
-        checks if its clean.
-        """
-        super()._run_core()
-        try:
-            self._clean()
-        except Exception:
-            self._got_user_exception(sys.exc_info())
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(self._clean)
 
     def _clean(self):
         # Spin a bit to flush out imminent delayed calls. It's not clear why
