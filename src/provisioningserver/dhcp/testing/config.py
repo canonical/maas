@@ -17,6 +17,7 @@ __all__ = [
     "make_subnet_pool",
 ]
 
+from itertools import cycle
 import random
 
 from fixtures import Fixture
@@ -30,10 +31,11 @@ from provisioningserver.dhcp import config
 def fix_shared_networks_failover(shared_networks, failover_peers):
     # Fix-up failover peers referenced in pools so that they refer to a
     # predefined peer; `dhcpd -t` will otherwise reject the configuration.
+    failover_peers_iter = cycle(failover_peers)
     for shared_network in shared_networks:
         for subnet in shared_network["subnets"]:
             for pool in subnet["pools"]:
-                peer = random.choice(failover_peers)
+                peer = next(failover_peers_iter)
                 pool["failover_peer"] = peer["name"]
     return shared_networks
 

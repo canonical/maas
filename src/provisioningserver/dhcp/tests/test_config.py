@@ -146,7 +146,9 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
     """
     with tempfile.NamedTemporaryFile(
         "w", encoding="ascii", prefix="dhcpd.", suffix=".conf"
-    ) as conffile:
+    ) as conffile, tempfile.NamedTemporaryFile(
+        "w", encoding="ascii", prefix="dhcpd.", suffix=".leases"
+    ) as leasesfile:
         # Write the configuration to the temporary file.
         conffile.write(configuration)
         conffile.flush()
@@ -170,8 +172,18 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
         )
         # Call `dhcpd` via `aa-exec --profile unconfined`. The latter is
         # needed so that `dhcpd` can open the configuration file from /tmp.
-        cmd = "dhcpd", ("-6" if ipv6 else "-4"), "-t", "-cf", conffile.name
-        cmd = "aa-exec", "--profile", "unconfined", *cmd
+        cmd = (
+            "aa-exec",
+            "--profile",
+            "unconfined",
+            "dhcpd",
+            ("-6" if ipv6 else "-4"),
+            "-t",
+            "-cf",
+            conffile.name,
+            "-lf",
+            leasesfile.name,
+        )
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
