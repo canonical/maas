@@ -7,6 +7,7 @@ __all__ = []
 
 from collections import namedtuple
 import errno
+import time
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 from crochet import wait_for
@@ -27,6 +28,7 @@ from twisted.internet.defer import (
     Deferred,
     DeferredQueue,
     inlineCallbacks,
+    returnValue,
 )
 from twisted.logger import LogLevel
 from twisted.python.failure import Failure
@@ -129,6 +131,11 @@ class TestPostgresListenerService(MAASServerTestCase):
             """Send notices off to `notices` right after processing."""
 
             def doRead(self):
+                # give a bit of time for notifications sent right before this
+                # code is called to be processed and queued by PostgreSQL.
+                # This should prevent test flakyness because of lost
+                # notifications.
+                time.sleep(0.1)
                 try:
                     self.connection.connection.poll()
                 except Exception:
@@ -158,16 +165,22 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         yield deferToDatabase(listener.registerChannel, channel)
         listener.listeners[channel] = []
-        try:
-            # Notify our channel with a payload and wait for it to come back.
-            yield deferToDatabase(self.send_notification, channel, payload)
+
+        @inlineCallbacks
+        def wait_notification():
             while True:
                 notice = yield notices.get()
                 if notice.channel == channel:
-                    self.assertThat(notice.payload, Equals(payload))
-                    # Our channel has been deleted from the listeners map.
-                    self.assertNotIn(channel, listener.listeners)
-                    break
+                    returnValue(notice)
+
+        try:
+            deferred = wait_notification()
+            # Notify our channel with a payload and wait for it to come
+            yield deferToDatabase(self.send_notification, channel, payload)
+            notice = yield deferred
+            self.assertEqual(notice.payload, payload)
+            # Our channel has been deleted from the listeners map.
+            self.assertNotIn(channel, listener.listeners)
         finally:
             yield listener.stopService()
 
