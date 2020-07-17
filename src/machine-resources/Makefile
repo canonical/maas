@@ -43,3 +43,7 @@ clean:
 update-deps:
 	$(DEP) ensure -update
 .PHONY: update-deps
+
+install: $(BINARIES)
+	install -t $(DESTDIR)/usr/share/maas/machine-resources -D $(BINARIES)
+.PHONY: install

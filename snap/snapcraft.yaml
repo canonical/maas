@@ -41,8 +41,8 @@ apps:
         - mount-observe
         - network
         - network-bind
-        - network-observe
         - network-control
+        - network-observe
         - system-observe
         - time-control # chrony
 
@@ -55,7 +55,7 @@ apps:
         - network-observe # to get default URL
 
   power:
-    command: $SNAP/bin/maas-power
+    command: bin/maas-power
     plugs:
         - network
 
@@ -86,66 +86,66 @@ parts:
         - maas-pypi
     stage-packages:
       - amtterm                 # AMT
-      - libsoap-lite-perl       # Dependencies for AMT
-      - libxml-parser-perl      # Dependencies for AMT
-      - libxml-parser-lite-perl # Dependencies for AMT
-      - wsmancli                # AMT
-      - snmp                    # APC
-      - wget                    # DLI
-      - freeipmi-tools          # IPMI
-      - ipmitool                # Moonshot
-      - libvirt-clients         # Virsh
       - archdetect-deb
       - avahi-utils
       - bind9
+      - chrony
+      - freeipmi-tools          # IPMI
       - gpgv
+      - ipmitool                # Moonshot
       - iproute2
       - isc-dhcp-client
       - isc-dhcp-server
       - libatm1
       - libpq5
+      - libsoap-lite-perl       # Dependencies for AMT
+      - libvirt-clients         # Virsh
+      - libxml-parser-lite-perl # Dependencies for AMT
+      - libxml-parser-perl      # Dependencies for AMT
       - libxtables12
       - lshw
-      - chrony
       - nginx-core
       - openssh-client
+      - python3-attr
       - python3-bson
       - python3-crochet
+      - python3-curtin
+      - python3-distro-info
       - python3-django
       - python3-django-piston3
       - python3-djorm-ext-pgarray
-      - python3-distro-info
       - python3-formencode
       - python3-httplib2
       - python3-jsonschema
       - python3-lxml
+      - python3-markupsafe
       - python3-mimeparse
       - python3-netaddr
       - python3-netifaces
+      - python3-oauthlib
       - python3-paramiko
       - python3-petname
       - python3-pexpect
       - python3-psycopg2
       - python3-pyparsing
       - python3-requests
+      - python3-seamicroclient
+      - python3-simplejson
+      - python3-simplestreams
       - python3-sphinx
       - python3-tempita
       - python3-twisted
-      - python3-zope.interface
-      - python3-seamicroclient
       - python3-txtftp
       - python3-yaml
-      - python3-simplestreams
-      - python3-curtin
-      - python3-oauthlib
-      - python3-attr
-      - python3-simplejson
-      - python3-markupsafe
+      - python3-zope.interface
       - rsyslog
+      - snmp                    # APC
       - squid
       - tcpdump
       - ubuntu-keyring
       - util-linux
+      - wget                    # DLI
+      - wsmancli                # AMT
     # As a workaround to issues similar to https://pad.lv/1613898 we manually specify setuptools and wheel
     python-packages:
       - setuptools
@@ -172,8 +172,8 @@ parts:
         - -usr/share/doc-base
         - -usr/share/lintian
         - -usr/share/man
-        - -var/lib/ieee-data/oui36.txt
         - -var/lib/ieee-data/mam.txt
+        - -var/lib/ieee-data/oui36.txt
     stage:
       - $remove
     prime:
@@ -225,10 +225,6 @@ parts:
       - go
     build-packages:
       - go-dep
-    artifacts:
-      - bin
-    organize:
-      bin: usr/share/maas/machine-resources
 
   tree:
     plugin: dump
@@ -237,12 +233,6 @@ parts:
   stub-initgroups:
     plugin: make
     source: snap/local/stub_initgroups
-    artifacts:
-        - stub_initgroups.so
-    organize:
-        stub_initgroups.so: usr/lib/stub_initgroups.so
-    prime:
-        - usr/lib/stub_initgroups.so
 
   snapcraft-preload:
     plugin: cmake
@@ -250,8 +240,8 @@ parts:
     source-type: git
     build-packages:
       - on amd64:
-          - gcc-multilib
           - g++-multilib
+          - gcc-multilib
 
 hooks:
   install:

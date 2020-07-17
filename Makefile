@@ -599,6 +599,9 @@ $(DEV_SNAP_PRIME_MARKER): $(DEV_SNAP_DIR)
 	cd $(DEV_SNAP_DIR) && $(snapcraft) prime --destructive-mode
 	touch $@
 
+snap-prime: $(DEV_SNAP_PRIME_MARKER)
+.PHONY: snap-prime
+
 sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
 sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
