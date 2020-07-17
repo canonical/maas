@@ -255,15 +255,14 @@ parts:
     # won't try to pull the source every time snapcraft is invoked.
     override-pull: |
       set -e
-      # pin to the old ubuntu-dev-tools version to avoid http://pad.lv/1887638
-      DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true DEBIAN_PRIORITY=critical sudo --preserve-env apt-get --no-install-recommends -y --allow-downgrades install ubuntu-dev-tools=0.164
       pull-lp-source postgresql-9.5 xenial
       rm -rf $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
       mv postgresql-9.5*/ $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
       snapcraftctl pull
       echo "all:\ninstall:" > doc/Makefile  # Skips doc building.
     build-packages:
-      - ubuntu-dev-tools
+      # pin to the old ubuntu-dev-tools version to avoid http://pad.lv/1887638
+      - ubuntu-dev-tools=0.164
       - bison
       - flex
       - libreadline-dev
