@@ -261,7 +261,8 @@ parts:
       snapcraftctl pull
       echo "all:\ninstall:" > doc/Makefile  # Skips doc building.
     build-packages:
-      - ubuntu-dev-tools
+      # pin to the old ubuntu-dev-tools version to avoid http://pad.lv/1887638
+      - ubuntu-dev-tools=0.164 
       - bison
       - flex
       - libreadline-dev
