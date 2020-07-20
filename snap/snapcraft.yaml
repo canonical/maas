@@ -266,6 +266,7 @@ parts:
     build-packages:
       - devscripts # XXX see above about using pull-lp-source (from ubuntu-dev-tools)
       - bison
+      - curl # XXX for dget, can be removed once we go back to pull-lp-source
       - flex
       - libreadline-dev
       - zlib1g-dev
