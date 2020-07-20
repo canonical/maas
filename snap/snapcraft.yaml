@@ -255,14 +255,16 @@ parts:
     # won't try to pull the source every time snapcraft is invoked.
     override-pull: |
       set -e
-      pull-lp-source postgresql-9.5 xenial
+      # XXX this should be replaced back with
+      # `pull-lp-source postgresql-9.5 xenial`
+      # once https://pad.lv/1887638 is fixed
+      dget -u https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/postgresql-9.5/9.5.21-0ubuntu0.16.04.1/postgresql-9.5_9.5.21-0ubuntu0.16.04.1.dsc
       rm -rf $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
       mv postgresql-9.5*/ $SNAPCRAFT_PROJECT_DIR/snap/local/postgres-9.5
       snapcraftctl pull
       echo "all:\ninstall:" > doc/Makefile  # Skips doc building.
     build-packages:
-      # pin to the old ubuntu-dev-tools version to avoid http://pad.lv/1887638
-      - ubuntu-dev-tools=0.164
+      - devscripts # XXX see above about using pull-lp-source (from ubuntu-dev-tools)
       - bison
       - flex
       - libreadline-dev
