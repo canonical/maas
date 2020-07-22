@@ -64,7 +64,7 @@ declare -a PRESEEDS=(
     curtin_userdata_windows
 )
 for preseed in "${PRESEEDS[@]}"; do
-    echo cp "$SNAP/etc/maas/preseeds/$preseed" "$SNAP_DATA/preseeds/${preseed}.sample"
+    cp "$SNAP/etc/maas/preseeds/$preseed" "$SNAP_DATA/preseeds/${preseed}.sample"
 done
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
