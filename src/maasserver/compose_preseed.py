@@ -391,6 +391,9 @@ def get_base_preseed(node=None):
             # jq is used during enlistment to read the JSON string containing
             # the system_id of the newly created machine.
             cloud_config["packages"] += ["jq"]
+        # On disk erasing, we need nvme-cli
+        if node is not None and node.status == NODE_STATUS.DISK_ERASING:
+            cloud_config["packages"] += ["nvme-cli"]
 
     return cloud_config
 
