@@ -179,19 +179,38 @@ def populate(seed="sampledata"):
     """
     random.seed(seed)
     populate_main()
+    # fetch and pass in all racks w/networking details so it's only done once
+    racks = _prefetch_racks()
     for _ in range(120):
-        make_discovery()
+        make_discovery(racks=racks)
 
 
 @transactional
-def make_discovery():
-    """Make a discovery in its own transaction so each last_seen time
-    is different."""
-    random_rack = random.choice(RackController.objects.all())
-    random_interface = random.choice(random_rack.interface_set.all())
-    random_subnet = random.choice(random_interface.vlan.subnet_set.all())
+def make_discovery(racks=None):
+    """Make a discovery in its own transaction so each last_seen time is
+    different.
+
+    """
+    if racks is None:
+        racks = _prefetch_racks()
+    rack = random.choice(racks)
+    interface = random.choice(rack.interface_set.all())
+    subnet = random.choice(interface.vlan.subnet_set.all())
     factory.make_Discovery(
-        interface=random_interface, ip=factory.pick_ip_in_Subnet(random_subnet)
+        interface=interface, ip=factory.pick_ip_in_Subnet(subnet)
+    )
+
+
+def _prefetch_racks():
+    """Prefetch all RackControllers and their networking details.
+
+    This avoids extra queries to pick interfaces and subnets from each rack.
+
+    """
+    return list(
+        RackController.objects.all().prefetch_related(
+            "interface_set", "interface_set__vlan__subnet_set"
+        )
     )
 
 
