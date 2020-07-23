@@ -3,8 +3,13 @@ snapcraft := SNAPCRAFT_BUILD_INFO=1 /snap/bin/snapcraft
 
 VENV := .ve
 
-# PPA used by MAAS dependencies. It can be overridden by the env
-MAAS_PPA ?= ppa:maas/2.8
+# PPA used by MAAS dependencies. It can be overridden by the env.
+#
+# This uses an explicit empty check (rather than ?=) since Jenkins defines
+# variables for parameters even when not passed.
+ifeq ($(MAAS_PPA),)
+	MAAS_PPA = ppa:maas/2.8
+endif
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
