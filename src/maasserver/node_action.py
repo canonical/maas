@@ -534,9 +534,11 @@ class Deploy(NodeAction):
             self.node.save()
         except ValidationError as e:
             raise NodeActionError(e)
-
+        # b64encode needs bytes, we need strings...
         encoded_user_data = (
-            base64.encodebytes(user_data.encode()) if user_data else None
+            base64.b64encode(user_data.encode()).decode()
+            if user_data
+            else None
         )
         request = self.request
         if request is None:

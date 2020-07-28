@@ -688,7 +688,8 @@ class TestDeployAction(MAASServerTestCase):
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         extra = {"user_data": "foo: bar"}
-        expected = base64.encodebytes(b"foo: bar")
+        expected = base64.b64encode(b"foo: bar").decode("utf-8")
+        assert not expected.startswith("b'")  # make sure we're not a byte repr
         Deploy(node, user, request).execute(**extra)
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user, user_data=expected)
@@ -886,8 +887,8 @@ class TestDeployAction(MAASServerTestCase):
 
 class TestDeployActionTransactional(MAASTransactionServerTestCase):
     """The following TestDeployAction tests require
-        MAASTransactionServerTestCase, and thus, have been separated
-        from the TestDeployAction above.
+    MAASTransactionServerTestCase, and thus, have been separated
+    from the TestDeployAction above.
     """
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
