@@ -753,6 +753,16 @@ CONFIG_ITEMS = {
             "min_value": 1,
         },
     },
+    "release_notifications": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": (
+                "Enable or disable notifications for new MAAS releases."
+            ),
+        },
+    },
     "use_rack_proxy": {
         "default": True,
         "form": forms.BooleanField,

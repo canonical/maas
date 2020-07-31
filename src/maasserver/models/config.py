@@ -105,6 +105,7 @@ def get_default_config():
         "max_node_installation_results": 3,
         # Notifications.
         "subnet_ip_exhaustion_threshold_count": 16,
+        "release_notifications": True,
         # Authentication.
         "external_auth_url": "",
         "external_auth_user": "",
