@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.general`"""
@@ -153,7 +153,7 @@ class TestGeneralHandler(MAASServerTestCase):
             "osystems": [(osystem["name"], osystem["title"])],
             "releases": releases,
             "kernels": {
-                "ubuntu": {"bionic": [("hwe-18.04", "bionic (hwe-18.04)")]}
+                "ubuntu": {"focal": [("hwe-20.04", "focal (hwe-20.04)")]}
             },
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(

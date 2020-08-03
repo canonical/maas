@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Ubuntu Operating System."""
@@ -38,9 +38,9 @@ class UbuntuOS(OperatingSystem):
 
     def get_lts_release(self):
         """Return the latest Ubuntu LTS release."""
-        # XXX ltrager 2018-01-08 - Force the default to be bionic before
-        # bionic release for testing with MAAS 2.4.0.
-        return "bionic"
+        # XXX ltrager 2020-07-28 - Lock the latest LTS release to Focal so
+        # we can fully test the next LTS before it becomes the default
+        return "focal"
 
     def get_default_release(self):
         """Gets the default release to use when a release is not

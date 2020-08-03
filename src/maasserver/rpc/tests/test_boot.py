@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for boot configuration retrieval from RPC."""
@@ -484,7 +484,7 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         expected_arch = tuple(
             make_usable_architecture(
-                self, arch_name="i386", subarch_name="hwe-18.04"
+                self, arch_name="i386", subarch_name="hwe-20.04"
             ).split("/")
         )
         self.patch_autospec(boot_module, "event_log_pxe_request")
@@ -626,7 +626,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, arch=arch
         )
-        self.assertEqual("hwe-18.04", observed_config["subarch"])
+        self.assertEqual("hwe-20.04", observed_config["subarch"])
 
     def test_enlistment_return_generic_when_none(self):
         rack_controller = factory.make_RackController()
@@ -1172,7 +1172,7 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-18.04"
+            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-20.04"
         )
         arch = node.split_arch()[0]
         factory.make_default_ubuntu_release_bootable(arch)
@@ -1181,7 +1181,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual("hwe-18.04", observed_config["subarch"])
+        self.assertEqual("hwe-20.04", observed_config["subarch"])
 
     def test_commissioning_node_uses_min_hwe_kernel_converted(self):
         rack_controller = factory.make_RackController()
@@ -1196,20 +1196,20 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual("hwe-18.04", observed_config["subarch"])
+        self.assertEqual("hwe-20.04", observed_config["subarch"])
 
     def test_commissioning_node_uses_min_hwe_kernel_reports_missing(self):
         factory.make_BootSourceCache(
-            release="18.10",
-            subarch="hwe-18.10",
-            release_title="18.10 CC",
-            release_codename="CC",
+            release="20.10",
+            subarch="hwe-20.10",
+            release_title="20.10 Groovy Gorilla",
+            release_codename="Groovy Gorilla",
         )
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node(
-            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-18.10"
+            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-20.10"
         )
         mac = node.get_boot_interface().mac_address
         self.patch_autospec(boot_module, "event_log_pxe_request")
