@@ -235,7 +235,7 @@ class IPRangeTest(MAASServerTestCase):
         )
         with ExpectedException(
             ValidationError,
-            ".*IPv6 dynamic range must be " "at least 256 addresses in size.",
+            ".*IPv6 dynamic range must be at least 256 addresses in size.",
         ):
             iprange.save()
 

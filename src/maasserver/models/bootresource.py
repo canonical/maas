@@ -529,7 +529,7 @@ class BootResource(CleanSave, TimestampedModel):
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ("name", "architecture"):
-            return "Boot resource of name, and architecture already " "exists."
+            return "Boot resource of name, and architecture already exists."
         return super().unique_error_message(model_class, unique_check)
 
     def get_latest_set(self):

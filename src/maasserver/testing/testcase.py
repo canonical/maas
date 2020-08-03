@@ -337,7 +337,7 @@ class UniqueViolationTestCase(
         def set_repeatable_read():
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SET TRANSACTION ISOLATION LEVEL " "REPEATABLE READ"
+                    "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
                 )
 
         # Both threads / database sessions will attempt to insert this.

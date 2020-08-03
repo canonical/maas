@@ -39,9 +39,7 @@ def add_arguments(parser):
         dest="no_clobber",
         action="store_true",
         default=False,
-        help=(
-            "Don't overwrite the configuration file if it already " "exists."
-        ),
+        help="Don't overwrite the configuration file if it already exists.",
     )
 
 

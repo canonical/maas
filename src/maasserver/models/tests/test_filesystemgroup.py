@@ -1482,7 +1482,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
             ValidationError,
             re.escape(
-                "{'__all__': ['Bcache requires an assigned cache " "set.']}"
+                "{'__all__': ['Bcache requires an assigned cache set.']}"
             ),
         ):
             filesystem_group = factory.make_FilesystemGroup(

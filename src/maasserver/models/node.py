@@ -270,7 +270,7 @@ def generate_node_system_id():
         system_id = znums.from_int(system_num)
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT 1 FROM maasserver_node " "WHERE system_id = %s",
+                "SELECT 1 FROM maasserver_node WHERE system_id = %s",
                 [system_id],
             )
             if cursor.fetchone() is None:

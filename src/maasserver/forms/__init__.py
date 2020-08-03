@@ -1850,7 +1850,7 @@ class GlobalKernelOptsForm(ConfigForm):
 
 
 ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE = (
-    "New static IP range does not include already-allocated IP " "addresses."
+    "New static IP range does not include already-allocated IP addresses."
 )
 
 

@@ -274,7 +274,7 @@ class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
             Equals(
                 {
                     "mount_point": [
-                        "No special filesystem is " "mounted at this path."
+                        "No special filesystem is mounted at this path."
                     ]
                 }
             ),
@@ -295,7 +295,7 @@ class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
             Equals(
                 {
                     "mount_point": [
-                        "No special filesystem is " "mounted at this path."
+                        "No special filesystem is mounted at this path."
                     ]
                 }
             ),

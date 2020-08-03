@@ -39,8 +39,7 @@ class MountFilesystemForm(Form):
         cleaned_data = super().clean()
         if self.filesystem is None:
             self.add_error(
-                None,
-                "Cannot mount an unformatted partition " "or block device.",
+                None, "Cannot mount an unformatted partition or block device."
             )
         elif self.filesystem.filesystem_group is not None:
             self.add_error(
@@ -112,7 +111,7 @@ class UnmountNonStorageFilesystemForm(Form):
             except Filesystem.DoesNotExist:
                 self.add_error(
                     "mount_point",
-                    "No special filesystem is " "mounted at this path.",
+                    "No special filesystem is mounted at this path.",
                 )
         return cleaned_data
 

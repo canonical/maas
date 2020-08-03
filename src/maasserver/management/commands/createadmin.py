@@ -58,7 +58,7 @@ def prompt_for_username():
     username = read_input("Username: ")
     if not username:
         raise EmptyUsername(
-            "You must input a username or " "provide it with --username."
+            "You must input a username or provide it with --username."
         )
     return username
 

@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
                 "OWNED BY maasserver_dnspublication.serial"
             ),
             # Reverse.
-            ("ALTER SEQUENCE maasserver_zone_serial_seq " "OWNED BY NONE"),
+            ("ALTER SEQUENCE maasserver_zone_serial_seq OWNED BY NONE"),
         ),
         # Ensure that maasserver_zone_serial_seq cycles. It does not seem
         # likely that anyone will exhaust all 2^32 zone serials, but if they

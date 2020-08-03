@@ -292,7 +292,7 @@ class TestTriggersUsed(MAASServerTestCase):
     def find_triggers_in_database(self):
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT tgname::text FROM pg_trigger " "WHERE NOT tgisinternal"
+                "SELECT tgname::text FROM pg_trigger WHERE NOT tgisinternal"
             )
             return {tgname for tgname, in cursor.fetchall()}
 

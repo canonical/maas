@@ -68,7 +68,7 @@ class NoSuchCluster(Exception):
     @classmethod
     def from_uuid(cls, uuid):
         return cls(
-            "The rack controller with UUID %s could not " "be found." % uuid
+            "The rack controller with UUID %s could not be found." % uuid
         )
 
 

@@ -103,5 +103,5 @@ class EventualResultCatchingMixin:
         self.expectThat(
             fail_count,
             Equals(0),
-            "Unfired and/or unhandled " "EventualResult(s); see test details.",
+            "Unfired and/or unhandled EventualResult(s); see test details.",
         )
