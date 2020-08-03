@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
@@ -45,6 +45,8 @@ def make_command(
         power_user,
         "-P",
         power_pass,
+        "-L",
+        "OPERATOR",
     ) + tuple(power_hwaddress.split())
 
 

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
@@ -53,6 +53,8 @@ def make_ipmi_chassis_config_command(
         ipmi_chassis_config,
         "-W",
         "opensesspriv",
+        "-l",
+        "OPERATOR",
         "--driver-type",
         power_driver,
         "-h",
@@ -80,6 +82,8 @@ def make_ipmipower_command(
         ipmipower,
         "-W",
         "opensesspriv",
+        "-l",
+        "OPERATOR",
         "--driver-type",
         power_driver,
         "-h",
