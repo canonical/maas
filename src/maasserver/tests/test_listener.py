@@ -60,6 +60,46 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
 
 
+class PostgresListenerServiceSpy(PostgresListenerService):
+    """Send notices off to `captured_notices` right after processing."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Captured notifications from the database will go here.
+        self.captured_notices = DeferredQueue()
+        # Change notifications to a frozenset. This makes sure that the system
+        # message does not go into the queue. Instead it should call the
+        # handler directly in `doRead`.
+        self.notifications = frozenset()
+
+    def doRead(self):
+        # give a bit of time for notifications sent right before this code is
+        # called to be processed and queued by PostgreSQL.  This should prevent
+        # test flakyness because of lost notifications.
+        time.sleep(0.1)
+        try:
+            self.connection.connection.poll()
+        except Exception:
+            self.loseConnection(Failure(error.ConnectionLost()))
+        else:
+            # Copy the pending notices now but don't put them in the
+            # queue until after the real doRead has processed them.
+            notifies = list(self.connection.connection.notifies)
+            try:
+                return super().doRead()
+            finally:
+                for notice in notifies:
+                    self.captured_notices.put(notice)
+
+    @inlineCallbacks
+    def wait_notification(self, channel):
+        """Wait for a notification to be received."""
+        while True:
+            notice = yield self.captured_notices.get()
+            if notice.channel == channel:
+                returnValue(notice)
+
+
 class TestPostgresListenerService(MAASServerTestCase):
     @transactional
     def send_notification(self, event, obj_id):
@@ -124,37 +164,7 @@ class TestPostgresListenerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handles_missing_system_handler_on_notification(self):
-        # Captured notifications from the database will go here.
-        notices = DeferredQueue()
-
-        class PostgresListenerServiceSpy(PostgresListenerService):
-            """Send notices off to `notices` right after processing."""
-
-            def doRead(self):
-                # give a bit of time for notifications sent right before this
-                # code is called to be processed and queued by PostgreSQL.
-                # This should prevent test flakyness because of lost
-                # notifications.
-                time.sleep(0.1)
-                try:
-                    self.connection.connection.poll()
-                except Exception:
-                    self.loseConnection(Failure(error.ConnectionLost()))
-                else:
-                    # Copy the pending notices now but don't put them in the
-                    # queue until after the real doRead has processed them.
-                    notifies = list(self.connection.connection.notifies)
-                    try:
-                        return super().doRead()
-                    finally:
-                        for notice in notifies:
-                            notices.put(notice)
-
         listener = PostgresListenerServiceSpy()
-        # Change notifications to a frozenset. This makes sure that
-        # the system message does not go into the queue. Instead if should
-        # call the handler directly in `doRead`.
-        listener.notifications = frozenset()
         yield listener.startService()
 
         # Use a randomised channel name even though LISTEN/NOTIFY is
@@ -166,15 +176,8 @@ class TestPostgresListenerService(MAASServerTestCase):
         yield deferToDatabase(listener.registerChannel, channel)
         listener.listeners[channel] = []
 
-        @inlineCallbacks
-        def wait_notification():
-            while True:
-                notice = yield notices.get()
-                if notice.channel == channel:
-                    returnValue(notice)
-
         try:
-            deferred = wait_notification()
+            deferred = listener.wait_notification(channel)
             # Notify our channel with a payload and wait for it to come
             yield deferToDatabase(self.send_notification, channel, payload)
             notice = yield deferred
@@ -187,15 +190,14 @@ class TestPostgresListenerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handles_missing_notify_system_listener_on_notification(self):
-        listener = PostgresListenerService()
-        # Change notifications to a frozenset. This makes sure that
-        # the system message does not go into the queue. Instead if should
-        # call the handler directly in `doRead`.
-        listener.notifications = frozenset()
+        listener = PostgresListenerServiceSpy()
         yield listener.startService()
         yield deferToDatabase(listener.registerChannel, "sys_test")
         try:
-            yield deferToDatabase(self.send_notification, "sys_test", 1)
+            deferred = listener.wait_notification("sys_test")
+            yield deferToDatabase(self.send_notification, "sys_test", "msg")
+            notice = yield deferred
+            self.assertEqual(notice.payload, "msg")
             self.assertFalse("sys_test" in listener.listeners)
         finally:
             yield listener.stopService()
