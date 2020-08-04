@@ -18,7 +18,7 @@ pickleshare==0.7.4
 postgresfixture==0.4.1
 prompt-toolkit==1.0.9
 ptyprocess==0.6.0
-python-subunit==1.2.0
+python-subunit==1.4.0
 setuptools==36.2.7
 simplegeneric==0.8.1
 sqlparse==0.2.2

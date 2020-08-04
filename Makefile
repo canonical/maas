@@ -61,6 +61,9 @@ bin/maas-power \
 bin/postgresfixture \
 bin/rackd \
 bin/regiond \
+bin/subunit-1to2 \
+bin/subunit2junitxml \
+bin/subunit2pyunit \
 bin/test.cli \
 bin/test.parallel \
 bin/test.rack \
@@ -160,9 +163,9 @@ endef
 test: test-py
 .PHONY: test
 
-test-py: bin/test.parallel bin/coverage
-	@$(RM) .coverage .coverage.*
-	@bin/test.parallel --with-coverage --subprocess-per-core
+test-py: bin/test.parallel bin/coverage bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit
+	@$(RM) .coverage .coverage.* junit.xml
+	@bash -o pipefail -c 'bin/test.parallel --with-coverage --subprocess-per-core --emit-subunit | bin/subunit-1to2 | bin/subunit2junitxml --no-passthrough -f -o junit.xml | bin/subunit2pyunit --no-passthrough'
 	@bin/coverage combine
 .PHONY: test-py
 
@@ -345,6 +348,7 @@ clean: stop clean-failed clean-ui clean-machine-resources
 	$(RM) -r services/*/supervise
 	$(RM) -r .run
 	$(RM) -r .idea
+	$(RM) junit.xml
 	$(RM) xunit.*.xml
 	$(RM) .failed
 	$(RM) -r $(VENV)

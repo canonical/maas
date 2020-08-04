@@ -38,6 +38,7 @@
 /etc/maas/regiond.conf
 /include
 /lib
+/junit.xml
 /local
 /logs/*
 /maas_git_source.tar.bz2
