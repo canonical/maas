@@ -134,8 +134,6 @@ def generate_rndc(
             "rndc-confgen",
             "-b",
             "256",
-            "-r",
-            "/dev/urandom",
             "-k",
             key_name,
             "-p",

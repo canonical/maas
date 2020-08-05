@@ -1,0 +1,2 @@
+pyvmomi==6.0.0.2016.6
+git+https://github.com/Supervisor/supervisor@master#egg=supervisor

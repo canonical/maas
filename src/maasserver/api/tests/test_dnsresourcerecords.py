@@ -109,7 +109,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
         ]
         self.assertItemsEqual(expected_ids, result_ids)
 
-    def test_create_by_name_domain__id(self):
+    def test_create_by_name_domain_id(self):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
@@ -146,7 +146,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
             ],
         )
 
-    def test_create_by_name_domain__name(self):
+    def test_create_by_name_domain_name(self):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
@@ -213,6 +213,25 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
                 "rrdata"
             ],
         )
+
+    def test_create_resource_exists(self):
+        self.become_admin()
+        dnsresource_name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        # create a resource with the same details
+        factory.make_DNSResource(domain=domain, name=dnsresource_name)
+        uri = get_dnsresourcerecords_uri()
+        response = self.client.post(
+            uri,
+            {
+                "name": dnsresource_name,
+                "domain": domain.name,
+                "rrtype": "TXT",
+                "rrdata": "Sample Text.",
+            },
+        )
+        payload = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(payload["fqdn"], f"{dnsresource_name}.{domain.name}")
 
     def test_create_fails_with_no_name(self):
         self.become_admin()

@@ -723,7 +723,9 @@ class WebSocketsResource:
 
         # Set the peer IP on the transport.  This allows the protocol to view
         # the IP address of the client.
-        transport.ip_address = request.getClientIP()
+        transport.ip_address = getattr(
+            request.getClientAddress(), "host", None
+        )
 
         # Set the host.
         transport.host = request.requestHeaders.getRawHeaders("host")[0]

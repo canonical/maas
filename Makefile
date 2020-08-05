@@ -8,7 +8,7 @@ VENV := .ve
 # This uses an explicit empty check (rather than ?=) since Jenkins defines
 # variables for parameters even when not passed.
 ifeq ($(MAAS_PPA),)
-	MAAS_PPA = ppa:maas/2.8
+	MAAS_PPA = ppa:maas/2.9
 endif
 
 # pkg_resources makes some incredible noise about version numbers. They
@@ -124,12 +124,14 @@ $(VENV): requirements-dev.txt
 	python3 -m venv --system-site-packages --clear $@
 	$(VENV)/bin/pip install -r $<
 
-$(BIN_SCRIPTS): $(VENV)
-	mkdir -p bin
+bin:
+	mkdir $@
+
+$(BIN_SCRIPTS): $(VENV) bin
 	ln -sf ../$(VENV)/$@ $@
 
-bin/py:
-	ln -sf ../$(VENV)/bin/ipython $@
+bin/py: $(VENV) bin
+	ln -sf ../$(VENV)/bin/ipython3 $@
 
 bin/database: bin/postgresfixture
 	ln -sf $(notdir $<) $@
@@ -616,7 +618,7 @@ sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'machine-resources' --exclude '*.pyc' \
 		--exclude '__pycache__' \
-		src/ $(DEV_SNAP_PRIME_DIR)/lib/python3.6/site-packages/
+		src/ $(DEV_SNAP_PRIME_DIR)/lib/python3.8/site-packages/
 	$(RSYNC) \
 		$(UI_BUILD) $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/
 	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/

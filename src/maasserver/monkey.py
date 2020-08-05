@@ -58,8 +58,9 @@ def fix_piston_emitter_related():
     """
     from piston3 import emitters
 
-    bad_line = "return [ _model(m, fields) for m in data.iterator() ]"
-    new_line = "return [ _model(m, fields) for m in data.all() ]"
+    bad_line = "return [_model(m, fields) for m in data.iterator()]"
+    new_line = "return [_model(m, fields) for m in data.all()]"
+
     try:
         source = inspect.getsource(emitters.Emitter.construct)
     except OSError:

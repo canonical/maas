@@ -122,9 +122,6 @@ class DNSResourceRecordsHandler(OperationsHandler):
         # If the user gave us fqdn and did not give us name/domain, expand
         # fqdn.
         if domainname is None and name is None and fqdn is not None:
-            # We need a type for resource separation.  If the user didn't give
-            # us a rrtype, then assume it's an address of some sort.
-            rrtype = data.get("rrtype", None)
             (name, domainname) = separate_fqdn(fqdn, rrtype)
             data["domain"] = domainname
             data["name"] = name
@@ -146,15 +143,20 @@ class DNSResourceRecordsHandler(OperationsHandler):
                 "Either name and domain (or fqdn) must be specified"
             )
         # Do we already have a DNSResource for this fqdn?
-        dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
-        if not dnsrr.exists():
+        dnsrr = (
+            DNSResource.objects.filter(name=name, domain__id=domain.id)
+            .values("id")
+            .first()
+        )
+        if dnsrr is None:
             form = DNSResourceForm(data=data, request=request)
             if form.is_valid():
-                form.save()
+                dnsrr_id = form.save().id
             else:
                 raise MAASAPIValidationError(form.errors)
-            dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
-        data["dnsresource"] = dnsrr
+        else:
+            dnsrr_id = dnsrr["id"]
+        data["dnsresource"] = dnsrr_id
         form = DNSDataForm(data=data)
         if form.is_valid():
             return form.save()

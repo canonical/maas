@@ -180,13 +180,7 @@ def fix_twisted_web_client_URI():
 
 
 def fix_twisted_web_http_Request():
-    """Add ipv6 support to Request.getClientIP()
-
-       Specifically, IPv6 IP addresses need to be wrapped in [], and return
-       address.IPv6Address when needed.
-
-       See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
-    """
+    """Fix broken IPv6 handling in twisted.web.http.request.Request."""
     from netaddr import IPAddress
     from netaddr.core import AddrFormatError
     from twisted.internet import address
@@ -194,17 +188,6 @@ def fix_twisted_web_http_Request():
     import twisted.web.http
     from twisted.web.server import Request
     from twisted.web.test.requesthelper import DummyChannel
-
-    def new_getClientIP(self):
-        from twisted.internet import address
-
-        # upstream doesn't check for address.IPv6Address
-        if isinstance(self.client, address.IPv4Address):
-            return self.client.host
-        elif isinstance(self.client, address.IPv6Address):
-            return self.client.host
-        else:
-            return None
 
     def new_getRequestHostname(self):
         # Unlike upstream, support/require IPv6 addresses to be
@@ -266,9 +249,6 @@ def fix_twisted_web_http_Request():
     request = Request(DummyChannel(), False)
     request.client = address.IPv6Address("TCP", "fe80::1", "80")
     request.setHost(b"fe80::1", 1234)
-    if request.getClientIP() is None:
-        # Buggy code returns None for IPv6 addresses.
-        twisted.web.http.Request.getClientIP = new_getClientIP
     if isinstance(request.host, address.IPv4Address):
         # Buggy code calls fe80::1 an IPv4Address.
         twisted.web.http.Request.setHost = new_setHost

@@ -1141,7 +1141,7 @@ def reducedWebLogFormatter(timestamp, request):
         else:
             return "{code.value:d} {code.name}".format(code=code)
 
-    origin = field(request.getClientIP(), None)
+    origin = field(getattr(request.getClientAddress(), "host", None), None)
     origin = "-" if origin is None else normaliseAddress(origin)
 
     return template.format(

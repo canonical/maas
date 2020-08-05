@@ -755,7 +755,6 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine),
             {
                 "op": "deploy",
-                "user_data": None,
                 "distro_series": distro_series,
                 "comment": comment,
             },
@@ -788,11 +787,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine_start.return_value = False
         self.client.post(
             self.get_machine_uri(machine),
-            {
-                "op": "deploy",
-                "user_data": None,
-                "distro_series": distro_series,
-            },
+            {"op": "deploy", "distro_series": distro_series},
         )
         self.assertThat(
             machine_start,

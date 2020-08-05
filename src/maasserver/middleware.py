@@ -291,17 +291,14 @@ class DebuggingLoggerMiddleware:
             )
         except Exception:
             get = "<could not parse>"
-        if request._post_parse_error:
+        try:
+            post = (
+                pformat(POST_override)
+                if POST_override is not None
+                else pformat(request.POST)
+            )
+        except Exception:
             post = "<could not parse>"
-        else:
-            try:
-                post = (
-                    pformat(POST_override)
-                    if POST_override is not None
-                    else pformat(request.POST)
-                )
-            except Exception:
-                post = "<could not parse>"
         try:
             cookies = (
                 pformat(COOKIES_override)

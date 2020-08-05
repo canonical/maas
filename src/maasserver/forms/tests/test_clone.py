@@ -46,7 +46,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEquals(
             {
                 "destinations": [
-                    "Machine 0 in the array did not validate: "
+                    "Machine 1 in the array did not validate: "
                     "Source machine cannot be a destination machine."
                 ]
             },
@@ -80,7 +80,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEquals(
             {
                 "destinations": [
-                    "Machine 0 in the array did not validate: "
+                    "Machine 1 in the array did not validate: "
                     "destination boot disk(sda) is smaller than "
                     "source boot disk(sda)"
                 ]
@@ -111,7 +111,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEquals(
             {
                 "destinations": [
-                    "Machine 0 in the array did not validate: "
+                    "Machine 1 in the array did not validate: "
                     "destination node physical interfaces do not match "
                     "the source nodes physical interfaces: eth0"
                 ]
@@ -149,7 +149,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEquals(
             {
                 "destinations": [
-                    "Machine 0 in the array did not validate: "
+                    "Machine 1 in the array did not validate: "
                     "Select a valid choice. %s is not one of the available "
                     "choices." % destination.system_id
                 ]

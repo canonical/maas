@@ -5,7 +5,7 @@ description: |
   Total automation of your physical servers for amazing data center operational efficiency.
 grade: stable
 confinement: strict
-base: core18
+base: core20
 assumes:
   - snapd2.41
 system-usernames:
@@ -33,6 +33,7 @@ apps:
     daemon: simple
     command: bin/run-supervisord
     environment:
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
       LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
     plugs:
         - avahi-observe # network discovery
@@ -48,6 +49,8 @@ apps:
 
   maas:
     command: bin/ld-preload $SNAP/bin/maas
+    environment:
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
         - home
         - mount-observe  # to read /proc/*/mounts
@@ -56,59 +59,58 @@ apps:
 
   power:
     command: bin/maas-power
+    environment:
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
         - network
 
 parts:
-  maas-pypi:
-    # Keep the pypi dependencies separate from the deb dependencies, so
-    # that the pypi and deb versions of the same packages won't conflict
-    # when building the wheels
+  maas:
     plugin: python
-    source: snap/local/pypi
+    source: .
+    build-environment:
+      - PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     requirements:
-      - requirements.txt
+      - snap/local/requirements.txt
     build-packages:
       - build-essential
       - git
       - libffi-dev
       - libpq-dev
-      - libssl-dev # XXX needed while we're getting pylxd from pypi
       - libxml2-dev
       - libxslt1-dev
-
-  maas:
-    plugin: python
-    source: .
-    after:
-        # Make sure the pypi packages are built first, before we install
-        # the deb versions of possible dependencies.
-        - maas-pypi
+      - python3-setuptools
     stage-packages:
-      - amtterm                 # AMT
+      - amtterm # AMT
       - archdetect-deb
       - avahi-utils
       - bind9
       - chrony
-      - freeipmi-tools          # IPMI
+      - dns-root-data # for bind9
+      - freeipmi-tools # IPMI
       - gpgv
-      - ipmitool                # Moonshot
+      - ipmitool # Moonshot
       - iproute2
       - isc-dhcp-client
       - isc-dhcp-server
       - libatm1
       - libpq5
-      - libsoap-lite-perl       # Dependencies for AMT
-      - libvirt-clients         # Virsh
+      - libsoap-lite-perl # Dependencies for AMT
+      - libvirt-clients # Virsh
       - libxml-parser-lite-perl # Dependencies for AMT
-      - libxml-parser-perl      # Dependencies for AMT
+      - libxml-parser-perl # Dependencies for AMT
       - libxtables12
       - lshw
       - nginx-core
       - openssh-client
       - python3-attr
       - python3-bson
+      - python3-certifi # for macaroonbakery
+      - python3-cffi # for macaroonbakery
+      - python3-cffi-backend # for macaroonbakery
+      - python3-chardet
       - python3-crochet
+      - python3-cryptography
       - python3-curtin
       - python3-distro-info
       - python3-django
@@ -116,19 +118,27 @@ parts:
       - python3-djorm-ext-pgarray
       - python3-formencode
       - python3-httplib2
+      - python3-idna # for macaroonbakery
       - python3-jsonschema
       - python3-lxml
+      - python3-macaroonbakery
       - python3-markupsafe
       - python3-mimeparse
+      - python3-nacl # for macaroonbakery
       - python3-netaddr
       - python3-netifaces
       - python3-oauthlib
       - python3-paramiko
       - python3-petname
       - python3-pexpect
+      - python3-prometheus-client
+      - python3-protobuf # for macaroonbakery
       - python3-psycopg2
+      - python3-pylxd
+      - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing
       - python3-requests
+      - python3-rfc3339 # for macaroonbakery
       - python3-seamicroclient
       - python3-simplejson
       - python3-simplestreams
@@ -136,20 +146,17 @@ parts:
       - python3-tempita
       - python3-twisted
       - python3-txtftp
+      - python3-urllib3 # for macaroonbakery
       - python3-yaml
       - python3-zope.interface
       - rsyslog
-      - snmp                    # APC
+      - snmp # APC
       - squid
       - tcpdump
       - ubuntu-keyring
       - util-linux
-      - wget                    # DLI
-      - wsmancli                # AMT
-    # As a workaround to issues similar to https://pad.lv/1613898 we manually specify setuptools and wheel
-    python-packages:
-      - setuptools
-      - wheel
+      - wget # DLI
+      - wsmancli # AMT
     organize:
         lib/python3.*/site-packages/etc/*: etc
         lib/python3.*/site-packages/usr/bin/*: usr/bin
@@ -192,13 +199,11 @@ parts:
       snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version)
       cd $cwd
       snapcraftctl prime
-      $SNAPCRAFT_PART_INSTALL/usr/bin/python3 -m compileall -q .
 
   ui:
-    plugin: nodejs
+    plugin: npm
     source: src/maasui/src
-    nodejs-version: "12.13.0"
-    nodejs-yarn-version: "v1.19.1"
+    npm-node-version: "12.13.0"
     build-packages:
       - on amd64: []
       - else:
@@ -206,9 +211,10 @@ parts:
           - python
     override-build: |
       set -e
-
-      PATH="$PATH:$SNAPCRAFT_PART_BUILD/../npm/bin"
+      snapcraftctl build
+      PATH="$PATH:$SNAPCRAFT_PART_BUILD/node_modules/.bin:$SNAPCRAFT_PART_INSTALL/bin"
       NODE_ENV="production"
+      npm install -g --prefix $SNAPCRAFT_PART_INSTALL yarn webpack webpack-cli
       yarn install
       yarn build-all
 
@@ -242,13 +248,27 @@ parts:
       - on amd64:
           - g++-multilib
           - gcc-multilib
+    organize:
+      usr/local/*: /
+    prime:
+      - -usr
 
 hooks:
   install:
+    command-chain:
+      - snap/command-chain/snapcraft-runner
+    passthrough:
+      environment:
+        PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades
   post-refresh:
+    command-chain:
+      - snap/command-chain/snapcraft-runner
+    passthrough:
+      environment:
+        PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades

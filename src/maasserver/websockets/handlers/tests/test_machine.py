@@ -674,7 +674,7 @@ class TestMachineHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            76,
+            54,
             "Number of queries has changed; make sure this is expected.",
         )
 

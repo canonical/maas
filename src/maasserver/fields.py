@@ -798,6 +798,14 @@ class NodeChoiceField(forms.ModelChoiceField):
         # Avoid circular imports
         from maasserver.models.node import Node
 
+        if isinstance(value, Node):
+            if value not in self.queryset:
+                raise ValidationError(
+                    "Select a valid choice. "
+                    "%s is not one of the available choices." % value.system_id
+                )
+            return value
+
         try:
             return self.queryset.get(Q(system_id=value) | Q(hostname=value))
         except Node.DoesNotExist:

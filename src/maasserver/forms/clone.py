@@ -33,7 +33,7 @@ class CloneForm(forms.Form):
         label="Destinations",
         min_length=1,
         error_messages={
-            "item_invalid": "Machine %(nth)s in the array did not validate: "
+            "item_invalid": "Machine %(nth)s in the array did not validate:"
         },
         help_text="The destinations to clone to.",
     )
@@ -81,7 +81,7 @@ class CloneForm(forms.Form):
         storage = self.cleaned_data.get("storage", False)
         interfaces = self.cleaned_data.get("interfaces", False)
         if source and destinations:
-            for index, dest in enumerate(destinations):
+            for index, dest in enumerate(destinations, 1):
                 if source == dest:
                     error = prefix_validation_error(
                         ValidationError(

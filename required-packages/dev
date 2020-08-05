@@ -6,7 +6,6 @@ build-essential
 curl
 dos2unix
 git
-ipython3
 libnss-wrapper
 make
 psmisc

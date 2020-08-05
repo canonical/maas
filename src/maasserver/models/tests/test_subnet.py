@@ -11,7 +11,7 @@ import random
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from fixtures import FakeLogger
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import integers
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 from testtools import ExpectedException
@@ -761,6 +761,7 @@ class SubnetTest(MAASServerTestCase):
         subnet = factory.make_Subnet()
         self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
 
+    @settings(deadline=None)
     @given(integers(25, 29), integers(2, 5))
     def test_get_smallest_enclosing_sane_subnet_finds_parent_ipv4(
         self, subnet_mask, parent_bits
@@ -775,6 +776,7 @@ class SubnetTest(MAASServerTestCase):
                 parent, subnet.get_smallest_enclosing_sane_subnet()
             )
 
+    @settings(deadline=None)
     @given(integers(100, 126), integers(2, 20))
     def test_get_smallest_enclosing_sane_subnet_finds_parent_ipv6(
         self, subnet_mask, parent_bits

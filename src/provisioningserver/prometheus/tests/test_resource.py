@@ -32,7 +32,7 @@ class TestPrometheusMetricsResource(MAASTestCase):
         content = resource.render_GET(request).decode("utf-8")
         self.assertEqual(request.code, 200)
         self.assertIn("TYPE sample_histogram histogram", content)
-        self.assertIn("TYPE sample_counter counter", content)
+        self.assertIn("TYPE sample_counter_total counter", content)
 
     def test_metrics_disabled(self):
         prometheus_metrics = create_metrics(

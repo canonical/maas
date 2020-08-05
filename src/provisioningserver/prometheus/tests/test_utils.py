@@ -55,7 +55,7 @@ class TestPrometheusMetrics(MAASTestCase):
         )
         prometheus_metrics.update("a_counter", "set", value=22)
         self.assertIn(
-            "a_counter 22.0",
+            "a_counter_total 22.0",
             prometheus_metrics.generate_latest().decode("ascii"),
         )
 
@@ -193,7 +193,7 @@ class TestCreateMetrics(MAASTestCase):
         )
         prometheus_metrics.update("sample_counter", "inc")
         content = prometheus_metrics.generate_latest().decode("ascii")
-        self.assertIn('sample_counter{bar="BAR",foo="FOO"} 1.0', content)
+        self.assertIn('sample_counter_total{bar="BAR",foo="FOO"} 1.0', content)
 
     def test_extra_labels_callable(self):
         values = ["a", "b"]
@@ -205,8 +205,8 @@ class TestCreateMetrics(MAASTestCase):
         prometheus_metrics.update("sample_counter", "inc")
         prometheus_metrics.update("sample_counter", "inc")
         content = prometheus_metrics.generate_latest().decode("ascii")
-        self.assertIn('sample_counter{foo="a"} 1.0', content)
-        self.assertIn('sample_counter{foo="b"} 1.0', content)
+        self.assertIn('sample_counter_total{foo="a"} 1.0', content)
+        self.assertIn('sample_counter_total{foo="b"} 1.0', content)
 
 
 class TestCleanPrometheusDir(MAASTestCase):

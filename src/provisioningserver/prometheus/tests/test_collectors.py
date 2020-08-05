@@ -86,38 +86,42 @@ class TestUpdateCPUMetrics(MAASTestCase):
         update_cpu_metrics(prometheus_metrics, path=stat)
         output = prometheus_metrics.generate_latest().decode("ascii")
         self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="user"} 1.11', output
-        )
-        self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="nice"} 2.22', output
-        )
-        self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="system"} 3.33',
+            'maas_node_cpu_time_total{service_type="rack",state="user"} 1.11',
             output,
         )
         self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="idle"} 4.44', output
-        )
-        self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="iowait"} 5.55',
+            'maas_node_cpu_time_total{service_type="rack",state="nice"} 2.22',
             output,
         )
         self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="irq"} 6.66', output
-        )
-        self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="softirq"} 0.07',
+            'maas_node_cpu_time_total{service_type="rack",state="system"} 3.33',
             output,
         )
         self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="steal"} 8.88',
+            'maas_node_cpu_time_total{service_type="rack",state="idle"} 4.44',
             output,
         )
         self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="guest"} 0.09',
+            'maas_node_cpu_time_total{service_type="rack",state="iowait"} 5.55',
             output,
         )
         self.assertIn(
-            'maas_node_cpu_time{service_type="rack",state="guest_nice"} 0.11',
+            'maas_node_cpu_time_total{service_type="rack",state="irq"} 6.66',
+            output,
+        )
+        self.assertIn(
+            'maas_node_cpu_time_total{service_type="rack",state="softirq"} 0.07',
+            output,
+        )
+        self.assertIn(
+            'maas_node_cpu_time_total{service_type="rack",state="steal"} 8.88',
+            output,
+        )
+        self.assertIn(
+            'maas_node_cpu_time_total{service_type="rack",state="guest"} 0.09',
+            output,
+        )
+        self.assertIn(
+            'maas_node_cpu_time_total{service_type="rack",state="guest_nice"} 0.11',
             output,
         )

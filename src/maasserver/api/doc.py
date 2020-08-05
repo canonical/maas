@@ -21,7 +21,8 @@ from itertools import zip_longest
 import json
 from threading import RLock
 
-from django.urls import get_resolver, RegexURLPattern, RegexURLResolver
+from django.urls import get_resolver
+from django.urls.resolvers import URLPattern, URLResolver
 from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
@@ -50,9 +51,9 @@ def accumulate_api_resources(resolver, accumulator):
         return getattr(resource.handler, "hidden", False)
 
     for pattern in resolver.url_patterns:
-        if isinstance(pattern, RegexURLResolver):
+        if isinstance(pattern, URLResolver):
             accumulate_api_resources(pattern, accumulator)
-        elif isinstance(pattern, RegexURLPattern):
+        elif isinstance(pattern, URLPattern):
             if isinstance(pattern.callback, Resource):
                 resource = pattern.callback
                 if p_has_resource_uri(resource) and not p_is_not_hidden(

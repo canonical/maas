@@ -17,8 +17,8 @@ FieldUnset = object()
 class CleanSaveModelState(ModelState):
     """Provides helpers on `_state` attribute on a model."""
 
-    def __init__(self, db=None):
-        super().__init__(db=db)
+    def __init__(self):
+        super().__init__()
         self._changed_fields = {}
 
     def get_changed(self):

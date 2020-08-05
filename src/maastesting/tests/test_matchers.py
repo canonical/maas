@@ -131,7 +131,7 @@ class TestMockCalledWith(MAASTestCase, MockTestMixin):
 
         matcher = MockCalledWith(9, 2, a=5)
         result = matcher.match(mock)
-        self.assertMismatch(result, "Expected call:")
+        self.assertMismatch(result, "expected call not found")
 
     def test_str(self):
         matcher = MockCalledWith(1, a=2)
@@ -166,7 +166,7 @@ class TestMockCalledOnceWith(MAASTestCase, MockTestMixin):
 
         matcher = MockCalledOnceWith(9, 2, a=5)
         result = matcher.match(mock)
-        self.assertMismatch(result, "Expected call:")
+        self.assertMismatch(result, "expected call not found")
 
     def test_str(self):
         matcher = MockCalledOnceWith(1, a=2)

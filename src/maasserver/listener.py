@@ -249,9 +249,7 @@ class PostgresListenerService(Service, object):
         """Create new database connection."""
         db = connections.databases[self.alias]
         backend = load_backend(db["ENGINE"])
-        return backend.DatabaseWrapper(
-            db, self.alias, allow_thread_sharing=True
-        )
+        return backend.DatabaseWrapper(db, self.alias)
 
     @synchronous
     def startConnection(self):
@@ -259,6 +257,7 @@ class PostgresListenerService(Service, object):
         self.connection = self.createConnection()
         self.connection.connect()
         self.connection.set_autocommit(True)
+        self.connection.inc_thread_sharing()
 
     @synchronous
     def stopConnection(self):
@@ -269,6 +268,7 @@ class PostgresListenerService(Service, object):
         if connection_wrapper is not None:
             connection = connection_wrapper.connection
             if connection is not None and not connection.closed:
+                connection_wrapper.dec_thread_sharing()
                 connection_wrapper.commit()
                 connection_wrapper.close()
 
