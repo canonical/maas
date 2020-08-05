@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.seamicro`."""
@@ -85,6 +85,8 @@ class TestSeaMicroPowerDriver(MAASTestCase):
                     username,
                     "-P",
                     password,
+                    "-L",
+                    "OPERATOR",
                     "raw",
                     "0x2E",
                     "1",

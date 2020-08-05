@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """IPMI Power Driver."""
@@ -321,8 +321,16 @@ class IPMIPowerDriver(PowerDriver):
             "ipmi-chassis-config",
             "-W",
             "opensesspriv",
+            "-l",
+            "OPERATOR",
         ]
-        ipmipower_command = ["ipmipower", "-W", "opensesspriv"]
+        ipmipower_command = [
+            "ipmipower",
+            "-W",
+            "opensesspriv",
+            "-l",
+            "OPERATOR",
+        ]
 
         # Arguments in common between chassis config and power control. See
         # https://launchpad.net/bugs/1053391 for details of modifying the
