@@ -3,7 +3,7 @@
 # Build release packages for specified distro releases
 #
 # Usage:
-#  ./release-build bionic
+#  ./release-build focal
 #
 # It's possible to override the packge build revision with DEB_BUILD_REV=n (by
 # default it's 1)
@@ -17,7 +17,7 @@ DEB_BUILD_REV=${DEB_BUILD_REV:-1}
 SKIP_UI_BUILD=${SKIP_UI_BUILD:-0}
 
 declare -A SUPPORTED_RELEASES=(
-    [bionic]=18.04
+    [focal]=20.04
 )
 
 ROOTDIR="$(dirname "$(dirname "$(realpath "$0")")")"
