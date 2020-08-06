@@ -22,8 +22,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/lxc/lxd"
-  packages = ["lxd/resources","shared","shared/api","shared/cancel","shared/ioprogress","shared/logger","shared/osarch","shared/units","shared/usbid","shared/version"]
-  revision = "44487eda6756305828ea8aaf7555225f61d1d292"
+  packages = ["lxd/include","lxd/resources","shared","shared/api","shared/cancel","shared/ioprogress","shared/logger","shared/osarch","shared/units","shared/usbid","shared/validate","shared/version"]
+  revision = "4c7cd25c6842f49f3a29468aa745ee97651d42bd"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
@@ -41,7 +41,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["internal/unsafeheader","unix","windows"]
-  revision = "ddb9806d33aed8dbaac1cd6f1cba58952e87f933"
+  revision = "0cf7623e9dbd9bc79267b27a7e6c5757ef550423"
 
 [[projects]]
   branch = "v2"

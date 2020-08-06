@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for maas_run_remote_scripts.py."""
@@ -15,8 +15,9 @@ import random
 import stat
 from subprocess import CalledProcessError, DEVNULL, PIPE, TimeoutExpired
 import tarfile
+from textwrap import dedent
 import time
-from unittest.mock import ANY, call, MagicMock
+from unittest.mock import ANY, call, MagicMock, mock_open
 from zipfile import ZipFile
 
 import yaml
@@ -39,6 +40,7 @@ from snippets.maas_run_remote_scripts import (
     download_and_extract_tar,
     get_block_devices,
     get_interfaces,
+    get_storage_model_from_udev,
     install_dependencies,
     output_and_send,
     output_and_send_scripts,
@@ -47,6 +49,7 @@ from snippets.maas_run_remote_scripts import (
     run_script,
     run_scripts,
     run_scripts_from_metadata,
+    udev_decode,
 )
 
 # Unused ScriptResult id, used to make sure number is always unique.
@@ -1581,19 +1584,25 @@ class TestParseParameters(MAASTestCase):
         maas_run_remote_scripts._block_devices = None
 
     def test_get_block_devices(self):
+        mock_get_storage_model_from_udev = self.patch(
+            maas_run_remote_scripts, "get_storage_model_from_udev"
+        )
+        mock_get_storage_model_from_udev.side_effect = lambda bd: bd
         expected_blockdevs = [
             {
                 "NAME": factory.make_name("NAME"),
                 "MODEL": factory.make_name("MODEL"),
                 "SERIAL": factory.make_name("SERIAL"),
+                "MAJ:MIN": factory.make_name("MAJ:MIN"),
             }
             for _ in range(3)
         ]
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
         mock_check_output.return_value = "".join(
             [
-                'NAME="{NAME}" MODEL="{MODEL}" SERIAL="{SERIAL}"\n'.format(
-                    **blockdev
+                'NAME="{NAME}" MODEL="{MODEL}" SERIAL="{SERIAL}" '
+                'MAJ:MIN="{MAJ_MIN}"\n'.format(
+                    **blockdev, MAJ_MIN=blockdev["MAJ:MIN"]
                 )
                 for blockdev in expected_blockdevs
             ]
@@ -1601,6 +1610,7 @@ class TestParseParameters(MAASTestCase):
         maas_run_remote_scripts._block_devices = None
 
         self.assertItemsEqual(expected_blockdevs, get_block_devices())
+        self.assertTrue(mock_get_storage_model_from_udev.called)
 
     def test_get_block_devices_cached(self):
         block_devices = factory.make_name("block_devices")
@@ -1632,6 +1642,49 @@ class TestParseParameters(MAASTestCase):
         )
 
         self.assertRaises(KeyError, get_block_devices)
+
+    def test_udev_decode(self):
+        self.assertEquals(
+            "QEMU HARDDISK", udev_decode("QEMU\x20HARDDISK\x20\x20\x20")
+        )
+
+    def test_get_storage_model_from_udev(self):
+        self.patch(
+            maas_run_remote_scripts.os.path, "exists"
+        ).return_value = True
+        self.patch(
+            maas_run_remote_scripts,
+            "open",
+            mock_open(
+                read_data=dedent(
+                    """\
+                    S:disk/by-id/scsi-SATA_QEMU_HARDDISK_QM00001
+                    E:ID_MODEL=QEMU_HARDDISK
+                    E:ID_MODEL_ENC=QEMU\x20HARDDISK\x20\x20\x20
+                    """
+                )
+            ),
+        )
+        self.assertDictEqual(
+            {
+                "MAJ:MIN": "8:0",
+                "MODEL": "QEMU_HARDDISK",
+                "MODEL_ENC": "QEMU HARDDISK",
+            },
+            get_storage_model_from_udev({"MAJ:MIN": "8:0"}),
+        )
+
+    def test_get_storage_model_from_udev_warns(self):
+        mock_stderr_write = self.patch(
+            maas_run_remote_scripts.sys.stderr, "write"
+        )
+        model = factory.make_name("model")
+        block_dev = {"MAJ:MIN": factory.make_name("MAJ:MIN"), "MODEL": model}
+        self.assertDictEqual(
+            {"MODEL_ENC": model, **block_dev},
+            get_storage_model_from_udev(block_dev),
+        )
+        self.assertThat(mock_stderr_write, MockCalledOnce())
 
     def test_get_interfaces(self):
         maas_run_remote_scripts._interfaces = None
@@ -1728,6 +1781,10 @@ class TestParseParameters(MAASTestCase):
         self.assertThat(mock_listdir, MockNotCalled())
 
     def test_parse_parameters(self):
+        mock_get_storage_model_from_udev = self.patch(
+            maas_run_remote_scripts, "get_storage_model_from_udev"
+        )
+        mock_get_storage_model_from_udev.side_effect = lambda bd: bd
         scripts_dir = factory.make_name("scripts_dir")
         script = {
             "path": os.path.join("path_to", factory.make_name("script_name")),
@@ -1778,9 +1835,8 @@ class TestParseParameters(MAASTestCase):
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
         mock_check_output.return_value = "".join(
             [
-                'NAME="{name}" MODEL="{model}" SERIAL="{serial}"\n'.format(
-                    **param["value"]
-                )
+                'NAME="{name}" MODEL="{model}" SERIAL="{serial}" '
+                'MAJ_MIN="8:0"\n'.format(**param["value"])
                 for param_name, param in script["parameters"].items()
                 if "storage" in param_name
             ]
@@ -1808,8 +1864,13 @@ class TestParseParameters(MAASTestCase):
             ],
             parse_parameters(script, scripts_dir),
         )
+        self.assertTrue(mock_get_storage_model_from_udev.called)
 
     def test_parse_parameters_argument_format(self):
+        mock_get_storage_model_from_udev = self.patch(
+            maas_run_remote_scripts, "get_storage_model_from_udev"
+        )
+        mock_get_storage_model_from_udev.side_effect = lambda bd: bd
         scripts_dir = factory.make_name("scripts_dir")
         script = {
             "path": os.path.join("path_to", factory.make_name("script_name")),
@@ -1853,9 +1914,8 @@ class TestParseParameters(MAASTestCase):
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
         mock_check_output.return_value = "".join(
             [
-                'NAME="{name}" MODEL="{model}" SERIAL="{serial}"\n'.format(
-                    **param["value"]
-                )
+                'NAME="{name}" MODEL="{model}" SERIAL="{serial}" '
+                'MAJ:MIN="8:0"\n'.format(**param["value"])
                 for param_name, param in script["parameters"].items()
                 if "storage" in param_name
             ]
@@ -1889,6 +1949,7 @@ class TestParseParameters(MAASTestCase):
             ],
             parse_parameters(script, scripts_dir),
         )
+        self.assertTrue(mock_get_storage_model_from_udev.called)
 
     def test_parse_parameters_storage_value_all_raises_keyerror(self):
         scripts_dir = factory.make_name("scripts_dir")
