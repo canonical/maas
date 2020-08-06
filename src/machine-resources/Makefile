@@ -32,7 +32,7 @@ $(BINARIES): $(PACKAGE_VENDOR_DIR) $(PACKAGE_DIR)/main.go
 
 $(PACKAGE_VENDOR_DIR) vendor:
 	rm -rf $(PACKAGE_VENDOR_DIR)
-	$(DEP) ensure
+	$(DEP) ensure -vendor-only
 .PHONY: vendor
 
 clean: DEP_PACKAGES_DIRS = $(filter-out $(PACKAGE_DIR),$(wildcard src/*))
