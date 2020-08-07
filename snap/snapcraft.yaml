@@ -199,6 +199,7 @@ parts:
       snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version)
       cd $cwd
       snapcraftctl prime
+      $SNAPCRAFT_PART_INSTALL/usr/bin/python3 -m compileall -q .
 
   ui:
     plugin: npm
