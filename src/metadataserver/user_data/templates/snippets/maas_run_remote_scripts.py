@@ -5,7 +5,7 @@
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017-2019 Canonical
+# Copyright (C) 2017-2020 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -582,6 +582,54 @@ class CustomNetworking:
             self._apply_ephemeral_netplan()
 
 
+def udev_decode(string):
+    """Decode udev encoded values
+
+    Inverse of
+    https://github.com/systemd/systemd/blob/master/src/basic/device-nodes.c#L22
+    Go version in LXD
+    https://github.com/lxc/lxd/blob/master/lxd/resources/utils.go#L106
+    """
+    ret = ""
+    i = 0
+    while i < len(string):
+        if string[i] == "\\" and i + 4 < len(string) and string[i + 1] == "x":
+            ret += chr(int(string[i + 2 : i + 4], 16))
+            i += 4
+        else:
+            ret += string[i]
+            i += 1
+    return ret.strip()
+
+
+def get_storage_model_from_udev(block_dev):
+    """Get the storage model name from udev
+
+    Storage devices may have two model names. One is encoded to allow
+    spaces and other special characters, the other is not. lsblk in Xenial
+    and Bionic give the encoded model name while in Focal it gives the
+    non-encoded model name. LXD gives the encoded model name in LXD 4.3+. Read
+    and store both from udev to ensure matching works.
+    """
+    udev_path = "/run/udev/data/b%s" % block_dev["MAJ:MIN"]
+    if not os.path.exists(udev_path):
+        # udev should always be available, if udev_path isn't found something
+        # changed. lsblk will still give a model name, try using that.
+        sys.stderr.write(
+            "WARNING: Unable to read block device data from "
+            "udev(%s)" % udev_path
+        )
+        block_dev["MODEL_ENC"] = block_dev["MODEL"]
+        return block_dev
+    with open(udev_path, "r") as f:
+        for line in f.readlines():
+            if line.startswith("E:ID_MODEL_ENC"):
+                block_dev["MODEL_ENC"] = udev_decode(line.split("=", 1)[1])
+            elif line.startswith("E:ID_MODEL"):
+                block_dev["MODEL"] = line.split("=", 1)[1].strip()
+    return block_dev
+
+
 # Cache the block devices so we only have to query once.
 _block_devices = None
 _block_devices_lock = Lock()
@@ -604,7 +652,7 @@ def get_block_devices():
                 "-d",
                 "-P",
                 "-o",
-                "NAME,MODEL,SERIAL",
+                "NAME,MODEL,SERIAL,MAJ:MIN",
             ]
             block_list = check_output(cmd, timeout=60).decode("utf-8")
         except TimeoutExpired:
@@ -626,7 +674,9 @@ def get_block_devices():
                 for token in tokens:
                     k, v = token.split("=", 1)
                     current_block[k] = v.strip()
-                block_devices.append(current_block)
+                block_devices.append(
+                    get_storage_model_from_udev(current_block)
+                )
             # LP:1732539 - Don't fill cache until all results are proceeded.
             _block_devices = block_devices
 
@@ -739,8 +789,8 @@ def parse_parameters(script, scripts_dir):
                 for blockdev in get_block_devices():
                     if (
                         model == blockdev["MODEL"]
-                        and serial == blockdev["SERIAL"]
-                    ):
+                        or model == blockdev.get("MODEL_ENC")
+                    ) and serial == blockdev["SERIAL"]:
                         value["path"] = value["input"] = (
                             "/dev/%s" % blockdev["NAME"]
                         )
