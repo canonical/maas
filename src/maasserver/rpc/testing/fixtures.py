@@ -4,7 +4,6 @@
 """Test fixtures for the region's RPC implementation."""
 
 __all__ = [
-    "ClusterRPCFixture",
     "RunningClusterRPCFixture",
     "MockLiveRegionToClusterRPCFixture",
     "MockRegionToClusterRPCFixture",
@@ -13,7 +12,6 @@ __all__ = [
 from collections import defaultdict
 from os import path, urandom
 from urllib.parse import urlparse
-from warnings import warn
 
 from crochet import run_in_reactor
 import fixtures
@@ -58,51 +56,6 @@ class FakeConnection:
         return call_responder(self.protocol, cmd, arguments)
 
 
-class ClusterRPCFixture(fixtures.Fixture):
-    """Deprecated: use :py:class:`MockRegionToClusterRPCFixture` instead.
-
-    This creates connections to the "real" cluster RPC implementation,
-    but this relies on real data. This makes tests fragile, and, as time
-    progresses, will result in ever more elaborate test fixtures to get
-    that data into place.
-
-    Instead, use :py:class:`MockRegionToClusterRPCFixture`, which helps you
-    stub out those RPC calls that you're testing against, and verifies each
-    call's arguments *and* response against the RPC schema.
-    """
-
-    def __init__(self):
-        super().__init__()
-        warn(
-            (
-                "ClusterRPCFixture is deprecated; use "
-                "MockRegionToClusterRPCFixture instead."
-            ),
-            DeprecationWarning,
-        )
-
-    def setUp(self):
-        super().setUp()
-        # We need the event-loop up and running.
-        if not eventloop.loop.running:
-            raise RuntimeError(
-                "Please start the event-loop before using this fixture."
-            )
-        rpc_service = get_service_in_eventloop("rpc").wait(10)
-        # The RPC service uses a defaultdict(set) to manage connections, but
-        # let's check those assumptions.
-        assert isinstance(rpc_service.connections, defaultdict)
-        assert rpc_service.connections.default_factory is set
-        # Populate a connections mapping with a fake connection for each
-        # rack controller known at present.
-        fake_connections = defaultdict(set)
-        for controller in RackController.objects.all():
-            connection = FakeConnection(controller.system_id)
-            fake_connections[connection.ident].add(connection)
-        # Patch the fake connections into place for this fixture's lifetime.
-        self.addCleanup(patch(rpc_service, "connections", fake_connections))
-
-
 class RunningClusterRPCFixture(fixtures.Fixture):
     """Set-up the event-loop with only the RPC service running.
 
@@ -113,7 +66,7 @@ class RunningClusterRPCFixture(fixtures.Fixture):
         super().setUp()
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
-        self.useFixture(ClusterRPCFixture())
+        self.useFixture(MockRegionToClusterRPCFixture())
 
 
 def authenticate_with_secret(secret, message):
@@ -161,8 +114,16 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         # let's check those assumptions.
         assert isinstance(self.rpc.connections, defaultdict)
         assert self.rpc.connections.default_factory is set
-        # Patch a fake connections dict into place for this fixture's lifetime.
-        self.addCleanup(patch(self.rpc, "connections", defaultdict(set)))
+        # Populate a connections mapping with a fake connection for each
+        # rack controller known at present.
+        fake_connections = defaultdict(set)
+        for system_id in RackController.objects.values_list(
+            "system_id", flat=True
+        ):
+            connection = FakeConnection(system_id)
+            fake_connections[connection.ident].add(connection)
+        # Patch the fake connections into place for this fixture's lifetime.
+        self.addCleanup(patch(self.rpc, "connections", fake_connections))
 
     def addCluster(self, protocol):
         """Add a new stub cluster using the given `protocol`.
