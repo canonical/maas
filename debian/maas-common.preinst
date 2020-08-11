@@ -4,6 +4,12 @@ set -e
 
 . /usr/share/debconf/confmodule
 
+# Don't allow the Debian package to be installed alongside the Snap.
+if which snap >/dev/null && snap list maas > /dev/null 2>&1; then
+    echo "ERROR: The MAAS Debian packages may not be installed alongside the MAAS Snap!" >&2
+    exit 1
+fi
+
 if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
 
     if [ -f /etc/rsyslog.d/99-maas.conf ]; then

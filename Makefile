@@ -522,7 +522,7 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 -package-tree: -packaging-export
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
 	(cp -r debian $(packaging-build-area)/$(packaging-dir))
-	echo "maas ($(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
+	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
 	    > $(tmp_changelog)
 	tail -n +2 debian/changelog >> $(tmp_changelog)
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
