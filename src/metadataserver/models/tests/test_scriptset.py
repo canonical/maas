@@ -1201,6 +1201,29 @@ class TestScriptSet(MAASServerTestCase):
             [script_result.name for script_result in script_set],
         )
 
+    def test_select_for_hardware_scripts_with_bracket_in_firmware(self):
+        # Regression test for LP:1891213
+        node = factory.make_Node()
+        factory.make_NodeMetadata(
+            node=node,
+            key="mainboard_firmware_version",
+            value="-[IVE156L-2.61]-",
+        )
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            for_hardware=["mainboard_firmware_version:-[IVE156L-2.61]-"],
+        )
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, [random.choice(script.tags)]
+        )
+
+        script_set.select_for_hardware_scripts()
+
+        self.assertItemsEqual(
+            list(NODE_INFO_SCRIPTS) + [script.name],
+            [script_result.name for script_result in script_set],
+        )
+
     def test_regenerate_storage(self):
         node = factory.make_Node(interface=True)
         script_set = factory.make_ScriptSet(node=node)
