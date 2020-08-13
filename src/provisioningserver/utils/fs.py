@@ -148,7 +148,16 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
         if error.errno != errno.ENOENT:
             raise  # Something's seriously wrong.
     else:
-        chown(temp_file, prev_stats.st_uid, prev_stats.st_gid)
+        try:
+            chown(temp_file, prev_stats.st_uid, prev_stats.st_gid)
+        except PermissionError as error:
+            # if the permissions of `filename` couldn't be applied to
+            # `temp_file` then the temporary file needs to be removed and then
+            # raise the exception to allow the caller handle it (LP: #1883748).
+            if os.path.isfile(temp_file):
+                os.remove(temp_file)
+
+            raise error
 
     try:
         if overwrite:
