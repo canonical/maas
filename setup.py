@@ -17,7 +17,7 @@ def read(filename):
 
 setup(
     name="maas",
-    version="2.7.2",
+    version="2.7.3rc1",
     url="https://maas.io/",
     license="AGPLv3",
     description="Metal As A Service",
