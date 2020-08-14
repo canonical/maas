@@ -5,8 +5,6 @@ __all__ = ["ScriptSet", "get_status_from_qs", "translate_result_type"]
 
 from contextlib import suppress
 from datetime import timedelta
-import fnmatch
-import re
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -231,26 +229,21 @@ class ScriptSetManager(Manager):
             script_type=script_type,
         )
         modaliases = script_set.node.modaliases
-        regexes = []
-        for nmd in script_set.node.nodemetadata_set.filter(
+        hw_pairs_qs = script_set.node.nodemetadata_set.filter(
             Q(key__startswith="system_")
             | Q(key__startswith="mainboard_")
             | Q(key__startswith="firmware_")
             | Q(key__startswith="chassis_")
-        ):
-            regexes.append("%s:%s" % (nmd.key, fnmatch.translate(nmd.value)))
-        if len(regexes) > 0:
-            node_hw_regex = re.compile("^%s$" % "|".join(regexes), re.I)
-        else:
-            node_hw_regex = None
+        ).values_list("key", "value")
+        hw_pairs = [":".join(t) for t in hw_pairs_qs]
         for script in qs:
             # If a script with the for_hardware field is selected by tag only
             # add it if matching hardware is found.
             if script.for_hardware:
                 found_hw_match = False
-                if node_hw_regex is not None:
+                if hw_pairs:
                     for hardware in script.for_hardware:
-                        if node_hw_regex.search(hardware) is not None:
+                        if hardware in hw_pairs:
                             found_hw_match = True
                             break
                 matches = filter_modaliases(modaliases, *script.ForHardware)
@@ -474,18 +467,13 @@ class ScriptSet(CleanSave, Model):
         if modaliases is None:
             modaliases = self.node.modaliases
 
-        regexes = []
-        for nmd in self.node.nodemetadata_set.filter(
+        hw_pairs_qs = self.node.nodemetadata_set.filter(
             Q(key__startswith="system_")
             | Q(key__startswith="mainboard_")
             | Q(key__startswith="firmware_")
             | Q(key__startswith="chassis_")
-        ):
-            regexes.append("%s:%s" % (nmd.key, fnmatch.translate(nmd.value)))
-        if len(regexes) > 0:
-            node_hw_regex = re.compile("^%s$" % "|".join(regexes), re.I)
-        else:
-            node_hw_regex = None
+        ).values_list("key", "value")
+        hw_pairs = [":".join(t) for t in hw_pairs_qs]
 
         # Remove scripts autoselected at the start of commissioning but updated
         # commissioning data shows the Script is no longer applicable.
@@ -501,9 +489,9 @@ class ScriptSet(CleanSave, Model):
                 modaliases, *script_result.script.ForHardware
             )
             found_hw_match = False
-            if node_hw_regex is not None:
+            if hw_pairs:
                 for hardware in script_result.script.for_hardware:
-                    if node_hw_regex.search(hardware) is not None:
+                    if hardware in hw_pairs:
                         found_hw_match = True
                         break
             matches = filter_modaliases(
@@ -523,9 +511,9 @@ class ScriptSet(CleanSave, Model):
         scripts = scripts.exclude(name__in=[s.name for s in self])
         for script in scripts:
             found_hw_match = False
-            if node_hw_regex is not None:
+            if hw_pairs:
                 for hardware in script.for_hardware:
-                    if node_hw_regex.search(hardware) is not None:
+                    if hardware in hw_pairs:
                         found_hw_match = True
                         break
             matches = filter_modaliases(modaliases, *script.ForHardware)
