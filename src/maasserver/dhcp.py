@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DHCP management module."""
@@ -558,8 +558,8 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
       or not.
     """
     ip_version = subnet.get_ip_version()
+    default_region_ip = get_source_address(subnet.get_ipnetwork())
     try:
-        default_region_ip = get_source_address(subnet.get_ipnetwork())
         dns_servers = get_dns_server_addresses(
             rack_controller,
             ipv4=(ip_version == 4),
@@ -570,16 +570,30 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     except UnresolvableHost:
         dns_servers = None
 
+    if default_region_ip:
+        default_region_ip = IPAddress(default_region_ip)
     if use_rack_proxy:
         # Add the IP address for the rack controllers on the subnet before the
         # region DNS servers.
         rack_ips = get_dns_server_addresses_for_rack(rack_controller, subnet)
         if dns_servers:
             dns_servers = rack_ips + [
-                server for server in dns_servers if server not in rack_ips
+                server
+                for server in dns_servers
+                if server not in rack_ips and server != default_region_ip
             ]
         elif rack_ips:
             dns_servers = rack_ips
+    elif default_region_ip in dns_servers:
+        # Make sure the region DNS server comes last
+        dns_servers = [
+            server for server in dns_servers if server != default_region_ip
+        ] + [default_region_ip]
+    # If no DNS servers were found give the region IP. This won't go through
+    # the rack but its better than nothing.
+    if not dns_servers:
+        log.warn("No DNS servers found, DHCP defaulting to region IP.")
+        dns_servers = [default_region_ip]
 
     return dns_servers
 

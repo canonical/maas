@@ -8,13 +8,10 @@ __all__ = []
 from collections import defaultdict, OrderedDict
 from operator import attrgetter
 
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 import yaml
 
-from maasserver.dns.zonegenerator import (
-    get_dns_search_paths,
-    get_dns_server_addresses,
-)
+from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
     BRIDGE_TYPE,
     INTERFACE_TYPE,
@@ -22,7 +19,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
 )
-from maasserver.models import Interface
+from maasserver.models import Interface, StaticIPAddress
 from maasserver.models.staticroute import StaticRoute
 from provisioningserver.utils.netplan import (
     get_netplan_bond_parameters,
@@ -362,40 +359,42 @@ class InterfaceConfiguration:
                         v1_subnet_operation if version == 1 else v2_config,
                         version,
                     )
-                    if (
-                        subnet.dns_servers is not None
-                        and len(subnet.dns_servers) > 0
-                    ):
+
+                    if "dns_nameservers" not in v1_subnet_operation:
                         v1_subnet_operation["dns_nameservers"] = []
                         v1_subnet_operation[
                             "dns_search"
                         ] = self.node_config.default_search_list
-                        if "nameservers" not in v2_config:
-                            v2_config["nameservers"] = v2_nameservers
-                            v2_config["nameservers"][
-                                "search"
-                            ] = self.node_config.default_search_list
-                            if "addresses" not in v2_nameservers:
-                                v2_nameservers["addresses"] = []
-                        for rack in {
+                    if "nameservers" not in v2_config:
+                        v2_nameservers[
+                            "search"
+                        ] = self.node_config.default_search_list
+                        v2_config["nameservers"] = v2_nameservers
+                        if "addresses" not in v2_nameservers:
+                            v2_nameservers["addresses"] = []
+
+                    for ip in StaticIPAddress.objects.filter(
+                        interface__node__in=[
                             subnet.vlan.primary_rack,
                             subnet.vlan.secondary_rack,
-                        }:
-                            if rack is None:
-                                continue
-                            for ip in get_dns_server_addresses(
-                                rack_controller=rack,
-                                ipv4=(subnet.get_ip_version() == 4),
-                                ipv6=(subnet.get_ip_version() == 6),
-                                include_alternates=True,
-                            ):
-                                if ip.is_loopback():
-                                    continue
-                                ip_str = str(ip)
-                                v1_subnet_operation["dns_nameservers"].append(
-                                    ip_str
-                                )
-                                v2_nameservers["addresses"].append(ip_str)
+                        ],
+                        subnet__vlan=subnet.vlan,
+                        alloc_type__in=[
+                            IPADDRESS_TYPE.AUTO,
+                            IPADDRESS_TYPE.STICKY,
+                        ],
+                    ).exclude(ip=None):
+                        if (
+                            IPAddress(ip.get_ip()).version
+                            == subnet.get_ip_version()
+                            and ip.get_ip() not in v2_nameservers["addresses"]
+                        ):
+                            v1_subnet_operation["dns_nameservers"].append(
+                                ip.ip
+                            )
+                            v2_nameservers["addresses"].append(ip.ip)
+
+                    if subnet.dns_servers:
                         v1_subnet_operation[
                             "dns_nameservers"
                         ] += subnet.dns_servers
@@ -408,6 +407,13 @@ class InterfaceConfiguration:
                             matching_subnet_routes, version=version
                         )
                         v1_subnet_operation["routes"] = routes
+
+                    # Delete if no DNS servers were added.
+                    if len(v1_subnet_operation["dns_nameservers"]) == 0:
+                        del v1_subnet_operation["dns_nameservers"]
+                        del v1_subnet_operation["dns_search"]
+                    if len(v2_nameservers["addresses"]) == 0:
+                        del v2_config["nameservers"]
             if dhcp_type:
                 v1_config.append({"type": dhcp_type})
                 if dhcp_type == "dhcp":

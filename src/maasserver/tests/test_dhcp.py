@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP management."""
@@ -1089,7 +1089,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
         servers = get_default_dns_servers(r1, subnet, False)
         self.assertThat(
-            servers, Equals([IPAddress("10.0.0.1"), IPAddress(address.ip)])
+            servers, Equals([IPAddress(address.ip), IPAddress("10.0.0.1")])
         )
 
     def test_racks_on_subnet_comes_before_region(self):
@@ -1117,17 +1117,31 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
-        servers = get_default_dns_servers(r1, subnet)
-        self.assertThat(
-            servers,
-            Equals(
-                [
-                    IPAddress(r1_address.ip),
-                    IPAddress(r2_address.ip),
-                    IPAddress("10.0.0.1"),
-                ]
-            ),
+        servers = get_default_dns_servers(r1, subnet, False)
+        self.assertItemsEqual(
+            servers[0:-1], [IPAddress(r1_address.ip), IPAddress(r2_address.ip)]
         )
+        self.assertEquals(IPAddress("10.0.0.1"), servers[-1])
+
+    def test_doesnt_include_remote_region_ip(self):
+        # Regression test for LP:1881133
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "192.168.122.209"
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, cidr="192.168.200.0/24")
+        rack = factory.make_RackController(interface=False)
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack
+        )
+        factory.make_StaticIPAddress(
+            interface=iface,
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip="192.168.200.1",
+        )
+
+        servers = get_default_dns_servers(rack, subnet)
+        self.assertThat(servers, Equals([IPAddress("192.168.200.1")]))
 
 
 class TestMakeSubnetConfig(MAASServerTestCase):

@@ -1715,6 +1715,28 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
+    def test_dns_includes_rack_controllers(self):
+        # Regression test for LP:1881133
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(dns_servers=[], vlan=vlan)
+        rack = factory.make_RackController(subnet=subnet)
+        rack_iface = rack.interface_set.first()
+        rack_ip = factory.make_StaticIPAddress(
+            subnet=subnet, interface=rack_iface
+        )
+        vlan.primary_rack = rack
+        vlan.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, subnet=subnet
+        )
+        iface = node.interface_set.first()
+        factory.make_StaticIPAddress(subnet=subnet, interface=iface)
+        v2 = self._render_netplan_dict(node)
+        self.assertDictEqual(
+            {"search": ["maas"], "addresses": [rack_ip.ip]},
+            v2["network"]["ethernets"][iface.name]["nameservers"],
+        )
+
     def test_commissioning_dhcp_config(self):
         # Verifies dhcp config is given when commissioning has run
         # or just run and no AUTOIP has been acquired.
