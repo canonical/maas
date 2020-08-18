@@ -46,9 +46,8 @@ class PackageRepositoryForm(MAASModelForm):
     )
 
     # Use UnconstrainedMultipleChoiceField fields for multiple-choices
-    # fields instead of the default (djorm-ext-pgarray's ArrayFormField):
-    # ArrayFormField deals with comma-separated lists and here we want to
-    # handle multiple-values submissions.
+    # fields instead of the default as we want to handle
+    # multiple-values submissions.
     distributions = UnconstrainedMultipleChoiceField(label="Distribution list")
 
     disabled_pockets = UnconstrainedMultipleChoiceField(

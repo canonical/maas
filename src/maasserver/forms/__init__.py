@@ -2130,9 +2130,8 @@ class BootSourceSelectionForm(MAASModelForm):
         fields = ("os", "release", "arches", "subarches", "labels")
 
     # Use UnconstrainedMultipleChoiceField fields for multiple-choices
-    # fields instead of the default (djorm-ext-pgarray's ArrayFormField):
-    # ArrayFormField deals with comma-separated lists and here we want to
-    # handle multiple-values submissions.
+    # fields instead of the default as we want to handle
+    # multiple-values submissions.
     arches = UnconstrainedMultipleChoiceField(label="Architecture list")
     subarches = UnconstrainedMultipleChoiceField(label="Subarchitecture list")
     labels = UnconstrainedMultipleChoiceField(label="Label list")
