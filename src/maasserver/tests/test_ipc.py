@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.ipc`"""
@@ -43,6 +43,7 @@ from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.runtest import MAASCrochetRunTest
 from maastesting.testcase import MAASTestCase
+from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils.twisted import callOut, DeferredValue
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -122,6 +123,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_worker_registers_and_deregisters(self):
+        yield deferToDatabase(load_builtin_scripts)
         pid = random.randint(1, 512)
         self.patch(os, "getpid").return_value = pid
         (
@@ -159,6 +161,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_master_calls_killWorker_on_deregister(self):
+        yield deferToDatabase(load_builtin_scripts)
         pid = random.randint(1, 512)
         self.patch(os, "getpid").return_value = pid
         workers = MagicMock()
@@ -179,6 +182,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_worker_registers_rpc_endpoints(self):
+        yield deferToDatabase(load_builtin_scripts)
         pid = random.randint(1, 512)
         self.patch(os, "getpid").return_value = pid
         (
@@ -227,6 +231,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_registerWorker_sets_regiond_degraded_with_less_than_workers(self):
+        yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
 
@@ -249,6 +254,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_worker_registers_and_unregister_rpc_connection(self):
+        yield deferToDatabase(load_builtin_scripts)
         pid = random.randint(1, 512)
         self.patch(os, "getpid").return_value = pid
         (
@@ -306,6 +312,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_creates_process_when_removed(self):
+        yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
 
@@ -332,6 +339,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_removes_old_processes(self):
+        yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
 
@@ -373,6 +381,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_updates_updated_time_on_processes(self):
+        yield deferToDatabase(load_builtin_scripts)
         current_time = now()
         self.patch(timestampedmodel, "now").return_value = current_time
 
@@ -403,6 +412,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_sets_regiond_running_with_all_workers(self):
+        yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
 
@@ -443,6 +453,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_calls_mark_dead_on_regions_without_processes(self):
+        yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
 
@@ -462,6 +473,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_removes_all_rpc_connections_when_none(self):
+        yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
 

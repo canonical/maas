@@ -20,7 +20,6 @@ from datetime import datetime
 from functools import partial
 import http.client
 from io import BytesIO
-from itertools import chain
 import json
 from operator import itemgetter
 import os
@@ -75,10 +74,7 @@ from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import get_one, is_retryable_failure
 from metadataserver import logger
-from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
-    HARDWARE_TYPE,
-    SCRIPT_PARALLEL,
     SCRIPT_STATUS,
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
@@ -1032,11 +1028,7 @@ class CommissioningScriptsHandler(MetadataViewHandler):
     This endpoint is deprecated in favor of MAASScriptsHandler below.
     """
 
-    def _iter_builtin_scripts(self):
-        for script in NODE_INFO_SCRIPTS.values():
-            yield script["name"], script["content"]
-
-    def _iter_user_scripts(self):
+    def _iter_scripts(self):
         for script in Script.objects.filter(
             script_type=SCRIPT_TYPE.COMMISSIONING
         ):
@@ -1047,9 +1039,6 @@ class CommissioningScriptsHandler(MetadataViewHandler):
                 # If it isn't encode the text as binary data.
                 content = script.script.data.encode()
             yield script.name, content
-
-    def _iter_scripts(self):
-        return chain(self._iter_builtin_scripts(), self._iter_user_scripts())
 
     def _get_archive(self):
         """Produce a tar archive of all commissionig scripts.
@@ -1084,33 +1073,10 @@ class MAASScriptsHandler(OperationsHandler):
             path = os.path.join(prefix, script_result.name)
             md_item = {}
             if script_result.script is None:
-                # Check if its a builtin in commissioning script and pull the
-                # data from the source.
-                if script_result.name in NODE_INFO_SCRIPTS:
-                    script = NODE_INFO_SCRIPTS[script_result.name]
-                    add_file_to_tar(tar, path, script["content"], mtime)
-                    md_item = {
-                        "name": script_result.name,
-                        "path": path,
-                        "script_result_id": script_result.id,
-                        "timeout_seconds": script["timeout"].seconds,
-                        "parallel": script.get(
-                            "parallel", SCRIPT_PARALLEL.DISABLED
-                        ),
-                        "hardware_type": script.get(
-                            "hardware_type", HARDWARE_TYPE.NODE
-                        ),
-                        "packages": script.get("packages", {}),
-                        "for_hardware": script.get("for_hardware", []),
-                        "apply_configured_networking": script.get(
-                            "apply_configured_networking", False
-                        ),
-                    }
-                else:
-                    # Script was deleted by the user and it is not a builtin
-                    # commissioning script. Don't expect a result.
-                    script_result.delete()
-                    continue
+                # Script was deleted by the user and it is not a builtin
+                # commissioning script. Don't expect a result.
+                script_result.delete()
+                continue
             else:
                 content = script_result.script.script.data.encode()
                 add_file_to_tar(tar, path, content, mtime)

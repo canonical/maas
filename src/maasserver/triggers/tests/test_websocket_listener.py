@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Use the `PostgresListenerService` to test all of the triggers from for
@@ -47,6 +47,7 @@ from maasserver.triggers.websocket import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -1433,6 +1434,7 @@ class TestScriptSetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
@@ -1450,6 +1452,7 @@ class TestScriptSetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         result = yield deferToDatabase(self.create_scriptset, node)
@@ -1475,6 +1478,7 @@ class TestDeviceWithParentScriptSetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
@@ -1492,6 +1496,7 @@ class TestDeviceWithParentScriptSetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         result = yield deferToDatabase(self.create_scriptset, device)
@@ -1552,6 +1557,7 @@ class TestNDScriptResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1570,6 +1576,7 @@ class TestNDScriptResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1593,6 +1600,7 @@ class TestNDScriptResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1622,6 +1630,7 @@ class TestScriptResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1642,6 +1651,7 @@ class TestScriptResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -1665,6 +1675,7 @@ class TestScriptResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
@@ -5076,6 +5087,7 @@ class TestScriptListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5091,6 +5103,7 @@ class TestScriptListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5112,6 +5125,7 @@ class TestScriptListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
+        yield deferToDatabase(load_builtin_scripts)
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()

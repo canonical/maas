@@ -5,7 +5,6 @@
 
 import copy
 import os
-import stat
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
 
@@ -87,7 +86,6 @@ def runscripts(scripts, url, creds, tmpdir):
     out_dir = os.path.join(tmpdir, "out")
     os.makedirs(out_dir)
     for script_name in sorted(scripts.keys()):
-        builtin_script = scripts[script_name]
         signal_wrapper(
             url,
             creds,
@@ -111,12 +109,7 @@ def runscripts(scripts, url, creds, tmpdir):
                     get_architecture().split("/")[0],
                 )
         else:
-            # Write script to /tmp and set it executable
-            script_path = os.path.join(tmpdir, script_name)
-            with open(script_path, "wb") as f:
-                f.write(builtin_script["content"])
-            st = os.stat(script_path)
-            os.chmod(script_path, st.st_mode | stat.S_IEXEC)
+            script_path = os.path.join(os.path.dirname(__file__), script_name)
 
         combined_path = os.path.join(out_dir, script_name)
         stdout_name = "%s.out" % script_name
@@ -132,18 +125,14 @@ def runscripts(scripts, url, creds, tmpdir):
         env["OUTPUT_STDERR_PATH"] = stderr_path
         env["RESULT_PATH"] = result_path
 
-        timeout = builtin_script.get("timeout")
-        if timeout is None:
-            timeout_seconds = None
-        else:
-            timeout_seconds = timeout.seconds
+        timeout = 60
 
         try:
             proc = Popen(
                 script_path, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env
             )
             capture_script_output(
-                proc, combined_path, stdout_path, stderr_path, timeout_seconds
+                proc, combined_path, stdout_path, stderr_path, timeout
             )
         except OSError as e:
             if isinstance(e.errno, int) and e.errno != 0:

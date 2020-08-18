@@ -121,6 +121,7 @@ from maasserver.worker_user import get_worker_user
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     HARDWARE_TYPE_CHOICES,
     RESULT_TYPE,
@@ -571,6 +572,9 @@ class Factory(maastesting.factory.Factory):
         OwnerData.objects.set_owner_data(node, owner_data)
 
         if with_empty_script_sets:
+            # Make sure base scripts are loaded into the database.
+            load_builtin_scripts()
+
             commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
                 node
             )

@@ -82,6 +82,7 @@ from metadataserver.api import (
     process_file,
     UnknownMetadataVersion,
 )
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     HARDWARE_TYPE,
     RESULT_TYPE,
@@ -2027,6 +2028,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.useFixture(SignalsDisabled("power"))
 
     def test_commissioning_scripts(self):
+        load_builtin_scripts()
         start_time = floor(time.time())
         # Create custom commissioing scripts
         binary_script = factory.make_Script(
@@ -2063,15 +2065,12 @@ class TestCommissioningAPI(MAASServerTestCase):
         end_time = ceil(time.time())
 
         # Validate all builtin scripts are included
-        for script in NODE_INFO_SCRIPTS.values():
-            path = os.path.join("commissioning.d", script["name"])
+        for script_name in NODE_INFO_SCRIPTS.keys():
+            path = os.path.join("commissioning.d", script_name)
             member = archive.getmember(path)
             self.assertGreaterEqual(member.mtime, start_time)
             self.assertLessEqual(member.mtime, end_time)
             self.assertEqual(0o755, member.mode)
-            self.assertEqual(
-                script["content"], archive.extractfile(path).read()
-            )
 
         # Validate custom binary commissioning script
         path = os.path.join("commissioning.d", binary_script.name)
@@ -3107,6 +3106,7 @@ class TestNewAPI(MAASServerTestCase):
         self.useFixture(SignalsDisabled("power"))
 
     def test_signal_commissioning(self):
+        load_builtin_scripts()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         # When creating a new ScriptSet for commissioning during enlistment
         # only the builtin commissioning scripts should be added.
@@ -3129,6 +3129,7 @@ class TestNewAPI(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
     def test_signal_commissioning_only_creates_scriptsets_when_needed(self):
+        load_builtin_scripts()
         # This happens when commissioning is started by the user with correct
         # power parameters but an invalid or missing boot MAC.
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)

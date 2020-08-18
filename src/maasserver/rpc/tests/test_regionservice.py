@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the region's RPC implementation."""
@@ -69,6 +69,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
+from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import cluster, exceptions
 from provisioningserver.rpc.exceptions import (
@@ -86,6 +87,10 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestRegionServer(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
+
     def test_interfaces(self):
         protocol = RegionServer()
         # transport.getHandle() is used by AMP._getPeerCertificate, which we

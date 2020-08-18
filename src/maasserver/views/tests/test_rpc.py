@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver RPC views."""
@@ -27,6 +27,7 @@ from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils.testing import MAASIDFixture
 
 is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
@@ -48,6 +49,7 @@ class RPCViewTest(MAASTransactionServerTestCase):
 
         self.get_maas_id = self.patch(regionservice, "get_maas_id")
         self.get_maas_id.side_effect = get_maas_id
+        load_builtin_scripts()
 
     def test_rpc_info_empty(self):
         response = self.client.get(reverse("rpc-info"))

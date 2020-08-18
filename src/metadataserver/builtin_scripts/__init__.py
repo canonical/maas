@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin scripts commited to Script model."""
@@ -15,6 +15,19 @@ from zope.interface.verify import verifyObject
 
 from maasserver.forms.script import ScriptForm
 from metadataserver.models import Script
+from provisioningserver.refresh.node_info_scripts import (
+    DHCP_EXPLORE_OUTPUT_NAME,
+    GET_FRUID_DATA_OUTPUT_NAME,
+    IPADDR_OUTPUT_NAME,
+    KERNEL_CMDLINE_OUTPUT_NAME,
+    LIST_MODALIASES_OUTPUT_NAME,
+    LLDP_INSTALL_OUTPUT_NAME,
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+    LXD_OUTPUT_NAME,
+    SERIAL_PORTS_OUTPUT_NAME,
+    SUPPORT_INFO_OUTPUT_NAME,
+)
 from provisioningserver.utils.version import get_maas_version
 
 
@@ -35,16 +48,57 @@ class BuiltinScript:
     substitutes = attr.ib(default={}, validator=optional(instance_of(dict)))
     inject_file = attr.ib(default=None, validator=optional(instance_of(str)))
 
+    def _find_file(self, filename):
+        base_path = os.path.dirname(__file__)
+        for search_path in {
+            os.path.join(base_path, "commissioning_scripts"),
+            os.path.join(base_path, "testing_scripts"),
+            # Controllers run a subset of commissioning scripts but don't
+            # have the ability to download commissioning scripts from the
+            # metadata server. Since rack controllers can be installed
+            # without a region controller these scripts must be stored
+            # in the rack's source tree.
+            os.path.join(base_path, "../../provisioningserver/refresh"),
+        }:
+            path = os.path.realpath(os.path.join(search_path, filename))
+            if os.path.exists(path):
+                return path
+        # This should never happen and will be caught by multiple unit tests.
+        raise FileNotFoundError(filename)
+
     @property
     def script_path(self):
-        return os.path.join(os.path.dirname(__file__), self.filename)
+        return self._find_file(self.filename)
 
     @property
     def inject_path(self):
-        return os.path.join(os.path.dirname(__file__), self.inject_file)
+        return self._find_file(self.inject_file)
 
 
 BUILTIN_SCRIPTS = [
+    # Commissioning scripts
+    BuiltinScript(name=LLDP_INSTALL_OUTPUT_NAME, filename="install_lldpd.py"),
+    BuiltinScript(
+        name=DHCP_EXPLORE_OUTPUT_NAME, filename="dhcp_unconfigured_ifaces.py"
+    ),
+    BuiltinScript(
+        name=IPADDR_OUTPUT_NAME, filename="40-maas-01-network-interfaces"
+    ),
+    BuiltinScript(name=LXD_OUTPUT_NAME, filename="50-maas-01-commissioning"),
+    BuiltinScript(name=SUPPORT_INFO_OUTPUT_NAME, filename="maas-support-info"),
+    BuiltinScript(name=LSHW_OUTPUT_NAME, filename="maas-lshw"),
+    BuiltinScript(
+        name=LIST_MODALIASES_OUTPUT_NAME, filename="maas-list-modaliases"
+    ),
+    BuiltinScript(
+        name=GET_FRUID_DATA_OUTPUT_NAME, filename="maas-get-fruid-api-data"
+    ),
+    BuiltinScript(
+        name=KERNEL_CMDLINE_OUTPUT_NAME, filename="maas-kernel-cmdline"
+    ),
+    BuiltinScript(name=SERIAL_PORTS_OUTPUT_NAME, filename="maas-serial-ports"),
+    BuiltinScript(name=LLDP_OUTPUT_NAME, filename="capture_lldpd.py"),
+    # Testing scripts
     BuiltinScript(
         name="smartctl-validate",
         filename="smartctl.py",

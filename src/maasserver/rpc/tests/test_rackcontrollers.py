@@ -40,6 +40,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
+from metadataserver.builtin_scripts import load_builtin_scripts
 
 
 class TestHandleUpgrade(MAASServerTestCase):
@@ -251,6 +252,7 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual(node_count + 1, len(Node.objects.all()))
 
     def test_always_has_current_commissioning_script_set(self):
+        load_builtin_scripts()
         hostname = factory.make_name("hostname")
         register(hostname=hostname)
         rack = RackController.objects.get(hostname=hostname)
@@ -362,6 +364,7 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual([True], lock_status)
 
     def test_sets_url(self):
+        load_builtin_scripts()
         rack_controller = factory.make_RackController()
         interfaces = {
             factory.make_name("eth0"): {

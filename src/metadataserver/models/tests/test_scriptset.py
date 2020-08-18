@@ -18,13 +18,14 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models import ScriptResult, ScriptSet
+from metadataserver.models import Script, ScriptResult, ScriptSet
 from metadataserver.models import scriptset as scriptset_module
 from metadataserver.models.scriptset import translate_result_type
 from provisioningserver.events import EVENT_TYPES
@@ -41,6 +42,10 @@ def make_SystemNodeMetadata(node):
 
 class TestTranslateResultType(MAASServerTestCase):
     """Test translate_result_type."""
+
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
 
     scenarios = [
         (
@@ -137,6 +142,10 @@ class TestTranslateResultType(MAASServerTestCase):
 
 class TestScriptSetManager(MAASServerTestCase):
     """Test the ScriptSet manager."""
+
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
 
     def test_create_commissioning_script_set(self):
         custom_scripts = [
@@ -591,6 +600,11 @@ class TestScriptSetManager(MAASServerTestCase):
     def test_create_testing_script_set(self):
         node = factory.make_Node()
         expected_scripts = [
+            script.name
+            for script in Script.objects.filter(
+                tags__contains=["commissioning"]
+            )
+        ] + [
             factory.make_Script(
                 script_type=SCRIPT_TYPE.TESTING, tags=["commissioning"]
             ).name
@@ -649,6 +663,7 @@ class TestScriptSetManager(MAASServerTestCase):
 
     def test_create_testing_script_raises_exception_when_none_found(self):
         node = factory.make_Node()
+        Script.objects.all().delete()
         self.assertRaises(
             NoScriptsFound, ScriptSet.objects.create_testing_script_set, node
         )
@@ -962,6 +977,10 @@ class TestScriptSetManager(MAASServerTestCase):
 
 class TestScriptSet(MAASServerTestCase):
     """Test the ScriptSet model."""
+
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
 
     def test_find_script_result_by_id(self):
         script_set = factory.make_ScriptSet()

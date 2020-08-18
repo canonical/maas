@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node actions."""
@@ -71,6 +71,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
 from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS, SCRIPT_TYPE
 from metadataserver.models import ScriptSet
 from provisioningserver.events import AUDIT
@@ -315,6 +316,10 @@ class TestCommissionAction(MAASServerTestCase):
         ("FAILED_COMMISSIONING", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
         ("READY", {"status": NODE_STATUS.READY}),
     )
+
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
 
     def test_Commission_starts_commissioning_if_already_on(self):
         node = factory.make_Node(

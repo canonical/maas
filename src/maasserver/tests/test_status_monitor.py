@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the status monitor module."""
@@ -36,9 +36,9 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
-from metadataserver.models import ScriptSet
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from metadataserver.models import Script, ScriptSet
 
 
 class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
@@ -271,6 +271,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         )
 
     def test_mark_nodes_failed_after_builtin_commiss_script_overrun(self):
+        load_builtin_scripts()
         user = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING, owner=user)
         script_set = ScriptSet.objects.create_commissioning_script_set(node)
@@ -295,26 +296,18 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         node = reload_object(node)
 
         self.assertEquals(NODE_STATUS.FAILED_COMMISSIONING, node.status)
+        timeout = str(
+            Script.objects.get(name=running_script_result.name).timeout
+        )
         self.assertEquals(
             "%s has run past it's timeout(%s)"
-            % (
-                running_script_result.name,
-                str(NODE_INFO_SCRIPTS[running_script_result.name]["timeout"]),
-            ),
+            % (running_script_result.name, timeout),
             node.error_description,
         )
         self.assertIn(
             call(
                 "%s: %s has run past it's timeout(%s)"
-                % (
-                    node.hostname,
-                    running_script_result.name,
-                    str(
-                        NODE_INFO_SCRIPTS[running_script_result.name][
-                            "timeout"
-                        ]
-                    ),
-                )
+                % (node.hostname, running_script_result.name, timeout)
             ),
             self.maaslog.call_args_list,
         )
@@ -430,6 +423,10 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
 
 
 class TestStatusMonitorService(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
+
     def test_init_with_default_interval(self):
         # The service itself calls `check_status` in a thread, via a couple of
         # decorators. This indirection makes it clearer to mock

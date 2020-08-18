@@ -22,7 +22,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from metadataserver.builtin_scripts import fio
+from metadataserver.builtin_scripts.testing_scripts import fio
 
 FIO_OLD_READ_OUTPUT = dedent(
     """

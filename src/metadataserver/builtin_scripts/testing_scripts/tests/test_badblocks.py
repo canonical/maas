@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test badblocks functions."""
@@ -18,7 +18,7 @@ import yaml
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from metadataserver.builtin_scripts import badblocks
+from metadataserver.builtin_scripts.testing_scripts import badblocks
 
 BADBLOCKS = random.randint(0, 1000)
 READ_ERRORS = random.randint(0, 1000)
@@ -60,7 +60,7 @@ class TestRunBadBlocks(MAASTestCase):
         # to throttle the amount of blocks tested at once. Simulate that by
         # reading test system memory values and giving a large block size.
         self.mock_check_output.return_value = b"1\n" * 1000
-        self.assertGreater(50000, badblocks.get_parallel_blocks(1000))
+        self.assertGreaterEqual(50000, badblocks.get_parallel_blocks(1000))
 
     def test_run_badblocks_nondestructive_and_writes_results_file(self):
         storage = factory.make_name("storage")

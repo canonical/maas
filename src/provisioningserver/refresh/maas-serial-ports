@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+# maas-serial-ports - Discover all serial ports
+#
+# Copyright (C) 2012-2020 Canonical
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: maas-serial-ports
+# title: Discover all serial ports
+# description: Discover all serial ports
+# script_type: commissioning
+# parallel: any
+# timeout: 10
+# --- End MAAS 1.0 script metadata ---
+
+find /sys/class/tty/ ! -type d -print0 2> /dev/null \
+    | xargs -0 readlink -f \
+    | sort -u
+# Do not fail commissioning if this fails.
+exit 0

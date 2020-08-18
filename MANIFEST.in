@@ -4,5 +4,8 @@ graft src/metadataserver/fixtures
 graft src/metadataserver/user_data/templates
 graft src/provisioningserver/templates
 include src/provisioningserver/drivers/power/*.xml
-include src/provisioningserver/commissioning-scripts/*
-include src/metadataserver/builtin_scripts/*.sh
+include src/provisioningserver/refresh/*maas-*
+include src/metadataserver/builtin_scripts/*/*.py
+include src/metadataserver/builtin_scripts/*/*.sh
+include src/metadataserver/builtin_scripts/*/*maas*
+

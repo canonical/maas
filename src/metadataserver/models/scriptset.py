@@ -111,36 +111,30 @@ class ScriptSetManager(Manager):
         ScriptResults for. If None all user scripts will be assumed. Scripts
         may also have paramaters passed to them.
         """
-        # Avoid circular dependencies.
-        from metadataserver.models import ScriptResult
-
-        if scripts is None:
-            scripts = []
+        if node.is_controller:
+            # Controllers can only run the builtin scripts for them.
+            scripts = [
+                script["name"]
+                for script in NODE_INFO_SCRIPTS.values()
+                if script["run_on_controller"]
+            ]
+        elif not scripts:
+            # No user selected scripts, select all scripts below.
+            pass
+        elif "none" in scripts:
+            # Don't add any scripts besides the ones that come with MAAS.
+            scripts = list(NODE_INFO_SCRIPTS.keys())
         else:
-            scripts = [str(i) for i in scripts]
+            scripts = list(NODE_INFO_SCRIPTS.keys()) + scripts
 
         script_set = self.create(
             node=node,
             result_type=RESULT_TYPE.COMMISSIONING,
             power_state_before_transition=node.power_state,
-            requested_scripts=scripts,
+            requested_scripts=scripts if scripts else [],
         )
 
-        # Add all builtin commissioning scripts.
-        for script_name, data in NODE_INFO_SCRIPTS.items():
-            if node.is_controller and not data["run_on_controller"]:
-                continue
-            ScriptResult.objects.create(
-                script_set=script_set,
-                status=SCRIPT_STATUS.PENDING,
-                script_name=script_name,
-            )
-
-        if node.is_controller:
-            # MAAS doesn't run custom commissioning scripts during controller
-            # refresh.
-            return script_set
-        elif not scripts:
+        if not scripts:
             # If the user hasn't selected any commissioning Scripts select
             # all by default excluding for_hardware scripts.
             qs = Script.objects.filter(
@@ -148,10 +142,6 @@ class ScriptSetManager(Manager):
             ).exclude(tags__contains=["noauto"])
             for script in qs:
                 script_set.add_pending_script(script, script_input)
-        elif "none" in scripts:
-            # Don't add any scripts besides the ones that come with MAAS but
-            # do perform cleanup below.
-            pass
         else:
             self._add_user_selected_scripts(script_set, scripts, script_input)
 

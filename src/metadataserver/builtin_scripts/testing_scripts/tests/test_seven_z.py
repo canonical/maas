@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test builtin_script 7z."""
@@ -18,7 +18,7 @@ import yaml
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from metadataserver.builtin_scripts import seven_z
+from metadataserver.builtin_scripts.testing_scripts import seven_z
 
 SEVEN_Z_OUTPUT = dedent(
     """

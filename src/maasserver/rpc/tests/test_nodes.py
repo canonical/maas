@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test for RPC utility functions for Nodes."""
@@ -50,6 +50,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.twisted import always_succeed_with
+from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
@@ -272,6 +273,7 @@ class TestCommissionNode(MAASTransactionServerTestCase):
         )
 
     def test_commissions_node(self):
+        load_builtin_scripts()
         self.prepare_rack_rpc()
 
         user = factory.make_User()

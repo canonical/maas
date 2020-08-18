@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# maas-get-fruid-api-data - Return discovered fruid API data
+#
+# Copyright (C) 2012-2020 Canonical
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: maas-get-fruid-api-data
+# title: Return discovered fruid API data
+# description: Return discovered fruid API data
+# script_type: commissioning
+# parallel: any
+# timeout: 60
+# --- End MAAS 1.0 script metadata ---
+
+while read -r ifname; do
+    if [ "$ifname" != "lo" ]; then
+        curl --max-time 1 -s -f \
+            "http://fe80::1%$ifname:8080/api/sys/mb/fruid"
+    fi
+done < <(ls /sys/class/net)
+# Do not fail commissioning if this fails.
+exit 0

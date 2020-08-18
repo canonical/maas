@@ -172,6 +172,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -3229,6 +3230,7 @@ class TestNode(MAASServerTestCase):
         )
 
     def test_start_commissioning_adds_commissioning_script_set(self):
+        load_builtin_scripts()
         # Test for when there are no testing scripts
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, "_start")
@@ -3240,9 +3242,10 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
 
         self.assertIsNotNone(node.current_commissioning_script_set)
-        self.assertIsNone(node.current_testing_script_set)
+        self.assertIsNotNone(node.current_testing_script_set)
 
     def test_start_commissioning_adds_default_script_sets(self):
+        load_builtin_scripts()
         # Test for when there are testing scripts
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=["commissioning"]
@@ -3260,6 +3263,7 @@ class TestNode(MAASServerTestCase):
         self.assertIsNotNone(node.current_testing_script_set)
 
     def test_start_commissioning_adds_selected_scripts(self):
+        load_builtin_scripts()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, "_start")
         node_start.side_effect = lambda *args, **kwargs: post_commit()

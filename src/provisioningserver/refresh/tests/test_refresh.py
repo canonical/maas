@@ -6,10 +6,10 @@
 __all__ = []
 
 from collections import OrderedDict
-from datetime import timedelta
 import os
 from pathlib import Path
 import random
+import stat
 import sys
 import tempfile
 from textwrap import dedent
@@ -56,13 +56,13 @@ class TestRefresh(MAASTestCase):
         # debug. Quiet the output when running in tests.
         self.patch(sys, "stdout")
 
-    def patch_scripts_success(
-        self, script_name=None, timeout=None, script_content=None
-    ):
+    def _cleanup(self, path):
+        if os.path.exists(path):
+            os.remove(path)
+
+    def patch_scripts_success(self, script_name=None, script_content=None):
         if script_name is None:
             script_name = factory.make_name("script_name")
-        if timeout is None:
-            timeout = timedelta(seconds=random.randint(1, 500))
         if script_content is None:
             script_content = dedent(
                 """\
@@ -70,25 +70,22 @@ class TestRefresh(MAASTestCase):
                 echo 'test script'
                 """
             )
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", script_name
+        )
+        with open(script_path, "w") as f:
+            f.write(script_content)
+        st = os.stat(script_path)
+        os.chmod(script_path, st.st_mode | stat.S_IEXEC)
+        self.addCleanup(self._cleanup, script_path)
+
         refresh.NODE_INFO_SCRIPTS = OrderedDict(
-            [
-                (
-                    script_name,
-                    {
-                        "content": script_content.encode("ascii"),
-                        "name": script_name,
-                        "run_on_controller": True,
-                        "timeout": timeout,
-                    },
-                )
-            ]
+            [(script_name, {"name": script_name, "run_on_controller": True})]
         )
 
-    def patch_scripts_failure(self, script_name=None, timeout=None):
+    def patch_scripts_failure(self, script_name=None):
         if script_name is None:
             script_name = factory.make_name("script_name")
-        if timeout is None:
-            timeout = timedelta(seconds=random.randint(1, 500))
         TEST_SCRIPT = dedent(
             """\
             #!/bin/bash
@@ -96,18 +93,17 @@ class TestRefresh(MAASTestCase):
             exit 1
             """
         )
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", script_name
+        )
+        with open(script_path, "w") as f:
+            f.write(TEST_SCRIPT)
+        st = os.stat(script_path)
+        os.chmod(script_path, st.st_mode | stat.S_IEXEC)
+        self.addCleanup(self._cleanup, script_path)
+
         refresh.NODE_INFO_SCRIPTS = OrderedDict(
-            [
-                (
-                    script_name,
-                    {
-                        "content": TEST_SCRIPT.encode("ascii"),
-                        "name": script_name,
-                        "run_on_controller": True,
-                        "timeout": timeout,
-                    },
-                )
-            ]
+            [(script_name, {"name": script_name, "run_on_controller": True})]
         )
 
     def test_refresh_accepts_defined_url(self):
@@ -335,12 +331,11 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_failure_on_timeout(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        timeout = timedelta(seconds=random.randint(1, 500))
-        self.patch_scripts_failure(script_name, timeout)
+        self.patch_scripts_failure(script_name)
         self.patch(refresh.maas_api_helper.time, "monotonic").side_effect = (
             0,
-            timeout.seconds + (60 * 6),
-            timeout.seconds + (60 * 6),
+            60 * 6,
+            60 * 6,
         )
 
         system_id = factory.make_name("system_id")
@@ -366,8 +361,7 @@ class TestRefresh(MAASTestCase):
                     "%s.out" % script_name: b"test failed\n",
                     "%s.err" % script_name: b"",
                 },
-                error="Timeout(%s) expired on %s [1/1]"
-                % (str(timeout), script_name),
+                error="Timeout(60) expired on %s [1/1]" % script_name,
             ),
         )
 

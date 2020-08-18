@@ -75,6 +75,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import NodeKey, NodeUserData
 from metadataserver.nodeinituser import get_node_init_user
@@ -1574,6 +1575,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
 
     def test_POST_commission_commissions_machine_with_options(self):
+        load_builtin_scripts()
         self.patch(node_module.Node, "_start").return_value = defer.succeed(
             None
         )

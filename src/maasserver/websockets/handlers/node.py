@@ -958,6 +958,7 @@ class NodeHandler(TimestampedModelHandler):
                 "stdout",
                 "script__id",
                 "script_set__node",
+                "script__name",
             )
             .order_by("script_name", "-updated")
             .distinct("script_name")
