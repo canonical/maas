@@ -23,7 +23,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
@@ -94,7 +94,6 @@ class TestInnerStartUp(MAASServerTestCase):
         super().setUp()
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
-        self.patch_autospec(start_up, "load_builtin_scripts")
         self.patch_autospec(start_up, "post_commit_do")
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
@@ -111,11 +110,13 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
 
     def test_calls_load_builtin_scripts_if_master(self):
+        self.patch_autospec(start_up, "load_builtin_scripts")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         self.assertThat(start_up.load_builtin_scripts, MockCalledOnceWith())
 
     def test_does_not_call_load_builtin_scripts_if_not_master(self):
+        self.patch_autospec(start_up, "load_builtin_scripts")
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.load_builtin_scripts, MockNotCalled())
@@ -166,6 +167,9 @@ class TestInnerStartUp(MAASServerTestCase):
                 ),
             ),
         )
+        region = reload_object(region)
+        self.assertIsNotNone(region)
+        self.assertIsNotNone(region.current_commissioning_script_set)
 
     def test_does_not_call_if_not_master(self):
         with post_commit_hooks:

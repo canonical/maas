@@ -101,6 +101,14 @@ def inner_start_up(master=False):
     # Register our MAC data type with psycopg.
     register_mac_type(connection.cursor())
 
+    # All commissioning and testing scripts are stored in the database. For
+    # a commissioning ScriptSet to be created Scripts must exist first. Call
+    # this early, only on the master process, to ensure they exist and are
+    # only created once. If get_or_create_running_controller() is called before
+    # this it will fail on first run.
+    if master:
+        load_builtin_scripts()
+
     # Ensure the this region is represented in the database. The first regiond
     # to pass through inner_start_up on this host can do this; it should NOT
     # be restricted to masters only. This also ensures that the MAAS ID is set
@@ -115,9 +123,6 @@ def inner_start_up(master=False):
     if master:
         # Freshen the kms SRV records.
         dns_kms_setting_changed()
-
-        # Add or update all builtin scripts
-        load_builtin_scripts()
 
         # Make sure the commissioning distro series is still a supported LTS.
         commissioning_distro_series = Config.objects.get_config(
