@@ -586,11 +586,15 @@ print-%:
 #
 
 snap-clean:
-	$(snapcraft) clean --use-lxd
+# build locally instead of --use-lxd until support for additional repositories
+# is enabled by default in snapcraft
+	$(snapcraft) clean --destructive-mode
 .PHONY: snap-clean
 
 snap:
-	$(snapcraft) --use-lxd
+# build locally instead of --use-lxd until support for additional repositories
+# is enabled by default in snapcraft
+	$(snapcraft) --destructive-mode
 .PHONY: snap
 
 #
