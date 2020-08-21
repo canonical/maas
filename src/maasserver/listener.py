@@ -6,8 +6,8 @@
 __all__ = ["PostgresListenerNotifyError", "PostgresListenerService"]
 
 from collections import defaultdict
-from contextlib import closing
 from errno import ENOENT
+import threading
 
 from django.db import connections
 from django.db.utils import load_backend
@@ -94,6 +94,9 @@ class PostgresListenerService(Service, object):
         self.channelRegistrarDone = None
         self.log = Logger(__name__, self)
         self.events = EventGroup("connected", "disconnected")
+        # the connection object isn't threadsafe, so we need to lock in order
+        # to use it in different threads
+        self._db_lock = threading.RLock()
 
     def startService(self):
         """Start the listener."""
@@ -129,57 +132,25 @@ class PostgresListenerService(Service, object):
 
     def doRead(self):
         """Poll the connection and process any notifications."""
-        try:
-            self.connection.connection.poll()
-        except Exception:
-            # If the connection goes down then `OperationalError` is raised.
-            # It contains no pgcode or pgerror to identify the reason so no
-            # special consideration can be made for it. Hence all errors are
-            # treated the same, and we assume that the connection is broken.
-            #
-            # We do NOT return a failure, which would signal to the reactor
-            # that the connection is broken in some way, because the reactor
-            # will end up removing this instance from its list of selectables
-            # but not from its list of readable fds, or something like that.
-            # The point is that the reactor's accounting gets muddled. Things
-            # work correctly if we manage the disconnection ourselves.
-            #
-            self.loseConnection(Failure(error.ConnectionLost()))
-        else:
-            # Add each notify to to the notifications set. This removes
-            # duplicate notifications when one entity in the database is
-            # updated multiple times in a short interval. Accumulating
-            # notifications and allowing the listener to pick them up in
-            # batches is imperfect but good enough, and simple.
-            notifies = self.connection.connection.notifies
-            if len(notifies) != 0:
-                for notify in notifies:
-                    if self.isSystemChannel(notify.channel):
-                        # System level message; pass it to the registered
-                        # handler immediately.
-                        if notify.channel in self.listeners:
-                            # Be defensive in that if a handler does not exist
-                            # for this channel then the channel should be
-                            # unregisted and removed from listeners.
-                            if len(self.listeners[notify.channel]) > 0:
-                                handler = self.listeners[notify.channel][0]
-                                handler(notify.channel, notify.payload)
-                            else:
-                                self.unregisterChannel(notify.channel)
-                                del self.listeners[notify.channel]
-                        else:
-                            # Unregister the channel since no listener is
-                            # registered for this channel.
-                            self.unregisterChannel(notify.channel)
-                    else:
-                        # Place non-system messages into the queue to be
-                        # processed.
-                        self.notifications.add(
-                            (notify.channel, notify.payload)
-                        )
-                # Delete the contents of the connection's notifies list so
-                # that we don't process them a second time.
-                del notifies[:]
+        with self._db_lock:
+            try:
+                self.connection.connection.poll()
+            except Exception:
+                # If the connection goes down then `OperationalError` is raised.
+                # It contains no pgcode or pgerror to identify the reason so no
+                # special consideration can be made for it. Hence all errors are
+                # treated the same, and we assume that the connection is broken.
+                #
+                # We do NOT return a failure, which would signal to the reactor
+                # that the connection is broken in some way, because the reactor
+                # will end up removing this instance from its list of selectables
+                # but not from its list of readable fds, or something like that.
+                # The point is that the reactor's accounting gets muddled. Things
+                # work correctly if we manage the disconnection ourselves.
+                #
+                self.loseConnection(Failure(error.ConnectionLost()))
+            else:
+                self._process_notifies()
 
     def fileno(self):
         """Return the fileno of the connection."""
@@ -357,7 +328,7 @@ class PostgresListenerService(Service, object):
 
     def registerChannel(self, channel):
         """Register the channel."""
-        with closing(self.connection.cursor()) as cursor:
+        with self._db_lock, self.connection.cursor() as cursor:
             if self.isSystemChannel(channel):
                 # This is a system channel so listen only called once.
                 cursor.execute("LISTEN %s;" % channel)
@@ -368,7 +339,7 @@ class PostgresListenerService(Service, object):
 
     def unregisterChannel(self, channel):
         """Unregister the channel."""
-        with closing(self.connection.cursor()) as cursor:
+        with self._db_lock, self.connection.cursor() as cursor:
             if self.isSystemChannel(channel):
                 # This is a system channel so unlisten only called once.
                 cursor.execute("UNLISTEN %s;" % channel)
@@ -496,3 +467,39 @@ class PostgresListenerService(Service, object):
                 )
                 defers.append(d)
             return defer.DeferredList(defers)
+
+    def _process_notifies(self):
+        """Add each notify to to the notifications set.
+
+        This removes duplicate notifications when one entity in the database is
+        updated multiple times in a short interval. Accumulating notifications
+        and allowing the listener to pick them up in batches is imperfect but
+        good enough, and simple.
+
+        """
+        notifies = self.connection.connection.notifies
+        for notify in notifies:
+            if self.isSystemChannel(notify.channel):
+                # System level message; pass it to the registered
+                # handler immediately.
+                if notify.channel in self.listeners:
+                    # Be defensive in that if a handler does not exist
+                    # for this channel then the channel should be
+                    # unregisted and removed from listeners.
+                    if len(self.listeners[notify.channel]) > 0:
+                        handler = self.listeners[notify.channel][0]
+                        handler(notify.channel, notify.payload)
+                    else:
+                        self.unregisterChannel(notify.channel)
+                        del self.listeners[notify.channel]
+                else:
+                    # Unregister the channel since no listener is
+                    # registered for this channel.
+                    self.unregisterChannel(notify.channel)
+            else:
+                # Place non-system messages into the queue to be
+                # processed.
+                self.notifications.add((notify.channel, notify.payload))
+        # Delete the contents of the connection's notifies list so
+        # that we don't process them a second time.
+        del notifies[:]

@@ -7,7 +7,6 @@ __all__ = []
 
 from collections import namedtuple
 import errno
-import time
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 from crochet import wait_for
@@ -61,41 +60,27 @@ FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
 
 
 class PostgresListenerServiceSpy(PostgresListenerService):
-    """Send notices off to `captured_notices` right after processing."""
+    """Save received notifies `captured_notifies` before processing them.."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Captured notifications from the database will go here.
-        self.captured_notices = DeferredQueue()
+        self._captured_notifies = DeferredQueue()
         # Change notifications to a frozenset. This makes sure that the system
         # message does not go into the queue. Instead it should call the
         # handler directly in `doRead`.
         self.notifications = frozenset()
 
-    def doRead(self):
-        # give a bit of time for notifications sent right before this code is
-        # called to be processed and queued by PostgreSQL.  This should prevent
-        # test flakyness because of lost notifications.
-        time.sleep(0.1)
-        try:
-            self.connection.connection.poll()
-        except Exception:
-            self.loseConnection(Failure(error.ConnectionLost()))
-        else:
-            # Copy the pending notices now but don't put them in the
-            # queue until after the real doRead has processed them.
-            notifies = list(self.connection.connection.notifies)
-            try:
-                return super().doRead()
-            finally:
-                for notice in notifies:
-                    self.captured_notices.put(notice)
+    def _process_notifies(self):
+        for notify in self.connection.connection.notifies:
+            self._captured_notifies.put(notify)
+        super()._process_notifies()
 
     @inlineCallbacks
     def wait_notification(self, channel):
         """Wait for a notification to be received."""
         while True:
-            notice = yield self.captured_notices.get()
+            notice = yield self._captured_notifies.get()
             if notice.channel == channel:
                 returnValue(notice)
 
@@ -106,6 +91,14 @@ class TestPostgresListenerService(MAASServerTestCase):
         cursor = connection.cursor()
         cursor.execute("NOTIFY %s, '%s';" % (event, obj_id))
         cursor.close()
+
+    def mock_cursor(self, listener):
+        listener.connection = MagicMock()
+        cursor_ctx = MagicMock()
+        listener.connection.cursor.return_value = cursor_ctx
+        cursor = MagicMock()
+        cursor_ctx.__enter__.return_value = cursor
+        return cursor
 
     def test_isSystemChannel_returns_true_for_channel_starting_with_sys(self):
         channel = factory.make_name("sys_", sep="")
@@ -619,9 +612,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     def test_registerChannel_calls_listen_once_for_system_channel(self):
         listener = PostgresListenerService()
-        listener.connection = MagicMock()
-        cursor = MagicMock()
-        listener.connection.cursor.return_value = cursor
+        cursor = self.mock_cursor(listener)
         channel = factory.make_name("sys", sep="_").lower()
         listener.registerChannel(channel)
         self.assertThat(
@@ -630,9 +621,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     def test_registerChannel_calls_listen_per_action_for_channel(self):
         listener = PostgresListenerService()
-        listener.connection = MagicMock()
-        cursor = MagicMock()
-        listener.connection.cursor.return_value = cursor
+        cursor = self.mock_cursor(listener)
         channel = factory.make_name("node", sep="_").lower()
         listener.registerChannel(channel)
         self.assertThat(
@@ -646,9 +635,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     def test_unregisterChannel_calls_unlisten_once_for_system_channel(self):
         listener = PostgresListenerService()
-        listener.connection = MagicMock()
-        cursor = MagicMock()
-        listener.connection.cursor.return_value = cursor
+        cursor = self.mock_cursor(listener)
         channel = factory.make_name("sys", sep="_").lower()
         listener.unregisterChannel(channel)
         self.assertThat(
@@ -657,9 +644,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     def test_unregisterChannel_calls_unlisten_per_action_for_channel(self):
         listener = PostgresListenerService()
-        listener.connection = MagicMock()
-        cursor = MagicMock()
-        listener.connection.cursor.return_value = cursor
+        cursor = self.mock_cursor(listener)
         channel = factory.make_name("node", sep="_").lower()
         listener.unregisterChannel(channel)
         self.assertThat(
