@@ -98,17 +98,16 @@ def dhcp_explore():
     # conflict-detection could take as long as 9 seconds, so we sleep 10.
     # See https://launchpad.net/bugs/1447715
     for iface in unconfigured_ifaces_4:
-        print(f"INFO: Running dhclient -4 on {iface}...")
+        print("INFO: Running dhclient -4 on %s..." % iface)
         call(["dhclient", "-nw", "-4", iface])
     for iface in unconfigured_ifaces_6:
-        iface_str = iface
-        print(f"INFO: Running dhclient -6 on {iface_str}...")
+        print("INFO: Running dhclient -6 on %s..." % iface)
         Popen(
             [
                 "sh",
                 "-c",
                 "for idx in $(seq 10); do"
-                " dhclient -6 %s && break || sleep 10; done" % iface_str,
+                " dhclient -6 %s && break || sleep 10; done" % iface,
             ]
         )
         # Ignore return value and continue running dhclient on the
