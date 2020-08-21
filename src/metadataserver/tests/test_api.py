@@ -21,6 +21,7 @@ from unittest.mock import ANY, Mock
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.urls import reverse
 from netaddr import IPNetwork
 from testtools.matchers import (
@@ -93,7 +94,7 @@ from metadataserver.enum import (
     SIGNAL_STATUS,
     SIGNAL_STATUS_CHOICES,
 )
-from metadataserver.models import NodeKey, NodeUserData, ScriptSet
+from metadataserver.models import NodeKey, NodeUserData, Script, ScriptSet
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -1372,6 +1373,10 @@ class TestInstallingAPI(MAASServerTestCase):
 
 
 class TestMAASScripts(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
+
     def extract_and_validate_file(
         self, tar, path, start_time, end_time, content, mode=0o755
     ):
@@ -1491,6 +1496,136 @@ class TestMAASScripts(MAASServerTestCase):
         else:
             self.assertNotIn(NETPLAN_TAR_PATH, tar.getnames())
         return meta_data
+
+    def test_anon_access_returns_commissioning_scripts(self):
+        # Simulate user uploaded commissioning script
+        factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        start_time = floor(time.time())
+        response = self.client.get(reverse("maas-scripts", args=["latest"]))
+        self.assertEqual(
+            http.client.OK,
+            response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content),
+        )
+        self.assertEqual("application/x-tar", response["Content-Type"])
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEqual(len(NODE_INFO_SCRIPTS) + 1, len(tar.getmembers()))
+        commissioning_meta_data = []
+        for script in (
+            Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING, default=True
+            )
+            .exclude(
+                # Network configuration is based on node configuration however
+                # the node doesn't exist yet. Once the node is created the
+                # client will rerequest the NodeScripts tar which may include
+                # scripts which test networking.
+                apply_configured_networking=True
+            )
+            .order_by("name")
+        ):
+            path = os.path.join("commissioning", script.name)
+            commissioning_meta_data.append(
+                {
+                    "name": script.name,
+                    "path": path,
+                    "timeout_seconds": script.timeout.seconds,
+                    "parallel": script.parallel,
+                    "hardware_type": script.hardware_type,
+                    "packages": script.packages,
+                    "for_hardware": script.for_hardware,
+                    "apply_configured_networking": script.apply_configured_networking,
+                }
+            )
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time, script.script.data.encode()
+            )
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+        self.assertEqual(
+            {
+                "1.0": {
+                    "commissioning_scripts": sorted(
+                        commissioning_meta_data, key=itemgetter("name")
+                    )
+                }
+            },
+            meta_data,
+        )
+
+    def test_anon_returns_no_content_when_disabled(self):
+        Config.objects.set_config("enlist_commissioning", False)
+        response = self.client.get(reverse("maas-scripts", args=["latest"]))
+        self.assertEqual(
+            http.client.NO_CONTENT,
+            response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content),
+        )
+
+    def test_anon_access_returns_custom_enlist_script(self):
+        enlistment_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["enlisting"]
+        )
+        start_time = floor(time.time())
+        response = self.client.get(reverse("maas-scripts", args=["latest"]))
+        self.assertEqual(
+            http.client.OK,
+            response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content),
+        )
+        self.assertEqual("application/x-tar", response["Content-Type"])
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 2 is for the index.json file and the custom enlistment script.
+        self.assertEqual(len(NODE_INFO_SCRIPTS) + 2, len(tar.getmembers()))
+        commissioning_meta_data = []
+        for script in (
+            Script.objects.filter(script_type=SCRIPT_TYPE.COMMISSIONING)
+            .filter(Q(default=True) | Q(name=enlistment_script.name))
+            .exclude(
+                # Network configuration is based on node configuration however
+                # the node doesn't exist yet. Once the node is created the
+                # client will rerequest the NodeScripts tar which may include
+                # scripts which test networking.
+                apply_configured_networking=True
+            )
+            .order_by("name")
+        ):
+            path = os.path.join("commissioning", script.name)
+            commissioning_meta_data.append(
+                {
+                    "name": script.name,
+                    "path": path,
+                    "timeout_seconds": script.timeout.seconds,
+                    "parallel": script.parallel,
+                    "hardware_type": script.hardware_type,
+                    "packages": script.packages,
+                    "for_hardware": script.for_hardware,
+                    "apply_configured_networking": script.apply_configured_networking,
+                }
+            )
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time, script.script.data.encode()
+            )
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+        self.assertEqual(
+            {
+                "1.0": {
+                    "commissioning_scripts": sorted(
+                        commissioning_meta_data, key=itemgetter("name")
+                    )
+                }
+            },
+            meta_data,
+        )
 
     def test_returns_all_scripts_when_commissioning(self):
         start_time = floor(time.time())

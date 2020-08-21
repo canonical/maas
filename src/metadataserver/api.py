@@ -28,6 +28,7 @@ import time
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import Int, String
@@ -35,7 +36,11 @@ from piston3.utils import rc
 import yaml
 
 from maasserver.api.nodes import store_node_power_parameters
-from maasserver.api.support import operation, OperationsHandler
+from maasserver.api.support import (
+    AnonymousOperationsHandler,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import (
     extract_oauth_key,
     get_mandatory_param,
@@ -1060,7 +1065,72 @@ class CommissioningScriptsHandler(MetadataViewHandler):
         )
 
 
+class AnonMAASScriptsHandler(AnonymousOperationsHandler):
+    """Anonymous access to download node-scripts.
+
+    Enlistment starts by downloading the builtin commissioning scripts
+    anonymously. Once BMC detection has finished the machine is created
+    the client will switch to the authenticated endpoint.
+    """
+
+    create = update = delete = None
+
+    def read(self, request, version, mac=None):
+        # Administrator has turned off commissioning during enlistment.
+        if not Config.objects.get_config("enlist_commissioning"):
+            return HttpResponse(status=int(http.client.NO_CONTENT))
+        binary = BytesIO()
+        mtime = time.time()
+        tar_meta_data = {"commissioning_scripts": []}
+        # Responses are currently gzip compressed using
+        # django.middleware.gzip.GZipMiddleware.
+        with tarfile.open(mode="w", fileobj=binary) as tar:
+            for script in (
+                Script.objects.filter(script_type=SCRIPT_TYPE.COMMISSIONING)
+                .filter(Q(default=True) | Q(tags__overlap=["enlisting"]))
+                .exclude(
+                    # Network configuration is based on node configuration however
+                    # the node doesn't exist yet. Once the node is created the
+                    # client will rerequest the NodeScripts tar which may include
+                    # scripts which test networking.
+                    apply_configured_networking=True
+                )
+                .order_by("name")
+                .select_related("script")
+            ):
+                path = os.path.join("commissioning", script.name)
+                content = script.script.data.encode()
+                add_file_to_tar(tar, path, content, mtime)
+                tar_meta_data["commissioning_scripts"].append(
+                    {
+                        "name": script.name,
+                        "path": path,
+                        "timeout_seconds": script.timeout.seconds,
+                        "parallel": script.parallel,
+                        "hardware_type": script.hardware_type,
+                        "packages": script.packages,
+                        "for_hardware": script.for_hardware,
+                        "apply_configured_networking": (
+                            script.apply_configured_networking
+                        ),
+                    }
+                )
+            add_file_to_tar(
+                tar,
+                "index.json",
+                json.dumps({"1.0": tar_meta_data}).encode(),
+                mtime,
+                0o644,
+            )
+        return HttpResponse(
+            binary.getvalue(), content_type="application/x-tar"
+        )
+
+
 class MAASScriptsHandler(OperationsHandler):
+
+    anonymous = AnonMAASScriptsHandler
+
     def _add_script_set_to_tar(self, script_set, tar, prefix, mtime):
         if script_set is None:
             return []
