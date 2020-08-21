@@ -1,3 +1,9 @@
+maas (2.7.3-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.7.3.
+
+ -- Adam Collard <adam.collard@canonical.com>  Fri, 21 Aug 2020 12:58:39 +0000
+
 maas (2.7.3~rc2-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.7.3 RC2.
