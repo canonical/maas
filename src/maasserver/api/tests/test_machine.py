@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Machine API."""
@@ -423,7 +423,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 {
                     "distro_series": [
                         "'%s' is not a valid distro_series.  "
-                        "It should be one of: '', 'ubuntu/focal'."
+                        "It should be one of: '', 'ubuntu/bionic'."
                         % invalid_distro_series
                     ]
                 },
@@ -1179,7 +1179,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "distro_series": "ubuntu/focal"},
+            {"op": "deploy", "distro_series": "ubuntu/bionic"},
         )
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(

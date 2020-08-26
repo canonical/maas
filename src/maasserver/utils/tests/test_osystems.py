@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.utils.osystems`."""
@@ -73,12 +73,12 @@ class TestOsystems(MAASServerTestCase):
                 {
                     "name": "ubuntu",
                     "title": "Ubuntu",
-                    "default_commissioning_release": "focal",
-                    "default_release": "focal",
+                    "default_commissioning_release": "bionic",
+                    "default_release": "bionic",
                     "releases": [
                         {
-                            "name": "focal",
-                            "title": 'Ubuntu 20.04 LTS "Focal Fossa"',
+                            "name": "bionic",
+                            "title": 'Ubuntu 18.04 LTS "Bionic Beaver"',
                             "can_commission": True,
                             "requires_license_key": False,
                         }
@@ -149,8 +149,8 @@ class TestReleases(MAASServerTestCase):
                 ],
                 "ubuntu": [
                     {
-                        "name": "focal",
-                        "title": 'Ubuntu 20.04 LTS "Focal Fossa"',
+                        "name": "bionic",
+                        "title": 'Ubuntu 18.04 LTS "Bionic Beaver"',
                         "can_commission": True,
                         "requires_license_key": False,
                     }
