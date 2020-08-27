@@ -21,7 +21,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerSettingError,
 )
-from provisioningserver.utils import shell, typed
+from provisioningserver.utils import shell, snappy, typed
 
 AMT_ERRORS = {
     "401 Unauthorized": {
@@ -147,13 +147,17 @@ class AMTPowerDriver(PowerDriver):
             power_pass,
             "--noverifypeer",
             "--noverifyhost",
+            "--input",
+            "-",
+            "invoke",
+            "--method",
         )
         # Change boot order to PXE and enable boot config request
         for method, (schema_file, schema_uri) in wsman_pxe_options.items():
             with open(schema_file, "rb") as fd:
-                wsman_opts += ("--input", "-")
-                action = ("invoke", "--method", method, schema_uri)
-                command = ("wsman",) + wsman_opts + action
+                command = self._get_wsman_command(
+                    *wsman_opts, method, schema_uri
+                )
                 self._run(command, power_pass, stdin=fd.read())
 
     @typed
@@ -205,7 +209,7 @@ class AMTPowerDriver(PowerDriver):
             "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/"
             "CIM_AssociatedPowerManagementService"
         )
-        wsman_opts = (
+        command_args = (
             "--port",
             "16992",
             "--hostname",
@@ -219,19 +223,24 @@ class AMTPowerDriver(PowerDriver):
         )
         if power_change in ("on", "off", "restart"):
             stdin = self._render_wsman_state_xml(power_change)
-            wsman_opts += ("--input", "-")
-            action = (
+            command_args += (
+                "--input",
+                "-",
                 "invoke",
                 "--method",
                 "RequestPowerStateChange",
                 wsman_power_schema_uri,
             )
-            command = ("wsman",) + wsman_opts + action
         elif power_change == "query":
             stdin = None  # No input for query
-            wsman_opts += ("--optimize", "--encoding", "utf-8")
-            action = ("enumerate", wsman_query_schema_uri)
-            command = ("wsman",) + wsman_opts + action
+            command_args += (
+                "--optimize",
+                "--encoding",
+                "utf-8",
+                "enumerate",
+                wsman_query_schema_uri,
+            )
+        command = self._get_wsman_command(*command_args)
         return self._run(command, power_pass, stdin=stdin)
 
     def amttool_query_state(self, ip_address, power_pass):
@@ -376,8 +385,7 @@ class AMTPowerDriver(PowerDriver):
         # XXX bug=1331214
         # Check if the AMT ver > 8
         # If so, we need wsman, not amttool
-        result = shell.run_command(
-            "wsman",
+        command = self._get_wsman_command(
             "identify",
             "--port",
             "16992",
@@ -388,6 +396,7 @@ class AMTPowerDriver(PowerDriver):
             "--password",
             power_pass,
         )
+        result = shell.run_command(*command)
         if not result.stdout:
             for error, error_info in AMT_ERRORS.items():
                 if error in result.stderr:
@@ -420,6 +429,14 @@ class AMTPowerDriver(PowerDriver):
             return ""
         else:
             return boot_mode
+
+    def _get_wsman_command(self, *args):
+        base_path = snappy.get_snap_path() or "/"
+        return (
+            "wsman",
+            "-C",
+            join(base_path, "etc/openwsman/openwsman_client.conf"),
+        ) + args
 
     def _get_ip_address(self, power_address, ip_address):
         """Get the IP address of the AMT BMC."""

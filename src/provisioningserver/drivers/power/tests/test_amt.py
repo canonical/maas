@@ -211,6 +211,8 @@ class TestAMTPowerDriver(MAASTestCase):
             ),
         }
         wsman_opts = (
+            "-C",
+            "/etc/openwsman/openwsman_client.conf",
             "--port",
             "16992",
             "--hostname",
@@ -221,6 +223,8 @@ class TestAMTPowerDriver(MAASTestCase):
             power_pass,
             "--noverifypeer",
             "--noverifyhost",
+            "--input",
+            "-",
         )
         _run_mock = self.patch(amt_power_driver, "_run")
         amt_power_driver._set_pxe_boot(ip_address, power_pass)
@@ -229,12 +233,10 @@ class TestAMTPowerDriver(MAASTestCase):
         stdins = []
         for method, (schema_file, schema_uri) in wsman_pxe_options.items():
             with open(schema_file, "rb") as fd:
-                wsman_opts += ("--input", "-")
                 action = ("invoke", "--method", method, schema_uri)
                 command = ("wsman",) + wsman_opts + action
                 commands.append(command)
                 stdins.append(fd.read())
-
         self.assertThat(
             _run_mock,
             MockCallsMatch(
@@ -279,7 +281,10 @@ class TestAMTPowerDriver(MAASTestCase):
             '&CreationClassName="CIM_PowerManagementService"&Name='
             '"Intel(r) AMT Power Management Service"'
         )
-        wsman_opts = (
+        command = (
+            "wsman",
+            "-C",
+            "/etc/openwsman/openwsman_client.conf",
             "--port",
             "16992",
             "--hostname",
@@ -290,19 +295,17 @@ class TestAMTPowerDriver(MAASTestCase):
             power_pass,
             "--noverifypeer",
             "--noverifyhost",
-        )
-        _render_wsman_state_xml_mock = self.patch(
-            amt_power_driver, "_render_wsman_state_xml"
-        )
-        _render_wsman_state_xml_mock.return_value = b"stdin"
-        action = (
+            "--input",
+            "-",
             "invoke",
             "--method",
             "RequestPowerStateChange",
             wsman_power_schema_uri,
         )
-        wsman_opts += ("--input", "-")
-        command = ("wsman",) + wsman_opts + action
+        _render_wsman_state_xml_mock = self.patch(
+            amt_power_driver, "_render_wsman_state_xml"
+        )
+        _render_wsman_state_xml_mock.return_value = b"stdin"
         _run_mock = self.patch(amt_power_driver, "_run")
         _run_mock.return_value = b"output"
 
@@ -324,6 +327,8 @@ class TestAMTPowerDriver(MAASTestCase):
             "CIM_AssociatedPowerManagementService"
         )
         wsman_opts = (
+            "-C",
+            "/etc/openwsman/openwsman_client.conf",
             "--port",
             "16992",
             "--hostname",
@@ -345,6 +350,25 @@ class TestAMTPowerDriver(MAASTestCase):
 
         self.assertThat(
             _run_mock, MockCalledOnceWith(command, power_pass, stdin=None)
+        )
+
+    def test_issue_wsman_has_config_file_from_snap(self):
+        self.patch(
+            amt_module.snappy, "get_snap_path"
+        ).return_value = "/snap/maas/current"
+        ip_address = factory.make_ipv4_address()
+        power_pass = factory.make_name("power_pass")
+        amt_power_driver = AMTPowerDriver()
+        _run_mock = self.patch(amt_power_driver, "_run")
+        amt_power_driver._issue_wsman_command("query", ip_address, power_pass)
+        [call] = _run_mock.mock_calls
+        self.assertEqual(
+            call.args[0][:3],
+            (
+                "wsman",
+                "-C",
+                "/snap/maas/current/etc/openwsman/openwsman_client.conf",
+            ),
         )
 
     def test_amttool_query_state_queries_on(self):
@@ -723,6 +747,8 @@ class TestAMTPowerDriver(MAASTestCase):
         result = amt_power_driver._get_amt_command(ip_address, power_pass)
         mock_run_command.assert_called_once_with(
             "wsman",
+            "-C",
+            "/etc/openwsman/openwsman_client.conf",
             "identify",
             "--port",
             "16992",
@@ -748,6 +774,8 @@ class TestAMTPowerDriver(MAASTestCase):
 
         mock_run_command.assert_called_once_with(
             "wsman",
+            "-C",
+            "/etc/openwsman/openwsman_client.conf",
             "identify",
             "--port",
             "16992",
