@@ -111,6 +111,7 @@ from maasserver.models.numa import NUMANode
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.switch import Switch
+from maasserver.models.virtualmachine import VirtualMachine
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
@@ -3153,6 +3154,36 @@ class Factory(maastesting.factory.Factory):
             memory = 1024 * random.randint(1, 256)
         return NUMANode.objects.create(
             node=node, index=index, cores=cores, memory=memory
+        )
+
+    def make_VirtualMachine(
+        self,
+        identifier=None,
+        bmc=None,
+        machine=None,
+        pinned_cores=None,
+        unpinned_cores=0,
+        memory=None,
+    ):
+        if identifier is None:
+            identifier = factory.make_string(20)
+        if bmc is None:
+            bmc = factory.make_BMC(power_type="lxd")
+        if pinned_cores is None:
+            pinned_cores = []
+        if memory is None:
+            if machine is None:
+                memory = 0
+            else:
+                memory = machine.memory
+        return VirtualMachine.objects.create(
+            identifier=identifier,
+            bmc=bmc,
+            hugepages_backed=self.pick_bool(),
+            memory=memory,
+            machine=machine,
+            pinned_cores=pinned_cores,
+            unpinned_cores=unpinned_cores,
         )
 
 

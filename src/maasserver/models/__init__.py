@@ -85,6 +85,7 @@ __all__ = [
     "UserProfile",
     "VersionedTextFile",
     "VirtualBlockDevice",
+    "VirtualMachine",
     "VLAN",
     "VLANInterface",
     "VolumeGroup",
@@ -193,6 +194,7 @@ from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
+from maasserver.models.virtualmachine import VirtualMachine
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.permissions import (
