@@ -2902,7 +2902,6 @@ class Node(CleanSave, TimestampedModel):
 
             @transactional
             def _save(machine_id, pod_id, hints):
-                # Circular imports.
                 from maasserver.models.bmc import Pod
 
                 machine = Machine.objects.filter(id=machine_id).first()
@@ -2911,6 +2910,12 @@ class Node(CleanSave, TimestampedModel):
                     # Delete the related interfaces. This will remove all of IP
                     # addresses that are linked to those interfaces.
                     self.interface_set.all().delete()
+                    # delete related VirtualMachine, if any
+                    from maasserver.models.virtualmachine import VirtualMachine
+
+                    VirtualMachine.objects.filter(
+                        machine_id=machine_id
+                    ).delete()
                     super(Node, machine).delete()
                 pod = Pod.objects.filter(id=pod_id).first()
                 if pod is not None:

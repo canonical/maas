@@ -852,10 +852,7 @@ class Pod(BMC):
         **kwargs,
     ):
         """Create's a `Machine` from `discovered_machines` for this pod."""
-        if skip_commissioning:
-            status = NODE_STATUS.READY
-        else:
-            status = NODE_STATUS.NEW
+        status = NODE_STATUS.READY if skip_commissioning else NODE_STATUS.NEW
 
         # Check to see if discovered machine's hostname is legal and unique.
         if discovered_machine.hostname:
@@ -902,6 +899,20 @@ class Pod(BMC):
         if not machine.hostname:
             machine.set_random_hostname()
         machine.save()
+
+        if self.power_type == "lxd":
+            from maasserver.models.virtualmachine import VirtualMachine
+
+            # XXX this needs to be expanded when we support CPU pinning and
+            # hugepages
+            virtual_machine = VirtualMachine(
+                identifier=machine.instance_power_parameters["instance_name"],
+                unpinned_cores=machine.cpu_count,
+                memory=machine.memory,
+                machine=machine,
+                bmc=self,
+            )
+            virtual_machine.save()
 
         self._assign_tags(machine, discovered_machine)
         self._assign_storage(machine, discovered_machine, skip_commissioning)
@@ -1684,7 +1695,6 @@ class Pod(BMC):
                 # on the machine object is actually called.
                 machine.delete()
 
-            # Circular imports.
             from maasserver.models.node import RackController
 
             # Update bmc types for any matches.  Only delete the BMC

@@ -1587,6 +1587,17 @@ class TestNode(MAASServerTestCase):
         node.delete()
         self.assertIsNotNone(reload_object(pod))
 
+    def test_delete_doesnt_delete_existing_virtual_machine(self):
+        pod = factory.make_Pod()
+        machine = factory.make_Machine(
+            bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING
+        )
+        vm = factory.make_VirtualMachine(bmc=pod, machine=machine)
+        vm.save()
+        with post_commit_hooks:
+            machine.delete()
+        self.assertIsNotNone(reload_object(vm))
+
     def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
         interface = node.add_physical_interface("AA:BB:CC:DD:EE:FF")
@@ -6031,6 +6042,17 @@ class TestDecomposeMachineTransactional(
         self.assertIsNone(machine)
         interface = transactional(reload_object)(interface)
         self.assertIsNone(interface)
+
+    def test_delete_virtual_machine_for_machine(self):
+        pod, machine, hints, client = self.create_pod_machine_and_hints(
+            creation_type=NODE_CREATION_TYPE.MANUAL
+        )
+        vm = transactional(factory.make_VirtualMachine)(
+            bmc=pod, machine=machine
+        )
+        with post_commit_hooks:
+            machine.delete()
+        self.assertIsNone(transactional(reload_object)(vm))
 
 
 class NodeTransitionsTests(MAASServerTestCase):

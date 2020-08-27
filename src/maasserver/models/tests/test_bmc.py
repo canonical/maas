@@ -51,6 +51,7 @@ from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.virtualmachine import VirtualMachine
 from maasserver.permissions import PodPermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
@@ -1183,6 +1184,22 @@ class TestPod(MAASServerTestCase):
         # Doesn't raise an exception ensures that the hostname is unique as
         # that will cause a database exception.
         pod.create_machine(discovered_machine, factory.make_User())
+
+    def test_create_machine_for_lxd_creates_virtualmachine(self):
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        pod = factory.make_Pod(pod_type="lxd")
+        discovered_machine = self.make_discovered_machine()
+        instance_name = factory.make_string()
+        discovered_machine.power_parameters["instance_name"] = instance_name
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        [vm] = VirtualMachine.objects.all()
+        self.assertEqual(vm.identifier, instance_name)
+        self.assertEqual(vm.bmc, pod)
+        self.assertEqual(vm.machine, machine)
+        self.assertEqual(vm.memory, machine.memory)
+        self.assertEqual(vm.unpinned_cores, machine.cpu_count)
 
     def test_create_machine_invalid_hostname(self):
         discovered_machine = self.make_discovered_machine()
