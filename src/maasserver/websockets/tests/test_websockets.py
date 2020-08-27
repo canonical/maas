@@ -641,7 +641,7 @@ class WebSocketsResourceTest(MAASTestCase):
         )
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
-        self.assertIdentical(None, request.transport)
+        self.assertIsNone(request.transport)
         self.assertIsInstance(transport.protocol._receiver, SavingEchoReceiver)
         self.assertEqual(request.getHeader(b"cookie"), transport.cookies)
         self.assertEqual(request.uri, transport.uri)
@@ -655,7 +655,7 @@ class WebSocketsResourceTest(MAASTestCase):
 
         def lookupProtocol(names, otherRequest):
             self.assertEqual([b"foo", b"bar"], names)
-            self.assertIdentical(request, otherRequest)
+            self.assertIs(request, otherRequest)
             return self.echoProtocol, b"bar"
 
         self.resource = WebSocketsResource(lookupProtocol)
@@ -891,7 +891,7 @@ class WebSocketsResourceTest(MAASTestCase):
         )
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
-        self.assertIdentical(None, request.transport)
+        self.assertIsNone(request.transport)
         self.assertIsInstance(
             transport.protocol.wrappedProtocol, WebSocketsProtocol
         )
@@ -940,7 +940,7 @@ class WebSocketsResourceTest(MAASTestCase):
             ),
         )
         self.assertEqual(101, request.code)
-        self.assertIdentical(None, request.transport)
+        self.assertIsNone(request.transport)
 
     def test_renderIProtocol(self):
         """
