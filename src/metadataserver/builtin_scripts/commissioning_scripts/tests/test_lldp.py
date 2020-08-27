@@ -44,6 +44,26 @@ class TestLLDPScripts(MAASTestCase):
             config_observed = fd.read()
         self.assertEqual(config_expected, config_observed)
 
+    def test_install_script_disables_intel_lldp(self):
+        self.patch(os.path, "exists").return_value = True
+        self.patch(os, "listdir").return_value = ["0000:1a:00.0"]
+        temp_file = self.make_file("temp", "")
+        mock_open = self.patch(install_lldpd, "open")
+        mock_open.return_value = open(temp_file, "w", encoding="ascii")
+        install_lldpd.disable_embedded_lldp_agent_in_intel_cna_cards()
+        output_expected = "lldp stop\n".encode("ascii")
+        with open(temp_file, "rb") as fd:
+            output_observed = fd.read()
+        self.assertEqual(output_expected, output_observed)
+        self.assertThat(
+            mock_open,
+            MockCalledOnceWith(
+                "/sys/kernel/debug/i40e/0000:1a:00.0/command",
+                "w",
+                encoding="ascii",
+            ),
+        )
+
     def test_capture_lldpd_script_waits_for_lldpd(self):
         reference_file = self.make_file("reference")
         time_delay = 8.98  # seconds
