@@ -5,11 +5,13 @@
 
 __all__ = []
 
+import io
 import os
 from pathlib import Path
 import random
 import signal
 import subprocess
+import sys
 from textwrap import dedent
 import time
 from unittest.mock import MagicMock
@@ -571,3 +573,23 @@ class TestCmdStatus(MAASTestCase):
         self.assertEqual(
             str(error), "The 'status' command must be run by root."
         )
+
+
+class TestCmdConfig(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        self.cmd = snappy.cmd_config(self.parser)
+        self.patch(os, "getuid").return_value = 0
+        snap_common = self.make_dir()
+        snap_data = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture("SNAP_COMMON", snap_common))
+        self.useFixture(EnvironmentVariableFixture("SNAP_DATA", snap_data))
+
+    def test_show(self):
+        # Regression test for LP:1892868
+        stdout = io.StringIO()
+        self.patch(sys, "stdout", stdout)
+        options = self.parser.parse_args([])
+        self.assertIsNone(self.cmd(options))
+        self.assertEqual(stdout.getvalue(), "Mode: none\n")

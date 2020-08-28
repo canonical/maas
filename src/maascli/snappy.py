@@ -703,13 +703,7 @@ class cmd_config(SnappyCommand):
     }
 
     # Required flags that are in .conf.
-    setting_flags = (
-        "maas_url",
-        "database_host",
-        "database_name",
-        "database_user",
-        "database_pass",
-    )
+    setting_flags = ("maas_url",)
 
     # Optional flags that are in .conf.
     optional_flags = {
