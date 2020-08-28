@@ -111,8 +111,7 @@ def validate_syslog_port(value):
 
 
 def get_default_usable_osystem(default_osystem):
-    """Return the osystem from the clusters that matches the default_osystem.
-    """
+    """Return the osystem from the clusters that matches the default_osystem."""
     usable_oses = list_all_usable_osystems()
     for usable_os in usable_oses:
         if usable_os["name"] == default_osystem:

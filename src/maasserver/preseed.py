@@ -156,7 +156,7 @@ def compose_curtin_maas_reporter(request, node):
 
 def get_curtin_cloud_config(request, node):
     """Compose the curtin cloud-config, which is only applied to
-       Ubuntu core (by curtin)."""
+    Ubuntu core (by curtin)."""
     token = NodeKey.objects.get_token_for_node(node)
     datasource = {
         "datasource": {

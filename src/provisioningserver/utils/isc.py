@@ -258,13 +258,13 @@ def parse_isc_string(isc_string):
 def make_isc_string(isc_dict, terminate=True):
     """Outputs an isc formatted file string from a dict
 
-  Inputs:
-    isc_dict: a recursive dictionary to be turned into an isc file
-              (from ParseTokens)
+    Inputs:
+      isc_dict: a recursive dictionary to be turned into an isc file
+                (from ParseTokens)
 
-  Outputs:
-    str: string of isc file without indentation
-  """
+    Outputs:
+      str: string of isc file without indentation
+    """
     if terminate:
         terminator = ";"
     else:

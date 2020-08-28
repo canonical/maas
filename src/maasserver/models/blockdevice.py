@@ -326,16 +326,16 @@ class BlockDevice(CleanSave, TimestampedModel):
         """Calculate a block name based on the `idx`.
 
         Drive#  Name
-        0	    sda
-        25	    sdz
-        26	    sdaa
-        27	    sdab
-        51	    sdaz
-        52	    sdba
-        53	    sdbb
-        701	    sdzz
-        702	    sdaaa
-        703	    sdaab
+        0       sda
+        25      sdz
+        26      sdaa
+        27      sdab
+        51      sdaz
+        52      sdba
+        53      sdbb
+        701     sdzz
+        702     sdaaa
+        703     sdaab
         18277   sdzzz
         """
         name = ""

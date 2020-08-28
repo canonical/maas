@@ -1168,16 +1168,16 @@ class VirshSSH(pexpect.spawn):
         """Calculate a block name based on the `idx`.
 
         Drive#  Name
-        0	    vda
-        25	    vdz
-        26	    vdaa
-        27	    vdab
-        51	    vdaz
-        52	    vdba
-        53	    vdbb
-        701	    vdzz
-        702	    vdaaa
-        703	    vdaab
+        0       vda
+        25      vdz
+        26      vdaa
+        27      vdab
+        51      vdaz
+        52      vdba
+        53      vdbb
+        701     vdzz
+        702     vdaaa
+        703     vdaab
         18277   vdzzz
         """
         name = ""

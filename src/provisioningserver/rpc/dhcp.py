@@ -485,7 +485,7 @@ def _parse_dhcpd_errors(error_str):
     dhcpd-4.3.3-5ubuntu11 -t -cf outputs each syntax error on three lines.
     First contains the filename, line number, and what the error is. Second
     outputs the line which has the syntax error and third is a pointer to the
-    where on the previous line the error was detected. """
+    where on the previous line the error was detected."""
     processing_config = False
     errors = []
     error = {}

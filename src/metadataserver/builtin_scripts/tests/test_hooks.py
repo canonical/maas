@@ -561,8 +561,8 @@ def make_lxd_output_json(*args, **kwargs):
 
 
 def create_IPADDR_OUTPUT_NAME_script(node, output):
-    commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
-        node
+    commissioning_script_set = (
+        ScriptSet.objects.create_commissioning_script_set(node)
     )
     script_result = commissioning_script_set.find_script_result(
         script_name=IPADDR_OUTPUT_NAME
@@ -2114,8 +2114,10 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             script_type=SCRIPT_TYPE.TESTING,
             parameters={"storage": {"type": "storage"}},
         )
-        node.current_testing_script_set = ScriptSet.objects.create_testing_script_set(
-            node=node, scripts=[script.name]
+        node.current_testing_script_set = (
+            ScriptSet.objects.create_testing_script_set(
+                node=node, scripts=[script.name]
+            )
         )
         node.save()
 
@@ -2307,8 +2309,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test_interfaces_for_all_ports(self):
-        """Interfaces are created for all ports in a network card.
-        """
+        """Interfaces are created for all ports in a network card."""
         node = factory.make_Node()
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
 
@@ -2836,8 +2837,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             script_type=SCRIPT_TYPE.TESTING,
             parameters={"interface": {"type": "interface"}},
         )
-        node.current_testing_script_set = ScriptSet.objects.create_testing_script_set(
-            node=node, scripts=[script.name]
+        node.current_testing_script_set = (
+            ScriptSet.objects.create_testing_script_set(
+                node=node, scripts=[script.name]
+            )
         )
         node.save()
 

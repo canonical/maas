@@ -115,8 +115,8 @@ class RegionWorkerServiceMaker:
                 from django.db.backends.base import base
                 from django.db.backends.utils import CursorWrapper
 
-                base.BaseDatabaseWrapper.make_debug_cursor = lambda self, cursor: CursorWrapper(
-                    cursor, self
+                base.BaseDatabaseWrapper.make_debug_cursor = (
+                    lambda self, cursor: CursorWrapper(cursor, self)
                 )
 
     def makeService(self, options):

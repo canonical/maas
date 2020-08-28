@@ -25,7 +25,7 @@ from maasserver.models import Config, PackageRepository
 
 
 class MigratedConfigValue:
-    """ Some settings have been moved out of the Config system. To allow these
+    """Some settings have been moved out of the Config system. To allow these
     values to continue to be accessed via this API, the Form and getter method
     are overridable here."""
 
@@ -50,7 +50,7 @@ def rewrite_config_name(name):
 
 
 def get_maas_form(name, value):
-    """ Get the Form for the provided name. Most names use a ConfigForm, but
+    """Get the Form for the provided name. Most names use a ConfigForm, but
     some names have been moved out of the Config database and now use different
     forms. The new form is instantiated here and returned to provide continued
     access to the values when using this API."""

@@ -344,7 +344,7 @@ class DNSResource(CleanSave, TimestampedModel):
 
     def render_json(self, system_id):
         """Render json.  System_id is the system_id for the node, if one
-           exists.  Addresses are rendered in the calling function."""
+        exists.  Addresses are rendered in the calling function."""
         return sorted(
             [
                 {

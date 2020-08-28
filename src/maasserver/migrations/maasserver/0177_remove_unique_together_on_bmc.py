@@ -8,7 +8,7 @@ from django.db import migrations
 class AlterUniqueTogetherNoDB(migrations.AlterUniqueTogether):
     """A `AlterUniqueTogether` that doesn't actually touch the DB it only
     updates the model schema.
-    
+
     Because of migrations:
 
     - 0163_create_new_power_parameters_with_jsonfield

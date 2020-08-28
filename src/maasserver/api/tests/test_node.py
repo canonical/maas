@@ -242,8 +242,10 @@ class TestNodeAPI(APITestCase.ForUser):
                 hardware_type=HARDWARE_TYPE.NETWORK,
             )
         )
-        testing_script_results = machine.get_latest_testing_script_results.exclude(
-            status=SCRIPT_STATUS.ABORTED
+        testing_script_results = (
+            machine.get_latest_testing_script_results.exclude(
+                status=SCRIPT_STATUS.ABORTED
+            )
         )
         testing_status = get_status_from_qs(testing_script_results)
 

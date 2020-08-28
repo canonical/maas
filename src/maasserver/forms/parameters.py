@@ -58,8 +58,7 @@ class ParametersForm(Form):
         return ifaces
 
     def clean_parameters(self):
-        """Validate the parameters set in the embedded YAML within the script.
-        """
+        """Validate the parameters set in the embedded YAML within the script."""
         parameters = self.data.get("parameters")
         if not isinstance(parameters, dict):
             set_form_error(self, "parameters", "Must be a dictionary")

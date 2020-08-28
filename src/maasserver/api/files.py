@@ -182,7 +182,7 @@ class FileHandler(OperationsHandler):
         @error (content) "not-found" The requested file is not found.
         @error-example "not-found"
             Not Found
-       """
+        """
         stored_file = get_object_or_404(
             FileStorage, filename=filename, owner=request.user
         )

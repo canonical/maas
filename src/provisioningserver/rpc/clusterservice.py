@@ -175,7 +175,7 @@ def get_scan_all_networks_args(
 
 
 def spawnProcessAndNullifyStdout(protocol, args):
-    """"Utility function to spawn a process and redirect stdout to /dev/null.
+    """ "Utility function to spawn a process and redirect stdout to /dev/null.
 
     Spawns the process with the specified `protocol` in the reactor, with the
     specified list of binary `args`.

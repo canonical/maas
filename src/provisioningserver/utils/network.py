@@ -493,8 +493,7 @@ class MAASIPSet(set):
         return False
 
     def get_first_unused_ip(self) -> int:
-        """Returns the integer value of the first unused IP address in the set.
-        """
+        """Returns the integer value of the first unused IP address in the set."""
         for item in self.ranges:
             if IPRANGE_TYPE.UNUSED in item.purpose:
                 return item.first
@@ -912,8 +911,7 @@ def hex_str_to_bytes(data):
 
 
 def ipv4_to_bytes(ipv4_address):
-    """Converts the specified IPv4 address (in text or integer form) to bytes.
-    """
+    """Converts the specified IPv4 address (in text or integer form) to bytes."""
     return bytes.fromhex("%08x" % IPAddress(ipv4_address).value)
 
 

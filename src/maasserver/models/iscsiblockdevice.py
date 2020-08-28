@@ -14,8 +14,7 @@ from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 
 
 def get_iscsi_target(target):
-    """Formats the iscsi target to always include a 'iscsi:' at the beginning.
-    """
+    """Formats the iscsi target to always include a 'iscsi:' at the beginning."""
     if not target.startswith("iscsi:"):
         return "iscsi:%s" % target
     else:

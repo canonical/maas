@@ -576,8 +576,8 @@ class Factory(maastesting.factory.Factory):
             # Make sure base scripts are loaded into the database.
             load_builtin_scripts()
 
-            commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
-                node
+            commissioning_script_set = (
+                ScriptSet.objects.create_commissioning_script_set(node)
             )
             node.current_commissioning_script_set = commissioning_script_set
 
@@ -588,8 +588,8 @@ class Factory(maastesting.factory.Factory):
             )
             node.current_testing_script_set = testing_script_set
 
-            installation_script_set = ScriptSet.objects.create_installation_script_set(
-                node
+            installation_script_set = (
+                ScriptSet.objects.create_installation_script_set(node)
             )
             node.current_installation_script_set = installation_script_set
 

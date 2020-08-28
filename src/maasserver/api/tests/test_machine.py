@@ -719,8 +719,9 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         osystem = make_usable_osystem(self)
         distro_series = osystem["default_release"]
-        user_data = b"\xff\x00\xff\xfe\xff\xff\xfe" + factory.make_string().encode(
-            "ascii"
+        user_data = (
+            b"\xff\x00\xff\xfe\xff\xff\xfe"
+            + factory.make_string().encode("ascii")
         )
         response = self.client.post(
             self.get_machine_uri(machine),

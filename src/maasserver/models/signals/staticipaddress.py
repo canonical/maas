@@ -127,7 +127,7 @@ signals.watch(pre_save, pre_save_prevent_conflicts, sender=StaticIPAddress)
 
 
 def post_save_prevent_conflicts(sender, instance, created, **kwargs):
-    """ Fix up BMCs that had their SIP's nullified in pre_save.
+    """Fix up BMCs that had their SIP's nullified in pre_save.
 
     These BMCs were identified in pre_save and stored in the instance for
     reference in this handler.

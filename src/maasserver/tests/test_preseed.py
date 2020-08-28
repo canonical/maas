@@ -1512,9 +1512,9 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
 
     def test_compose_curtin_archive_config_with_disabled_pockets(self):
         """Test that main archive has a configuration that includes
-           disabled_pockets. If so, MAAS will create its own sources_list
-           instead of letting curtin/cloud-init create it based on its own
-           template"""
+        disabled_pockets. If so, MAAS will create its own sources_list
+        instead of letting curtin/cloud-init create it based on its own
+        template"""
         PackageRepository.objects.all().delete()
         node = self.make_fastpath_node("amd64")
         node.osystem = "ubuntu"

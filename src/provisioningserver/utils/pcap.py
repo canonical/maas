@@ -63,7 +63,7 @@ class PCAP:
         max_capture_bytes_per_packet, data_link_type).
         :raise EOFError: If an empty stream was supplied.
         :raise PCAPError: If the PCAP stream was invalid.
-       """
+        """
         super().__init__()
         self.stream = stream
         global_header_bytes = stream.read(PCAP_HEADER_SIZE)
@@ -121,7 +121,7 @@ class PCAP:
     def __iter__(self):
         """Iterate this PCAP stream.
 
-         Stops when EOF is encountered."""
+        Stops when EOF is encountered."""
         while True:
             try:
                 yield self.read()

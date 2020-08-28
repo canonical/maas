@@ -68,8 +68,7 @@ class UbuntuOS(OperatingSystem):
         return self.get_lts_release()
 
     def get_distro_series_info_row(self, release):
-        """Returns the distro series row information from python-distro-info.
-        """
+        """Returns the distro series row information from python-distro-info."""
         info = self.ubuntu_distro_info
         for row in info._avail(info._date):
             # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries

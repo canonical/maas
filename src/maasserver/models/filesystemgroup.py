@@ -614,8 +614,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         return [filesystem.fstype for filesystem in filesystems]
 
     def _validate_lvm(self, filesystems=None):
-        """Validate attached filesystems are correct type for LVM_VG.
-        """
+        """Validate attached filesystems are correct type for LVM_VG."""
         if not self.is_lvm():
             return
         unique_fstypes = set(self._get_all_fstypes(filesystems=filesystems))
@@ -625,8 +624,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             )
 
     def _validate_raid(self, filesystems=None):
-        """Validate attached filesystems are correct count and type for RAID.
-        """
+        """Validate attached filesystems are correct count and type for RAID."""
         if not self.is_raid():
             return
         fstypes = self._get_all_fstypes(filesystems=filesystems)
@@ -695,8 +693,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             )
 
     def _validate_bcache(self, filesystems=None):
-        """Validate attached filesystems are correct type for BCACHE.
-        """
+        """Validate attached filesystems are correct type for BCACHE."""
         if not self.is_bcache():
             return
         # Circular imports.

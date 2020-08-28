@@ -2410,8 +2410,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # This lock prevents a machine we've picked as available from
         # becoming unavailable before our transaction commits.
         with locks.node_acquire:
-            machines = self.base_model.objects.get_available_machines_for_acquisition(
-                request.user
+            machines = (
+                self.base_model.objects.get_available_machines_for_acquisition(
+                    request.user
+                )
             )
             machines, storage, interfaces = form.filter_nodes(machines)
             machine = get_first(machines)

@@ -34,7 +34,7 @@ from provisioningserver.dns.zoneconfig import (
 
 class HostnameIPMapping:
     """This is used to return address information for a host in a way that
-       keeps life simple for the callers."""
+    keeps life simple for the callers."""
 
     def __init__(self, system_id=None, ttl=None, ips=frozenset()):
         self.system_id = system_id
@@ -55,8 +55,8 @@ class HostnameIPMapping:
 
 class HostnameRRsetMapping:
     """This is used to return non-address information for a hostname in a way
-       that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
-       rrdata) tuples."""
+    that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
+    rrdata) tuples."""
 
     def __init__(self, system_id=None, rrset=frozenset()):
         self.system_id = system_id
@@ -188,8 +188,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
         }
         dynamic_range = IPRange(IPAddress(range_ip), IPAddress(range_ip))
-        expected_generate_directives = DNSForwardZoneConfig.get_GENERATE_directives(
-            dynamic_range
+        expected_generate_directives = (
+            DNSForwardZoneConfig.get_GENERATE_directives(dynamic_range)
         )
         other_mapping = {
             ipv4_hostname: HostnameRRsetMapping(None, {(ttl, "MX", "10 bar")})
@@ -235,8 +235,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
             ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
         }
-        expected_generate_directives = DNSForwardZoneConfig.get_GENERATE_directives(
-            network
+        expected_generate_directives = (
+            DNSForwardZoneConfig.get_GENERATE_directives(network)
         )
         other_mapping = {
             ipv4_hostname: HostnameRRsetMapping(None, {(ttl, "MX", "10 bar")})

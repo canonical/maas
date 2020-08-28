@@ -185,8 +185,7 @@ class NodeScriptsHandler(OperationsHandler):
 
 
 class NodeScriptHandler(OperationsHandler):
-    """Manage or view a custom script.
-    """
+    """Manage or view a custom script."""
 
     api_doc_section_name = "Node Script"
 

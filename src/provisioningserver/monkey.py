@@ -12,9 +12,9 @@ __all__ = ["add_patches_to_txtftp", "add_patches_to_twisted"]
 def fix_tftp_requests():
     """Use intelligence in determining IPv4 vs IPv6 when creatinging a session.
 
-       Specifically, look at addr[0] and pass iface to listenUDP based on that.
+    Specifically, look at addr[0] and pass iface to listenUDP based on that.
 
-       See https://bugs.launchpad.net/ubuntu/+source/python-tx-tftp/1614581
+    See https://bugs.launchpad.net/ubuntu/+source/python-tx-tftp/1614581
     """
     import tftp.protocol
 
@@ -261,9 +261,9 @@ def fix_twisted_web_http_Request():
 def fix_twisted_web_server_addressToTuple():
     """Add ipv6 support to t.w.server._addressToTuple()
 
-       Return address.IPv6Address where appropriate.
+    Return address.IPv6Address where appropriate.
 
-       See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
+    See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
     """
     import twisted.web.server
     from twisted.internet import address
@@ -288,9 +288,9 @@ def fix_twisted_web_server_addressToTuple():
 def fix_twisted_internet_tcp():
     """Default client to AF_INET6 sockets.
 
-       Specifically, strip any brackets surrounding the address.
+    Specifically, strip any brackets surrounding the address.
 
-       See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
+    See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
     """
     import socket
     import twisted.internet.tcp

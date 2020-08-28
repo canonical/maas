@@ -120,10 +120,10 @@ def _update_mtu(interface, mtu, instance):
 def interface_mtu_params_update(instance, old_values, **kwargs):
     """When an interfaces MTU is changed we need to do two things.
 
-        1. Update all children to use that MTU if that MTU is smaller than the
-           childrens MTU.
-        2. Update all parents to use the MTU if its larger than the parents
-           current MTU.
+    1. Update all children to use that MTU if that MTU is smaller than the
+       childrens MTU.
+    2. Update all parents to use the MTU if its larger than the parents
+       current MTU.
     """
     new_mtu = old_mtu = None
     [old_params] = old_values
@@ -211,11 +211,11 @@ for klass in INTERFACE_CLASSES:
 def interface_vlan_update(instance, old_values, **kwargs):
     """When an interfaces VLAN is changed we need to do the following.
 
-        * If its a controller move all assigned subnets to the new VLAN. This
-          is done because the subnets defined are discovered on the
-          controller and an administrator cannot change them.
-        * If its a machine or device then we need to remove all links if the
-          VLAN is different.
+    * If its a controller move all assigned subnets to the new VLAN. This
+      is done because the subnets defined are discovered on the
+      controller and an administrator cannot change them.
+    * If its a machine or device then we need to remove all links if the
+      VLAN is different.
     """
     new_vlan_id = instance.vlan_id
     [old_vlan_id] = old_values

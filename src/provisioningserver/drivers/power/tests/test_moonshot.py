@@ -51,23 +51,29 @@ def make_command(
 
 
 def make_pxe_command(context):
-    return make_command(
-        context["ipmitool"],
-        context["power_address"],
-        context["power_user"],
-        context["power_pass"],
-        context["power_hwaddress"],
-    ) + ("chassis", "bootdev", "pxe")
+    return (
+        make_command(
+            context["ipmitool"],
+            context["power_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["power_hwaddress"],
+        )
+        + ("chassis", "bootdev", "pxe")
+    )
 
 
 def make_ipmitool_command(power_change, context):
-    return make_command(
-        context["ipmitool"],
-        context["power_address"],
-        context["power_user"],
-        context["power_pass"],
-        context["power_hwaddress"],
-    ) + ("power", power_change)
+    return (
+        make_command(
+            context["ipmitool"],
+            context["power_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["power_hwaddress"],
+        )
+        + ("power", power_change)
+    )
 
 
 class TestMoonshotIPMIPowerDriver(MAASTestCase):

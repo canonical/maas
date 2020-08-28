@@ -64,8 +64,8 @@ def validate_rrtype(value):
 
 class HostnameRRsetMapping:
     """This is used to return non-address information for a hostname in a way
-       that keeps life simple for the callers.  Rrset is a set of (ttl, rrtype,
-       rrdata) tuples."""
+    that keeps life simple for the callers.  Rrset is a set of (ttl, rrtype,
+    rrdata) tuples."""
 
     def __init__(
         self,
@@ -255,9 +255,11 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 name, d_name = d_name.split(".", 1)
                 # Since we don't allow more than one label in dnsresource
                 # names, we should never ever be wrong in this assertion.
-                assert d_name == domain.name, (
-                    "Invalid domain; expected '%s' == '%s'"
-                    % (d_name, domain.name)
+                assert (
+                    d_name == domain.name
+                ), "Invalid domain; expected '%s' == '%s'" % (
+                    d_name,
+                    domain.name,
                 )
             entry = mapping[name]
             entry.node_type = node_type

@@ -605,8 +605,10 @@ class ComposeMachineForm(forms.Form):
             )
         interfaces_label_map = self.get_value_for("interfaces")
         if interfaces_label_map is not None:
-            requested_machine_interfaces = self._get_requested_machine_interfaces_via_constraints(
-                interfaces_label_map
+            requested_machine_interfaces = (
+                self._get_requested_machine_interfaces_via_constraints(
+                    interfaces_label_map
+                )
             )
         else:
             requested_machine_interfaces = [RequestedMachineInterface()]

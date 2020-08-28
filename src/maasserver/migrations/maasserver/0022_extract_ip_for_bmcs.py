@@ -11,8 +11,7 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 # Derived from Subnet model.
 def raw_subnet_id_containing_ip(ip):
-    """Find the most specific Subnet the specified IP address belongs in.
-    """
+    """Find the most specific Subnet the specified IP address belongs in."""
     find_subnets_with_ip_query = """
         SELECT DISTINCT subnet.id, masklen(subnet.cidr) "prefixlen"
         FROM

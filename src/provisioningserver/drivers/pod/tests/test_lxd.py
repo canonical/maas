@@ -319,8 +319,8 @@ class TestLXDPodDriver(MAASTestCase):
         mock_resources = Mock()
         mock_resources.space = {"used": 207111192576, "total": 306027577344}
         mock_storage_pool.resources.get.return_value = mock_resources
-        discovered_pod_storage_pool = yield driver.get_discovered_pod_storage_pool(
-            mock_storage_pool
+        discovered_pod_storage_pool = (
+            yield driver.get_discovered_pod_storage_pool(mock_storage_pool)
         )
 
         self.assertEquals(

@@ -63,7 +63,7 @@ ifenslave_to_netplan_bond_params = {
 
 
 def _get_netplan_bond_parameter(key: str, value):
-    """"Returns the equivalent Netplan (key, value) for what was specified.
+    """ "Returns the equivalent Netplan (key, value) for what was specified.
 
     :param key: The ifupdown/ifenslave bond configuration key.
         The key must be all lowecase, and use dash ('-') for its separator.
@@ -135,7 +135,7 @@ bridgeutils_to_netplan_bridge_params = {
 
 
 def _get_netplan_bridge_parameter(key: str, value):
-    """"Returns the equivalent Netplan (key, value) for what was specified.
+    """ "Returns the equivalent Netplan (key, value) for what was specified.
 
     :param key: The ifupdown/ifenslave bridge configuration key.
         The key must be all lowecase, and use dash ('-') for its separator.

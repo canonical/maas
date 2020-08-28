@@ -329,8 +329,7 @@ def get_storage_constraints_from_string(storage):
 
 
 def format_device_key(device_info):
-    """Format the `device_info` into a key for the storage constraint output.
-    """
+    """Format the `device_info` into a key for the storage constraint output."""
     device_type, device_id = device_info
     if device_type == "blockdev":
         return device_id

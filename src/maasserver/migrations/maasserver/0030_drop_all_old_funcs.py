@@ -5,8 +5,8 @@ from django.db import connection, migrations, models
 
 def drop_all_funcs(apps, schema_editor):
     """Drop all existing database functions as old functions have been
-       renamed or are no longer neccessary. The functions which are required
-       will be recreated on region startup.
+    renamed or are no longer neccessary. The functions which are required
+    will be recreated on region startup.
     """
     with connection.cursor() as cursor:
         cursor.execute(

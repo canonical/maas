@@ -57,8 +57,7 @@ class ServiceMonitorService(TimerService, object):
 
     @transactional
     def _saveIntoDatabase(self, services):
-        """Save the `services` in the the database for process by `processId`.
-        """
+        """Save the `services` in the the database for process by `processId`."""
         region_obj = RegionController.objects.get_running_controller()
         for service in services:
             ServiceModel.objects.update_service_for(
@@ -70,8 +69,7 @@ class ServiceMonitorService(TimerService, object):
 
     @inlineCallbacks
     def _buildServices(self, services):
-        """Build the list of services so they can be updated into the database.
-        """
+        """Build the list of services so they can be updated into the database."""
         msg_services = []
         for name, state in services.items():
             service = service_monitor.getServiceByName(name)

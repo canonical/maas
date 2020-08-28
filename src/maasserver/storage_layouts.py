@@ -348,8 +348,9 @@ class FlatStorageLayout(StorageLayoutBase):
             for partition in pt.partitions.all():
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
-                if partition.get_partition_number() == 1 and self.is_uefi_partition(
-                    partition
+                if (
+                    partition.get_partition_number() == 1
+                    and self.is_uefi_partition(partition)
                 ):
                     continue
                 # Most layouts allow you to define a boot partition, skip it
@@ -492,8 +493,9 @@ class LVMStorageLayout(StorageLayoutBase):
             for partition in pt.partitions.all():
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
-                if partition.get_partition_number() == 1 and self.is_uefi_partition(
-                    partition
+                if (
+                    partition.get_partition_number() == 1
+                    and self.is_uefi_partition(partition)
                 ):
                     continue
                 # Most layouts allow you to define a boot partition, skip it
@@ -729,8 +731,9 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
             for partition in ordered_partitions:
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
-                if partition.get_partition_number() == 1 and self.is_uefi_partition(
-                    partition
+                if (
+                    partition.get_partition_number() == 1
+                    and self.is_uefi_partition(partition)
                 ):
                     continue
                 # Bcache always has a boot partition. Keep searching until its

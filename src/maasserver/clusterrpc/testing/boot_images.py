@@ -18,8 +18,7 @@ def make_rpc_boot_image(
     xinstall_type=None,
     xinstall_path=None,
 ):
-    """Return boot image that would be returned from a ListBootImages RPC call.
-    """
+    """Return boot image that would be returned from a ListBootImages RPC call."""
     if osystem is None:
         osystem = factory.make_name("os")
     if release is None:

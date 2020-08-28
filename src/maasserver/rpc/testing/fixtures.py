@@ -168,8 +168,8 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         protocol.Identify.side_effect = lambda _: defer.succeed(
             ident_response.copy()
         )
-        protocol.Authenticate.side_effect = lambda _, message: authenticate_with_secret(
-            self.secret, message
+        protocol.Authenticate.side_effect = (
+            lambda _, message: authenticate_with_secret(self.secret, message)
         )
         return protocol, self.addCluster(protocol)
 
@@ -308,8 +308,8 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
 
-        protocol.Authenticate.side_effect = lambda _, message: authenticate_with_secret(
-            self.secret, message
+        protocol.Authenticate.side_effect = (
+            lambda _, message: authenticate_with_secret(self.secret, message)
         )
         self.addCluster(protocol, rack_controller).wait(5)
         # The connection is now established, but there is a brief

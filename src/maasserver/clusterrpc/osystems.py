@@ -29,8 +29,7 @@ from provisioningserver.utils.twisted import synchronous
 
 
 def get_uploaded_resource_with_name(resources, name):
-    """Return the `BootResource` from `resources` that has the given `name`.
-    """
+    """Return the `BootResource` from `resources` that has the given `name`."""
     return get_one(resources.filter(name=name))
 
 

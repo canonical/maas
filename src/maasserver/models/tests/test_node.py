@@ -7299,8 +7299,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
-            node, scripts=[lxd_script.name, ip_addr_script.name]
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[lxd_script.name, ip_addr_script.name]
+            )
         )
         node.current_commissioning_script_set = commissioning_script_set
         output = test_hooks.make_lxd_output_json(with_xenial_network=True)
@@ -7340,8 +7342,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
-            node, scripts=[lxd_script.name, ip_addr_script.name]
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[lxd_script.name, ip_addr_script.name]
+            )
         )
         node.current_commissioning_script_set = commissioning_script_set
         output = test_hooks.make_lxd_output_json(with_xenial_network=True)
@@ -7383,8 +7387,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
-            node, scripts=[lxd_script.name, ip_addr_script.name]
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[lxd_script.name, ip_addr_script.name]
+            )
         )
         node.current_commissioning_script_set = commissioning_script_set
         output = test_hooks.make_lxd_output_json(with_xenial_network=True)
@@ -10492,8 +10498,10 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         test_hooks.create_IPADDR_OUTPUT_NAME_script(
             controller, test_hooks.IP_ADDR_OUTPUT
         )
-        lxd_script = controller.current_commissioning_script_set.find_script_result(
-            script_name=LXD_OUTPUT_NAME
+        lxd_script = (
+            controller.current_commissioning_script_set.find_script_result(
+                script_name=LXD_OUTPUT_NAME
+            )
         )
         lxd_script_output = test_hooks.make_lxd_output()
         lxd_script_output["resources"]["network"] = {
@@ -11745,8 +11753,10 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         test_hooks.create_IPADDR_OUTPUT_NAME_script(
             controller, test_hooks.IP_ADDR_OUTPUT
         )
-        lxd_script = controller.current_commissioning_script_set.find_script_result(
-            script_name=LXD_OUTPUT_NAME
+        lxd_script = (
+            controller.current_commissioning_script_set.find_script_result(
+                script_name=LXD_OUTPUT_NAME
+            )
         )
         lxd_script_output = {
             "network": {

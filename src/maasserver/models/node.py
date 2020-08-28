@@ -3471,8 +3471,7 @@ class Node(CleanSave, TimestampedModel):
             )
 
     def abort_operation(self, user, comment=None):
-        """Abort the current operation.
-        """
+        """Abort the current operation."""
         if self.status == NODE_STATUS.DISK_ERASING:
             self.abort_disk_erasing(user, comment)
         elif self.status == NODE_STATUS.COMMISSIONING:
@@ -3498,8 +3497,7 @@ class Node(CleanSave, TimestampedModel):
         self._release(user)
 
     def _release(self, user=None):
-        """Mark allocated or reserved node as available again and power off.
-        """
+        """Mark allocated or reserved node as available again and power off."""
         # Avoid circular imports.
         from maasserver.models.event import Event
 
@@ -4096,8 +4094,8 @@ class Node(CleanSave, TimestampedModel):
                     self_partition.uuid = None
                     self_partition.partition_table = self_ptable
                     self_partition.save(force_insert=True)
-                    source_filesystems = source_partition.filesystem_set.order_by(
-                        "id"
+                    source_filesystems = (
+                        source_partition.filesystem_set.order_by("id")
                     )
                     for source_filesystem in source_filesystems.all():
                         if not source_filesystem.acquired:
@@ -4260,8 +4258,7 @@ class Node(CleanSave, TimestampedModel):
             filesystem.save()
 
     def _clear_acquired_filesystems(self):
-        """Clear the filesystems that are created when the node is acquired.
-        """
+        """Clear the filesystems that are created when the node is acquired."""
         filesystems = Filesystem.objects.filter_by_node(self).filter(
             acquired=True
         )

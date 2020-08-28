@@ -570,7 +570,7 @@ def power_query_vmware(
     host, username, password, vm_name, uuid, port=None, protocol=None
 ):
     """Return the power state for the VM with the specified UUID,
-     using the VMware API."""
+    using the VMware API."""
     api = _get_vmware_api(
         host, username, password, port=port, protocol=protocol
     )

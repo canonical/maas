@@ -115,8 +115,8 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
 
     def test_update_custom_repository_fails_if_disabled_components(self):
         """Test that updating a custom repository fails if specifying
-           'disabled_components'. This is only needed when the repository
-           is an Ubuntu repository"""
+        'disabled_components'. This is only needed when the repository
+        is an Ubuntu repository"""
         self.become_admin()
         # Creates a repository which is not 'default'.
         package_repository = factory.make_PackageRepository()
@@ -221,8 +221,8 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
 
     def test_update_ubuntu_mirror_fails_if_components_are_passed(self):
         """Test that updating a Ubuntu mirror fails if specifying
-           'components'. This is only needed when the repository is not
-           an Ubuntu repository"""
+        'components'. This is only needed when the repository is not
+        an Ubuntu repository"""
         self.become_admin()
         # Create an Ubuntu mirror without components
         package_repository = factory.make_PackageRepository(

@@ -40,7 +40,7 @@ RACK_PACKAGE_NAME = "maas-rack-controller"
 
 def get_version_from_apt(*packages):
     """Return the version output from `apt_pkg.Cache` for the given package(s),
-     or log an error message if the package data is not valid."""
+    or log an error message if the package data is not valid."""
     try:
         cache = apt_pkg.Cache(None)
     except SystemError:

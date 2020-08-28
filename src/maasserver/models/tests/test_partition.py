@@ -82,8 +82,10 @@ class TestPartitionManager(MAASServerTestCase):
             partition=partition,
             filesystem_group=filesystem_group,
         )
-        partitions_in_filesystem_group = Partition.objects.get_partitions_in_filesystem_group(
-            filesystem_group
+        partitions_in_filesystem_group = (
+            Partition.objects.get_partitions_in_filesystem_group(
+                filesystem_group
+            )
         )
         self.assertItemsEqual([partition], partitions_in_filesystem_group)
 

@@ -116,8 +116,7 @@ class RandomInterfaceFactory:
 
     @classmethod
     def assign_ip(cls, interface, alloc_type=None):
-        """Assign an IP address to the interface.
-        """
+        """Assign an IP address to the interface."""
         subnets = list(interface.vlan.subnet_set.all())
         if len(subnets) > 0:
             subnet = random.choice(subnets)

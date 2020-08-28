@@ -972,8 +972,10 @@ class Interface(CleanSave, TimestampedModel):
     def remove_link_up(self):
         """Removes the LINK_UP link if it exists."""
         for ip in self.ip_addresses.all():
-            if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and ip.get_interface_link_type() == (
-                INTERFACE_LINK_TYPE.LINK_UP
+            if (
+                ip.alloc_type != IPADDRESS_TYPE.DISCOVERED
+                and ip.get_interface_link_type()
+                == (INTERFACE_LINK_TYPE.LINK_UP)
             ):
                 ip.delete()
 

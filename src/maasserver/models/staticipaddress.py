@@ -81,7 +81,7 @@ InterfaceMappingResult = namedtuple(
 
 class HostnameIPMapping:
     """This is used to return address information for a host in a way that
-       keeps life simple for the callers."""
+    keeps life simple for the callers."""
 
     def __init__(
         self,

@@ -321,8 +321,10 @@ class TestBlockDeviceManager(MAASServerTestCase):
             partition=partition,
             filesystem_group=filesystem_group,
         )
-        block_devices_in_filesystem_group = BlockDevice.objects.get_block_devices_in_filesystem_group(
-            filesystem_group
+        block_devices_in_filesystem_group = (
+            BlockDevice.objects.get_block_devices_in_filesystem_group(
+                filesystem_group
+            )
         )
         self.assertItemsEqual(block_devices, block_devices_in_filesystem_group)
         self.assertNotIn(

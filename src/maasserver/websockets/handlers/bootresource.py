@@ -61,8 +61,7 @@ log = LegacyLogger()
 
 
 def get_distro_series_info_row(series):
-    """Returns the distro series row information from python-distro-info.
-    """
+    """Returns the distro series row information from python-distro-info."""
     info = UbuntuDistroInfo()
     for row in info._avail(info._date):
         # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries or
@@ -579,8 +578,10 @@ class BootResourceHandler(Handler):
         # Load list of boot resources that currently exist on all racks.
         rack_images = get_common_available_boot_images()
         self.racks_syncing = is_import_boot_images_running()
-        self.rack_resources = BootResource.objects.get_resources_matching_boot_images(
-            rack_images
+        self.rack_resources = (
+            BootResource.objects.get_resources_matching_boot_images(
+                rack_images
+            )
         )
 
         # Load all the resources and generate the JSON result.

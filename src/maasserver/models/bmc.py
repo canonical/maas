@@ -322,8 +322,8 @@ class BMC(CleanSave, TimestampedModel):
                 break
 
     def clean(self):
-        """ Update our ip_address if the address extracted from our power
-        parameters has changed. """
+        """Update our ip_address if the address extracted from our power
+        parameters has changed."""
         new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
         current_ip = None if self.ip_address is None else self.ip_address.ip
         # Set the ip_address field.  If we have a bracketed address, assume
@@ -387,9 +387,9 @@ class BMC(CleanSave, TimestampedModel):
 
     @staticmethod
     def extract_ip_address(power_type, power_parameters):
-        """ Extract the ip_address from the power_parameters. If there is no
+        """Extract the ip_address from the power_parameters. If there is no
         power_type, no power_parameters, or no valid value provided in the
-        power_address field, returns None. """
+        power_address field, returns None."""
         if not power_type or not power_parameters:
             # Nothing to extract.
             return None

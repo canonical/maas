@@ -30,11 +30,11 @@ def curtin_supports_custom_storage():
 
 def curtin_supports_custom_storage_for_dd():
     """Return True if the installed curtin supports custom storage
-       for DD images."""
+    for DD images."""
     return curtin_supports_feature("STORAGE_CONFIG_V1_DD")
 
 
 def curtin_supports_centos_curthook():
     """Return True if the installed curtin supports deploying CentOS/RHEL
-       storage."""
+    storage."""
     return curtin_supports_feature("CENTOS_CURTHOOK_SUPPORT")

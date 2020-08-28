@@ -176,7 +176,7 @@ class BootMethod(metaclass=ABCMeta):
 
     @abstractproperty
     def user_class(self):
-        """ User class that supports this method. Used for the
+        """User class that supports this method. Used for the
         dhcpd.conf file that is generated."""
 
     def match_path(self, backend, path):

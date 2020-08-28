@@ -433,8 +433,8 @@ class TestScriptSetManager(MAASServerTestCase):
         Config.objects.set_config("max_node_commissioning_results", 1)
         node = factory.make_Node()
 
-        node.current_commissioning_script_set = ScriptSet.objects.create_commissioning_script_set(
-            node
+        node.current_commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(node)
         )
         node.save()
 
@@ -735,8 +735,10 @@ class TestScriptSetManager(MAASServerTestCase):
         Config.objects.set_config("max_node_testing_results", 1)
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node()
-        node.current_testing_script_set = ScriptSet.objects.create_testing_script_set(
-            node, scripts=[script.name]
+        node.current_testing_script_set = (
+            ScriptSet.objects.create_testing_script_set(
+                node, scripts=[script.name]
+            )
         )
         node.save()
 
@@ -931,8 +933,8 @@ class TestScriptSetManager(MAASServerTestCase):
     def test_create_installation_script_set_cleans_up_current(self):
         Config.objects.set_config("max_node_installation_results", 1)
         node = factory.make_Node()
-        node.current_installation_script_set = ScriptSet.objects.create_installation_script_set(
-            node
+        node.current_installation_script_set = (
+            ScriptSet.objects.create_installation_script_set(node)
         )
         node.save()
 

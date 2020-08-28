@@ -532,7 +532,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         )
 
     def _unreserved_ip_ranges_empty(self, subnet, first_address, last_address):
-        """ Used by the succeeding three tests to prevent duplicating the
+        """Used by the succeeding three tests to prevent duplicating the
         boilerplate that creates the requested range, then makes sure the
         unreserved_ip_ranges API call successfully returns an empty list.
         """

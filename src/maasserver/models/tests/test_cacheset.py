@@ -61,8 +61,10 @@ class TestCacheSetManager(MAASServerTestCase):
         cache_set = CacheSet.objects.get_or_create_cache_set_for_block_device(
             block_device
         )
-        cache_set_prev = CacheSet.objects.get_or_create_cache_set_for_block_device(
-            block_device
+        cache_set_prev = (
+            CacheSet.objects.get_or_create_cache_set_for_block_device(
+                block_device
+            )
         )
         self.assertEqual(cache_set_prev, cache_set)
 
@@ -78,8 +80,8 @@ class TestCacheSetManager(MAASServerTestCase):
         cache_set = CacheSet.objects.get_or_create_cache_set_for_partition(
             partition
         )
-        cache_set_prev = CacheSet.objects.get_or_create_cache_set_for_partition(
-            partition
+        cache_set_prev = (
+            CacheSet.objects.get_or_create_cache_set_for_partition(partition)
         )
         self.assertEqual(cache_set_prev, cache_set)
 

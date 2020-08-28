@@ -252,8 +252,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
 
     @classmethod
     def get_GENERATE_directives(cls, dynamic_range):
-        """Return the GENERATE directives for the forward zone of a network.
-        """
+        """Return the GENERATE directives for the forward zone of a network."""
         slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
         if dynamic_range.size > 256 ** 2 or not ip_range_within_network(
             dynamic_range, slash_16

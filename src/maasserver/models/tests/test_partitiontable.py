@@ -148,8 +148,7 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertEqual(MIN_PARTITION_SIZE * 2, partition.size)
 
     def test_add_partition_to_full_device(self):
-        """Tests whether we fail to add a partition to an already full device.
-        """
+        """Tests whether we fail to add a partition to an already full device."""
         block_size = 4096
         device = factory.make_BlockDevice(
             size=MIN_BLOCK_DEVICE_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,

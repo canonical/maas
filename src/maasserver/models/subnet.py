@@ -106,8 +106,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         """
 
     def raw_subnets_containing_ip(self, ip):
-        """Find the most specific Subnet the specified IP address belongs in.
-        """
+        """Find the most specific Subnet the specified IP address belongs in."""
         return self.raw(self.find_subnets_with_ip_query, params=[str(ip)])
 
     # Note: << is the postgresql "is contained within" operator.

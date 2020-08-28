@@ -261,11 +261,15 @@ class CurtinStorageGenerator:
         if partition_table is not None:
             disk_operation["ptable"] = self._get_ptable_type(partition_table)
         elif should_install_grub:
-            gpt_table = bios_boot_method in [
-                "uefi",
-                "powernv",
-                "powerkvm",
-            ] or (bios_boot_method != "uefi" and node_arch == "amd64")
+            gpt_table = (
+                bios_boot_method
+                in [
+                    "uefi",
+                    "powernv",
+                    "powerkvm",
+                ]
+                or (bios_boot_method != "uefi" and node_arch == "amd64")
+            )
             disk_operation["ptable"] = "gpt" if gpt_table else "msdos"
             add_prep_partition = (
                 node_arch == "ppc64el"
@@ -301,8 +305,7 @@ class CurtinStorageGenerator:
             self._generate_bios_grub_partition(block_device.get_name())
 
     def _get_ptable_type(self, partition_table):
-        """Return the value for the "ptable" entry in the physical operation.
-        """
+        """Return the value for the "ptable" entry in the physical operation."""
         if partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
             return "msdos"
         elif partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
