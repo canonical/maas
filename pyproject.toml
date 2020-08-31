@@ -1,3 +1,8 @@
+[build-system]
+# With setuptools 50.0.0, 'make .ve' fails.
+requires = ["setuptools < 50.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.black]
 line-length = 79
 exclude = """
