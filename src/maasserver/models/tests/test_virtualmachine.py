@@ -56,3 +56,12 @@ class TestVirtualMachine(MAASServerTestCase):
             pinned_cores=[1, 2, 3],
             unpinned_cores=4,
         )
+
+    def test_machine_virtualmachine(self):
+        machine = factory.make_Machine()
+        vm = VirtualMachine.objects.create(
+            identifier="vm1",
+            bmc=factory.make_BMC(power_type="lxd"),
+            machine=machine,
+        )
+        self.assertIs(machine.virtualmachine, vm)

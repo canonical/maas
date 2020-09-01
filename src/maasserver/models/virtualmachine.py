@@ -8,6 +8,7 @@ from django.db.models import (
     CASCADE,
     ForeignKey,
     IntegerField,
+    OneToOneField,
     SET_NULL,
     TextField,
 )
@@ -26,13 +27,14 @@ class VirtualMachine(CleanSave, TimestampedModel):
     unpinned_cores = IntegerField(default=0, blank=True)
     memory = IntegerField(default=0)
     hugepages_backed = BooleanField(default=False)
-    machine = ForeignKey(
+    machine = OneToOneField(
         Machine,
+        SET_NULL,
         default=None,
         blank=True,
         null=True,
         editable=False,
-        on_delete=SET_NULL,
+        related_name="virtualmachine",
     )
     bmc = ForeignKey(BMC, editable=False, on_delete=CASCADE)
 

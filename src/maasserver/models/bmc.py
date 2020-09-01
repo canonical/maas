@@ -905,14 +905,13 @@ class Pod(BMC):
 
             # XXX this needs to be expanded when we support CPU pinning and
             # hugepages
-            virtual_machine = VirtualMachine(
+            VirtualMachine.objects.create(
                 identifier=machine.instance_power_parameters["instance_name"],
+                bmc=self,
                 unpinned_cores=machine.cpu_count,
                 memory=machine.memory,
                 machine=machine,
-                bmc=self,
             )
-            virtual_machine.save()
 
         self._assign_tags(machine, discovered_machine)
         self._assign_storage(machine, discovered_machine, skip_commissioning)
