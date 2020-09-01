@@ -787,15 +787,10 @@ def compose_curtin_network_config(node, version=1, source_routing=False):
                 "apt-get",
                 "-y",
                 "install",
+                # Explicitly install openvswitch until bug #1891608 is
+                # fixed and backported to focal.
                 "openvswitch-switch",
                 "netplan.io",
-            ],
-            "openvswitch_03": [
-                "curtin",
-                "in-target",
-                "--",
-                "netplan",
-                "apply",
             ],
         }
 
