@@ -287,6 +287,14 @@ class TestMachineAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(machine.owner.username, parsed_result["owner"])
 
+    def test_GET_returns_virtualmachine(self):
+        machine = factory.make_Node()
+        vm = factory.make_VirtualMachine(machine=machine)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(parsed_result["virtualmachine_id"], vm.id)
+
     def test_GET_permission_denied_when_allocated_to_other_user(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User()

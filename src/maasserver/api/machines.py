@@ -181,6 +181,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "interface_test_status",
     "interface_test_status_name",
     ("numanode_set", DISPLAYED_NUMANODE_FIELDS),
+    "virtualmachine_id",
 )
 
 # Limited set of machine fields exposed on the anonymous API.
@@ -535,6 +536,14 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 "link_id": machine.gateway_link_ipv6_id,
             },
         }
+
+    @classmethod
+    def virtualmachine_id(handler, machine):
+        """The ID of the VirtualMachine associated to this machine, or None."""
+        vm = getattr(machine, "virtualmachine", None)
+        if vm is None:
+            return None
+        return vm.id
 
     def update(self, request, system_id):
         """@description-title Update a machine

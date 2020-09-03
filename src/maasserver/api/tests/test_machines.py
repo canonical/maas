@@ -132,6 +132,24 @@ class TestMachinesAPI(APITestCase.ForUser):
             "/MAAS/api/2.0/machines/", reverse("machines_handler")
         )
 
+    def test_GET_includes_virtualmachine_id(self):
+        machine1 = factory.make_Node()
+        vm1 = factory.make_VirtualMachine(machine=machine1)
+        machine2 = factory.make_Node()
+        response = self.client.get(reverse("machines_handler"))
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        result = sorted(
+            (entry["system_id"], entry["virtualmachine_id"])
+            for entry in parsed_result
+        )
+        self.assertEqual(
+            result,
+            sorted([(machine1.system_id, vm1.id), (machine2.system_id, None)]),
+        )
+
     def test_POST_creates_machine(self):
         # The API allows a non-admin logged-in user to create a Machine.
         hostname = factory.make_name("host")

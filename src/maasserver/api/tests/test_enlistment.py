@@ -757,6 +757,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 "hardware_info",
                 "interface_test_status",
                 "interface_test_status_name",
+                "virtualmachine_id",
             ],
             list(parsed_result),
         )
@@ -977,6 +978,7 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 "hardware_info",
                 "interface_test_status",
                 "interface_test_status_name",
+                "virtualmachine_id",
             ],
             list(parsed_result),
         )

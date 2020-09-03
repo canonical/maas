@@ -14,6 +14,7 @@ import json
 
 import bson
 from django.db.models import Prefetch
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import Int, StringBool
@@ -180,6 +181,7 @@ NODES_PREFETCH = [
     "tags",
     "nodemetadata_set",
     "numanode_set",
+    "virtualmachine",
 ]
 
 
@@ -853,6 +855,9 @@ class NodesHandler(OperationsHandler):
             nodes, _, _ = form.filter_nodes(nodes)
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
+            nodes = nodes.annotate(
+                virtualmachine_id=Coalesce("virtualmachine__id", None)
+            )
             # Set related node parents so no extra queries are needed.
             for node in nodes:
                 for interface in node.interface_set.all():
