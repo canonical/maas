@@ -3164,11 +3164,17 @@ class Factory(maastesting.factory.Factory):
         pinned_cores=None,
         unpinned_cores=0,
         memory=None,
+        hugepages_backed=None,
     ):
         if identifier is None:
             identifier = factory.make_string(20)
         if bmc is None:
-            bmc = factory.make_BMC(power_type="lxd")
+            bmc = factory.make_BMC(
+                power_type="lxd",
+                power_parameters={
+                    "power_address": self.make_ip_address(),
+                },
+            )
         if pinned_cores is None:
             pinned_cores = []
         if memory is None:
@@ -3176,10 +3182,12 @@ class Factory(maastesting.factory.Factory):
                 memory = 0
             else:
                 memory = machine.memory
+        if hugepages_backed is None:
+            hugepages_backed = self.pick_bool()
         return VirtualMachine.objects.create(
             identifier=identifier,
             bmc=bmc,
-            hugepages_backed=self.pick_bool(),
+            hugepages_backed=hugepages_backed,
             memory=memory,
             machine=machine,
             pinned_cores=pinned_cores,

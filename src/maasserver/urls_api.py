@@ -99,6 +99,10 @@ from maasserver.api.support import (
 from maasserver.api.tags import TagHandler, TagsHandler
 from maasserver.api.users import UserHandler, UsersHandler
 from maasserver.api.version import VersionHandler
+from maasserver.api.virtualmachine import (
+    VirtualMachineHandler,
+    VirtualMachinesHandler,
+)
 from maasserver.api.vlans import VlanHandler, VlansHandler
 from maasserver.api.vmfs_datastores import (
     VmfsDatastoreHandler,
@@ -157,6 +161,12 @@ pod_handler = RestrictedResource(PodHandler, authentication=api_auth)
 pods_handler = RestrictedResource(PodsHandler, authentication=api_auth)
 vm_host_handler = RestrictedResource(VmHostHandler, authentication=api_auth)
 vm_hosts_handler = RestrictedResource(VmHostsHandler, authentication=api_auth)
+virtual_machine_handler = RestrictedResource(
+    VirtualMachineHandler, authentication=api_auth
+)
+virtual_machines_handler = RestrictedResource(
+    VirtualMachinesHandler, authentication=api_auth
+)
 dhcp_snippet_handler = RestrictedResource(
     DHCPSnippetHandler, authentication=api_auth
 )
@@ -462,6 +472,16 @@ urlpatterns += [
     # pods to not break API compatibility.
     url(r"^vm-hosts/(?P<id>[^/]+)/$", vm_host_handler, name="vm_host_handler"),
     url(r"^vm-hosts/$", vm_hosts_handler, name="vm_hosts_handler"),
+    url(
+        r"^virtual-machines/(?P<id>[^/]+)$",
+        virtual_machine_handler,
+        name="virtual_machine_handler",
+    ),
+    url(
+        r"^virtual-machines/$",
+        virtual_machines_handler,
+        name="virtual_machines_handler",
+    ),
     url(r"^events/$", events_handler, name="events_handler"),
     url(r"^discovery/$", discoveries_handler, name="discoveries_handler"),
     url(
