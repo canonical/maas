@@ -145,6 +145,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             result["storage_pools"], Equals(expected_data["storage_pools"])
         )
         self.assertThat(result["owners_count"], Equals(2))
+        self.assertEqual(result["numa_pinning"], [])
 
     def test_get_with_pod_host(self):
         admin = factory.make_admin()
@@ -165,6 +166,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(result["host"], Equals(node.system_id))
         self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
         self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
+        self.assertEqual(len(result["numa_pinning"]), 2)
 
     def test_get_with_pod_host_determines_vlan_boot_status(self):
         admin = factory.make_admin()

@@ -140,6 +140,8 @@ class PodHandler(TimestampedModelHandler):
                 data["attached_vlans"] = []
                 data["boot_vlans"] = []
 
+        data["numa_pinning"] = self.dehydrate_numa_pinning(obj)
+
         if self.user.has_perm(PodPermission.compose, obj):
             data["permissions"].append("compose")
 
@@ -234,6 +236,129 @@ class PodHandler(TimestampedModelHandler):
             "used": used,
             "available": pool.storage - used,
         }
+
+    def dehydrate_numa_pinning(self, obj):
+        """Dehydrate NUMA pinning info."""
+        if obj.host is None:
+            return []
+
+        # XXX hardcoded fake data for now
+        return [
+            {
+                "node_id": 0,
+                "memory": {
+                    "hugepages": [
+                        {
+                            "page_size": 2048,
+                            "allocated": 4,
+                            "free": 6,
+                        },
+                    ],
+                    "general": {
+                        "allocated": 10240,
+                        "free": 2048,
+                    },
+                },
+                "cores": {
+                    "allocated": [0, 2, 3, 7],
+                    "free": [1, 4, 5, 6],
+                },
+                "interfaces": [
+                    {
+                        "id": 10,
+                        "name": "eth4",
+                        "virtual_functions": {
+                            "allocated": 4,
+                            "free": 12,
+                        },
+                    },
+                    {
+                        "id": 20,
+                        "name": "eth5",
+                        "virtual_functions": {
+                            "allocated": 14,
+                            "free": 2,
+                        },
+                    },
+                ],
+                "vms": [
+                    {
+                        "system_id": "deadbeef1",
+                        "pinned_cores": [0, 2],
+                        "networks": [
+                            {
+                                "guest_nic_id": 11,
+                                "host_nic_id": 10,
+                            },
+                        ],
+                    },
+                    {
+                        "system_id": "deadbeef2",
+                        "pinned_cores": [3, 7],
+                        "networks": [
+                            {
+                                "guest_nic_id": 21,
+                                "host_nic_id": 20,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "node_id": 1,
+                "memory": {
+                    "hugepages": [
+                        {
+                            "page_size": 2048,
+                            "allocated": 2,
+                            "free": 14,
+                        }
+                    ],
+                    "general": {
+                        "allocated": 20480,
+                        "free": 4096,
+                    },
+                },
+                "cores": {
+                    "allocated": [0, 1],
+                    "free": [2, 3, 4, 5, 6, 7],
+                },
+                "interfaces": [
+                    {
+                        "id": 100,
+                        "name": "eth0",
+                        "virtual_functions": {
+                            "allocated": 2,
+                            "free": 14,
+                        },
+                    },
+                    {
+                        "id": 200,
+                        "name": "eth1",
+                        "virtual_functions": {
+                            "allocated": 16,
+                            "free": 16,
+                        },
+                    },
+                ],
+                "vms": [
+                    {
+                        "system_id": "deadbeef3",
+                        "pinned_cores": [0, 1],
+                        "networks": [
+                            {
+                                "guest_nic_id": 101,
+                                "host_nic_id": 100,
+                            },
+                            {
+                                "guest_nic_id": 102,
+                                "host_nic_id": 100,
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
 
     @asynchronous
     def create(self, params):
