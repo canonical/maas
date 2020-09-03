@@ -533,6 +533,32 @@ class TestHelpers(MAASServerTestCase):
             results[script_result],
         )
 
+    def test_process_file_adds_field_for_runtime(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
+        result = factory.make_string()
+        request = {
+            "exit_status": 0,
+            "runtime": random.randint(1000, 9999) / 100,
+        }
+
+        process_file(
+            results,
+            script_result.script_set,
+            script_result.name,
+            result,
+            request,
+        )
+
+        self.assertDictEqual(
+            {
+                "exit_status": request["exit_status"],
+                "output": result,
+                "runtime": request["runtime"],
+            },
+            results[script_result],
+        )
+
     def test_process_file_finds_script_result_by_id(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -1313,6 +1339,25 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
 
+    def test_signaling_installation_with_script_name_sets_script_to_run(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING,
+            owner=factory.make_User(),
+            with_empty_script_sets=True,
+        )
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first()
+        )
+        client = make_node_client(node=node)
+        response = call_signal(
+            client,
+            status=SIGNAL_STATUS.WORKING,
+            name=script_result.name,
+        )
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+
     def test_signaling_netconf_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
@@ -1532,6 +1577,7 @@ class TestMAASScripts(MAASServerTestCase):
                 {
                     "name": script.name,
                     "path": path,
+                    "script_version_id": script.script.id,
                     "timeout_seconds": script.timeout.seconds,
                     "parallel": script.parallel,
                     "hardware_type": script.hardware_type,
@@ -1602,6 +1648,7 @@ class TestMAASScripts(MAASServerTestCase):
                 {
                     "name": script.name,
                     "path": path,
+                    "script_version_id": script.script.id,
                     "timeout_seconds": script.timeout.seconds,
                     "parallel": script.parallel,
                     "hardware_type": script.hardware_type,
@@ -2915,6 +2962,25 @@ class TestCommissioningAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
 
+    def test_signaling_commissioning_with_script_name_sets_script_to_run(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING,
+            owner=factory.make_User(),
+            with_empty_script_sets=True,
+        )
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first()
+        )
+        client = make_node_client(node=node)
+        response = call_signal(
+            client,
+            status=SIGNAL_STATUS.WORKING,
+            name=script_result.name,
+        )
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+
     def test_signaling_commissioning_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING,
@@ -3178,6 +3244,25 @@ class TestTestingAPI(MAASServerTestCase):
             client,
             status=SIGNAL_STATUS.WORKING,
             script_result_id=script_result.id,
+        )
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+
+    def test_signaling_testing_with_script_name_sets_script_to_run(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING,
+            owner=factory.make_User(),
+            with_empty_script_sets=True,
+        )
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first()
+        )
+        client = make_node_client(node=node)
+        response = call_signal(
+            client,
+            status=SIGNAL_STATUS.WORKING,
+            name=script_result.name,
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)

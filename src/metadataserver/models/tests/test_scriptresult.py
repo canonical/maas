@@ -441,6 +441,17 @@ class TestScriptResult(MAASServerTestCase):
             else:
                 self.assertEquals(SCRIPT_STATUS.FAILED, script_result.status)
 
+    def test_store_result_accepts_runtime(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
+        runtime = random.randint(1000, 9999) / 100
+
+        script_result.store_result(0, runtime=runtime)
+
+        self.assertEqual(
+            script_result.started,
+            script_result.ended - timedelta(seconds=runtime),
+        )
+
     def test_save_stores_start_time(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
         script_result.status = SCRIPT_STATUS.RUNNING

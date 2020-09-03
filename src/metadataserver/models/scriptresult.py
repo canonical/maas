@@ -262,6 +262,7 @@ class ScriptResult(CleanSave, TimestampedModel):
         result=None,
         script_version_id=None,
         timedout=False,
+        runtime=None,
     ):
         # Controllers and Pods are allowed to overwrite their results during any status
         # to prevent new ScriptSets being created everytime a controller
@@ -412,7 +413,7 @@ class ScriptResult(CleanSave, TimestampedModel):
                 updated=now(),
             )
 
-        self.save()
+        self.save(runtime=runtime)
 
     @property
     def history(self):
@@ -433,7 +434,7 @@ class ScriptResult(CleanSave, TimestampedModel):
         qs = qs.order_by("-id")
         return qs
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, runtime=None, **kwargs):
         if self.started is None and self.status == SCRIPT_STATUS.RUNNING:
             self.started = datetime.now()
             if "update_fields" in kwargs:
@@ -448,7 +449,10 @@ class ScriptResult(CleanSave, TimestampedModel):
             # the script has started comes in after the POST telling MAAS the
             # result.
             if self.started is None:
-                self.started = self.ended
+                if runtime:
+                    self.started = self.ended - timedelta(seconds=runtime)
+                else:
+                    self.started = self.ended
                 if "update_fields" in kwargs:
                     kwargs["update_fields"].append("started")
 

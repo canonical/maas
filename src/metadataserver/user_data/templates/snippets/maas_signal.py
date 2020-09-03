@@ -57,6 +57,13 @@ def main():
         "--url", metavar="url", help="The data source to query", default=None
     )
     parser.add_argument(
+        "--script-name",
+        metavar="script_name",
+        type=str,
+        dest="script_name",
+        help="The name of the Script this signal is about.",
+    )
+    parser.add_argument(
         "--script-result-id",
         metavar="script_result_id",
         type=int,
@@ -69,6 +76,13 @@ def main():
         help="File to post",
         action="append",
         default=[],
+    )
+    parser.add_argument(
+        "--runtime",
+        metavar="runtime",
+        type=float,
+        dest="runtime",
+        help="How long the script took to run.",
     )
     parser.add_argument(
         "--exit-status",
@@ -131,8 +145,10 @@ def main():
             creds,
             args.status,
             args.error,
+            args.script_name,
             args.script_result_id,
             files,
+            args.runtime,
             args.exit_status,
             args.script_version_id,
             args.power_type,

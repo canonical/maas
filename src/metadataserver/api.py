@@ -31,7 +31,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from formencode.validators import Int, String
+from formencode.validators import Int, Number, String
 from piston3.utils import rc
 import yaml
 
@@ -325,8 +325,12 @@ def process_file(
         script_version_id = get_optional_param(
             request, "script_version_id", None, Int
         )
-        if script_version_id is not None:
+        if script_version_id:
             results[script_result]["script_version_id"] = script_version_id
+
+        runtime = get_optional_param(request, "runtime", None, Number)
+        if runtime:
+            results[script_result]["runtime"] = runtime
 
 
 class MetadataViewHandler(OperationsHandler):
@@ -550,8 +554,13 @@ class VersionIndexHandler(MetadataViewHandler):
             script_result_id = get_optional_param(
                 request.POST, "script_result_id", None, Int
             )
-            if script_result_id is not None:
-                script_result = script_set.find_script_result(script_result_id)
+            script_name = get_optional_param(
+                request.POST, "name", None, String
+            )
+            script_result = script_set.find_script_result(
+                script_result_id, script_name
+            )
+            if script_result:
                 # Only update the script status if it was in a pending or
                 # installing state incase the script result has been uploaded
                 # and proceeded already.
@@ -1105,6 +1114,7 @@ class AnonMAASScriptsHandler(AnonymousOperationsHandler):
                     {
                         "name": script.name,
                         "path": path,
+                        "script_version_id": script.script.id,
                         "timeout_seconds": script.timeout.seconds,
                         "parallel": script.parallel,
                         "hardware_type": script.hardware_type,
