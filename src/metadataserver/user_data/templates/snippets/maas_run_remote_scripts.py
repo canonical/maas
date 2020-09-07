@@ -44,6 +44,7 @@ import tarfile
 from threading import Event, Lock, Thread
 import time
 import traceback
+from urllib.parse import urlencode, urlparse
 import zipfile
 
 import dbus
@@ -79,12 +80,18 @@ def fail(msg):
     sys.exit(1)
 
 
-def signal_wrapper(*args, **kwargs):
+def signal_wrapper(url, creds, *args, **kwargs):
     """Wrapper to output any SignalExceptions to STDERR."""
+    # During enlistment the token_secret isn't received until the
+    # machine has been created. Don't try to send anything and let
+    # the caller know nothing was sent by returning False
+    if not creds["token_secret"]:
+        return False
     try:
-        signal(*args, **kwargs)
+        signal(url, creds, *args, **kwargs)
     except SignalException as e:
         fail(e.error)
+    return True
 
 
 def output_and_send(error, send_result=True, *args, **kwargs):
@@ -92,7 +99,9 @@ def output_and_send(error, send_result=True, *args, **kwargs):
     sys.stdout.write("%s\n" % error)
     sys.stdout.flush()
     if send_result:
-        signal_wrapper(*args, error=error, **kwargs)
+        return signal_wrapper(*args, error=error, **kwargs)
+    else:
+        return False
 
 
 def output_and_send_scripts(
@@ -116,6 +125,17 @@ def output_and_send_scripts(
         output_and_send(
             script_error, send_result, *args, **script["args"], **new_kwargs
         )
+
+
+def get_maas_machines(md_endpoint, query="", post_data=None):
+    """Interact with the MAAS machines API endpoint."""
+    query = urlencode(query)
+    url = urlparse(md_endpoint)
+    url = url._replace(
+        path="/MAAS/api/2.0/machines/", query=query, params=None, fragment=None
+    )
+    response = geturl(url.geturl(), post_data=post_data).read()
+    return json.loads(response)
 
 
 def download_and_extract_tar(url, creds, scripts_dir):
@@ -169,7 +189,7 @@ def run_and_check(
                     scripts[0]["stderr_path"], "rb"
                 ).read(),
             }
-            output_and_send(
+            script["result_sent"] = output_and_send(
                 "Failed installing package(s) for %s" % script["msg_name"],
                 **args
             )
@@ -908,8 +928,116 @@ def _check_link_connected(script):
         yaml.safe_dump(result, f)
 
 
+def get_mac_addresses_for_enlistment():
+    """Return a comma-seperated list of discovered MAC addresses."""
+    return ",".join(
+        [
+            mac
+            for mac in get_interfaces().keys()
+            # This is an OpenBMC MAC and as such, we ignore it.
+            # This MAC will be the same for all Wedge systems (e.g Wedge 40/100).
+            if mac != "02:00:00:00:00:02"
+        ]
+    )
+
+
+def enlist(url, creds, power_type=None, power_parameters=None):
+    """Enlist a new machine with MAAS.
+
+    Create a new machine by interacting with the MAAS machines endpoint. Once
+    the machine has been created redownload the preseed to get the machine's
+    OAUTH credentials.
+    """
+    post_data = {
+        "architecture": check_output(
+            ["dpkg", "--print-architecture"], timeout=60
+        )
+        .decode()
+        .strip(),
+        "mac_addresses": get_mac_addresses_for_enlistment(),
+        "commission": True,
+    }
+    if power_type:
+        post_data["power_type"] = power_type
+    if power_parameters:
+        post_data["power_parameters"] = json.dumps(power_parameters)
+    machine = get_maas_machines(url, post_data=post_data)
+    preseed_url = urlparse(url)
+    preseed_url = preseed_url._replace(
+        path="/MAAS/metadata/latest/by-id/%s/" % machine["system_id"],
+        query="op=get_preseed",
+        params=None,
+        fragment=None,
+    )
+    preseed = geturl(preseed_url.geturl()).read()
+    # Overwrite the enlistment preseed as it doesn't contain
+    # credentials. This isn't neccessary but can help with debug.
+    if os.path.exists(creds["config_path"]):
+        os.remove(creds["config_path"])
+    with open(creds["config_path"], "wb") as f:
+        f.write(preseed)
+    preseed_config = yaml.safe_load(preseed)
+    if "datasource" in preseed_config:
+        preseed_config = preseed_config["datasource"]["MAAS"]
+    for key in [
+        "consumer_key",
+        "token_key",
+        "token_secret",
+        "consumer_secret",
+    ]:
+        if key in preseed_config:
+            creds[key] = preseed_config[key]
+
+
+# Store whether the BMC config has already been uploaded so it only
+# happens once.
+_bmc_config_uploaded = False
+
+
+def bmc_config(script, send_result=True):
+    """Send MAAS the machine's BMC credentials
+
+    Attempt to send MAAS the machine's BMC credentials. If the machine doesn't
+    exist yet, create it.
+    """
+    global _bmc_config_uploaded
+    # Only upload BMC config once.
+    if _bmc_config_uploaded or not send_result:
+        return
+    with open(script["bmc_config_path"], "r") as f:
+        config = yaml.safe_load(f)
+    power_type = config.pop("power_type")
+    if not output_and_send(
+        "BMC credentials reconfigured by %s" % script["name"],
+        send_result,
+        power_type=power_type,
+        power_params=config,
+        status="WORKING",
+        **script["args"]
+    ):
+        # If output_and_send returns false the machine is being enlisted.
+        # Create the machine object and get credentials.
+        try:
+            enlist(
+                script["args"]["url"],
+                script["args"]["creds"],
+                power_type,
+                config,
+            )
+        except Exception as e:
+            # If enlistment failed with power credentials try again without
+            enlist(script["args"]["url"], script["args"]["creds"])
+            _bmc_config_uploaded = True
+            raise e
+
+    _bmc_config_uploaded = True
+
+
 def run_script(script, scripts_dir, send_result=True):
     args = copy.deepcopy(script["args"])
+    # While args need to be isolated so scripts don't effect each other
+    # creds need to be a reference for enlistment
+    args["creds"] = script["args"]["creds"]
     args["status"] = "WORKING"
     args["send_result"] = send_result
     timeout_seconds = script.get("timeout_seconds")
@@ -928,6 +1056,8 @@ def run_script(script, scripts_dir, send_result=True):
     env["DOWNLOAD_PATH"] = script["download_path"]
     env["RUNTIME"] = str(timeout_seconds)
     env["HAS_STARTED"] = str(script.get("has_started", False))
+    if "bmc_config_path" in script:
+        env["BMC_CONFIG_PATH"] = script["bmc_config_path"]
 
     try:
         script_arguments = parse_parameters(script, scripts_dir)
@@ -961,6 +1091,7 @@ def run_script(script, scripts_dir, send_result=True):
         )
         return False
 
+    start_time = time.monotonic()
     try:
         # This script sets its own niceness value to the highest(-20) below
         # to help ensure the heartbeat keeps running. When launching the
@@ -1002,7 +1133,8 @@ def run_script(script, scripts_dir, send_result=True):
             args["files"][script["result_name"]] = open(
                 script["result_path"], "rb"
             ).read()
-        output_and_send(
+        args["runtime"] = script["runtime"] = time.monotonic() - start_time
+        script["result_sent"] = output_and_send(
             "Failed to execute %s: %d"
             % (script["msg_name"], args["exit_status"]),
             **args
@@ -1026,7 +1158,8 @@ def run_script(script, scripts_dir, send_result=True):
             args["files"][script["result_name"]] = open(
                 script["result_path"], "rb"
             ).read()
-        output_and_send(
+        args["runtime"] = script["runtime"] = time.monotonic() - start_time
+        script["result_sent"] = output_and_send(
             "Timeout(%s) expired on %s"
             % (str(timedelta(seconds=timeout_seconds)), script["msg_name"]),
             **args
@@ -1046,19 +1179,59 @@ def run_script(script, scripts_dir, send_result=True):
             args["files"][script["result_name"]] = open(
                 script["result_path"], "rb"
             ).read()
-        output_and_send(
+        args["runtime"] = script["runtime"] = time.monotonic() - start_time
+        if (
+            script["exit_status"] == 0
+            and "bmc_config_path" in script
+            and os.path.exists(script["bmc_config_path"])
+        ):
+            try:
+                bmc_config(script, send_result)
+            except Exception as e:
+                # There was an error processing output or uploading. Fail the
+                # script to make this clear to the user.
+                script["exit_status"] = args["exit_status"] = 1
+                bmc_config_error = (
+                    "\n\nError: Unable to send BMC config to MAAS - " "%s" % e
+                ).encode()
+                args["files"][script["combined_name"]] += bmc_config_error
+                args["files"][script["stderr_name"]] += bmc_config_error
+        script["result_sent"] = output_and_send(
             "Finished %s: %s" % (script["msg_name"], args["exit_status"]),
             **args
         )
-        if proc.returncode != 0:
+        if script["exit_status"] != 0:
             return False
         else:
             return True
 
 
+def send_unsent_results(scripts):
+    """Send any scripts which run during enlistment before the Node existed."""
+    for unsent_script in scripts:
+        if unsent_script["result_sent"]:
+            break
+        args = copy.deepcopy(unsent_script["args"])
+        args["status"] = "WORKING"
+        args["runtime"] = unsent_script["runtime"]
+        args["exit_status"] = unsent_script["exit_status"]
+        args["files"] = {}
+        for f in ["combined", "stdout", "stderr"]:
+            if os.path.exists(unsent_script["%s_path" % f]):
+                args["files"][unsent_script["%s_name" % f]] = open(
+                    unsent_script["%s_path" % f], "rb"
+                ).read()
+        unsent_script["result_sent"] = output_and_send(
+            "Finished %s: %s"
+            % (unsent_script["msg_name"], unsent_script["exit_status"]),
+            **args
+        )
+
+
 def run_serial_scripts(scripts, scripts_dir, config_dir, send_result=True):
     """Run scripts serially."""
     fail_count = 0
+    results_sent = False
     for script in scripts:
         try:
             with CustomNetworking([script], config_dir, send_result):
@@ -1076,6 +1249,17 @@ def run_serial_scripts(scripts, scripts_dir, config_dir, send_result=True):
         except Exception:
             traceback.print_exc()
             fail_count += 1
+        if not results_sent and script["result_sent"]:
+            # During enlistment send results as soon as the machine
+            # has been created.
+            send_unsent_results(scripts)
+            results_sent = True
+    if not results_sent and scripts:
+        # If the machine hasn't been created by the time all serially run
+        # commissioning scripts have finished no BMC detection script has
+        # found an applicable BMC. Create the machine with no BMC credentials.
+        enlist(scripts[0]["args"]["url"], scripts[0]["args"]["creds"])
+        send_unsent_results(scripts)
     return fail_count
 
 
@@ -1168,12 +1352,46 @@ def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
     return fail_count
 
 
-def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
+def add_push_data(script):
+    """Adds extra data into the script object for sending to MAAS."""
+    script["args"]["script_name"] = script["name"]
+    if "script_result_id" in script:
+        script["args"]["script_result_id"] = script["script_result_id"]
+        # The pretty name of the script with id used for debug messages.
+        script["msg_name"] = "%s (id: %s" % (
+            script["name"],
+            script["script_result_id"],
+        )
+        if "script_version_id" in script:
+            script["msg_name"] = "%s, script_version_id: %s)" % (
+                script["msg_name"],
+                script["script_version_id"],
+            )
+            script["args"]["script_version_id"] = script["script_version_id"]
+        else:
+            script["msg_name"] = "%s)" % script["msg_name"]
+    else:
+        script["msg_name"] = script["name"]
+
+
+def run_scripts(
+    url,
+    creds,
+    scripts_dir,
+    out_dir,
+    scripts,
+    send_result=True,
+    allow_bmc_detection=False,
+):
     """Run and report results for the given scripts."""
     config_dir = os.path.abspath(os.path.join(scripts_dir, "..", "config"))
     serial_scripts = []
     instance_scripts = []
     parallel_scripts = []
+
+    if allow_bmc_detection:
+        bmc_config_path = os.path.join(config_dir, "bmc-config.yaml")
+        os.makedirs(config_dir, exist_ok=True)
 
     # Add extra info to the script dictionary used to run the script.
     # Run by CPU(1), memory(2), storage(3), network(4) and finally node(0).
@@ -1190,27 +1408,18 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
         script["args"] = {
             "url": url,
             "creds": creds,
-            "script_result_id": script["script_result_id"],
         }
-        # The pretty name of the script with id used for debug messages.
-        script["msg_name"] = "%s (id: %s" % (
-            script["name"],
-            script["script_result_id"],
-        )
-        if "script_version_id" in script:
-            script["msg_name"] = "%s, script_version_id: %s)" % (
-                script["msg_name"],
-                script["script_version_id"],
-            )
-            script["args"]["script_version_id"] = script["script_version_id"]
-        else:
-            script["msg_name"] = "%s)" % script["msg_name"]
-
+        add_push_data(script)
         # Create a seperate output directory for each script being run as
         # multiple scripts with the same name may be run.
-        script_out_dir = os.path.join(
-            out_dir, "%s.%s" % (script["name"], script["script_result_id"])
-        )
+        if "script_result_id" in script:
+            script_out_dir = os.path.join(
+                out_dir, "%s.%s" % (script["name"], script["script_result_id"])
+            )
+        else:
+            # Enlistment is running so no script_result_id is included. The id
+            # is only used to assist in debugging so its fine to leave it off.
+            script_out_dir = os.path.join(out_dir, script["name"])
         os.makedirs(script_out_dir, exist_ok=True)
         script["combined_name"] = script["name"]
         script["combined_path"] = os.path.join(
@@ -1238,6 +1447,10 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
         # enums in src/metadataserver/enum.py. When running on a node enum.py
         # is not available which is why they are hard coded here.
         if script["parallel"] == 0:
+            # MAAS uploads the BMC config only once. If multiple scripts
+            # attempt to configure the BMC this becomes a race condition.
+            if allow_bmc_detection:
+                script["bmc_config_path"] = bmc_config_path
             serial_scripts.append(script)
         elif script["parallel"] == 1:
             instance_scripts.append(script)
@@ -1276,6 +1489,7 @@ def run_scripts_from_metadata(
             out_dir,
             commissioning_scripts,
             send_result,
+            allow_bmc_detection=True,
         )
 
     if fail_count != 0:
@@ -1312,6 +1526,14 @@ def run_scripts_from_metadata(
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, testing_scripts, send_result
         )
+        if fail_count != 0:
+            output_and_send(
+                "%d test scripts failed to run" % fail_count,
+                send_result,
+                url,
+                creds,
+                "FAILED",
+            )
 
     return fail_count
 
@@ -1324,7 +1546,7 @@ class HeartBeat(Thread):
     """
 
     def __init__(self, url, creds):
-        super().__init__(name="HeartBeat")
+        super().__init__(name="HeartBeat", daemon=True)
         self._url = url
         self._creds = creds
         self._run = Event()
@@ -1437,6 +1659,7 @@ def main():
         "token_secret": args.tsec,
         "consumer_secret": args.csec,
         "metadata_url": args.url,
+        "config_path": args.config,
     }
 
     if args.config:
@@ -1448,6 +1671,19 @@ def main():
     if url.endswith("/"):
         url = url[:-1]
     url = "%s/%s/" % (url, args.apiver)
+
+    if not creds["token_secret"] and get_maas_machines(
+        url,
+        {
+            "op": "is_registered",
+            "mac_address": get_mac_addresses_for_enlistment(),
+        },
+    ):
+        print("Machine is already registered on %s" % url)
+        time.sleep(10)
+        return 0
+    else:
+        print("Enlisting machine...")
 
     # Disable the OOM killer on the runner process, the OOM killer will still
     # go after any tests spawned.
@@ -1494,14 +1730,6 @@ def main():
     if fail_count == 0:
         output_and_send(
             "All scripts successfully ran", not args.no_send, url, creds, "OK"
-        )
-    else:
-        output_and_send(
-            "%d test scripts failed to run" % fail_count,
-            not args.no_send,
-            url,
-            creds,
-            "FAILED",
         )
 
     heart_beat.stop()

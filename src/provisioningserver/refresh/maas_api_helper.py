@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Help functioners to send commissioning data to MAAS region."""
@@ -70,13 +70,18 @@ def warn(msg):
     sys.stderr.write(msg + "\n")
 
 
-def geturl(url, creds, headers=None, data=None):
+def geturl(url, creds=None, headers=None, data=None, post_data=None):
     # Takes a dict of creds to be passed through to oauth_headers,
     #   so it should have consumer_key, token_key, ...
     if headers is None:
         headers = {}
     else:
         headers = dict(headers)
+    if creds is None:
+        creds = {}
+    if post_data:
+        post_data = urllib.parse.urlencode(post_data)
+        post_data = post_data.encode("ascii")
 
     clockskew = 0
 
@@ -85,7 +90,10 @@ def geturl(url, creds, headers=None, data=None):
         authenticate_headers(url, headers, creds, clockskew)
         try:
             req = urllib.request.Request(url=url, data=data, headers=headers)
-            return urllib.request.urlopen(req)
+            if post_data:
+                return urllib.request.urlopen(req, post_data)
+            else:
+                return urllib.request.urlopen(req)
         except urllib.error.HTTPError as exc:
             error = exc
             if "date" not in exc.headers:
@@ -221,8 +229,10 @@ def signal(
     creds,
     status,
     error=None,
+    script_name=None,
     script_result_id=None,
     files: dict = None,
+    runtime=None,
     exit_status=None,
     script_version_id=None,
     power_type=None,
@@ -237,37 +247,48 @@ def signal(
     if script_result_id is not None:
         params[b"script_result_id"] = str(script_result_id).encode("utf-8")
 
+    if runtime is not None:
+        params[b"runtime"] = str(runtime).encode("utf-8")
+
     if exit_status is not None:
         params[b"exit_status"] = str(exit_status).encode("utf-8")
+
+    if script_name is not None:
+        params[b"name"] = str(script_name).encode("utf-8")
 
     if script_version_id is not None:
         params[b"script_version_id"] = str(script_version_id).encode("utf-8")
 
     if None not in (power_type, power_params):
         params[b"power_type"] = power_type.encode("utf-8")
-        if power_type == "moonshot":
-            user, power_pass, power_address, driver = power_params.split(",")
-        else:
-            (
-                user,
-                power_pass,
-                power_address,
-                driver,
-                boot_type,
-            ) = power_params.split(",")
-        # OrderedDict is used to make testing easier.
-        power_params = OrderedDict(
-            [
-                ("power_user", user),
-                ("power_pass", power_pass),
-                ("power_address", power_address),
-            ]
-        )
-        if power_type == "moonshot":
-            power_params["power_hwaddress"] = driver
-        else:
-            power_params["power_driver"] = driver
-            power_params["power_boot_type"] = boot_type
+        # XXX ltrager - 2020-08-18 - Assume dict once BMC detection scripts
+        # have been converted into commissioning scripts.
+        if not isinstance(power_params, dict):
+            if power_type == "moonshot":
+                user, power_pass, power_address, driver = power_params.split(
+                    ","
+                )
+            else:
+                (
+                    user,
+                    power_pass,
+                    power_address,
+                    driver,
+                    boot_type,
+                ) = power_params.split(",")
+            # OrderedDict is used to make testing easier.
+            power_params = OrderedDict(
+                [
+                    ("power_user", user),
+                    ("power_pass", power_pass),
+                    ("power_address", power_address),
+                ]
+            )
+            if power_type == "moonshot":
+                power_params["power_hwaddress"] = driver
+            else:
+                power_params["power_driver"] = driver
+                power_params["power_boot_type"] = boot_type
         params[b"power_parameters"] = json.dumps(power_params).encode()
 
     data, headers = encode_multipart_data(

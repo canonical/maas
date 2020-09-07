@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maas_api_helper functions."""
@@ -14,7 +14,7 @@ import random
 import re
 from subprocess import PIPE, Popen, TimeoutExpired
 import time
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 import urllib
 
 from lxml import etree
@@ -166,6 +166,19 @@ class TestGetUrl(MAASTestCase):
             for call in warn.call_args_list
         ]
         self.assertEquals(14, len(clock_shew_updates))
+
+    def test_geturl_posts_data(self):
+        mock_urlopen = self.patch(maas_api_helper.urllib.request.urlopen)
+        post_data = {factory.make_name("key"): factory.make_name("value")}
+        maas_api_helper.geturl(
+            "http://%s" % factory.make_hostname(), post_data=post_data
+        )
+        self.assertThat(
+            mock_urlopen,
+            MockCalledOnceWith(
+                ANY, urllib.parse.urlencode(post_data).encode("ascii")
+            ),
+        )
 
 
 class TestEncode(MAASTestCase):
@@ -344,6 +357,36 @@ class TestSignal(MAASTestCase):
         )
         self.assertThat(mock_geturl, MockCalledOnce())
 
+    def test_signal_formats_params_with_script_name(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, "encode_multipart_data"
+        )
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, "geturl")
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b"OK"
+        mock_geturl.return_value = mm
+
+        status = factory.make_name("status")
+        script_name = factory.make_name("script_name")
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(None, None, status, script_name=script_name)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith(
+                {
+                    b"op": b"signal",
+                    b"status": status.encode("utf-8"),
+                    b"name": str(script_name).encode("utf-8"),
+                },
+                {},
+            ),
+        )
+        self.assertThat(mock_geturl, MockCalledOnce())
+
     def test_signal_formats_params_with_script_version_id(self):
         mock_encode_multipart_data = self.patch(
             maas_api_helper, "encode_multipart_data"
@@ -372,6 +415,40 @@ class TestSignal(MAASTestCase):
                     b"script_version_id": str(script_version_id).encode(
                         "utf-8"
                     ),
+                },
+                {},
+            ),
+        )
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_runtime(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, "encode_multipart_data"
+        )
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, "geturl")
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b"OK"
+        mock_geturl.return_value = mm
+
+        status = factory.make_name("status")
+        script_name = factory.make_name("script_name")
+        runtime = random.randint(1000, 9999) / 100
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(
+            None, None, status, script_name=script_name, runtime=runtime
+        )
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith(
+                {
+                    b"op": b"signal",
+                    b"status": status.encode("utf-8"),
+                    b"name": str(script_name).encode("utf-8"),
+                    b"runtime": str(runtime).encode("utf-8"),
                 },
                 {},
             ),
