@@ -42,7 +42,6 @@ class DLIPowerDriver(PowerDriver):
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")
-    queryable = False
 
     def detect_missing_packages(self):
         if not shell.has_command_available("wget"):
