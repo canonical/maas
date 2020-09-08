@@ -1,3 +1,9 @@
+maas (1:2.9.0~beta1-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.9.0 beta1.
+
+ -- Lee Trager <lee.trager@canonical.com>  Tue, 08 Sep 2020 22:16:46 +0000
+
 maas (1:2.9.0~alpha1-0ubuntu2) focal; urgency=medium
 
   * Bump epoch to not conflict with transitional package
