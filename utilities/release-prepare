@@ -11,6 +11,7 @@
 #
 
 SCRIPT="$(basename "$0")"
+MAAS_PATH="$(realpath "$(dirname "$0")/../")"
 
 exit_error() {
     echo "$@" >&2
@@ -24,13 +25,17 @@ git_tree_clean() {
 deb_version() {
     local version
     version="$(echo "$1" | sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end')"
-    echo "${version}-0ubuntu1"
+    epoch="$(head -1 "${MAAS_PATH}/debian/changelog" | sed -n 's|maas (\([1-9]*\):.*|\1|p')"
+    if [ -n "$epoch" ]; then
+	echo "${epoch}:${version}-0ubuntu1"
+    else
+	echo "${version}-0ubuntu1"
+    fi
 }
 
 verbose_version() {
     echo "$1" | sed 's/a/ alpha/; tend; s/b/ beta/; tend; s/rc/ RC/; :end'
 }
-
 
 tag_version() {
     echo "$1" | sed 's/a/-alpha/; tend; s/b/-beta/; tend; s/rc/-rc/; :end'
@@ -60,7 +65,10 @@ commit_and_tag() {
 version="$1"
 
 if [ -z "$version" ]; then
-    exit_error "Usage $SCRIPT <python-version>"
+    exit_error "Usage $SCRIPT <MAJOR>.<MINOR>.<MICRO>(a<num>|b<num>|rc<num>)"
+elif ! echo "$version" | grep -Eq "^[2-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$"; then
+    echo "Invalid version!" >&2
+    exit_error "Usage $SCRIPT <MAJOR>.<MINOR>.<MICRO>(a<num>|b<num>|rc<num>)"
 fi
 
 if ! git_tree_clean; then
