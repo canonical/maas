@@ -107,7 +107,7 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bmc import BMC
 from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.models.interface import Interface, InterfaceRelationship
-from maasserver.models.numa import NUMANode
+from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.switch import Switch
@@ -3162,6 +3162,21 @@ class Factory(maastesting.factory.Factory):
             memory = 1024 * random.randint(1, 256)
         return NUMANode.objects.create(
             node=node, index=index, cores=cores, memory=memory
+        )
+
+    def make_NUMANodeHugepages(
+        self, numa_node=None, page_size=None, total=None
+    ):
+        if numa_node is None:
+            numa_node = self.make_NUMANode()
+        if page_size is None:
+            page_size = random.choice((2048, 1048576)) * 1024
+        if total is None:
+            total = random.randint(0, 16) * page_size
+        return NUMANodeHugepages.objects.create(
+            numanode=numa_node,
+            page_size=page_size,
+            total=total,
         )
 
     def make_VirtualMachine(

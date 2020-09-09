@@ -132,6 +132,7 @@ python_standard_libs = [
     "csv",
     "ctypes",
     "curses",
+    "dataclasses",
     "datetime",
     "dbhash",
     "dbm",

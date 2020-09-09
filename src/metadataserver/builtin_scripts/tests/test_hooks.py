@@ -1442,7 +1442,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_updates_memory_numa_nodes(self):
         expected_memory = int(16691519488 / 2 / 1024 / 1024)
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         self.patch(hooks_module, "update_node_network_information")
 
         process_lxd_results(
@@ -1452,6 +1452,35 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(2, len(numa_nodes))
         for numa_node in numa_nodes:
             self.assertEqual(expected_memory, numa_node.memory)
+            [hugepages] = numa_node.hugepages_set.all()
+            self.assertEqual(hugepages.page_size, 2097152)
+            self.assertEqual(hugepages.total, 0)
+
+    def test_updates_numa_node_hugepages(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.patch(hooks_module, "update_node_network_information")
+        lxd_json = deepcopy(SAMPLE_LXD_RESOURCES)
+        lxd_json["memory"]["nodes"][0]["hugepages_total"] = 16 * 2097152
+        lxd_json["memory"]["nodes"][1]["hugepages_total"] = 8 * 2097152
+        process_lxd_results(node, make_lxd_output_json(lxd_json), 0)
+        numa_node1, numa_node2 = NUMANode.objects.filter(node=node).order_by(
+            "index"
+        )
+        hugepages1 = numa_node1.hugepages_set.first()
+        self.assertEqual(hugepages1.page_size, 2097152)
+        self.assertEqual(hugepages1.total, 16 * 2097152)
+        hugepages2 = numa_node2.hugepages_set.first()
+        self.assertEqual(hugepages2.page_size, 2097152)
+        self.assertEqual(hugepages2.total, 8 * 2097152)
+
+    def test_no_update_numa_node_hugepages_if_commissioining(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        self.patch(hooks_module, "update_node_network_information")
+        process_lxd_results(
+            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
+        )
+        for numa_node in NUMANode.objects.filter(node=node):
+            self.assertFalse(numa_node.hugepages_set.exists())
 
     def test_updates_memory_numa_nodes_missing(self):
         total_memory = SAMPLE_LXD_RESOURCES_NO_NUMA["memory"]["total"]

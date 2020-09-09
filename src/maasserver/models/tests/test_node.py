@@ -2391,6 +2391,18 @@ class TestNode(MAASServerTestCase):
             MockCalledOnceWith(node.current_installation_script_set_id),
         )
 
+    def test_abort_deployment_clears_deployment_resources(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node_id = node.id
+        admin = factory.make_admin()
+        self.patch(Node, "_stop").return_value = None
+        self.patch_autospec(Node, "_clear_status_expires")
+        self.patch(Node, "_set_status")
+        mock_clear_resources = self.patch(Node, "_clear_deployment_resources")
+        with post_commit_hooks:
+            node.abort_deploying(admin)
+        self.assertThat(mock_clear_resources, MockCalledOnceWith(node_id))
+
     def test_abort_operation_raises_exception_for_unsupported_state(self):
         agent_name = factory.make_name("agent-name")
         owner = factory.make_User()
@@ -2988,6 +3000,19 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertThat(mock_clear, MockCalledOnceWith())
+
+    def test_release_clears_hugepages(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_User()
+        )
+        hugepages = factory.make_NUMANodeHugepages(
+            numa_node=node.default_numanode
+        )
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status")
+        with post_commit_hooks:
+            node.release()
+        self.assertIsNone(reload_object(hugepages))
 
     def test_releases_clears_current_installation_script_set(self):
         node = factory.make_Node(

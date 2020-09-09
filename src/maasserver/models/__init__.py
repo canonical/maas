@@ -50,6 +50,7 @@ __all__ = [
     "NodeGroupToRackController",
     "Notification",
     "NUMANode",
+    "NUMANodeHugepages",
     "OwnerData",
     "PackageRepository",
     "Partition",
@@ -163,7 +164,7 @@ from maasserver.models.node import (
 )
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.notification import Notification
-from maasserver.models.numa import NUMANode
+from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition

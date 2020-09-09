@@ -131,7 +131,7 @@ from maasserver.models.interface import (
 )
 from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.licensekey import LicenseKey
-from maasserver.models.numa import NUMANode
+from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -2770,6 +2770,11 @@ class Node(CleanSave, TimestampedModel):
             )
             post_commit().addCallback(
                 callOutToDatabase,
+                transactional(Node._clear_deployment_resources),
+                self.id,
+            )
+            post_commit().addCallback(
+                callOutToDatabase,
                 Node._abort_all_tests,
                 self.current_installation_script_set_id,
             )
@@ -3567,6 +3572,8 @@ class Node(CleanSave, TimestampedModel):
         # Create a status message for RELEASING.
         Event.objects.create_node_event(self, EVENT_TYPES.RELEASING)
 
+        Node._clear_deployment_resources(self.id)
+
         # Clear the nodes acquired filesystems.
         self._clear_acquired_filesystems()
 
@@ -4256,6 +4263,11 @@ class Node(CleanSave, TimestampedModel):
             filesystem.id = None
             filesystem.acquired = True
             filesystem.save()
+
+    @classmethod
+    def _clear_deployment_resources(cls, node_id):
+        # remove hugepages configuration since they only make sense when the node is deployed
+        NUMANodeHugepages.objects.filter(numanode__node_id=node_id).delete()
 
     def _clear_acquired_filesystems(self):
         """Clear the filesystems that are created when the node is acquired."""

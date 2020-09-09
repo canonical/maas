@@ -6,9 +6,9 @@
 __all__ = ["parse_lxd_cpuinfo"]
 
 from collections import defaultdict
+from dataclasses import dataclass, field
 import re
-
-import attr
+from typing import List
 
 
 # This is needed on the rack controller in the LXDPodDriver to set
@@ -19,11 +19,12 @@ def lxd_cpu_speed(data):
     return cpu_speed
 
 
-@attr.s
+@dataclass
 class NUMANode:
 
-    memory: int = attr.ib(default=0)
-    cores: list = attr.ib(default=attr.Factory(list))
+    memory: int = 0
+    cores: List = field(default_factory=list)
+    hugepages: int = 0
 
 
 def parse_lxd_cpuinfo(data):

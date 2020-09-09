@@ -13,11 +13,14 @@ import re
 from django.core.exceptions import ValidationError
 
 from maasserver.enum import NODE_METADATA, NODE_STATUS
-from maasserver.models import Fabric, Node, NUMANode, Subnet
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.fabric import Fabric
 from maasserver.models.interface import Interface, PhysicalInterface
+from maasserver.models.node import Node
 from maasserver.models.nodemetadata import NodeMetadata
+from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.subnet import Subnet
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
@@ -475,22 +478,30 @@ def _process_system_information(node, system_data):
 
 def _process_lxd_resources(node, data):
     """Process the resources results of the `LXD_OUTPUT_NAME` script."""
+    update_deployment_resources = node.status == NODE_STATUS.DEPLOYED
     # Update CPU details.
     node.cpu_count, node.cpu_speed, cpu_model, numa_nodes = parse_lxd_cpuinfo(
         data
     )
     # Update memory.
-    node.memory, numa_nodes = _parse_memory(data.get("memory", {}), numa_nodes)
-
+    node.memory, hugepages_size, numa_nodes_info = _parse_memory(
+        data.get("memory", {}), numa_nodes
+    )
     # Create or update NUMA nodes.
-    numa_nodes = [
-        NUMANode.objects.update_or_create(
+    numa_nodes = []
+    for numa_index, numa_data in numa_nodes_info.items():
+        numa_node, _ = NUMANode.objects.update_or_create(
             node=node,
             index=numa_index,
             defaults={"memory": numa_data.memory, "cores": numa_data.cores},
-        )[0]
-        for numa_index, numa_data in numa_nodes.items()
-    ]
+        )
+        if update_deployment_resources and hugepages_size:
+            NUMANodeHugepages.objects.update_or_create(
+                numanode=numa_node,
+                page_size=hugepages_size,
+                defaults={"total": numa_data.hugepages},
+            )
+        numa_nodes.append(numa_node)
 
     # Network interfaces
     # LP: #1849355 -- Don't update the node network information
@@ -511,14 +522,17 @@ def _process_lxd_resources(node, data):
 
 def _parse_memory(memory, numa_nodes):
     total_memory = memory.get("total", 0)
+    # currently LXD only supports default size for hugepages
+    hugepages_size = memory.get("hugepages_size")
     default_numa_node = {"numa_node": 0, "total": total_memory}
 
+    # fill NUMA nodes info
     for memory_node in memory.get("nodes", [default_numa_node]):
-        numa_nodes[memory_node["numa_node"]].memory = int(
-            memory_node.get("total", 0) / 1024 ** 2
-        )
+        numa_node = numa_nodes[memory_node["numa_node"]]
+        numa_node.memory = int(memory_node.get("total", 0) / 1024 ** 2)
+        numa_node.hugepages = memory_node.get("hugepages_total", 0)
 
-    return int(total_memory / 1024 ** 2), numa_nodes
+    return int(total_memory / 1024 ** 2), hugepages_size, numa_nodes
 
 
 def get_tags_from_block_info(block_info):
