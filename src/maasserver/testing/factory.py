@@ -689,7 +689,12 @@ class Factory(maastesting.factory.Factory):
         return metadata
 
     def make_Pod(
-        self, pod_type=None, parameters=None, ip_address=None, **kwargs
+        self,
+        pod_type=None,
+        parameters=None,
+        ip_address=None,
+        host=None,
+        **kwargs,
     ):
         if pod_type is None:
             pod_type = "virsh"
@@ -712,6 +717,9 @@ class Factory(maastesting.factory.Factory):
             **kwargs,
         )
         pod.save()
+        if host is not None:
+            pod.hints.nodes.add(host)
+
         return pod
 
     def make_Domain(self, name=None, ttl=None, authoritative=True):

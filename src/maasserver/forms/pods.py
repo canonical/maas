@@ -469,11 +469,14 @@ class PodForm(MAASModelForm):
             return self.instance
 
 
-def get_known_host_interfaces(host: Node) -> list:
-    """Given the specified host node, calculates each KnownHostInterface.
+def get_known_host_interfaces(pod: Pod) -> list:
+    """Given the specified pod, calculates its host's KnownHostInterfaces.
 
-    :return: a list of KnownHostInterface objects for the specified Node.
+    :return: a list of KnownHostInterface objects for the specified pod.
     """
+    host = pod.host
+    if host is None:
+        return []
     interfaces = host.interface_set.all()
     result = []
     for interface in interfaces:
@@ -745,11 +748,7 @@ class ComposeMachineForm(forms.Form):
                     "default_storage_pool_id"
                 ] = self.pod.default_storage_pool.pool_id
 
-            # Find the pod's known host interfaces.
-            if self.pod.host is not None:
-                interfaces = get_known_host_interfaces(self.pod.host)
-            else:
-                interfaces = []
+            interfaces = get_known_host_interfaces(self.pod)
 
             return client, interfaces
 

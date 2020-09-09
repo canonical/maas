@@ -78,31 +78,6 @@ from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
 
 
-def make_known_host_interfaces(pod):
-    return [
-        KnownHostInterface(
-            ifname=interface.name,
-            attach_type=(
-                InterfaceAttachType.BRIDGE
-                if interface.type == INTERFACE_TYPE.BRIDGE
-                else InterfaceAttachType.MACVLAN
-            ),
-            dhcp_enabled=(
-                True
-                if (interface.vlan is not None and interface.vlan.dhcp_on)
-                or (
-                    interface.vlan.relay_vlan is not None
-                    and interface.vlan.relay_vlan.dhcp_on
-                )
-                else False
-            ),
-        )
-        for interface in (
-            pod.host.interface_set.all() if pod.host is not None else []
-        )
-    ]
-
-
 def make_pod_with_hints(with_host=False, host=None):
     architectures = [
         "amd64/generic",
@@ -896,7 +871,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             memory=random.randint(1024, 4096),
             block_devices=[RequestedMachineBlockDevice(size=4096)],
             interfaces=[RequestedMachineInterface()],
-            known_host_interfaces=make_known_host_interfaces(pod),
+            known_host_interfaces=get_known_host_interfaces(pod),
         )
 
     def make_compose_machine_result(self, pod):
@@ -1029,7 +1004,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1090,7 +1065,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1141,7 +1116,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1189,7 +1164,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             PodProblem,
             ".*virtual machines currently only support one block device.",
         ):
-            form.get_requested_machine(make_known_host_interfaces(pod))
+            form.get_requested_machine(get_known_host_interfaces(pod))
 
     def test_get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
         request = MagicMock()
@@ -1207,7 +1182,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         with ExpectedException(
             ValidationError, ".*DHCP must be enabled on at least one VLAN*"
         ):
-            form.get_requested_machine(make_known_host_interfaces(pod))
+            form.get_requested_machine(get_known_host_interfaces(pod))
 
     def test_get_machine_with_interfaces_fails_for_no_matching_network(self):
         request = MagicMock()
@@ -1222,7 +1197,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         with ExpectedException(
             ValidationError, ".*does not match the specified network.*"
         ):
-            form.get_requested_machine(make_known_host_interfaces(pod))
+            form.get_requested_machine(get_known_host_interfaces(pod))
 
     def test_get_machine_with_interfaces_by_subnet(self):
         request = MagicMock()
@@ -1240,7 +1215,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1284,7 +1259,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1347,7 +1322,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1394,7 +1369,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1441,7 +1416,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1481,7 +1456,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1525,7 +1500,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1588,7 +1563,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1654,7 +1629,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1727,7 +1702,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1780,7 +1755,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -1818,7 +1793,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
-            make_known_host_interfaces(pod)
+            get_known_host_interfaces(pod)
         )
         self.assertThat(
             request_machine,
@@ -2007,7 +1982,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     "power_address": ANY,
                     "default_storage_pool_id": pod.default_storage_pool.pool_id,
                 },
-                form.get_requested_machine(make_known_host_interfaces(pod)),
+                form.get_requested_machine(get_known_host_interfaces(pod)),
                 pod_id=pod.id,
                 name=pod.name,
             ),
@@ -2490,10 +2465,16 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
 
 
 class TestGetKnownHostInterfaces(MAASServerTestCase):
+    def test_returns_empty_list_if_no_host(self):
+        pod = factory.make_Pod()
+        pod.hints.nodes.clear()
+        interfaces = get_known_host_interfaces(pod)
+        self.assertEqual([], interfaces)
+
     def test_returns_empty_list_if_no_interfaces(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         node.interface_set.all().delete()
-        interfaces = get_known_host_interfaces(node)
+        interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertThat(interfaces, HasLength(0))
 
     def test_returns_appropriate_attach_type(self):
@@ -2506,7 +2487,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
-        interfaces = get_known_host_interfaces(node)
+        interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertItemsEqual(
             interfaces,
             [
@@ -2532,7 +2513,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, link_connected=False
         )
-        interfaces = get_known_host_interfaces(node)
+        interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertItemsEqual(
             interfaces,
             [
@@ -2559,7 +2540,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
-        interfaces = get_known_host_interfaces(node)
+        interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertItemsEqual(
             interfaces,
             [
@@ -2587,7 +2568,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
-        interfaces = get_known_host_interfaces(node)
+        interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertItemsEqual(
             interfaces,
             [
