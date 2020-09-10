@@ -9231,7 +9231,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
     def test_updates_power_state_unknown_for_non_queryable_power_type(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node),
-            power_type="apc",
+            power_type="manual",
             power_state=POWER_STATE.ON,
         )
         mock_power_control = self.patch(node, "_power_control_node")

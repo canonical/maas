@@ -44,7 +44,6 @@ class APCPowerDriver(PowerDriver):
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")
-    queryable = False
 
     def detect_missing_packages(self):
         binary, package = ["snmpset", "snmp"]
