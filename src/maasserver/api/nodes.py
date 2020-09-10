@@ -180,7 +180,7 @@ NODES_PREFETCH = [
     ),
     "tags",
     "nodemetadata_set",
-    "numanode_set",
+    "numanode_set__hugepages_set",
     "virtualmachine",
 ]
 

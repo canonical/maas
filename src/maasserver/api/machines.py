@@ -105,8 +105,17 @@ from maasserver.storage_layouts import (
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import get_first, reload_object
 
+# NUMANodeHugepages fields exposed in the API.
+DISPLAYED_NUMANODEHUGEPAGES_FIELDS = ("total", "page_size")
+
 # NUMANode fields exposed in the API.
-DISPLAYED_NUMANODE_FIELDS = ("index", "cores", "memory")
+DISPLAYED_NUMANODE_FIELDS = (
+    "index",
+    "cores",
+    "memory",
+    ("hugepages_set", DISPLAYED_NUMANODEHUGEPAGES_FIELDS),
+)
+
 
 # Machine's fields exposed on the API.
 DISPLAYED_MACHINE_FIELDS = (

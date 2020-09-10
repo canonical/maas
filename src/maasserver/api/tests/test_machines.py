@@ -380,9 +380,38 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(
             parsed_result["numanode_set"],
             [
-                {"index": 0, "memory": 0, "cores": []},
-                {"index": 1, "memory": 2048 * 1024, "cores": [0, 1]},
-                {"index": 2, "memory": 4096 * 1024, "cores": [2, 3]},
+                {"index": 0, "memory": 0, "cores": [], "hugepages_set": []},
+                {
+                    "index": 1,
+                    "memory": 2048 * 1024,
+                    "cores": [0, 1],
+                    "hugepages_set": [],
+                },
+                {
+                    "index": 2,
+                    "memory": 4096 * 1024,
+                    "cores": [2, 3],
+                    "hugepages_set": [],
+                },
+            ],
+        )
+
+    def test_GET_includes_numa_nodes_hugepages(self):
+        machine = factory.make_Node()
+        hugepages = factory.make_NUMANodeHugepages(
+            numa_node=machine.default_numanode
+        )
+        response = self.client.get(reverse("machines_handler"))
+        [parsed_result] = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        self.assertEqual(
+            parsed_result["numanode_set"][0]["hugepages_set"],
+            [
+                {
+                    "page_size": hugepages.page_size,
+                    "total": hugepages.total,
+                },
             ],
         )
 
