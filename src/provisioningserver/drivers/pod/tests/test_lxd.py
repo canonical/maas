@@ -18,11 +18,15 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import maas_certificates
 from provisioningserver.drivers.pod import (
+    Capabilities,
+    DiscoveredPodHints,
+    InterfaceAttachType,
+)
+from provisioningserver.drivers.pod import (
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
 )
-from provisioningserver.drivers.pod import Capabilities, DiscoveredPodHints
 from provisioningserver.drivers.pod import lxd as lxd_module
 from provisioningserver.maas_certificates import (
     MAAS_CERTIFICATE,
@@ -917,4 +921,40 @@ class TestLXDPodDriver(MAASTestCase):
                     iscsi_storage=Equals(-1),
                 ),
             ),
+        )
+
+
+class TestGetNicDevice(MAASTestCase):
+    def test_bridged(self):
+        interface = RequestedMachineInterface(
+            ifname=factory.make_name("ifname"),
+            attach_name=factory.make_name("bridge_name"),
+            attach_type=InterfaceAttachType.BRIDGE,
+        )
+        device = lxd_module.get_lxd_nic_device(interface)
+        self.assertEqual(
+            {
+                "name": interface.ifname,
+                "parent": interface.attach_name,
+                "nictype": "bridged",
+                "type": "nic",
+            },
+            device,
+        )
+
+    def test_macvlan(self):
+        interface = RequestedMachineInterface(
+            ifname=factory.make_name("ifname"),
+            attach_name=factory.make_name("bridge_name"),
+            attach_type=InterfaceAttachType.MACVLAN,
+        )
+        device = lxd_module.get_lxd_nic_device(interface)
+        self.assertEqual(
+            {
+                "name": interface.ifname,
+                "parent": interface.attach_name,
+                "nictype": "macvlan",
+                "type": "nic",
+            },
+            device,
         )

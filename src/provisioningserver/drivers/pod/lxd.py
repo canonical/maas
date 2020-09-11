@@ -27,6 +27,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodStoragePool,
+    InterfaceAttachType,
     PodDriver,
     RequestedMachine,
 )
@@ -83,6 +84,23 @@ def convert_lxd_byte_suffixes(value, divisor=None):
     if divisor:
         value = float(value) / divisor
     return int(value)
+
+
+def get_lxd_nic_device(interface):
+    """Convert a RequestedMachineInterface into a LXD device definition."""
+    # LXD uses 'bridged' while MAAS uses 'bridge' so convert
+    # the nictype.
+    nictype = (
+        "bridged"
+        if interface.attach_type == InterfaceAttachType.BRIDGE
+        else interface.attach_type
+    )
+    return {
+        "name": interface.ifname,
+        "parent": interface.attach_name,
+        "nictype": nictype,
+        "type": "nic",
+    }
 
 
 class LXDPodError(Exception):
@@ -576,20 +594,7 @@ class LXDPodDriver(PodDriver):
                     boot = False
                 device_names.append(device_name)
             else:
-                # Interface constraints sent so build the nic devices.
-                # LXD uses 'bridged' while MAAS uses 'bridge' so convert
-                # the nictype.
-                nictype = (
-                    "".join([interface.attach_type, "d"])
-                    if interface.attach_type == "bridge"
-                    else interface.attach_type
-                )
-                nic_devices[interface.ifname] = {
-                    "name": interface.ifname,
-                    "parent": interface.attach_name,
-                    "nictype": nictype,
-                    "type": "nic",
-                }
+                nic_devices[interface.ifname] = get_lxd_nic_device(interface)
                 # Set to boot from the first nic
                 if boot:
                     nic_devices[interface.ifname]["boot.priority"] = "1"
