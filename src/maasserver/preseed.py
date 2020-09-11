@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation."""
@@ -820,7 +820,6 @@ def get_preseed_context(request, osystem="", release="", rack_controller=None):
         rack_controller=rack_controller, default_region_ip=region_ip
     )
     server_url = request.build_absolute_uri(reverse("machines_handler"))
-    metadata_enlist_url = request.build_absolute_uri(reverse("enlist"))
     configs = Config.objects.get_configs(["remote_syslog", "maas_syslog_port"])
     syslog = configs["remote_syslog"]
     http_proxy = get_apt_proxy(request, rack_controller)
@@ -835,7 +834,6 @@ def get_preseed_context(request, osystem="", release="", rack_controller=None):
         "server_host": server_host,
         "server_url": server_url,
         "syslog_host_port": syslog,
-        "metadata_enlist_url": metadata_enlist_url,
         "http_proxy": http_proxy,
     }
 

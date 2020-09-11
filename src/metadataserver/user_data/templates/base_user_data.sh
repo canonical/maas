@@ -81,35 +81,6 @@ prep_maas_api_helper() {
     export CRED_CFG="$creds"
 }
 
-####  IPMI setup  ######
-# If IPMI network settings have been configured statically, you can
-# make them DHCP. If 'true', the IPMI network source will be changed
-# to DHCP.
-# IPMI_AUTODETECT_ARGS="--dhcp-if-static"
-
-# In certain hardware, the parameters for the ipmi_si kernel module
-# might need to be specified. If you wish to send parameters, uncomment
-# the following line.
-#IPMI_SI_PARAMS="type=kcs ports=0xca2"
-
-# Load the IPMI kernel modules for enlistment and commissioning
-load_ipmi_modules() {
-    modprobe ipmi_msghandler
-    modprobe ipmi_devintf
-    modprobe ipmi_si "${IPMI_SI_PARAMS}"
-    modprobe ipmi_ssif
-    udevadm settle
-}
-
-get_power_type() {
-    local power_type
-    power_type=$(maas-ipmi-autodetect-tool)
-    if [ -z "$power_type" ]; then
-        power_type=$(maas-wedge-autodetect --check) || power_type=""
-    fi
-    echo "$power_type"
-}
-
 # Invoke the "signal()" API call to report progress.
 # Usage: signal <status> <message>
 signal() {

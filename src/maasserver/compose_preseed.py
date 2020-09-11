@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level composition code for preseeds."""
@@ -376,21 +376,6 @@ def get_base_preseed(node=None):
         # dependencies are ever removed.  cloud-init is smart enough to not run
         # apt if the requested packages are already installed.
         cloud_config["packages"] = ["python3-yaml", "python3-oauthlib"]
-        # Enlistment and commissioning search for and set BMC settings.
-        if node is None or (
-            not node.skip_bmc_config
-            and node.status in [NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING]
-        ):
-            # Tools required for IPMI detection.
-            cloud_config["packages"] += ["freeipmi-tools", "ipmitool"]
-            # Required for Facebook Wedge.
-            cloud_config["packages"] += ["sshpass"]
-        # Check if node is enlisting
-        if node is None or node.status == NODE_STATUS.NEW:
-            cloud_config["packages"] += ["archdetect-deb"]
-            # jq is used during enlistment to read the JSON string containing
-            # the system_id of the newly created machine.
-            cloud_config["packages"] += ["jq"]
         # On disk erasing, we need nvme-cli
         if node is not None and node.status == NODE_STATUS.DISK_ERASING:
             cloud_config["packages"] += ["nvme-cli"]
@@ -629,7 +614,11 @@ def compose_enlistment_preseed(request, rack_controller, context):
     cloud_config.update(
         {
             "datasource": {
-                "MAAS": {"metadata_url": context["metadata_enlist_url"]}
+                "MAAS": {
+                    "metadata_url": request.build_absolute_uri(
+                        reverse("metadata")
+                    )
+                }
             },
             "rsyslog": {"remotes": {"maas": context["syslog_host_port"]}},
             "power_state": {

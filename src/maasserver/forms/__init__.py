@@ -925,7 +925,7 @@ class MachineForm(NodeForm):
         # object in the database.
         if commission:
             script_set = ScriptSet.objects.create_commissioning_script_set(
-                machine, ["enlisting"]
+                machine, enlisting=True
             )
             machine.current_commissioning_script_set = script_set
             machine.save(update_fields=["current_commissioning_script_set"])

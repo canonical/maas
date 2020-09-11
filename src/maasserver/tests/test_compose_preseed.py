@@ -829,9 +829,6 @@ class TestComposePreseed(MAASServerTestCase):
             [
                 "python3-yaml",
                 "python3-oauthlib",
-                "freeipmi-tools",
-                "ipmitool",
-                "sshpass",
             ],
             preseed.get("packages"),
         )
@@ -1060,11 +1057,18 @@ class TestComposePreseed(MAASServerTestCase):
             compose_enlistment_preseed(
                 request,
                 rack_controller,
-                {"metadata_enlist_url": url, "syslog_host_port": url},
+                {"syslog_host_port": url},
             )
         )
         self.assertDictEqual(
-            {"MAAS": {"metadata_url": url}}, preseed["datasource"]
+            {
+                "MAAS": {
+                    "metadata_url": request.build_absolute_uri(
+                        reverse("metadata")
+                    )
+                }
+            },
+            preseed["datasource"],
         )
         self.assertTrue(preseed["manage_etc_hosts"])
         self.assertDictEqual({"remotes": {"maas": url}}, preseed["rsyslog"])
@@ -1081,11 +1085,6 @@ class TestComposePreseed(MAASServerTestCase):
             [
                 "python3-yaml",
                 "python3-oauthlib",
-                "freeipmi-tools",
-                "ipmitool",
-                "sshpass",
-                "archdetect-deb",
-                "jq",
             ],
             preseed["packages"],
         )

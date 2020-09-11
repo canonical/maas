@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Machine API."""
@@ -1585,6 +1585,9 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_commission_commissions_machine_with_options(self):
         load_builtin_scripts()
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["bmc-config"]
+        )
         self.patch(node_module.Node, "_start").return_value = defer.succeed(
             None
         )
@@ -1658,7 +1661,6 @@ class TestMachineAPI(APITestCase.ForUser):
         commissioning_script_set = machine.current_commissioning_script_set
         testing_script_set = machine.current_testing_script_set
         self.assertTrue(machine.enable_ssh)
-        self.assertTrue(machine.skip_bmc_config)
         self.assertTrue(machine.skip_networking)
         self.assertItemsEqual(
             set(expected_commissioning_scripts),

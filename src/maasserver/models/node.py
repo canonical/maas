@@ -1182,7 +1182,6 @@ class Node(CleanSave, TimestampedModel):
     #  2. Skip reconfiguring networking when a node is commissioned.
     #  3. Skip reconfiguring storage when a node is commissioned.
     enable_ssh = BooleanField(default=False)
-    skip_bmc_config = BooleanField(default=False)
     skip_networking = BooleanField(default=False)
     skip_storage = BooleanField(default=False)
 
@@ -2212,7 +2211,6 @@ class Node(CleanSave, TimestampedModel):
 
         # Set the commissioning options on the node.
         self.enable_ssh = enable_ssh
-        self.skip_bmc_config = skip_bmc_config
         self.skip_networking = skip_networking
         self.skip_storage = skip_storage
 
@@ -2225,6 +2223,26 @@ class Node(CleanSave, TimestampedModel):
         commis_script_set = ScriptSet.objects.create_commissioning_script_set(
             self, commissioning_scripts, script_input
         )
+
+        # The UI displays the latest ScriptResult for all scripts which have
+        # ever been run. Always create the BMC configuration ScriptResults so
+        # MAAS can log that they were skipped. This avoids user confusion when
+        # BMC detection is run previously on the node but they don't want BMC
+        # detection to run again.
+        if skip_bmc_config:
+            result = (
+                "INFO: User %s (%s) has choosen to skip BMC configuration "
+                "during commissioning\n" % (user.get_username(), user.id)
+            ).encode()
+            for script_result in commis_script_set.scriptresult_set.filter(
+                script__tags__contains=["bmc-config"]
+            ):
+                script_result.store_result(
+                    exit_status=0,
+                    output=result,
+                    stdout=result,
+                    result=b"status: skipped",
+                )
 
         # Create a new ScriptSet for any tests to be run after commissioning.
         try:
@@ -2308,7 +2326,6 @@ class Node(CleanSave, TimestampedModel):
         except Exception as error:
             self.status = old_status
             self.enable_ssh = False
-            self.skip_bmc_config = False
             self.skip_networking = False
             self.skip_storage = False
             self.save()

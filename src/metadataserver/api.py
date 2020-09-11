@@ -459,11 +459,20 @@ def try_or_log_event(
     return signal_status
 
 
+class EnlistVersionIndexHandler(OperationsHandler):
+    create = update = delete = None
+    subfields = ("meta-data", "user-data")
+
+    def read(self, request, version):
+        return make_list_response(sorted(self.subfields))
+
+
 class VersionIndexHandler(MetadataViewHandler):
     """Listing for a given metadata version."""
 
     create = update = delete = None
     subfields = ("maas-commissioning-scripts", "meta-data", "user-data")
+    anonymous = EnlistVersionIndexHandler
 
     # States in which a node is allowed to signal. Only in these states
     # will signaling have an effect.
@@ -870,8 +879,41 @@ class VersionIndexHandler(MetadataViewHandler):
         return rc.ALL_OK
 
 
+class EnlistMetaDataHandler(OperationsHandler):
+    """this has to handle the 'meta-data' portion of the meta-data api
+    for enlistment only.  It should mimic the read-only portion
+    of /VersionIndexHandler"""
+
+    create = update = delete = None
+
+    data = {
+        "instance-id": "i-maas-enlistment",
+        "local-hostname": "maas-enlisting-node",
+        "public-keys": "",
+    }
+
+    def read(self, request, version, item=None):
+        check_version(version)
+
+        # Requesting the list of attributes, not any particular attribute.
+        if item is None or len(item) == 0:
+            keys = sorted(self.data.keys())
+            # There's nothing in public-keys, so we don't advertise it.
+            # But cloud-init does ask for it and it's not worth logging
+            # a traceback for.
+            keys.remove("public-keys")
+            return make_list_response(keys)
+
+        if item not in self.data:
+            raise MAASAPINotFound("Unknown metadata attribute: %s" % item)
+
+        return make_text_response(self.data[item])
+
+
 class MetaDataHandler(VersionIndexHandler):
     """Meta-data listing for a given version."""
+
+    anonymous = EnlistMetaDataHandler
 
     subfields = (
         "instance-id",
@@ -966,8 +1008,36 @@ class MetaDataHandler(VersionIndexHandler):
         )
 
 
+class EnlistUserDataHandler(OperationsHandler):
+    """User-data for the enlistment environment"""
+
+    def read(self, request, version):
+        check_version(version)
+        rack_controller = find_rack_controller(request)
+        # XXX: Set a charset for text/plain. Django automatically encodes
+        # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
+        # but only sets the charset parameter in the content-type header when
+        # a content-type is NOT provided.
+        return HttpResponse(
+            generate_user_data_for_status(
+                None,
+                NODE_STATUS.NEW,
+                rack_controller=rack_controller,
+                request=request,
+                extra_content={
+                    "enlist_commissioning": Config.objects.get_config(
+                        "enlist_commissioning"
+                    )
+                },
+            ),
+            content_type="text/plain",
+        )
+
+
 class UserDataHandler(MetadataViewHandler):
     """User-data blob for a given version."""
+
+    anonymous = EnlistUserDataHandler
 
     def read(self, request, version, mac=None):
         check_version(version)
@@ -1086,27 +1156,27 @@ class AnonMAASScriptsHandler(AnonymousOperationsHandler):
 
     def read(self, request, version, mac=None):
         # Administrator has turned off commissioning during enlistment.
-        if not Config.objects.get_config("enlist_commissioning"):
-            return HttpResponse(status=int(http.client.NO_CONTENT))
         binary = BytesIO()
         mtime = time.time()
         tar_meta_data = {"commissioning_scripts": []}
+        qs = Script.objects.filter(
+            script_type=SCRIPT_TYPE.COMMISSIONING
+        ).exclude(
+            # Network configuration is based on node configuration however
+            # the node doesn't exist yet. Once the node is created the
+            # client will rerequest the NodeScripts tar which may include
+            # scripts which test networking.
+            apply_configured_networking=True
+        )
+        if Config.objects.get_config("enlist_commissioning"):
+            qs = qs.filter(Q(default=True) | Q(tags__overlap=["enlisting"]))
+        else:
+            qs = qs.filter(tags__overlap=["bmc-config"])
+        qs = qs.order_by("name").select_related("script")
         # Responses are currently gzip compressed using
         # django.middleware.gzip.GZipMiddleware.
         with tarfile.open(mode="w", fileobj=binary) as tar:
-            for script in (
-                Script.objects.filter(script_type=SCRIPT_TYPE.COMMISSIONING)
-                .filter(Q(default=True) | Q(tags__overlap=["enlisting"]))
-                .exclude(
-                    # Network configuration is based on node configuration however
-                    # the node doesn't exist yet. Once the node is created the
-                    # client will rerequest the NodeScripts tar which may include
-                    # scripts which test networking.
-                    apply_configured_networking=True
-                )
-                .order_by("name")
-                .select_related("script")
-            ):
+            for script in qs:
                 path = os.path.join("commissioning", script.name)
                 content = script.script.data.encode()
                 add_file_to_tar(tar, path, content, mtime)
@@ -1314,71 +1384,6 @@ class MAASScriptsHandler(OperationsHandler):
         return HttpResponse(
             binary.getvalue(), content_type="application/x-tar"
         )
-
-
-class EnlistMetaDataHandler(OperationsHandler):
-    """this has to handle the 'meta-data' portion of the meta-data api
-    for enlistment only.  It should mimic the read-only portion
-    of /VersionIndexHandler"""
-
-    create = update = delete = None
-
-    data = {
-        "instance-id": "i-maas-enlistment",
-        "local-hostname": "maas-enlisting-node",
-        "public-keys": "",
-    }
-
-    def read(self, request, version, item=None):
-        check_version(version)
-
-        # Requesting the list of attributes, not any particular attribute.
-        if item is None or len(item) == 0:
-            keys = sorted(self.data.keys())
-            # There's nothing in public-keys, so we don't advertise it.
-            # But cloud-init does ask for it and it's not worth logging
-            # a traceback for.
-            keys.remove("public-keys")
-            return make_list_response(keys)
-
-        if item not in self.data:
-            raise MAASAPINotFound("Unknown metadata attribute: %s" % item)
-
-        return make_text_response(self.data[item])
-
-
-class EnlistUserDataHandler(OperationsHandler):
-    """User-data for the enlistment environment"""
-
-    def read(self, request, version):
-        check_version(version)
-        rack_controller = find_rack_controller(request)
-        # XXX: Set a charset for text/plain. Django automatically encodes
-        # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
-        # but only sets the charset parameter in the content-type header when
-        # a content-type is NOT provided.
-        return HttpResponse(
-            generate_user_data_for_status(
-                None,
-                NODE_STATUS.NEW,
-                rack_controller=rack_controller,
-                request=request,
-                extra_content={
-                    "enlist_commissioning": Config.objects.get_config(
-                        "enlist_commissioning"
-                    )
-                },
-            ),
-            content_type="text/plain",
-        )
-
-
-class EnlistVersionIndexHandler(OperationsHandler):
-    create = update = delete = None
-    subfields = ("meta-data", "user-data")
-
-    def read(self, request, version):
-        return make_list_response(sorted(self.subfields))
 
 
 class AnonMetaDataHandler(VersionIndexHandler):

@@ -102,7 +102,11 @@ def translate_result_type(result_type):
 
 class ScriptSetManager(Manager):
     def create_commissioning_script_set(
-        self, node, scripts=None, script_input=None
+        self,
+        node,
+        scripts=None,
+        script_input=None,
+        enlisting=False,
     ):
         """Create a new commissioning ScriptSet with ScriptResults
 
@@ -118,6 +122,11 @@ class ScriptSetManager(Manager):
                 for script in NODE_INFO_SCRIPTS.values()
                 if script["run_on_controller"]
             ]
+        elif enlisting:
+            if Config.objects.get_config("enlist_commissioning"):
+                scripts = list(NODE_INFO_SCRIPTS.keys()) + ["enlisting"]
+            else:
+                scripts = ["bmc-config"]
         elif not scripts:
             # No user selected scripts, select all scripts below.
             pass

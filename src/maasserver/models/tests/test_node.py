@@ -3144,13 +3144,11 @@ class TestNode(MAASServerTestCase):
         node_start.side_effect = lambda *args, **kwargs: post_commit()
         admin = factory.make_admin()
         enable_ssh = factory.pick_bool()
-        skip_bmc_config = factory.pick_bool()
         skip_networking = factory.pick_bool()
         skip_storage = factory.pick_bool()
         node.start_commissioning(
             admin,
             enable_ssh=enable_ssh,
-            skip_bmc_config=skip_bmc_config,
             skip_networking=skip_networking,
             skip_storage=skip_storage,
         )
@@ -3158,7 +3156,6 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
         expected_attrs = {
             "enable_ssh": enable_ssh,
-            "skip_bmc_config": skip_bmc_config,
             "skip_networking": skip_networking,
             "skip_storage": skip_storage,
         }
@@ -3422,6 +3419,25 @@ class TestNode(MAASServerTestCase):
             ).stdout,
         )
 
+    def test_start_commissioning_skip_bmc_config(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["bmc-config"]
+        )
+        node = factory.make_Node()
+        admin = factory.make_admin()
+        self.patch(Node, "_start").return_value = None
+
+        node.start_commissioning(admin, skip_bmc_config=True)
+        post_commit_hooks.reset()  # Ignore these for now.
+
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.get(
+                script=script
+            )
+        )
+        self.assertEqual(0, script_result.exit_status)
+        self.assertEqual(SCRIPT_STATUS.SKIPPED, script_result.status)
+
     def test_start_commissioning_reverts_to_sane_state_on_error(self):
         # When start_commissioning encounters an error when trying to
         # start the node, it will revert the node to its previous
@@ -3448,7 +3464,6 @@ class TestNode(MAASServerTestCase):
                 node.start_commissioning(
                     admin,
                     enable_ssh=True,
-                    skip_bmc_config=True,
                     skip_networking=True,
                     skip_storage=True,
                 )
@@ -3469,7 +3484,6 @@ class TestNode(MAASServerTestCase):
         )
         self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertFalse(node.enable_ssh)
-        self.assertFalse(node.skip_bmc_config)
         self.assertFalse(node.skip_networking)
         self.assertFalse(node.skip_storage)
 

@@ -1603,14 +1603,57 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test_anon_returns_no_content_when_disabled(self):
+    def test_anon_returns_bmc_config_scripts_when_disabled(self):
         Config.objects.set_config("enlist_commissioning", False)
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["bmc-config"]
+        )
+        start_time = floor(time.time())
         response = self.client.get(reverse("maas-scripts", args=["latest"]))
         self.assertEqual(
-            http.client.NO_CONTENT,
+            http.client.OK,
             response.status_code,
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
+        )
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        self.assertEqual(2, len(tar.getmembers()))
+        commissioning_meta_data = []
+        for script in (
+            Script.objects.filter(script_type=SCRIPT_TYPE.COMMISSIONING)
+            .filter(tags__overlap=["bmc-config"])
+            .order_by("name")
+        ):
+            path = os.path.join("commissioning", script.name)
+            commissioning_meta_data.append(
+                {
+                    "name": script.name,
+                    "path": path,
+                    "script_version_id": script.script.id,
+                    "timeout_seconds": script.timeout.seconds,
+                    "parallel": script.parallel,
+                    "hardware_type": script.hardware_type,
+                    "packages": script.packages,
+                    "for_hardware": script.for_hardware,
+                    "apply_configured_networking": script.apply_configured_networking,
+                }
+            )
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time, script.script.data.encode()
+            )
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+        self.assertEqual(
+            {
+                "1.0": {
+                    "commissioning_scripts": sorted(
+                        commissioning_meta_data, key=itemgetter("name")
+                    )
+                }
+            },
+            meta_data,
         )
 
     def test_anon_access_returns_custom_enlist_script(self):

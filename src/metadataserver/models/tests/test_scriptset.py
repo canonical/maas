@@ -9,6 +9,7 @@ from unittest import mock
 from unittest.mock import PropertyMock
 
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import NoScriptsFound
@@ -391,6 +392,46 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
         self.assertEquals(
             node.power_state, script_set.power_state_before_transition
+        )
+
+    def test_create_commissioning_script_set_enlisting(self):
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["enlisting"]
+        )
+        node = factory.make_Node()
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, enlisting=True
+        )
+
+        self.assertEqual(
+            list(
+                Script.objects.filter(
+                    script_type=SCRIPT_TYPE.COMMISSIONING
+                ).filter(Q(default=True) | Q(tags__contains=["enlisting"]))
+            ),
+            [script_result.script for script_result in script_set],
+        )
+
+    def test_create_commissioning_script_set_enlisting_no_commission(self):
+        Config.objects.set_config("enlist_commissioning", False)
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["bmc-config"]
+        )
+        node = factory.make_Node()
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, enlisting=True
+        )
+
+        self.assertEqual(
+            list(
+                Script.objects.filter(
+                    script_type=SCRIPT_TYPE.COMMISSIONING,
+                    tags__contains=["bmc-config"],
+                )
+            ),
+            [script_result.script for script_result in script_set],
         )
 
     def test_create_commissioning_script_set_cleans_up_past_limit(self):

@@ -461,7 +461,6 @@ class TestPreseedContext(MAASServerTestCase):
             [
                 "osystem",
                 "release",
-                "metadata_enlist_url",
                 "server_host",
                 "server_url",
                 "syslog_host_port",
@@ -665,18 +664,13 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             )
         )
         self.assertEqual(
-            request.build_absolute_uri("/MAAS/metadata/enlist"),
+            request.build_absolute_uri("/MAAS/metadata/"),
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
         self.assertItemsEqual(
             [
                 "python3-yaml",
                 "python3-oauthlib",
-                "freeipmi-tools",
-                "ipmitool",
-                "sshpass",
-                "archdetect-deb",
-                "jq",
             ],
             preseed["packages"],
         )

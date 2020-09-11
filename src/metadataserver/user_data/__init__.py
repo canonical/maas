@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate ephemeral user-data from template and code snippets.
@@ -16,12 +16,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import os.path
 
-from django.urls import reverse
 import tempita
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models.config import Config
-from maasserver.utils import absolute_reverse
 from metadataserver.user_data.snippets import (
     get_snippet_context,
     get_userdata_template_dir,
@@ -60,22 +57,9 @@ def generate_user_data(
     userdata_template = tempita.Template.from_filename(
         userdata_template_file, encoding=ENCODING
     )
-    # The preseed context is a dict containing various configs that the
-    # templates can use.
-    if request is None:
-        server_url = absolute_reverse("machines_handler")
-    else:
-        server_url = request.build_absolute_uri(reverse("machines_handler"))
-    configs = Config.objects.get_configs(["maas_auto_ipmi_user"])
-    preseed_context = {
-        "node": node,
-        "server_url": server_url,
-        "maas_ipmi_user": configs["maas_auto_ipmi_user"],
-    }
 
     # Render the snippets in the main template.
     snippets = get_snippet_context(encoding=ENCODING)
-    snippets.update(preseed_context)
     if extra_context is not None:
         snippets.update(extra_context)
     userdata = userdata_template.substitute(snippets).encode(ENCODING)
@@ -93,17 +77,16 @@ def generate_user_data_for_status(
     node, status=None, extra_content=None, rack_controller=None, request=None
 ):
     """Produce a user_data script based on the node's status."""
-    templates = {
-        NODE_STATUS.NEW: "enlistment.template",
-        NODE_STATUS.COMMISSIONING: "commissioning.template",
-        NODE_STATUS.TESTING: "script_runner.template",
-        NODE_STATUS.DISK_ERASING: "disk_erasing.template",
-        NODE_STATUS.RESCUE_MODE: "script_runner.template",
-    }
     if status is None:
         status = node.status
+
+    if status == NODE_STATUS.DISK_ERASING:
+        template = "disk_erasing.template"
+    else:
+        template = "script_runner.template"
+
     userdata_template_file = os.path.join(
-        get_userdata_template_dir(), templates[status]
+        get_userdata_template_dir(), template
     )
     return generate_user_data(
         node, userdata_template_file, extra_content, rack_controller, request
