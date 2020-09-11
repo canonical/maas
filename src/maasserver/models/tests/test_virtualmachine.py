@@ -1,11 +1,15 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from dataclasses import asdict
 import random
 
 from django.core.exceptions import ValidationError
 
-from maasserver.models.virtualmachine import VirtualMachine
+from maasserver.models.virtualmachine import (
+    get_vm_host_resources,
+    VirtualMachine,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -65,3 +69,280 @@ class TestVirtualMachine(MAASServerTestCase):
             machine=machine,
         )
         self.assertIs(machine.virtualmachine, vm)
+
+
+class TestGetVMHostResources(MAASServerTestCase):
+    def test_get_resources_no_host(self):
+        pod = factory.make_Pod(pod_type="lxd", host=None)
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[0, 2],
+            bmc=pod,
+        )
+        self.assertEqual(get_vm_host_resources(pod), [])
+
+    def test_get_resources_aligned(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 3]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        factory.make_NUMANode(node=node, cores=[1, 4], memory=1024)
+        factory.make_NUMANode(node=node, cores=[2, 5], memory=2048)
+        pod = factory.make_Pod(pod_type="lxd", host=node)
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[0],
+            hugepages_backed=False,
+            bmc=pod,
+        )
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[2, 5],
+            hugepages_backed=False,
+            bmc=pod,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            [asdict(r) for r in resources],
+            [
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 1024, "free": 3072},
+                        "hugepages": [],
+                    },
+                    "node_id": 0,
+                },
+                {
+                    "cores": {"allocated": 0, "free": 2},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 1024},
+                        "hugepages": [],
+                    },
+                    "node_id": 1,
+                },
+                {
+                    "cores": {"allocated": 2, "free": 0},
+                    "memory": {
+                        "general": {"allocated": 1024, "free": 1024},
+                        "hugepages": [],
+                    },
+                    "node_id": 2,
+                },
+            ],
+        )
+
+    def test_get_resources_aligned_hugepages(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        numa_node1 = factory.make_NUMANode(
+            node=node, cores=[2, 3], memory=1024
+        )
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node0, page_size=1024, total=1024
+        )
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node1, page_size=1024, total=4096
+        )
+        pod = factory.make_Pod(pod_type="lxd")
+        pod.hints.nodes.add(node)
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[0],
+            hugepages_backed=True,
+            bmc=pod,
+        )
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[2, 3],
+            hugepages_backed=True,
+            bmc=pod,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            [asdict(r) for r in resources],
+            [
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 4096},
+                        "hugepages": [
+                            {"allocated": 1024, "free": 0, "page_size": 1024}
+                        ],
+                    },
+                    "node_id": 0,
+                },
+                {
+                    "cores": {"allocated": 2, "free": 0},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 1024},
+                        "hugepages": [
+                            {
+                                "allocated": 1024,
+                                "free": 3072,
+                                "page_size": 1024,
+                            }
+                        ],
+                    },
+                    "node_id": 1,
+                },
+            ],
+        )
+
+    def test_get_resources_unaligned(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        factory.make_NUMANode(node=node, cores=[2, 3], memory=2048)
+        pod = factory.make_Pod(pod_type="lxd")
+        pod.hints.nodes.add(node)
+        factory.make_VirtualMachine(
+            memory=2048,
+            pinned_cores=[0, 2],
+            hugepages_backed=False,
+            bmc=pod,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            [asdict(r) for r in resources],
+            [
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 1024, "free": 3072},
+                        "hugepages": [],
+                    },
+                    "node_id": 0,
+                },
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 1024, "free": 1024},
+                        "hugepages": [],
+                    },
+                    "node_id": 1,
+                },
+            ],
+        )
+
+    def test_get_resources_unaligned_hugepages(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        numa_node1 = factory.make_NUMANode(
+            node=node, cores=[2, 3], memory=2048
+        )
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node0, page_size=1024, total=1024
+        )
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node1, page_size=1024, total=4096
+        )
+        pod = factory.make_Pod(pod_type="lxd")
+        pod.hints.nodes.add(node)
+        factory.make_VirtualMachine(
+            memory=2048,
+            pinned_cores=[0, 2],
+            hugepages_backed=True,
+            bmc=pod,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            [asdict(r) for r in resources],
+            [
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 4096},
+                        "hugepages": [
+                            {
+                                "allocated": 1024,
+                                "free": 0,
+                                "page_size": 1024,
+                            }
+                        ],
+                    },
+                    "node_id": 0,
+                },
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 2048},
+                        "hugepages": [
+                            {
+                                "allocated": 1024,
+                                "free": 3072,
+                                "page_size": 1024,
+                            }
+                        ],
+                    },
+                    "node_id": 1,
+                },
+            ],
+        )
+
+    def test_get_resources_hugepages_round(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        numa_node1 = factory.make_NUMANode(
+            node=node, cores=[2, 3], memory=2048
+        )
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node0, page_size=2048, total=4096
+        )
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node1, page_size=4096, total=8192
+        )
+        pod = factory.make_Pod(pod_type="lxd")
+        pod.hints.nodes.add(node)
+        factory.make_VirtualMachine(
+            memory=2048,
+            pinned_cores=[0, 2],
+            hugepages_backed=True,
+            bmc=pod,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            [asdict(r) for r in resources],
+            [
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 4096},
+                        "hugepages": [
+                            {
+                                "allocated": 2048,
+                                "free": 2048,
+                                "page_size": 2048,
+                            }
+                        ],
+                    },
+                    "node_id": 0,
+                },
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "memory": {
+                        "general": {"allocated": 0, "free": 2048},
+                        "hugepages": [
+                            {
+                                "allocated": 4096,
+                                "free": 4096,
+                                "page_size": 4096,
+                            }
+                        ],
+                    },
+                    "node_id": 1,
+                },
+            ],
+        )
