@@ -1,3 +1,9 @@
+maas (1:2.9.0~beta2-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.9.0 beta2.
+
+ -- Lee Trager <lee.trager@canonical.com>  Fri, 11 Sep 2020 18:15:49 +0000
+
 maas (1:2.9.0~beta1-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.9.0 beta1.
