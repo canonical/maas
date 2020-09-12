@@ -404,7 +404,7 @@ class TestScriptSetManager(MAASServerTestCase):
             node, enlisting=True
         )
 
-        self.assertEqual(
+        self.assertCountEqual(
             list(
                 Script.objects.filter(
                     script_type=SCRIPT_TYPE.COMMISSIONING
@@ -424,7 +424,7 @@ class TestScriptSetManager(MAASServerTestCase):
             node, enlisting=True
         )
 
-        self.assertEqual(
+        self.assertCountEqual(
             list(
                 Script.objects.filter(
                     script_type=SCRIPT_TYPE.COMMISSIONING,
