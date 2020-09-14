@@ -247,6 +247,10 @@ class DiscoveredMachine(AttrHelperMixin):
     )
     tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
     hostname = attr.ib(converter=str, default=None)
+    pinned_cores = attr.ib(
+        converter=converter_list(int), default=attr.Factory(list)
+    )
+    hugepages_backed = attr.ib(converter=bool, default=False)
 
 
 @attr.s

@@ -903,14 +903,17 @@ class Pod(BMC):
         if self.power_type == "lxd":
             from maasserver.models.virtualmachine import VirtualMachine
 
-            # XXX this needs to be expanded when we support CPU pinning and
-            # hugepages
+            unpinned_cores = (
+                0 if discovered_machine.pinned_cores else machine.cpu_count
+            )
             VirtualMachine.objects.create(
                 identifier=machine.instance_power_parameters["instance_name"],
                 bmc=self,
-                unpinned_cores=machine.cpu_count,
                 memory=machine.memory,
                 machine=machine,
+                hugepages_backed=discovered_machine.hugepages_backed,
+                pinned_cores=discovered_machine.pinned_cores,
+                unpinned_cores=unpinned_cores,
             )
 
         self._assign_tags(machine, discovered_machine)
@@ -1131,6 +1134,17 @@ class Pod(BMC):
             discovered_machine.power_parameters
         )
 
+        vm = getattr(existing_machine, "virtualmachine", None)
+        if vm:
+            vm.hugepages_backed = discovered_machine.hugepages_backed
+            vm.pinned_cores = discovered_machine.pinned_cores
+            vm.unpinned_cores = (
+                0
+                if discovered_machine.pinned_cores
+                else discovered_machine.cores
+            )
+            vm.save()
+
         # If this machine is pre-existing or manually composed then we skip
         # syncing all the remaining information because MAAS commissioning
         # will discover this information. Any changes on the MAAS in the pod
@@ -1310,6 +1324,7 @@ class Pod(BMC):
             .prefetch_related("interface_set")
             .prefetch_related("blockdevice_set__physicalblockdevice")
             .prefetch_related("blockdevice_set__virtualblockdevice")
+            .prefetch_related("virtualmachine")
             .distinct()
         )
         machines = {

@@ -3,8 +3,6 @@
 
 """Tests for `provisioningserver.drivers.pod.lxd`."""
 
-__all__ = []
-
 from os.path import join
 import random
 from unittest.mock import Mock, PropertyMock, sentinel
@@ -449,6 +447,28 @@ class TestLXDPodDriver(MAASTestCase):
             ),
         )
         self.assertItemsEqual([], discovered_machine.tags)
+        self.assertFalse(discovered_machine.hugepages_backed)
+        self.assertEqual(discovered_machine.pinned_cores, [])
+
+    @inlineCallbacks
+    def test_get_discovered_machine_vm_info(self):
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        mock_machine = Mock()
+        mock_machine.name = factory.make_name("machine")
+        mock_machine.architecture = "x86_64"
+        expanded_config = {
+            "limits.cpu": "0-2",
+            "limits.memory.hugepages": "true",
+        }
+        mock_machine.expanded_config = expanded_config
+        mock_machine.expanded_devices = {}
+        discovered_machine = yield driver.get_discovered_machine(
+            client, mock_machine, []
+        )
+        self.assertTrue(discovered_machine.hugepages_backed)
+        self.assertEqual(discovered_machine.pinned_cores, [0, 1, 2])
 
     @inlineCallbacks
     def test_get_discovered_machine_sets_power_state_to_unknown_for_unknown(
@@ -957,4 +977,24 @@ class TestGetNicDevice(MAASTestCase):
                 "type": "nic",
             },
             device,
+        )
+
+
+class TestParseCPUCores(MAASTestCase):
+    def test_count(self):
+        self.assertEqual(lxd_module._parse_cpu_cores("10"), (10, []))
+
+    def test_list(self):
+        self.assertEqual(lxd_module._parse_cpu_cores("0,2,4"), (3, [0, 2, 4]))
+
+    def test_range(self):
+        self.assertEqual(lxd_module._parse_cpu_cores("0-3"), (4, [0, 1, 2, 3]))
+
+    def test_range_single(self):
+        self.assertEqual(lxd_module._parse_cpu_cores("2-2"), (1, [2]))
+
+    def test_mixed(self):
+        self.assertEqual(
+            lxd_module._parse_cpu_cores("0,2,10-12,14-16,18-18"),
+            (9, [0, 2, 10, 11, 12, 14, 15, 16, 18]),
         )

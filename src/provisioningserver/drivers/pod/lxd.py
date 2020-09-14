@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from contextlib import suppress
 import re
 from urllib.parse import urlparse
 
@@ -290,13 +291,18 @@ class LXDPodDriver(PodDriver):
             memory = convert_lxd_byte_suffixes(memory, divisor=1024 ** 2)
         else:
             memory = 1024
-
+        hugepages_backed = (
+            expanded_config.get("limits.memory.hugepages", "") == "true"
+        )
+        cores, pinned_cores = _parse_cpu_cores(
+            expanded_config.get("limits.cpu")
+        )
         return DiscoveredMachine(
             hostname=machine.name,
             architecture=kernel_to_debian_architecture(machine.architecture),
             # 1 core and 1GiB of memory (we need it in MiB) is default for
             # LXD if not specified.
-            cores=int(expanded_config.get("limits.cpu", 1)),
+            cores=cores,
             memory=memory,
             cpu_speed=0,
             interfaces=interfaces,
@@ -304,6 +310,8 @@ class LXDPodDriver(PodDriver):
             power_state=power_state,
             power_parameters={"instance_name": machine.name},
             tags=[],
+            hugepages_backed=hugepages_backed,
+            pinned_cores=pinned_cores,
         )
 
     def get_discovered_pod_storage_pool(self, storage_pool):
@@ -662,3 +670,20 @@ class LXDPodDriver(PodDriver):
         yield deferToThread(machine.delete, wait=True)
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
+
+
+def _parse_cpu_cores(cpu_limits):
+    """Return number of vCPUs and list of pinned cores."""
+    if not cpu_limits:
+        return 1, []
+    with suppress(ValueError):
+        return int(cpu_limits), []
+
+    pinned_cores = []
+    for cores_range in cpu_limits.split(","):
+        if "-" in cores_range:
+            start, end = cores_range.split("-")
+            pinned_cores.extend(range(int(start), int(end) + 1))
+        else:
+            pinned_cores.append(int(cores_range))
+    return len(pinned_cores), sorted(pinned_cores)

@@ -51,7 +51,6 @@ from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
-from maasserver.models.virtualmachine import VirtualMachine
 from maasserver.permissions import PodPermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
@@ -1194,12 +1193,40 @@ class TestPod(MAASServerTestCase):
         instance_name = factory.make_string()
         discovered_machine.power_parameters["instance_name"] = instance_name
         machine = pod.create_machine(discovered_machine, factory.make_User())
-        [vm] = VirtualMachine.objects.all()
+        vm = machine.virtualmachine
         self.assertEqual(vm.identifier, instance_name)
         self.assertEqual(vm.bmc, pod)
         self.assertEqual(vm.machine, machine)
         self.assertEqual(vm.memory, machine.memory)
         self.assertEqual(vm.unpinned_cores, machine.cpu_count)
+        self.assertFalse(vm.hugepages_backed)
+
+    def test_create_machine_for_lxd_creates_virtualmachine_with_hugepages(
+        self,
+    ):
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        pod = factory.make_Pod(pod_type="lxd")
+        discovered_machine = self.make_discovered_machine()
+        instance_name = factory.make_string()
+        discovered_machine.power_parameters["instance_name"] = instance_name
+        discovered_machine.hugepages_backed = True
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertTrue(machine.virtualmachine.hugepages_backed)
+
+    def test_create_machine_for_lxd_creates_virtualmachine_pinned_cores(self):
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        pod = factory.make_Pod(pod_type="lxd")
+        discovered_machine = self.make_discovered_machine()
+        instance_name = factory.make_string()
+        discovered_machine.power_parameters["instance_name"] = instance_name
+        discovered_machine.pinned_cores = [0, 1, 2]
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertEqual(machine.virtualmachine.unpinned_cores, 0)
+        self.assertEqual(machine.virtualmachine.pinned_cores, [0, 1, 2])
 
     def test_create_machine_invalid_hostname(self):
         discovered_machine = self.make_discovered_machine()
@@ -1880,6 +1907,33 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+
+    def test_sync_updates_machine_vm(self):
+        pod = factory.make_Pod()
+        machine = factory.make_Node(
+            interface=True,
+            creation_type=random.choice(
+                [NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]
+            ),
+        )
+        vm = factory.make_VirtualMachine(
+            bmc=pod, machine=machine, hugepages_backed=False
+        )
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address
+        )
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface]
+        )
+        discovered_machine.hugepages_backed = True
+        discovered_machine.pinned_cores = [0, 1, 2]
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine]
+        )
+        pod.sync(discovered_pod, factory.make_User())
+        vm = reload_object(vm)
+        self.assertTrue(vm.hugepages_backed)
+        self.assertEqual(vm.pinned_cores, [0, 1, 2])
 
     def test_sync_updates_machine_bmc_deletes_old_bmc(self):
         pod = factory.make_Pod()

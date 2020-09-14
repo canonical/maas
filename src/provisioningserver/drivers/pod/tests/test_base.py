@@ -3,8 +3,6 @@
 
 """Tests for `provisioningserver.drivers.pod`."""
 
-__all__ = []
-
 import random
 from unittest.mock import sentinel
 
@@ -361,6 +359,7 @@ class TestDiscoveredClasses(MAASTestCase):
                     interfaces=interfaces,
                     block_devices=block_devices,
                     tags=tags,
+                    hugepages_backed=True,
                 )
             )
         pod = DiscoveredPod(
@@ -471,6 +470,8 @@ class TestDiscoveredClasses(MAASTestCase):
                                         ]
                                     ),
                                     "tags": Equals(machine.tags),
+                                    "hugepages_backed": Equals(True),
+                                    "pinned_cores": Equals([]),
                                 }
                             )
                             for machine in machines
