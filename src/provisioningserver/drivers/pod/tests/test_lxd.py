@@ -979,6 +979,42 @@ class TestGetNicDevice(MAASTestCase):
             device,
         )
 
+    def test_sriov(self):
+        interface = RequestedMachineInterface(
+            ifname=factory.make_name("ifname"),
+            attach_name=factory.make_name("sriov"),
+            attach_type=InterfaceAttachType.SRIOV,
+        )
+        device = lxd_module.get_lxd_nic_device(interface)
+        self.assertEqual(
+            {
+                "name": interface.ifname,
+                "parent": interface.attach_name,
+                "nictype": "sriov",
+                "type": "nic",
+            },
+            device,
+        )
+
+    def test_sriov_vlan(self):
+        interface = RequestedMachineInterface(
+            ifname=factory.make_name("ifname"),
+            attach_name=factory.make_name("sriov"),
+            attach_type=InterfaceAttachType.SRIOV,
+            attach_vlan=42,
+        )
+        device = lxd_module.get_lxd_nic_device(interface)
+        self.assertEqual(
+            {
+                "name": interface.ifname,
+                "parent": interface.attach_name,
+                "nictype": "sriov",
+                "type": "nic",
+                "vlan": "42",
+            },
+            device,
+        )
+
 
 class TestParseCPUCores(MAASTestCase):
     def test_count(self):

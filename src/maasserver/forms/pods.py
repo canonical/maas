@@ -469,6 +469,17 @@ class PodForm(MAASModelForm):
             return self.instance
 
 
+def interface_supports_sriov(interface):
+    """Whether an interface supports SR-IOV.
+
+    If the interface is a VLAN interface, its parent is checked for
+    SR-IOV support.
+    """
+    if interface.type == INTERFACE_TYPE.VLAN:
+        interface = interface.parents.get()
+    return interface.sriov_max_vf > 0
+
+
 def get_known_host_interfaces(pod: Pod) -> list:
     """Given the specified pod, calculates its host's KnownHostInterfaces.
 
@@ -481,10 +492,22 @@ def get_known_host_interfaces(pod: Pod) -> list:
     result = []
     for interface in interfaces:
         ifname = interface.name
+        attach_name = ifname
+        attach_vlan = None
         if interface.type == INTERFACE_TYPE.BRIDGE:
             attach_type = InterfaceAttachType.BRIDGE
         else:
-            attach_type = InterfaceAttachType.MACVLAN
+            if pod.power_type == "lxd" and interface_supports_sriov(interface):
+                # For LXD we prefer SR-IOV over MACVLAN if the NIC
+                # supports it. In the future, we should support both and
+                # allow the user to choose what to use, since SR-IOV
+                # needs to be setup properly before it can be used.
+                attach_type = InterfaceAttachType.SRIOV
+                if interface.type == INTERFACE_TYPE.VLAN:
+                    attach_name = interface.parents.get().name
+                    attach_vlan = interface.vlan.vid
+            else:
+                attach_type = InterfaceAttachType.MACVLAN
         dhcp_enabled = False
         vlan = interface.vlan
         if vlan is not None:
@@ -497,6 +520,8 @@ def get_known_host_interfaces(pod: Pod) -> list:
             KnownHostInterface(
                 ifname=ifname,
                 attach_type=attach_type,
+                attach_name=attach_name,
+                attach_vlan=attach_vlan,
                 dhcp_enabled=dhcp_enabled,
             )
         )
@@ -610,7 +635,8 @@ class ComposeMachineForm(forms.Form):
         if interfaces_label_map is not None:
             requested_machine_interfaces = (
                 self._get_requested_machine_interfaces_via_constraints(
-                    interfaces_label_map
+                    interfaces_label_map,
+                    known_host_interfaces,
                 )
             )
         else:
@@ -643,7 +669,9 @@ class ComposeMachineForm(forms.Form):
         return interfaces[0]
 
     def _get_requested_machine_interfaces_via_constraints(
-        self, interfaces_label_map
+        self,
+        interfaces_label_map,
+        known_host_interfaces,
     ):
         requested_machine_interfaces = []
         if self.pod.host is None:
@@ -678,7 +706,9 @@ class ComposeMachineForm(forms.Form):
             # we need at least one.
             if interface.has_bootable_vlan():
                 has_bootable_vlan = True
-            rmi = self.get_requested_machine_interface_by_interface(interface)
+            rmi = self.get_requested_machine_interface_by_interface(
+                interface, known_host_interfaces
+            )
             # Set the requested interface name and IP addresses.
             rmi.ifname = get_ifname_for_label(label)
             rmi.requested_ips = result.allocated_ips.get(label, [])
@@ -691,23 +721,28 @@ class ComposeMachineForm(forms.Form):
             )
         return requested_machine_interfaces
 
-    def get_requested_machine_interface_by_interface(self, interface):
-        if interface.type == INTERFACE_TYPE.BRIDGE:
-            rmi = RequestedMachineInterface(
-                attach_name=interface.name,
-                attach_type=InterfaceAttachType.BRIDGE,
-            )
-        else:
+    def get_requested_machine_interface_by_interface(
+        self, interface, known_host_interfaces
+    ):
+        [host_interface] = [
+            known_interface
+            for known_interface in known_host_interfaces
+            if interface.name == known_interface.ifname
+        ]
+
+        rmi = RequestedMachineInterface(
+            attach_name=host_interface.attach_name,
+            attach_type=host_interface.attach_type,
+            attach_vlan=host_interface.attach_vlan,
+        )
+
+        if rmi.attach_type == InterfaceAttachType.MACVLAN:
             attach_options = self.pod.default_macvlan_mode
             if not attach_options:
                 # Default macvlan mode is 'bridge' if not specified, since that
                 # provides the best chance for connectivity.
                 attach_options = MACVLAN_MODE.BRIDGE
-            rmi = RequestedMachineInterface(
-                attach_name=interface.name,
-                attach_type=InterfaceAttachType.MACVLAN,
-                attach_options=attach_options,
-            )
+            rmi.attach_options = attach_options
         return rmi
 
     def save(self):

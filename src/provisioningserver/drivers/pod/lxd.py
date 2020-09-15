@@ -96,12 +96,15 @@ def get_lxd_nic_device(interface):
         if interface.attach_type == InterfaceAttachType.BRIDGE
         else interface.attach_type
     )
-    return {
+    device = {
         "name": interface.ifname,
         "parent": interface.attach_name,
         "nictype": nictype,
         "type": "nic",
     }
+    if interface.attach_vlan is not None:
+        device["vlan"] = str(interface.attach_vlan)
+    return device
 
 
 class LXDPodError(Exception):
@@ -603,6 +606,7 @@ class LXDPodDriver(PodDriver):
                 device_names.append(device_name)
             else:
                 nic_devices[interface.ifname] = get_lxd_nic_device(interface)
+
                 # Set to boot from the first nic
                 if boot:
                     nic_devices[interface.ifname]["boot.priority"] = "1"

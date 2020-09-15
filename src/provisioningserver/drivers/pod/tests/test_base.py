@@ -778,6 +778,7 @@ class TestRequestClasses(MAASTestCase):
                                     "attach_type": Equals(
                                         interface.attach_type
                                     ),
+                                    "attach_vlan": Is(None),
                                     "attach_options": Equals(
                                         interface.attach_options
                                     ),
@@ -793,9 +794,13 @@ class TestRequestClasses(MAASTestCase):
                                     "ifname": Equals(
                                         known_host_interface.ifname
                                     ),
+                                    "attach_name": Equals(
+                                        known_host_interface.attach_name
+                                    ),
                                     "attach_type": Equals(
                                         known_host_interface.attach_type
                                     ),
+                                    "attach_vlan": Is(None),
                                     "dhcp_enabled": Equals(False),
                                 }
                             )

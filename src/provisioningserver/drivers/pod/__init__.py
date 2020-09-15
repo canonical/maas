@@ -171,6 +171,9 @@ class InterfaceAttachType:
     # Interface attached via a non-bridge interface using the macvlan driver.
     MACVLAN = "macvlan"
 
+    # Interface attached via an SR-IOV capable device.
+    SRIOV = "sriov"
+
 
 class AttrHelperMixin:
     """Mixin to add the `fromdict` and `asdict` to the classes."""
@@ -339,6 +342,9 @@ class RequestedMachineInterface(AttrHelperMixin):
     attach_options = attr.ib(
         converter=converter_obj(str, optional=True), default=None
     )
+    attach_vlan = attr.ib(
+        converter=converter_obj(int, optional=True), default=None
+    )
     requested_ips = attr.ib(
         converter=converter_list(str), default=attr.Factory(list)
     )
@@ -353,6 +359,10 @@ class KnownHostInterface(AttrHelperMixin):
 
     ifname = attr.ib(converter=str, default=None)
     attach_type = attr.ib(converter=str, default=None)
+    attach_name = attr.ib(converter=str, default=None)
+    attach_vlan = attr.ib(
+        converter=converter_obj(int, optional=True), default=None
+    )
     dhcp_enabled = attr.ib(converter=bool, default=False)
 
 

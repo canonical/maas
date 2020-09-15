@@ -1737,6 +1737,109 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
+    def test_get_machine_with_interfaces_by_subnets_sriov(self):
+        request = MagicMock()
+        cidr1 = "10.0.0.0/24"
+        cidr2 = "192.168.100.0/24"
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(cidr=cidr2, vlan=vlan)
+        pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
+        space = factory.make_Space("dmz")
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
+        pod_host.boot_interface.sriov_max_vf = 1
+        pod_host.boot_interface.save()
+
+        sriov_if = factory.make_Interface(
+            node=pod_host,
+            subnet=subnet,
+            sriov_max_vf=1,
+        )
+
+        pod = make_pod_with_hints(host=pod_host)
+        pod.power_type = "lxd"
+        pod.save()
+        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        form = ComposeMachineForm(
+            data={"interfaces": interfaces}, request=request, pod=pod
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine(
+            get_known_host_interfaces(pod)
+        )
+        self.assertEqual(
+            [
+                RequestedMachineInterface(
+                    ifname="eth0",
+                    attach_name=pod_host.boot_interface.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_vlan=None,
+                ),
+                RequestedMachineInterface(
+                    ifname="eth1",
+                    attach_name=sriov_if.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_vlan=None,
+                ),
+            ],
+            request_machine.interfaces,
+        )
+
+    def test_get_machine_with_interfaces_by_subnets_sriov_vlan(self):
+        request = MagicMock()
+        cidr1 = "10.0.0.0/24"
+        cidr2 = "192.168.100.0/24"
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN(fabric=vlan1.fabric)
+        subnet = factory.make_Subnet(cidr=cidr2, vlan=vlan2)
+        pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
+        space = factory.make_Space("dmz")
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
+        pod_host.boot_interface.sriov_max_vf = 1
+        pod_host.boot_interface.save()
+
+        sriov_if = factory.make_Interface(
+            node=pod_host,
+            sriov_max_vf=1,
+            vlan=vlan1,
+        )
+        factory.make_Interface(
+            node=pod_host,
+            iftype=INTERFACE_TYPE.VLAN,
+            parents=[sriov_if],
+            subnet=subnet,
+        )
+
+        pod = make_pod_with_hints(host=pod_host)
+        pod.power_type = "lxd"
+        pod.save()
+        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        form = ComposeMachineForm(
+            data={"interfaces": interfaces}, request=request, pod=pod
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine(
+            get_known_host_interfaces(pod)
+        )
+        self.assertEqual(
+            [
+                RequestedMachineInterface(
+                    ifname="eth0",
+                    attach_name=pod_host.boot_interface.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_vlan=None,
+                ),
+                RequestedMachineInterface(
+                    ifname="eth1",
+                    attach_name=sriov_if.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_vlan=vlan2.vid,
+                ),
+            ],
+            request_machine.interfaces,
+        )
+
     def test_get_machine_with_interfaces_by_space_as_bridge(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet(
@@ -2477,15 +2580,12 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertThat(interfaces, HasLength(0))
 
-    def test_returns_appropriate_attach_type(self):
+    def test_bridge_attach_type(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=False)
         node.interface_set.all().delete()
         bridge = factory.make_Interface(
             iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan
-        )
-        physical = factory.make_Interface(
-            iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertItemsEqual(
@@ -2494,11 +2594,160 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
                 KnownHostInterface(
                     ifname=bridge.name,
                     attach_type=InterfaceAttachType.BRIDGE,
+                    attach_name=bridge.name,
+                    attach_vlan=None,
                     dhcp_enabled=False,
                 ),
+            ],
+        )
+
+    def test_macvlan_physical_attach_type(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(dhcp_on=False)
+        node.interface_set.all().delete()
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
+        )
+        interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
+        self.assertItemsEqual(
+            interfaces,
+            [
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_name=physical.name,
+                    attach_vlan=None,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    dhcp_enabled=False,
+                ),
+            ],
+        )
+
+    def test_sriov_physical_attach_type_lxd(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(dhcp_on=False)
+        node.interface_set.all().delete()
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            vlan=vlan,
+            sriov_max_vf=1,
+        )
+        interfaces = get_known_host_interfaces(
+            factory.make_Pod(host=node, pod_type="lxd")
+        )
+        self.assertItemsEqual(
+            interfaces,
+            [
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_name=physical.name,
+                    attach_vlan=None,
+                    dhcp_enabled=False,
+                ),
+            ],
+        )
+
+    def test_sriov_physical_attach_type_virsh(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(dhcp_on=False)
+        node.interface_set.all().delete()
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            vlan=vlan,
+            sriov_max_vf=1,
+        )
+        interfaces = get_known_host_interfaces(
+            factory.make_Pod(host=node, pod_type="virsh")
+        )
+        self.assertItemsEqual(
+            interfaces,
+            [
                 KnownHostInterface(
                     ifname=physical.name,
                     attach_type=InterfaceAttachType.MACVLAN,
+                    attach_name=physical.name,
+                    attach_vlan=None,
+                    dhcp_enabled=False,
+                ),
+            ],
+        )
+
+    def test_sriov_vlan_attach_type_lxd(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan1 = factory.make_VLAN(dhcp_on=False)
+        vlan2 = factory.make_VLAN(dhcp_on=False, fabric=vlan1.fabric)
+        node.interface_set.all().delete()
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            vlan=vlan1,
+            sriov_max_vf=1,
+        )
+        vlan_iface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN,
+            node=node,
+            vlan=vlan2,
+            parents=[physical],
+        )
+        interfaces = get_known_host_interfaces(
+            factory.make_Pod(host=node, pod_type="lxd")
+        )
+        self.assertItemsEqual(
+            interfaces,
+            [
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_name=physical.name,
+                    attach_vlan=None,
+                    dhcp_enabled=False,
+                ),
+                KnownHostInterface(
+                    ifname=vlan_iface.name,
+                    attach_type=InterfaceAttachType.SRIOV,
+                    attach_name=physical.name,
+                    attach_vlan=vlan2.vid,
+                    dhcp_enabled=False,
+                ),
+            ],
+        )
+
+    def test_sriov_vlan_attach_type_virsh(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan1 = factory.make_VLAN(dhcp_on=False)
+        vlan2 = factory.make_VLAN(dhcp_on=False, fabric=vlan1.fabric)
+        node.interface_set.all().delete()
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            vlan=vlan1,
+            sriov_max_vf=1,
+        )
+        vlan_iface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN,
+            node=node,
+            vlan=vlan2,
+            parents=[physical],
+        )
+        interfaces = get_known_host_interfaces(
+            factory.make_Pod(host=node, pod_type="virsh")
+        )
+        self.assertItemsEqual(
+            interfaces,
+            [
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    attach_name=physical.name,
+                    attach_vlan=None,
+                    dhcp_enabled=False,
+                ),
+                KnownHostInterface(
+                    ifname=vlan_iface.name,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    attach_name=vlan_iface.name,
                     dhcp_enabled=False,
                 ),
             ],
@@ -2520,11 +2769,15 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
                 KnownHostInterface(
                     ifname=bridge.name,
                     attach_type=InterfaceAttachType.BRIDGE,
+                    attach_name=bridge.name,
+                    attach_vlan=None,
                     dhcp_enabled=False,
                 ),
                 KnownHostInterface(
                     ifname=physical.name,
                     attach_type=InterfaceAttachType.MACVLAN,
+                    attach_name=physical.name,
+                    attach_vlan=None,
                     dhcp_enabled=False,
                 ),
             ],
@@ -2547,11 +2800,15 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
                 KnownHostInterface(
                     ifname=bridge.name,
                     attach_type=InterfaceAttachType.BRIDGE,
+                    attach_name=bridge.name,
+                    attach_vlan=None,
                     dhcp_enabled=True,
                 ),
                 KnownHostInterface(
                     ifname=physical.name,
                     attach_type=InterfaceAttachType.MACVLAN,
+                    attach_name=physical.name,
+                    attach_vlan=None,
                     dhcp_enabled=True,
                 ),
             ],
@@ -2575,11 +2832,15 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
                 KnownHostInterface(
                     ifname=bridge.name,
                     attach_type=InterfaceAttachType.BRIDGE,
+                    attach_name=bridge.name,
+                    attach_vlan=None,
                     dhcp_enabled=True,
                 ),
                 KnownHostInterface(
                     ifname=physical.name,
                     attach_type=InterfaceAttachType.MACVLAN,
+                    attach_name=physical.name,
+                    attach_vlan=None,
                     dhcp_enabled=True,
                 ),
             ],
