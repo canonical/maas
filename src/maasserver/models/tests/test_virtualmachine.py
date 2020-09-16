@@ -95,12 +95,14 @@ class TestGetVMHostResources(MAASServerTestCase):
             pinned_cores=[0],
             hugepages_backed=False,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm0"),
         )
         factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[2, 5],
             hugepages_backed=False,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -113,6 +115,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "hugepages": [],
                     },
                     "node_id": 0,
+                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
                     "cores": {"allocated": 0, "free": 2},
@@ -121,6 +124,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "hugepages": [],
                     },
                     "node_id": 1,
+                    "vms": [],
                 },
                 {
                     "cores": {"allocated": 2, "free": 0},
@@ -129,6 +133,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "hugepages": [],
                     },
                     "node_id": 2,
+                    "vms": [{"pinned_cores": [2, 5], "system_id": "vm1"}],
                 },
             ],
         )
@@ -155,12 +160,14 @@ class TestGetVMHostResources(MAASServerTestCase):
             pinned_cores=[0],
             hugepages_backed=True,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm0"),
         )
         factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[2, 3],
             hugepages_backed=True,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -175,6 +182,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         ],
                     },
                     "node_id": 0,
+                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
                     "cores": {"allocated": 2, "free": 0},
@@ -189,6 +197,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         ],
                     },
                     "node_id": 1,
+                    "vms": [{"pinned_cores": [2, 3], "system_id": "vm1"}],
                 },
             ],
         )
@@ -207,6 +216,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             pinned_cores=[0, 2],
             hugepages_backed=False,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -219,6 +229,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "hugepages": [],
                     },
                     "node_id": 0,
+                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
                     "cores": {"allocated": 1, "free": 1},
@@ -227,6 +238,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "hugepages": [],
                     },
                     "node_id": 1,
+                    "vms": [{"pinned_cores": [2], "system_id": "vm0"}],
                 },
             ],
         )
@@ -253,6 +265,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             pinned_cores=[0, 2],
             hugepages_backed=True,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -271,6 +284,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         ],
                     },
                     "node_id": 0,
+                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
                     "cores": {"allocated": 1, "free": 1},
@@ -285,6 +299,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         ],
                     },
                     "node_id": 1,
+                    "vms": [{"pinned_cores": [2], "system_id": "vm0"}],
                 },
             ],
         )
@@ -311,6 +326,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             pinned_cores=[0, 2],
             hugepages_backed=True,
             bmc=pod,
+            machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -329,6 +345,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         ],
                     },
                     "node_id": 0,
+                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
                     "cores": {"allocated": 1, "free": 1},
@@ -343,6 +360,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         ],
                     },
                     "node_id": 1,
+                    "vms": [{"pinned_cores": [2], "system_id": "vm0"}],
                 },
             ],
         )

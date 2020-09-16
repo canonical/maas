@@ -17,6 +17,7 @@ from django.db.models import (
     SET_NULL,
     TextField,
 )
+from django.db.models.functions import Coalesce
 
 from maasserver.models.bmc import BMC
 from maasserver.models.cleansave import CleanSave
@@ -93,6 +94,14 @@ class NUMAPinningMemoryResources:
 
 
 @dataclass
+class NUMAPinningVirtualMachineResources:
+    """Resource usaage for a VM in a NUMA node."""
+
+    system_id: str
+    pinned_cores: List[int] = field(default_factory=list)
+
+
+@dataclass
 class NUMAPinningNodeResources:
     """Resource usage for a NUMA node."""
 
@@ -103,14 +112,20 @@ class NUMAPinningNodeResources:
     cores: NUMAPinningCoresResources = field(
         default_factory=NUMAPinningCoresResources
     )
+    vms: List[NUMAPinningVirtualMachineResources] = field(default_factory=list)
 
 
 def get_vm_host_resources(pod):
     """Return used resources for a VM host by its ID."""
     if pod.host is None:
         return []
-
-    vms = list(VirtualMachine.objects.filter(bmc=pod).all())
+    vms = list(
+        VirtualMachine.objects.annotate(
+            system_id=Coalesce("machine__system_id", None)
+        )
+        .filter(bmc=pod)
+        .all()
+    )
     numanodes = {
         node.index: node
         for node in NUMANode.objects.prefetch_related("hugepages_set")
@@ -124,6 +139,8 @@ def get_vm_host_resources(pod):
     allocated_numanode_memory = defaultdict(int)
     # XXX map NUMA nodes to default hugepages entry, since currently LXD only support one size
     numanode_hugepages = {}
+    # map NUMA nodes to list of VMs resources in them
+    numanode_vms_resources = defaultdict(list)
     allocated_numanode_hugepages = defaultdict(int)
     for numa_idx, numa_node in numanodes.items():
         available_numanode_cores[numa_idx] = set(numa_node.cores)
@@ -140,6 +157,7 @@ def get_vm_host_resources(pod):
             available_numanode_cores,
             allocated_numanode_memory,
             allocated_numanode_hugepages,
+            numanode_vms_resources,
         )
 
     return [
@@ -149,6 +167,7 @@ def get_vm_host_resources(pod):
             allocated_numanode_memory[numa_idx],
             numanode_hugepages[numa_idx],
             allocated_numanode_hugepages[numa_idx],
+            numanode_vms_resources[numa_idx],
         )
         for numa_idx, numa_node in numanodes.items()
     ]
@@ -161,6 +180,7 @@ def _update_numanode_resources_usage(
     available_numanode_cores,
     allocated_numanode_memory,
     allocated_numanode_hugepages,
+    numanode_vms_resources,
 ):
     numanode_weights, used_numanode_cores = _get_vm_numanode_weights_and_cores(
         vm, numanodes
@@ -178,9 +198,16 @@ def _update_numanode_resources_usage(
                 allocated_numanode_hugepages[numa_idx] += vm_node_memory
         else:
             allocated_numanode_memory[numa_idx] += vm_node_memory
-        available_numanode_cores[numa_idx].difference_update(
-            used_numanode_cores[numa_idx]
-        )
+        if used_numanode_cores[numa_idx]:
+            available_numanode_cores[numa_idx].difference_update(
+                used_numanode_cores[numa_idx]
+            )
+            numanode_vms_resources[numa_idx].append(
+                NUMAPinningVirtualMachineResources(
+                    system_id=vm.system_id,
+                    pinned_cores=list(used_numanode_cores[numa_idx]),
+                )
+            )
 
 
 def _get_vm_numanode_weights_and_cores(vm, numanodes):
@@ -210,6 +237,7 @@ def _get_numa_pinning_resources(
     allocated_numanode_memory,
     numanode_hugepages,
     allocated_numanode_hugepages,
+    numanode_vm_resources,
 ):
     numa_resources = NUMAPinningNodeResources(numa_node.index)
     # fill in cores details
@@ -230,4 +258,5 @@ def _get_numa_pinning_resources(
                 free=numanode_hugepages.total - allocated_numanode_hugepages,
             )
         )
+    numa_resources.vms = numanode_vm_resources
     return numa_resources
