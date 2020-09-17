@@ -105,7 +105,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertEqual(
+        self.assertCountEqual(
             [asdict(r) for r in resources],
             [
                 {
@@ -170,7 +170,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertEqual(
+        self.assertCountEqual(
             [asdict(r) for r in resources],
             [
                 {
@@ -219,7 +219,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertEqual(
+        self.assertCountEqual(
             [asdict(r) for r in resources],
             [
                 {
@@ -268,7 +268,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertEqual(
+        self.assertCountEqual(
             [asdict(r) for r in resources],
             [
                 {
@@ -329,7 +329,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertEqual(
+        self.assertCountEqual(
             [asdict(r) for r in resources],
             [
                 {

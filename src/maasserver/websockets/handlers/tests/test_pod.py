@@ -78,7 +78,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             )
         )
 
-    def make_pod_with_hints(self, ip_address=None):
+    def make_pod_with_hints(self, **kwargs):
         architectures = [
             "amd64/generic",
             "i386/generic",
@@ -93,7 +93,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 Capabilities.COMPOSABLE,
                 Capabilities.STORAGE_POOLS,
             ],
-            ip_address=ip_address,
+            **kwargs,
         )
         pod.hints.cores = random.randint(8, 16)
         pod.hints.memory = random.randint(4096, 8192)
@@ -156,7 +156,30 @@ class TestPodHandler(MAASTransactionServerTestCase):
         ip = factory.make_StaticIPAddress(
             interface=node.boot_interface, subnet=subnet
         )
-        pod = self.make_pod_with_hints(ip_address=ip)
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 3]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        factory.make_NUMANode(node=node, cores=[1, 4], memory=1024)
+        factory.make_NUMANode(node=node, cores=[2, 5], memory=2048)
+        pod = self.make_pod_with_hints(
+            pod_type="lxd", host=node, ip_address=ip
+        )
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[0],
+            hugepages_backed=False,
+            bmc=pod,
+            machine=factory.make_Node(system_id="vm0"),
+        )
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[2, 5],
+            hugepages_backed=False,
+            bmc=pod,
+            machine=factory.make_Node(system_id="vm1"),
+        )
+
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
         self.assertItemsEqual(expected_data.keys(), result.keys())
@@ -166,7 +189,92 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(result["host"], Equals(node.system_id))
         self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
         self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
-        self.assertEqual(len(result["numa_pinning"]), 2)
+        self.assertEqual(
+            result["numa_pinning"],
+            [
+                {
+                    "cores": {"allocated": 1, "free": 1},
+                    "interfaces": [
+                        {
+                            "id": 100,
+                            "name": "eth4",
+                            "virtual_functions": {"allocated": 4, "free": 12},
+                        },
+                        {
+                            "id": 200,
+                            "name": "eth5",
+                            "virtual_functions": {"allocated": 14, "free": 2},
+                        },
+                    ],
+                    "memory": {
+                        "general": {"allocated": 1024, "free": 3072},
+                        "hugepages": [],
+                    },
+                    "node_id": 0,
+                    "vms": [
+                        {
+                            "pinned_cores": [0],
+                            "system_id": "vm0",
+                            "networks": [
+                                {"guest_nic_id": 101, "host_nic_id": 100},
+                                {"guest_nic_id": 102, "host_nic_id": 100},
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "cores": {"allocated": 0, "free": 2},
+                    "interfaces": [
+                        {
+                            "id": 100,
+                            "name": "eth4",
+                            "virtual_functions": {"allocated": 4, "free": 12},
+                        },
+                        {
+                            "id": 200,
+                            "name": "eth5",
+                            "virtual_functions": {"allocated": 14, "free": 2},
+                        },
+                    ],
+                    "memory": {
+                        "general": {"allocated": 0, "free": 1024},
+                        "hugepages": [],
+                    },
+                    "node_id": 1,
+                    "vms": [],
+                },
+                {
+                    "cores": {"allocated": 2, "free": 0},
+                    "interfaces": [
+                        {
+                            "id": 100,
+                            "name": "eth4",
+                            "virtual_functions": {"allocated": 4, "free": 12},
+                        },
+                        {
+                            "id": 200,
+                            "name": "eth5",
+                            "virtual_functions": {"allocated": 14, "free": 2},
+                        },
+                    ],
+                    "memory": {
+                        "general": {"allocated": 1024, "free": 1024},
+                        "hugepages": [],
+                    },
+                    "node_id": 2,
+                    "vms": [
+                        {
+                            "pinned_cores": [2, 5],
+                            "system_id": "vm1",
+                            "networks": [
+                                {"guest_nic_id": 101, "host_nic_id": 100},
+                                {"guest_nic_id": 102, "host_nic_id": 100},
+                            ],
+                        },
+                    ],
+                },
+            ],
+        )
 
     def test_get_with_pod_host_determines_vlan_boot_status(self):
         admin = factory.make_admin()

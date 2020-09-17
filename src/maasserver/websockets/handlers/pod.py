@@ -5,6 +5,7 @@
 
 __all__ = ["PodHandler"]
 
+import dataclasses
 from functools import partial
 
 from django.http import HttpRequest
@@ -14,6 +15,7 @@ from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import ComposeMachineForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.models.resourcepool import ResourcePool
+from maasserver.models.virtualmachine import get_vm_host_resources
 from maasserver.models.zone import Zone
 from maasserver.permissions import PodPermission
 from maasserver.rbac import rbac
@@ -242,123 +244,44 @@ class PodHandler(TimestampedModelHandler):
         if obj.host is None:
             return []
 
-        # XXX hardcoded fake data for now
-        return [
+        resources = [
+            dataclasses.asdict(entry) for entry in get_vm_host_resources(obj)
+        ]
+
+        # XXX fake data for host and VMs interfaces for now
+        fake_interfaces = [
             {
-                "node_id": 0,
-                "memory": {
-                    "hugepages": [
-                        {
-                            "page_size": 2048,
-                            "allocated": 4,
-                            "free": 6,
-                        },
-                    ],
-                    "general": {
-                        "allocated": 10240,
-                        "free": 2048,
-                    },
+                "id": 100,
+                "name": "eth4",
+                "virtual_functions": {
+                    "allocated": 4,
+                    "free": 12,
                 },
-                "cores": {
-                    "allocated": [0, 2, 3, 7],
-                    "free": [1, 4, 5, 6],
-                },
-                "interfaces": [
-                    {
-                        "id": 10,
-                        "name": "eth4",
-                        "virtual_functions": {
-                            "allocated": 4,
-                            "free": 12,
-                        },
-                    },
-                    {
-                        "id": 20,
-                        "name": "eth5",
-                        "virtual_functions": {
-                            "allocated": 14,
-                            "free": 2,
-                        },
-                    },
-                ],
-                "vms": [
-                    {
-                        "system_id": "deadbeef1",
-                        "pinned_cores": [0, 2],
-                        "networks": [
-                            {
-                                "guest_nic_id": 11,
-                                "host_nic_id": 10,
-                            },
-                        ],
-                    },
-                    {
-                        "system_id": "deadbeef2",
-                        "pinned_cores": [3, 7],
-                        "networks": [
-                            {
-                                "guest_nic_id": 21,
-                                "host_nic_id": 20,
-                            },
-                        ],
-                    },
-                ],
             },
             {
-                "node_id": 1,
-                "memory": {
-                    "hugepages": [
-                        {
-                            "page_size": 2048,
-                            "allocated": 2,
-                            "free": 14,
-                        }
-                    ],
-                    "general": {
-                        "allocated": 20480,
-                        "free": 4096,
-                    },
+                "id": 200,
+                "name": "eth5",
+                "virtual_functions": {
+                    "allocated": 14,
+                    "free": 2,
                 },
-                "cores": {
-                    "allocated": [0, 1],
-                    "free": [2, 3, 4, 5, 6, 7],
-                },
-                "interfaces": [
-                    {
-                        "id": 100,
-                        "name": "eth0",
-                        "virtual_functions": {
-                            "allocated": 2,
-                            "free": 14,
-                        },
-                    },
-                    {
-                        "id": 200,
-                        "name": "eth1",
-                        "virtual_functions": {
-                            "allocated": 16,
-                            "free": 16,
-                        },
-                    },
-                ],
-                "vms": [
-                    {
-                        "system_id": "deadbeef3",
-                        "pinned_cores": [0, 1],
-                        "networks": [
-                            {
-                                "guest_nic_id": 101,
-                                "host_nic_id": 100,
-                            },
-                            {
-                                "guest_nic_id": 102,
-                                "host_nic_id": 100,
-                            },
-                        ],
-                    },
-                ],
             },
         ]
+        fake_vm_networks = [
+            {
+                "guest_nic_id": 101,
+                "host_nic_id": 100,
+            },
+            {
+                "guest_nic_id": 102,
+                "host_nic_id": 100,
+            },
+        ]
+        for entry in resources:
+            entry["interfaces"] = fake_interfaces
+            for vm in entry["vms"]:
+                vm["networks"] = fake_vm_networks
+        return resources
 
     @asynchronous
     def create(self, params):
