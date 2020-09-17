@@ -47,6 +47,7 @@ build_source_package() {
     if [ "$SKIP_UI_BUILD" != 1 ]; then
         make -C "$ROOTDIR/src/maasui" clean build  # ensure the UI is updated
     fi
+    make -C "$ROOTDIR/src/maas-offline-docs"  # ensure offline docs are updated
     make -C "$ROOTDIR" package-tree
 }
 

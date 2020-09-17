@@ -84,6 +84,8 @@ endef
 
 UI_BUILD := src/maasui/build
 
+OFFLINE_DOCS := src/maas-offline-docs/src
+
 build: \
   .run \
   $(VENV) \
@@ -145,6 +147,9 @@ ui: $(UI_BUILD)
 
 $(UI_BUILD):
 	$(MAKE) -C src/maasui build
+
+$(OFFLINE_DOCS):
+	$(MAKE) -C src/maas-offline-docs
 
 machine-resources-vendor:
 	$(MAKE) -C src/machine-resources vendor
@@ -492,11 +497,11 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	mkdir -p $(packaging-build-area)
 .PHONY: -packaging-clean
 
--packaging-export-orig: $(UI_BUILD) $(packaging-build-area)
+-packaging-export-orig: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
 	git archive --format=tar $(packaging-export-extra) \
             --prefix=$(packaging-dir)/ \
 	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) machine-resources-vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
@@ -504,10 +509,10 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 .PHONY: -packaging-export-orig
 
--packaging-export-orig-uncommitted: $(UI_BUILD) $(packaging-build-area)
+-packaging-export-orig-uncommitted: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) machine-resources-vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
@@ -619,11 +624,13 @@ snap-prime: $(DEV_SNAP_PRIME_MARKER)
 sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
 sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude 'maasui' --exclude 'machine-resources' --exclude '*.pyc' \
-		--exclude '__pycache__' \
+		--exclude 'maasui' --exclude 'machine-resources' --exclude 'maas-offline-docs' \
+		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ $(DEV_SNAP_PRIME_DIR)/lib/python3.8/site-packages/
 	$(RSYNC) \
 		$(UI_BUILD) $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/
+	$(RSYNC) \
+		$(OFFLINE_DOCS)/production-html/ $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/docs/
 	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/
 	$(RSYNC) src/machine-resources/bin/ \
 		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/

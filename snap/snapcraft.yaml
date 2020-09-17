@@ -224,6 +224,10 @@ parts:
     prime:
       - usr/share/maas/web/static
 
+  offline-docs:
+    plugin: make
+    source: src/maas-offline-docs
+
   machine-resources:
     plugin: make
     source: src/machine-resources

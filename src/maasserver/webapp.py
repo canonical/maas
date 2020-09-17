@@ -249,6 +249,12 @@ class WebApplicationService(StreamServerEndpointService):
             NoListingFile(os.path.join(settings.STATIC_ROOT, "assets")),
         )
 
+        # Setup static docs
+        maas.putChild(
+            b"docs",
+            NoListingFile(os.path.join(settings.STATIC_ROOT, "docs")),
+        )
+
         root = Resource()
         root.putChild(b"", Redirect(b"MAAS/"))
         root.putChild(b"MAAS", maas)
