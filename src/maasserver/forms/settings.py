@@ -859,6 +859,26 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "maas_auto_ipmi_user_privilege_level": {
+        "default": "ADMIN",
+        "form": forms.ChoiceField,
+        "form_kwargs": {
+            "label": "MAAS IPMI privilege level",
+            "required": False,
+            "choices": [
+                ("ADMIN", "Administrator"),
+                ("OPERATOR", "Operator"),
+                ("USER", "User"),
+            ],
+            "error_messages": {
+                "invalid_choice": "Valid choices are ADMIN, OPERATOR, or USER",
+            },
+            "help_text": (
+                "The default IPMI privilege level to use when creating the "
+                "MAAS user and talking IPMI BMCs"
+            ),
+        },
+    },
     "vcenter_server": {
         "default": "",
         "form": forms.CharField,

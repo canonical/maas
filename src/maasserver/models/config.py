@@ -124,6 +124,7 @@ def get_default_config():
         # Enlistment options
         "enlist_commissioning": True,
         "maas_auto_ipmi_user": "maas",
+        "maas_auto_ipmi_user_privilege_level": "ADMIN",
         # VMware vCenter crednetials
         "vcenter_server": "",
         "vcenter_username": "",
