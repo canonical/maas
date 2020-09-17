@@ -249,9 +249,9 @@ class TestMachineHandler(MAASServerTestCase):
             "error": node.error,
             "error_description": node.error_description,
             "events": handler.dehydrate_events(node),
-            "extra_macs": [
+            "extra_macs": sorted(
                 "%s" % mac_address for mac_address in node.get_extra_macs()
-            ],
+            ),
             "link_speeds": sorted(
                 set(
                     [
@@ -310,9 +310,9 @@ class TestMachineHandler(MAASServerTestCase):
                 1,
             ),
             "storage_tags": handler.get_all_storage_tags(blockdevices),
-            "subnets": [subnet.cidr for subnet in subnets],
-            "fabrics": handler.get_all_fabric_names(node, subnets),
-            "spaces": handler.get_all_space_names(subnets),
+            "subnets": sorted(subnet.cidr for subnet in subnets),
+            "fabrics": sorted(handler.get_all_fabric_names(node, subnets)),
+            "spaces": sorted(handler.get_all_space_names(subnets)),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "hardware_uuid": node.hardware_uuid,
@@ -674,7 +674,7 @@ class TestMachineHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            54,
+            51,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2065,18 +2065,42 @@ class TestMachineHandler(MAASServerTestCase):
     def test_get_numa_nodes_for_machine(self):
         user = factory.make_User()
         machine = factory.make_Machine(owner=user)
-        memory_cores = ((512, [0, 1]), (1024, [2, 3]), (2048, [4, 5]))
-        for memory, cores in memory_cores:
-            factory.make_NUMANode(node=machine, memory=memory, cores=cores)
+        memory_cores_hugepages = (
+            (512, [0, 1], 1024),
+            (1024, [2, 3], 2048),
+            (2048, [4, 5], 0),
+        )
+        for memory, cores, hugepages in memory_cores_hugepages:
+            numa_node = factory.make_NUMANode(
+                node=machine, memory=memory, cores=cores
+            )
+            factory.make_NUMANodeHugepages(
+                numa_node=numa_node, total=hugepages, page_size=1024
+            )
         handler = MachineHandler(user, {}, None)
         result = handler.get({"system_id": machine.system_id})
         self.assertEqual(
             result["numa_nodes"],
             [
-                {"index": 0, "memory": 0, "cores": []},
-                {"index": 1, "memory": 512, "cores": [0, 1]},
-                {"index": 2, "memory": 1024, "cores": [2, 3]},
-                {"index": 3, "memory": 2048, "cores": [4, 5]},
+                {"index": 0, "memory": 0, "cores": [], "hugepages_set": []},
+                {
+                    "index": 1,
+                    "memory": 512,
+                    "cores": [0, 1],
+                    "hugepages_set": [{"page_size": 1024, "total": 1024}],
+                },
+                {
+                    "index": 2,
+                    "memory": 1024,
+                    "cores": [2, 3],
+                    "hugepages_set": [{"page_size": 1024, "total": 2048}],
+                },
+                {
+                    "index": 3,
+                    "memory": 2048,
+                    "cores": [4, 5],
+                    "hugepages_set": [{"page_size": 1024, "total": 0}],
+                },
             ],
         )
 

@@ -10,6 +10,7 @@ from itertools import chain
 import logging
 from operator import attrgetter, itemgetter
 
+from django.db.models import Prefetch
 from lxml import etree
 
 from maasserver.enum import (
@@ -25,7 +26,9 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
+from maasserver.models.interface import Interface
 from maasserver.models.nodeprobeddetails import script_output_nsmap
+from maasserver.models.numa import NUMANode
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
@@ -77,6 +80,11 @@ def node_prefetch(queryset, *args):
         .prefetch_related("blockdevice_set__physicalblockdevice")
         .prefetch_related("blockdevice_set__physicalblockdevice__numa_node")
         .prefetch_related("blockdevice_set__virtualblockdevice")
+        .prefetch_related(
+            Prefetch(
+                "interface_set", queryset=Interface.objects.order_by("name")
+            )
+        )
         .prefetch_related("interface_set__ip_addresses__subnet__vlan__space")
         .prefetch_related("interface_set__ip_addresses__subnet__vlan__fabric")
         .prefetch_related("interface_set__numa_node")
@@ -85,7 +93,12 @@ def node_prefetch(queryset, *args):
         .prefetch_related("nodemetadata_set")
         .prefetch_related("special_filesystems")
         .prefetch_related("tags")
-        .prefetch_related("numanode_set")
+        .prefetch_related(
+            Prefetch(
+                "numanode_set", queryset=NUMANode.objects.order_by("index")
+            )
+        )
+        .prefetch_related("numanode_set__hugepages_set")
     )
 
 
@@ -124,9 +137,19 @@ class NodeHandler(TimestampedModelHandler):
         return {"id": pod.id, "name": pod.name}
 
     def dehydrate_numanode(self, numa_node):
-        return {
+        details = {
             attr: getattr(numa_node, attr)
             for attr in ("index", "memory", "cores")
+        }
+        details["hugepages_set"] = [
+            self.dehydrate_hugepages(hugepages)
+            for hugepages in numa_node.hugepages_set.all()
+        ]
+        return details
+
+    def dehydrate_hugepages(self, hugepages):
+        return {
+            attr: getattr(hugepages, attr) for attr in ("page_size", "total")
         }
 
     def dehydrate_last_image_sync(self, last_image_sync):
@@ -259,12 +282,12 @@ class NodeHandler(TimestampedModelHandler):
         if not obj.is_controller:
             # For filters
             subnets = self.get_all_subnets(obj)
-            data["subnets"] = [subnet.cidr for subnet in subnets]
-            data["fabrics"] = self.get_all_fabric_names(obj, subnets)
-            data["spaces"] = self.get_all_space_names(subnets)
-            data["extra_macs"] = [
+            data["subnets"] = sorted(subnet.cidr for subnet in subnets)
+            data["fabrics"] = sorted(self.get_all_fabric_names(obj, subnets))
+            data["spaces"] = sorted(self.get_all_space_names(subnets))
+            data["extra_macs"] = sorted(
                 "%s" % mac_address for mac_address in obj.get_extra_macs()
-            ]
+            )
             data["link_speeds"] = sorted(
                 set(
                     [
@@ -280,7 +303,7 @@ class NodeHandler(TimestampedModelHandler):
             if obj.node_type != NODE_TYPE.DEVICE:
                 data["numa_nodes"] = [
                     self.dehydrate_numanode(numa_node)
-                    for numa_node in obj.numanode_set.all().order_by("index")
+                    for numa_node in obj.numanode_set.all()
                 ]
                 # XXX lamont 2017-02-15 Much of this should be split out into
                 # individual methods, rather than having this huge block of
@@ -294,7 +317,7 @@ class NodeHandler(TimestampedModelHandler):
                 # Network
                 data["interfaces"] = [
                     self.dehydrate_interface(interface, obj)
-                    for interface in obj.interface_set.all().order_by("name")
+                    for interface in obj.interface_set.all()
                 ]
                 data["dhcp_on"] = self.get_providing_dhcp(obj)
 
