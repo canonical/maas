@@ -498,7 +498,8 @@ class ScriptForm(ModelForm):
             set_form_error(
                 self,
                 "name",
-                "Name contains disallowed characters, e.g. space or quotes.",
+                "Name '%s' contains disallowed characters, e.g. space or quotes."
+                % name,
             )
             valid = False
 

@@ -551,9 +551,10 @@ class TestScriptForm(MAASServerTestCase):
         self.assertDictEqual({"name": ["Cannot be a number."]}, form.errors)
 
     def test_errors_on_whitespace_in_name(self):
+        name = factory.make_name("with space")
         form = ScriptForm(
             data={
-                "name": factory.make_name("with space"),
+                "name": name,
                 "script": factory.make_script_content(),
             }
         )
@@ -561,16 +562,18 @@ class TestScriptForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 "name": [
-                    "Name contains disallowed characters, e.g. space or quotes."
+                    "Name '%s' contains disallowed characters, e.g. space or quotes."
+                    % name
                 ]
             },
             form.errors,
         )
 
     def test_errors_on_quotes_in_name(self):
+        name = factory.make_name("l'horreur")
         form = ScriptForm(
             data={
-                "name": factory.make_name("l'horreur"),
+                "name": name,
                 "script": factory.make_script_content(),
             }
         )
@@ -578,7 +581,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 "name": [
-                    "Name contains disallowed characters, e.g. space or quotes."
+                    "Name '%s' contains disallowed characters, e.g. space or quotes."
+                    % name
                 ]
             },
             form.errors,
