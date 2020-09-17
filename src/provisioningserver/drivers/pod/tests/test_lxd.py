@@ -9,7 +9,7 @@ from unittest.mock import Mock, PropertyMock, sentinel
 
 from testtools.matchers import Equals, IsInstance, MatchesAll, MatchesStructure
 from testtools.testcase import ExpectedException
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import ensureDeferred, inlineCallbacks
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -36,6 +36,13 @@ from provisioningserver.utils import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
 )
+
+
+def async_succeed(result):
+    async def wrapper(*args, **kwargs):
+        return result
+
+    return wrapper
 
 
 def make_requested_machine():
@@ -254,7 +261,7 @@ class TestLXDPodDriver(MAASTestCase):
         client.has_api_extension.return_value = False
         error_msg = "Please upgrade your LXD host to *."
         with ExpectedException(lxd_module.LXDPodError, error_msg):
-            yield driver.discover(None, context)
+            yield ensureDeferred(driver.discover(None, context))
         self.assertThat(
             client.has_api_extension, MockCalledOnceWith("virtual-machines")
         )
@@ -278,7 +285,7 @@ class TestLXDPodDriver(MAASTestCase):
         client.resources = {
             "network": {"cards": [{"ports": [{"address": mac_address}]}]}
         }
-        discovered_pod = yield driver.discover(None, context)
+        discovered_pod = yield ensureDeferred(driver.discover(None, context))
         self.assertItemsEqual(["amd64/generic"], discovered_pod.architectures)
         self.assertEquals(name, discovered_pod.name)
         self.assertItemsEqual([mac_address], discovered_pod.mac_addresses)
@@ -359,8 +366,7 @@ class TestLXDPodDriver(MAASTestCase):
         expanded_devices = {
             "eth0": {
                 "name": "eth0",
-                "nictype": "bridged",
-                "parent": "lxdbr0",
+                "network": "lxdbr0",
                 "type": "nic",
             },
             "eth1": {
@@ -390,8 +396,13 @@ class TestLXDPodDriver(MAASTestCase):
             mock_storage_pool_resources
         )
         mock_machine.storage_pools.get.return_value = mock_storage_pool
-        discovered_machine = yield driver.get_discovered_machine(
-            client, mock_machine, [mock_storage_pool]
+        mock_network = Mock()
+        mock_network.type = "bridge"
+        client.networks.get.return_value = mock_network
+        discovered_machine = yield ensureDeferred(
+            driver.get_discovered_machine(
+                client, mock_machine, [mock_storage_pool]
+            )
         )
 
         self.assertEquals(mock_machine.name, discovered_machine.hostname)
@@ -431,7 +442,7 @@ class TestLXDPodDriver(MAASTestCase):
                 vid=0,
                 tags=[],
                 boot=True,
-                attach_type=expanded_devices["eth0"]["nictype"],
+                attach_type="bridge",
                 attach_name="eth0",
             ),
         )
@@ -464,8 +475,8 @@ class TestLXDPodDriver(MAASTestCase):
         }
         mock_machine.expanded_config = expanded_config
         mock_machine.expanded_devices = {}
-        discovered_machine = yield driver.get_discovered_machine(
-            client, mock_machine, []
+        discovered_machine = yield ensureDeferred(
+            driver.get_discovered_machine(client, mock_machine, [])
         )
         self.assertTrue(discovered_machine.hugepages_backed)
         self.assertEqual(discovered_machine.pinned_cores, [0, 1, 2])
@@ -515,8 +526,10 @@ class TestLXDPodDriver(MAASTestCase):
             mock_storage_pool_resources
         )
         mock_machine.storage_pools.get.return_value = mock_storage_pool
-        discovered_machine = yield driver.get_discovered_machine(
-            client, mock_machine, [mock_storage_pool]
+        discovered_machine = yield ensureDeferred(
+            driver.get_discovered_machine(
+                client, mock_machine, [mock_storage_pool]
+            )
         )
 
         self.assertEquals("unknown", discovered_machine.power_state)
@@ -740,7 +753,9 @@ class TestLXDPodDriver(MAASTestCase):
         mock_get_discovered_machine = self.patch(
             driver, "get_discovered_machine"
         )
-        mock_get_discovered_machine.return_value = sentinel.discovered_machine
+        mock_get_discovered_machine.side_effect = async_succeed(
+            sentinel.discovered_machine
+        )
         definition = {
             "name": request.hostname,
             "architecture": debian_to_kernel_architecture(
@@ -863,7 +878,9 @@ class TestLXDPodDriver(MAASTestCase):
         mock_get_discovered_machine = self.patch(
             driver, "get_discovered_machine"
         )
-        mock_get_discovered_machine.return_value = sentinel.discovered_machine
+        mock_get_discovered_machine.side_effect = async_succeed(
+            sentinel.discovered_machine
+        )
         definition = {
             "name": request.hostname,
             "architecture": debian_to_kernel_architecture(

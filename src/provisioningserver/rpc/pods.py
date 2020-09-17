@@ -7,7 +7,7 @@ __all__ = ["discover_pod"]
 
 import json
 
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, ensureDeferred
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers.pod import (
@@ -41,8 +41,9 @@ def discover_pod(pod_type, context, pod_id=None, name=None):
     pod_driver = PodDriverRegistry.get_item(pod_type)
     if pod_driver is None:
         raise UnknownPodType(pod_type)
-    d = pod_driver.discover(pod_id, context)
-    if not isinstance(d, Deferred):
+    try:
+        d = ensureDeferred(pod_driver.discover(pod_id, context))
+    except ValueError:
         raise PodActionFail(
             "bad pod driver '%s'; 'discover' did not return Deferred."
             % pod_type

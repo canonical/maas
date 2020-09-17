@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from pylxd import Client
 from pylxd.exceptions import ClientConnectionFailed, NotFound
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import ensureDeferred, inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers import (
@@ -201,8 +201,7 @@ class LXDPodDriver(PodDriver):
             )
         return machine
 
-    @inlineCallbacks
-    def get_discovered_machine(
+    async def get_discovered_machine(
         self, client, machine, storage_pools, request=None
     ):
         """Get the discovered machine."""
@@ -272,8 +271,8 @@ class LXDPodDriver(PodDriver):
                 nictype = expanded_devices[name].get("nictype")
                 if nictype is None and "network" in expanded_devices[name]:
                     # Try finding the nictype from the networks.
-                    network = yield client.networks.get(
-                        expanded_devices[name]["network"]
+                    network = await deferToThread(
+                        client.networks.get, expanded_devices[name]["network"]
                     )
                     nictype = network.type
                 interfaces.append(
@@ -366,16 +365,15 @@ class LXDPodDriver(PodDriver):
                 f"Pod {pod_id}: Unknown power status code: {state}"
             )
 
-    @inlineCallbacks
-    def discover(self, pod_id, context):
+    async def discover(self, pod_id, context):
         """Discover all Pod host resources."""
         # Connect to the Pod and make sure it is valid.
-        client = yield self.get_client(pod_id, context)
+        client = await self.get_client(pod_id, context)
         if not client.has_api_extension("virtual-machines"):
             raise LXDPodError(
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
             )
-        resources = yield deferToThread(lambda: client.resources)
+        resources = await deferToThread(lambda: client.resources)
 
         mac_addresses = []
         for card in resources["network"]["cards"]:
@@ -408,7 +406,7 @@ class LXDPodDriver(PodDriver):
 
         # Check that we have at least one storage pool.
         # If not, user should be warned that they need to create one.
-        storage_pools = yield deferToThread(client.storage_pools.all)
+        storage_pools = await deferToThread(client.storage_pools.all)
         if not storage_pools:
             raise LXDPodError(
                 "No storage pools exists.  Please create a storage pool in LXD."
@@ -416,7 +414,7 @@ class LXDPodDriver(PodDriver):
 
         # Discover Storage Pools.
         pools = []
-        storage_pools = yield deferToThread(client.storage_pools.all)
+        storage_pools = await deferToThread(client.storage_pools.all)
         local_storage = 0
         for storage_pool in storage_pools:
             discovered_storage_pool = self.get_discovered_pod_storage_pool(
@@ -429,9 +427,9 @@ class LXDPodDriver(PodDriver):
 
         # Discover VMs.
         machines = []
-        virtual_machines = yield deferToThread(client.virtual_machines.all)
+        virtual_machines = await deferToThread(client.virtual_machines.all)
         for virtual_machine in virtual_machines:
-            discovered_machine = yield self.get_discovered_machine(
+            discovered_machine = await self.get_discovered_machine(
                 client,
                 virtual_machine,
                 storage_pools=discovered_pod.storage_pools,
@@ -631,8 +629,10 @@ class LXDPodDriver(PodDriver):
         )
         # Pod hints are updated on the region after the machine
         # is composed.
-        discovered_machine = yield self.get_discovered_machine(
-            client, machine, storage_pools, request=request
+        discovered_machine = yield ensureDeferred(
+            self.get_discovered_machine(
+                client, machine, storage_pools, request=request
+            )
         )
         # Update the machine cpu speed.
         discovered_machine.cpu_speed = lxd_cpu_speed(resources)
