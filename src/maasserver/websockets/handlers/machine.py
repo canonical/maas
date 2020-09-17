@@ -234,6 +234,7 @@ class MachineHandler(NodeHandler):
             "cpu_count",
             "cpu_speed",
             "description",
+            "error_description",
             "memory",
             "power_state",
             "domain",
