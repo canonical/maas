@@ -10,7 +10,7 @@ from random import choice
 from socket import error as SOCKETError
 from unittest.mock import Mock
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 from paramiko import SSHException
 from testtools.matchers import Equals
@@ -72,6 +72,7 @@ class TestWedgePowerDriver(MAASTestCase):
         )
         self.expectThat(ssh_client.exec_command, MockCalledOnceWith(command))
 
+    @settings(deadline=None)
     @given(sampled_from([SSHException, EOFError, SOCKETError]))
     def test_run_wedge_command_crashes_for_ssh_connection_error(self, error):
         driver = WedgePowerDriver()
