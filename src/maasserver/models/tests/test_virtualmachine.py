@@ -109,7 +109,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             [asdict(r) for r in resources],
             [
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [0], "free": [3]},
                     "memory": {
                         "general": {"allocated": 1024, "free": 3072},
                         "hugepages": [],
@@ -118,7 +118,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
-                    "cores": {"allocated": 0, "free": 2},
+                    "cores": {"allocated": [], "free": [1, 4]},
                     "memory": {
                         "general": {"allocated": 0, "free": 1024},
                         "hugepages": [],
@@ -127,7 +127,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     "vms": [],
                 },
                 {
-                    "cores": {"allocated": 2, "free": 0},
+                    "cores": {"allocated": [2, 5], "free": []},
                     "memory": {
                         "general": {"allocated": 1024, "free": 1024},
                         "hugepages": [],
@@ -174,7 +174,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             [asdict(r) for r in resources],
             [
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [0], "free": [1]},
                     "memory": {
                         "general": {"allocated": 0, "free": 4096},
                         "hugepages": [
@@ -185,7 +185,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
-                    "cores": {"allocated": 2, "free": 0},
+                    "cores": {"allocated": [2, 3], "free": []},
                     "memory": {
                         "general": {"allocated": 0, "free": 1024},
                         "hugepages": [
@@ -223,7 +223,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             [asdict(r) for r in resources],
             [
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [0], "free": [1]},
                     "memory": {
                         "general": {"allocated": 1024, "free": 3072},
                         "hugepages": [],
@@ -232,7 +232,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [2], "free": [3]},
                     "memory": {
                         "general": {"allocated": 1024, "free": 1024},
                         "hugepages": [],
@@ -272,7 +272,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             [asdict(r) for r in resources],
             [
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [0], "free": [1]},
                     "memory": {
                         "general": {"allocated": 0, "free": 4096},
                         "hugepages": [
@@ -287,7 +287,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [2], "free": [3]},
                     "memory": {
                         "general": {"allocated": 0, "free": 2048},
                         "hugepages": [
@@ -333,7 +333,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             [asdict(r) for r in resources],
             [
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [0], "free": [1]},
                     "memory": {
                         "general": {"allocated": 0, "free": 4096},
                         "hugepages": [
@@ -348,7 +348,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
                 },
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [2], "free": [3]},
                     "memory": {
                         "general": {"allocated": 0, "free": 2048},
                         "hugepages": [

@@ -193,7 +193,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             result["numa_pinning"],
             [
                 {
-                    "cores": {"allocated": 1, "free": 1},
+                    "cores": {"allocated": [0], "free": [3]},
                     "interfaces": [
                         {
                             "id": 100,
@@ -223,7 +223,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     ],
                 },
                 {
-                    "cores": {"allocated": 0, "free": 2},
+                    "cores": {"allocated": [], "free": [1, 4]},
                     "interfaces": [
                         {
                             "id": 100,
@@ -244,7 +244,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     "vms": [],
                 },
                 {
-                    "cores": {"allocated": 2, "free": 0},
+                    "cores": {"allocated": [2, 5], "free": []},
                     "interfaces": [
                         {
                             "id": 100,

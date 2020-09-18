@@ -241,9 +241,9 @@ def _get_numa_pinning_resources(
 ):
     numa_resources = NUMAPinningNodeResources(numa_node.index)
     # fill in cores details
-    numa_resources.cores.free = len(available_numanode_cores)
-    numa_resources.cores.allocated = (
-        len(numa_node.cores) - numa_resources.cores.free
+    numa_resources.cores.free = sorted(available_numanode_cores)
+    numa_resources.cores.allocated = sorted(
+        set(numa_node.cores) - available_numanode_cores
     )
     # fill in memory details
     numa_resources.memory.general.allocated = allocated_numanode_memory
