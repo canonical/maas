@@ -755,6 +755,130 @@ class TestHPMoonshot(MAASTestCase):
         )
 
 
+class TestWedge(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.wedge = bmc_config.Wedge()
+        self.mock_check_output = self.patch(bmc_config, "check_output")
+
+    def test_power_type(self):
+        self.assertEqual("wedge", self.wedge.power_type)
+
+    def test_str(self):
+        self.assertEqual("Facebook Wedge", str(self.wedge))
+
+    def test_detect_known_switch(self):
+        self.mock_check_output.side_effect = random.choice(
+            [
+                (b"Intel", b"EPGSVR", b""),
+                (b"Joytech", b"Wedge-AC-F 20-001329", b""),
+                (
+                    b"To be filled by O.E.M.",
+                    b"",
+                    b"PCOM-B632VG-ECC-FB-ACCTON-D",
+                ),
+            ]
+        )
+        self.assertEqual("accton", self.wedge._detect_known_switch())
+
+    def test_detect_known_switch_false(self):
+        self.mock_check_output.side_effect = (
+            factory.make_name("system-manufacturer").encode(),
+            factory.make_name("system-product-name").encode(),
+            factory.make_name("baseboard-product-name").encode(),
+        )
+        self.assertIsNone(self.wedge._detect_known_switch())
+
+    def test_wedge_local_addr(self):
+        self.mock_check_output.return_value = (
+            b"8: eth0    inet fe80::ff:fe00:2/64 brd 10.0.0.255 scope global "
+            b"eth0\\       valid_lft forever preferred_lft forever"
+        )
+        self.assertEquals("fe80::1%eth0", self.wedge._wedge_local_addr)
+        # Call multiple times to verify caching
+        self.assertEquals(
+            self.wedge._wedge_local_addr, self.wedge._wedge_local_addr
+        )
+        self.assertThat(self.mock_check_output, MockCalledOnce())
+
+    def test_detected_unknown_switch(self):
+        self.patch(self.wedge, "_detect_known_switch").return_value = None
+        self.assertFalse(self.wedge.detected())
+
+    def test_detected_rest_api(self):
+        self.patch(self.wedge, "_detect_known_switch").return_value = "accton"
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        mock_urlopen.return_value.read.return_value = (
+            b"Wedge RESTful API Entry"
+        )
+        self.assertTrue(self.wedge.detected())
+
+    def test_detected_ip(self):
+        self.patch(self.wedge, "_detect_known_switch").return_value = "accton"
+        self.patch(
+            self.wedge, "get_bmc_ip"
+        ).return_value = factory.make_ip_address()
+        self.assertTrue(self.wedge.detected())
+
+    def test_detected_false(self):
+        self.patch(self.wedge, "_detect_known_switch").return_value = "accton"
+        self.patch(self.wedge, "get_bmc_ip").return_value = None
+        self.assertFalse(self.wedge.detected())
+
+    def test_get_bmc_ip(self):
+        self.mock_check_output.return_value = (
+            b"8: eth0    inet fe80::ff:fe00:2/64 brd 10.0.0.255 scope global "
+            b"eth0\\       valid_lft forever preferred_lft forever"
+        )
+        mock_ssh_client = self.patch(bmc_config, "SSHClient")
+        mock_client = mock_ssh_client.return_value
+        mock_client.set_missing_host_key_policy = MagicMock()
+        mock_client.connect = MagicMock()
+        mock_stdout = MagicMock()
+        mock_stdout.read.return_value = (
+            b"1: lo    inet 127.0.0.1/8 scope host lo\\       "
+            b"valid_lft forever preferred_lft forever"
+            b"\n"
+            b"8: eth0    inet 10.0.0.10/24 brd 10.0.0.255 scope global "
+            b"eth0\\       valid_lft forever preferred_lft forever"
+            b"\n"
+            b"10: eth1    inet 192.168.122.78/24 brd 192.168.122.255 scope "
+            b"global dynamic eth1\\       valid_lft 3348sec preferred_lft "
+            b"3348sec"
+        )
+        mock_client.exec_command.return_value = None, mock_stdout, None
+
+        self.assertEquals("10.0.0.10", self.wedge.get_bmc_ip())
+        # Call multiple times to verify caching
+        self.assertEquals(self.wedge.get_bmc_ip(), self.wedge.get_bmc_ip())
+        self.assertThat(mock_ssh_client, MockCalledOnce())
+        self.assertThat(
+            mock_client.set_missing_host_key_policy,
+            MockCalledOnceWith(bmc_config.IgnoreHostKeyPolicy),
+        )
+        self.assertThat(
+            mock_client.connect,
+            MockCalledOnceWith(
+                "fe80::1%eth0", username="root", password="0penBmc"
+            ),
+        )
+
+    def test_get_bmc_ip_none(self):
+        self.assertIsNone(self.wedge.get_bmc_ip())
+
+    def test_get_credentials(self):
+        ip = factory.make_ip_address()
+        self.patch(self.wedge, "get_bmc_ip").return_value = ip
+        self.assertEqual(
+            {
+                "power_address": ip,
+                "power_user": "root",
+                "power_pass": "0penBmc",
+            },
+            self.wedge.get_credentials(),
+        )
+
+
 class TestDetectAndConfigure(MAASTestCase):
     def setUp(self):
         super().setUp()
@@ -816,10 +940,14 @@ class TestDetectAndConfigure(MAASTestCase):
         args.password = factory.make_name("password")
         self.patch(bmc_config.HPMoonshot, "detected").return_value = False
         self.patch(bmc_config.IPMI, "detected").return_value = False
+        self.patch(bmc_config.Wedge, "detected").return_value = False
 
         bmc_config.detect_and_configure(args, bmc_config_path)
 
         self.assertFalse(os.path.exists(bmc_config_path))
+        self.assertThat(bmc_config.HPMoonshot.detected, MockCalledOnce())
+        self.assertThat(bmc_config.IPMI.detected, MockCalledOnce())
+        self.assertThat(bmc_config.Wedge.detected, MockCalledOnce())
 
 
 class TestMain(MAASTestCase):

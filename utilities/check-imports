@@ -284,6 +284,7 @@ RegionControllerRule = Rule(
     Allow("yaml"),
     Allow("zope.interface|zope.interface.**"),
     Allow("oauthlib.oauth1"),
+    Allow("paramiko.**"),
     Allow(StandardLibraries),
 )
 

@@ -30,6 +30,7 @@
 #   apt:
 #     - freeipmi-tools
 #     - ipmitool
+#     - python3-paramiko
 # timeout: 00:05:00
 # --- End MAAS 1.0 script metadata --
 
@@ -53,7 +54,9 @@ from subprocess import (
 )
 import sys
 import time
+import urllib
 
+from paramiko.client import MissingHostKeyPolicy, SSHClient
 import yaml
 
 
@@ -529,10 +532,108 @@ class HPMoonshot(BMCConfig):
         }
 
 
+class IgnoreHostKeyPolicy(MissingHostKeyPolicy):
+    def missing_host_key(self, *args, **kwargs):
+        return
+
+
+# Facebook Wedge devices are really OpenBMC. More devices may work with this
+# method but none are available to test with.
+class Wedge(BMCConfig):
+    """Handle detection and configure of Facebook Wedge device."""
+
+    power_type = "wedge"
+    username = "root"
+    password = "0penBmc"
+
+    def __str__(self):
+        return "Facebook Wedge"
+
+    def _detect_known_switch(self):
+        # This is based of https://github.com/lool/sonic-snap/blob/master/common/id-switch
+        # try System Information > Manufacturer first
+        # XXX ltrager 2020-09-16 - It would be better to get these values from
+        # /sys but no test system is available.
+        sys_manufacturer = check_output(
+            ["dmidecode", "-s", "system-manufacturer"], timeout=60
+        ).decode()
+        prod_name = check_output(
+            ["dmidecode", "-s", "system-product-name"], timeout=60
+        ).decode()
+        baseboard_prod_name = check_output(
+            ["dmidecode", "-s", "baseboard-product-name"], timeout=60
+        ).decode()
+        if (
+            (sys_manufacturer == "Intel" and prod_name == "EPGSVR")
+            or (
+                sys_manufacturer == "Joytech"
+                and prod_name == "Wedge-AC-F 20-001329"
+            )
+            or (
+                sys_manufacturer == "To be filled by O.E.M."
+                and baseboard_prod_name == "PCOM-B632VG-ECC-FB-ACCTON-D"
+            )
+        ):
+            return "accton"
+        return None
+
+    @property
+    @lru_cache(maxsize=1)
+    def _wedge_local_addr(self):
+        try:
+            # "fe80::ff:fe00:2" is the address for the device to the internal
+            # BMC network.
+            output = check_output(
+                ["ip", "-o", "a", "show", "to", "fe80::ff:fe00:2"], timeout=60
+            ).decode()
+            # fe80::1 is the BMC's LLA.
+            return "fe80::1%%%s" % output.split()[1]
+        except Exception:
+            return None
+
+    def detected(self):
+        # First detect this is a known switch
+        if not self._detect_known_switch():
+            return False
+        try:
+            # Second, lets verify if this is a known endpoint
+            # First try to hit the API. This would work on Wedge 100.
+            response = urllib.request.urlopen(
+                "http://[%s]:8080/api" % self._wedge_local_addr
+            )
+            if b"Wedge RESTful API Entry" in response.read():
+                return True
+        except Exception:
+            pass
+        if self.get_bmc_ip():
+            # If the above failed, try to hit the SSH. This would work on Wedge 40.
+            return True
+        return False
+
+    @lru_cache(maxsize=1)
+    def get_bmc_ip(self):
+        try:
+            client = SSHClient()
+            client.set_missing_host_key_policy(IgnoreHostKeyPolicy)
+            client.connect(
+                self._wedge_local_addr,
+                username=self.username,
+                password=self.password,
+            )
+            _, stdout, _ = client.exec_command(
+                "ip -o -4 addr show", timeout=60
+            )
+            return (
+                stdout.read().decode().splitlines()[1].split()[3].split("/")[0]
+            )
+        except Exception:
+            return None
+
+
 def detect_and_configure(args, bmc_config_path):
     # Order matters here. HPMoonshot is a specical IPMI device, so try to
     # detect it first.
-    for bmc_class in [HPMoonshot, IPMI]:
+    for bmc_class in [HPMoonshot, IPMI, Wedge]:
         bmc = bmc_class(**vars(args))
         print("INFO: Checking for %s..." % bmc)
         if bmc.detected():
