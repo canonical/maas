@@ -16,6 +16,7 @@ from zope.interface.verify import verifyObject
 from maasserver.forms.script import ScriptForm
 from metadataserver.models import Script
 from provisioningserver.refresh.node_info_scripts import (
+    BMC_DETECTION,
     DHCP_EXPLORE_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     IPADDR_OUTPUT_NAME,
@@ -81,6 +82,7 @@ BUILTIN_SCRIPTS = [
     BuiltinScript(
         name=DHCP_EXPLORE_OUTPUT_NAME, filename="dhcp_unconfigured_ifaces.py"
     ),
+    BuiltinScript(name=BMC_DETECTION, filename="bmc_config.py"),
     BuiltinScript(
         name=IPADDR_OUTPUT_NAME, filename="40-maas-01-network-interfaces"
     ),

@@ -1605,9 +1605,6 @@ class TestMAASScripts(MAASServerTestCase):
 
     def test_anon_returns_bmc_config_scripts_when_disabled(self):
         Config.objects.set_config("enlist_commissioning", False)
-        factory.make_Script(
-            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["bmc-config"]
-        )
         start_time = floor(time.time())
         response = self.client.get(reverse("maas-scripts", args=["latest"]))
         self.assertEqual(

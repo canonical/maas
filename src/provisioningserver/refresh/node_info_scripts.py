@@ -34,8 +34,8 @@ import os
 LLDP_INSTALL_OUTPUT_NAME = "20-maas-01-install-lldpd"
 # Bring up DHCP early so all connected subnets are detected by MAAS.
 DHCP_EXPLORE_OUTPUT_NAME = "20-maas-02-dhcp-unconfigured-ifaces"
-# Run BMC detection early as it will enlist new machines.
-BMC_DETECTION = "20-maas-03-bmc-detection"
+# Run BMC config early as it will enlist new machines.
+BMC_DETECTION = "30-maas-01-bmc-config"
 # Network information must be collected before 50-maas-01-commissioning as
 # network output is used when processing commissioning output. Once
 # 50-maas-01-commissioning can gather network information this script
@@ -88,6 +88,10 @@ NODE_INFO_SCRIPTS = OrderedDict(
         ),
         (
             DHCP_EXPLORE_OUTPUT_NAME,
+            {"hook": null_hook, "run_on_controller": False},
+        ),
+        (
+            BMC_DETECTION,
             {"hook": null_hook, "run_on_controller": False},
         ),
         (IPADDR_OUTPUT_NAME, {"hook": null_hook, "run_on_controller": True}),

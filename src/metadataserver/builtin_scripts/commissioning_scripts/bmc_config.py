@@ -1,0 +1,616 @@
+#!/usr/bin/env python3
+#
+# bmc-config - Detect and configure BMC's for MAAS use.
+#
+# Author: Andres Rodriguez <andres.rodriguez@canonical.com>
+#         Lee Trager <lee.trager@canonical.com>
+#
+# Copyright (C) 2013-2020 Canonical
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: 30-maas-01-bmc-config
+# title: Detect and configure BMC's for MAAS use.
+# description: Detect and configure BMC credentials for MAAS use.
+# tags: bmc-config
+# script_type: commissioning
+# packages:
+#   apt:
+#     - freeipmi-tools
+#     - ipmitool
+# timeout: 00:05:00
+# --- End MAAS 1.0 script metadata --
+
+from abc import ABCMeta, abstractmethod, abstractproperty
+import argparse
+from collections import OrderedDict
+from functools import lru_cache
+import glob
+import os
+import platform
+import random
+import re
+import string
+from subprocess import (
+    CalledProcessError,
+    check_call,
+    check_output,
+    DEVNULL,
+    run,
+    TimeoutExpired,
+)
+import sys
+import time
+
+import yaml
+
+
+def exit_skipped():
+    """Write a result YAML indicating the test has been skipped."""
+    result_path = os.environ.get("RESULT_PATH")
+    if result_path is not None:
+        with open(result_path, "w") as results_file:
+            yaml.safe_dump({"status": "skipped"}, results_file)
+    sys.exit()
+
+
+class BMCConfig(metaclass=ABCMeta):
+    """Base class for BMC detection."""
+
+    username = None
+    password = None
+
+    @abstractproperty
+    def power_type(self):
+        """The power_type of the BMC."""
+
+    @abstractmethod
+    def __str__(self):
+        """The pretty name of the BMC type."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def detected(self):
+        """Returns boolean value of whether the BMC was detected."""
+
+    def add_bmc_user(self):
+        """Add the specified BMC user and (re)set its password.
+
+        Should set the username and password, even if it hasn't been
+        changed.
+        """
+        # MAAS is the default user and will always be passed to the script.
+        if self.username not in (None, "maas"):
+            print(
+                "WARNING: Unable to set a specific username or password on %s!"
+                % self
+            )
+
+    def configure(self):
+        """Configure the BMC for use."""
+        pass
+
+    @abstractmethod
+    def get_bmc_ip(self):
+        """Return the IP address of the BMC."""
+
+    def get_credentials(self):
+        """Return the BMC credentials for MAAS to use the BMC."""
+        return {
+            "power_address": self.get_bmc_ip(),
+            "power_user": self.username if self.username else "",
+            "power_pass": self.password if self.password else "",
+        }
+
+
+class IPMI(BMCConfig):
+    """Handle detection and configuration of IPMI BMCs."""
+
+    power_type = "ipmi"
+
+    def __str__(self):
+        return "IPMI"
+
+    def __init__(self, username=None, password=None, **kwargs):
+        self.username = username
+        self.password = password
+
+    def _bmc_get(self, key):
+        """Fetch the output of a key via bmc-config checkout."""
+        try:
+            return check_output(
+                ["bmc-config", "--checkout", "--key-pair=%s" % key],
+                stderr=DEVNULL,
+                timeout=60,
+            ).decode()
+        except Exception:
+            return None
+
+    def _bmc_set(self, key, value):
+        """Set the value of a key via bmc-config commit.
+
+        Exceptions are not caught so a commit failure causes a script failure.
+        """
+        check_call(
+            ["bmc-config", "--commit", "--key-pair=%s=%s" % (key, value)],
+            timeout=60,
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _get_ipmi_locate_output():
+        return check_output(["ipmi-locate"], timeout=60).decode()
+
+    def detected(self):
+        # Verify the BMC uses IPMI.
+        try:
+            output = self._get_ipmi_locate_output()
+        except Exception:
+            return False
+        else:
+            m = re.search(r"(IPMI\ Version:) (\d\.\d)", output)
+            # ipmi-locate always returns 0. If The regex doesn't match
+            # check if /dev/ipmi[0-9] exists. This is needed on the PPC64
+            # host in the MAAS CI.
+            if m or len(glob.glob("/dev/ipmi[0-9]")):
+                return True
+            else:
+                return False
+
+    def _generate_random_password(
+        self, min_length=10, max_length=15, with_special_chars=False
+    ):
+        length = random.randint(min_length, max_length)
+        special_chars = "!\"#$%&'()*+-./:;<=>?@[\\]^_`{|}~"
+        letters = ""
+        if with_special_chars:
+            # LP: #1621175 - Password generation for non-compliant IPMI password
+            # policy. Huawei has implemented a different password policy that
+            # does not confirm with the IPMI spec, hence we generate a password
+            # that would be compliant to their use case.
+            # Randomly select 2 Upper Case
+            letters += "".join(
+                [random.choice(string.ascii_uppercase) for _ in range(2)]
+            )
+            # Randomly select 2 Lower Case
+            letters += "".join(
+                [random.choice(string.ascii_lowercase) for _ in range(2)]
+            )
+            # Randomly select 2 numbers
+            letters += "".join(
+                [random.choice(string.digits) for _ in range(2)]
+            )
+            # Randomly select a special character
+            letters += random.choice(special_chars)
+            # Create the extra characters to fullfill max_length
+            letters += "".join(
+                [
+                    random.choice(string.ascii_letters)
+                    for _ in range(length - 7)
+                ]
+            )
+            # LP: #1758760 - Randomly mix the password until we ensure there's
+            # not consecutive occurrences of the same character.
+            password = "".join(random.sample(letters, len(letters)))
+            while bool(re.search(r"(.)\1", password)):
+                password = "".join(random.sample(letters, len(letters)))
+            return password
+        else:
+            letters = string.ascii_letters + string.digits
+            return "".join([random.choice(letters) for _ in range(length)])
+
+    def _make_ipmi_user_settings(self, username, password):
+        """Factory for IPMI user settings."""
+        # Some BMCs care about the order these settings are applied in.
+        #
+        # - Dell Poweredge R420 Systems require the username and password to
+        # be set prior to the user being enabled.
+        #
+        # - Supermicro systems require the LAN Privilege Limit to be set
+        # prior to enabling LAN IPMI msgs for the user.
+        user_settings = OrderedDict(
+            (
+                ("Username", username),
+                ("Password", password),
+                ("Enable_User", "Yes"),
+                ("Lan_Privilege_Limit", "Administrator"),
+                ("Lan_Enable_IPMI_Msgs", "Yes"),
+            )
+        )
+        return user_settings
+
+    def _pick_user_number(self, search_username):
+        """Pick the best user number for a user from a list of user numbers.
+
+        If any any existing user's username matches the search username, pick
+        that user.
+
+        Otherwise, pick the first user that has no username set.
+        """
+        user_numbers = re.findall(
+            r"^(User\d+)$",
+            check_output(["bmc-config", "-L"], timeout=60).decode(),
+            re.MULTILINE,
+        )
+        username_re = re.compile(
+            r"^\s*Username(?:[ \t])+([^#\s]+[^\n]*)$", re.MULTILINE
+        )
+        first_unused = None
+        for user_number in user_numbers:
+            # The IPMI spec reserves User1 as anonymous.
+            if user_number == "User1":
+                continue
+            username_match = username_re.search(
+                self._bmc_get("%s:Username" % user_number)
+            )
+            if username_match:
+                username = username_match.group(1)
+            else:
+                username = None
+
+            if search_username and username == search_username:
+                print('INFO: Found existing IPMI user "%s"!' % username)
+                return user_number
+            elif username in [None, "(Empty User)"] and first_unused is None:
+                # Usually a BMC won't include a Username value if the user is
+                # unused. Some HP BMCs use "(Empty User)" to indicate a user in
+                # unused.
+                first_unused = user_number
+        return first_unused
+
+    def add_bmc_user(self):
+        if not self.username:
+            self.username = "maas"
+        user_number = self._pick_user_number(self.username)
+        print('INFO: Configuring IPMI BMC user "%s"...' % self.username)
+        print("INFO: IPMI user_number - %s" % user_number)
+        if not self.password:
+            passwords = [
+                self._generate_random_password(),
+                self._generate_random_password(with_special_chars=True),
+            ]
+        else:
+            passwords = [self.password]
+        for password in passwords:
+            try:
+                for key, value in self._make_ipmi_user_settings(
+                    self.username, password
+                ).items():
+                    self._bmc_set("%s:%s" % (user_number, key), value)
+            except Exception:
+                pass
+            else:
+                self.password = password
+                return
+        print("ERROR: Unable to add BMC user!", file=sys.stderr)
+        sys.exit(1)
+
+    def _set_ipmi_lan_channel_settings(self):
+        """Enable IPMI-over-Lan (Lan_Channel) if it is disabled"""
+        print("INFO: Verifying BMC is accessible over the network...")
+        for mode in [
+            "Lan_Channel:Volatile_Access_Mode",
+            "Lan_Channel:Non_Volatile_Access_Mode",
+        ]:
+            output = self._bmc_get(mode)
+            show_re = re.compile(r"%s\s+Always_Available" % mode.split(":")[1])
+            if show_re.search(output) is None:
+                print("INFO: Enabling BMC network access - %s" % mode)
+                # Some BMC's don't support setting Lan_Channel (see LP: #1287274).
+                # If that happens, it would cause the script to fail preventing
+                # the script from continuing. To address this, simply catch the
+                # error, return and allow the script to continue.
+                try:
+                    self._bmc_set(mode, "Always_Available")
+                except Exception:
+                    print(
+                        "WARNING: Unable to set %s. "
+                        "BMC may be unavailable over the network!" % mode
+                    )
+
+    def configure(self):
+        self._set_ipmi_lan_channel_settings()
+
+    def _get_bmc_ip(self):
+        """Return the current IP of the BMC, returns none if unavailable."""
+        show_re = re.compile(
+            r"((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)"
+        )
+        for address_type in [
+            "Lan_Conf:IP_Address",
+            "Lan6_Conf:IPv6_Static_Addresses",
+            "Lan6_Conf:IPv6_Dynamic_Addresses",
+        ]:
+            output = self._bmc_get(address_type)
+            # Loop through the addreses by preference: IPv4, static IPv6, dynamic
+            # IPv6.  Return the first valid, non-link-local address we find.
+            # While we could conceivably allow link-local addresses, we would need
+            # to devine which of our interfaces is the correct link, and then we
+            # would need support for link-local addresses in freeipmi-tools.
+            res = show_re.findall(output)
+            for ip in res:
+                if ip.lower().startswith("fe80::") or ip == "0.0.0.0":
+                    time.sleep(2)
+                    continue
+                if address_type.startswith("Lan6_"):
+                    return "[%s]" % ip
+                return ip
+            # No valid IP address was found.
+        return None
+
+    def get_bmc_ip(self):
+        """Configure and retreive IPMI BMC IP."""
+        ip_address = self._get_bmc_ip()
+        if ip_address:
+            return ip_address
+        print("INFO: Attempting to enable preconfigured static IP on BMC...")
+        self._bmc_set("Lan_Conf:IP_Address_Source", "Static")
+        for _ in range(6):
+            time.sleep(10)
+            ip_address = self._get_bmc_ip()
+            if ip_address:
+                return ip_address
+        print("INFO: Attempting to enable DHCP on BMC...")
+        self._bmc_set("Lan_Conf:IP_Address_Source", "Use_DHCP")
+        for _ in range(6):
+            time.sleep(10)
+            ip_address = self._get_bmc_ip()
+            if ip_address:
+                print("WARNING: BMC is configured to use DHCP!")
+                return ip_address
+        print("ERROR: Unable to determine BMC IP address!", file=sys.stderr)
+        sys.exit(1)
+
+    def get_credentials(self):
+        """Return the BMC credentials to use the BMC."""
+        if (
+            "IPMI Version: 2.0" in self._get_ipmi_locate_output()
+            or platform.machine() == "ppc64le"
+        ):
+            ipmi_version = "LAN_2_0"
+        else:
+            ipmi_version = "LAN"
+        print("INFO: IPMI Version - %s" % ipmi_version)
+        if os.path.isdir("/sys/firmware/efi"):
+            boot_type = "efi"
+        else:
+            boot_type = "auto"
+        print("INFO: Boot type - %s" % boot_type)
+        return {
+            "power_address": self.get_bmc_ip(),
+            "power_user": self.username,
+            "power_pass": self.password,
+            "power_driver": ipmi_version,
+            "power_boot_type": boot_type,
+        }
+
+
+# Moonshot may be able to use more of IPMI functionality however these
+# features aren't enabled due to a lack of a test host.
+class HPMoonshot(BMCConfig):
+    """Handle detection and configuration of HP Moonshot BMCs."""
+
+    power_type = "moonshot"
+    username = "Administrator"
+    password = "password"
+
+    def __str__(self):
+        return "HP Moonshot"
+
+    def detected(self):
+        try:
+            output = check_output(
+                ["ipmitool", "raw", "06", "01"], timeout=60, stderr=DEVNULL
+            ).decode()
+        except Exception:
+            return False
+        # 14 is the code that identifies the BMC as HP Moonshot
+        if output.split()[0] == "14":
+            return True
+        else:
+            return False
+
+    def _get_local_address(self):
+        output = check_output(
+            ["ipmitool", "raw", "0x2c", "1", "0"], timeout=60
+        ).decode()
+        return "0x%s" % output.split()[2]
+
+    def _get_cartridge_address(self, local_address):
+        # obtain address of Cartridge Controller (parent of the system node):
+        output = check_output(
+            [
+                "ipmitool",
+                "-t",
+                "0x20",
+                "-b",
+                ",0" "-m",
+                local_address,
+                "raw",
+                "0x2c",
+                "1",
+                "0",
+            ],
+            timeout=60,
+        ).decode()
+        return "0x%s" % output.split()[2]
+
+    def _get_channel_number(self, address, output):
+        m = re.search(
+            r"Device Slave Address\s+:\s+%sh(.*?)Channel Number\s+:\s+\d+"
+            % address.replace("0x", "").upper(),
+            output,
+            re.DOTALL,
+        )
+        return m.group(0).split()[-1]
+
+    def get_bmc_ip(self, local_address=None):
+        if not local_address:
+            local_address = self._get_local_address()
+        output = check_output(
+            [
+                "ipmitool",
+                "-B",
+                "0",
+                "-T",
+                "0x20",
+                "-b",
+                "0",
+                "-t",
+                "0x20",
+                "-m",
+                local_address,
+                "lan",
+                "print",
+                "2",
+            ],
+            timeout=60,
+        ).decode()
+        m = re.search(
+            r"IP Address\s+:\s+"
+            r"(?P<addr>(?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)",
+            output,
+        )
+        if not m:
+            return None
+        return m.groupdict().get("addr", None)
+
+    def get_credentials(self):
+        local_address = self._get_local_address()
+        node_address = self._get_cartridge_address(local_address)
+
+        # Obtain channel numbers for routing to this system
+        output = check_output(
+            [
+                "ipmitool",
+                "-b",
+                "0",
+                "-t",
+                "0x20",
+                "-m",
+                local_address,
+                "sdr",
+                "list",
+                "mcloc",
+                "-v",
+            ],
+            timeout=60,
+        ).decode()
+        local_chan = self._get_channel_number(local_address, output)
+        cartridge_chan = self._get_channel_number(node_address, output)
+
+        return {
+            "power_address": self.get_bmc_ip(local_address),
+            "power_user": self.username,
+            "power_pass": self.password,
+            "power_hwaddress": (
+                "-B %s -T %s -b %s -t %s -m 0x20"
+                % (
+                    cartridge_chan,
+                    node_address,
+                    local_chan,
+                    local_address,
+                )
+            ),
+        }
+
+
+def detect_and_configure(args, bmc_config_path):
+    # Order matters here. HPMoonshot is a specical IPMI device, so try to
+    # detect it first.
+    for bmc_class in [HPMoonshot, IPMI]:
+        bmc = bmc_class(**vars(args))
+        print("INFO: Checking for %s..." % bmc)
+        if bmc.detected():
+            print("INFO: %s detected!" % bmc)
+            bmc.configure()
+            bmc.add_bmc_user()
+            with open(bmc_config_path, "w") as f:
+                yaml.safe_dump(
+                    {
+                        "power_type": bmc.power_type,
+                        **bmc.get_credentials(),
+                    },
+                    f,
+                )
+            return
+    print("INFO: No BMC automatically detected!")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="BMC detection and configuration tool for MAAS"
+    )
+    parser.add_argument(
+        "-u",
+        "--username",
+        default="maas",
+        type=str,
+        help="Specify the BMC username to create.",
+    )
+    parser.add_argument(
+        "-p",
+        "--password",
+        type=str,
+        help="Specify the BMC password to use with newly created user.",
+    )
+    args = parser.parse_args()
+
+    bmc_config_path = os.environ.get("BMC_CONFIG_PATH")
+    if not bmc_config_path:
+        print(
+            'ERROR: Environment variable "BMC_CONFIG_PATH" not defined!',
+            file=sys.stderr,
+        )
+        sys.exit(os.EX_CONFIG)
+    elif os.path.exists(bmc_config_path):
+        print(
+            "INFO: BMC configuration has occured in a previously run "
+            "commissioning script, skipping"
+        )
+        return exit_skipped()
+
+    # XXX: andreserl 2013-04-09 bug=1064527: Try to detect if node
+    # is a Virtual Machine. If it is, do not try to detect IPMI.
+    try:
+        check_call(["systemd-detect-virt", "-q"], timeout=60)
+    except CalledProcessError:
+        print("INFO: Loading IPMI kernel modules...")
+        for module in [
+            "ipmi_msghandler",
+            "ipmi_devintf",
+            "ipmi_si",
+            "ipmi_ssif",
+        ]:
+            # The IPMI modules will fail to load if loaded on unsupported
+            # hardware.
+            try:
+                run(["sudo", "-E", "modprobe", module], timeout=60)
+            except TimeoutExpired:
+                pass
+        try:
+            run(["sudo", "-E", "udevadm", "settle"], timeout=60)
+        except TimeoutExpired:
+            pass
+        detect_and_configure(args, bmc_config_path)
+    else:
+        print("INFO: Running on virtual machine, skipping")
+        return exit_skipped()
+
+
+if __name__ == "__main__":
+    main()
