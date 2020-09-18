@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import enum
 import re
 from tempfile import NamedTemporaryFile
 
@@ -199,6 +200,38 @@ IPMI_BOOT_TYPE_MAPPING = {
 }
 
 
+# Not all IPMI cipher suites are secure. Many disable the authentication,
+# integrity, or the confidentiality algorithms. Cipher 0 for example disables
+# all encryption leaving everything in plain text. Only ciphers which have
+# all three algorithms enabled should be allowed. 30-maas-01-bmc-config will
+# pick the most secure IPMI cipher suite id available.
+# See http://fish2.com/ipmi/bp.pdf for more information.
+IPMI_CIPHER_SUITE_ID_CHOICES = [
+    ["17", "17 - HMAC-SHA256::HMAC_SHA256_128::AES-CBC-128"],
+    ["3", "3 - HMAC-SHA1::HMAC-SHA1-96::AES-CBC-128"],
+    # freeipmi-tools currently defaults to 3. This value is shown to users who
+    # upgrade from < 2.9 or when the IPMI cipher suite id isn't discovered.
+    ["", "freeipmi-tools default"],
+    ["8", "8 - HMAC-MD5::HMAC-MD5-128::AES-CBC-128"],
+    ["12", "12 - HMAC-MD5::MD5-128::AES-CBC-128"],
+]
+
+
+@enum.unique
+class IPMI_PRIVILEGE_LEVEL(enum.Enum):
+
+    USER = "USER"
+    OPERATOR = "OPERATOR"
+    ADMIN = "ADMIN"
+
+
+IPMI_PRIVILEGE_LEVEL_CHOICES = [
+    [IPMI_PRIVILEGE_LEVEL.USER.name, "User"],
+    [IPMI_PRIVILEGE_LEVEL.OPERATOR.name, "Operator"],
+    [IPMI_PRIVILEGE_LEVEL.ADMIN.name, "Administrator"],
+]
+
+
 class IPMIPowerDriver(PowerDriver):
 
     name = "ipmi"
@@ -226,6 +259,23 @@ class IPMIPowerDriver(PowerDriver):
         make_setting_field("power_user", "Power user"),
         make_setting_field(
             "power_pass", "Power password", field_type="password"
+        ),
+        make_setting_field("k_g", "K_g BMC key", field_type="password"),
+        make_setting_field(
+            "cipher_suite_id",
+            "Cipher Suite ID",
+            field_type="choice",
+            choices=IPMI_CIPHER_SUITE_ID_CHOICES,
+            # freeipmi-tools defaults to 3, not all IPMI BMCs support 17.
+            default="3",
+        ),
+        make_setting_field(
+            "privilege_level",
+            "Privilege Level",
+            field_type="choice",
+            choices=IPMI_PRIVILEGE_LEVEL_CHOICES,
+            # All MAAS operations can be done as operator.
+            default=IPMI_PRIVILEGE_LEVEL.OPERATOR.name,
         ),
         make_setting_field(
             "mac_address", "Power MAC", scope=SETTING_SCOPE.NODE
@@ -303,6 +353,9 @@ class IPMIPowerDriver(PowerDriver):
         power_off_mode=None,
         mac_address=None,
         power_boot_type=None,
+        k_g=None,
+        cipher_suite_id=None,
+        privilege_level=None,
         **extra
     ):
         """Issue command to ipmipower, for the given system."""
@@ -322,15 +375,11 @@ class IPMIPowerDriver(PowerDriver):
             "ipmi-chassis-config",
             "-W",
             "opensesspriv",
-            "-l",
-            "OPERATOR",
         ]
         ipmipower_command = [
             "ipmipower",
             "-W",
             "opensesspriv",
-            "-l",
-            "OPERATOR",
         ]
 
         # Arguments in common between chassis config and power control. See
@@ -343,6 +392,15 @@ class IPMIPowerDriver(PowerDriver):
         if is_power_parameter_set(power_user):
             common_args.extend(("-u", power_user))
         common_args.extend(("-p", power_pass))
+        if is_power_parameter_set(k_g):
+            common_args.extend(("-k", k_g))
+        if is_power_parameter_set(cipher_suite_id):
+            common_args.extend(("-I", cipher_suite_id))
+        if is_power_parameter_set(privilege_level):
+            common_args.extend(("-l", privilege_level))
+        else:
+            # LP:1889788 - Default to communicate at operator level.
+            common_args.extend(("-l", IPMI_PRIVILEGE_LEVEL.OPERATOR.name))
 
         # Update the power commands with common args.
         ipmipower_command.extend(common_args)

@@ -18,9 +18,12 @@ from provisioningserver.drivers.power import PowerAuthError, PowerError
 from provisioningserver.drivers.power.ipmi import (
     IPMI_BOOT_TYPE,
     IPMI_BOOT_TYPE_MAPPING,
+    IPMI_CIPHER_SUITE_ID_CHOICES,
     IPMI_CONFIG,
     IPMI_CONFIG_WITH_BOOT_TYPE,
     IPMI_ERRORS,
+    IPMI_PRIVILEGE_LEVEL,
+    IPMI_PRIVILEGE_LEVEL_CHOICES,
     IPMIPowerDriver,
 )
 from provisioningserver.utils.shell import has_command_available, ProcessResult
@@ -28,7 +31,7 @@ from provisioningserver.utils.shell import has_command_available, ProcessResult
 
 def make_context():
     """Make and return a context for IPMI Power Driver."""
-    return {
+    ret = {
         "power_address": factory.make_name("power_address"),
         "power_user": factory.make_name("power_user"),
         "power_pass": factory.make_name("power_pass"),
@@ -37,6 +40,15 @@ def make_context():
         "ipmipower": "ipmipower",
         "ipmi_chassis_config": "ipmi-chassis-config",
     }
+    # These options were added in MAAS 2.9. Add them optionally
+    # to test users coming from older versions.
+    if factory.pick_bool():
+        ret["k_g"] = factory.make_name("k_g")
+    if factory.pick_bool():
+        ret["cipher_suite_id"] = random.choice(IPMI_CIPHER_SUITE_ID_CHOICES)[0]
+    if factory.pick_bool():
+        ret["privilege_level"] = random.choice(IPMI_PRIVILEGE_LEVEL_CHOICES)[0]
+    return ret
 
 
 def make_ipmi_chassis_config_command(
@@ -46,15 +58,16 @@ def make_ipmi_chassis_config_command(
     power_driver=None,
     power_user=None,
     tmp_config_name=None,
+    k_g=None,
+    cipher_suite_id=None,
+    privilege_level=None,
     **extra
 ):
     """Make and return a command for ipmi-chassis-config subprocess."""
-    return (
+    ret = (
         ipmi_chassis_config,
         "-W",
         "opensesspriv",
-        "-l",
-        "OPERATOR",
         "--driver-type",
         power_driver,
         "-h",
@@ -63,10 +76,21 @@ def make_ipmi_chassis_config_command(
         power_user,
         "-p",
         power_pass,
+    )
+    if k_g:
+        ret += ("-k", k_g)
+    if cipher_suite_id:
+        ret += ("-I", cipher_suite_id)
+    if privilege_level:
+        ret += ("-l", privilege_level)
+    else:
+        ret += ("-l", IPMI_PRIVILEGE_LEVEL.OPERATOR.name)
+    ret += (
         "--commit",
         "--filename",
         tmp_config_name,
     )
+    return ret
 
 
 def make_ipmipower_command(
@@ -75,15 +99,16 @@ def make_ipmipower_command(
     power_pass=None,
     power_driver=None,
     power_user=None,
+    k_g=None,
+    cipher_suite_id=None,
+    privilege_level=None,
     **extra
 ):
     """Make and return a command for ipmipower subprocess."""
-    return (
+    ret = (
         ipmipower,
         "-W",
         "opensesspriv",
-        "-l",
-        "OPERATOR",
         "--driver-type",
         power_driver,
         "-h",
@@ -93,6 +118,15 @@ def make_ipmipower_command(
         "-p",
         power_pass,
     )
+    if k_g:
+        ret += ("-k", k_g)
+    if cipher_suite_id:
+        ret += ("-I", cipher_suite_id)
+    if privilege_level:
+        ret += ("-l", privilege_level)
+    else:
+        ret += ("-l", IPMI_PRIVILEGE_LEVEL.OPERATOR.name)
+    return ret
 
 
 class TestIPMIPowerDriver(MAASTestCase):

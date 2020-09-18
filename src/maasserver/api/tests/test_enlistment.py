@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for enlistment-related portions of the API."""
@@ -104,13 +104,12 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
                 "power_parameters": json.dumps(power_parameters),
             },
         )
-        # Add the default values.
-        power_parameters["power_driver"] = "LAN_2_0"
-        power_parameters["mac_address"] = ""
-        power_parameters["power_boot_type"] = "auto"
         self.assertEqual(http.client.OK, response.status_code)
         [machine] = Machine.objects.filter(hostname=hostname)
-        self.assertEqual(power_parameters, machine.power_parameters)
+        # The power form adds default values, don't validate those.
+        self.assertDictContainsSubset(
+            power_parameters, machine.bmc.power_parameters
+        )
         self.assertEqual(power_type, machine.power_type)
 
     def test_POST_create_creates_machine_with_arch_only(self):
@@ -440,9 +439,6 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
             "power_address": factory.make_ip_address(),
             "power_user": factory.make_name("power-user"),
             "power_pass": factory.make_name("power-pass"),
-            "power_driver": "LAN_2_0",
-            "mac_address": "",
-            "power_boot_type": "auto",
         }
         machine = factory.make_Machine(
             hostname=hostname,
@@ -468,8 +464,11 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         machine = reload_object(machine)
         self.assertEqual(hostname, machine.hostname)
         self.assertEqual(architecture, machine.architecture)
-        for key, value in machine.bmc.power_parameters.items():
-            self.assertEqual(power_parameters[key], value)
+        # The power form add default values, matching is based on the IP
+        # address.
+        self.assertDictContainsSubset(
+            power_parameters, machine.bmc.power_parameters
+        )
         self.assertThat(mock_create_machine, MockNotCalled())
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
