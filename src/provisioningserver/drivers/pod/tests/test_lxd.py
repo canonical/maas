@@ -17,6 +17,8 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import maas_certificates
 from provisioningserver.drivers.pod import (
     Capabilities,
+    DiscoveredMachineBlockDevice,
+    DiscoveredMachineInterface,
     DiscoveredPodHints,
     InterfaceAttachType,
 )
@@ -362,6 +364,7 @@ class TestLXDPodDriver(MAASTestCase):
             "limits.memory": "1024MiB",
             "volatile.eth0.hwaddr": "00:16:3e:78:be:04",
             "volatile.eth1.hwaddr": "00:16:3e:f9:fc:cb",
+            "volatile.eth2.hwaddr": "00:16:3e:f9:fc:cc",
         }
         expanded_devices = {
             "eth0": {
@@ -372,7 +375,13 @@ class TestLXDPodDriver(MAASTestCase):
             "eth1": {
                 "name": "eth1",
                 "nictype": "bridged",
-                "parent": "virbr1",
+                "parent": "br1",
+                "type": "nic",
+            },
+            "eth2": {
+                "name": "eth2",
+                "nictype": "macvlan",
+                "parent": "eno2",
                 "type": "nic",
             },
             "root": {
@@ -398,6 +407,7 @@ class TestLXDPodDriver(MAASTestCase):
         mock_machine.storage_pools.get.return_value = mock_storage_pool
         mock_network = Mock()
         mock_network.type = "bridge"
+        mock_network.name = "lxdbr0"
         client.networks.get.return_value = mock_network
         discovered_machine = yield ensureDeferred(
             driver.get_discovered_machine(
@@ -405,25 +415,25 @@ class TestLXDPodDriver(MAASTestCase):
             )
         )
 
-        self.assertEquals(mock_machine.name, discovered_machine.hostname)
+        self.assertEqual(mock_machine.name, discovered_machine.hostname)
 
-        self.assertEquals(
+        self.assertEqual(
             kernel_to_debian_architecture(mock_machine.architecture),
             discovered_machine.architecture,
         )
-        self.assertEquals(
+        self.assertEqual(
             lxd_module.LXD_VM_POWER_STATE[mock_machine.status_code],
             discovered_machine.power_state,
         )
-        self.assertEquals(2, discovered_machine.cores)
-        self.assertEquals(1024, discovered_machine.memory)
-        self.assertEquals(
+        self.assertEqual(2, discovered_machine.cores)
+        self.assertEqual(1024, discovered_machine.memory)
+        self.assertEqual(
             mock_machine.name,
             discovered_machine.power_parameters["instance_name"],
         )
-        self.assertThat(
+        self.assertEqual(
             discovered_machine.block_devices[0],
-            MatchesStructure.byEquality(
+            DiscoveredMachineBlockDevice(
                 model="QEMU HARDDISK",
                 serial="lxd_root",
                 id_path="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_root",
@@ -435,26 +445,37 @@ class TestLXDPodDriver(MAASTestCase):
                 iscsi_target=None,
             ),
         )
-        self.assertThat(
+        self.assertEqual(
             discovered_machine.interfaces[0],
-            MatchesStructure.byEquality(
+            DiscoveredMachineInterface(
                 mac_address=expanded_config["volatile.eth0.hwaddr"],
                 vid=0,
                 tags=[],
                 boot=True,
-                attach_type="bridge",
-                attach_name="eth0",
+                attach_type=InterfaceAttachType.BRIDGE,
+                attach_name="lxdbr0",
             ),
         )
-        self.assertThat(
+        self.assertEqual(
             discovered_machine.interfaces[1],
-            MatchesStructure.byEquality(
+            DiscoveredMachineInterface(
                 mac_address=expanded_config["volatile.eth1.hwaddr"],
                 vid=0,
                 tags=[],
                 boot=False,
-                attach_type=expanded_devices["eth1"]["nictype"],
-                attach_name="eth1",
+                attach_type=InterfaceAttachType.BRIDGE,
+                attach_name="br1",
+            ),
+        )
+        self.assertEqual(
+            discovered_machine.interfaces[2],
+            DiscoveredMachineInterface(
+                mac_address=expanded_config["volatile.eth2.hwaddr"],
+                vid=0,
+                tags=[],
+                boot=False,
+                attach_type=InterfaceAttachType.MACVLAN,
+                attach_name="eno2",
             ),
         )
         self.assertItemsEqual([], discovered_machine.tags)

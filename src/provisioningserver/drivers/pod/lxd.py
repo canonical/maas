@@ -268,20 +268,31 @@ class LXDPodDriver(PodDriver):
             if configuration.endswith("hwaddr"):
                 mac = expanded_config[configuration]
                 name = configuration.split(".")[1]
-                nictype = expanded_devices[name].get("nictype")
-                if nictype is None and "network" in expanded_devices[name]:
+                if "network" in expanded_devices[name]:
                     # Try finding the nictype from the networks.
+                    # XXX: This should work for "bridge" networks,
+                    #      but will most likely produce weird results for the
+                    #      other types.
                     network = await deferToThread(
                         client.networks.get, expanded_devices[name]["network"]
                     )
-                    nictype = network.type
+                    attach_type = network.type
+                    attach_name = network.name
+                else:
+                    attach_name = expanded_devices[name]["parent"]
+                    nictype = expanded_devices[name]["nictype"]
+                    attach_type = (
+                        InterfaceAttachType.BRIDGE
+                        if nictype == "bridged"
+                        else nictype
+                    )
                 interfaces.append(
                     DiscoveredMachineInterface(
                         mac_address=mac,
                         vid=get_vid_from_ifname(name),
                         boot=boot,
-                        attach_type=nictype,
-                        attach_name=name,
+                        attach_type=attach_type,
+                        attach_name=attach_name,
                     )
                 )
                 boot = False
