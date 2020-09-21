@@ -1,7 +1,7 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field
 from math import ceil
 from typing import List
@@ -24,6 +24,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Machine
 from maasserver.models.numa import NUMANode
 from maasserver.models.timestampedmodel import TimestampedModel
+
+MB = 1024 * 1024
 
 
 class VirtualMachine(CleanSave, TimestampedModel):
@@ -126,12 +128,13 @@ def get_vm_host_resources(pod):
         .filter(bmc=pod)
         .all()
     )
-    numanodes = {
-        node.index: node
+    numanodes = OrderedDict(
+        (node.index, node)
         for node in NUMANode.objects.prefetch_related("hugepages_set")
         .filter(node=pod.host)
+        .order_by("index")
         .all()
-    }
+    )
 
     # to track how many cores are not used by pinned VMs in each NUMA node
     available_numanode_cores = {}
@@ -186,7 +189,7 @@ def _update_numanode_resources_usage(
         vm, numanodes
     )
     for numa_idx, numa_weight in numanode_weights.items():
-        vm_node_memory = int(vm.memory * numa_weight)
+        vm_node_memory = int(vm.memory * MB * numa_weight)
         if vm.hugepages_backed:
             hugepages = numanode_hugepages[numa_idx]
             if hugepages:
@@ -248,7 +251,7 @@ def _get_numa_pinning_resources(
     # fill in memory details
     numa_resources.memory.general.allocated = allocated_numanode_memory
     numa_resources.memory.general.free = (
-        numa_node.memory - allocated_numanode_memory
+        numa_node.memory * MB - allocated_numanode_memory
     )
     if numanode_hugepages:
         numa_resources.memory.hugepages.append(

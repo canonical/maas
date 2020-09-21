@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 
 from maasserver.models.virtualmachine import (
     get_vm_host_resources,
+    MB,
     VirtualMachine,
 )
 from maasserver.testing.factory import factory
@@ -105,13 +106,13 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertCountEqual(
+        self.assertEqual(
             [asdict(r) for r in resources],
             [
                 {
                     "cores": {"allocated": [0], "free": [3]},
                     "memory": {
-                        "general": {"allocated": 1024, "free": 3072},
+                        "general": {"allocated": 1024 * MB, "free": 3072 * MB},
                         "hugepages": [],
                     },
                     "node_id": 0,
@@ -120,7 +121,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [], "free": [1, 4]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 1024},
+                        "general": {"allocated": 0, "free": 1024 * MB},
                         "hugepages": [],
                     },
                     "node_id": 1,
@@ -129,7 +130,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2, 5], "free": []},
                     "memory": {
-                        "general": {"allocated": 1024, "free": 1024},
+                        "general": {"allocated": 1024 * MB, "free": 1024 * MB},
                         "hugepages": [],
                     },
                     "node_id": 2,
@@ -148,10 +149,10 @@ class TestGetVMHostResources(MAASServerTestCase):
             node=node, cores=[2, 3], memory=1024
         )
         factory.make_NUMANodeHugepages(
-            numa_node=numa_node0, page_size=1024, total=1024
+            numa_node=numa_node0, page_size=1024 * MB, total=1024 * MB
         )
         factory.make_NUMANodeHugepages(
-            numa_node=numa_node1, page_size=1024, total=4096
+            numa_node=numa_node1, page_size=1024 * MB, total=4096 * MB
         )
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
@@ -170,15 +171,19 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertCountEqual(
+        self.assertEqual(
             [asdict(r) for r in resources],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 4096},
+                        "general": {"allocated": 0, "free": 4096 * MB},
                         "hugepages": [
-                            {"allocated": 1024, "free": 0, "page_size": 1024}
+                            {
+                                "allocated": 1024 * MB,
+                                "free": 0,
+                                "page_size": 1024 * MB,
+                            }
                         ],
                     },
                     "node_id": 0,
@@ -187,12 +192,12 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2, 3], "free": []},
                     "memory": {
-                        "general": {"allocated": 0, "free": 1024},
+                        "general": {"allocated": 0, "free": 1024 * MB},
                         "hugepages": [
                             {
-                                "allocated": 1024,
-                                "free": 3072,
-                                "page_size": 1024,
+                                "allocated": 1024 * MB,
+                                "free": 3072 * MB,
+                                "page_size": 1024 * MB,
                             }
                         ],
                     },
@@ -219,13 +224,13 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertCountEqual(
+        self.assertEqual(
             [asdict(r) for r in resources],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 1024, "free": 3072},
+                        "general": {"allocated": 1024 * MB, "free": 3072 * MB},
                         "hugepages": [],
                     },
                     "node_id": 0,
@@ -234,7 +239,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2], "free": [3]},
                     "memory": {
-                        "general": {"allocated": 1024, "free": 1024},
+                        "general": {"allocated": 1024 * MB, "free": 1024 * MB},
                         "hugepages": [],
                     },
                     "node_id": 1,
@@ -253,10 +258,10 @@ class TestGetVMHostResources(MAASServerTestCase):
             node=node, cores=[2, 3], memory=2048
         )
         factory.make_NUMANodeHugepages(
-            numa_node=numa_node0, page_size=1024, total=1024
+            numa_node=numa_node0, page_size=1024 * MB, total=1024 * MB
         )
         factory.make_NUMANodeHugepages(
-            numa_node=numa_node1, page_size=1024, total=4096
+            numa_node=numa_node1, page_size=1024 * MB, total=4096 * MB
         )
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
@@ -268,18 +273,18 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertCountEqual(
+        self.assertEqual(
             [asdict(r) for r in resources],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 4096},
+                        "general": {"allocated": 0, "free": 4096 * MB},
                         "hugepages": [
                             {
-                                "allocated": 1024,
+                                "allocated": 1024 * MB,
                                 "free": 0,
-                                "page_size": 1024,
+                                "page_size": 1024 * MB,
                             }
                         ],
                     },
@@ -289,12 +294,12 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2], "free": [3]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 2048},
+                        "general": {"allocated": 0, "free": 2048 * MB},
                         "hugepages": [
                             {
-                                "allocated": 1024,
-                                "free": 3072,
-                                "page_size": 1024,
+                                "allocated": 1024 * MB,
+                                "free": 3072 * MB,
+                                "page_size": 1024 * MB,
                             }
                         ],
                     },
@@ -314,10 +319,10 @@ class TestGetVMHostResources(MAASServerTestCase):
             node=node, cores=[2, 3], memory=2048
         )
         factory.make_NUMANodeHugepages(
-            numa_node=numa_node0, page_size=2048, total=4096
+            numa_node=numa_node0, page_size=2048 * MB, total=4096 * MB
         )
         factory.make_NUMANodeHugepages(
-            numa_node=numa_node1, page_size=4096, total=8192
+            numa_node=numa_node1, page_size=4096 * MB, total=8192 * MB
         )
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
@@ -329,18 +334,18 @@ class TestGetVMHostResources(MAASServerTestCase):
             machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
-        self.assertCountEqual(
+        self.assertEqual(
             [asdict(r) for r in resources],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 4096},
+                        "general": {"allocated": 0, "free": 4096 * MB},
                         "hugepages": [
                             {
-                                "allocated": 2048,
-                                "free": 2048,
-                                "page_size": 2048,
+                                "allocated": 2048 * MB,
+                                "free": 2048 * MB,
+                                "page_size": 2048 * MB,
                             }
                         ],
                     },
@@ -350,12 +355,12 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2], "free": [3]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 2048},
+                        "general": {"allocated": 0, "free": 2048 * MB},
                         "hugepages": [
                             {
-                                "allocated": 4096,
-                                "free": 4096,
-                                "page_size": 4096,
+                                "allocated": 4096 * MB,
+                                "free": 4096 * MB,
+                                "page_size": 4096 * MB,
                             }
                         ],
                     },

@@ -14,6 +14,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
+from maasserver.models.virtualmachine import MB
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
@@ -207,7 +208,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                         },
                     ],
                     "memory": {
-                        "general": {"allocated": 1024, "free": 3072},
+                        "general": {"allocated": 1024 * MB, "free": 3072 * MB},
                         "hugepages": [],
                     },
                     "node_id": 0,
@@ -237,7 +238,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                         },
                     ],
                     "memory": {
-                        "general": {"allocated": 0, "free": 1024},
+                        "general": {"allocated": 0, "free": 1024 * MB},
                         "hugepages": [],
                     },
                     "node_id": 1,
@@ -258,7 +259,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                         },
                     ],
                     "memory": {
-                        "general": {"allocated": 1024, "free": 1024},
+                        "general": {"allocated": 1024 * MB, "free": 1024 * MB},
                         "hugepages": [],
                     },
                     "node_id": 2,
