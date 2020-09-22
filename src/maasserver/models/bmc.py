@@ -47,7 +47,7 @@ from maasserver.exceptions import PodProblem
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.fabric import Fabric
-from maasserver.models.interface import PhysicalInterface
+from maasserver.models.interface import PhysicalInterface, VLANInterface
 from maasserver.models.iscsiblockdevice import (
     get_iscsi_target,
     ISCSIBlockDevice,
@@ -1084,10 +1084,23 @@ class Pod(BMC):
             if discovered_nic.attach_type in (
                 InterfaceAttachType.BRIDGE,
                 InterfaceAttachType.MACVLAN,
+                InterfaceAttachType.SRIOV,
             ):
                 host_attach_interface = interfaces.get(
                     discovered_nic.attach_name, None
                 )
+                if (
+                    discovered_nic.attach_type == InterfaceAttachType.SRIOV
+                    and discovered_nic.vid
+                ):
+                    try:
+                        host_attach_interface = VLANInterface.objects.get(
+                            parent_relationships__parent=host_attach_interface,
+                            vlan__vid=discovered_nic.vid,
+                            type=INTERFACE_TYPE.VLAN,
+                        )
+                    except VLANInterface.DoesNotExist:
+                        host_attach_interface = None
                 if host_attach_interface is not None:
                     # If we get to this point, we found the interface the
                     # the VM has been attached to. Update the VLAN (but

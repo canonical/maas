@@ -38,6 +38,7 @@ from provisioningserver.utils import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
 )
+from provisioningserver.utils.network import generate_mac_address
 
 
 def async_succeed(result):
@@ -384,6 +385,32 @@ class TestLXDPodDriver(MAASTestCase):
                 "parent": "eno2",
                 "type": "nic",
             },
+            # SR-IOV devices created by MAAS have an explicit MAC set on
+            # the device, so that it knows what the MAC will be.
+            "eth3": {
+                "name": "eth3",
+                "hwaddr": "00:16:3e:f9:fc:dd",
+                "nictype": "sriov",
+                "parent": "eno3",
+                "type": "nic",
+            },
+            "eth4": {
+                "name": "eth4",
+                "hwaddr": "00:16:3e:f9:fc:ee",
+                "nictype": "sriov",
+                "parent": "eno3",
+                "vlan": "33",
+                "type": "nic",
+            },
+            # An interface not created by MAAS, thus lacking an explicit
+            # MAC.
+            "eth5": {
+                "name": "eth5",
+                "nictype": "sriov",
+                "parent": "eno3",
+                "vlan": "44",
+                "type": "nic",
+            },
             "root": {
                 "path": "/",
                 "pool": "default",
@@ -476,6 +503,39 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=False,
                 attach_type=InterfaceAttachType.MACVLAN,
                 attach_name="eno2",
+            ),
+        )
+        self.assertEqual(
+            discovered_machine.interfaces[3],
+            DiscoveredMachineInterface(
+                mac_address=expanded_devices["eth3"]["hwaddr"],
+                vid=0,
+                tags=[],
+                boot=False,
+                attach_type=InterfaceAttachType.SRIOV,
+                attach_name="eno3",
+            ),
+        )
+        self.assertEqual(
+            discovered_machine.interfaces[4],
+            DiscoveredMachineInterface(
+                mac_address=expanded_devices["eth4"]["hwaddr"],
+                vid=33,
+                tags=[],
+                boot=False,
+                attach_type=InterfaceAttachType.SRIOV,
+                attach_name="eno3",
+            ),
+        )
+        self.assertEqual(
+            discovered_machine.interfaces[5],
+            DiscoveredMachineInterface(
+                mac_address=None,
+                vid=44,
+                tags=[],
+                boot=False,
+                attach_type=InterfaceAttachType.SRIOV,
+                attach_name="eno3",
             ),
         )
         self.assertItemsEqual([], discovered_machine.tags)
@@ -1023,10 +1083,14 @@ class TestGetNicDevice(MAASTestCase):
             attach_name=factory.make_name("sriov"),
             attach_type=InterfaceAttachType.SRIOV,
         )
+        generated_mac_address = generate_mac_address()
+        mock_generate_mac = self.patch(lxd_module, "generate_mac_address")
+        mock_generate_mac.return_value = generated_mac_address
         device = lxd_module.get_lxd_nic_device(interface)
         self.assertEqual(
             {
                 "name": interface.ifname,
+                "hwaddr": generated_mac_address,
                 "parent": interface.attach_name,
                 "nictype": "sriov",
                 "type": "nic",
@@ -1041,10 +1105,14 @@ class TestGetNicDevice(MAASTestCase):
             attach_type=InterfaceAttachType.SRIOV,
             attach_vlan=42,
         )
+        generated_mac_address = generate_mac_address()
+        mock_generate_mac = self.patch(lxd_module, "generate_mac_address")
+        mock_generate_mac.return_value = generated_mac_address
         device = lxd_module.get_lxd_nic_device(interface)
         self.assertEqual(
             {
                 "name": interface.ifname,
+                "hwaddr": generated_mac_address,
                 "parent": interface.attach_name,
                 "nictype": "sriov",
                 "type": "nic",

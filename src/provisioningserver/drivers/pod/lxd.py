@@ -43,6 +43,7 @@ from provisioningserver.utils import (
 )
 from provisioningserver.utils.ipaddr import get_vid_from_ifname
 from provisioningserver.utils.lxd import lxd_cpu_speed
+from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("drivers.pod.lxd")
@@ -102,6 +103,8 @@ def get_lxd_nic_device(interface):
         "nictype": nictype,
         "type": "nic",
     }
+    if interface.attach_type == InterfaceAttachType.SRIOV:
+        device["hwaddr"] = generate_mac_address()
     if interface.attach_vlan is not None:
         device["vlan"] = str(interface.attach_vlan)
     return device
@@ -264,38 +267,48 @@ class LXDPodDriver(PodDriver):
         # Discover interfaces.
         interfaces = []
         boot = True
+        config_mac_address = {}
         for configuration in expanded_config:
             if configuration.endswith("hwaddr"):
                 mac = expanded_config[configuration]
                 name = configuration.split(".")[1]
-                if "network" in expanded_devices[name]:
-                    # Try finding the nictype from the networks.
-                    # XXX: This should work for "bridge" networks,
-                    #      but will most likely produce weird results for the
-                    #      other types.
-                    network = await deferToThread(
-                        client.networks.get, expanded_devices[name]["network"]
-                    )
-                    attach_type = network.type
-                    attach_name = network.name
-                else:
-                    attach_name = expanded_devices[name]["parent"]
-                    nictype = expanded_devices[name]["nictype"]
-                    attach_type = (
-                        InterfaceAttachType.BRIDGE
-                        if nictype == "bridged"
-                        else nictype
-                    )
-                interfaces.append(
-                    DiscoveredMachineInterface(
-                        mac_address=mac,
-                        vid=get_vid_from_ifname(name),
-                        boot=boot,
-                        attach_type=attach_type,
-                        attach_name=attach_name,
-                    )
+                config_mac_address[name] = mac
+        for name, device in expanded_devices.items():
+            if device["type"] != "nic":
+                continue
+            device = expanded_devices[name]
+            if "network" in device:
+                # Try finding the nictype from the networks.
+                # XXX: This should work for "bridge" networks,
+                #      but will most likely produce weird results for the
+                #      other types.
+                network = await deferToThread(
+                    client.networks.get, device["network"]
                 )
-                boot = False
+                attach_type = network.type
+                attach_name = network.name
+            else:
+                attach_name = device["parent"]
+                nictype = device["nictype"]
+                attach_type = (
+                    InterfaceAttachType.BRIDGE
+                    if nictype == "bridged"
+                    else nictype
+                )
+            mac = device.get("hwaddr")
+            if mac is None:
+                mac = config_mac_address.get(name)
+
+            interfaces.append(
+                DiscoveredMachineInterface(
+                    mac_address=mac,
+                    vid=int(device.get("vlan", get_vid_from_ifname(name))),
+                    boot=boot,
+                    attach_type=attach_type,
+                    attach_name=attach_name,
+                )
+            )
+            boot = False
 
         # LXD uses different suffixes to store memory so make
         # sure we convert to MiB, which is what MAAS uses.

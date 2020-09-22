@@ -796,11 +796,20 @@ class TestPod(MAASServerTestCase):
             storage_pool=storage_pool,
         )
 
-    def make_discovered_interface(self, mac_address=None):
+    def make_discovered_interface(
+        self,
+        mac_address=None,
+        attach_name=None,
+        attach_type=InterfaceAttachType.MACVLAN,
+        vid=0,
+    ):
         if mac_address is None:
             mac_address = factory.make_mac_address()
         return DiscoveredMachineInterface(
             mac_address=mac_address,
+            attach_name=attach_name,
+            attach_type=attach_type,
+            vid=vid,
             tags=[factory.make_name("tag") for _ in range(3)],
         )
 
@@ -1527,6 +1536,77 @@ class TestPod(MAASServerTestCase):
         self.assertThat(interfaces["eth0"].ip_addresses.count(), Equals(1))
         self.assertThat(interfaces["eth1"].ip_addresses.count(), Equals(1))
         self.assertThat(interfaces["eth2"].ip_addresses.count(), Equals(1))
+
+    def test_create_machine_sriov_vlan(self):
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        controller = factory.make_RackController()
+        vlan1 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True, primary_rack=controller
+        )
+        vlan2 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False, primary_rack=controller
+        )
+        factory.make_Subnet(vlan=vlan1)
+        subnet1 = factory.make_Subnet(vlan=vlan1)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        eth0 = factory.make_Interface(
+            node=controller, vlan=vlan1, sriov_max_vf=10
+        )
+        factory.make_Interface(
+            node=controller,
+            vlan=vlan2,
+            iftype=INTERFACE_TYPE.VLAN,
+            parents=[eth0],
+            subnet=subnet2,
+        )
+        ip = factory.make_StaticIPAddress(subnet=subnet1, interface=eth0)
+        discovered_interfaces = [
+            # An SR-IOV interface with no VLAN tagging.
+            self.make_discovered_interface(
+                attach_name=eth0.name, attach_type=InterfaceAttachType.SRIOV
+            ),
+            # An SR-IOV interface with automatic VLAN tagging.
+            self.make_discovered_interface(
+                attach_name=eth0.name,
+                attach_type=InterfaceAttachType.SRIOV,
+                vid=vlan2.vid,
+            ),
+            # An SR-IOV interface with no corresponding host interface that was
+            # created by an lxd profile.
+            self.make_discovered_interface(
+                attach_name=eth0.name,
+                attach_type=InterfaceAttachType.SRIOV,
+                vid=vlan1.vid + vlan2.vid,
+            ),
+        ]
+        discovered_machine = self.make_discovered_machine(
+            interfaces=discovered_interfaces
+        )
+
+        pod = factory.make_Pod(ip_address=ip)
+        # Skip commissioning on creation so that we can test that VLANs
+        # are properly set based on the interface constraint.
+        machine = pod.create_machine(
+            discovered_machine,
+            factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                f"1:vlan=id:{vlan1.id};1:vlan=id:{vlan2.id}"
+            ),
+        )
+        interfaces = {
+            interface.name: interface
+            for interface in machine.interface_set.all()
+        }
+        self.assertCountEqual(["eth0", "eth1", "eth2"], interfaces.keys())
+        self.assertEqual(vlan1, interfaces["eth0"].vlan)
+        self.assertEqual(1, interfaces["eth0"].ip_addresses.count())
+        self.assertEqual(vlan2, interfaces["eth1"].vlan)
+        self.assertEqual(1, interfaces["eth1"].ip_addresses.count())
+        self.assertIsNone(interfaces["eth2"].vlan)
+        self.assertEqual(0, interfaces["eth2"].ip_addresses.count())
 
     def test_create_machine_uses_default_ifnames_if_discovered_mismatch(self):
         """This makes sure that if the discovered machine comes back with
