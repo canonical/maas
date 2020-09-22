@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -42,6 +42,7 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     release_a_newer_than_b,
 )
+from provisioningserver.drivers.power.ipmi import IPMI_PRIVILEGE_LEVEL_CHOICES
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.url import splithost
 
@@ -865,17 +866,28 @@ CONFIG_ITEMS = {
         "form_kwargs": {
             "label": "MAAS IPMI privilege level",
             "required": False,
-            "choices": [
-                ("ADMIN", "Administrator"),
-                ("OPERATOR", "Operator"),
-                ("USER", "User"),
-            ],
+            "choices": IPMI_PRIVILEGE_LEVEL_CHOICES,
             "error_messages": {
                 "invalid_choice": "Valid choices are ADMIN, OPERATOR, or USER",
             },
             "help_text": (
                 "The default IPMI privilege level to use when creating the "
                 "MAAS user and talking IPMI BMCs"
+            ),
+        },
+    },
+    "maas_auto_ipmi_k_g_bmc_key": {
+        "default": "",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "The IPMI K_g key to set during BMC configuration.",
+            "required": False,
+            "help_text": (
+                "This IPMI K_g BMC key is used to encrypt all IPMI traffic to "
+                "a BMC. Once set, all clients will REQUIRE this key upon being "
+                "commissioned. Any current machines that were previously "
+                "commissioned will not require this key until they are "
+                "recommissioned."
             ),
         },
     },

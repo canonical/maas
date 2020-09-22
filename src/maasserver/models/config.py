@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items."""
@@ -125,6 +125,7 @@ def get_default_config():
         "enlist_commissioning": True,
         "maas_auto_ipmi_user": "maas",
         "maas_auto_ipmi_user_privilege_level": "ADMIN",
+        "maas_auto_ipmi_k_g_bmc_key": "",
         # VMware vCenter crednetials
         "vcenter_server": "",
         "vcenter_username": "",
