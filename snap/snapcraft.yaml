@@ -227,6 +227,8 @@ parts:
   offline-docs:
     plugin: make
     source: src/maas-offline-docs
+    make-parameters:
+      - BUILD_TYPE=snap
 
   machine-resources:
     plugin: make
