@@ -163,11 +163,15 @@ def _parse_interfaces(node, data):
         for port in card.get("ports", []):
             process_port(card, port)
 
-        # entry can be present but None
-        vfs = card.get("sriov", {}).get("vfs") or {}
-        for vf in vfs:
-            for vf_port in vf.get("ports", []):
-                process_port(vf, vf_port)
+        # don't sync VFs for deployed machines, MAAS has no way of representing
+        # VFs, since they would persist when the machine is released and break
+        # subsequent deploys.
+        if node.status != NODE_STATUS.DEPLOYED:
+            # entry can be present but None
+            vfs = card.get("sriov", {}).get("vfs") or {}
+            for vf in vfs:
+                for vf_port in vf.get("ports", []):
+                    process_port(vf, vf_port)
 
     return interfaces
 
@@ -398,7 +402,6 @@ def update_node_network_information(node, data, numa_nodes):
                 storage=False, network=True
             )
 
-    if not (node.status == NODE_STATUS.DEPLOYED and node.is_pod):
         # Don't delete interfaces on Pods. These may be things like
         # bonds or bridges.
         Interface.objects.filter(node=node).exclude(
@@ -506,7 +509,7 @@ def _process_lxd_resources(node, data):
     # Network interfaces
     # LP: #1849355 -- Don't update the node network information
     # for controllers during commissioning as this conflicts with
-    # maassesrver.models.node:Controller.update_interfaces().
+    # maasserver.models.node:Controller.update_interfaces().
     if not node.is_controller:
         update_node_network_information(node, data, numa_nodes)
     # Storage.
