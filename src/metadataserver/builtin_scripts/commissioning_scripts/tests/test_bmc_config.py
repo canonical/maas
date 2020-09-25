@@ -8,7 +8,7 @@ import io
 import os
 import random
 import re
-from subprocess import CalledProcessError, DEVNULL
+from subprocess import CalledProcessError, DEVNULL, PIPE, TimeoutExpired
 from unittest.mock import call, MagicMock
 
 import yaml
@@ -161,13 +161,20 @@ class TestIPMI(MAASTestCase):
     def test_make_ipmi_user_settings(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
+        self.ipmi._privilege_level, privilege_level = random.choice(
+            [
+                ("USER", "User"),
+                ("OPERATOR", "Operator"),
+                ("ADMIN", "Administrator"),
+            ]
+        )
         self.assertEqual(
             OrderedDict(
                 (
                     ("Username", username),
                     ("Password", password),
                     ("Enable_User", "Yes"),
-                    ("Lan_Privilege_Limit", "Administrator"),
+                    ("Lan_Privilege_Limit", privilege_level),
                     ("Lan_Enable_IPMI_Msgs", "Yes"),
                 )
             ),
@@ -406,12 +413,144 @@ class TestIPMI(MAASTestCase):
             ),
         )
 
+    def test_config_cipher_suite_id(self):
+        mock_run = self.patch(bmc_config, "run")
+        mock_run.return_value.stdout.decode.return_value = """
+Section Rmcpplus_Conf_Privilege
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_0           Administrator
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_1           Administrator
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_2           Administrator
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_3           Unused
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_6           Administrator
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_7           Administrator
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_8           Unused
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_11          Administrator
+        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
+        Maximum_Privilege_Cipher_Suite_Id_12          Unused
+EndSection
+"""
+        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+
+        self.ipmi._config_cipher_suite_id()
+
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                ["bmc-config", "--checkout", "-S", "Rmcpplus_Conf_Privilege"],
+                stdout=PIPE,
+                timeout=60,
+            ),
+        )
+        self.assertThat(
+            mock_bmc_set,
+            MockCallsMatch(
+                *(
+                    [
+                        call(
+                            "Rmcpplus_Conf_Privilege:"
+                            "Maximum_Privilege_Cipher_Suite_Id_3",
+                            "Administrator",
+                        ),
+                    ]
+                    + [
+                        call(
+                            "Rmcpplus_Conf_Privilege:"
+                            f"Maximum_Privilege_Cipher_Suite_Id_{i}",
+                            "Unused",
+                        )
+                        for i in range(0, 13)
+                        if i not in [3, 8, 12, 4, 5, 9, 10]
+                    ]
+                )
+            ),
+        )
+        self.assertEqual("3", self.ipmi._cipher_suite_id)
+
+    def test_config_kg_set(self):
+        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        kg = factory.make_name("kg")
+        self.ipmi._kg = kg
+
+        self.ipmi._config_kg()
+
+        self.assertThat(
+            mock_bmc_set, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G", kg)
+        )
+        self.assertEqual(kg, self.ipmi._kg)
+
+    def test_config_kg_set_ignores_error(self):
+        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        cmd = [factory.make_name("cmd")]
+        exception = random.choice(
+            [
+                CalledProcessError(cmd=cmd, returncode=random.randint(1, 255)),
+                TimeoutExpired(cmd=cmd, timeout=random.randint(1, 100)),
+            ]
+        )
+        mock_bmc_set.side_effect = exception
+        kg = factory.make_name("kg")
+        self.ipmi._kg = kg
+
+        self.assertRaises(type(exception), self.ipmi._config_kg)
+
+        self.assertThat(
+            mock_bmc_set, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G", kg)
+        )
+        self.assertEqual("", self.ipmi._kg)
+
+    def test_config_kg_detect(self):
+        kg = factory.make_name("kg")
+        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
+        mock_bmc_get.return_value = f"""
+Section Lan_Conf_Security_Keys
+        ## Give string or blank to clear. Max 20 bytes, prefix with 0x to enter hex
+        K_G                                           {kg}
+EndSection
+"""
+
+        self.ipmi._config_kg()
+
+        self.assertThat(
+            mock_bmc_get, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G")
+        )
+        self.assertEqual(kg, self.ipmi._kg)
+
+    def test_config_kg_detects_nothing(self):
+        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
+        mock_bmc_get.return_value = """
+Section Lan_Conf_Security_Keys
+        ## Give string or blank to clear. Max 20 bytes, prefix with 0x to enter hex
+        K_G                                           0x0000000000000000000000000000000000000000
+EndSection
+"""
+
+        self.ipmi._config_kg()
+
+        self.assertThat(
+            mock_bmc_get, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G")
+        )
+        self.assertEqual("", self.ipmi._kg)
+
     def test_configure(self):
         mock_set_ipmi_lan_channel_settings = self.patch(
             self.ipmi, "_set_ipmi_lan_channel_settings"
         )
+        mock_config_cipher_suite_id = self.patch(
+            self.ipmi, "_config_cipher_suite_id"
+        )
+        mock_config_kg = self.patch(self.ipmi, "_config_kg")
         self.ipmi.configure()
         self.assertThat(mock_set_ipmi_lan_channel_settings, MockCalledOnce())
+        self.assertThat(mock_config_cipher_suite_id, MockCalledOnce())
+        self.assertThat(mock_config_kg, MockCalledOnce())
 
     def test_get_bmc_ipv4(self):
         ip = factory.make_ipv4_address()
@@ -546,6 +685,9 @@ class TestIPMI(MAASTestCase):
                 "power_user": self.ipmi.username,
                 "power_driver": "LAN_2_0",
                 "power_boot_type": "efi",
+                "k_g": "",
+                "cipher_suite_id": "",
+                "privilege_level": "",
             },
             self.ipmi.get_credentials(),
         )
@@ -568,6 +710,9 @@ class TestIPMI(MAASTestCase):
                 "power_user": self.ipmi.username,
                 "power_driver": "LAN",
                 "power_boot_type": "auto",
+                "k_g": "",
+                "cipher_suite_id": "",
+                "privilege_level": "",
             },
             self.ipmi.get_credentials(),
         )

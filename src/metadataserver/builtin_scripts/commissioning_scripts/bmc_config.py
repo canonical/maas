@@ -49,6 +49,7 @@ from subprocess import (
     check_call,
     check_output,
     DEVNULL,
+    PIPE,
     run,
     TimeoutExpired,
 )
@@ -128,9 +129,19 @@ class IPMI(BMCConfig):
     def __str__(self):
         return "IPMI"
 
-    def __init__(self, username=None, password=None, **kwargs):
+    def __init__(
+        self,
+        username=None,
+        password=None,
+        ipmi_k_g="",
+        ipmi_privilege_level="",
+        **kwargs
+    ):
         self.username = username
         self.password = password
+        self._kg = ipmi_k_g
+        self._cipher_suite_id = ""
+        self._privilege_level = ipmi_privilege_level
 
     def _bmc_get(self, key):
         """Fetch the output of a key via bmc-config checkout."""
@@ -216,6 +227,19 @@ class IPMI(BMCConfig):
             letters = string.ascii_letters + string.digits
             return "".join([random.choice(letters) for _ in range(length)])
 
+    def _get_ipmi_priv(self):
+        """Map ipmitool name to IPMI spec name
+
+        freeipmi-tools and the IPMI protocol use different names for privilege
+        levels. MAAS stores the IPMI privilege level using the freeipmi-tools
+        form as it interacts with ipmipower frequently.
+        """
+        return {
+            "USER": "User",
+            "OPERATOR": "Operator",
+            "ADMIN": "Administrator",
+        }.get(self._privilege_level, "Administrator")
+
     def _make_ipmi_user_settings(self, username, password):
         """Factory for IPMI user settings."""
         # Some BMCs care about the order these settings are applied in.
@@ -230,7 +254,7 @@ class IPMI(BMCConfig):
                 ("Username", username),
                 ("Password", password),
                 ("Enable_User", "Yes"),
-                ("Lan_Privilege_Limit", "Administrator"),
+                ("Lan_Privilege_Limit", self._get_ipmi_priv()),
                 ("Lan_Enable_IPMI_Msgs", "Yes"),
             )
         )
@@ -280,7 +304,8 @@ class IPMI(BMCConfig):
             self.username = "maas"
         user_number = self._pick_user_number(self.username)
         print('INFO: Configuring IPMI BMC user "%s"...' % self.username)
-        print("INFO: IPMI user_number - %s" % user_number)
+        print("INFO: IPMI user number - %s" % user_number)
+        print("INFO: IPMI user privilege level - %s" % self._get_ipmi_priv())
         if not self.password:
             passwords = [
                 self._generate_random_password(),
@@ -325,8 +350,138 @@ class IPMI(BMCConfig):
                         "BMC may be unavailable over the network!" % mode
                     )
 
+    def _config_cipher_suite_id(self):
+        print("INFO: Configuring IPMI cipher suite ids...")
+        proc = run(
+            ["bmc-config", "--checkout", "-S", "Rmcpplus_Conf_Privilege"],
+            stdout=PIPE,
+            timeout=60,
+        )
+        output = proc.stdout.decode()
+        # Find all ciphers suites the BMC supports. Section 22.15.2 of the IPMI
+        # 2.0 spec reserves cipher ids >= 20 for OEM use, don't touch them.
+        ciphers = dict(
+            re.findall(
+                r"Maximum_Privilege_Cipher_Suite_Id_(\d|1\d)\s+(.*)",
+                output,
+                re.MULTILINE,
+            )
+        )
+        # First find the most secure cipher suite id MAAS will use to
+        # communicate to the BMC with.
+        # 3  - HMAC-SHA1::HMAC-SHA1-96::AES-CBC-128
+        # 8  - HMAC-MD5::HMAC-MD5-128::AES-CBC-128
+        # 12 - HMAC-MD5::MD5-128::AES-CBC-128
+        # 17 - HMAC-SHA256::HMAC_SHA256_128::AES-CBC-128
+        # This is not in order as MAAS prefers to use the most secure cipher
+        # available.
+        for id in ["17", "3", "8", "12"]:
+            if id not in ciphers:
+                # Not all BMCs support 17, all should support 3.
+                continue
+            elif not self._cipher_suite_id:
+                status = ciphers[id]
+                if status != "Administrator":
+                    print(
+                        'INFO: Enabling IPMI cipher suite id "%s" '
+                        "for MAAS use..." % id
+                    )
+                    try:
+                        self._bmc_set(
+                            "Rmcpplus_Conf_Privilege:"
+                            "Maximum_Privilege_Cipher_Suite_Id_%s" % id,
+                            "Administrator",
+                        )
+                    except (CalledProcessError, TimeoutExpired):
+                        # Some machines will show what ciphers are available
+                        # but not allow their value to be changed. The ARM64
+                        # machine in the MAAS CI is like this.
+                        print(
+                            "WARNING: Unable to enable secure IPMI cipher "
+                            'suite id "%s"!' % id
+                        )
+                self._cipher_suite_id = id
+            # Delete all secure cipher suites from the dictionary so they
+            # aren't disabled below. This ensures we don't break existing
+            # tools/scripts in the environment. 17 is more secure but 3 is
+            # the default freeipmi-tools use.
+            del ciphers[id]
+
+        if self._cipher_suite_id:
+            print(
+                'INFO: MAAS will use IPMI cipher suite id "%s" for '
+                "BMC communication" % self._cipher_suite_id
+            )
+        else:
+            # Some BMC's don't allow this to be viewed or configured, such
+            # as the PPC64 machine in the MAAS CI.
+            print(
+                "WARNING: No IPMI cipher suite found! "
+                "MAAS will use freeipmi-tools default."
+            )
+
+        # Disable insecure protocols. See http://fish2.com/ipmi/bp.pdf
+        # If one of these ciphers is needed you can write a custom commissioning
+        # script to reenable them.
+        for id, status in ciphers.items():
+            if status != "Unused":
+                print(
+                    'INFO: Disabling insecure IPMI cipher suite id "%s"' % id
+                )
+                try:
+                    self._bmc_set(
+                        "Rmcpplus_Conf_Privilege:"
+                        "Maximum_Privilege_Cipher_Suite_Id_%s" % id,
+                        "Unused",
+                    )
+                except (CalledProcessError, TimeoutExpired):
+                    # Some machines will show what ciphers are available
+                    # but not allow their value to be changed. The ARM64
+                    # machine in the MAAS CI is like this.
+                    print(
+                        "WARNING: Unable to disable insecure IPMI cipher "
+                        'suite id "%s"!' % id
+                    )
+
+    def _config_kg(self):
+        if self._kg:
+            print("INFO: Setting user given IPMI K_g BMC key...")
+            try:
+                self._bmc_set("Lan_Conf_Security_Keys:K_G", self._kg)
+            except (CalledProcessError, TimeoutExpired):
+                print(
+                    "ERROR: Unable to set usergiven BMC key on device!",
+                    file=sys.stderr,
+                )
+                # If the kg failed to be set don't return a kg to MAAS.
+                self._kg = ""
+                # If the user passes a BMC key and its unable to be set fail
+                # the script as the system can't be secured as requested. Raise
+                # the exception to help with debug but this is most likely a
+                # BMC firmware issue.
+                raise
+        else:
+            # Check if the IPMI K_g BMC key was already set and capture it.
+            output = self._bmc_get("Lan_Conf_Security_Keys:K_G")
+            if output:
+                m = re.search(r"K_G\s+(?P<kg>.+)$", output, re.MULTILINE)
+                if m:
+                    kg = m.group("kg")
+                    # Hex 0 means no key was set, check for empty string as
+                    # well just to be sure.
+                    if kg and not re.search("^0x0+$", kg):
+                        print("INFO: Found existing K_g BMC key!")
+                        self._kg = kg
+        if not self._kg:
+            print(
+                "WARNING: No K_g BMC key found or configured, "
+                "communication with BMC will not use a session key!"
+            )
+
     def configure(self):
         self._set_ipmi_lan_channel_settings()
+        self._config_cipher_suite_id()
+        self._config_kg()
 
     def _get_bmc_ip(self):
         """Return the current IP of the BMC, returns none if unavailable."""
@@ -392,13 +547,16 @@ class IPMI(BMCConfig):
             boot_type = "efi"
         else:
             boot_type = "auto"
-        print("INFO: Boot type - %s" % boot_type)
+        print("INFO: IPMI boot type - %s" % boot_type)
         return {
             "power_address": self.get_bmc_ip(),
             "power_user": self.username,
             "power_pass": self.password,
             "power_driver": ipmi_version,
             "power_boot_type": boot_type,
+            "k_g": self._kg,
+            "cipher_suite_id": self._cipher_suite_id,
+            "privilege_level": self._privilege_level,
         }
 
 
@@ -647,6 +805,7 @@ def detect_and_configure(args, bmc_config_path):
                         **bmc.get_credentials(),
                     },
                     f,
+                    default_flow_style=False,
                 )
             return
     print("INFO: No BMC automatically detected!")
@@ -659,8 +818,8 @@ def main():
     parser.add_argument(
         "-u",
         "--username",
-        default="maas",
         type=str,
+        default="maas",
         help="Specify the BMC username to create.",
     )
     parser.add_argument(
@@ -668,6 +827,18 @@ def main():
         "--password",
         type=str,
         help="Specify the BMC password to use with newly created user.",
+    )
+    parser.add_argument(
+        "--ipmi-k-g",
+        type=str,
+        default="",
+        help="The IPMI K_G BMC Key to set if IPMI is detected",
+    )
+    parser.add_argument(
+        "--ipmi-privilege-level",
+        choices=("USER", "OPERATOR", "ADMIN"),
+        default="ADMIN",
+        help="The IPMI priviledge level to create the MAAS user as.",
     )
     args = parser.parse_args()
 
@@ -690,27 +861,29 @@ def main():
     try:
         check_call(["systemd-detect-virt", "-q"], timeout=60)
     except CalledProcessError:
-        print("INFO: Loading IPMI kernel modules...")
-        for module in [
-            "ipmi_msghandler",
-            "ipmi_devintf",
-            "ipmi_si",
-            "ipmi_ssif",
-        ]:
-            # The IPMI modules will fail to load if loaded on unsupported
-            # hardware.
-            try:
-                run(["sudo", "-E", "modprobe", module], timeout=60)
-            except TimeoutExpired:
-                pass
-        try:
-            run(["sudo", "-E", "udevadm", "settle"], timeout=60)
-        except TimeoutExpired:
-            pass
-        detect_and_configure(args, bmc_config_path)
+        pass
     else:
         print("INFO: Running on virtual machine, skipping")
         return exit_skipped()
+
+    print("INFO: Loading IPMI kernel modules...")
+    for module in [
+        "ipmi_msghandler",
+        "ipmi_devintf",
+        "ipmi_si",
+        "ipmi_ssif",
+    ]:
+        # The IPMI modules will fail to load if loaded on unsupported
+        # hardware.
+        try:
+            run(["sudo", "-E", "modprobe", module], timeout=60)
+        except TimeoutExpired:
+            pass
+    try:
+        run(["sudo", "-E", "udevadm", "settle"], timeout=60)
+    except TimeoutExpired:
+        pass
+    detect_and_configure(args, bmc_config_path)
 
 
 if __name__ == "__main__":
