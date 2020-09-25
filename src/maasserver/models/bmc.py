@@ -892,6 +892,7 @@ class Pod(BMC):
             creation_type=creation_type,
             pool=pool,
             zone=zone,
+            bios_boot_method=discovered_machine.bios_boot_method,
             **kwargs,
         )
         machine.bmc = self

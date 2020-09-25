@@ -254,6 +254,9 @@ class DiscoveredMachine(AttrHelperMixin):
         converter=converter_list(int), default=attr.Factory(list)
     )
     hugepages_backed = attr.ib(converter=bool, default=False)
+    bios_boot_method = attr.ib(
+        converter=converter_obj(str, optional=True), default=None
+    )
 
 
 @attr.s

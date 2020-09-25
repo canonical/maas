@@ -472,6 +472,7 @@ class TestDiscoveredClasses(MAASTestCase):
                                     "tags": Equals(machine.tags),
                                     "hugepages_backed": Equals(True),
                                     "pinned_cores": Equals([]),
+                                    "bios_boot_method": Is(None),
                                 }
                             )
                             for machine in machines

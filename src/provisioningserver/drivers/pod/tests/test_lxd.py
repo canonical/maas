@@ -443,6 +443,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
         self.assertEqual(mock_machine.name, discovered_machine.hostname)
+        self.assertEqual("uefi", discovered_machine.bios_boot_method)
 
         self.assertEqual(
             kernel_to_debian_architecture(mock_machine.architecture),

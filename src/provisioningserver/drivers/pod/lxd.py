@@ -338,6 +338,8 @@ class LXDPodDriver(PodDriver):
             tags=[],
             hugepages_backed=hugepages_backed,
             pinned_cores=pinned_cores,
+            # LXD VMs use only UEFI.
+            bios_boot_method="uefi",
         )
 
     def get_discovered_pod_storage_pool(self, storage_pool):

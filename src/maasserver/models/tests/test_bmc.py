@@ -42,6 +42,7 @@ from maasserver.models.bmc import (
     Pod,
 )
 from maasserver.models.fabric import Fabric
+from maasserver.models.filesystem import Filesystem
 from maasserver.models.interface import Interface
 from maasserver.models.iscsiblockdevice import (
     get_iscsi_target,
@@ -1270,6 +1271,53 @@ class TestPod(MAASServerTestCase):
         pod = factory.make_Pod(pool=pool)
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertEqual(pool, machine.pool)
+
+    def test_create_machine_default_bios_boot_method(self):
+        discovered_machine = self.make_discovered_machine()
+        discovered_machine.bios_boot_method = None
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=True,
+            primary_rack=factory.make_RackController(),
+        )
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(), skip_commissioning=True
+        )
+        self.assertIsNone(machine.bios_boot_method)
+        mount_points = [
+            fs.mount_point
+            for fs in Filesystem.objects.filter(
+                partition__partition_table__block_device__node=machine
+            ).all()
+        ]
+        self.assertEqual(["/"], mount_points)
+
+    def test_create_machine_uefi_bios_boot_method(self):
+        discovered_machine = self.make_discovered_machine()
+        discovered_machine.bios_boot_method = "uefi"
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=True,
+            primary_rack=factory.make_RackController(),
+        )
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(), skip_commissioning=True
+        )
+        self.assertEqual("uefi", machine.bios_boot_method)
+        mount_points = [
+            fs.mount_point
+            for fs in Filesystem.objects.filter(
+                partition__partition_table__block_device__node=machine
+            ).all()
+        ]
+        self.assertEqual(["/", "/boot/efi"], sorted(mount_points))
 
     def test_create_machine_sets_zone(self):
         discovered_machine = self.make_discovered_machine()
