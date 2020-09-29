@@ -9,8 +9,10 @@ import random
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.forms.parameters import ParametersForm
+from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.drivers.power.ipmi import IPMI_PRIVILEGE_LEVEL_CHOICES
 
 
 class TestParametersForm(MAASServerTestCase):
@@ -1110,6 +1112,42 @@ class TestParametersForm(MAASServerTestCase):
             default, form.cleaned_data["input"][0][param_type]["value"]
         )
 
+    def test_input_string_default_maas_config(self):
+        maas_auto_ipmi_user = factory.make_name("maas_auto_ipmi_user")
+        Config.objects.set_config("maas_auto_ipmi_user", maas_auto_ipmi_user)
+        script = factory.make_Script(
+            parameters={"maas_auto_ipmi_user": {"type": "string"}}
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            maas_auto_ipmi_user,
+            form.cleaned_data["input"][0]["maas_auto_ipmi_user"]["value"],
+        )
+
+    def test_input_password_default_maas_config(self):
+        maas_auto_ipmi_k_g_bmc_key = factory.make_name(
+            "maas_auto_ipmi_k_g_bmc_key"
+        )
+        Config.objects.set_config(
+            "maas_auto_ipmi_k_g_bmc_key", maas_auto_ipmi_k_g_bmc_key
+        )
+        script = factory.make_Script(
+            parameters={"maas_auto_ipmi_k_g_bmc_key": {"type": "password"}}
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            maas_auto_ipmi_k_g_bmc_key,
+            form.cleaned_data["input"][0]["maas_auto_ipmi_k_g_bmc_key"][
+                "value"
+            ],
+        )
+
     def test_input_string_required(self):
         # String and password fields are identical from the forms POV.
         param_type = random.choice(["string", "password"])
@@ -1213,6 +1251,33 @@ class TestParametersForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         self.assertEqual(
             default, form.cleaned_data["input"][0]["choice"]["value"]
+        )
+
+    def test_input_choice_default_maas_config(self):
+        maas_auto_ipmi_user_privilege_level = factory.pick_choice(
+            IPMI_PRIVILEGE_LEVEL_CHOICES
+        )
+        Config.objects.set_config(
+            "maas_auto_ipmi_user_privilege_level",
+            maas_auto_ipmi_user_privilege_level,
+        )
+        script = factory.make_Script(
+            parameters={
+                "maas_auto_ipmi_user_privilege_level": {
+                    "type": "choice",
+                    "choices": IPMI_PRIVILEGE_LEVEL_CHOICES,
+                }
+            }
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            maas_auto_ipmi_user_privilege_level,
+            form.cleaned_data["input"][0][
+                "maas_auto_ipmi_user_privilege_level"
+            ]["value"],
         )
 
     def test_input_choice_required(self):

@@ -26,6 +26,23 @@
 # description: Detect and configure BMC credentials for MAAS use.
 # tags: bmc-config
 # script_type: commissioning
+# parameters:
+#   maas_auto_ipmi_user:
+#     type: string
+#     argument_format: --username={input}
+#   maas_auto_ipmi_user_password:
+#     type: password
+#     argument_format: --password={input}
+#   maas_auto_ipmi_k_g_bmc_key:
+#     type: password
+#     argument_format: --ipmi-k-g={input}
+#   maas_auto_ipmi_user_privilege_level:
+#     type: choice
+#     choices:
+#       - [USER, User]
+#       - [OPERATOR, Operator]
+#       - [ADMIN, Administrator]
+#     argument_format: --ipmi-privilege-level={input}
 # packages:
 #   apt:
 #     - freeipmi-tools

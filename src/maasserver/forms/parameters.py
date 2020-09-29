@@ -14,9 +14,20 @@ from django.db.models import Q
 from django.forms import Field, Form
 
 from maasserver.enum import NODE_STATUS
+from maasserver.models import Config
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.mac import is_mac
+
+# When a Script has a parameter with the same name as one of these
+# MAAS configuration options the default value will be mapped to
+# the value of the MAAS configuration option. 30-maas-01-bmc-config
+# uses this.
+DEFAULTS_FROM_MAAS_CONFIG = {
+    "maas_auto_ipmi_user",
+    "maas_auto_ipmi_user_privilege_level",
+    "maas_auto_ipmi_k_g_bmc_key",
+}
 
 
 class ParametersForm(Form):
@@ -298,6 +309,15 @@ class ParametersForm(Form):
         # Paramaters which may require multiple ScriptResults(storage)
         multi_result_params = {}
 
+        default_from_maas_config = DEFAULTS_FROM_MAAS_CONFIG.union(
+            input.keys()
+        )
+        default_defaults = (
+            Config.objects.get_configs(default_from_maas_config)
+            if default_from_maas_config
+            else {}
+        )
+
         # Split user input into params which need one ScriptResult per
         # param and one which may need multiple ScriptResults per param.
         for param_name, value in input.items():
@@ -345,7 +365,9 @@ class ParametersForm(Form):
                         result_params[param_name] = copy.deepcopy(param)
                         result_params[param_name]["value"] = default
                 else:
-                    default = param.get("default", "")
+                    default = param.get(
+                        "default", default_defaults.get(param_name, "")
+                    )
                     if not default and param.get("required", False):
                         set_form_error(self, param_name, "Field is required")
                     elif default:
