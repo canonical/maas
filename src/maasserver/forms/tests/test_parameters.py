@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Parameters form."""
@@ -245,8 +245,8 @@ class TestParametersForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 "parameters": [
-                    "%s: type must be either storage, interface, url, or "
-                    "runtime" % unsupported_type
+                    "%s: type must be either storage, interface, url, "
+                    "runtime, string, password, or choice" % unsupported_type
                 ]
             },
             form.errors,
@@ -1060,3 +1060,205 @@ class TestParametersForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertDictEqual({"url": ["Invalid URL"]}, form.errors)
+
+    def test_input_string(self):
+        # String and password fields are identical from the forms POV.
+        param_type = random.choice(["string", "password"])
+        script = factory.make_Script(
+            parameters={param_type: {"type": param_type}}
+        )
+        input = factory.make_string()
+
+        form = ParametersForm(
+            data={param_type: input}, script=script, node=factory.make_Node()
+        )
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            input, form.cleaned_data["input"][0][param_type]["value"]
+        )
+
+    def test_input_string_int(self):
+        # String and password fields are identical from the forms POV.
+        param_type = random.choice(["string", "password"])
+        script = factory.make_Script(
+            parameters={param_type: {"type": param_type}}
+        )
+        input = random.randint(0, 100)
+
+        form = ParametersForm(
+            data={param_type: input}, script=script, node=factory.make_Node()
+        )
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            input, form.cleaned_data["input"][0][param_type]["value"]
+        )
+
+    def test_input_string_default(self):
+        # String and password fields are identical from the forms POV.
+        param_type = random.choice(["string", "password"])
+        default = factory.make_string()
+        script = factory.make_Script(
+            parameters={param_type: {"type": param_type, "default": default}}
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            default, form.cleaned_data["input"][0][param_type]["value"]
+        )
+
+    def test_input_string_required(self):
+        # String and password fields are identical from the forms POV.
+        param_type = random.choice(["string", "password"])
+        script = factory.make_Script(
+            parameters={param_type: {"type": param_type, "required": True}}
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual({param_type: ["Field is required"]}, form.errors)
+
+    def test_input_string_min(self):
+        # String and password fields are identical from the forms POV.
+        param_type = random.choice(["string", "password"])
+        script = factory.make_Script(
+            parameters={param_type: {"type": param_type, "min": 30}}
+        )
+
+        form = ParametersForm(
+            data={param_type: factory.make_string()},
+            script=script,
+            node=factory.make_Node(),
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual({param_type: ["Input too short"]}, form.errors)
+
+    def test_input_string_max(self):
+        # String and password fields are identical from the forms POV.
+        param_type = random.choice(["string", "password"])
+        script = factory.make_Script(
+            parameters={param_type: {"type": param_type, "max": 3}}
+        )
+
+        form = ParametersForm(
+            data={param_type: factory.make_string()},
+            script=script,
+            node=factory.make_Node(),
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual({param_type: ["Input too long"]}, form.errors)
+
+    def test_input_choice(self):
+        # Validates a choice parameter can be made using a list of strings.
+        choices = [factory.make_name("choice") for _ in range(3)]
+        script = factory.make_Script(
+            parameters={"choice": {"type": "choice", "choices": choices}}
+        )
+
+        choice = random.choice(choices)
+        form = ParametersForm(
+            data={"choice": choice}, script=script, node=factory.make_Node()
+        )
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            choice, form.cleaned_data["input"][0]["choice"]["value"]
+        )
+
+    def test_input_choice_django(self):
+        # Validates a choice parameter can be made using a Django choice list.
+        choices = [
+            (factory.make_name("choice"), factory.make_name("pretty_name"))
+            for _ in range(3)
+        ]
+        script = factory.make_Script(
+            parameters={"choice": {"type": "choice", "choices": choices}}
+        )
+
+        choice = factory.pick_choice(choices)
+        form = ParametersForm(
+            data={"choice": choice}, script=script, node=factory.make_Node()
+        )
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            choice, form.cleaned_data["input"][0]["choice"]["value"]
+        )
+
+    def test_input_default(self):
+        # Validates a choice parameter can be made using a Django choice list.
+        choices = [
+            (factory.make_name("choice"), factory.make_name("pretty_name"))
+            for _ in range(3)
+        ]
+        default = factory.pick_choice(choices)
+        script = factory.make_Script(
+            parameters={
+                "choice": {
+                    "type": "choice",
+                    "choices": choices,
+                    "default": default,
+                }
+            }
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            default, form.cleaned_data["input"][0]["choice"]["value"]
+        )
+
+    def test_input_choice_required(self):
+        choices = [factory.make_name("choice") for _ in range(3)]
+        script = factory.make_Script(
+            parameters={
+                "choice": {
+                    "type": "choice",
+                    "choices": choices,
+                    "required": True,
+                }
+            }
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual({"choice": ["Field is required"]}, form.errors)
+
+    def test_input_choice_bad(self):
+        choices = [factory.make_name("choice") for _ in range(3)]
+        script = factory.make_Script(
+            parameters={"choice": {"type": "choice", "choices": choices}}
+        )
+        bad_choice = factory.make_name("bad_choice")
+
+        form = ParametersForm(
+            data={"choice": bad_choice},
+            script=script,
+            node=factory.make_Node(),
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {"choice": [f'Invalid choice "{bad_choice}"']}, form.errors
+        )
+
+    def test_input_choice_no_choices(self):
+        form = ParametersForm(data={"choice": {"type": "choice"}})
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                "parameters": [
+                    'choices must be given with a "choice" parameter type!'
+                ]
+            },
+            form.errors,
+        )

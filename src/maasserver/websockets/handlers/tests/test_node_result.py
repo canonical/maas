@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node_result`"""
@@ -10,6 +10,7 @@ from unittest.mock import sentinel
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
@@ -323,6 +324,54 @@ class TestNodeResultHandler(MAASServerTestCase):
         ]
         handler.list({"system_id": node.system_id})
         self.assertItemsEqual(pks, handler.cache["loaded_pks"])
+
+    def test_list_redacts_password_parameter(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {}, None)
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+        string_script = factory.make_Script(
+            parameters={"string": {"type": "string"}}
+        )
+        password_script = factory.make_Script(
+            parameters={"password": {"type": "password"}}
+        )
+        string = factory.make_name("string")
+        password = factory.make_name("password")
+        string_script_result = factory.make_ScriptResult(
+            script_set=script_set,
+            script=string_script,
+            parameters={"string": {"type": "string", "value": string}},
+        )
+        password_script_result = factory.make_ScriptResult(
+            script_set=script_set,
+            script=password_script,
+            parameters={"password": {"type": "password", "value": password}},
+        )
+
+        for result in handler.list({"system_id": node.system_id}):
+            if result["id"] == string_script_result.id:
+                self.assertEqual(
+                    {"string": {"type": "string", "value": string}},
+                    result["parameters"],
+                )
+                self.assertEqual(
+                    string,
+                    reload_object(string_script_result).parameters["string"][
+                        "value"
+                    ],
+                )
+            else:
+                self.assertEqual(
+                    {"password": {"type": "password", "value": "REDACTED"}},
+                    result["parameters"],
+                )
+                self.assertEqual(
+                    password,
+                    reload_object(password_script_result).parameters[
+                        "password"
+                    ]["value"],
+                )
 
     def test_get_result_data_gets_output(self):
         user = factory.make_User()

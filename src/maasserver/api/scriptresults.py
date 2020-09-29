@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `ScriptResults`."""
@@ -222,6 +222,13 @@ class NodeScriptResultHandler(OperationsHandler):
         for script_result in filter_script_results(
             script_set, script_set.filters, script_set.hardware_type
         ):
+            # Don't show password parameter values over the API.
+            for parameter in script_result.parameters.values():
+                if (
+                    parameter.get("type") == "password"
+                    and "value" in parameter
+                ):
+                    parameter["value"] = "REDACTED"
             result = {
                 "id": script_result.id,
                 "created": format_datetime(script_result.created),

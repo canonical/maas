@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Commission form."""
@@ -65,10 +65,11 @@ class TestForm(Form):
         interface_choices = None
         for script in scripts:
             for pname, value in script.parameters.items():
-                if value.get("type") == "storage":
+                ptype = value.get("type")
+                combined_name = "%s_%s" % (script.name, pname)
+                if ptype == "storage":
                     if storage_choices is None:
                         storage_choices = self._get_storage_choices()
-                    combined_name = "%s_%s" % (script.name, pname)
                     self.fields[combined_name] = ChoiceField(
                         required=False, initial=None, choices=storage_choices
                     )
@@ -78,10 +79,9 @@ class TestForm(Form):
                             initial=None,
                             choices=storage_choices,
                         )
-                elif value.get("type") == "interface":
+                elif ptype == "interface":
                     if interface_choices is None:
                         interface_choices = self._get_interface_choices()
-                    combined_name = "%s_%s" % (script.name, pname)
                     self.fields[combined_name] = ChoiceField(
                         required=False, initial=None, choices=interface_choices
                     )
@@ -91,8 +91,7 @@ class TestForm(Form):
                             initial=None,
                             choices=interface_choices,
                         )
-                elif value.get("type") == "runtime":
-                    combined_name = "%s_%s" % (script.name, pname)
+                elif ptype == "runtime":
                     self.fields[combined_name] = DurationField(
                         required=False, initial=None
                     )
@@ -100,14 +99,30 @@ class TestForm(Form):
                         self.fields[pname] = DurationField(
                             required=False, initial=None
                         )
-                elif value.get("type") == "url":
-                    combined_name = "%s_%s" % (script.name, pname)
+                elif ptype in ["url", "string", "password"]:
                     self.fields[combined_name] = CharField(
                         required=False, initial=None
                     )
                     if pname not in self.fields:
                         self.fields[pname] = CharField(
                             required=False, initial=None
+                        )
+                elif ptype == "choice":
+                    # Support a Django choice list or a string list
+                    choices = [
+                        set(choice)
+                        if isinstance(choice, list)
+                        or isinstance(choice, set)
+                        or isinstance(choice, tuple)
+                        else (choice, choice)
+                        for choice in value.get("choices", [])
+                    ]
+                    self.fields[combined_name] = ChoiceField(
+                        required=False, initial=None, choices=choices
+                    )
+                    if pname not in self.fields:
+                        self.fields[pname] = ChoiceField(
+                            required=False, initial=None, choices=choices
                         )
 
     def _set_up_script_fields(self):

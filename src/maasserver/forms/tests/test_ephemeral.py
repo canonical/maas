@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for commission form."""
@@ -250,6 +250,81 @@ class TestTestForm(MAASServerTestCase):
             mock_start_testing,
             MockCalledOnceWith(
                 user, False, [script.name], {script.name: {"url": input}}
+            ),
+        )
+
+    def test_class_start_testing_with_string_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={"string": {"type": "string"}},
+        )
+        mock_start_testing = self.patch_autospec(node, "start_testing")
+        input = factory.make_name("string")
+        form = TestForm(
+            instance=node,
+            user=user,
+            data={"testing_scripts": script.name, "string": input},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, False, [script.name], {script.name: {"string": input}}
+            ),
+        )
+
+    def test_class_start_testing_with_password_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={"password": {"type": "password"}},
+        )
+        mock_start_testing = self.patch_autospec(node, "start_testing")
+        input = factory.make_name("password")
+        form = TestForm(
+            instance=node,
+            user=user,
+            data={"testing_scripts": script.name, "password": input},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, False, [script.name], {script.name: {"password": input}}
+            ),
+        )
+
+    def test_class_start_testing_with_choice_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={"choice": {"type": "choice", "choices": [1, 2, 3]}},
+        )
+        mock_start_testing = self.patch_autospec(node, "start_testing")
+        input = random.randint(1, 3)
+        form = TestForm(
+            instance=node,
+            user=user,
+            data={"testing_scripts": script.name, "choice": input},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user,
+                False,
+                [script.name],
+                {script.name: {"choice": str(input)}},
             ),
         )
 

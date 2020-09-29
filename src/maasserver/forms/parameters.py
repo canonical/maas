@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Parameters form."""
@@ -76,6 +76,7 @@ class ParametersForm(Form):
             param_default = fields.get("default")
             param_required = fields.get("required", True)
             allow_list = fields.get("allow_list")
+            choices = fields.get("choices")
 
             # Check param data type.
             if not isinstance(param, str):
@@ -154,19 +155,62 @@ class ParametersForm(Form):
                     "parameters",
                     "allow_list only supported with the url type.",
                 )
+            if choices is not None:
+                if not isinstance(choices, list):
+                    set_form_error(
+                        self,
+                        "parameters",
+                        "choices must be a list",
+                    )
+                else:
+                    for choice in choices:
+                        if isinstance(choice, list) and not isinstance(
+                            choice, str
+                        ):
+                            if (
+                                len(choice) != 2
+                                or (not isinstance(choice[0], str))
+                                or (not isinstance(choice[1], str))
+                            ):
+                                set_form_error(
+                                    self,
+                                    "parameters",
+                                    "choice must be a Django choice or string",
+                                )
+            if choices is not None and param_type != "choice":
+                set_form_error(
+                    self,
+                    "parameters",
+                    "choices only supported with the choice type.",
+                )
+            if param_type == "choice" and not choices:
+                set_form_error(
+                    self,
+                    "parameters",
+                    'choices must be given with a "choice" parameter type!',
+                )
 
             # Check parameter type is supported and required.
             if (
-                param_type not in ("storage", "interface", "url", "runtime")
+                param_type
+                not in (
+                    "storage",
+                    "interface",
+                    "url",
+                    "runtime",
+                    "string",
+                    "password",
+                    "choice",
+                )
                 and param_required
             ):
                 set_form_error(
                     self,
                     "parameters",
-                    "%s: type must be either storage, interface, url, or "
-                    "runtime" % param_type,
+                    "%s: type must be either storage, interface, url, "
+                    "runtime, string, password, or choice" % param_type,
                 )
-            if param_type in ("storage", "interface", "url") and (
+            if param_type in ("storage", "interface", "url", "choice") and (
                 param_min is not None or param_max is not None
             ):
                 set_form_error(
@@ -568,6 +612,24 @@ class ParametersForm(Form):
             except ValidationError:
                 set_form_error(self, param_name, "Invalid URL")
 
+    def _validate_and_clean_string(self, param_name, param):
+        """Validate and clean string and password input."""
+        if "min" in param and len(param["value"]) < param["min"]:
+            set_form_error(self, param_name, "Input too short")
+        if "max" in param and len(param["value"]) > param["max"]:
+            set_form_error(self, param_name, "Input too long")
+
+    def _validate_and_clean_choices(self, param_name, param):
+        # Support a Django choice list or a string list
+        choices = [
+            choice if isinstance(choice, str) else choice[0]
+            for choice in param["choices"]
+        ]
+        if param["value"] not in choices:
+            set_form_error(
+                self, param_name, f"Invalid choice \"{param['value']}\""
+            )
+
     def clean_input(self):
         """Validate and clean parameter input.
 
@@ -592,6 +654,10 @@ class ParametersForm(Form):
                 self._validate_and_clean_runtime(param_name, param)
             elif param["type"] == "url":
                 self._validate_and_clean_url(param_name, param)
+            elif param["type"] in ["string", "password"]:
+                self._validate_and_clean_string(param_name, param)
+            elif param["type"] == "choice":
+                self._validate_and_clean_choices(param_name, param)
 
         # Validate input for multi ScriptResult params
         for param_name, param in multi_result_params.items():

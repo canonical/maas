@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The NodeResult handler for the WebSocket connection."""
@@ -63,7 +63,10 @@ class NodeResultHandler(TimestampedModelHandler):
 
     def dehydrate_parameters(self, parameters):
         # Parameters is a JSONObjectField to convert it to a dictionary it must
-        # be accessed.
+        # be accessed. Don't show password parameter values over the websocket.
+        for parameter in parameters.values():
+            if parameter.get("type") == "password" and "value" in parameter:
+                parameter["value"] = "REDACTED"
         return parameters
 
     def dehydrate_started(self, started):

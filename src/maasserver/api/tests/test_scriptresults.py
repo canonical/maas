@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the script result API."""
@@ -314,6 +314,55 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 },
                 result,
             )
+
+    def test_GET_redacts_password_parameter(self):
+        string_script = factory.make_Script(
+            parameters={"string": {"type": "string"}}
+        )
+        password_script = factory.make_Script(
+            parameters={"password": {"type": "password"}}
+        )
+        string = factory.make_name("string")
+        password = factory.make_name("password")
+        script_set = self.make_scriptset()
+        string_script_result = factory.make_ScriptResult(
+            script_set=script_set,
+            script=string_script,
+            parameters={"string": {"type": "string", "value": string}},
+        )
+        password_script_result = factory.make_ScriptResult(
+            script_set=script_set,
+            script=password_script,
+            parameters={"password": {"type": "password", "value": password}},
+        )
+
+        response = self.client.get(self.get_script_result_uri(script_set))
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_result = json_load_bytes(response.content)
+
+        for result in parsed_result["results"]:
+            if result["id"] == string_script_result.id:
+                self.assertEqual(
+                    {"string": {"type": "string", "value": string}},
+                    result["parameters"],
+                )
+                self.assertEqual(
+                    string,
+                    reload_object(string_script_result).parameters["string"][
+                        "value"
+                    ],
+                )
+            else:
+                self.assertEqual(
+                    {"password": {"type": "password", "value": "REDACTED"}},
+                    result["parameters"],
+                )
+                self.assertEqual(
+                    password,
+                    reload_object(password_script_result).parameters[
+                        "password"
+                    ]["value"],
+                )
 
     def test_GET_include_output(self):
         script_set = self.make_scriptset()
