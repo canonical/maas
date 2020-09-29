@@ -43,6 +43,7 @@ from maasserver.enum import (
     POWER_STATE,
 )
 from maasserver.exceptions import MAASAPINotFound, Unauthorized
+from maasserver.forms.parameters import ParametersForm
 from maasserver.models import (
     Config,
     Event,
@@ -1572,20 +1573,24 @@ class TestMAASScripts(MAASServerTestCase):
             )
             .order_by("name")
         ):
+            form = ParametersForm(data={}, script=script, node=Node())
+            self.assertTrue(form.is_valid(), form.errors)
             path = os.path.join("commissioning", script.name)
-            commissioning_meta_data.append(
-                {
-                    "name": script.name,
-                    "path": path,
-                    "script_version_id": script.script.id,
-                    "timeout_seconds": script.timeout.seconds,
-                    "parallel": script.parallel,
-                    "hardware_type": script.hardware_type,
-                    "packages": script.packages,
-                    "for_hardware": script.for_hardware,
-                    "apply_configured_networking": script.apply_configured_networking,
-                }
-            )
+            for parameters in form.cleaned_data["input"]:
+                commissioning_meta_data.append(
+                    {
+                        "name": script.name,
+                        "path": path,
+                        "script_version_id": script.script.id,
+                        "timeout_seconds": script.timeout.seconds,
+                        "parallel": script.parallel,
+                        "hardware_type": script.hardware_type,
+                        "parameters": parameters,
+                        "packages": script.packages,
+                        "for_hardware": script.for_hardware,
+                        "apply_configured_networking": script.apply_configured_networking,
+                    }
+                )
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, script.script.data.encode()
             )
@@ -1622,20 +1627,24 @@ class TestMAASScripts(MAASServerTestCase):
             .filter(tags__overlap=["bmc-config"])
             .order_by("name")
         ):
+            form = ParametersForm(data={}, script=script, node=Node())
+            self.assertTrue(form.is_valid(), form.errors)
             path = os.path.join("commissioning", script.name)
-            commissioning_meta_data.append(
-                {
-                    "name": script.name,
-                    "path": path,
-                    "script_version_id": script.script.id,
-                    "timeout_seconds": script.timeout.seconds,
-                    "parallel": script.parallel,
-                    "hardware_type": script.hardware_type,
-                    "packages": script.packages,
-                    "for_hardware": script.for_hardware,
-                    "apply_configured_networking": script.apply_configured_networking,
-                }
-            )
+            for parameters in form.cleaned_data["input"]:
+                commissioning_meta_data.append(
+                    {
+                        "name": script.name,
+                        "path": path,
+                        "script_version_id": script.script.id,
+                        "timeout_seconds": script.timeout.seconds,
+                        "parallel": script.parallel,
+                        "hardware_type": script.hardware_type,
+                        "parameters": parameters,
+                        "packages": script.packages,
+                        "for_hardware": script.for_hardware,
+                        "apply_configured_networking": script.apply_configured_networking,
+                    }
+                )
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, script.script.data.encode()
             )
@@ -1655,7 +1664,14 @@ class TestMAASScripts(MAASServerTestCase):
 
     def test_anon_access_returns_custom_enlist_script(self):
         enlistment_script = factory.make_Script(
-            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["enlisting"]
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            tags=["enlisting"],
+            parameters={
+                "string": {
+                    "type": "string",
+                    "default": factory.make_name("default"),
+                }
+            },
         )
         start_time = floor(time.time())
         response = self.client.get(reverse("maas-scripts", args=["latest"]))
@@ -1683,20 +1699,24 @@ class TestMAASScripts(MAASServerTestCase):
             )
             .order_by("name")
         ):
+            form = ParametersForm(data={}, script=script, node=Node())
+            self.assertTrue(form.is_valid(), form.errors)
             path = os.path.join("commissioning", script.name)
-            commissioning_meta_data.append(
-                {
-                    "name": script.name,
-                    "path": path,
-                    "script_version_id": script.script.id,
-                    "timeout_seconds": script.timeout.seconds,
-                    "parallel": script.parallel,
-                    "hardware_type": script.hardware_type,
-                    "packages": script.packages,
-                    "for_hardware": script.for_hardware,
-                    "apply_configured_networking": script.apply_configured_networking,
-                }
-            )
+            for parameters in form.cleaned_data["input"]:
+                commissioning_meta_data.append(
+                    {
+                        "name": script.name,
+                        "path": path,
+                        "script_version_id": script.script.id,
+                        "timeout_seconds": script.timeout.seconds,
+                        "parallel": script.parallel,
+                        "hardware_type": script.hardware_type,
+                        "parameters": parameters,
+                        "packages": script.packages,
+                        "for_hardware": script.for_hardware,
+                        "apply_configured_networking": script.apply_configured_networking,
+                    }
+                )
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, script.script.data.encode()
             )

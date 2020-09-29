@@ -53,6 +53,7 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     NodeStateViolation,
 )
+from maasserver.forms.parameters import ParametersForm
 from maasserver.models import (
     Config,
     Interface,
@@ -1024,11 +1025,6 @@ class EnlistUserDataHandler(OperationsHandler):
                 NODE_STATUS.NEW,
                 rack_controller=rack_controller,
                 request=request,
-                extra_content={
-                    "enlist_commissioning": Config.objects.get_config(
-                        "enlist_commissioning"
-                    )
-                },
             ),
             content_type="text/plain",
         )
@@ -1177,24 +1173,41 @@ class AnonMAASScriptsHandler(AnonymousOperationsHandler):
         # django.middleware.gzip.GZipMiddleware.
         with tarfile.open(mode="w", fileobj=binary) as tar:
             for script in qs:
+                # Return the default parameter fields for any commissioning
+                # script. An empty Node() is passed so the form knows its
+                # validating input and returning defaults. The form only
+                # uses the Node object to fill in storage or interface
+                # parameters. When none are found "all" is used which is
+                # handled elsewhere.
+                form = ParametersForm(data={}, script=script, node=Node())
+                # The form isn't valid if there is a required field with no
+                # default value.
+                if not form.is_valid():
+                    logger.error(
+                        "Unable to send commissioning script to enlisting "
+                        f"machine - {form.errors}"
+                    )
+                    continue
                 path = os.path.join("commissioning", script.name)
                 content = script.script.data.encode()
                 add_file_to_tar(tar, path, content, mtime)
-                tar_meta_data["commissioning_scripts"].append(
-                    {
-                        "name": script.name,
-                        "path": path,
-                        "script_version_id": script.script.id,
-                        "timeout_seconds": script.timeout.seconds,
-                        "parallel": script.parallel,
-                        "hardware_type": script.hardware_type,
-                        "packages": script.packages,
-                        "for_hardware": script.for_hardware,
-                        "apply_configured_networking": (
-                            script.apply_configured_networking
-                        ),
-                    }
-                )
+                for parameters in form.cleaned_data["input"]:
+                    tar_meta_data["commissioning_scripts"].append(
+                        {
+                            "name": script.name,
+                            "path": path,
+                            "script_version_id": script.script.id,
+                            "timeout_seconds": script.timeout.seconds,
+                            "parallel": script.parallel,
+                            "hardware_type": script.hardware_type,
+                            "parameters": parameters,
+                            "packages": script.packages,
+                            "for_hardware": script.for_hardware,
+                            "apply_configured_networking": (
+                                script.apply_configured_networking
+                            ),
+                        }
+                    )
             add_file_to_tar(
                 tar,
                 "index.json",
