@@ -119,15 +119,17 @@ def make_script(
             script_result_id,
             script_version_id,
         )
+        stdout = factory.make_name("stdout")
+        stderr = factory.make_name("stderr")
         ret["combined_name"] = name
         ret["combined_path"] = os.path.join(out_dir, ret["combined_name"])
-        ret["combined"] = factory.make_string()
+        ret["combined"] = f"{stdout}\n{stderr}\n"
         ret["stdout_name"] = "%s.out" % name
         ret["stdout_path"] = os.path.join(out_dir, ret["stdout_name"])
-        ret["stdout"] = factory.make_string()
+        ret["stdout"] = f"{stdout}\n"
         ret["stderr_name"] = "%s.err" % name
         ret["stderr_path"] = os.path.join(out_dir, ret["stderr_name"])
-        ret["stderr"] = factory.make_string()
+        ret["stderr"] = f"{stderr}\n"
         ret["result_name"] = "%s.yaml" % name
         ret["result_path"] = os.path.join(out_dir, ret["result_name"])
         ret["result"] = yaml.safe_dump(
@@ -142,15 +144,16 @@ def make_script(
             os.makedirs(os.path.dirname(script_path), exist_ok=True)
             with open(os.path.join(scripts_dir, ret["path"]), "w") as f:
                 f.write("#!/bin/bash\n")
-                f.write("exit %d" % return_code)
+                f.write(f'echo "{stdout}"\n')
+                f.write(f'echo "{stderr}" >&2\n')
+                f.write("exit %d\n" % return_code)
             st = os.stat(script_path)
             os.chmod(script_path, st.st_mode | stat.S_IEXEC)
 
             if with_output:
-                open(ret["combined_path"], "w").write(ret["combined"])
-                open(ret["stdout_path"], "w").write(ret["stdout"])
-                open(ret["stderr_path"], "w").write(ret["stderr"])
-                open(ret["result_path"], "w").write(ret["result"])
+                for output in ["combined", "stdout", "stderr", "result"]:
+                    with open(ret[f"{output}_path"], "w") as f:
+                        f.write(ret[output])
 
     return ret
 
@@ -314,21 +317,20 @@ class TestInstallDependencies(MAASTestCase):
                     "/bin/bash",
                     "-c",
                     "echo %s;echo %s >&2"
-                    % (script["stdout"], script["stderr"]),
+                    % (script["stdout"].strip(), script["stderr"].strip()),
                 ],
                 scripts,
                 factory.make_name("status"),
             )
         )
         self.assertEquals(
-            "%s\n" % script["stdout"], open(script["stdout_path"], "r").read()
+            script["stdout"], open(script["stdout_path"], "r").read()
         )
         self.assertEquals(
-            "%s\n" % script["stderr"], open(script["stderr_path"], "r").read()
+            script["stderr"], open(script["stderr_path"], "r").read()
         )
         self.assertEquals(
-            "%s\n%s\n" % (script["stdout"], script["stderr"]),
-            open(script["combined_path"], "r").read(),
+            script["combined"], open(script["combined_path"], "r").read()
         )
 
     def test_run_and_check_errors(self):
@@ -344,21 +346,20 @@ class TestInstallDependencies(MAASTestCase):
                     "/bin/bash",
                     "-c",
                     "echo %s;echo %s >&2;false"
-                    % (script["stdout"], script["stderr"]),
+                    % (script["stdout"].strip(), script["stderr"].strip()),
                 ],
                 scripts,
                 status,
             )
         )
         self.assertEquals(
-            "%s\n" % script["stdout"], open(script["stdout_path"], "r").read()
+            script["stdout"], open(script["stdout_path"], "r").read()
         )
         self.assertEquals(
-            "%s\n" % script["stderr"], open(script["stderr_path"], "r").read()
+            script["stderr"], open(script["stderr_path"], "r").read()
         )
         self.assertEquals(
-            "%s\n%s\n" % (script["stdout"], script["stderr"]),
-            open(script["combined_path"], "r").read(),
+            script["combined"], open(script["combined_path"], "r").read()
         )
         for script in scripts:
             self.assertThat(
@@ -369,16 +370,15 @@ class TestInstallDependencies(MAASTestCase):
                     status=status,
                     **script["args"],
                     files={
-                        scripts[0]["combined_name"]: (
-                            "%s\n%s\n"
-                            % (scripts[0]["stdout"], scripts[0]["stderr"])
-                        ).encode(),
-                        scripts[0]["stdout_name"]: (
-                            "%s\n" % scripts[0]["stdout"]
-                        ).encode(),
-                        scripts[0]["stderr_name"]: (
-                            "%s\n" % scripts[0]["stderr"]
-                        ).encode(),
+                        scripts[0]["combined_name"]: scripts[0][
+                            "combined"
+                        ].encode(),
+                        scripts[0]["stdout_name"]: scripts[0][
+                            "stdout"
+                        ].encode(),
+                        scripts[0]["stderr_name"]: scripts[0][
+                            "stderr"
+                        ].encode(),
                     },
                 ),
             )
@@ -395,7 +395,7 @@ class TestInstallDependencies(MAASTestCase):
                     "/bin/bash",
                     "-c",
                     "echo %s;echo %s >&2;false"
-                    % (script["stdout"], script["stderr"]),
+                    % (script["stdout"].strip(), script["stderr"].strip()),
                 ],
                 scripts,
                 factory.make_name("status"),
@@ -403,14 +403,13 @@ class TestInstallDependencies(MAASTestCase):
             )
         )
         self.assertEquals(
-            "%s\n" % script["stdout"], open(script["stdout_path"], "r").read()
+            script["stdout"], open(script["stdout_path"], "r").read()
         )
         self.assertEquals(
-            "%s\n" % script["stderr"], open(script["stderr_path"], "r").read()
+            script["stderr"], open(script["stderr_path"], "r").read()
         )
         self.assertEquals(
-            "%s\n%s\n" % (script["stdout"], script["stderr"]),
-            open(script["combined_path"], "r").read(),
+            script["combined"], open(script["combined_path"], "r").read()
         )
 
     def test_sudo_run_and_check(self):
@@ -3365,7 +3364,9 @@ class TestRunScripts(MAASTestCase):
             True,
         )
         scripts = make_scripts(
-            scripts_dir=scripts_dir, instance=False, parallel=0
+            scripts_dir=scripts_dir,
+            instance=False,
+            parallel=0,
         )
 
         run_serial_scripts(scripts, scripts_dir, scripts_dir)
@@ -3374,7 +3375,130 @@ class TestRunScripts(MAASTestCase):
         # with the result. The first script is unable to be sent as the
         # machine doesn't exist yet. Once the second script runs it can be
         # uploaded. Since it finished already only one signal is sent.
-        self.assertEqual(7, len(mock_output_and_send.call_args_list))
+        self.assertThat(
+            mock_output_and_send,
+            MockCallsMatch(
+                call(
+                    f"Starting {scripts[0]['msg_name']}",
+                    url=scripts[0]["args"]["url"],
+                    creds=scripts[0]["args"]["creds"],
+                    script_result_id=scripts[0]["args"]["script_result_id"],
+                    status="WORKING",
+                    send_result=True,
+                ),
+                call(
+                    f"Finished {scripts[0]['msg_name']}: {scripts[0]['exit_status']}",
+                    url=scripts[0]["args"]["url"],
+                    creds=scripts[0]["args"]["creds"],
+                    script_result_id=scripts[0]["args"]["script_result_id"],
+                    status="WORKING",
+                    send_result=True,
+                    exit_status=scripts[0]["exit_status"],
+                    files={
+                        scripts[0]["combined_name"]: scripts[0][
+                            "combined"
+                        ].encode(),
+                        scripts[0]["stdout_name"]: scripts[0][
+                            "stdout"
+                        ].encode(),
+                        scripts[0]["stderr_name"]: scripts[0][
+                            "stderr"
+                        ].encode(),
+                        scripts[0]["result_name"]: scripts[0][
+                            "result"
+                        ].encode(),
+                    },
+                    runtime=ANY,
+                ),
+                call(
+                    f"Starting {scripts[1]['msg_name']}",
+                    url=scripts[1]["args"]["url"],
+                    creds=scripts[1]["args"]["creds"],
+                    script_result_id=scripts[1]["args"]["script_result_id"],
+                    status="WORKING",
+                    send_result=True,
+                ),
+                call(
+                    f"Finished {scripts[1]['msg_name']}: {scripts[1]['exit_status']}",
+                    url=scripts[1]["args"]["url"],
+                    creds=scripts[1]["args"]["creds"],
+                    script_result_id=scripts[1]["args"]["script_result_id"],
+                    status="WORKING",
+                    send_result=True,
+                    exit_status=scripts[1]["exit_status"],
+                    files={
+                        scripts[1]["combined_name"]: scripts[1][
+                            "combined"
+                        ].encode(),
+                        scripts[1]["stdout_name"]: scripts[1][
+                            "stdout"
+                        ].encode(),
+                        scripts[1]["stderr_name"]: scripts[1][
+                            "stderr"
+                        ].encode(),
+                        scripts[1]["result_name"]: scripts[1][
+                            "result"
+                        ].encode(),
+                    },
+                    runtime=ANY,
+                ),
+                call(
+                    f"Finished {scripts[0]['msg_name']}: {scripts[0]['exit_status']}",
+                    url=scripts[0]["args"]["url"],
+                    creds=scripts[0]["args"]["creds"],
+                    script_result_id=scripts[0]["args"]["script_result_id"],
+                    status="WORKING",
+                    exit_status=scripts[0]["exit_status"],
+                    files={
+                        scripts[0]["combined_name"]: scripts[0][
+                            "combined"
+                        ].encode(),
+                        scripts[0]["stdout_name"]: scripts[0][
+                            "stdout"
+                        ].encode(),
+                        scripts[0]["stderr_name"]: scripts[0][
+                            "stderr"
+                        ].encode(),
+                        scripts[0]["result_name"]: scripts[0][
+                            "result"
+                        ].encode(),
+                    },
+                    runtime=ANY,
+                ),
+                call(
+                    f"Starting {scripts[2]['msg_name']}",
+                    url=scripts[2]["args"]["url"],
+                    creds=scripts[2]["args"]["creds"],
+                    script_result_id=scripts[2]["args"]["script_result_id"],
+                    status="WORKING",
+                    send_result=True,
+                ),
+                call(
+                    f"Finished {scripts[2]['msg_name']}: {scripts[2]['exit_status']}",
+                    url=scripts[2]["args"]["url"],
+                    creds=scripts[2]["args"]["creds"],
+                    script_result_id=scripts[2]["args"]["script_result_id"],
+                    status="WORKING",
+                    send_result=True,
+                    exit_status=scripts[2]["exit_status"],
+                    files={
+                        scripts[2]["combined_name"]: scripts[2][
+                            "combined"
+                        ].encode(),
+                        scripts[2]["stdout_name"]: scripts[2][
+                            "stdout"
+                        ].encode(),
+                        scripts[2]["stderr_name"]: scripts[2][
+                            "stderr"
+                        ].encode(),
+                        scripts[2]["result_name"]: scripts[2][
+                            "result"
+                        ].encode(),
+                    },
+                    runtime=ANY,
+                ),
+            ),
+        )
 
     def test_run_scripts_enlists(self):
         scripts_dir = self.useFixture(TempDirectory()).path

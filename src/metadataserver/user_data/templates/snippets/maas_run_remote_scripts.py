@@ -1216,11 +1216,10 @@ def send_unsent_results(scripts):
         args["runtime"] = unsent_script["runtime"]
         args["exit_status"] = unsent_script["exit_status"]
         args["files"] = {}
-        for f in ["combined", "stdout", "stderr"]:
-            if os.path.exists(unsent_script["%s_path" % f]):
-                args["files"][unsent_script["%s_name" % f]] = open(
-                    unsent_script["%s_path" % f], "rb"
-                ).read()
+        for output in ["combined", "stdout", "stderr", "result"]:
+            if os.path.exists(unsent_script["%s_path" % output]):
+                with open(unsent_script["%s_path" % output], "rb") as f:
+                    args["files"][unsent_script["%s_name" % output]] = f.read()
         unsent_script["result_sent"] = output_and_send(
             "Finished %s: %s"
             % (unsent_script["msg_name"], unsent_script["exit_status"]),
