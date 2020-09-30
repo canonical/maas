@@ -48,7 +48,7 @@ def async_succeed(result):
     return wrapper
 
 
-def make_requested_machine():
+def make_requested_machine(**kwargs):
     block_devices = [
         RequestedMachineBlockDevice(
             size=random.randint(1024 ** 3, 4 * 1024 ** 3)
@@ -63,6 +63,7 @@ def make_requested_machine():
         cpu_speed=random.randint(2000, 3000),
         block_devices=block_devices,
         interfaces=interfaces,
+        **kwargs,
     )
 
 
@@ -846,6 +847,7 @@ class TestLXDPodDriver(MAASTestCase):
             "config": {
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
             "profiles": [mock_profile.name],
@@ -971,6 +973,7 @@ class TestLXDPodDriver(MAASTestCase):
             "config": {
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
             "profiles": [mock_profile.name],
@@ -1043,7 +1046,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
 
-class TestGetNicDevice(MAASTestCase):
+class TestLXDGetNicDevice(MAASTestCase):
     def test_bridged(self):
         interface = RequestedMachineInterface(
             ifname=factory.make_name("ifname"),
@@ -1121,6 +1124,56 @@ class TestGetNicDevice(MAASTestCase):
             },
             device,
         )
+
+
+class TestGetLXDMachineDefinition(MAASTestCase):
+    def test_definition(self):
+        request = make_requested_machine()
+        definition = lxd_module.get_lxd_machine_definition(
+            request,
+            "maas-profile",
+        )
+        self.assertEqual(
+            definition,
+            {
+                "architecture": "x86_64",
+                "config": {
+                    "limits.cpu": str(request.cores),
+                    "limits.memory": str(request.memory * 1024 * 1024),
+                    "limits.memory.hugepages": "false",
+                    "security.secureboot": "false",
+                },
+                "name": request.hostname,
+                "profiles": ["maas-profile"],
+                "source": {"type": "none"},
+            },
+        )
+
+    def test_hugepages(self):
+        request = make_requested_machine(hugepages_backed=True)
+        definition = lxd_module.get_lxd_machine_definition(
+            request,
+            "maas-profile",
+        )
+        self.assertEqual(
+            definition["config"]["limits.memory.hugepages"], "true"
+        )
+
+    def test_pinned_cores(self):
+        request = make_requested_machine(pinned_cores=[0, 3, 5])
+        definition = lxd_module.get_lxd_machine_definition(
+            request,
+            "maas-profile",
+        )
+        self.assertEqual(definition["config"]["limits.cpu"], "0,3,5")
+
+    def test_pinned_single(self):
+        request = make_requested_machine(pinned_cores=[4])
+        definition = lxd_module.get_lxd_machine_definition(
+            request,
+            "maas-profile",
+        )
+        self.assertEqual(definition["config"]["limits.cpu"], "4-4")
 
 
 class TestParseCPUCores(MAASTestCase):

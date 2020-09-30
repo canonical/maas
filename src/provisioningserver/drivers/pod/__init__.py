@@ -390,6 +390,11 @@ class RequestedMachine(AttrHelperMixin):
         converter=converter_list(KnownHostInterface),
         default=attr.Factory(list),
     )
+    pinned_cores = attr.ib(
+        converter=converter_list(int),
+        default=attr.Factory(list),
+    )
+    hugepages_backed = attr.ib(converter=bool, default=False)
 
     @classmethod
     def fromdict(cls, data):

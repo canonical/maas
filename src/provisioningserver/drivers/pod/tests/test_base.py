@@ -747,11 +747,15 @@ class TestRequestClasses(MAASTestCase):
             )
             for _ in range(3)
         ]
+        pinned_cores = random.sample(range(10), 3)
+        hugepages_backed = factory.pick_bool()
         machine = RequestedMachine(
             hostname=hostname,
             architecture="amd64/generic",
             cores=cores,
             cpu_speed=cpu_speed,
+            pinned_cores=pinned_cores,
+            hugepages_backed=hugepages_backed,
             memory=memory,
             interfaces=interfaces,
             known_host_interfaces=known_host_interfaces,
@@ -766,6 +770,8 @@ class TestRequestClasses(MAASTestCase):
                     "cores": Equals(cores),
                     "cpu_speed": Equals(cpu_speed),
                     "memory": Equals(memory),
+                    "pinned_cores": Equals(pinned_cores),
+                    "hugepages_backed": Equals(hugepages_backed),
                     "interfaces": MatchesListwise(
                         [
                             MatchesDict(
@@ -836,11 +842,15 @@ class TestRequestClasses(MAASTestCase):
             )
             for _ in range(3)
         ]
+        pinned_cores = random.sample(range(10), 3)
+        hugepages_backed = factory.pick_bool()
         machine_data = dict(
             hostname=hostname,
             architecture="amd64/generic",
             cores=cores,
             cpu_speed=cpu_speed,
+            pinned_cores=pinned_cores,
+            hugepages_backed=hugepages_backed,
             memory=memory,
             interfaces=interfaces,
             block_devices=block_devices,
@@ -855,6 +865,8 @@ class TestRequestClasses(MAASTestCase):
                 cores=Equals(cores),
                 cpu_speed=Equals(cpu_speed),
                 memory=Equals(memory),
+                pinned_cores=Equals(pinned_cores),
+                hugepages_backed=Equals(hugepages_backed),
                 interfaces=MatchesListwise(
                     [
                         IsInstance(RequestedMachineInterface)

@@ -110,6 +110,34 @@ def get_lxd_nic_device(interface):
     return device
 
 
+def get_lxd_machine_definition(request, profile_name):
+    pinned_cores = request.pinned_cores
+    if pinned_cores:
+        if len(pinned_cores) == 1:
+            limits_cpu = f"{pinned_cores[0]}-{pinned_cores[0]}"
+        else:
+            limits_cpu = ",".join(str(core) for core in pinned_cores)
+    else:
+        limits_cpu = str(request.cores)
+
+    return {
+        "name": request.hostname,
+        "architecture": debian_to_kernel_architecture(request.architecture),
+        "config": {
+            "limits.cpu": limits_cpu,
+            "limits.memory": str(request.memory * 1024 ** 2),
+            "limits.memory.hugepages": "true"
+            if request.hugepages_backed
+            else "false",
+            # LP: 1867387 - Disable secure boot until its fixed in MAAS
+            "security.secureboot": "false",
+        },
+        "profiles": [profile_name],
+        # Image source is empty as we get images from MAAS when netbooting.
+        "source": {"type": "none"},
+    }
+
+
 class LXDPodError(Exception):
     """Failure communicating to LXD. """
 
@@ -566,22 +594,7 @@ class LXDPodDriver(PodDriver):
                 )
         resources = yield deferToThread(lambda: client.resources)
 
-        definition = {
-            "name": request.hostname,
-            "architecture": debian_to_kernel_architecture(
-                request.architecture
-            ),
-            "config": {
-                "limits.cpu": str(request.cores),
-                "limits.memory": str(request.memory * 1024 ** 2),
-                # LP: 1867387 - Disable secure boot until its fixed in MAAS
-                "security.secureboot": "false",
-            },
-            "profiles": [profile.name],
-            # Image source is empty as we get images
-            # from MAAS when netbooting.
-            "source": {"type": "none"},
-        }
+        definition = get_lxd_machine_definition(request, profile.name)
 
         # Add disk to the definition.
         # XXX: LXD VMs currently only support one virtual block device.
