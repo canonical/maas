@@ -550,6 +550,8 @@ class ComposeMachineForm(forms.Form):
             min_value=1024, max_value=self.pod.hints.memory, required=False
         )
         self.initial["memory"] = DEFAULT_COMPOSED_MEMORY
+        self.fields["hugepages_backed"] = BooleanField(required=False)
+        self.initial["hugepages_backed"] = False
         self.fields["architecture"] = ChoiceField(
             choices=[(arch, arch) for arch in self.pod.architectures],
             required=False,
@@ -647,6 +649,7 @@ class ComposeMachineForm(forms.Form):
             architecture=self.get_value_for("architecture"),
             cores=self.get_value_for("cores"),
             memory=self.get_value_for("memory"),
+            hugepages_backed=self.get_value_for("hugepages_backed"),
             cpu_speed=self.get_value_for("cpu_speed"),
             block_devices=block_devices,
             interfaces=requested_machine_interfaces,

@@ -1014,6 +1014,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     architecture=Equals(pod.architectures[0]),
                     cores=Equals(DEFAULT_COMPOSED_CORES),
                     memory=Equals(DEFAULT_COMPOSED_MEMORY),
+                    hugepages_backed=Equals(False),
                     cpu_speed=Is(None),
                     block_devices=MatchesListwise(
                         [
@@ -1046,6 +1047,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         disk_1_tags = [factory.make_name("tag") for _ in range(3)]
         disk_2 = random.randint(8, 16) * (1000 ** 3)
         disk_2_tags = [factory.make_name("tag") for _ in range(3)]
+        hugepages_backed = factory.pick_bool()
         storage = "root:%d(%s),extra:%d(%s)" % (
             disk_1 // (1000 ** 3),
             ",".join(disk_1_tags),
@@ -1057,6 +1059,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 "architecture": architecture,
                 "cores": cores,
                 "memory": memory,
+                "hugepages_backed": hugepages_backed,
                 "cpu_speed": cpu_speed,
                 "storage": storage,
             },
@@ -1075,6 +1078,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     architecture=Equals(architecture),
                     cores=Equals(cores),
                     memory=Equals(memory),
+                    hugepages_backed=Equals(hugepages_backed),
                     cpu_speed=Equals(cpu_speed),
                     block_devices=MatchesListwise(
                         [

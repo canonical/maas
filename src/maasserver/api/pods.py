@@ -257,6 +257,8 @@ class PodHandler(OperationsHandler):
         @param (int) "cores" [required=false] The minimum number of CPU cores.
         @param (int) "memory" [required=false] The minimum amount of memory,
         specified in MiB (e.g. 2 MiB == 2*1024*1024).
+        @param (boolean) "hugepages_backed" [required=false] Whether to request
+        hugepages backing for the machine.
         @param (int) "cores" [required=false] The minimum number of CPU cores.
         @param (int) "cpu_speed" [required=false] The minimum CPU speed,
         specified in MHz.

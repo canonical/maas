@@ -23,7 +23,6 @@ from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     Capabilities,
-    DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
 )
@@ -105,24 +104,6 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod.default_storage_pool = pool
         pod.save()
         return pod
-
-    def make_compose_machine_result(self, pod):
-        composed_machine = DiscoveredMachine(
-            hostname=factory.make_name("hostname"),
-            architecture=pod.architectures[0],
-            cores=1,
-            memory=1024,
-            cpu_speed=300,
-            block_devices=[],
-            interfaces=[],
-        )
-        pod_hints = DiscoveredPodHints(
-            cores=random.randint(0, 10),
-            memory=random.randint(1024, 4096),
-            cpu_speed=random.randint(1000, 3000),
-            local_storage=0,
-        )
-        return composed_machine, pod_hints
 
     def test_get(self):
         admin = factory.make_admin()
@@ -413,3 +394,36 @@ class TestPodHandler(MAASTransactionServerTestCase):
             {"id": pod.id, "skip_commissioning": True}
         )
         self.assertEqual(pod.id, observed_data["id"])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_compose_hugepages(self):
+        user = yield deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        pod = yield deferToDatabase(self.make_pod_with_hints)
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        node = yield deferToDatabase(factory.make_Node)
+
+        orig_init = ComposeMachineForm.__init__
+
+        def wrapped_init(obj, *args, **kwargs):
+            self.form = obj
+            return orig_init(obj, *args, **kwargs)
+
+        self.patch(ComposeMachineForm, "__init__", wrapped_init)
+        mock_compose_machine = self.patch(ComposeMachineForm, "compose")
+        mock_compose_machine.return_value = succeed(node)
+        yield handler.compose(
+            {
+                "id": pod.id,
+                "skip_commissioning": True,
+                "hugepages_backed": True,
+            }
+        )
+        self.assertTrue(self.form.get_value_for("hugepages_backed"))
