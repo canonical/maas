@@ -345,8 +345,8 @@ class LXDPodDriver(PodDriver):
             memory = convert_lxd_byte_suffixes(memory, divisor=1024 ** 2)
         else:
             memory = 1024
-        hugepages_backed = (
-            expanded_config.get("limits.memory.hugepages", "") == "true"
+        hugepages_backed = _get_bool(
+            expanded_config.get("limits.memory.hugepages")
         )
         cores, pinned_cores = _parse_cpu_cores(
             expanded_config.get("limits.cpu")
@@ -730,3 +730,10 @@ def _parse_cpu_cores(cpu_limits):
         else:
             pinned_cores.append(int(cores_range))
     return len(pinned_cores), sorted(pinned_cores)
+
+
+def _get_bool(value):
+    """Convert the given LXD config value to a bool."""
+    if not value:
+        return False
+    return value.lower() in ("true", "1")

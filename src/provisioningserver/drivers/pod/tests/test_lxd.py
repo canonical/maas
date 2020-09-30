@@ -565,6 +565,24 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(discovered_machine.pinned_cores, [0, 1, 2])
 
     @inlineCallbacks
+    def test_get_hugepages_info_int_value_as_bool(self):
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        mock_machine = Mock()
+        mock_machine.name = factory.make_name("machine")
+        mock_machine.architecture = "x86_64"
+        expanded_config = {
+            "limits.memory.hugepages": "1",
+        }
+        mock_machine.expanded_config = expanded_config
+        mock_machine.expanded_devices = {}
+        discovered_machine = yield ensureDeferred(
+            driver.get_discovered_machine(client, mock_machine, [])
+        )
+        self.assertTrue(discovered_machine.hugepages_backed)
+
+    @inlineCallbacks
     def test_get_discovered_machine_sets_power_state_to_unknown_for_unknown(
         self,
     ):
@@ -1194,3 +1212,17 @@ class TestParseCPUCores(MAASTestCase):
             lxd_module._parse_cpu_cores("0,2,10-12,14-16,18-18"),
             (9, [0, 2, 10, 11, 12, 14, 15, 16, 18]),
         )
+
+
+class TestGetBool(MAASTestCase):
+    def test_none(self):
+        self.assertFalse(lxd_module._get_bool(None))
+
+    def test_mixed_case(self):
+        self.assertTrue(lxd_module._get_bool("tRuE"))
+
+    def test_number(self):
+        self.assertTrue(lxd_module._get_bool("1"))
+
+    def test_number_false(self):
+        self.assertFalse(lxd_module._get_bool("0"))
