@@ -543,6 +543,12 @@ class ComposeMachineForm(forms.Form):
             min_value=1, max_value=self.pod.hints.cores, required=False
         )
         self.initial["cores"] = DEFAULT_COMPOSED_CORES
+        self.fields["pinned_cores"] = forms.TypedMultipleChoiceField(
+            choices=[(str(idx), idx) for idx in range(self.pod.hints.cores)],
+            coerce=int,
+            required=False,
+        )
+        self.initial["pinned_cores"] = []
         # LP:1877126 - Focal requires 2048M of memory to deploy, older
         # versions of Ubuntu only need 1024M. The default is 2048M so all
         # versions of Ubuntu work but users may use 1024M.
@@ -648,6 +654,7 @@ class ComposeMachineForm(forms.Form):
             hostname=self.get_value_for("hostname"),
             architecture=self.get_value_for("architecture"),
             cores=self.get_value_for("cores"),
+            pinned_cores=sorted(self.get_value_for("pinned_cores")),
             memory=self.get_value_for("memory"),
             hugepages_backed=self.get_value_for("hugepages_backed"),
             cpu_speed=self.get_value_for("cpu_speed"),

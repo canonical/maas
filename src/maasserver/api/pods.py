@@ -259,7 +259,8 @@ class PodHandler(OperationsHandler):
         specified in MiB (e.g. 2 MiB == 2*1024*1024).
         @param (boolean) "hugepages_backed" [required=false] Whether to request
         hugepages backing for the machine.
-        @param (int) "cores" [required=false] The minimum number of CPU cores.
+        @param (int) "pinned_cores" [required=false] List of host CPU cores
+        to pin the VM to. If this is passed, the "cores" parameter is ignored.
         @param (int) "cpu_speed" [required=false] The minimum CPU speed,
         specified in MHz.
         @param (string) "architecture" [required=false] The architecture of
@@ -325,6 +326,7 @@ class PodHandler(OperationsHandler):
         to delete the pod.
         @error-example (content) "no-perms"
             This method is reserved for admin users.
+
         """
         pod = Pod.objects.get_pod_or_404(
             id, request.user, PodPermission.compose

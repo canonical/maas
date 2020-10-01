@@ -1013,6 +1013,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 MatchesStructure(
                     architecture=Equals(pod.architectures[0]),
                     cores=Equals(DEFAULT_COMPOSED_CORES),
+                    pinned_cores=Equals([]),
                     memory=Equals(DEFAULT_COMPOSED_MEMORY),
                     hugepages_backed=Equals(False),
                     cpu_speed=Is(None),
@@ -1105,6 +1106,32 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 ),
             ),
         )
+
+    def test_get_machine_pinned_cores(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        pinned_cores = random.sample(range(pod.hints.cores), 3)
+        form = ComposeMachineForm(
+            data={"pinned_cores": pinned_cores},
+            request=request,
+            pod=pod,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine(
+            get_known_host_interfaces(pod)
+        )
+        self.assertEqual(request_machine.pinned_cores, sorted(pinned_cores))
+
+    def test_get_machine_pinned_cores_invalid(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        form = ComposeMachineForm(
+            data={"pinned_cores": [0, 1, 789]},
+            request=request,
+            pod=pod,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("pinned_cores", form.errors)
 
     def test_get_machine_handles_no_tags_in_storage(self):
         request = MagicMock()

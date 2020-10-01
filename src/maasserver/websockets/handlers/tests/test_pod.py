@@ -427,3 +427,36 @@ class TestPodHandler(MAASTransactionServerTestCase):
             }
         )
         self.assertTrue(self.form.get_value_for("hugepages_backed"))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_compose_pinned_cores(self):
+        user = yield deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        pod = yield deferToDatabase(self.make_pod_with_hints)
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        node = yield deferToDatabase(factory.make_Node)
+
+        orig_init = ComposeMachineForm.__init__
+
+        def wrapped_init(obj, *args, **kwargs):
+            self.form = obj
+            return orig_init(obj, *args, **kwargs)
+
+        self.patch(ComposeMachineForm, "__init__", wrapped_init)
+        mock_compose_machine = self.patch(ComposeMachineForm, "compose")
+        mock_compose_machine.return_value = succeed(node)
+        yield handler.compose(
+            {
+                "id": pod.id,
+                "skip_commissioning": True,
+                "pinned_cores": [1, 2, 4],
+            }
+        )
+        self.assertEqual(self.form.get_value_for("pinned_cores"), [1, 2, 4])
