@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import glob
 import io
 import os
 import os.path
@@ -138,6 +139,20 @@ class TestAtomicWrite(MAASTestCase):
         self.assertEqual(
             [os.path.basename(filename)], os.listdir(os.path.dirname(filename))
         )
+
+    def test_atomic_wrtie_does_not_leak_temp_file_set_permission_failure(self):
+        # Make os.chown() raise PermissionError and verify the temporary file
+        # was removed.
+        self.patch(fs_module, "chown", Mock(side_effect=PermissionError()))
+        filename = self.make_file()
+        with ExpectedException(PermissionError):
+            atomic_write(factory.make_bytes(), filename)
+
+        pattern = os.path.join(
+            os.path.dirname(filename), ".%s.*" % os.path.basename(filename)
+        )
+        matched_files = glob.glob(pattern)
+        self.assertEqual(matched_files, [])
 
     def test_atomic_write_sets_permissions(self):
         atomic_file = self.make_file()
