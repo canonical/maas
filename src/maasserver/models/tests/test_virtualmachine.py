@@ -146,7 +146,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         numa_node0.memory = 4096
         numa_node0.save()
         numa_node1 = factory.make_NUMANode(
-            node=node, cores=[2, 3], memory=1024
+            node=node, cores=[2, 3], memory=8192
         )
         factory.make_NUMANodeHugepages(
             numa_node=numa_node0, page_size=1024 * MB, total=1024 * MB
@@ -177,7 +177,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 4096 * MB},
+                        "general": {"allocated": 0, "free": 3072 * MB},
                         "hugepages": [
                             {
                                 "allocated": 1024 * MB,
@@ -192,7 +192,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2, 3], "free": []},
                     "memory": {
-                        "general": {"allocated": 0, "free": 1024 * MB},
+                        "general": {"allocated": 0, "free": 4096 * MB},
                         "hugepages": [
                             {
                                 "allocated": 1024 * MB,
@@ -255,7 +255,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         numa_node0.memory = 4096
         numa_node0.save()
         numa_node1 = factory.make_NUMANode(
-            node=node, cores=[2, 3], memory=2048
+            node=node, cores=[2, 3], memory=4096
         )
         factory.make_NUMANodeHugepages(
             numa_node=numa_node0, page_size=1024 * MB, total=1024 * MB
@@ -279,7 +279,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 4096 * MB},
+                        "general": {"allocated": 0, "free": 3072 * MB},
                         "hugepages": [
                             {
                                 "allocated": 1024 * MB,
@@ -294,7 +294,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2], "free": [3]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 2048 * MB},
+                        "general": {"allocated": 0, "free": 0},
                         "hugepages": [
                             {
                                 "allocated": 1024 * MB,
@@ -316,7 +316,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         numa_node0.memory = 4096
         numa_node0.save()
         numa_node1 = factory.make_NUMANode(
-            node=node, cores=[2, 3], memory=2048
+            node=node, cores=[2, 3], memory=8192
         )
         factory.make_NUMANodeHugepages(
             numa_node=numa_node0, page_size=2048 * MB, total=4096 * MB
@@ -340,7 +340,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [0], "free": [1]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 4096 * MB},
+                        "general": {"allocated": 0, "free": 0},
                         "hugepages": [
                             {
                                 "allocated": 2048 * MB,
@@ -355,7 +355,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 {
                     "cores": {"allocated": [2], "free": [3]},
                     "memory": {
-                        "general": {"allocated": 0, "free": 2048 * MB},
+                        "general": {"allocated": 0, "free": 0},
                         "hugepages": [
                             {
                                 "allocated": 4096 * MB,

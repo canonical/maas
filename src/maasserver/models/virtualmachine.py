@@ -261,5 +261,8 @@ def _get_numa_pinning_resources(
                 free=numanode_hugepages.total - allocated_numanode_hugepages,
             )
         )
+        # if hugepages are used, general memory needs to be decreased by the
+        # amount reserved for them
+        numa_resources.memory.general.free -= numanode_hugepages.total
     numa_resources.vms = numanode_vm_resources
     return numa_resources
