@@ -373,32 +373,37 @@ class InterfaceConfiguration:
                         if "addresses" not in v2_nameservers:
                             v2_nameservers["addresses"] = []
 
-                    for ip in StaticIPAddress.objects.filter(
-                        interface__node__in=[
-                            subnet.vlan.primary_rack,
-                            subnet.vlan.secondary_rack,
-                        ],
-                        subnet__vlan=subnet.vlan,
-                        alloc_type__in=[
-                            IPADDRESS_TYPE.AUTO,
-                            IPADDRESS_TYPE.STICKY,
-                        ],
-                    ).exclude(ip=None):
-                        if (
-                            IPAddress(ip.get_ip()).version
-                            == subnet.get_ip_version()
-                            and ip.get_ip() not in v2_nameservers["addresses"]
-                        ):
+                    if subnet.allow_dns:
+                        for ip in StaticIPAddress.objects.filter(
+                            interface__node__in=[
+                                subnet.vlan.primary_rack,
+                                subnet.vlan.secondary_rack,
+                            ],
+                            subnet__vlan=subnet.vlan,
+                            alloc_type__in=[
+                                IPADDRESS_TYPE.AUTO,
+                                IPADDRESS_TYPE.STICKY,
+                            ],
+                        ).exclude(ip=None):
+                            if ip.ip in v2_nameservers["addresses"]:
+                                continue
+                            ip_address = IPAddress(ip.ip)
+                            if ip_address.version != subnet.get_ip_version():
+                                continue
+                            if not subnet.gateway_ip:
+                                if ip_address not in subnet.get_ipnetwork():
+                                    # without gateway, only use in-subnet addrs
+                                    continue
                             v1_subnet_operation["dns_nameservers"].append(
                                 ip.ip
                             )
                             v2_nameservers["addresses"].append(ip.ip)
 
-                    if subnet.dns_servers:
-                        v1_subnet_operation[
-                            "dns_nameservers"
-                        ] += subnet.dns_servers
-                        v2_nameservers["addresses"] += subnet.dns_servers
+                    for ip in subnet.dns_servers:
+                        if ip in v2_nameservers["addresses"]:
+                            continue
+                        v1_subnet_operation["dns_nameservers"].append(ip)
+                        v2_nameservers["addresses"].append(ip)
 
                     if len(matching_subnet_routes) > 0 and version == 1:
                         # For the v1 YAML, the list of routes is rendered

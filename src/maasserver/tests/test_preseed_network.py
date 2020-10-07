@@ -1761,6 +1761,55 @@ class TestNetplan(MAASServerTestCase):
             v2["network"]["ethernets"][iface.name]["nameservers"],
         )
 
+    def test_allow_dns_false_does_not_include_rack_controllers(self):
+        # Regression test for LP:1896684
+        vlan = factory.make_VLAN()
+        nameserver = "1.1.1.1"
+        subnet = factory.make_Subnet(
+            dns_servers=[nameserver], vlan=vlan, allow_dns=False
+        )
+        rack = factory.make_RackController(subnet=subnet)
+        rack_iface = rack.interface_set.first()
+        factory.make_StaticIPAddress(subnet=subnet, interface=rack_iface)
+        vlan.primary_rack = rack
+        vlan.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, subnet=subnet
+        )
+        iface = node.interface_set.first()
+        factory.make_StaticIPAddress(subnet=subnet, interface=iface)
+        v2 = self._render_netplan_dict(node)
+        self.assertDictEqual(
+            {"search": ["maas"], "addresses": [nameserver]},
+            v2["network"]["ethernets"][iface.name]["nameservers"],
+        )
+
+    def test_no_gateway_does_not_include_unroutable_controllers(self):
+        # Regression test for LP:1896684
+        vlan = factory.make_VLAN()
+        subnet1 = factory.make_Subnet(
+            dns_servers=[], vlan=vlan, version=4, gateway_ip=None
+        )
+        subnet2 = factory.make_Subnet(dns_servers=[], vlan=vlan, version=4)
+        rack = factory.make_RackController(subnet=subnet1)
+        rack_iface = rack.interface_set.first()
+        rack_ip1 = factory.make_StaticIPAddress(
+            subnet=subnet1, interface=rack_iface
+        )
+        factory.make_StaticIPAddress(subnet=subnet2, interface=rack_iface)
+        vlan.primary_rack = rack
+        vlan.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, subnet=subnet1
+        )
+        iface = node.interface_set.first()
+        factory.make_StaticIPAddress(subnet=subnet1, interface=iface)
+        v2 = self._render_netplan_dict(node)
+        self.assertDictEqual(
+            {"search": ["maas"], "addresses": [rack_ip1.ip]},
+            v2["network"]["ethernets"][iface.name]["nameservers"],
+        )
+
     def test_commissioning_dhcp_config(self):
         # Verifies dhcp config is given when commissioning has run
         # or just run and no AUTOIP has been acquired.
