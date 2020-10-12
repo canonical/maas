@@ -11,6 +11,7 @@ import random
 from unittest import skip
 from unittest.mock import ANY, MagicMock
 
+from fixtures import EnvironmentVariableFixture
 from requests.exceptions import ConnectionError
 from testtools.matchers import HasLength
 
@@ -44,6 +45,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
 from maasserver.utils import get_maas_user_agent
+from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL
@@ -139,6 +141,28 @@ class TestHelpers(MAASServerTestCase):
                 "subarches": ["*"],
                 "labels": ["*"],
             },
+        )
+
+    def test_ensure_boot_source_definition_updates_default_source_snap(self):
+        BootSource.objects.all().delete()
+        self.assertTrue(ensure_boot_source_definition())
+        source = BootSource.objects.first()
+        self.assertEqual(
+            source.keyring_filename,
+            "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
+        )
+        self.useFixture(
+            EnvironmentVariableFixture("SNAP", "/snap/maas/current")
+        )
+        self.patch(
+            bootsources,
+            "DEFAULT_KEYRINGS_PATH",
+            "/some/other/path/keyring.gpg",
+        )
+        self.assertFalse(ensure_boot_source_definition())
+        source = reload_object(source)
+        self.assertEqual(
+            source.keyring_filename, "/some/other/path/keyring.gpg"
         )
 
     def test_ensure_boot_source_definition_creates_with_default_arch(self):

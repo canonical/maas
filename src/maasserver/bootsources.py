@@ -79,6 +79,15 @@ def ensure_boot_source_definition():
         )
         return True
     else:
+        # XXX ensure the default keyrings path in the database points to the
+        # right file when running in a snap. (see lp:1890468) The
+        # DEFAULT_KEYRINGS_PATH points to the right file whether running from
+        # deb or snap, but the path stored in the DB might be wrong if a
+        # snap-to-deb transition happened with a script without the fix.
+        if os.environ.get("SNAP"):
+            BootSource.objects.filter(url=DEFAULT_IMAGES_URL).update(
+                keyring_filename=DEFAULT_KEYRINGS_PATH
+            )
         return False
 
 
