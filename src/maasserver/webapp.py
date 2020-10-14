@@ -171,6 +171,17 @@ class DefaultFallbackFile(NoListingFile):
         self.childNotFound = DefaultFile(self.child(fallback).path)
 
 
+class DocsFallbackFile(NoListingFile):
+    """
+    A `NoListingFile` that returns the fallback file when a path is not found.
+    """
+
+    def __init__(self, *args, **kwargs):
+        fallback = kwargs.pop("fallback", "404.html")
+        super().__init__(*args, **kwargs)
+        self.childNotFound = DefaultFile(self.child(fallback).path)
+
+
 class WebApplicationService(StreamServerEndpointService):
     """Service encapsulating the Django web application.
 
@@ -252,7 +263,7 @@ class WebApplicationService(StreamServerEndpointService):
         # Setup static docs
         maas.putChild(
             b"docs",
-            NoListingFile(os.path.join(settings.STATIC_ROOT, "docs")),
+            DocsFallbackFile(os.path.join(settings.STATIC_ROOT, "docs")),
         )
 
         root = Resource()
