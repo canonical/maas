@@ -7,9 +7,9 @@ Checks for new MAAS releases in the images.maas.io stream and creates
 notifications for the user.
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-import attr
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models import Config, Notification
@@ -23,16 +23,16 @@ maaslog = get_maas_logger("release-notifications")
 log = LegacyLogger()
 
 RELEASE_NOTIFICATION_SERVICE_PERIOD = timedelta(hours=24)
-RESURFACE_AFTER = timedelta(weeks=6)
+RESURFACE_AFTER = timedelta(weeks=2)
 RELEASE_NOTIFICATION_IDENT = "release_notification"
 
 
-@attr.s()
+@dataclass
 class ReleaseNotification:
-    maas_version = attr.ib()
-    message = attr.ib()
+    maas_version: str
+    message: str
     # Product version number
-    version = attr.ib()
+    version: float
 
 
 class NoReleasenotification(LookupError):
@@ -78,13 +78,9 @@ def ensure_notification_exists(message, resurface_after=RESURFACE_AFTER):
         notification.notificationdismissal_set.all().delete()
         return
 
-    if (datetime.now() - notification.updated) > resurface_after:
-        notification.notificationdismissal_set.all().delete()
-        # We are using save to update the `updated` field on the Notification
-        # model. This behaviour will be changed in MAAS 2.9 and above when
-        # we can update the schema and make the notification dismissal a
-        # timestamped model
-        notification.save(force_update=True)
+    notification.notificationdismissal_set.filter(
+        updated__lt=datetime.now() - resurface_after
+    ).delete()
 
 
 class ReleaseNotifications:

@@ -16,7 +16,6 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
-    Model,
     TextField,
 )
 from markupsafe import Markup
@@ -267,7 +266,7 @@ class Notification(CleanSave, TimestampedModel):
         )
 
 
-class NotificationDismissal(Model):
+class NotificationDismissal(TimestampedModel):
     """A notification dismissal.
 
     :ivar notification: The notification which has been dismissed.

@@ -2,6 +2,7 @@ import datetime
 
 from maasserver import release_notifications
 from maasserver.models import Notification
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -80,22 +81,39 @@ class TestReleaseNotification(MAASTransactionServerTestCase):
 
     def test_resurface_notification(self):
         """Test resufacing release notifications that were dismissed"""
+        user1 = factory.make_User("user")
+        user2 = factory.make_User("user2")
 
         message = "Upgrade to version 3.14 today"
         release_notifications.ensure_notification_exists(message)
 
+        notification = self._get_release_notifications().get()
+        notification.dismiss(user1)
+        notification.dismiss(user2)
+
+        # We expect to have two dismissals here, one for each user
+        self.assertEqual(notification.notificationdismissal_set.count(), 2)
+
         # Manually update the notification to appear in the past.
-        seven_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=7)
-        self._get_release_notifications().update(
-            updated=seven_weeks_ago, created=seven_weeks_ago
+        three_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=3)
+        notification.notificationdismissal_set.filter(user=user2).update(
+            updated=three_weeks_ago, created=three_weeks_ago
         )
-        original_notification = self._get_release_notifications().get()
 
         release_notifications.ensure_notification_exists(message)
+
+        # as one of the dismissals was old it should be deleted, leaving us
+        # with only one for user1
+        self.assertEqual(
+            notification.notificationdismissal_set.filter(user=user1).count(),
+            1,
+        )
+        self.assertEqual(
+            notification.notificationdismissal_set.filter(user=user2).count(),
+            0,
+        )
 
         self.assertEqual(self._get_release_notifications().count(), 1)
 
         notification = self._get_release_notifications().get()
         self.assertEqual(message, notification.message)
-        self.assertEqual(notification.created, original_notification.created)
-        self.assertGreater(notification.updated, original_notification.updated)
