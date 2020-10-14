@@ -245,6 +245,28 @@ class IPMI(BMCConfig):
     def _get_ipmi_locate_output():
         return check_output(["ipmi-locate"], timeout=60).decode()
 
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _get_ipmitool_lan_print():
+        # You must specify a channel to use with ipmitool, the only
+        # way to figure this out is through trial and error.
+        for i in range(0, 9):
+            i = str(i)
+            try:
+                return (
+                    i,
+                    check_output(
+                        ["ipmitool", "lan", "print", i],
+                        stderr=DEVNULL,
+                        timeout=60,
+                    ).decode(),
+                )
+            except (CalledProcessError, TimeoutExpired):
+                pass
+            else:
+                return i
+        return -1, ""
+
     def detected(self):
         # Verify the BMC uses IPMI.
         try:
@@ -471,23 +493,26 @@ class IPMI(BMCConfig):
         )
         self._bmc_set_keys("Lan_Channel_Auth", ["SOL_Payload_Access"], "Yes")
 
-    def _config_cipher_suite_id(self):
-        print("INFO: Configuring IPMI cipher suite ids...")
-        proc = run(
-            ["bmc-config", "--checkout", "-S", "Rmcpplus_Conf_Privilege"],
-            stdout=PIPE,
-            timeout=60,
+    def _get_bmc_config_cipher_suite_ids(self):
+        """Return the supported IPMI cipher suite ids from bmc-config."""
+        cipher_suite_ids = {}
+        max_cipher_suite_id = 0
+        regex = re.compile(
+            r"^Maximum_Privilege_Cipher_Suite_Id_(?P<cipher_suite_id>1?\d)$"
         )
-        output = proc.stdout.decode()
-        # Find all ciphers suites the BMC supports. Section 22.15.2 of the IPMI
-        # 2.0 spec reserves cipher ids >= 20 for OEM use, don't touch them.
-        ciphers = dict(
-            re.findall(
-                r"Maximum_Privilege_Cipher_Suite_Id_(\d|1\d)\s+(.*)",
-                output,
-                re.MULTILINE,
-            )
-        )
+        for key, value in self._bmc_config.get(
+            "Rmcpplus_Conf_Privilege", {}
+        ).items():
+            m = regex.search(key)
+            if m:
+                cipher_suite_id = m.group("cipher_suite_id")
+                cipher_suite_ids[cipher_suite_id] = value
+                max_cipher_suite_id = max(
+                    max_cipher_suite_id, int(cipher_suite_id)
+                )
+        return max_cipher_suite_id, cipher_suite_ids
+
+    def _config_bmc_config_cipher_suite_ids(self, cipher_suite_ids):
         # First find the most secure cipher suite id MAAS will use to
         # communicate to the BMC with.
         # 3  - HMAC-SHA1::HMAC-SHA1-96::AES-CBC-128
@@ -496,37 +521,184 @@ class IPMI(BMCConfig):
         # 17 - HMAC-SHA256::HMAC_SHA256_128::AES-CBC-128
         # This is not in order as MAAS prefers to use the most secure cipher
         # available.
-        for id in ["17", "3", "8", "12"]:
-            if id not in ciphers:
-                # Not all BMCs support 17, all should support 3.
+        for cipher_suite_id in ["17", "3", "8", "12"]:
+            if cipher_suite_id not in cipher_suite_ids:
                 continue
-            elif not self._cipher_suite_id:
-                status = ciphers[id]
-                if status != "Administrator":
-                    print(
-                        'INFO: Enabling IPMI cipher suite id "%s" '
-                        "for MAAS use..." % id
+            elif cipher_suite_ids[cipher_suite_id] != "Administrator":
+                print(
+                    'INFO: Enabling IPMI cipher suite id "%s" '
+                    "for MAAS use..." % cipher_suite_id
+                )
+                try:
+                    self._bmc_set(
+                        "Rmcpplus_Conf_Privilege",
+                        "Maximum_Privilege_Cipher_Suite_Id_%s"
+                        % cipher_suite_id,
+                        "Administrator",
                     )
-                    try:
-                        self._bmc_set(
-                            "Rmcpplus_Conf_Privilege",
-                            "Maximum_Privilege_Cipher_Suite_Id_%s" % id,
-                            "Administrator",
-                        )
-                    except (CalledProcessError, TimeoutExpired):
-                        # Some machines will show what ciphers are available
-                        # but not allow their value to be changed. The ARM64
-                        # machine in the MAAS CI is like this.
+                except (CalledProcessError, TimeoutExpired):
+                    # Some machines will show what ciphers are available
+                    # but not allow their value to be changed. The ARM64
+                    # machine in the MAAS CI is like this.
+                    print(
+                        "WARNING: Unable to enable secure IPMI cipher "
+                        'suite id "%s"!' % cipher_suite_id
+                    )
+                    # Try the next secure cipher
+                    continue
+            self._cipher_suite_id = cipher_suite_id
+            # Enable the most secure cipher suite id and leave the
+            # other secure cipher suite ids in their current state.
+            # Most IPMI tools, such as freeipmi-tools, use cipher
+            # suite id 3 as its default. If the user has 3 enabled
+            # while 17 is available we want to keep 3 in the same
+            # state to not break other tools.
+            break
+
+        # Disable insecure IPMI cipher suites.
+        for cipher_suite_id, state in cipher_suite_ids.items():
+            if cipher_suite_id in ["17", "3", "8", "12"]:
+                continue
+            elif state != "Unused":
+                print(
+                    'INFO: Disabling insecure IPMI cipher suite id "%s"'
+                    % cipher_suite_id
+                )
+                try:
+                    self._bmc_set(
+                        "Rmcpplus_Conf_Privilege",
+                        "Maximum_Privilege_Cipher_Suite_Id_%s"
+                        % cipher_suite_id,
+                        "Unused",
+                    )
+                except (CalledProcessError, TimeoutExpired):
+                    # Some machines will show what ciphers are available
+                    # but not allow their value to be changed. The ARM64
+                    # machine in the MAAS CI is like this.
+                    print(
+                        "WARNING: Unable to disable insecure IPMI cipher "
+                        'suite id "%s"!' % cipher_suite_id
+                    )
+
+    def _get_ipmitool_cipher_suite_ids(self):
+        supported_cipher_suite_ids = None
+        cipher_suite_privs = None
+        _, output = self._get_ipmitool_lan_print()
+        for line in output.splitlines():
+            key, value = line.split(":", maxsplit=1)
+            key = key.strip()
+            value = value.strip()
+            if key == "RMCP+ Cipher Suites":
+                try:
+                    supported_cipher_suite_ids = [
+                        int(i) for i in value.split(",")
+                    ]
+                except ValueError:
+                    return 0, [], ""
+            elif key == "Cipher Suite Priv Max":
+                cipher_suite_privs = value
+
+        if supported_cipher_suite_ids and cipher_suite_privs:
+            return (
+                max(
+                    [
+                        i
+                        for i in supported_cipher_suite_ids
+                        if i in [17, 3, 8, 12]
+                    ]
+                ),
+                supported_cipher_suite_ids,
+                cipher_suite_privs,
+            )
+        else:
+            return 0, [], ""
+
+    def _config_ipmitool_cipher_suite_ids(
+        self,
+        max_cipher_suite_id,
+        supported_cipher_suite_ids,
+        cipher_suite_privs,
+    ):
+        new_cipher_suite_privs = ""
+        for i, v in enumerate(cipher_suite_privs):
+            if i < len(supported_cipher_suite_ids):
+                cipher_suite_id = supported_cipher_suite_ids[i]
+                if cipher_suite_id in [17, 3, 8, 12]:
+                    if cipher_suite_id == max_cipher_suite_id and v != "a":
                         print(
-                            "WARNING: Unable to enable secure IPMI cipher "
-                            'suite id "%s"!' % id
+                            'INFO: Enabling IPMI cipher suite id "%s" '
+                            "for MAAS use..." % cipher_suite_id
                         )
-                self._cipher_suite_id = id
-            # Delete all secure cipher suites from the dictionary so they
-            # aren't disabled below. This ensures we don't break existing
-            # tools/scripts in the environment. 17 is more secure but 3 is
-            # the default freeipmi-tools use.
-            del ciphers[id]
+                        new_cipher_suite_privs += "a"
+                    else:
+                        new_cipher_suite_privs += v
+                else:
+                    if v != "X":
+                        print(
+                            "INFO: Disabling insecure IPMI cipher suite id "
+                            '"%s"' % cipher_suite_id
+                        )
+                    new_cipher_suite_privs = "X"
+            else:
+                # 15 characters are usually given even if there
+                # aren't 15 ciphers supported. Copy the current value
+                # incase there is some OEM use for them.
+                new_cipher_suite_privs += v
+
+        if cipher_suite_privs == new_cipher_suite_privs:
+            # Cipher suites are already properly configured, nothing
+            # to do.
+            self._cipher_suite_id = str(max_cipher_suite_id)
+            return
+
+        channel, _ = self._get_ipmitool_lan_print()
+        try:
+            check_call(
+                [
+                    "ipmitool",
+                    "lan",
+                    "set",
+                    channel,
+                    "cipher_privs",
+                    new_cipher_suite_privs,
+                ],
+                timeout=60,
+            )
+        except (CalledProcessError, TimeoutExpired):
+            print(
+                "WARNING: Unable to configure IPMI cipher suites with "
+                "ipmitool!"
+            )
+        else:
+            self._cipher_suite_id = str(max_cipher_suite_id)
+
+    def _config_cipher_suite_id(self):
+        print("INFO: Configuring IPMI cipher suite ids...")
+
+        # BMC firmware can be buggy and different tools surface these bugs
+        # in different ways. bmc-config works on all machines in the MAAS
+        # CI while ipmitool doesn't detect anything on the ARM64 machine.
+        # However a user has reported that ipmitool detects cipher 17 on
+        # his system while bmc-config doesn't. To make sure MAAS uses the
+        # most secure cipher suite id check both.
+        # https://discourse.maas.io/t/ipmi-cipher-suite-c17-support/3293/11
+
+        (
+            bmc_config_max,
+            bmc_config_ids,
+        ) = self._get_bmc_config_cipher_suite_ids()
+        (
+            ipmitool_max,
+            ipmitool_ids,
+            ipmitool_privs,
+        ) = self._get_ipmitool_cipher_suite_ids()
+
+        if bmc_config_max >= ipmitool_max:
+            self._config_bmc_config_cipher_suite_ids(bmc_config_ids)
+        else:
+            self._config_ipmitool_cipher_suite_ids(
+                ipmitool_max, ipmitool_ids, ipmitool_privs
+            )
 
         if self._cipher_suite_id:
             print(
@@ -540,29 +712,6 @@ class IPMI(BMCConfig):
                 "WARNING: No IPMI cipher suite found! "
                 "MAAS will use freeipmi-tools default."
             )
-
-        # Disable insecure protocols. See http://fish2.com/ipmi/bp.pdf
-        # If one of these ciphers is needed you can write a custom commissioning
-        # script to reenable them.
-        for id, status in ciphers.items():
-            if status != "Unused":
-                print(
-                    'INFO: Disabling insecure IPMI cipher suite id "%s"' % id
-                )
-                try:
-                    self._bmc_set(
-                        "Rmcpplus_Conf_Privilege",
-                        "Maximum_Privilege_Cipher_Suite_Id_%s" % id,
-                        "Unused",
-                    )
-                except (CalledProcessError, TimeoutExpired):
-                    # Some machines will show what ciphers are available
-                    # but not allow their value to be changed. The ARM64
-                    # machine in the MAAS CI is like this.
-                    print(
-                        "WARNING: Unable to disable insecure IPMI cipher "
-                        'suite id "%s"!' % id
-                    )
 
     def _config_kg(self):
         if self._kg:
@@ -598,6 +747,10 @@ class IPMI(BMCConfig):
 
     def configure(self):
         self._bmc_get_config()
+        # Configure IPMI settings as suggested in http://fish2.com/ipmi/bp.pdf
+        # None of these settings should effect current environments. Settings
+        # can be overriden with a custom commissioning script which runs after
+        # this one.
         self._config_ipmi_lan_channel_settings()
         self._config_lan_conf_auth()
         self._config_cipher_suite_id()

@@ -8,7 +8,7 @@ import io
 import os
 import random
 import re
-from subprocess import CalledProcessError, DEVNULL, PIPE, TimeoutExpired
+from subprocess import CalledProcessError, DEVNULL, TimeoutExpired
 from unittest.mock import call, MagicMock
 
 import yaml
@@ -204,6 +204,41 @@ key2
         self.assertThat(
             self.mock_check_output,
             MockCalledOnceWith(["ipmi-locate"], timeout=60),
+        )
+
+    def test_get_ipmitool_lan_print(self):
+        fake_output = factory.make_name("output")
+        self.mock_check_output.side_effect = (
+            CalledProcessError(cmd="cmd", returncode=random.randint(1, 255)),
+            TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
+            fake_output.encode(),
+        )
+
+        # Call twice to test caching
+        self.ipmi._get_ipmitool_lan_print()
+        channel, output = self.ipmi._get_ipmitool_lan_print()
+
+        self.assertEqual("2", channel)
+        self.assertEqual(fake_output, output)
+        self.assertThat(
+            self.mock_check_output,
+            MockCallsMatch(
+                call(
+                    ["ipmitool", "lan", "print", "0"],
+                    stderr=DEVNULL,
+                    timeout=60,
+                ),
+                call(
+                    ["ipmitool", "lan", "print", "1"],
+                    stderr=DEVNULL,
+                    timeout=60,
+                ),
+                call(
+                    ["ipmitool", "lan", "print", "2"],
+                    stderr=DEVNULL,
+                    timeout=60,
+                ),
+            ),
         )
 
     def test_detected_true(self):
@@ -561,66 +596,280 @@ key2
 
         self.assertThat(mock_bmc_set_keys, MockNotCalled())
 
-    def test_config_cipher_suite_id(self):
-        mock_run = self.patch(bmc_config, "run")
-        mock_run.return_value.stdout.decode.return_value = """
-Section Rmcpplus_Conf_Privilege
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_0           Administrator
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_1           Administrator
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_2           Administrator
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_3           Unused
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_6           Administrator
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_7           Administrator
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_8           Unused
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_11          Administrator
-        ## Possible values: Unused/User/Operator/Administrator/OEM_Proprietary
-        Maximum_Privilege_Cipher_Suite_Id_12          Unused
-EndSection
-"""
+    def test_get_bmc_config_cipher_suite_ids(self):
+        self.ipmi._bmc_config = {
+            "Rmcpplus_Conf_Privilege": {
+                "Maximum_Privilege_Cipher_Suite_Id_0": "Administrator",
+                "Maximum_Privilege_Cipher_Suite_Id_17": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_3": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_42": "Unused",
+                "foo": "bar",
+            }
+        }
+
+        (
+            max_cipher_suite_id,
+            cipher_suite_ids,
+        ) = self.ipmi._get_bmc_config_cipher_suite_ids()
+
+        self.assertEqual(17, max_cipher_suite_id)
+        self.assertEqual(
+            {
+                "0": "Administrator",
+                "17": "Unused",
+                "3": "Unused",
+            },
+            cipher_suite_ids,
+        )
+
+    def test_config_bmc_config_cipher_suite_ids(self):
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        cipher_suite_ids = {
+            "3": "Unused",
+            "17": "Unused",
+            "0": "Administrator",
+        }
+
+        self.ipmi._config_bmc_config_cipher_suite_ids(cipher_suite_ids)
+
+        self.assertThat(
+            mock_bmc_set,
+            MockCallsMatch(
+                call(
+                    "Rmcpplus_Conf_Privilege",
+                    "Maximum_Privilege_Cipher_Suite_Id_17",
+                    "Administrator",
+                ),
+                call(
+                    "Rmcpplus_Conf_Privilege",
+                    "Maximum_Privilege_Cipher_Suite_Id_0",
+                    "Unused",
+                ),
+            ),
+        )
+        self.assertEqual("17", self.ipmi._cipher_suite_id)
+
+    def test_config_bmc_config_cipher_suite_ids_does_nothing(self):
+        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        cipher_suite_ids = {
+            "0": "Unused",
+            "3": "Unused",
+            "17": "Administrator",
+        }
+
+        self.ipmi._config_bmc_config_cipher_suite_ids(cipher_suite_ids)
+
+        self.assertThat(mock_bmc_set, MockNotCalled())
+        self.assertEqual("17", self.ipmi._cipher_suite_id)
+
+    def test_config_bmc_config_cipher_suite_ids_ignores_failures(self):
+        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        mock_bmc_set.side_effect = random.choice(
+            [
+                CalledProcessError(
+                    cmd="cmd", returncode=random.randint(1, 255)
+                ),
+                TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
+            ]
+        )
+        cipher_suite_ids = {
+            "3": "Unused",
+            "17": "Unused",
+            "0": "Administrator",
+        }
+
+        self.ipmi._config_bmc_config_cipher_suite_ids(cipher_suite_ids)
+
+        self.assertEqual("", self.ipmi._cipher_suite_id)
+
+    def test_get_ipmitool_cipher_suite_ids(self):
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            "RMCP+ Cipher Suites   : 0,3,17\n"
+            "Cipher Suite Priv Max : aXXXXXXXXXXXXXX\n",
+        )
+
+        (
+            max_cipher_suite_id,
+            supported_cipher_suite_ids,
+            cipher_suite_privs,
+        ) = self.ipmi._get_ipmitool_cipher_suite_ids()
+
+        self.assertEqual(17, max_cipher_suite_id)
+        self.assertEqual([0, 3, 17], supported_cipher_suite_ids)
+        self.assertEqual("aXXXXXXXXXXXXXX", cipher_suite_privs)
+
+    def test_get_ipmitool_cipher_suite_ids_ignores_invalid(self):
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            "RMCP+ Cipher Suites   : Not Available\n"
+            "Cipher Suite Priv Max : Not Available\n",
+        )
+
+        (
+            max_cipher_suite_id,
+            supported_cipher_suite_ids,
+            cipher_suite_privs,
+        ) = self.ipmi._get_ipmitool_cipher_suite_ids()
+
+        self.assertEqual(0, max_cipher_suite_id)
+        self.assertEqual([], supported_cipher_suite_ids)
+        self.assertEqual("", cipher_suite_privs)
+
+    def test_config_ipmitool_cipher_suite_ids(self):
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            factory.make_name("output"),
+        )
+
+        self.ipmi._config_ipmitool_cipher_suite_ids(
+            17, [0, 3, 17], "aXXXXXXXXXXXXXX"
+        )
+
+        self.assertThat(
+            self.mock_check_call,
+            MockCalledOnceWith(
+                [
+                    "ipmitool",
+                    "lan",
+                    "set",
+                    "2",
+                    "cipher_privs",
+                    "XXaXXXXXXXXXXXX",
+                ],
+                timeout=60,
+            ),
+        )
+        self.assertEqual("17", self.ipmi._cipher_suite_id)
+
+    def test_config_ipmitool_cipher_suite_ids_does_nothing(self):
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            factory.make_name("output"),
+        )
+
+        self.ipmi._config_ipmitool_cipher_suite_ids(
+            17, [0, 3, 17], "XXaXXXXXXXXXXXX"
+        )
+
+        self.assertThat(self.mock_check_call, MockNotCalled())
+        self.assertEqual("17", self.ipmi._cipher_suite_id)
+
+    def test_config_ipmitool_cipher_suite_ids_ignores_errors(self):
+        self.mock_check_call.side_effect = random.choice(
+            [
+                CalledProcessError(
+                    cmd="cmd", returncode=random.randint(1, 255)
+                ),
+                TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
+            ]
+        )
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            factory.make_name("output"),
+        )
+
+        self.ipmi._config_ipmitool_cipher_suite_ids(
+            17, [0, 3, 17], "aXXXXXXXXXXXXXX"
+        )
+
+        self.assertThat(
+            self.mock_check_call,
+            MockCalledOnceWith(
+                [
+                    "ipmitool",
+                    "lan",
+                    "set",
+                    "2",
+                    "cipher_privs",
+                    "XXaXXXXXXXXXXXX",
+                ],
+                timeout=60,
+            ),
+        )
+        self.assertEqual("", self.ipmi._cipher_suite_id)
+
+    def test_config_cipher_suite_id_bmc_config(self):
+        self.ipmi._bmc_config = {
+            "Rmcpplus_Conf_Privilege": {
+                "Maximum_Privilege_Cipher_Suite_Id_0": "Administrator",
+                "Maximum_Privilege_Cipher_Suite_Id_3": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_17": "Unused",
+            }
+        }
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            "RMCP+ Cipher Suites   : 0,3,17\n"
+            "Cipher Suite Priv Max : aXXXXXXXXXXXXXX\n",
+        )
+        mock_config_bmc_config_cipher_suite_ids = self.patch(
+            self.ipmi, "_config_bmc_config_cipher_suite_ids"
+        )
+        mock_config_ipmitool_cipher_suite_ids = self.patch(
+            self.ipmi, "_config_ipmitool_cipher_suite_ids"
+        )
 
         self.ipmi._config_cipher_suite_id()
 
         self.assertThat(
-            mock_run,
+            mock_config_bmc_config_cipher_suite_ids,
             MockCalledOnceWith(
-                ["bmc-config", "--checkout", "-S", "Rmcpplus_Conf_Privilege"],
-                stdout=PIPE,
-                timeout=60,
+                {"0": "Administrator", "3": "Unused", "17": "Unused"}
             ),
+        )
+        self.assertThat(mock_config_ipmitool_cipher_suite_ids, MockNotCalled())
+
+    def test_config_cipher_suite_id_ipmitool(self):
+        # Regression test for
+        # https://discourse.maas.io/t/ipmi-cipher-suite-c17-support/3293/11
+        self.ipmi._bmc_config = {
+            "Rmcpplus_Conf_Privilege": {
+                "Maximum_Privilege_Cipher_Suite_Id_0": "Administrator",
+                "Maximum_Privilege_Cipher_Suite_Id_3": "Unused",
+            }
+        }
+        mock_get_ipmitool_lan_print = self.patch(
+            self.ipmi, "_get_ipmitool_lan_print"
+        )
+        mock_get_ipmitool_lan_print.return_value = (
+            "2",
+            "RMCP+ Cipher Suites   : 0,3,17\n"
+            "Cipher Suite Priv Max : aXXXXXXXXXXXXXX\n",
+        )
+        mock_config_bmc_config_cipher_suite_ids = self.patch(
+            self.ipmi, "_config_bmc_config_cipher_suite_ids"
+        )
+        mock_config_ipmitool_cipher_suite_ids = self.patch(
+            self.ipmi, "_config_ipmitool_cipher_suite_ids"
+        )
+
+        self.ipmi._config_cipher_suite_id()
+
+        self.assertThat(
+            mock_config_bmc_config_cipher_suite_ids, MockNotCalled()
         )
         self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
-                *(
-                    [
-                        call(
-                            "Rmcpplus_Conf_Privilege",
-                            "Maximum_Privilege_Cipher_Suite_Id_3",
-                            "Administrator",
-                        ),
-                    ]
-                    + [
-                        call(
-                            "Rmcpplus_Conf_Privilege",
-                            f"Maximum_Privilege_Cipher_Suite_Id_{i}",
-                            "Unused",
-                        )
-                        for i in range(0, 13)
-                        if i not in [3, 8, 12, 4, 5, 9, 10]
-                    ]
-                )
-            ),
+            mock_config_ipmitool_cipher_suite_ids,
+            MockCalledOnceWith(17, [0, 3, 17], "aXXXXXXXXXXXXXX"),
         )
-        self.assertEqual("3", self.ipmi._cipher_suite_id)
 
     def test_config_kg_set(self):
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
