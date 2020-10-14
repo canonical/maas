@@ -29,12 +29,15 @@
 # parameters:
 #   maas_auto_ipmi_user:
 #     type: string
+#     max: 20
 #     argument_format: --username={input}
 #   maas_auto_ipmi_user_password:
 #     type: password
+#     max: 20
 #     argument_format: --password={input}
 #   maas_auto_ipmi_k_g_bmc_key:
 #     type: password
+#     max: 20
 #     argument_format: --ipmi-k-g={input}
 #   maas_auto_ipmi_user_privilege_level:
 #     type: choice
@@ -159,27 +162,83 @@ class IPMI(BMCConfig):
         self._kg = ipmi_k_g
         self._cipher_suite_id = ""
         self._privilege_level = ipmi_privilege_level
+        self._bmc_config = {}
 
-    def _bmc_get(self, key):
-        """Fetch the output of a key via bmc-config checkout."""
+    def _bmc_get_config(self):
+        """Fetch and cache all BMC settings."""
+        print("INFO: Reading current IPMI BMC values...")
         try:
-            return check_output(
-                ["bmc-config", "--checkout", "--key-pair=%s" % key],
-                stderr=DEVNULL,
+            proc = run(
+                ["bmc-config", "--checkout"],
+                stdout=PIPE,
                 timeout=60,
-            ).decode()
+            )
         except Exception:
-            return None
+            print(
+                "ERROR: Unable to get all current IPMI settings!",
+                file=sys.stderr,
+            )
+            raise
+        section = None
+        for line in proc.stdout.decode().splitlines():
+            line = line.split("#")[0].strip()
+            if not line:
+                continue
+            key_value = line.split(maxsplit=1)
+            if section is None and key_value[0] == "Section":
+                section = {}
+                self._bmc_config[key_value[1]] = section
+            elif key_value[0] == "EndSection":
+                section = None
+            elif section is not None:
+                if len(key_value) == 2:
+                    section[key_value[0]] = key_value[1]
+                else:
+                    section[key_value[0]] = ""
+            else:
+                if len(key_value) == 2:
+                    self._bmc_config[key_value[0]] = key_value[1]
+                else:
+                    self._bmc_config[key_value[0]] = ""
 
-    def _bmc_set(self, key, value):
+    def _bmc_set(self, section, key, value):
         """Set the value of a key via bmc-config commit.
 
         Exceptions are not caught so a commit failure causes a script failure.
         """
         check_call(
-            ["bmc-config", "--commit", "--key-pair=%s=%s" % (key, value)],
+            [
+                "bmc-config",
+                "--commit",
+                "--key-pair=%s:%s=%s" % (section, key, value),
+            ],
             timeout=60,
         )
+        # If the value was set update the cache.
+        if section not in self._bmc_config:
+            self._bmc_config[section] = {}
+        self._bmc_config[section][key] = value
+
+    def _bmc_set_keys(self, section, keys, value):
+        """Set a section of keys to one value."""
+        if section not in self._bmc_config:
+            # Some sections aren't available to all BMCs
+            print("INFO: %s settings unavailable!" % section)
+            return
+        for key in keys:
+            # Some keys aren't available on all BMCs, only set ones which
+            # are available.
+            if (
+                key in self._bmc_config[section]
+                and self._bmc_config[section][key] != value
+            ):
+                try:
+                    self._bmc_set(section, key, value)
+                except (CalledProcessError, TimeoutExpired):
+                    print(
+                        "WARNING: Unable to set %s:%s to %s!"
+                        % (section, key, value)
+                    )
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -285,35 +344,25 @@ class IPMI(BMCConfig):
 
         Otherwise, pick the first user that has no username set.
         """
-        user_numbers = re.findall(
-            r"^(User\d+)$",
-            check_output(["bmc-config", "-L"], timeout=60).decode(),
-            re.MULTILINE,
-        )
-        username_re = re.compile(
-            r"^\s*Username(?:[ \t])+([^#\s]+[^\n]*)$", re.MULTILINE
-        )
         first_unused = None
-        for user_number in user_numbers:
-            # The IPMI spec reserves User1 as anonymous.
-            if user_number == "User1":
+        for section_name, section in self._bmc_config.items():
+            if not section_name.startswith("User"):
                 continue
-            username_match = username_re.search(
-                self._bmc_get("%s:Username" % user_number)
-            )
-            if username_match:
-                username = username_match.group(1)
-            else:
-                username = None
+            # The IPMI spec reserves User1 as anonymous.
+            if section_name == "User1":
+                continue
 
-            if search_username and username == search_username:
-                print('INFO: Found existing IPMI user "%s"!' % username)
-                return user_number
-            elif username in [None, "(Empty User)"] and first_unused is None:
+            if search_username and search_username == section.get("Username"):
+                print('INFO: Found existing IPMI user "%s"!' % search_username)
+                return section_name
+            elif (
+                not section.get("Username")
+                or section.get("Username") == "(Empty User)"
+            ) and first_unused is None:
                 # Usually a BMC won't include a Username value if the user is
                 # unused. Some HP BMCs use "(Empty User)" to indicate a user in
                 # unused.
-                first_unused = user_number
+                first_unused = section_name
         return first_unused
 
     def add_bmc_user(self):
@@ -335,37 +384,92 @@ class IPMI(BMCConfig):
                 for key, value in self._make_ipmi_user_settings(
                     self.username, password
                 ).items():
-                    self._bmc_set("%s:%s" % (user_number, key), value)
+                    if self._bmc_config[user_number].get(key) != value:
+                        self._bmc_set(user_number, key, value)
             except Exception:
                 pass
             else:
                 self.password = password
+                # Not all user settings are available on all BMC keys, its
+                # okay if these fail to be set.
+                self._bmc_set_keys(
+                    user_number,
+                    [
+                        "Lan_Enable_Link_Auth",
+                        "SOL_Payload_Access",
+                        "Serial_Enable_Link_Auth",
+                    ],
+                    "Yes",
+                )
                 return
         print("ERROR: Unable to add BMC user!", file=sys.stderr)
         sys.exit(1)
 
-    def _set_ipmi_lan_channel_settings(self):
+    def _config_ipmi_lan_channel_settings(self):
         """Enable IPMI-over-Lan (Lan_Channel) if it is disabled"""
-        print("INFO: Verifying BMC is accessible over the network...")
-        for mode in [
-            "Lan_Channel:Volatile_Access_Mode",
-            "Lan_Channel:Non_Volatile_Access_Mode",
+        print("INFO: Configuring IPMI Lan_Channel...")
+        lan_channel = self._bmc_config.get("Lan_Channel", {})
+
+        for key in [
+            "Volatile_Access_Mode",
+            "Non_Volatile_Access_Mode",
         ]:
-            output = self._bmc_get(mode)
-            show_re = re.compile(r"%s\s+Always_Available" % mode.split(":")[1])
-            if show_re.search(output) is None:
-                print("INFO: Enabling BMC network access - %s" % mode)
+            if lan_channel.get(key) != "Always_Available":
+                print(
+                    "INFO: Enabling BMC network access - Lan_Channel:%s" % key
+                )
                 # Some BMC's don't support setting Lan_Channel (see LP: #1287274).
                 # If that happens, it would cause the script to fail preventing
                 # the script from continuing. To address this, simply catch the
                 # error, return and allow the script to continue.
                 try:
-                    self._bmc_set(mode, "Always_Available")
+                    self._bmc_set("Lan_Channel", key, "Always_Available")
                 except Exception:
                     print(
-                        "WARNING: Unable to set %s. "
-                        "BMC may be unavailable over the network!" % mode
+                        "WARNING: Unable to set Lan_Channel:%s. "
+                        "BMC may be unavailable over the network!" % key
                     )
+
+        self._bmc_set_keys(
+            "Lan_Channel",
+            [
+                "%s_%s" % (auth_type, volatility)
+                for auth_type in [
+                    "Enable_User_Level_Auth",
+                    "Enable_Per_Message_Auth",
+                    "Enable_Pef_Alerting",
+                ]
+                for volatility in ["Volatile", "Non_Volatile"]
+            ],
+            "Yes",
+        )
+
+    def _config_lan_conf_auth(self):
+        """Configure Lan_Conf_Auth."""
+        print("INFO: Configuring IPMI Lan_Channel_Auth...")
+        if "Lan_Channel_Auth" not in self._bmc_config:
+            print("INFO: Lan_Channel_Auth settings unavailable!")
+            return
+
+        self._bmc_set_keys(
+            "Lan_Channel_Auth",
+            [
+                "%s_Enable_Auth_Type_%s" % (user, enc_type)
+                for user in [
+                    "Callback",
+                    "User",
+                    "Admin",
+                    "OEM",
+                ]
+                for enc_type in [
+                    "None",
+                    "MD2",
+                    "OEM_Proprietary",
+                ]
+            ],
+            "No",
+        )
+        self._bmc_set_keys("Lan_Channel_Auth", ["SOL_Payload_Access"], "Yes")
 
     def _config_cipher_suite_id(self):
         print("INFO: Configuring IPMI cipher suite ids...")
@@ -405,7 +509,7 @@ class IPMI(BMCConfig):
                     )
                     try:
                         self._bmc_set(
-                            "Rmcpplus_Conf_Privilege:"
+                            "Rmcpplus_Conf_Privilege",
                             "Maximum_Privilege_Cipher_Suite_Id_%s" % id,
                             "Administrator",
                         )
@@ -447,7 +551,7 @@ class IPMI(BMCConfig):
                 )
                 try:
                     self._bmc_set(
-                        "Rmcpplus_Conf_Privilege:"
+                        "Rmcpplus_Conf_Privilege",
                         "Maximum_Privilege_Cipher_Suite_Id_%s" % id,
                         "Unused",
                     )
@@ -462,33 +566,30 @@ class IPMI(BMCConfig):
 
     def _config_kg(self):
         if self._kg:
-            print("INFO: Setting user given IPMI K_g BMC key...")
-            try:
-                self._bmc_set("Lan_Conf_Security_Keys:K_G", self._kg)
-            except (CalledProcessError, TimeoutExpired):
-                print(
-                    "ERROR: Unable to set usergiven BMC key on device!",
-                    file=sys.stderr,
-                )
-                # If the kg failed to be set don't return a kg to MAAS.
-                self._kg = ""
-                # If the user passes a BMC key and its unable to be set fail
-                # the script as the system can't be secured as requested. Raise
-                # the exception to help with debug but this is most likely a
-                # BMC firmware issue.
-                raise
-        else:
+            if self._kg != self._bmc_config.get(
+                "Lan_Conf_Security_Keys", {}
+            ).get("K_G"):
+                print("INFO: Setting user given IPMI K_g BMC key...")
+                try:
+                    self._bmc_set("Lan_Conf_Security_Keys", "K_G", self._kg)
+                except (CalledProcessError, TimeoutExpired):
+                    print(
+                        "ERROR: Unable to set usergiven BMC key on device!",
+                        file=sys.stderr,
+                    )
+                    # If the kg failed to be set don't return a kg to MAAS.
+                    self._kg = ""
+                    # If the user passes a BMC key and its unable to be set fail
+                    # the script as the system can't be secured as requested. Raise
+                    # the exception to help with debug but this is most likely a
+                    # BMC firmware issue.
+                    raise
+        elif "Lan_Conf_Security_Keys" in self._bmc_config:
             # Check if the IPMI K_g BMC key was already set and capture it.
-            output = self._bmc_get("Lan_Conf_Security_Keys:K_G")
-            if output:
-                m = re.search(r"K_G\s+(?P<kg>.+)$", output, re.MULTILINE)
-                if m:
-                    kg = m.group("kg")
-                    # Hex 0 means no key was set, check for empty string as
-                    # well just to be sure.
-                    if kg and not re.search("^0x0+$", kg):
-                        print("INFO: Found existing K_g BMC key!")
-                        self._kg = kg
+            kg = self._bmc_config["Lan_Conf_Security_Keys"].get("K_G")
+            if kg and not re.search("^0x0+$", kg):
+                print("INFO: Found existing K_g BMC key!")
+                self._kg = kg
         if not self._kg:
             print(
                 "WARNING: No K_g BMC key found or configured, "
@@ -496,32 +597,61 @@ class IPMI(BMCConfig):
             )
 
     def configure(self):
-        self._set_ipmi_lan_channel_settings()
+        self._bmc_get_config()
+        self._config_ipmi_lan_channel_settings()
+        self._config_lan_conf_auth()
         self._config_cipher_suite_id()
         self._config_kg()
+
+        print("INFO: Configuring IPMI Serial_Channel...")
+        self._bmc_set_keys(
+            "Serial_Channel",
+            [
+                "%s_%s" % (auth_type, volatility)
+                for auth_type in [
+                    "Enable_User_Level_Auth",
+                    "Enable_Per_Message_Auth",
+                    "Enable_Pef_Alerting",
+                ]
+                for volatility in ["Volatile", "Non_Volatile"]
+            ],
+            "Yes",
+        )
+        print("INFO: Configuring IPMI SOL_Conf...")
+        self._bmc_set_keys(
+            "SOL_Conf",
+            [
+                "Force_SOL_Payload_Authentication",
+                "Force_SOL_Payload_Encryption",
+            ],
+            "Yes",
+        )
 
     def _get_bmc_ip(self):
         """Return the current IP of the BMC, returns none if unavailable."""
         show_re = re.compile(
             r"((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)"
         )
-        for address_type in [
-            "Lan_Conf:IP_Address",
-            "Lan6_Conf:IPv6_Static_Addresses",
-            "Lan6_Conf:IPv6_Dynamic_Addresses",
+        for section, key in [
+            ("Lan_Conf", "IP_Address"),
+            ("Lan6_Conf", "IPv6_Static_Addresses"),
+            ("Lan6_Conf", "IPv6_Dynamic_Addresses"),
         ]:
-            output = self._bmc_get(address_type)
+            try:
+                value = self._bmc_config[section][key]
+            except KeyError:
+                continue
             # Loop through the addreses by preference: IPv4, static IPv6, dynamic
             # IPv6.  Return the first valid, non-link-local address we find.
             # While we could conceivably allow link-local addresses, we would need
             # to devine which of our interfaces is the correct link, and then we
             # would need support for link-local addresses in freeipmi-tools.
-            res = show_re.findall(output)
+            res = show_re.findall(value)
             for ip in res:
                 if ip.lower().startswith("fe80::") or ip == "0.0.0.0":
                     time.sleep(2)
                     continue
-                if address_type.startswith("Lan6_"):
+                if section.startswith("Lan6_"):
                     return "[%s]" % ip
                 return ip
             # No valid IP address was found.
@@ -533,14 +663,14 @@ class IPMI(BMCConfig):
         if ip_address:
             return ip_address
         print("INFO: Attempting to enable preconfigured static IP on BMC...")
-        self._bmc_set("Lan_Conf:IP_Address_Source", "Static")
+        self._bmc_set("Lan_Conf", "IP_Address_Source", "Static")
         for _ in range(6):
             time.sleep(10)
             ip_address = self._get_bmc_ip()
             if ip_address:
                 return ip_address
         print("INFO: Attempting to enable DHCP on BMC...")
-        self._bmc_set("Lan_Conf:IP_Address_Source", "Use_DHCP")
+        self._bmc_set("Lan_Conf", "IP_Address_Source", "Use_DHCP")
         for _ in range(6):
             time.sleep(10)
             ip_address = self._get_bmc_ip()
@@ -858,6 +988,26 @@ def main():
         help="The IPMI priviledge level to create the MAAS user as.",
     )
     args = parser.parse_args()
+
+    # 20 character limit is from IPMI 2.0
+    if args.username and len(args.username) > 20:
+        print(
+            "ERROR: Username must be 20 characters or less!",
+            file=sys.stderr,
+        )
+        sys.exit(os.EX_USAGE)
+    if args.password and len(args.password) > 20:
+        print(
+            "ERROR: Password must be 20 characters or less!",
+            file=sys.stderr,
+        )
+        sys.exit(os.EX_USAGE)
+    if args.ipmi_k_g and len(args.ipmi_k_g) > 20:
+        print(
+            "ERROR: IPMI K_g key must be 20 characters or less!",
+            file=sys.stderr,
+        )
+        sys.exit(os.EX_USAGE)
 
     bmc_config_path = os.environ.get("BMC_CONFIG_PATH")
     if not bmc_config_path:

@@ -54,6 +54,8 @@ class TestIPMI(MAASTestCase):
         self.password = factory.make_name("password")
         self.ipmi = bmc_config.IPMI(self.username, self.password)
         self.mock_check_output = self.patch(bmc_config, "check_output")
+        self.mock_check_call = self.patch(bmc_config, "check_call")
+        self.mock_run = self.patch(bmc_config, "run")
         self.mock_sleep = self.patch(bmc_config.time, "sleep")
         self.mock_print = self.patch(bmc_config, "print")
 
@@ -63,34 +65,131 @@ class TestIPMI(MAASTestCase):
     def test_str(self):
         self.assertEqual("IPMI", str(self.ipmi))
 
-    def test_bmc_get(self):
+    def test_bmc_get_config(self):
+        self.mock_run.return_value.stdout = b"""
+# Section1 comment
+Section Section1
+        ## Comment 1
+        Key1                        value1
+        ## Comment 2
+        Key2                        value2
+        ## Comment 3
+        Key3
+EndSection
+# Section2 comment
+Section Section2
+        ## Comment 1
+        Key1                        value1
+        ## Comment 2
+        Key2                        value2
+        ## Comment 3
+        Key3
+EndSection
+# Key value comment
+key1         value1
+key2
+"""
+        self.ipmi._bmc_get_config()
+        self.assertEqual(
+            {
+                "Section1": {
+                    "Key1": "value1",
+                    "Key2": "value2",
+                    "Key3": "",
+                },
+                "Section2": {
+                    "Key1": "value1",
+                    "Key2": "value2",
+                    "Key3": "",
+                },
+                "key1": "value1",
+                "key2": "",
+            },
+            self.ipmi._bmc_config,
+        )
+
+    def test_bmc_set(self):
+        section = factory.make_name("section")
         key = factory.make_name("key")
         value = factory.make_name("value")
-        self.mock_check_output.return_value = value.encode()
+        self.ipmi._bmc_set(section, key, value)
 
-        self.assertEqual(value, self.ipmi._bmc_get(key))
         self.assertThat(
-            self.mock_check_output,
+            self.mock_check_call,
             MockCalledOnceWith(
-                ["bmc-config", "--checkout", f"--key-pair={key}"],
-                stderr=DEVNULL,
+                [
+                    "bmc-config",
+                    "--commit",
+                    f"--key-pair={section}:{key}={value}",
+                ],
                 timeout=60,
             ),
         )
+        self.assertEqual({section: {key: value}}, self.ipmi._bmc_config)
 
-    def test_bmc_get_returns_none_on_error(self):
-        key = factory.make_name("key")
-        self.mock_check_output.side_effect = factory.make_exception()
-
-        self.assertIsNone(self.ipmi._bmc_get(key))
+    def test_bmc_set_keys(self):
+        password = factory.make_string()
+        self.ipmi._bmc_config = {
+            "User2": {
+                "Username": "maas",
+                "Password": password,
+                "Lan_Enable_Link_Auth": "Yes",
+                "SOL_Payload_Access": "No",
+            },
+        }
+        self.ipmi._bmc_set_keys(
+            "User2",
+            [
+                "Lan_Enable_Link_Auth",
+                "SOL_Payload_Access",
+                "Serial_Enable_Link_Auth",
+            ],
+            "Yes",
+        )
+        # Only called once because there is only one value that exists
+        # that needs to be updated.
         self.assertThat(
-            self.mock_check_output,
+            self.mock_check_call,
             MockCalledOnceWith(
-                ["bmc-config", "--checkout", f"--key-pair={key}"],
-                stderr=DEVNULL,
+                [
+                    "bmc-config",
+                    "--commit",
+                    "--key-pair=User2:SOL_Payload_Access=Yes",
+                ],
                 timeout=60,
             ),
         )
+        # Verify cache has been updated
+        self.assertEqual(
+            {
+                "User2": {
+                    "Username": "maas",
+                    "Password": password,
+                    "Lan_Enable_Link_Auth": "Yes",
+                    "SOL_Payload_Access": "Yes",
+                },
+            },
+            self.ipmi._bmc_config,
+        )
+
+    def test_bmc_set_keys_warns_on_no_section(self):
+        self.ipmi._bmc_config = {}
+        self.ipmi._bmc_set_keys(
+            factory.make_name("section"),
+            [factory.make_name("key") for _ in range(3)],
+            factory.make_name("value"),
+        )
+        self.assertThat(self.mock_print, MockCalledOnce())
+
+    def test_bmc_set_keys_warns_on_setting_failure(self):
+        self.mock_check_call.side_effect = None
+        self.ipmi._bmc_config = {}
+        self.ipmi._bmc_set_keys(
+            factory.make_name("section"),
+            [factory.make_name("key") for _ in range(3)],
+            factory.make_name("value"),
+        )
+        self.assertThat(self.mock_print, MockCalledOnce())
 
     def test_get_ipmi_locate_output(self):
         # Make sure we start out with a cleared cache
@@ -182,139 +281,121 @@ class TestIPMI(MAASTestCase):
         )
 
     def test_pick_user_number_finds_empty(self):
-        self.mock_check_output.return_value = (
-            b"User1\n"
-            b"User2\n"
-            b"User3\n"
-            b"User4\n"
-            b"User5\n"
-            b"User6\n"
-            b"User7\n"
-            b"User8\n"
-            b"User9\n"
-            b"User10\n"
-            b"User11\n"
-            b"User12\n"
-            b"Lan_Channel\n"
-            b"Lan_Conf\n"
-        )
-        self.patch(self.ipmi, "_bmc_get").side_effect = [
-            "Section User1\n"
-            "\t## Give Username\n"
-            "\t##Username                NULL\n"
-            "EndSection\n"
-        ] + [
-            f"Section User{i}\n"
-            "\t## Give Username\n"
-            "\tUsername                (Empty User)\n"
-            "EndSection\n"
-            for i in range(2, 12)
-        ]
-        self.assertEqual("User2", self.ipmi._pick_user_number("maas"))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(["bmc-config", "-L"], timeout=60),
-        )
+        self.ipmi._bmc_config = {
+            "User1": {},
+            "User2": {"Username": factory.make_name("username")},
+            "User3": random.choice([{}, {"Username": "(Empty User)"}]),
+            "User4": {"Username": factory.make_name("username")},
+            "User5": random.choice([{}, {"Username": "(Empty User)"}]),
+        }
+        self.assertEqual("User3", self.ipmi._pick_user_number("maas"))
 
     def test_pick_user_number_finds_existing(self):
-        self.mock_check_output.return_value = (
-            b"User1\n"
-            b"User2\n"
-            b"User3\n"
-            b"User4\n"
-            b"User5\n"
-            b"User6\n"
-            b"User7\n"
-            b"User8\n"
-            b"User9\n"
-            b"User10\n"
-            b"User11\n"
-            b"User12\n"
-            b"Lan_Channel\n"
-            b"Lan_Conf\n"
-        )
-        self.patch(self.ipmi, "_bmc_get").side_effect = (
-            [
-                "Section User1\n"
-                "\t## Give Username\n"
-                "\t##Username                NULL\n"
-                "EndSection\n"
-            ]
-            + [
-                f"Section User{i}\n"
-                "\t## Give Username\n"
-                "\tUsername                (Empty User)\n"
-                "EndSection\n"
-                for i in range(2, 11)
-            ]
-            + [
-                "Section User12\n"
-                "\t## Give Username\n"
-                "\tUsername                maas\n"
-                "EndSection\n"
-            ]
-        )
-        self.assertEqual("User12", self.ipmi._pick_user_number("maas"))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(["bmc-config", "-L"], timeout=60),
-        )
+        search_username = factory.make_name("search_username")
+        self.ipmi._bmc_config = {
+            "User1": {},
+            "User2": {"Username": factory.make_name("username")},
+            "User3": random.choice([{}, {"Username": "(Empty User)"}]),
+            "User4": {"Username": search_username},
+            "User5": random.choice([{}, {"Username": "(Empty User)"}]),
+        }
+        self.assertEqual("User4", self.ipmi._pick_user_number(search_username))
 
     def test_add_bmc_user(self):
-        user_number = "User%s" % random.randint(2, 12)
-        self.patch(self.ipmi, "_pick_user_number").return_value = user_number
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+        self.ipmi._bmc_config = {
+            "User1": {},
+            "User2": {
+                "Username": "",
+                "Password": factory.make_name("password"),
+                "Enable_User": "Yes",
+                "Lan_Privilege_Limit": "Administrator",
+                "Lan_Enable_IPMI_Msgs": "Yes",
+            },
+        }
+        self.ipmi._privilege_level = "OPERATOR"
 
         self.ipmi.add_bmc_user()
 
         self.assertEqual(self.username, self.ipmi.username)
         self.assertEqual(self.password, self.ipmi.password)
+        # Verify bmc_set is only called for values that have changed
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
-                call(f"{user_number}:Username", self.username),
-                call(f"{user_number}:Password", self.password),
-                call(f"{user_number}:Enable_User", "Yes"),
-                call(f"{user_number}:Lan_Privilege_Limit", "Administrator"),
-                call(f"{user_number}:Lan_Enable_IPMI_Msgs", "Yes"),
+                call("User2", "Username", self.username),
+                call("User2", "Password", self.password),
+                call("User2", "Lan_Privilege_Limit", "Operator"),
+            ),
+        )
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCalledOnceWith(
+                "User2",
+                [
+                    "Lan_Enable_Link_Auth",
+                    "SOL_Payload_Access",
+                    "Serial_Enable_Link_Auth",
+                ],
+                "Yes",
             ),
         )
 
     def test_add_bmc_user_rand_password(self):
-        user_number = "User%s" % random.randint(2, 12)
         self.ipmi.username = None
         self.ipmi.password = None
         password = factory.make_name("password")
         password_w_spec_chars = factory.make_name("password_w_spec_chars")
-        self.patch(self.ipmi, "_pick_user_number").return_value = user_number
         self.patch(self.ipmi, "_generate_random_password").side_effect = (
             password,
             password_w_spec_chars,
         )
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+        self.ipmi._bmc_config = {
+            "User1": {},
+            "User2": {
+                "Username": "",
+                "Password": factory.make_name("password"),
+                "Enable_User": "Yes",
+                "Lan_Privilege_Limit": "Administrator",
+                "Lan_Enable_IPMI_Msgs": "Yes",
+            },
+        }
+        self.ipmi._privilege_level = "OPERATOR"
 
         self.ipmi.add_bmc_user()
 
         self.assertEqual("maas", self.ipmi.username)
         self.assertEqual(password, self.ipmi.password)
+        # Verify bmc_set is only called for values that have changed
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
-                call(f"{user_number}:Username", "maas"),
-                call(f"{user_number}:Password", password),
-                call(f"{user_number}:Enable_User", "Yes"),
-                call(f"{user_number}:Lan_Privilege_Limit", "Administrator"),
-                call(f"{user_number}:Lan_Enable_IPMI_Msgs", "Yes"),
+                call("User2", "Username", "maas"),
+                call("User2", "Password", password),
+                call("User2", "Lan_Privilege_Limit", "Operator"),
+            ),
+        )
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCalledOnceWith(
+                "User2",
+                [
+                    "Lan_Enable_Link_Auth",
+                    "SOL_Payload_Access",
+                    "Serial_Enable_Link_Auth",
+                ],
+                "Yes",
             ),
         )
 
     def test_add_bmc_user_rand_password_with_special_chars(self):
         self.ipmi.username = None
         self.ipmi.password = None
-        user_number = "User%s" % random.randint(2, 12)
         password = factory.make_name("password")
         password_w_spec_chars = factory.make_name("password_w_spec_chars")
-        self.patch(self.ipmi, "_pick_user_number").return_value = user_number
         self.patch(self.ipmi, "_generate_random_password").side_effect = (
             password,
             password_w_spec_chars,
@@ -326,92 +407,159 @@ class TestIPMI(MAASTestCase):
             None,
             None,
             None,
-            None,
-            None,
         )
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+        self.ipmi._bmc_config = {
+            "User1": {},
+            "User2": {
+                "Username": "",
+                "Password": factory.make_name("password"),
+                "Enable_User": "Yes",
+                "Lan_Privilege_Limit": "Administrator",
+                "Lan_Enable_IPMI_Msgs": "Yes",
+            },
+        }
+        self.ipmi._privilege_level = "OPERATOR"
 
         self.ipmi.add_bmc_user()
 
         self.assertEqual("maas", self.ipmi.username)
         self.assertEqual(password_w_spec_chars, self.ipmi.password)
+        # Verify bmc_set is only called for values that have changed
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
-                call(f"{user_number}:Username", "maas"),
-                call(f"{user_number}:Password", password),
-                call(f"{user_number}:Username", "maas"),
-                call(f"{user_number}:Password", password_w_spec_chars),
-                call(f"{user_number}:Enable_User", "Yes"),
-                call(f"{user_number}:Lan_Privilege_Limit", "Administrator"),
-                call(f"{user_number}:Lan_Enable_IPMI_Msgs", "Yes"),
+                call("User2", "Username", "maas"),
+                call("User2", "Password", password),
+                call("User2", "Username", "maas"),
+                call("User2", "Password", password_w_spec_chars),
+                call("User2", "Lan_Privilege_Limit", "Operator"),
+            ),
+        )
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCalledOnceWith(
+                "User2",
+                [
+                    "Lan_Enable_Link_Auth",
+                    "SOL_Payload_Access",
+                    "Serial_Enable_Link_Auth",
+                ],
+                "Yes",
             ),
         )
 
     def test_add_bmc_user_fails(self):
-        user_number = "User%s" % random.randint(2, 12)
-        password = factory.make_name("password")
-        password_w_spec_chars = factory.make_name("password_w_spec_chars")
-        self.patch(self.ipmi, "_pick_user_number").return_value = user_number
-        self.patch(self.ipmi, "_generate_random_password").side_effect = (
-            password,
-            password_w_spec_chars,
-        )
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_bmc_set.side_effect = factory.make_exception()
 
         self.assertRaises(SystemExit, self.ipmi.add_bmc_user)
 
     def test_set_ipmi_lan_channel_setting_verifies(self):
+        self.ipmi._bmc_config = {
+            "Lan_Channel": {
+                "Volatile_Access_Mode": "Always_Available",
+                "Non_Volatile_Access_Mode": "Always_Available",
+            }
+        }
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.side_effect = (
-            (
-                "Section Lan_Channel\n"
-                "\t## Possible values: Disabled/Pre_Boot_Only/"
-                "Always_Available/Shared\n"
-                "\tVolatile_Access_Mode                  Always_Available\n"
-                "EndSection\n"
-            ),
-            (
-                "Section Lan_Channel\n"
-                "\t## Possible values: Disabled/Pre_Boot_Only/"
-                "Always_Available/Shared\n"
-                "\tNon_Volatile_Access_Mode              Always_Available\n"
-                "EndSection\n"
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+        self.ipmi._config_ipmi_lan_channel_settings()
+        self.assertThat(mock_bmc_set, MockNotCalled())
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCalledOnceWith(
+                "Lan_Channel",
+                [
+                    "%s_%s" % (auth_type, volatility)
+                    for auth_type in [
+                        "Enable_User_Level_Auth",
+                        "Enable_Per_Message_Auth",
+                        "Enable_Pef_Alerting",
+                    ]
+                    for volatility in ["Volatile", "Non_Volatile"]
+                ],
+                "Yes",
             ),
         )
-        self.ipmi._set_ipmi_lan_channel_settings()
-        self.assertThat(mock_bmc_set, MockNotCalled())
 
     def test_set_ipmi_lan_channel_setting_enables(self):
+        self.ipmi._bmc_config = {
+            "Lan_Channel": {
+                "Volatile_Access_Mode": "Disabled",
+                "Non_Volatile_Access_Mode": "Pre_Boot_only",
+            }
+        }
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.side_effect = (
-            (
-                "Section Lan_Channel\n"
-                "\t## Possible values: Disabled/Pre_Boot_Only/"
-                "Always_Available/Shared\n"
-                "\tVolatile_Access_Mode                  Disabled\n"
-                "EndSection\n"
-            ),
-            (
-                "Section Lan_Channel\n"
-                "\t## Possible values: Disabled/Pre_Boot_Only/"
-                "Always_Available/Shared\n"
-                "\tNon_Volatile_Access_Mode              Pre_Boot_only\n"
-                "EndSection\n"
-            ),
-        )
-        self.ipmi._set_ipmi_lan_channel_settings()
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+        self.ipmi._config_ipmi_lan_channel_settings()
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
-                call("Lan_Channel:Volatile_Access_Mode", "Always_Available"),
                 call(
-                    "Lan_Channel:Non_Volatile_Access_Mode", "Always_Available"
+                    "Lan_Channel", "Volatile_Access_Mode", "Always_Available"
+                ),
+                call(
+                    "Lan_Channel",
+                    "Non_Volatile_Access_Mode",
+                    "Always_Available",
                 ),
             ),
         )
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCalledOnceWith(
+                "Lan_Channel",
+                [
+                    "%s_%s" % (auth_type, volatility)
+                    for auth_type in [
+                        "Enable_User_Level_Auth",
+                        "Enable_Per_Message_Auth",
+                        "Enable_Pef_Alerting",
+                    ]
+                    for volatility in ["Volatile", "Non_Volatile"]
+                ],
+                "Yes",
+            ),
+        )
+
+    def test_config_lan_conf_auth(self):
+        self.ipmi._bmc_config = {"Lan_Channel_Auth": {}}
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+
+        self.ipmi._config_lan_conf_auth()
+
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCallsMatch(
+                call(
+                    "Lan_Channel_Auth",
+                    [
+                        "%s_Enable_Auth_Type_%s" % (user, enc_type)
+                        for user in [
+                            "Callback",
+                            "User",
+                            "Admin",
+                            "OEM",
+                        ]
+                        for enc_type in [
+                            "None",
+                            "MD2",
+                            "OEM_Proprietary",
+                        ]
+                    ],
+                    "No",
+                ),
+                call("Lan_Channel_Auth", ["SOL_Payload_Access"], "Yes"),
+            ),
+        )
+
+    def test_config_lan_conf_auth_does_nothing_if_missing(self):
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+
+        self.ipmi._config_lan_conf_auth()
+
+        self.assertThat(mock_bmc_set_keys, MockNotCalled())
 
     def test_config_cipher_suite_id(self):
         mock_run = self.patch(bmc_config, "run")
@@ -455,14 +603,14 @@ EndSection
                 *(
                     [
                         call(
-                            "Rmcpplus_Conf_Privilege:"
+                            "Rmcpplus_Conf_Privilege",
                             "Maximum_Privilege_Cipher_Suite_Id_3",
                             "Administrator",
                         ),
                     ]
                     + [
                         call(
-                            "Rmcpplus_Conf_Privilege:"
+                            "Rmcpplus_Conf_Privilege",
                             f"Maximum_Privilege_Cipher_Suite_Id_{i}",
                             "Unused",
                         )
@@ -482,11 +630,23 @@ EndSection
         self.ipmi._config_kg()
 
         self.assertThat(
-            mock_bmc_set, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G", kg)
+            mock_bmc_set,
+            MockCalledOnceWith("Lan_Conf_Security_Keys", "K_G", kg),
         )
         self.assertEqual(kg, self.ipmi._kg)
 
-    def test_config_kg_set_ignores_error(self):
+    def test_config_kg_set_does_nothing_if_already_set(self):
+        kg = factory.make_name("kg")
+        self.ipmi._bmc_config = {"Lan_Conf_Security_Keys": {"K_G": kg}}
+        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+        self.ipmi._kg = kg
+
+        self.ipmi._config_kg()
+
+        self.assertThat(mock_bmc_set, MockNotCalled())
+        self.assertEqual(kg, self.ipmi._kg)
+
+    def test_config_kg_set_errors(self):
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         cmd = [factory.make_name("cmd")]
         exception = random.choice(
@@ -502,109 +662,93 @@ EndSection
         self.assertRaises(type(exception), self.ipmi._config_kg)
 
         self.assertThat(
-            mock_bmc_set, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G", kg)
+            mock_bmc_set,
+            MockCalledOnceWith("Lan_Conf_Security_Keys", "K_G", kg),
         )
         self.assertEqual("", self.ipmi._kg)
 
     def test_config_kg_detect(self):
         kg = factory.make_name("kg")
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.return_value = f"""
-Section Lan_Conf_Security_Keys
-        ## Give string or blank to clear. Max 20 bytes, prefix with 0x to enter hex
-        K_G                                           {kg}
-EndSection
-"""
+        self.ipmi._bmc_config = {"Lan_Conf_Security_Keys": {"K_G": kg}}
 
         self.ipmi._config_kg()
 
-        self.assertThat(
-            mock_bmc_get, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G")
-        )
         self.assertEqual(kg, self.ipmi._kg)
 
     def test_config_kg_detects_nothing(self):
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.return_value = """
-Section Lan_Conf_Security_Keys
-        ## Give string or blank to clear. Max 20 bytes, prefix with 0x to enter hex
-        K_G                                           0x0000000000000000000000000000000000000000
-EndSection
-"""
+        self.ipmi._bmc_config = {
+            "Lan_Conf_Security_Keys": {
+                "K_G": "0x0000000000000000000000000000000000000000"
+            }
+        }
 
         self.ipmi._config_kg()
 
-        self.assertThat(
-            mock_bmc_get, MockCalledOnceWith("Lan_Conf_Security_Keys:K_G")
-        )
         self.assertEqual("", self.ipmi._kg)
 
     def test_configure(self):
-        mock_set_ipmi_lan_channel_settings = self.patch(
-            self.ipmi, "_set_ipmi_lan_channel_settings"
+        mock_bmc_get_config = self.patch(self.ipmi, "_bmc_get_config")
+        mock_config_ipmi_lan_channel_settings = self.patch(
+            self.ipmi, "_config_ipmi_lan_channel_settings"
+        )
+        mock_config_lang_conf_auth = self.patch(
+            self.ipmi, "_config_lan_conf_auth"
         )
         mock_config_cipher_suite_id = self.patch(
             self.ipmi, "_config_cipher_suite_id"
         )
         mock_config_kg = self.patch(self.ipmi, "_config_kg")
+        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+
         self.ipmi.configure()
-        self.assertThat(mock_set_ipmi_lan_channel_settings, MockCalledOnce())
+
+        self.assertThat(mock_bmc_get_config, MockCalledOnce())
+        self.assertThat(
+            mock_config_ipmi_lan_channel_settings, MockCalledOnce()
+        )
+        self.assertThat(mock_config_lang_conf_auth, MockCalledOnce())
         self.assertThat(mock_config_cipher_suite_id, MockCalledOnce())
         self.assertThat(mock_config_kg, MockCalledOnce())
+        self.assertThat(
+            mock_bmc_set_keys,
+            MockCallsMatch(
+                call(
+                    "Serial_Channel",
+                    [
+                        "%s_%s" % (auth_type, volatility)
+                        for auth_type in [
+                            "Enable_User_Level_Auth",
+                            "Enable_Per_Message_Auth",
+                            "Enable_Pef_Alerting",
+                        ]
+                        for volatility in ["Volatile", "Non_Volatile"]
+                    ],
+                    "Yes",
+                ),
+                call(
+                    "SOL_Conf",
+                    [
+                        "Force_SOL_Payload_Authentication",
+                        "Force_SOL_Payload_Encryption",
+                    ],
+                    "Yes",
+                ),
+            ),
+        )
 
     def test_get_bmc_ipv4(self):
         ip = factory.make_ipv4_address()
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.return_value = (
-            "Section Lan_Conf\n"
-            "\t## Give valid IP address\n"
-            "\tIP_Address              %s\n"
-            "EndSection\n" % ip
-        )
+        self.ipmi._bmc_config = {"Lan_Conf": {"IP_Address": ip}}
         self.assertEqual(ip, self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ipv6_static(self):
         ip = factory.make_ipv6_address()
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.side_effect = (
-            (
-                "Section Lan_Conf\n"
-                "\t## Give valid IP address\n"
-                "\tIP_Address              0.0.0.0\n"
-                "EndSection\n"
-            ),
-            (
-                "Section Lan6_Conf\n"
-                "\t## Give valid IPv6 address\n"
-                "\tIP_Address              %s\n"
-                "EndSection\n" % ip
-            ),
-        )
+        self.ipmi._bmc_config = {"Lan6_Conf": {"IPv6_Static_Addresses": ip}}
         self.assertEqual(f"[{ip}]", self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ipv6_dynamic(self):
         ip = factory.make_ipv6_address()
-        mock_bmc_get = self.patch(self.ipmi, "_bmc_get")
-        mock_bmc_get.side_effect = (
-            (
-                "Section Lan_Conf\n"
-                "\t## Give valid IP address\n"
-                "\tIPv6_Address              0.0.0.0\n"
-                "EndSection\n"
-            ),
-            (
-                "Section Lan6_Conf\n"
-                "\t## Give valid IPv6 address\n"
-                "\tIP_Address              fe80::216:ffe3:f9eb:1f58\n"
-                "EndSection\n"
-            ),
-            (
-                "Section Lan6_Conf\n"
-                "\t## READ-ONLY: IPv6 dynamic address\n"
-                "\t## IPv6_Dynamic_Addresses        %s\n"
-                "EndSection\n" % ip
-            ),
-        )
+        self.ipmi._bmc_config = {"Lan6_Conf": {"IPv6_Dynamic_Addresses": ip}}
         self.assertEqual(f"[{ip}]", self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ip_finds_none(self):
@@ -627,7 +771,7 @@ EndSection
         self.assertEqual(ip, self.ipmi.get_bmc_ip())
         self.assertThat(
             mock_bmc_set,
-            MockCalledOnceWith("Lan_Conf:IP_Address_Source", "Static"),
+            MockCalledOnceWith("Lan_Conf", "IP_Address_Source", "Static"),
         )
 
     def test_get_bmc_ip_enables_dynamic(self):
@@ -649,8 +793,8 @@ EndSection
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
-                call("Lan_Conf:IP_Address_Source", "Static"),
-                call("Lan_Conf:IP_Address_Source", "Use_DHCP"),
+                call("Lan_Conf", "IP_Address_Source", "Static"),
+                call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
             ),
         )
 
@@ -662,8 +806,8 @@ EndSection
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
-                call("Lan_Conf:IP_Address_Source", "Static"),
-                call("Lan_Conf:IP_Address_Source", "Use_DHCP"),
+                call("Lan_Conf", "IP_Address_Source", "Static"),
+                call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
             ),
         )
 
@@ -1099,8 +1243,22 @@ class TestMain(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.mock_check_call = self.patch(bmc_config, "check_call")
-        self.patch(bmc_config.argparse.ArgumentParser, "parse_args")
+        self.mock_parse_args = self.patch(
+            bmc_config.argparse.ArgumentParser, "parse_args"
+        )
         self.patch(bmc_config, "print")
+
+    def test_validates_username_isnt_too_long(self):
+        self.mock_parse_args.return_value.username = factory.make_string(21)
+        self.assertRaises(SystemExit, bmc_config.main)
+
+    def test_validates_password_isnt_too_long(self):
+        self.mock_parse_args.return_value.password = factory.make_string(21)
+        self.assertRaises(SystemExit, bmc_config.main)
+
+    def test_validates_ipmi_k_g_isnt_too_long(self):
+        self.mock_parse_args.return_value.ipmi_k_g = factory.make_string(21)
+        self.assertRaises(SystemExit, bmc_config.main)
 
     def test_checks_bmc_config_path_env_var_set(self):
         self.assertRaises(SystemExit, bmc_config.main)

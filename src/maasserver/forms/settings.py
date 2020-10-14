@@ -854,6 +854,7 @@ CONFIG_ITEMS = {
         "form_kwargs": {
             "label": "MAAS IPMI user.",
             "required": False,
+            "max_length": 20,
             "help_text": (
                 "The name of the IPMI user that MAAS automatically creates "
                 "during enlistment/commissioning."
@@ -882,6 +883,7 @@ CONFIG_ITEMS = {
         "form_kwargs": {
             "label": "The IPMI K_g key to set during BMC configuration.",
             "required": False,
+            "max_length": 20,
             "help_text": (
                 "This IPMI K_g BMC key is used to encrypt all IPMI traffic to "
                 "a BMC. Once set, all clients will REQUIRE this key upon being "
