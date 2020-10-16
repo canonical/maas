@@ -149,7 +149,7 @@ UUID_NOT_SET = None
 
 # Default images URL can be overridden by the environment.
 DEFAULT_IMAGES_URL = os.getenv(
-    "MAAS_DEFAULT_IMAGES_URL", "http://images.maas.io/ephemeral-v3/daily/"
+    "MAAS_DEFAULT_IMAGES_URL", "http://images.maas.io/ephemeral-v3/stable/"
 )
 
 # Default images keyring filepath can be overridden by the environment.

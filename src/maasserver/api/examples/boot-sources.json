@@ -2,7 +2,7 @@
   "boot-sources-read-by-id": {
     "created": "2018-12-04T18:11:31.894",
     "updated": "2018-12-04T18:11:31.894",
-    "url": "http://images.maas.io/ephemeral-v3/daily/",
+    "url": "http://images.maas.io/ephemeral-v3/stable/",
     "keyring_filename": "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
     "id": 1,
     "keyring_data": "",
