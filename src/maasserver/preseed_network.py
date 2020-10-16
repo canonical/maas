@@ -772,19 +772,7 @@ def compose_curtin_network_config(node, version=1, source_routing=False):
             install_openvswitch = True
             break
     if install_openvswitch:
-        # TODO: When netplan is backported to focal, it should be enough
-        #       to install openvswitch. The netplan apply may or may not
-        #       be needed.
-        # XXX: Figure out what to do if non-Ubuntu or non-focal is
-        #      deployed
         curtin_config["late_commands"] = {
-            "openvswitch_01": [
-                "curtin",
-                "in-target",
-                "--",
-                "add-apt-repository",
-                "ppa:sil2100/ovs",
-            ],
             "openvswitch_02": [
                 "curtin",
                 "in-target",
@@ -795,6 +783,10 @@ def compose_curtin_network_config(node, version=1, source_routing=False):
                 # Explicitly install openvswitch until bug #1891608 is
                 # fixed and backported to focal.
                 "openvswitch-switch",
+                # Make sure that cloud-init and netplan are the latest
+                # versions until bug #1898997 is fixed and backported to
+                # focal.
+                "cloud-init",
                 "netplan.io",
             ],
         }
