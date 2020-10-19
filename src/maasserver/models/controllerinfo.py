@@ -120,12 +120,12 @@ def create_or_update_version_notification(system_id, message, context):
 
 
 KNOWN_VERSION_MISMATCH_NOTIFICATION = (
-    "Controller <a href='#/node/controller/{system_id}'>{hostname}</a> is "
+    "Controller <a href='l/controller/{system_id}'>{hostname}</a> is "
     "running an older version of MAAS ({v1})."
 )
 
 UNKNOWN_VERSION_MISMATCH_NOTIFICATION = (
-    "Controller <a href='#/node/controller/{system_id}'>{hostname}</a> "
+    "Controller <a href='l/controller/{system_id}'>{hostname}</a> "
     "is running an older version of MAAS (less than 2.3.0)."
 )
 

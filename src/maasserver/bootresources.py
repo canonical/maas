@@ -1594,7 +1594,7 @@ class ImportResourcesProgressService(TimerService, object):
 
     @transactional
     def set_import_warning(self, warning):
-        warning %= {"images_link": absolute_reverse("/") + "#/images"}
+        warning %= {"images_link": absolute_reverse("/") + "l/images"}
         register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
     @transactional

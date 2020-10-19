@@ -140,7 +140,7 @@ class ExternalComponentsMiddleware:
                     % len(disconnected_controllers)
                 )
             message = (
-                '%s. Visit the <a href="/MAAS/#/controllers">'
+                '%s. Visit the <a href="/MAAS/l/controllers">'
                 "rack controllers page</a> for "
                 "more information." % message
             )
