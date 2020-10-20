@@ -442,7 +442,6 @@ from provisioningserver.boot.s390x import (  # noqa:E402 isort:skip
 )
 from provisioningserver.boot.uefi_amd64 import (  # noqa:E402 isort:skip
     UEFIAMD64BootMethod,
-    UEFIAMD64HTTPBootMethod,
 )
 from provisioningserver.boot.uefi_arm64 import (  # noqa:E402 isort:skip
     UEFIARM64BootMethod,
@@ -455,7 +454,8 @@ builtin_boot_methods = [
     IPXEBootMethod(),
     PXEBootMethod(),
     UEFIAMD64BootMethod(),
-    UEFIAMD64HTTPBootMethod(),
+    # XXX LP:#1899581 - HTTP boot (UEFIAMD64HTTPBootMethod) is disabled for now
+    # since it needs fixing
     UEFIARM64BootMethod(),
     OpenFirmwarePPC64ELBootMethod(),
     PowerNVBootMethod(),
