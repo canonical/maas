@@ -52,6 +52,10 @@ from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.virtualmachine import (
+    VirtualMachine,
+    VirtualMachineInterface,
+)
 from maasserver.permissions import PodPermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
@@ -79,6 +83,7 @@ from provisioningserver.rpc.cluster import DecomposeMachine
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
+UNDEFINED = object()
 
 
 class TestBMC(MAASServerTestCase):
@@ -799,13 +804,15 @@ class TestPod(MAASServerTestCase):
 
     def make_discovered_interface(
         self,
-        mac_address=None,
+        mac_address=UNDEFINED,
         attach_name=None,
         attach_type=InterfaceAttachType.MACVLAN,
         vid=0,
     ):
-        if mac_address is None:
+        if mac_address is UNDEFINED:
             mac_address = factory.make_mac_address()
+        if mac_address is not None:
+            mac_address = str(mac_address)
         return DiscoveredMachineInterface(
             mac_address=mac_address,
             attach_name=attach_name,
@@ -815,7 +822,11 @@ class TestPod(MAASServerTestCase):
         )
 
     def make_discovered_machine(
-        self, block_devices=None, interfaces=None, storage_pools=None
+        self,
+        block_devices=None,
+        interfaces=None,
+        storage_pools=None,
+        memory=None,
     ):
         if block_devices is None:
             block_devices = [
@@ -831,20 +842,21 @@ class TestPod(MAASServerTestCase):
                 for _ in range(3)
             ]
         if interfaces is None:
-            interfaces = [self.make_discovered_interface() for _ in range(3)]
+            interfaces = [self.make_discovered_interface() for i in range(3)]
             interfaces[0].boot = True
+        hostname = factory.make_name("hostname")
+        if memory is None:
+            memory = random.randint(8192, 8192 * 8)
         return DiscoveredMachine(
-            hostname=factory.make_name("hostname"),
+            hostname=hostname,
             architecture="amd64/generic",
             cores=random.randint(8, 120),
             cpu_speed=random.randint(2000, 4000),
-            memory=random.randint(8192, 8192 * 8),
+            memory=memory,
             interfaces=interfaces,
             block_devices=block_devices,
             power_state=random.choice([POWER_STATE.ON, POWER_STATE.OFF]),
-            power_parameters={
-                factory.make_name("key"): factory.make_name("value")
-            },
+            power_parameters={"instance_name": hostname},
             tags=[factory.make_name("tag") for _ in range(3)],
         )
 
@@ -2036,8 +2048,33 @@ class TestPod(MAASServerTestCase):
             ),
         )
 
+    def test_sync_creates_machine_vm(self):
+        pod = factory.make_Pod(pod_type="lxd")
+        machine = factory.make_Node(
+            interface=True,
+            creation_type=random.choice(
+                [NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]
+            ),
+        )
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address,
+        )
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface]
+        )
+        discovered_machine.hugepages_backed = True
+        discovered_machine.pinned_cores = [0, 1, 2]
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine]
+        )
+        pod.sync(discovered_pod, factory.make_User())
+        machine = reload_object(machine)
+        vm = machine.virtualmachine
+        self.assertTrue(vm.hugepages_backed)
+        self.assertEqual(vm.pinned_cores, [0, 1, 2])
+
     def test_sync_updates_machine_vm(self):
-        pod = factory.make_Pod()
+        pod = factory.make_Pod(pod_type="lxd")
         machine = factory.make_Node(
             interface=True,
             creation_type=random.choice(
@@ -2048,7 +2085,7 @@ class TestPod(MAASServerTestCase):
             bmc=pod, machine=machine, hugepages_backed=False
         )
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address
+            mac_address=machine.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2470,6 +2507,198 @@ class TestPod(MAASServerTestCase):
             node = factory.make_Node(bmc=pod, with_boot_disk=False)
             factory.make_ISCSIBlockDevice(node=node, size=storage)
         self.assertEquals(total_storage, pod.get_used_iscsi_storage())
+
+    def test_sync_machine_memory(self):
+        pod = factory.make_Pod(pod_type="lxd")
+        machine = factory.make_Machine(memory=1234)
+        discovered_machine = self.make_discovered_machine(memory=5678)
+        VirtualMachine.objects.create(
+            identifier=discovered_machine.hostname,
+            bmc=pod,
+            memory=9123,
+            machine=machine,
+        )
+        pod._sync_machine(discovered_machine, machine)
+        self.assertEqual(5678, machine.virtualmachine.memory)
+
+    def test_sync_machine_interface_new(self):
+        pod = factory.make_Pod(pod_type="lxd")
+        interface = self.make_discovered_interface(
+            mac_address="11:22:33:44:55:66",
+            attach_type=InterfaceAttachType.BRIDGE,
+        )
+        machine = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface],
+        )
+        VirtualMachine.objects.create(
+            identifier=discovered_machine.hostname,
+            bmc=pod,
+            machine=machine,
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [created_interface] = list(machine.virtualmachine.interfaces_set.all())
+        self.assertEqual("11:22:33:44:55:66", created_interface.mac_address)
+        self.assertEqual(
+            InterfaceAttachType.BRIDGE, created_interface.attachment_type
+        )
+
+    def test_sync_machine_interface_existing(self):
+        pod = factory.make_Pod(pod_type="lxd")
+        interface = self.make_discovered_interface(
+            mac_address="11:22:33:44:55:66",
+            attach_type=InterfaceAttachType.BRIDGE,
+        )
+        machine = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface],
+        )
+        vm = VirtualMachine.objects.create(
+            identifier=discovered_machine.hostname,
+            bmc=pod,
+            machine=machine,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address="11:22:33:44:55:66",
+            attachment_type=InterfaceAttachType.MACVLAN,
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [created_interface] = list(machine.virtualmachine.interfaces_set.all())
+        self.assertEqual(
+            "11:22:33:44:55:66", str(created_interface.mac_address)
+        )
+        self.assertEqual(
+            InterfaceAttachType.BRIDGE, created_interface.attachment_type
+        )
+
+    def test_sync_machine_interface_removed(self):
+        pod = factory.make_Pod(pod_type="lxd")
+        pod2 = factory.make_Pod(pod_type="lxd")
+        interface = self.make_discovered_interface(
+            mac_address="11:22:33:44:55:66",
+            attach_type=InterfaceAttachType.BRIDGE,
+        )
+        machine = factory.make_Machine()
+        machine2 = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface],
+        )
+        vm = VirtualMachine.objects.create(
+            identifier=discovered_machine.hostname,
+            bmc=pod,
+            machine=machine,
+        )
+        vm2 = VirtualMachine.objects.create(
+            identifier="vm2",
+            bmc=pod2,
+            machine=machine2,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address="11:22:33:44:55:66",
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address="22:33:44:55:66:77",
+            attachment_type=InterfaceAttachType.MACVLAN,
+        )
+        # Make sure interfaces for other VMs won't be removed.
+        VirtualMachineInterface.objects.create(
+            vm=vm2,
+            mac_address="33:44:55:66:77:88",
+            attachment_type=InterfaceAttachType.MACVLAN,
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        self.assertEqual("11:22:33:44:55:66", str(vm_interface.mac_address))
+        self.assertEqual(
+            InterfaceAttachType.BRIDGE, vm_interface.attachment_type
+        )
+        [vm2_interface] = list(machine2.virtualmachine.interfaces_set.all())
+        self.assertEqual("33:44:55:66:77:88", str(vm2_interface.mac_address))
+
+    def test_sync_machine_interface_no_mac_address(self):
+        pod = factory.make_Pod(pod_type="lxd")
+        interface1 = self.make_discovered_interface(
+            mac_address=None,
+            attach_type=InterfaceAttachType.SRIOV,
+        )
+        interface2 = self.make_discovered_interface(
+            mac_address=None,
+            attach_type=InterfaceAttachType.SRIOV,
+        )
+        machine = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface1, interface2],
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [vm_interface1, vm_interface2] = list(
+            machine.virtualmachine.interfaces_set.all()
+        )
+        self.assertIsNone(vm_interface1.mac_address)
+        self.assertEqual(
+            InterfaceAttachType.SRIOV, vm_interface1.attachment_type
+        )
+        self.assertIsNone(vm_interface2.mac_address)
+        self.assertEqual(
+            InterfaceAttachType.SRIOV, vm_interface2.attachment_type
+        )
+
+    def test_sync_machine_interface_no_pod_host(self):
+        pod = factory.make_Pod(pod_type="lxd", host=None)
+        interface = self.make_discovered_interface(
+            mac_address="11:22:33:44:55:66",
+            attach_type=InterfaceAttachType.BRIDGE,
+            attach_name="eth0",
+        )
+        machine = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface],
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        self.assertIsNone(pod.host)
+        self.assertIsNone(vm_interface.host_interface)
+
+    def test_sync_machine_interface_no_pod_host_interace(self):
+        pod_host = factory.make_Machine()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth0", node=pod_host
+        )
+        pod = factory.make_Pod(pod_type="lxd", host=pod_host)
+        interface = self.make_discovered_interface(
+            mac_address="11:22:33:44:55:66",
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_name="nosuchiface",
+        )
+        machine = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface],
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        self.assertIsNone(vm_interface.host_interface)
+
+    def test_sync_machine_interface_with_pod_host_interace(self):
+        pod_host = factory.make_Machine()
+        host_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth0", node=pod_host
+        )
+        pod = factory.make_Pod(pod_type="lxd", host=pod_host)
+        interface = self.make_discovered_interface(
+            mac_address="11:22:33:44:55:66",
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_name="eth0",
+        )
+        machine = factory.make_Machine()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[interface],
+        )
+        pod._sync_machine(discovered_machine, machine)
+        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        self.assertEqual(host_interface, vm_interface.host_interface)
 
 
 class TestPodDelete(MAASTransactionServerTestCase):

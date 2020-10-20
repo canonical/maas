@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
     CASCADE,
+    CharField,
     ForeignKey,
     IntegerField,
     OneToOneField,
@@ -19,11 +20,14 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
+from maasserver.fields import MACAddressField
 from maasserver.models.bmc import BMC
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.interface import Interface
 from maasserver.models.node import Machine
 from maasserver.models.numa import NUMANode
 from maasserver.models.timestampedmodel import TimestampedModel
+from provisioningserver.drivers.pod import InterfaceAttachTypeChoices
 
 MB = 1024 * 1024
 
@@ -56,6 +60,27 @@ class VirtualMachine(CleanSave, TimestampedModel):
             raise ValidationError(
                 "VirtualMachine can't have both pinned and unpinned cores"
             )
+
+
+class VirtualMachineInterface(CleanSave, TimestampedModel):
+    """A NIC inside VM that's connected to the host interface."""
+
+    vm = ForeignKey(
+        VirtualMachine,
+        editable=False,
+        on_delete=CASCADE,
+        related_name="interfaces_set",
+    )
+    mac_address = MACAddressField(null=True, blank=True)
+    host_interface = ForeignKey(Interface, null=True, on_delete=SET_NULL)
+    attachment_type = CharField(
+        max_length=10,
+        null=False,
+        choices=InterfaceAttachTypeChoices,
+    )
+
+    class Meta:
+        unique_together = [("vm", "mac_address")]
 
 
 @dataclass

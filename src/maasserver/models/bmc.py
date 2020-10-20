@@ -901,22 +901,6 @@ class Pod(BMC):
             machine.set_random_hostname()
         machine.save()
 
-        if self.power_type == "lxd":
-            from maasserver.models.virtualmachine import VirtualMachine
-
-            unpinned_cores = (
-                0 if discovered_machine.pinned_cores else machine.cpu_count
-            )
-            VirtualMachine.objects.create(
-                identifier=machine.instance_power_parameters["instance_name"],
-                bmc=self,
-                memory=machine.memory,
-                machine=machine,
-                hugepages_backed=discovered_machine.hugepages_backed,
-                pinned_cores=discovered_machine.pinned_cores,
-                unpinned_cores=unpinned_cores,
-            )
-
         self._assign_tags(machine, discovered_machine)
         self._assign_storage(machine, discovered_machine, skip_commissioning)
         created_interfaces = self._assign_interfaces(
@@ -925,6 +909,7 @@ class Pod(BMC):
         self._assign_ip_addresses(
             discovered_machine, created_interfaces, requested_ips, ip_modes
         )
+        self._sync_machine(discovered_machine, machine)
 
         # New machines get commission started immediately unless skipped.
         if not skip_commissioning:
@@ -1148,8 +1133,28 @@ class Pod(BMC):
             discovered_machine.power_parameters
         )
 
-        vm = getattr(existing_machine, "virtualmachine", None)
-        if vm:
+        if self.power_type == "lxd":
+            from maasserver.models.virtualmachine import (
+                VirtualMachine,
+                VirtualMachineInterface,
+            )
+
+            host_interfaces = {}
+            if self.host is not None:
+                for interface in self.host.interface_set.all():
+                    host_interfaces[interface.name] = interface
+
+            vm = getattr(existing_machine, "virtualmachine", None)
+            if vm is None:
+                vm = VirtualMachine.objects.create(
+                    identifier=existing_machine.instance_power_parameters[
+                        "instance_name"
+                    ],
+                    bmc=self,
+                    machine=existing_machine,
+                )
+
+            vm.memory = discovered_machine.memory
             vm.hugepages_backed = discovered_machine.hugepages_backed
             vm.pinned_cores = discovered_machine.pinned_cores
             vm.unpinned_cores = (
@@ -1158,6 +1163,40 @@ class Pod(BMC):
                 else discovered_machine.cores
             )
             vm.save()
+            iface_ids = set()
+            existing_vm_ifaces = list(
+                VirtualMachineInterface.objects.filter(vm=vm).all()
+            )
+            for discovered_interface in discovered_machine.interfaces:
+                found_iface = None
+                for existing_vm_iface in existing_vm_ifaces:
+                    if discovered_interface.mac_address is not None:
+                        if (
+                            discovered_interface.mac_address
+                            == existing_vm_iface.mac_address
+                        ):
+                            found_iface = existing_vm_iface
+                            break
+                if found_iface is not None:
+                    iface = found_iface
+                    existing_vm_ifaces.remove(found_iface)
+                else:
+                    iface = VirtualMachineInterface.objects.create(
+                        vm=vm,
+                        mac_address=discovered_interface.mac_address,
+                        attachment_type=discovered_interface.attach_type,
+                    )
+
+                iface_ids.add(iface.id)
+
+                iface.attachment_type = discovered_interface.attach_type
+                iface.host_interface = host_interfaces.get(
+                    discovered_interface.attach_name
+                )
+                iface.save()
+            VirtualMachineInterface.objects.filter(vm=vm).exclude(
+                id__in=iface_ids
+            ).delete()
 
         # If this machine is pre-existing or manually composed then we skip
         # syncing all the remaining information because MAAS commissioning

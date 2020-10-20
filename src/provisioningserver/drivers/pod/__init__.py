@@ -175,6 +175,14 @@ class InterfaceAttachType:
     SRIOV = "sriov"
 
 
+InterfaceAttachTypeChoices = (
+    (InterfaceAttachType.NETWORK, "Network"),
+    (InterfaceAttachType.BRIDGE, "Bridge"),
+    (InterfaceAttachType.MACVLAN, "Macvlan"),
+    (InterfaceAttachType.SRIOV, "SR-IOV"),
+)
+
+
 class AttrHelperMixin:
     """Mixin to add the `fromdict` and `asdict` to the classes."""
 
@@ -192,7 +200,7 @@ class AttrHelperMixin:
 class DiscoveredMachineInterface(AttrHelperMixin):
     """Discovered machine interface."""
 
-    mac_address = attr.ib(converter=str)
+    mac_address = attr.ib(converter=converter_obj(str, optional=True))
     vid = attr.ib(converter=int, default=-1)
     tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
     boot = attr.ib(converter=bool, default=False)

@@ -710,6 +710,8 @@ class Factory(maastesting.factory.Factory):
                 parameters = {
                     "power_address": "qemu+ssh://{}/system".format(ip)
                 }
+            elif pod_type == "lxd":
+                parameters = {"power_address": f"{ip}:8443"}
         pod = Pod(
             power_type=pod_type,
             power_parameters=parameters,
