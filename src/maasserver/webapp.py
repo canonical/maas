@@ -181,6 +181,12 @@ class DocsFallbackFile(NoListingFile):
         super().__init__(*args, **kwargs)
         self.childNotFound = DefaultFile(self.child(fallback).path)
 
+    def getChild(self, path, request):
+        child = super().getChild(path, request)
+        if child is self.childNotFound and not path.endswith(b".html"):
+            child = super().getChild(path + b".html", request)
+        return child
+
 
 class WebApplicationService(StreamServerEndpointService):
     """Service encapsulating the Django web application.

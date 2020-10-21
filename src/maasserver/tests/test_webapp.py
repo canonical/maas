@@ -1,11 +1,8 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# TODO: Description here.
-"""..."""
 
-__all__ = []
-
+from pathlib import Path
 import random
 from unittest.mock import sentinel
 
@@ -20,12 +17,51 @@ from twisted.web.test.requesthelper import DummyChannel, DummyRequest
 
 from maasserver import eventloop, webapp
 from maasserver.testing.listener import FakePostgresListenerService
-from maasserver.webapp import OverlaySite
+from maasserver.webapp import DocsFallbackFile, OverlaySite
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import reducedWebLogFormatter
+
+
+class TestDocsFallbackFile(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.base_dir = self.useFixture(TempDirectory())
+        self.docs = DocsFallbackFile(self.base_dir.path)
+
+    def touch_file(self, path):
+        Path(self.base_dir.join(path)).touch()
+
+    def test_html_404(self):
+        request = DummyRequest([b"foo.html"])
+        resource = self.docs.getChild(b"foo.html", request)
+        self.assertTrue(resource.path.endswith("404.html"))
+
+    def test_other_404(self):
+        request = DummyRequest([b"foo.jpg"])
+        resource = self.docs.getChild(b"foo.jpg", request)
+        self.assertTrue(resource.path.endswith("404.html"))
+
+    def test_html_resource(self):
+        self.touch_file("foo.html")
+        request = DummyRequest([b"foo.html"])
+        resource = self.docs.getChild(b"foo.html", request)
+        self.assertTrue(resource.path.endswith("foo.html"))
+
+    def test_other_resource(self):
+        self.touch_file("foo.jpg")
+        request = DummyRequest([b"foo.jpg"])
+        resource = self.docs.getChild(b"foo.jpg", request)
+        self.assertTrue(resource.path.endswith("foo.jpg"))
+
+    def test_append_html(self):
+        self.touch_file("foo.html")
+        request = DummyRequest([b"foo"])
+        resource = self.docs.getChild(b"foo", request)
+        self.assertTrue(resource.path.endswith("foo.html"))
 
 
 class TestCleanPathRequest(MAASTestCase):
