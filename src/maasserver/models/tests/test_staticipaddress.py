@@ -1394,6 +1394,12 @@ class TestStaticIPAddress(MAASServerTestCase):
             INTERFACE_LINK_TYPE.STATIC, ip.get_interface_link_type()
         )
 
+    def test_get_interface_link_type_returns_STATIC_for_DISCOVERED(self):
+        ip = StaticIPAddress(alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(
+            INTERFACE_LINK_TYPE.DHCP, ip.get_interface_link_type()
+        )
+
     def test_get_interface_link_type_returns_STATIC_for_STICKY_with_ip(self):
         ip = StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=factory.make_ipv4_address()
