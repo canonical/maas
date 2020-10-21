@@ -311,7 +311,11 @@ def update_node_network_information(node, data, numa_nodes):
 
         try:
             interface = PhysicalInterface.objects.get(mac_address=mac)
-            if interface.node is not None and interface.node != node:
+            if interface.node == node:
+                # Interface already exists on this node, so just update the NIC
+                # info
+                update_interface_details(interface, interfaces_info)
+            else:
                 logger.warning(
                     "Interface with MAC %s moved from node %s to %s. "
                     "(The existing interface will be deleted.)"
@@ -331,10 +335,6 @@ def update_node_network_information(node, data, numa_nodes):
                     firmware_version=firmware_version,
                     sriov_max_vf=sriov_max_vf,
                 )
-            else:
-                # Interface already exists on this Node, so just update
-                # the NIC info.
-                update_interface_details(interface, interfaces_info)
         except PhysicalInterface.DoesNotExist:
             # Since MAC addresses didn't match, delete any interface that
             # has a matching (name, node) pair and create a new interface
