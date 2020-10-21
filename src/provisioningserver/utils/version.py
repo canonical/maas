@@ -131,7 +131,8 @@ def _coerce_to_int(string: str) -> int:
 
 
 def get_version_tuple(maas_version: str) -> MAASVersion:
-    version_parts = re.split(r"[-|+]", maas_version, 1)
+    without_epoch = maas_version.split(":", 1)[-1]
+    version_parts = re.split(r"[-|+]", without_epoch, 1)
     short_version = version_parts[0]
     major_minor_point = re.sub(r"~.*", "", short_version).split(".", 2)
     for i in range(3):

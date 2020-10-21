@@ -322,6 +322,25 @@ class TestGetVersionTuple(MAASTestCase):
                 ),
             },
         ),
+        (
+            "ci version with epoch",
+            {
+                "version": "1:2.9.0~beta3-8950-g.b5ea2ab1b-0ubuntu1",
+                "expected_tuple": (
+                    2,
+                    9,
+                    0,
+                    -2,
+                    3,
+                    8950,
+                    "b5ea2ab1b",
+                    "2.9.0~beta3",
+                    "8950-g.b5ea2ab1b",
+                    "beta",
+                    False,
+                ),
+            },
+        ),
     )
 
     def test_returns_expected_tuple(self):
