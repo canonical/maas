@@ -180,6 +180,7 @@ class PostgresListenerService(Service, object):
         When a notification is received for that `channel` the `handler` will
         be called with the action and object id.
         """
+        self.log.debug(f"Register on {channel} with handler {handler}")
         handlers = self.listeners[channel]
         if self.isSystemChannel(channel) and len(handlers) > 0:
             # A system can only be registered once. This is because the
@@ -199,6 +200,7 @@ class PostgresListenerService(Service, object):
 
         `handler` needs to be same handler that was registered.
         """
+        self.log.debug(f"Unregister on {channel} with handler {handler}")
         if channel not in self.listeners:
             raise PostgresListenerUnregistrationError(
                 "Channel '%s' is not registered with the listener." % channel
@@ -328,6 +330,7 @@ class PostgresListenerService(Service, object):
 
     def registerChannel(self, channel):
         """Register the channel."""
+        self.log.debug(f"Register Channel {channel}")
         with self._db_lock, self.connection.cursor() as cursor:
             if self.isSystemChannel(channel):
                 # This is a system channel so listen only called once.
@@ -339,6 +342,7 @@ class PostgresListenerService(Service, object):
 
     def unregisterChannel(self, channel):
         """Unregister the channel."""
+        self.log.debug(f"Unregister Channel {channel}")
         with self._db_lock, self.connection.cursor() as cursor:
             if self.isSystemChannel(channel):
                 # This is a system channel so unlisten only called once.
