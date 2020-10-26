@@ -242,7 +242,7 @@ class DHCPSnippetsHandler(OperationsHandler):
         )
 
     @admin_method
-    def create(Self, request):
+    def create(self, request):
         """@description-title Create a DHCP snippet
         @description Creates a DHCP snippet.
 

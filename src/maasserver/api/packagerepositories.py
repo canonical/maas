@@ -180,7 +180,7 @@ class PackageRepositoriesHandler(OperationsHandler):
         return PackageRepository.objects.all()
 
     @admin_method
-    def create(Self, request):
+    def create(self, request):
         """@description-title Create a package repository
         @description Create a new package repository.
 
