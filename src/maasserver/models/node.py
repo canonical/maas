@@ -6322,13 +6322,7 @@ class Controller(Node):
         # links exists on this interface we place it into the correct
         # VLAN. If it cannot be determined and its a new interface it
         # gets placed on its own fabric.
-        new_vlan = None
-        connected_to_subnets = self._get_connected_subnets(config["links"])
-        if len(connected_to_subnets) > 0:
-            for subnet in connected_to_subnets:
-                new_vlan = subnet.vlan
-                if new_vlan is not None:
-                    break
+        new_vlan = self._get_interface_vlan_from_links(config["links"])
         if new_vlan is None:
             # If the default VLAN on the default fabric has no interfaces
             # associated with it, the first interface will be placed there
@@ -6391,12 +6385,12 @@ class Controller(Node):
         else:
             # Parent has no links, so we cannot assume that parent is on the
             # correct fabric.
-            connected_to_subnets = self._get_connected_subnets(config["links"])
-            if len(connected_to_subnets) > 0:
-                # This VLAN interface has links so lets see if the connected
-                # subnet exists on the VID.
-                subnet = list(connected_to_subnets)[0]
-                if subnet.vlan.vid != config["vid"]:
+            connected_vlan = self._get_interface_vlan_from_links(
+                config["links"]
+            )
+            if connected_vlan:
+                # This VLAN interface has links.
+                if connected_vlan.vid != config["vid"]:
                     # The matching subnet is not on a VLAN that has the
                     # same VID as the configured interface. The best option
                     # we can do is to log the error and create a new VLAN
@@ -6427,10 +6421,12 @@ class Controller(Node):
                     # on this VLAN and update the parent interface fabric if
                     # needed.
                     interface, _ = self._get_or_create_vlan_interface(
-                        name=name, vlan=subnet.vlan, parent=parent_nic
+                        name=name, vlan=connected_vlan, parent=parent_nic
                     )
-                    if parent_nic.vlan.fabric_id != subnet.vlan.fabric_id:
-                        parent_nic.vlan = subnet.vlan.fabric.get_default_vlan()
+                    if parent_nic.vlan.fabric_id != connected_vlan.fabric_id:
+                        parent_nic.vlan = (
+                            connected_vlan.fabric.get_default_vlan()
+                        )
                         parent_nic.save()
             else:
                 # This VLAN interface has no links and neither does the parent
@@ -6537,33 +6533,33 @@ class Controller(Node):
         # links exists on this interface we place it into the correct
         # VLAN. If it cannot be determined it is placed on the same fabric
         # as its first parent interface.
-        connected_to_subnets = self._get_connected_subnets(links)
-        if len(connected_to_subnets) == 0 and len(parent_nics) > 0:
+        vlan = self._get_interface_vlan_from_links(links)
+        if not vlan and parent_nics:
             # Not connected to any known subnets. We add it to the same
             # VLAN as its first parent.
             interface.vlan = parent_nics[0].vlan
             interface.save()
             return True
-        elif len(connected_to_subnets) > 0:
-            subnet = next(iter(connected_to_subnets))
-            interface.vlan = subnet.vlan
+        elif vlan:
+            interface.vlan = vlan
             interface.save()
             return True
         return False
 
-    def _get_connected_subnets(self, links):
-        """Return a set of subnets that `links` belongs to."""
-        subnets = set()
-        for link in links:
-            if link["mode"] == "static" or link["mode"] == "dhcp":
-                address = link.get("address", None)
-                if address is None:
-                    continue
-                ip_addr = IPNetwork(address)
-                subnet = get_one(Subnet.objects.filter(cidr=str(ip_addr.cidr)))
-                if subnet is not None:
-                    subnets.add(subnet)
-        return subnets
+    def _get_interface_vlan_from_links(self, links):
+        """Return the VLAN for an interface from its links.
+
+        It's assumed that all subnets for VLAN links are on the same VLAN.
+
+        This returns None if no VLAN is found.
+        """
+        cidrs = {
+            str(IPNetwork(link.get("address")).cidr)
+            for link in links
+            if link["mode"] in ("static", "dhcp")
+            and link.get("address") is not None
+        }
+        return VLAN.objects.filter(subnet__cidr__in=cidrs).first()
 
     def _get_alloc_type_from_ip_addresses(self, alloc_type, ip_addresses):
         """Return IP address from `ip_addresses` that is first
@@ -6597,15 +6593,11 @@ class Controller(Node):
         interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED
         ).delete()
-        current_ip_addresses = list(
-            interface.ip_addresses.exclude(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED
-            )
-        )
+        current_ip_addresses = list(interface.ip_addresses.all())
         updated_ip_addresses = set()
         if use_interface_vlan and interface.vlan is not None:
             vlan = interface.vlan
-        elif len(links) > 0:
+        elif links:
             fabric = Fabric.objects.create()
             vlan = fabric.get_default_vlan()
             interface.vlan = vlan
@@ -6656,20 +6648,13 @@ class Controller(Node):
                         continue
 
                     # Create the DISCOVERED IP address.
-                    (
-                        ip_address,
-                        created,
-                    ) = StaticIPAddress.objects.get_or_create(
+                    ip_address, _ = StaticIPAddress.objects.update_or_create(
                         ip=ip_addr,
                         defaults={
                             "alloc_type": IPADDRESS_TYPE.DISCOVERED,
                             "subnet": subnet,
                         },
                     )
-                    if not created:
-                        ip_address.alloc_type = IPADDRESS_TYPE.DISCOVERED
-                        ip_address.subnet = subnet
-                        ip_address.save()
                     interface.ip_addresses.add(ip_address)
                 updated_ip_addresses.add(dhcp_address)
             elif link["mode"] == "static":
