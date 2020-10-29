@@ -11160,16 +11160,14 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MockCallsMatch(
                 *[
                     call(
-                        "Unable to update IP address '%s' assigned to "
-                        "interface '%s' on controller '%s'. Subnet '%s' "
-                        "for IP address is not on VLAN '%s.%d'."
+                        "Unable to correctly identify VLAN for interface '%s' "
+                        "on controller '%s'. Placing interface on VLAN '%s.%d' "
+                        "without address assignments."
                         % (
-                            vlan_ip,
-                            "eth0.%d" % vid_on_fabric,
+                            "eth0.%d" % created_vlan.vid,
                             controller.hostname,
-                            wrong_subnet.name,
-                            wrong_subnet.vlan.fabric.name,
-                            wrong_subnet.vlan.vid,
+                            created_vlan.fabric.name,
+                            created_vlan.vid,
                         )
                     )
                 ]
@@ -11260,6 +11258,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "enabled": True,
             "vid": new_vlan.vid,
         }
+        maaslog = self.patch(node_module, "maaslog")
         self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
@@ -11269,7 +11268,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="eth0",
                 mac_address=interface.mac_address,
                 enabled=True,
-                vlan=other_fabric.get_default_vlan(),
+                vlan=fabric.get_default_vlan(),
             ),
         )
         vlan_interface = VLANInterface.objects.get(
@@ -11290,6 +11289,18 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             vlan_addresses[0],
             MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet
+            ),
+        )
+        self.assertThat(
+            maaslog.error,
+            MockCallsMatch(
+                *[
+                    call(
+                        f"Interface 'eth0' on controller '{controller.hostname}' "
+                        f"is not on the same fabric as VLAN interface '{vlan_interface.name}'."
+                    )
+                ]
+                * self.passes
             ),
         )
 
@@ -11388,6 +11399,89 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         for link in links_to_remove:
             self.expectThat(reload_object(link), Is(None))
+
+    def test_existing_vlan_interface_different_fabric_from_parent(self):
+        controller = self.create_empty_controller()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=controller, name="eth0", vlan=vlan
+        )
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip = factory.pick_ip_in_Subnet(subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=ip,
+            subnet=subnet,
+            interface=interface,
+        )
+        new_fabric = factory.make_Fabric()
+        new_vlan = factory.make_VLAN(fabric=new_fabric)
+        vlan_subnet = factory.make_Subnet(vlan=new_vlan)
+        vlan_ip = factory.pick_ip_in_Subnet(vlan_subnet)
+        vlan_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            vlan=new_vlan,
+            parents=[interface],
+        )
+        vlan_name = vlan_interface.name
+
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": interface.mac_address,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            vlan_name: {
+                "type": "vlan",
+                "parents": ["eth0"],
+                "links": [
+                    {
+                        "mode": "static",
+                        "address": "%s/%d"
+                        % (
+                            str(vlan_ip),
+                            vlan_subnet.get_ipnetwork().prefixlen,
+                        ),
+                    }
+                ],
+                "enabled": True,
+                "vid": new_vlan.vid,
+            },
+        }
+        self.update_interfaces(controller, interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
+        self.assertThat(
+            reload_object(interface),
+            MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.PHYSICAL,
+                name="eth0",
+                mac_address=interface.mac_address,
+                enabled=True,
+                vlan=vlan,
+            ),
+        )
+        self.assertThat(
+            reload_object(vlan_interface),
+            MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name=vlan_name,
+                enabled=True,
+                vlan=new_vlan,
+            ),
+        )
+        vlan_addresses = list(vlan_interface.ip_addresses.all())
+        self.assertThat(vlan_addresses, HasLength(1))
+        self.assertThat(
+            vlan_addresses[0],
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                ip=vlan_ip,
+                subnet=vlan_subnet,
+            ),
+        )
 
     def test_bond_with_existing_parents(self):
         controller = self.create_empty_controller()
