@@ -248,39 +248,6 @@ class PodHandler(TimestampedModelHandler):
             dataclasses.asdict(entry) for entry in get_vm_host_resources(obj)
         ]
 
-        # XXX fake data for host and VMs interfaces for now
-        fake_interfaces = [
-            {
-                "id": 100,
-                "name": "eth4",
-                "virtual_functions": {
-                    "allocated": 4,
-                    "free": 12,
-                },
-            },
-            {
-                "id": 200,
-                "name": "eth5",
-                "virtual_functions": {
-                    "allocated": 14,
-                    "free": 2,
-                },
-            },
-        ]
-        fake_vm_networks = [
-            {
-                "guest_nic_id": 101,
-                "host_nic_id": 100,
-            },
-            {
-                "guest_nic_id": 102,
-                "host_nic_id": 100,
-            },
-        ]
-        for entry in resources:
-            entry["interfaces"] = fake_interfaces
-            for vm in entry["vms"]:
-                vm["networks"] = fake_vm_networks
         return resources
 
     @asynchronous

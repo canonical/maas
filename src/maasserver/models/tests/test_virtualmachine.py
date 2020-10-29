@@ -115,8 +115,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "general": {"allocated": 1024 * MB, "free": 3072 * MB},
                         "hugepages": [],
                     },
+                    "interfaces": [],
                     "node_id": 0,
-                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [0],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
                 {
                     "cores": {"allocated": [], "free": [1, 4]},
@@ -124,6 +131,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "general": {"allocated": 0, "free": 1024 * MB},
                         "hugepages": [],
                     },
+                    "interfaces": [],
                     "node_id": 1,
                     "vms": [],
                 },
@@ -133,8 +141,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "general": {"allocated": 1024 * MB, "free": 1024 * MB},
                         "hugepages": [],
                     },
+                    "interfaces": [],
                     "node_id": 2,
-                    "vms": [{"pinned_cores": [2, 5], "system_id": "vm1"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [2, 5],
+                            "networks": [],
+                            "system_id": "vm1",
+                        }
+                    ],
                 },
             ],
         )
@@ -186,8 +201,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                             }
                         ],
                     },
+                    "interfaces": [],
                     "node_id": 0,
-                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [0],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
                 {
                     "cores": {"allocated": [2, 3], "free": []},
@@ -201,8 +223,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                             }
                         ],
                     },
+                    "interfaces": [],
                     "node_id": 1,
-                    "vms": [{"pinned_cores": [2, 3], "system_id": "vm1"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [2, 3],
+                            "networks": [],
+                            "system_id": "vm1",
+                        }
+                    ],
                 },
             ],
         )
@@ -233,8 +262,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "general": {"allocated": 1024 * MB, "free": 3072 * MB},
                         "hugepages": [],
                     },
+                    "interfaces": [],
                     "node_id": 0,
-                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [0],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
                 {
                     "cores": {"allocated": [2], "free": [3]},
@@ -242,8 +278,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                         "general": {"allocated": 1024 * MB, "free": 1024 * MB},
                         "hugepages": [],
                     },
+                    "interfaces": [],
                     "node_id": 1,
-                    "vms": [{"pinned_cores": [2], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [2],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
             ],
         )
@@ -288,8 +331,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                             }
                         ],
                     },
+                    "interfaces": [],
                     "node_id": 0,
-                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [0],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
                 {
                     "cores": {"allocated": [2], "free": [3]},
@@ -303,8 +353,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                             }
                         ],
                     },
+                    "interfaces": [],
                     "node_id": 1,
-                    "vms": [{"pinned_cores": [2], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [2],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
             ],
         )
@@ -349,8 +406,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                             }
                         ],
                     },
+                    "interfaces": [],
                     "node_id": 0,
-                    "vms": [{"pinned_cores": [0], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [0],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
                 {
                     "cores": {"allocated": [2], "free": [3]},
@@ -364,8 +428,15 @@ class TestGetVMHostResources(MAASServerTestCase):
                             }
                         ],
                     },
+                    "interfaces": [],
                     "node_id": 1,
-                    "vms": [{"pinned_cores": [2], "system_id": "vm0"}],
+                    "vms": [
+                        {
+                            "pinned_cores": [2],
+                            "networks": [],
+                            "system_id": "vm0",
+                        }
+                    ],
                 },
             ],
         )

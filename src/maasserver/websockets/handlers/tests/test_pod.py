@@ -12,9 +12,10 @@ from crochet import wait_for
 from testtools.matchers import Equals
 from twisted.internet.defer import inlineCallbacks, succeed
 
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
-from maasserver.models.virtualmachine import MB
+from maasserver.models.virtualmachine import MB, VirtualMachineInterface
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
@@ -25,6 +26,7 @@ from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPod,
     DiscoveredPodHints,
+    InterfaceAttachType,
 )
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -178,14 +180,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     "cores": {"allocated": [0], "free": [3]},
                     "interfaces": [
                         {
-                            "id": 100,
-                            "name": "eth4",
-                            "virtual_functions": {"allocated": 4, "free": 12},
-                        },
-                        {
-                            "id": 200,
-                            "name": "eth5",
-                            "virtual_functions": {"allocated": 14, "free": 2},
+                            "id": node.boot_interface.id,
+                            "name": node.boot_interface.name,
+                            "virtual_functions": {"allocated": 0, "free": 0},
                         },
                     ],
                     "memory": {
@@ -197,27 +194,13 @@ class TestPodHandler(MAASTransactionServerTestCase):
                         {
                             "pinned_cores": [0],
                             "system_id": "vm0",
-                            "networks": [
-                                {"guest_nic_id": 101, "host_nic_id": 100},
-                                {"guest_nic_id": 102, "host_nic_id": 100},
-                            ],
+                            "networks": [],
                         },
                     ],
                 },
                 {
                     "cores": {"allocated": [], "free": [1, 4]},
-                    "interfaces": [
-                        {
-                            "id": 100,
-                            "name": "eth4",
-                            "virtual_functions": {"allocated": 4, "free": 12},
-                        },
-                        {
-                            "id": 200,
-                            "name": "eth5",
-                            "virtual_functions": {"allocated": 14, "free": 2},
-                        },
-                    ],
+                    "interfaces": [],
                     "memory": {
                         "general": {"allocated": 0, "free": 1024 * MB},
                         "hugepages": [],
@@ -227,18 +210,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 },
                 {
                     "cores": {"allocated": [2, 5], "free": []},
-                    "interfaces": [
-                        {
-                            "id": 100,
-                            "name": "eth4",
-                            "virtual_functions": {"allocated": 4, "free": 12},
-                        },
-                        {
-                            "id": 200,
-                            "name": "eth5",
-                            "virtual_functions": {"allocated": 14, "free": 2},
-                        },
-                    ],
+                    "interfaces": [],
                     "memory": {
                         "general": {"allocated": 1024 * MB, "free": 1024 * MB},
                         "hugepages": [],
@@ -248,14 +220,216 @@ class TestPodHandler(MAASTransactionServerTestCase):
                         {
                             "pinned_cores": [2, 5],
                             "system_id": "vm1",
-                            "networks": [
-                                {"guest_nic_id": 101, "host_nic_id": 100},
-                                {"guest_nic_id": 102, "host_nic_id": 100},
-                            ],
+                            "networks": [],
                         },
                     ],
                 },
             ],
+        )
+
+    def test_get_host_interfaces_no_sriov(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        node = factory.make_Machine()
+        numa_node0 = node.default_numanode
+        numa_node1 = factory.make_NUMANode(node=node)
+        iface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth0", numa_node=numa_node0
+        )
+        br1 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            name="br0",
+            numa_node=numa_node0,
+            parents=[iface1],
+        )
+        iface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth1", numa_node=numa_node1
+        )
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            host=node,
+        )
+        vm_machine0 = factory.make_Node(system_id="vm0")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=vm_machine0,
+            mac_address="11:11:11:11:11:11",
+        )
+        vm_machine1 = factory.make_Node(system_id="vm1")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=vm_machine1,
+            mac_address="aa:aa:aa:aa:aa:aa",
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=vm_machine1,
+            mac_address="bb:bb:bb:bb:bb:bb",
+        )
+        vm0 = factory.make_VirtualMachine(
+            bmc=pod,
+            machine=vm_machine0,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm0,
+            mac_address="11:11:11:11:11:11",
+            host_interface=br1,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        vm1 = factory.make_VirtualMachine(bmc=pod, machine=vm_machine1)
+        VirtualMachineInterface.objects.create(
+            vm=vm1,
+            mac_address="aa:aa:aa:aa:aa:aa",
+            host_interface=br1,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm1,
+            mac_address="bb:bb:bb:bb:bb:bb",
+            host_interface=iface2,
+            attachment_type=InterfaceAttachType.MACVLAN,
+        )
+
+        result = handler.get({"id": pod.id})
+        numa1, numa2 = result["numa_pinning"]
+        self.assertEqual(
+            [
+                {
+                    "id": iface1.id,
+                    "name": "eth0",
+                    "virtual_functions": {"allocated": 0, "free": 0},
+                },
+                {
+                    "id": br1.id,
+                    "name": "br0",
+                    "virtual_functions": {"allocated": 0, "free": 0},
+                },
+            ],
+            numa1["interfaces"],
+        )
+        self.assertEqual(
+            [
+                [
+                    {
+                        "guest_nic_id": None,
+                        "host_nic_id": br1.id,
+                    },
+                ],
+                [
+                    {
+                        "guest_nic_id": None,
+                        "host_nic_id": br1.id,
+                    },
+                ],
+            ],
+            [vm["networks"] for vm in numa1["vms"]],
+        )
+        self.assertEqual(
+            [
+                {
+                    "id": iface2.id,
+                    "name": "eth1",
+                    "virtual_functions": {"allocated": 0, "free": 0},
+                }
+            ],
+            numa2["interfaces"],
+        )
+        self.assertEqual(
+            [
+                [
+                    {
+                        "guest_nic_id": None,
+                        "host_nic_id": iface2.id,
+                    },
+                ],
+            ],
+            [vm["networks"] for vm in numa2["vms"]],
+        )
+
+    def test_get_host_interfaces_sriov(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        node = factory.make_Machine()
+        numa_node0 = node.default_numanode
+        numa_node1 = factory.make_NUMANode(node=node)
+        iface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            numa_node=numa_node0,
+            sriov_max_vf=8,
+        )
+        iface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth1",
+            numa_node=numa_node1,
+            sriov_max_vf=16,
+        )
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            host=node,
+        )
+        vm_machine0 = factory.make_Node(system_id="vm0")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=vm_machine0,
+            mac_address="11:11:11:11:11:11",
+        )
+        vm_machine1 = factory.make_Node(system_id="vm1")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=vm_machine1,
+            mac_address="aa:aa:aa:aa:aa:aa",
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=vm_machine1,
+            mac_address="bb:bb:bb:bb:bb:bb",
+        )
+        vm0 = factory.make_VirtualMachine(
+            bmc=pod,
+            machine=vm_machine0,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm0,
+            mac_address="11:11:11:11:11:11",
+            host_interface=iface1,
+            attachment_type=InterfaceAttachType.SRIOV,
+        )
+        vm1 = factory.make_VirtualMachine(bmc=pod, machine=vm_machine1)
+        VirtualMachineInterface.objects.create(
+            vm=vm1,
+            mac_address="aa:aa:aa:aa:aa:aa",
+            host_interface=iface1,
+            attachment_type=InterfaceAttachType.SRIOV,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm1,
+            mac_address="bb:bb:bb:bb:bb:bb",
+            host_interface=iface2,
+            attachment_type=InterfaceAttachType.SRIOV,
+        )
+
+        result = handler.get({"id": pod.id})
+        numa1, numa2 = result["numa_pinning"]
+        self.assertEqual(
+            [
+                {
+                    "id": iface1.id,
+                    "name": "eth0",
+                    "virtual_functions": {"allocated": 2, "free": 6},
+                },
+            ],
+            numa1["interfaces"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "id": iface2.id,
+                    "name": "eth1",
+                    "virtual_functions": {"allocated": 1, "free": 15},
+                },
+            ],
+            numa2["interfaces"],
         )
 
     def test_get_with_pod_host_determines_vlan_boot_status(self):
