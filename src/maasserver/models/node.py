@@ -6345,7 +6345,6 @@ class Controller(Node):
         :param config: Interface dictionary that was parsed from
             /etc/network/interfaces on the rack controller.
         """
-        update_links = True
         vid = config["vid"]
         # VLAN only ever has one parent, and the parent should always
         # exists because of the order the links are processed.
@@ -6353,26 +6352,16 @@ class Controller(Node):
         parent_nic = Interface.objects.get(node=self, name=parent_name)
         links_vlan = self._get_interface_vlan_from_links(config["links"])
         if links_vlan:
-            if links_vlan.vid == vid:
-                vlan = links_vlan
-                if parent_nic.vlan.fabric_id != vlan.fabric_id:
-                    maaslog.error(
-                        f"Interface '{parent_nic.name}' on controller '{self.hostname}' "
-                        f"is not on the same fabric as VLAN interface '{name}'."
-                    )
-            else:
-                # The connected VLAN doesn't have the same vid as the links
-                # for this interface. The best we can do is to log the
-                # error and create a new VLAN on the parents fabric without
-                # adding links to this interface.
-                update_links = False
-                vlan, _ = VLAN.objects.get_or_create(
-                    fabric=parent_nic.vlan.fabric, vid=vid
-                )
+            vlan = links_vlan
+            if parent_nic.vlan.fabric_id != vlan.fabric_id:
                 maaslog.error(
-                    f"Unable to correctly identify VLAN for interface '{name}' "
-                    f"on controller '{self.hostname}'. Placing interface on VLAN "
-                    f"'{vlan.fabric.name}.{vlan.vid}' without address assignments."
+                    f"Interface '{parent_nic.name}' on controller '{self.hostname}' "
+                    f"is not on the same fabric as VLAN interface '{name}'."
+                )
+            if links_vlan.vid != vid:
+                maaslog.error(
+                    f"VLAN interface '{name}' reports VLAN {vid} "
+                    f"but links are on VLAN {links_vlan.vid}"
                 )
         else:
             # Since no suitable VLAN is found, create a new one in the same
@@ -6395,18 +6384,7 @@ class Controller(Node):
             interface.vlan = vlan
             interface.save()
 
-        # Update all assigned IP address to the interface. This is not
-        # performed when the subnet and VID for that subnet do not match.
-        if update_links:
-            self._update_links(interface, config["links"], force_vlan=True)
-        else:
-            # Interface already existed but on a different vlan, so remove all
-            # assigned IP addresses.
-            for ip_address in interface.ip_addresses.exclude(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED
-            ):
-                interface.unlink_ip_address(ip_address)
-
+        self._update_links(interface, config["links"], force_vlan=True)
         return interface
 
     def _update_child_interface(self, name, config, child_type):
