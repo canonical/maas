@@ -32,7 +32,7 @@ class TestTwistedDisconnectPatch(MAASTestCase):
 
     def test_twisted_version(self):
 
-        self.assertLessEqual(
+        self.assertLess(
             (twisted_version.major, twisted_version.minor),
             (19, 7),
             "The fix_twisted_disconnect_write monkey patch is not longer "
