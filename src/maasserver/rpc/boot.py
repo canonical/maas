@@ -380,6 +380,13 @@ def get_config(
         if log_port is None:
             log_port = 514  # Fallback to default UDP syslog port.
 
+    # XXX: Instead of updating the machine directly, we should store the
+    # information and update the machine later. The current code doesn't
+    # work when you first boot a machine that has IPMI configured, since
+    # at the first boot you don't have enough information to identify
+    # the machine. If we had this information below in the database, we
+    # could grab it when processing the commissioning results.
+    # See bug #1899486 for more information.
     if machine is not None:
         # Update the last interface, last access cluster IP address, and
         # the last used BIOS boot method.

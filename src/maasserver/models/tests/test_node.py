@@ -115,6 +115,7 @@ from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.event import Event
 import maasserver.models.interface as interface_module
 from maasserver.models.node import (
+    DEFAULT_BIOS_BOOT_METHOD,
     DefaultGateways,
     GatewayDefinition,
     generate_node_system_id,
@@ -187,6 +188,7 @@ from metadataserver.models import (
     ScriptSet,
 )
 from provisioningserver.drivers.pod import Capabilities, DiscoveredPodHints
+from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
@@ -1352,6 +1354,35 @@ class TestNode(MAASServerTestCase):
     def test_get_bios_boot_method_returns_powerkvm(self):
         node = factory.make_Node(bios_boot_method="powerkvm")
         self.assertEqual("powerkvm", node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_ipmi_efi_fallback(self):
+        ipmi_efi = factory.make_BMC(
+            power_type="ipmi",
+            power_parameters={"power_boot_type": IPMI_BOOT_TYPE.EFI},
+        )
+        node = factory.make_Machine(bios_boot_method=None, bmc=ipmi_efi)
+        self.assertEqual("uefi", node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_ipmi_auto_fallback(self):
+        ipmi_efi = factory.make_BMC(
+            power_type="ipmi",
+            power_parameters={"power_boot_type": IPMI_BOOT_TYPE.DEFAULT},
+        )
+        node = factory.make_Machine(bios_boot_method=None, bmc=ipmi_efi)
+        self.assertEqual(DEFAULT_BIOS_BOOT_METHOD, node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_no_bmc_fallback(self):
+        node = factory.make_Node(bios_boot_method=None)
+        node.bmc = None
+        self.assertEqual(DEFAULT_BIOS_BOOT_METHOD, node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_ipmi_legacy_fallback(self):
+        ipmi_efi = factory.make_BMC(
+            power_type="ipmi",
+            power_parameters={"power_boot_type": IPMI_BOOT_TYPE.LEGACY},
+        )
+        node = factory.make_Machine(bios_boot_method=None, bmc=ipmi_efi)
+        self.assertEqual("pxe", node.get_bios_boot_method())
 
     def test_get_bios_boot_method_fallback_to_pxe(self):
         node = factory.make_Node(bios_boot_method=factory.make_name("boot"))

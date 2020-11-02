@@ -189,6 +189,7 @@ from metadataserver.enum import (
 from metadataserver.user_data import generate_user_data_for_status
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.pod import Capabilities
+from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -255,6 +256,23 @@ DefaultGateways = namedtuple("DefaultGateways", ("ipv4", "ipv6", "all"))
 GatewayDefinition = namedtuple(
     "GatewayDefinition", ("interface_id", "subnet_id", "gateway_ip")
 )
+
+
+def get_bios_boot_from_bmc(bmc):
+    """Get the machine boot method from the BMC.
+
+    This is only used to work around bug #1899486. When we fix that in a
+    better way, we can remove this method.
+    """
+    if bmc is None or bmc.power_type != "ipmi":
+        return None
+    power_boot_type = bmc.power_parameters.get("power_boot_type")
+    if power_boot_type == IPMI_BOOT_TYPE.EFI:
+        return "uefi"
+    elif power_boot_type == IPMI_BOOT_TYPE.LEGACY:
+        return "pxe"
+    else:
+        return None
 
 
 def generate_node_system_id():
@@ -2057,7 +2075,7 @@ class Node(CleanSave, TimestampedModel):
         if self.bios_boot_method not in KNOWN_BIOS_BOOT_METHODS:
             if self.bios_boot_method:
                 maaslog.warning(
-                    "%s: Has a unknown BIOS boot method '%s'; "
+                    " %s: Has a unknown BIOS boot method '%s'; "
                     "defaulting to '%s'."
                     % (
                         self.hostname,
@@ -2065,7 +2083,12 @@ class Node(CleanSave, TimestampedModel):
                         DEFAULT_BIOS_BOOT_METHOD,
                     )
                 )
-            return DEFAULT_BIOS_BOOT_METHOD
+            # Work around bug #1899486.
+            bmc_boot_method = get_bios_boot_from_bmc(self.bmc)
+            if bmc_boot_method is not None:
+                return bmc_boot_method
+            else:
+                return DEFAULT_BIOS_BOOT_METHOD
         else:
             return self.bios_boot_method
 
