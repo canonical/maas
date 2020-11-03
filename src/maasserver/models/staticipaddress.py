@@ -871,7 +871,10 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         """Return the `INTERFACE_LINK_TYPE`."""
         if self.alloc_type == IPADDRESS_TYPE.AUTO:
             return INTERFACE_LINK_TYPE.AUTO
-        elif self.alloc_type == IPADDRESS_TYPE.DHCP:
+        elif self.alloc_type in (
+            IPADDRESS_TYPE.DHCP,
+            IPADDRESS_TYPE.DISCOVERED,
+        ):
             return INTERFACE_LINK_TYPE.DHCP
         elif self.alloc_type == IPADDRESS_TYPE.USER_RESERVED:
             return INTERFACE_LINK_TYPE.STATIC
