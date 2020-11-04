@@ -10,6 +10,7 @@ from hmac import HMAC
 from itertools import product
 import json
 import os.path
+from pathlib import Path
 import platform
 import random
 from random import randint
@@ -17,6 +18,7 @@ import socket
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 from urllib.parse import urlparse
 
+from fixtures import TempDir
 from netaddr import IPNetwork
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -4197,7 +4199,23 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
             Cluster(), cluster.DisableAndShutoffRackd, {}
         )
         self.assertEquals({}, response.result)
-        self.assertEquals(2, mock_call_and_check.call_count)
+        mock_call_and_check.assert_called_once_with(
+            ["sudo", "systemctl", "restart", "maas-rackd"]
+        )
+
+    def test_remove_shared_secret(self):
+        root_path = Path(self.useFixture(TempDir()).path)
+        shared_secret_path = root_path / "secret"
+        self.patch(
+            clusterservice, "get_shared_secret_filesystem_path"
+        ).return_value = shared_secret_path
+        self.patch(clusterservice, "call_and_check")
+        shared_secret_path.write_text("secret")
+        response = call_responder(
+            Cluster(), cluster.DisableAndShutoffRackd, {}
+        )
+        self.assertEqual(response.result, {})
+        self.assertFalse(shared_secret_path.exists())
 
     def test_issues_restart_snap(self):
         self.patch(clusterservice, "running_in_snap").return_value = True
@@ -4207,7 +4225,9 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
             Cluster(), cluster.DisableAndShutoffRackd, {}
         )
         self.assertEquals({}, response.result)
-        self.assertEquals(1, mock_call_and_check.call_count)
+        mock_call_and_check.assert_called_once_with(
+            ["snapctl", "restart", "maas.supervisor"]
+        )
 
     @inlineCallbacks
     def test_raises_error_on_failure_systemd(self):

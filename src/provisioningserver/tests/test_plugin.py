@@ -83,7 +83,14 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(provisioningserver, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")
-        self.patch(plugin_module, "generate_certificate_if_needed")
+        self.mock_generate_certificate = self.patch(
+            plugin_module, "generate_certificate_if_needed"
+        )
+        # by default, define a shared secret so that sevices are populated
+        self.mock_get_shared_secret = self.patch(
+            plugin_module, "get_shared_secret_from_filesystem"
+        )
+        self.mock_get_shared_secret.return_value = "secret"
 
     def get_unused_pid(self):
         """Return a PID for a process that has just finished running."""
@@ -95,6 +102,15 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
+
+    def test_makeService_no_shared_secret(self):
+        self.mock_get_shared_secret.return_value = None
+        service_maker = ProvisioningServiceMaker("foo", "bar")
+        self.patch(service_maker, "_loadSettings")
+        service = service_maker.makeService(Options(), clock=None)
+        self.assertIsInstance(service, MultiService)
+        self.assertEqual(service.namedServices, {})
+        self.mock_generate_certificate.assert_not_called()
 
     def test_makeService_not_in_debug(self):
         """

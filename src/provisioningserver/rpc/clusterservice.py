@@ -85,6 +85,7 @@ from provisioningserver.rpc.power import (
 from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.security import (
     calculate_digest,
+    get_shared_secret_filesystem_path,
     get_shared_secret_from_filesystem,
 )
 from provisioningserver.service_monitor import service_monitor
@@ -102,7 +103,7 @@ from provisioningserver.utils.shell import (
     ExternalProcessError,
     get_env_with_bytes_locale,
 )
-from provisioningserver.utils.snappy import get_snap_path, running_in_snap
+from provisioningserver.utils.snappy import running_in_snap
 from provisioningserver.utils.twisted import (
     call,
     callOut,
@@ -990,15 +991,14 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.DisableAndShutoffRackd`.
         """
         maaslog.info("Attempting to disable the rackd service.")
+        secret_path = get_shared_secret_filesystem_path()
+        if secret_path.exists():
+            secret_path.unlink()
         try:
             if running_in_snap():
-                cmd = os.path.join(get_snap_path(), "bin", "maas-wrapper")
-                call_and_check([cmd, "config", "--mode", "none"])
+                call_and_check(["snapctl", "restart", "maas.supervisor"])
             else:
-                # We can't use the --now flag as if the maas-rackd service is
-                # on but not enabled the service won't be stopped
-                call_and_check(["sudo", "systemctl", "disable", "maas-rackd"])
-                call_and_check(["sudo", "systemctl", "stop", "maas-rackd"])
+                call_and_check(["sudo", "systemctl", "restart", "maas-rackd"])
         except ExternalProcessError as e:
             # Since the snap sends a SIGTERM to terminate the process, python
             # returns -15 as a return code. This indicates the termination
@@ -1010,7 +1010,6 @@ class Cluster(RPCProtocol):
                 raise exceptions.CannotDisableAndShutoffRackd(
                     e.output_as_unicode
                 )
-        maaslog.info("Successfully stopped the rackd service.")
         return {}
 
     @cluster.CheckIPs.responder

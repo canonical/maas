@@ -22,6 +22,7 @@ from provisioningserver.monkey import (
     add_patches_to_txtftp,
 )
 from provisioningserver.prometheus.utils import clean_prometheus_dir
+from provisioningserver.security import get_shared_secret_from_filesystem
 from provisioningserver.utils.debug import (
     register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
@@ -251,8 +252,13 @@ class ProvisioningServiceMaker:
 
         from provisioningserver import services
 
-        for service in self._makeServices(tftp_root, tftp_port, clock=clock):
-            service.setServiceParent(services)
+        if get_shared_secret_from_filesystem():
+            # only setup services if the shared secret is configured
+            for service in self._makeServices(
+                tftp_root, tftp_port, clock=clock
+            ):
+                service.setServiceParent(services)
 
-        reactor.callInThread(generate_certificate_if_needed)
+            reactor.callInThread(generate_certificate_if_needed)
+
         return services
