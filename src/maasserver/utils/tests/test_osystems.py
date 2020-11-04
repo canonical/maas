@@ -159,6 +159,26 @@ class TestReleases(MAASServerTestCase):
             dict(list_all_usable_releases()),
         )
 
+    def test_list_release_with_missing_title(self):
+        releases = [make_rpc_release(name="xenial"), make_rpc_release()]
+        # Simulate missing title
+        releases[-1]["title"] = None
+        bogus_release_name = releases[-1]["name"]
+        for release in releases:
+            factory.make_BootResource(
+                name="ubuntu/" + release["name"],
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            )
+        self.assertEqual(
+            [
+                ("ubuntu/xenial", 'Ubuntu 16.04 LTS "Xenial Xerus"'),
+                ("ubuntu/" + bogus_release_name, bogus_release_name),
+            ],
+            list_release_choices(
+                list_all_usable_releases(), include_default=False
+            ),
+        )
+
     def test_list_all_releases_requiring_keys(self):
         releases = [
             make_rpc_release(requires_license_key=True) for _ in range(3)

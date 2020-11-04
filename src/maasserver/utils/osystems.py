@@ -54,6 +54,8 @@ def list_all_usable_releases():
         osystem = OperatingSystemRegistry.get_item(os_name)
         if osystem is not None:
             title = osystem.get_release_title(release)
+            if title is None:
+                title = release
             can_commission = (
                 release in osystem.get_supported_commissioning_releases()
             )
