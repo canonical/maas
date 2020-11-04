@@ -8,7 +8,6 @@ __all__ = []
 import binascii
 from binascii import b2a_hex
 from datetime import datetime
-from os import unlink
 
 from pytz import UTC
 from testtools.matchers import (
@@ -29,7 +28,6 @@ from maasserver.testing.testcase import (
 )
 from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.fs import write_text_file
 
 
 class TestGetSerial(MAASTestCase):
@@ -116,7 +114,7 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
 
     def test_uses_database_secret_when_none_on_fs(self):
         secret_before = security.get_shared_secret()
-        unlink(security.get_shared_secret_filesystem_path())
+        security.get_shared_secret_filesystem_path().unlink()
         secret_after = security.get_shared_secret()
         self.assertEqual(secret_before, secret_after)
         # The secret found in the database is written to the filesystem.
@@ -144,7 +142,7 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
     def test_errors_when_database_and_filesystem_values_differ(self):
         security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "666f6f")
-        write_text_file(security.get_shared_secret_filesystem_path(), "626172")
+        security.get_shared_secret_filesystem_path().write_text("626172")
         self.assertRaises(AssertionError, security.get_shared_secret)
 
     def test_deals_fine_with_whitespace_in_database_value(self):

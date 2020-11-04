@@ -12,11 +12,9 @@ __all__ = [
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 import binascii
 from binascii import a2b_hex, b2a_hex
-import errno
 from hashlib import sha256
 from hmac import HMAC
-from os import fchmod, makedirs
-from os.path import dirname
+from pathlib import Path
 from sys import stderr, stdin
 from threading import Lock
 
@@ -26,11 +24,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from provisioningserver.path import get_maas_data_path
-from provisioningserver.utils.fs import (
-    FileLock,
-    read_text_file,
-    write_text_file,
-)
+from provisioningserver.utils.fs import FileLock
 
 
 class MissingSharedSecret(RuntimeError):
@@ -52,7 +46,7 @@ def to_bin(u):
 
 def get_shared_secret_filesystem_path():
     """Return the path to shared-secret on the filesystem."""
-    return get_maas_data_path("secret")
+    return Path(get_maas_data_path("secret"))
 
 
 def get_shared_secret_from_filesystem():
@@ -65,18 +59,12 @@ def get_shared_secret_from_filesystem():
     :return: A byte string of arbitrary length.
     """
     secret_path = get_shared_secret_filesystem_path()
-    makedirs(dirname(secret_path), exist_ok=True)
+    # ensure the parent dir exists so that the lock can be created
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
     with FileLock(secret_path).wait(10):
-        # Load secret from the filesystem, if it exists.
-        try:
-            secret_hex = read_text_file(secret_path)
-        except IOError as e:
-            if e.errno == errno.ENOENT:
-                return None
-            else:
-                raise
-        else:
-            return to_bin(secret_hex)
+        if not secret_path.exists():
+            return None
+        return to_bin(secret_path.read_text())
 
 
 def set_shared_secret_on_filesystem(secret):
@@ -89,14 +77,15 @@ def set_shared_secret_on_filesystem(secret):
     :type secret: A byte string of arbitrary length.
     """
     secret_path = get_shared_secret_filesystem_path()
-    makedirs(dirname(secret_path), exist_ok=True)
-    secret_hex = to_hex(secret)
-    with FileLock(secret_path).wait(10):
-        # Ensure that the file has sensible permissions.
-        with open(secret_path, "ab") as secret_f:
-            fchmod(secret_f.fileno(), 0o640)
-        # Write secret to the filesystem.
-        write_text_file(secret_path, secret_hex)
+    if secret:
+        secret_path.parent.mkdir(parents=True, exist_ok=True)
+        secret_hex = to_hex(secret)
+        with FileLock(str(secret_path)).wait(10):
+            secret_path.touch()
+            secret_path.chmod(0o640)
+            secret_path.write_text(secret_hex)
+    elif secret_path.exists():
+        secret_path.unlink()
 
 
 def calculate_digest(secret, message, salt):

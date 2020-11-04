@@ -464,7 +464,7 @@ def get_database_settings(options):
         if os.path.exists(test_db_socket):
             default_uri = MAAS_TEST_DB_URI
         database_uri = required_prompt(
-            f"Database URI",
+            "Database URI",
             default=default_uri,
             help_text=ARGUMENTS["database-uri"]["help"],
         )

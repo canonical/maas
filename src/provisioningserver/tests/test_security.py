@@ -7,12 +7,10 @@ __all__ = []
 
 import binascii
 from binascii import b2a_hex
-import os
-from os import chmod, makedirs, stat
-from os.path import dirname
+from pathlib import Path
 from random import randint
 import time
-from unittest.mock import ANY, sentinel
+from unittest.mock import sentinel
 
 from cryptography.fernet import InvalidToken
 from testtools import ExpectedException
@@ -28,11 +26,6 @@ from provisioningserver.security import (
     fernet_encrypt_psk,
     MissingSharedSecret,
 )
-from provisioningserver.utils.fs import (
-    FileLock,
-    read_text_file,
-    write_text_file,
-)
 
 
 class SharedSecretTestCase(MAASTestCase):
@@ -41,8 +34,8 @@ class SharedSecretTestCase(MAASTestCase):
         get_secret = self.patch(security, "get_shared_secret_filesystem_path")
         # Ensure each test uses a different filename for the shared secret,
         # so that tests cannot interfere with each other.
-        get_secret.return_value = get_maas_data_path(
-            "secret-%s" % factory.make_string(16)
+        get_secret.return_value = Path(
+            get_maas_data_path("secret-%s" % factory.make_string(16))
         )
         # Extremely unlikely, but just in case.
         self.delete_secret()
@@ -63,14 +56,14 @@ class SharedSecretTestCase(MAASTestCase):
     def delete_secret(self):
         security._fernet_psk = None
         secret_file = security.get_shared_secret_filesystem_path()
-        if os.path.isfile(secret_file):
-            os.remove(secret_file)
+        if secret_file.exists():
+            secret_file.unlink()
 
     def write_secret(self):
         secret = factory.make_bytes()
         secret_path = security.get_shared_secret_filesystem_path()
-        makedirs(dirname(secret_path), exist_ok=True)
-        write_text_file(secret_path, security.to_hex(secret))
+        secret_path.parent.mkdir(parents=True, exist_ok=True)
+        secret_path.write_text(security.to_hex(secret))
         return secret
 
 
@@ -92,37 +85,28 @@ class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
     def test_errors_reading_file_are_raised(self):
         self.write_secret()
         secret_path = security.get_shared_secret_filesystem_path()
-        chmod(secret_path, 0o000)
+        secret_path.chmod(0o000)
         self.assertRaises(IOError, security.get_shared_secret_from_filesystem)
 
     def test_errors_when_filesystem_value_cannot_be_decoded(self):
         self.write_secret()
-        write_text_file(security.get_shared_secret_filesystem_path(), "_")
+        security.get_shared_secret_filesystem_path().write_text("_")
         self.assertRaises(
             binascii.Error, security.get_shared_secret_from_filesystem
         )
 
     def test_deals_fine_with_whitespace_in_filesystem_value(self):
         secret = self.write_secret()
-        write_text_file(
-            security.get_shared_secret_filesystem_path(),
+        security.get_shared_secret_filesystem_path().write_text(
             " %s\n" % security.to_hex(secret),
         )
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
     def test_reads_with_lock(self):
-        lock = FileLock(security.get_shared_secret_filesystem_path())
-        self.assertFalse(lock.is_locked())
-
-        def check_lock(path):
-            self.assertTrue(lock.is_locked())
-            return "12"  # Two arbitrary hex characters.
-
-        read_text_file = self.patch_autospec(security, "read_text_file")
-        read_text_file.side_effect = check_lock
+        mock_file_lock = self.patch_autospec(security, "FileLock")
+        security.set_shared_secret_on_filesystem(b"foo")
         security.get_shared_secret_from_filesystem()
-        self.assertThat(read_text_file, MockCalledOnceWith(ANY))
-        self.assertFalse(lock.is_locked())
+        mock_file_lock.assert_called()
 
 
 class TestSetSharedSecretOnFilesystem(MAASTestCase):
@@ -134,7 +118,7 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
 
     def read_secret(self):
         secret_path = security.get_shared_secret_filesystem_path()
-        secret_hex = read_text_file(secret_path)
+        secret_hex = secret_path.read_text()
         return security.to_bin(secret_hex)
 
     def test_writes_secret(self):
@@ -143,23 +127,15 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         self.assertEqual(secret, self.read_secret())
 
     def test_writes_with_lock(self):
-        lock = FileLock(security.get_shared_secret_filesystem_path())
-        self.assertFalse(lock.is_locked())
-
-        def check_lock(path, data):
-            self.assertTrue(lock.is_locked())
-
-        write_text_file = self.patch_autospec(security, "write_text_file")
-        write_text_file.side_effect = check_lock
+        mock_file_lock = self.patch_autospec(security, "FileLock")
         security.set_shared_secret_on_filesystem(b"foo")
-        self.assertThat(write_text_file, MockCalledOnceWith(ANY, ANY))
-        self.assertFalse(lock.is_locked())
+        mock_file_lock.assert_called()
 
     def test_writes_with_secure_permissions(self):
         secret = factory.make_bytes()
         security.set_shared_secret_on_filesystem(secret)
         secret_path = security.get_shared_secret_filesystem_path()
-        perms_observed = stat(secret_path).st_mode & 0o777
+        perms_observed = secret_path.stat().st_mode & 0o777
         perms_expected = 0o640
         self.assertEqual(
             perms_expected,
