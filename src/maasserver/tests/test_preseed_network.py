@@ -1227,6 +1227,42 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
+    def test_disconnected_fabric(self):
+        node = factory.make_Node()
+        factory.make_Interface(
+            node=node,
+            name="eth0",
+            vlan=None,
+            link_connected=False,
+        )
+        eth1 = factory.make_Interface(
+            node=node,
+            name="eth1",
+            vlan=None,
+            link_connected=False,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node,
+            name="br0",
+            parents=[eth1],
+            vlan=None,
+            link_connected=False,
+        )
+        factory.make_Interface(
+            node=node,
+            name="eth2",
+            vlan=factory.make_VLAN(),
+            link_connected=True,
+        )
+        netplan = self._render_netplan_dict(node)
+        network = netplan["network"]
+        self.assertTrue(network["ethernets"]["eth0"]["optional"])
+        self.assertTrue(network["ethernets"]["eth1"]["optional"])
+        self.assertTrue(network["bridges"]["br0"]["optional"])
+
+        self.assertFalse(network["ethernets"]["eth2"].get("optional", False))
+
     def test_multiple_ethernet_interfaces_with_routes(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()

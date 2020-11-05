@@ -107,6 +107,8 @@ class InterfaceConfiguration:
             raise ValueError("Unknown interface type: %s" % self.type)
 
         if version == 2:
+            if self.iface.vlan_id is None:
+                self.config["optional"] = True
             # Skip if routes have been already added to a policy routing table
             if self.table_id is None:
                 routes = self._generate_route_operations(
