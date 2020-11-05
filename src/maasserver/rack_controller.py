@@ -91,16 +91,16 @@ class RackControllerService(Service):
             self.postgresListener.register(
                 "sys_core_%d" % self.processId, self.coreHandler
             )
-            return self.processId
+            return self.postgresListener.channelRegistrarDone
 
         @transactional
-        def cb_getManagingProcesses(processId):
+        def cb_getManagingProcesses(result):
             # Return the list of rack controllers that this process is
             # managing. This is done to be sure that no messages where missed
             # while this service was still starting.
             return sorted(
                 RackController.objects.filter(
-                    managing_process=processId
+                    managing_process=self.processId
                 ).values_list("id", flat=True)
             )
 

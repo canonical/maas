@@ -378,7 +378,6 @@ class IPCMasterService(service.Service, object):
             return d
 
     @synchronous
-    @transactional
     def _registerConnection(self, process, ident, host, port, force_save=True):
         rackd = RackController.objects.get(system_id=ident)
         endpoint, _ = RegionControllerProcessEndpoint.objects.get_or_create(

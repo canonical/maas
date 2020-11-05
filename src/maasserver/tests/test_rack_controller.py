@@ -13,6 +13,7 @@ from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
+from twisted.python.failure import Failure
 
 from maasserver import rack_controller
 from maasserver.ipc import IPCWorkerService
@@ -75,6 +76,39 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         self.assertIn(sys_channel, listener.registeredChannels)
         self.assertIn(service.coreHandler, listener.listeners[sys_channel])
         self.assertEqual(regionProcessId, service.processId)
+        yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_startService_waits_for_channel_registrar(self):
+        def fake_run_channel_registrar():
+            listener.channelRegistrarDone = deferred
+
+        def fake_core_handler(channel, message):
+            core_handler_calls.append((channel, message))
+
+        regionProcessId = random.randint(0, 100)
+
+        ipcWorker = IPCWorkerService(sentinel.reactor)
+        ipcWorker.processId.set(regionProcessId)
+
+        listener = PostgresListenerService()
+        yield listener.startService()
+        deferred = Deferred()
+        listener.runChannelRegistrar = fake_run_channel_registrar
+        deferred.errback(Failure(RuntimeError("boom")))
+        core_handler_calls = []
+        listener.coreHandler = fake_core_handler
+        service = RackControllerService(ipcWorker, listener)
+        try:
+            yield service.startService()
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("Should have failed.")
+        self.assertEqual([], core_handler_calls)
+        self.assertIsNotNone(service.starting)
+
         yield listener.stopService()
 
     @wait_for_reactor
