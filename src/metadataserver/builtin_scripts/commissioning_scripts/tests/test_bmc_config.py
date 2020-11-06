@@ -108,6 +108,51 @@ key2
             self.ipmi._bmc_config,
         )
 
+    def test_bmc_get_config_section(self):
+        self.mock_run.return_value.stdout = b"""
+# Section1 comment
+Section Section1
+        ## Comment 1
+        Key1                        value5
+        ## Comment 2
+        Key2                        value6
+        ## Comment 3
+        Key3                        value7
+EndSection
+"""
+        self.ipmi._bmc_config = {
+            "Section1": {
+                "Key1": "value1",
+                "Key2": "value2",
+                "Key3": "",
+            },
+            "Section2": {
+                "Key1": "value1",
+                "Key2": "value2",
+                "Key3": "",
+            },
+            "key1": "value1",
+            "key2": "",
+        }
+        self.ipmi._bmc_get_config("Section1")
+        self.assertEqual(
+            {
+                "Section1": {
+                    "Key1": "value5",
+                    "Key2": "value6",
+                    "Key3": "value7",
+                },
+                "Section2": {
+                    "Key1": "value1",
+                    "Key2": "value2",
+                    "Key3": "",
+                },
+                "key1": "value1",
+                "key2": "",
+            },
+            self.ipmi._bmc_config,
+        )
+
     def test_bmc_set(self):
         section = factory.make_name("section")
         key = factory.make_name("key")
@@ -987,58 +1032,92 @@ key2
 
     def test_get_bmc_ipv4(self):
         ip = factory.make_ipv4_address()
-        self.ipmi._bmc_config = {"Lan_Conf": {"IP_Address": ip}}
-        self.assertEqual(ip, self.ipmi._get_bmc_ip())
+        mac_address = factory.make_mac_address()
+        self.ipmi._bmc_config = {
+            "Lan_Conf": {
+                "IP_Address": ip,
+                "MAC_Address": mac_address,
+            }
+        }
+        self.assertEqual((ip, mac_address), self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ipv6_static(self):
         ip = factory.make_ipv6_address()
-        self.ipmi._bmc_config = {"Lan6_Conf": {"IPv6_Static_Addresses": ip}}
-        self.assertEqual(f"[{ip}]", self.ipmi._get_bmc_ip())
+        mac_address = factory.make_mac_address()
+        self.ipmi._bmc_config = {
+            "Lan6_Conf": {
+                "IPv6_Static_Addresses": ip,
+                "MAC_Address": mac_address,
+            }
+        }
+        self.assertEqual((f"[{ip}]", mac_address), self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ipv6_dynamic(self):
         ip = factory.make_ipv6_address()
-        self.ipmi._bmc_config = {"Lan6_Conf": {"IPv6_Dynamic_Addresses": ip}}
-        self.assertEqual(f"[{ip}]", self.ipmi._get_bmc_ip())
+        mac_address = factory.make_mac_address()
+        self.ipmi._bmc_config = {
+            "Lan6_Conf": {
+                "IPv6_Dynamic_Addresses": ip,
+                "MAC_Address": mac_address,
+            }
+        }
+        self.assertEqual((f"[{ip}]", mac_address), self.ipmi._get_bmc_ip())
+
+    def test_get_bmc_ipv6_gets_mac_From_ipv4(self):
+        ip = factory.make_ipv6_address()
+        mac_address = factory.make_mac_address()
+        self.ipmi._bmc_config = {
+            "Lan_Conf": {"MAC_Address": mac_address},
+            "Lan6_Conf": {"IPv6_Dynamic_Addresses": ip},
+        }
+        self.assertEqual((f"[{ip}]", mac_address), self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ip_finds_none(self):
         self.patch(self.ipmi, "_bmc_get").return_value = ""
-        self.assertIsNone(self.ipmi._get_bmc_ip())
+        self.assertEqual((None, None), self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ip(self):
         ip = factory.make_ip_address()
+        mac_address = factory.make_mac_address()
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        self.patch(self.ipmi, "_get_bmc_ip").return_value = ip
+        mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
+        mock_get_bmc_ip.return_value = ip, mac_address
 
-        self.assertEqual(ip, self.ipmi.get_bmc_ip())
+        self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
         self.assertThat(mock_bmc_set, MockNotCalled())
+        self.assertThat(mock_get_bmc_ip, MockCalledOnceWith())
 
     def test_get_bmc_ip_enables_static(self):
         ip = factory.make_ip_address()
+        mac_address = factory.make_mac_address()
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        self.patch(self.ipmi, "_get_bmc_ip").side_effect = (None, None, ip)
+        mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
+        mock_get_bmc_ip.side_effect = (
+            (None, mac_address),
+            (None, mac_address),
+            (ip, mac_address),
+        )
 
-        self.assertEqual(ip, self.ipmi.get_bmc_ip())
+        self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
         self.assertThat(
             mock_bmc_set,
             MockCalledOnceWith("Lan_Conf", "IP_Address_Source", "Static"),
         )
+        self.assertThat(
+            mock_get_bmc_ip, MockCallsMatch(call(), call(True), call(True))
+        )
 
     def test_get_bmc_ip_enables_dynamic(self):
         ip = factory.make_ip_address()
+        mac_address = factory.make_mac_address()
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        self.patch(self.ipmi, "_get_bmc_ip").side_effect = (
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            ip,
+        mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
+        mock_get_bmc_ip.side_effect = (
+            *[(None, mac_address) for _ in range(8)],
+            (ip, mac_address),
         )
 
-        self.assertEqual(ip, self.ipmi.get_bmc_ip())
+        self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
         self.assertThat(
             mock_bmc_set,
             MockCallsMatch(
@@ -1046,10 +1125,15 @@ key2
                 call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
             ),
         )
+        self.assertThat(
+            mock_get_bmc_ip,
+            MockCallsMatch(call(), *[call(True) for _ in range(8)]),
+        )
 
     def test_get_bmc_ip_fails(self):
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        self.patch(self.ipmi, "_get_bmc_ip").return_value = None
+        mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
+        mock_get_bmc_ip.return_value = (None, None)
 
         self.assertRaises(SystemExit, self.ipmi.get_bmc_ip)
         self.assertThat(
@@ -1058,6 +1142,10 @@ key2
                 call("Lan_Conf", "IP_Address_Source", "Static"),
                 call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
             ),
+        )
+        self.assertThat(
+            mock_get_bmc_ip,
+            MockCallsMatch(call(), *[call(True) for _ in range(12)]),
         )
 
     def test_get_credentials_lan_new(self):
@@ -1069,7 +1157,8 @@ key2
         self.patch(bmc_config.platform, "machine").return_value = "ppc64le"
         self.patch(bmc_config.os.path, "isdir").return_value = True
         ip = factory.make_ip_address()
-        self.patch(self.ipmi, "get_bmc_ip").return_value = ip
+        mac_address = factory.make_mac_address()
+        self.patch(self.ipmi, "get_bmc_ip").return_value = (ip, mac_address)
 
         self.assertEqual(
             {
@@ -1081,6 +1170,7 @@ key2
                 "k_g": "",
                 "cipher_suite_id": "",
                 "privilege_level": "",
+                "mac_address": mac_address,
             },
             self.ipmi.get_credentials(),
         )
@@ -1094,7 +1184,8 @@ key2
         self.patch(bmc_config.platform, "machine").return_value = "x86_64"
         self.patch(bmc_config.os.path, "isdir").return_value = False
         ip = factory.make_ip_address()
-        self.patch(self.ipmi, "get_bmc_ip").return_value = ip
+        mac_address = factory.make_mac_address()
+        self.patch(self.ipmi, "get_bmc_ip").return_value = (ip, mac_address)
 
         self.assertEqual(
             {
@@ -1106,6 +1197,7 @@ key2
                 "k_g": "",
                 "cipher_suite_id": "",
                 "privilege_level": "",
+                "mac_address": mac_address,
             },
             self.ipmi.get_credentials(),
         )

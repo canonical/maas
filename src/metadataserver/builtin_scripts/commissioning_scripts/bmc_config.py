@@ -164,12 +164,15 @@ class IPMI(BMCConfig):
         self._privilege_level = ipmi_privilege_level
         self._bmc_config = {}
 
-    def _bmc_get_config(self):
+    def _bmc_get_config(self, section=None):
         """Fetch and cache all BMC settings."""
         print("INFO: Reading current IPMI BMC values...")
+        cmd = ["bmc-config", "--checkout"]
+        if section:
+            cmd += ["-S", section]
         try:
             proc = run(
-                ["bmc-config", "--checkout"],
+                cmd,
                 stdout=PIPE,
                 timeout=60,
             )
@@ -780,18 +783,25 @@ class IPMI(BMCConfig):
             "Yes",
         )
 
-    def _get_bmc_ip(self):
+    def _get_bmc_ip(self, invalidate_cache=False):
         """Return the current IP of the BMC, returns none if unavailable."""
         show_re = re.compile(
             r"((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)"
         )
-        for section, key in [
+        # The MAC Address may only appear in Lan_Conf(IPv4) even when IPv6
+        # is in use.
+        mac_address = None
+        for section_name, key in [
             ("Lan_Conf", "IP_Address"),
             ("Lan6_Conf", "IPv6_Static_Addresses"),
             ("Lan6_Conf", "IPv6_Dynamic_Addresses"),
         ]:
+            if invalidate_cache:
+                self._bmc_get_config(section_name)
             try:
-                value = self._bmc_config[section][key]
+                section = self._bmc_config[section_name]
+                mac_address = section.get("MAC_Address", mac_address)
+                value = section[key]
             except KeyError:
                 continue
             # Loop through the addreses by preference: IPv4, static IPv6, dynamic
@@ -804,32 +814,32 @@ class IPMI(BMCConfig):
                 if ip.lower().startswith("fe80::") or ip == "0.0.0.0":
                     time.sleep(2)
                     continue
-                if section.startswith("Lan6_"):
-                    return "[%s]" % ip
-                return ip
+                if section_name.startswith("Lan6_"):
+                    return "[%s]" % ip, mac_address
+                return ip, mac_address
             # No valid IP address was found.
-        return None
+        return None, mac_address
 
     def get_bmc_ip(self):
         """Configure and retreive IPMI BMC IP."""
-        ip_address = self._get_bmc_ip()
+        ip_address, mac_address = self._get_bmc_ip()
         if ip_address:
-            return ip_address
+            return ip_address, mac_address
         print("INFO: Attempting to enable preconfigured static IP on BMC...")
         self._bmc_set("Lan_Conf", "IP_Address_Source", "Static")
         for _ in range(6):
             time.sleep(10)
-            ip_address = self._get_bmc_ip()
+            ip_address, mac_address = self._get_bmc_ip(True)
             if ip_address:
-                return ip_address
+                return ip_address, mac_address
         print("INFO: Attempting to enable DHCP on BMC...")
         self._bmc_set("Lan_Conf", "IP_Address_Source", "Use_DHCP")
         for _ in range(6):
             time.sleep(10)
-            ip_address = self._get_bmc_ip()
+            ip_address, mac_address = self._get_bmc_ip(True)
             if ip_address:
                 print("WARNING: BMC is configured to use DHCP!")
-                return ip_address
+                return ip_address, mac_address
         print("ERROR: Unable to determine BMC IP address!", file=sys.stderr)
         sys.exit(1)
 
@@ -848,8 +858,9 @@ class IPMI(BMCConfig):
         else:
             boot_type = "auto"
         print("INFO: IPMI boot type - %s" % boot_type)
+        ip_address, mac_address = self.get_bmc_ip()
         return {
-            "power_address": self.get_bmc_ip(),
+            "power_address": ip_address,
             "power_user": self.username,
             "power_pass": self.password,
             "power_driver": ipmi_version,
@@ -857,6 +868,7 @@ class IPMI(BMCConfig):
             "k_g": self._kg,
             "cipher_suite_id": self._cipher_suite_id,
             "privilege_level": self._privilege_level,
+            "mac_address": mac_address,
         }
 
 
