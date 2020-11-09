@@ -23,6 +23,7 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
     PowerSettingError,
 )
+from provisioningserver.events import EVENT_TYPES, send_node_event
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
 from provisioningserver.utils.network import find_ip_via_arp
@@ -417,7 +418,6 @@ class IPMIPowerDriver(PowerDriver):
                 power_address,
                 power_boot_type,
             )
-
             ipmipower_command.append("--cycle")
             ipmipower_command.append("--on-if-off")
         elif power_change == "off":
@@ -434,10 +434,58 @@ class IPMIPowerDriver(PowerDriver):
         )
 
     def power_on(self, system_id, context):
-        self._issue_ipmi_command("on", **context)
+        try:
+            self._issue_ipmi_command("on", **context)
+        except PowerAuthError as e:
+            if (
+                context.get("k_g")
+                and str(e) == IPMI_ERRORS["k_g invalid"]["message"]
+            ):
+                send_node_event(
+                    EVENT_TYPES.NODE_POWER_ON_FAILED,
+                    system_id,
+                    None,
+                    "Incorrect K_g key, trying again without K_g key",
+                )
+                context.pop("k_g")
+                self._issue_ipmi_command("on", **context)
+            else:
+                raise e
 
     def power_off(self, system_id, context):
-        self._issue_ipmi_command("off", **context)
+        try:
+            self._issue_ipmi_command("off", **context)
+        except PowerAuthError as e:
+            if (
+                context.get("k_g")
+                and str(e) == IPMI_ERRORS["k_g invalid"]["message"]
+            ):
+                send_node_event(
+                    EVENT_TYPES.NODE_POWER_OFF_FAILED,
+                    system_id,
+                    None,
+                    "Incorrect K_g key, trying again without K_g key",
+                )
+                context.pop("k_g")
+                self._issue_ipmi_command("off", **context)
+            else:
+                raise e
 
     def power_query(self, system_id, context):
-        return self._issue_ipmi_command("query", **context)
+        try:
+            return self._issue_ipmi_command("query", **context)
+        except PowerAuthError as e:
+            if (
+                context.get("k_g")
+                and str(e) == IPMI_ERRORS["k_g invalid"]["message"]
+            ):
+                send_node_event(
+                    EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                    system_id,
+                    None,
+                    "Incorrect K_g key, trying again without K_g key",
+                )
+                context.pop("k_g")
+                return self._issue_ipmi_command("query", **context)
+            else:
+                raise e

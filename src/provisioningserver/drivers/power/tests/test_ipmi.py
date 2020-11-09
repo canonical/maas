@@ -11,7 +11,7 @@ from unittest.mock import ANY, call, sentinel
 from testtools.matchers import Contains, Equals
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import ipmi as ipmi_module
 from provisioningserver.drivers.power import PowerAuthError, PowerError
@@ -331,6 +331,57 @@ class TestIPMIPowerDriver(MAASTestCase):
             _issue_ipmi_command_mock, MockCalledOnceWith("on", **context)
         )
 
+    def test_power_on_retires_on_kg_error(self):
+        context = make_context()
+        k_g = context.pop("k_g", factory.make_name("k_g"))
+        ipmi_power_driver = IPMIPowerDriver()
+        mock_issue_ipmi_command = self.patch(
+            ipmi_power_driver, "_issue_ipmi_command"
+        )
+        k_g_error = IPMI_ERRORS["k_g invalid"]
+        mock_issue_ipmi_command.side_effect = (
+            k_g_error["exception"](k_g_error["message"]),
+            None,
+        )
+        system_id = factory.make_name("system_id")
+
+        ipmi_power_driver.power_on(system_id, {"k_g": k_g, **context})
+
+        self.assertThat(
+            mock_issue_ipmi_command,
+            MockCallsMatch(
+                call("on", **{"k_g": k_g, **context}),
+                call("on", **context),
+            ),
+        )
+
+    def test_power_on_raises_error_after_retires_on_kg_error(self):
+        context = make_context()
+        k_g = context.pop("k_g", factory.make_name("k_g"))
+        ipmi_power_driver = IPMIPowerDriver()
+        mock_issue_ipmi_command = self.patch(
+            ipmi_power_driver, "_issue_ipmi_command"
+        )
+        k_g_error = IPMI_ERRORS["k_g invalid"]
+        mock_issue_ipmi_command.side_effect = k_g_error["exception"](
+            k_g_error["message"]
+        )
+        system_id = factory.make_name("system_id")
+
+        self.assertRaises(
+            k_g_error["exception"],
+            ipmi_power_driver.power_on,
+            system_id,
+            {"k_g": k_g, **context},
+        )
+        self.assertThat(
+            mock_issue_ipmi_command,
+            MockCallsMatch(
+                call("on", **{"k_g": k_g, **context}),
+                call("on", **context),
+            ),
+        )
+
     def test_power_off_calls__issue_ipmi_command(self):
         context = make_context()
         ipmi_power_driver = IPMIPowerDriver()
@@ -344,6 +395,57 @@ class TestIPMIPowerDriver(MAASTestCase):
             _issue_ipmi_command_mock, MockCalledOnceWith("off", **context)
         )
 
+    def test_power_off_retires_on_kg_error(self):
+        context = make_context()
+        k_g = context.pop("k_g", factory.make_name("k_g"))
+        ipmi_power_driver = IPMIPowerDriver()
+        mock_issue_ipmi_command = self.patch(
+            ipmi_power_driver, "_issue_ipmi_command"
+        )
+        k_g_error = IPMI_ERRORS["k_g invalid"]
+        mock_issue_ipmi_command.side_effect = (
+            k_g_error["exception"](k_g_error["message"]),
+            None,
+        )
+        system_id = factory.make_name("system_id")
+
+        ipmi_power_driver.power_off(system_id, {"k_g": k_g, **context})
+
+        self.assertThat(
+            mock_issue_ipmi_command,
+            MockCallsMatch(
+                call("off", **{"k_g": k_g, **context}),
+                call("off", **context),
+            ),
+        )
+
+    def test_power_off_raises_error_after_retires_on_kg_error(self):
+        context = make_context()
+        k_g = context.pop("k_g", factory.make_name("k_g"))
+        ipmi_power_driver = IPMIPowerDriver()
+        mock_issue_ipmi_command = self.patch(
+            ipmi_power_driver, "_issue_ipmi_command"
+        )
+        k_g_error = IPMI_ERRORS["k_g invalid"]
+        mock_issue_ipmi_command.side_effect = k_g_error["exception"](
+            k_g_error["message"]
+        )
+        system_id = factory.make_name("system_id")
+
+        self.assertRaises(
+            k_g_error["exception"],
+            ipmi_power_driver.power_off,
+            system_id,
+            {"k_g": k_g, **context},
+        )
+        self.assertThat(
+            mock_issue_ipmi_command,
+            MockCallsMatch(
+                call("off", **{"k_g": k_g, **context}),
+                call("off", **context),
+            ),
+        )
+
     def test_power_query_calls__issue_ipmi_command(self):
         context = make_context()
         ipmi_power_driver = IPMIPowerDriver()
@@ -355,6 +457,57 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.assertThat(
             _issue_ipmi_command_mock, MockCalledOnceWith("query", **context)
+        )
+
+    def test_power_query_retires_on_kg_error(self):
+        context = make_context()
+        k_g = context.pop("k_g", factory.make_name("k_g"))
+        ipmi_power_driver = IPMIPowerDriver()
+        mock_issue_ipmi_command = self.patch(
+            ipmi_power_driver, "_issue_ipmi_command"
+        )
+        k_g_error = IPMI_ERRORS["k_g invalid"]
+        mock_issue_ipmi_command.side_effect = (
+            k_g_error["exception"](k_g_error["message"]),
+            None,
+        )
+        system_id = factory.make_name("system_id")
+
+        ipmi_power_driver.power_query(system_id, {"k_g": k_g, **context})
+
+        self.assertThat(
+            mock_issue_ipmi_command,
+            MockCallsMatch(
+                call("query", **{"k_g": k_g, **context}),
+                call("query", **context),
+            ),
+        )
+
+    def test_power_query_raises_error_after_retires_on_kg_error(self):
+        context = make_context()
+        k_g = context.pop("k_g", factory.make_name("k_g"))
+        ipmi_power_driver = IPMIPowerDriver()
+        mock_issue_ipmi_command = self.patch(
+            ipmi_power_driver, "_issue_ipmi_command"
+        )
+        k_g_error = IPMI_ERRORS["k_g invalid"]
+        mock_issue_ipmi_command.side_effect = k_g_error["exception"](
+            k_g_error["message"]
+        )
+        system_id = factory.make_name("system_id")
+
+        self.assertRaises(
+            k_g_error["exception"],
+            ipmi_power_driver.power_query,
+            system_id,
+            {"k_g": k_g, **context},
+        )
+        self.assertThat(
+            mock_issue_ipmi_command,
+            MockCallsMatch(
+                call("query", **{"k_g": k_g, **context}),
+                call("query", **context),
+            ),
         )
 
     def test_issue_ipmi_chassis_config_with_power_boot_type(self):
