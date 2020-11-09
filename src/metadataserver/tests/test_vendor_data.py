@@ -294,33 +294,14 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         self.assertThat(config, Contains("virsh"))
         self.assertThat(config, Contains("ssh_pwauth"))
         self.assertThat(config, Contains("rbash"))
-        self.assertThat(config, Contains("libvirt-qemu"))
+        self.assertThat(config, Contains("libvirt-daemon-system"))
         self.assertThat(config, Contains("ForceCommand"))
-        self.assertThat(config, Contains("qemu-kvm"))
-        self.assertThat(config, Contains("libvirt-bin"))
+        self.assertThat(config, Contains("libvirt-clients"))
         # Check that a password was saved for the pod-to-be.
         virsh_password_meta = NodeMetadata.objects.filter(
             node=node, key="virsh_password"
         ).first()
         self.assertThat(virsh_password_meta.value, HasLength(32))
-
-    def test_includes_qemu_efi_for_install_kvm_on_amd64(self):
-        node = factory.make_Node(
-            osystem="ubuntu", netboot=False, architecture="amd64/generic"
-        )
-        node.install_kvm = True
-        configuration = get_vendor_data(node, None)
-        config = dict(configuration)
-        self.assertThat(config["packages"], Contains("qemu-efi"))
-
-    def test_includes_qemu_efi_for_install_kvm_on_arm64(self):
-        node = factory.make_Node(
-            osystem="ubuntu", netboot=False, architecture="arm64/generic"
-        )
-        node.install_kvm = True
-        configuration = get_vendor_data(node, None)
-        config = dict(configuration)
-        self.assertThat(config["packages"], Contains("qemu-efi"))
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
         node = factory.make_Node(

@@ -431,7 +431,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 {
                     "distro_series": [
                         "'%s' is not a valid distro_series.  "
-                        "It should be one of: '', 'ubuntu/bionic'."
+                        "It should be one of: '', 'ubuntu/focal'."
                         % invalid_distro_series
                     ]
                 },
@@ -1188,7 +1188,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "distro_series": "ubuntu/bionic"},
+            {"op": "deploy", "distro_series": "ubuntu/focal"},
         )
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(

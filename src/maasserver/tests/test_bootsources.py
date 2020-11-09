@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver.bootsources."""
@@ -132,11 +132,11 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertItemsEqual(["bionic"], by_release.keys())
+        self.assertItemsEqual(["focal"], by_release.keys())
         self.assertAttributes(
-            by_release["bionic"],
+            by_release["focal"],
             {
-                "release": "bionic",
+                "release": "focal",
                 "arches": [arch, "amd64"],
                 "subarches": ["*"],
                 "labels": ["*"],
@@ -189,11 +189,11 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertItemsEqual(["bionic"], by_release.keys())
+        self.assertItemsEqual(["focal"], by_release.keys())
         self.assertAttributes(
-            by_release["bionic"],
+            by_release["focal"],
             {
-                "release": "bionic",
+                "release": "focal",
                 "arches": ["amd64"],
                 "subarches": ["*"],
                 "labels": ["*"],

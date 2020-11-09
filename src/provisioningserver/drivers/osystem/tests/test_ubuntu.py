@@ -18,10 +18,8 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 class TestUbuntuOS(MAASTestCase):
     def get_lts_release(self):
-        # XXX ltrager 2018-01-08 - Force the default to be bionic before
-        # bionic release for testing with MAAS 2.4.0.
         # return UbuntuDistroInfo().lts()
-        return "bionic"
+        return "focal"
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()
@@ -64,7 +62,7 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_lts_release(self):
         # Canary so we know when the lts changes
         osystem = UbuntuOS()
-        self.assertEquals("bionic", osystem.get_lts_release())
+        self.assertEquals("focal", osystem.get_lts_release())
 
     def test_get_default_release(self):
         osystem = UbuntuOS()

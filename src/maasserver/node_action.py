@@ -490,23 +490,7 @@ class Deploy(NodeAction):
                     self.node.acquire(self.user)
                 except ValidationError as e:
                     raise NodeActionError(e)
-        if install_kvm:
-            try:
-                # KVM Pod installation should default to ubuntu/bionic, since
-                # that was the release it was tested on.
-                if osystem is None:
-                    osystem = "ubuntu"
-                if distro_series is None:
-                    distro_series = "bionic"
-                (
-                    self.node.osystem,
-                    self.node.distro_series,
-                ) = validate_osystem_and_distro_series(osystem, distro_series)
-                self.node.install_kvm = True
-                self.node.save()
-            except ValidationError as e:
-                raise NodeActionError(e)
-        elif osystem and distro_series:
+        if osystem and distro_series:
             try:
                 (
                     self.node.osystem,
@@ -553,7 +537,9 @@ class Deploy(NodeAction):
             raise NodeActionError("Failed to retrieve curtin config: %s" % e)
 
         try:
-            self.node.start(self.user, user_data=user_data)
+            self.node.start(
+                self.user, user_data=user_data, install_kvm=install_kvm
+            )
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."

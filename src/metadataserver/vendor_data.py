@@ -247,9 +247,7 @@ def generate_kvm_pod_configuration(node):
                 "shell": "/bin/rbash",
             },
         ]
-        packages = ["qemu-kvm", "libvirt-bin"]
-        if architecture in ["amd64", "arm64"]:
-            packages.append("qemu-efi")
+        packages = ["libvirt-daemon-system", "libvirt-clients"]
         yield "packages", packages
 
 
