@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from itertools import count
 import os
 from pathlib import Path
 from subprocess import Popen
@@ -23,6 +24,7 @@ from testtools.matchers import (
 )
 from twisted.application.internet import StreamServerEndpointService
 from twisted.application.service import MultiService
+from twisted.internet.task import Clock
 
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
@@ -107,10 +109,43 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.mock_get_shared_secret.return_value = None
         service_maker = ProvisioningServiceMaker("foo", "bar")
         self.patch(service_maker, "_loadSettings")
-        service = service_maker.makeService(Options(), clock=None)
+        clock = Clock()
+
+        attempts = count()
+
+        def advance(seconds):
+            next(attempts)
+            clock.advance(seconds)
+
+        service = service_maker.makeService(
+            Options(), clock=clock, sleep=advance
+        )
         self.assertIsInstance(service, MultiService)
         self.assertEqual(service.namedServices, {})
         self.mock_generate_certificate.assert_not_called()
+        # All 300 attempts (e.g. 5 minutes) fail, next is 301
+        self.assertEqual(next(attempts), 301)
+
+    def test_makeService_eventual_shared_secret(self):
+        # First two times we look, there's no secret
+        self.mock_get_shared_secret.side_effect = [None, None, "secret"]
+        service_maker = ProvisioningServiceMaker("foo", "bar")
+        self.patch(service_maker, "_loadSettings")
+        clock = Clock()
+
+        attempts = count(1)
+
+        def advance(seconds):
+            next(attempts)
+            clock.advance(60)
+
+        service = service_maker.makeService(
+            Options(), clock=clock, sleep=advance
+        )
+        self.assertIsInstance(service, MultiService)
+        self.assertNotEqual(service.namedServices, {})
+        # First two fail, the third one succeeds
+        self.assertEqual(next(attempts), 3)
 
     def test_makeService_not_in_debug(self):
         """

@@ -8,6 +8,7 @@ __all__ = ["Options", "ProvisioningServiceMaker"]
 from errno import ENOPROTOOPT
 import socket
 from socket import error as socket_error
+from time import sleep
 
 from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
@@ -27,6 +28,7 @@ from provisioningserver.utils.debug import (
     register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
 )
+from provisioningserver.utils.twisted import retries
 
 
 class Options(logger.VerbosityOptions):
@@ -230,7 +232,7 @@ class ProvisioningServiceMaker:
         # Get something going with the logs.
         logger.configure(verbosity, logger.LoggingMode.TWISTD)
 
-    def makeService(self, options, clock=reactor):
+    def makeService(self, options, clock=reactor, sleep=sleep):
         """Construct the MAAS Cluster service."""
         register_sigusr1_toggle_cprofile("rackd")
         register_sigusr2_thread_dump_handler()
@@ -252,7 +254,13 @@ class ProvisioningServiceMaker:
 
         from provisioningserver import services
 
-        if get_shared_secret_from_filesystem():
+        secret = None
+        for elapsed, remaining, wait in retries(timeout=5 * 60, clock=clock):
+            secret = get_shared_secret_from_filesystem()
+            if secret is not None:
+                break
+            sleep(wait)
+        if secret is not None:
             # only setup services if the shared secret is configured
             for service in self._makeServices(
                 tftp_root, tftp_port, clock=clock
