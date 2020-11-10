@@ -2,6 +2,8 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import mmap
+import os
 import re
 import subprocess
 
@@ -167,10 +169,17 @@ def secure_erase_hdparm(kname):
     """Securely wipe the device."""
     # First write 1 MiB of known data to the beginning of the block device.
     # This is used to check at the end of the secure erase that it worked
-    # as expected.
+    # as expected. Notice that we use here direct R/W, in order to bypass Linux
+    # page cache; or else we may fail the test (due to reading from page cache
+    # instead of the just-erased disk). See LP #1900623.
     buf = b"M" * 1024 * 1024
-    with open(DEV_PATH % kname, "wb") as fp:
-        fp.write(buf)
+    wmap = mmap.mmap(-1, 1024 * 1024)
+    wmap.write(buf)
+
+    wfd = os.open(DEV_PATH % kname, os.O_WRONLY | os.O_SYNC | os.O_DIRECT)
+    os.write(wfd, wmap)
+    os.close(wfd)
+    wmap.close()
 
     # Before secure erase can be performed on a device a user password must
     # be set. The password will automatically be removed once the drive has
@@ -226,9 +235,17 @@ def secure_erase_hdparm(kname):
         )
         raise WipeError("Failed to securely erase.") from failed_exc
 
-    # Check that the initial part of the disk is not the same.
-    with open(DEV_PATH % kname, "rb") as fp:
-        read_buf = fp.read(len(buf))
+    # Check that the initial part of the disk is not the same. Again, we rely
+    # on direct I/O here, to bypass the page cache (LP #1900623).
+    rfd = os.open(DEV_PATH % kname, os.O_RDONLY | os.O_SYNC | os.O_DIRECT)
+    fobj = os.fdopen(rfd, "rb")
+    rmap = mmap.mmap(-1, 1024 * 1024)
+    fobj.readinto(rmap)
+
+    read_buf = rmap.read(len(buf))
+    os.close(rfd)
+    rmap.close()
+
     if read_buf == buf:
         raise WipeError(
             "Secure erase was performed, but failed to actually work."
