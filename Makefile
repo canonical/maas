@@ -176,20 +176,6 @@ test-py: bin/test.parallel bin/coverage bin/subunit-1to2 bin/subunit2junitxml bi
 	@bin/coverage combine
 .PHONY: test-py
 
-test-serial: $(strip $(test-scripts))
-	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
-	@$(RM) .coverage .coverage.* .failed
-	$(foreach test,$^,$(test-template);)
-	@test ! -f .failed
-.PHONY: test-serial
-
-test-failed: $(strip $(test-scripts))
-	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
-	@$(RM) .coverage .coverage.* .failed
-	$(foreach test,$^,$(test-template-failed);)
-	@test ! -f .failed
-.PHONY: test-failed
-
 clean-failed:
 	$(RM) .noseids
 .PHONY: clean-failed
@@ -201,28 +187,6 @@ src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
     # the database to be a clean schema.
 	$(dbrun) bin/maas-region shell -c "from maasserver.models.notification import Notification; Notification.objects.all().delete()"
 	$(dbrun) pg_dump maas --no-owner --no-privileges --format=plain > $@
-
-test-initial-data: src/maasserver/testing/initial.maas_test.sql
-.PHONY: test-initial-data
-
-define test-template
-$(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml || touch .failed
-endef
-
-define test-template-failed
-  $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml --failed || \
-  $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml --failed || \
-  touch .failed
-endef
-
-smoke: lint bin/maas-region bin/test.rack
-	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
-	@bin/test.rack --stop
-.PHONY: smoke
-
-test-serial+coverage: export NOSE_WITH_COVERAGE = 1
-test-serial+coverage: test-serial
-.PHONY: test-serial-coverage
 
 coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
