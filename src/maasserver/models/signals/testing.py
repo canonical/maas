@@ -3,8 +3,6 @@
 
 """Testing helpers for dealing with signals."""
 
-__all__ = ["SignalsDisabled"]
-
 from fixtures import Fixture
 
 from maasserver.models import signals

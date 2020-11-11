@@ -219,9 +219,6 @@ lint-py: bin/flake8 bin/black bin/isort
 lint-py-imports: sources = setup.py $(PY_SOURCES)
 lint-py-imports:
 	@utilities/check-imports
-	@find $(sources) -type f -name '*.py' \
-	  ! -path '*/migrations/*' \
-	  -print0 | xargs -r0 utilities/find-early-imports
 .PHONY: lint-py-imports
 
 # Only Unix line ends should be accepted
