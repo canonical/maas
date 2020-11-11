@@ -3,7 +3,6 @@
 
 """Tests for configuration update code."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import io

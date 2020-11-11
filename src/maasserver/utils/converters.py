@@ -3,7 +3,6 @@
 
 """Conversion utilities."""
 
-__all__ = ["XMLToYAML"]
 
 import json
 

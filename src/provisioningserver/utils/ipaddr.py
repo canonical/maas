@@ -48,12 +48,6 @@ state UP mode DEFAULT group default qlen 1000
                 valid_lft forever preferred_lft forever
 """
 
-__all__ = [
-    "parse_ip_addr",
-    "get_first_and_last_usable_host_in_network",
-    "get_machine_default_gateway_ip",
-]
-
 import json
 import os
 import re

@@ -3,21 +3,6 @@
 
 """Builtin node info scripts."""
 
-__all__ = [
-    "DHCP_EXPLORE_OUTPUT_NAME",
-    "GET_FRUID_DATA_OUTPUT_NAME",
-    "IPADDR_OUTPUT_NAME",
-    "KERNEL_CMDLINE_OUTPUT_NAME",
-    "LIST_MODALIASES_OUTPUT_NAME",
-    "LLDP_INSTALL_OUTPUT_NAME",
-    "LLDP_OUTPUT_NAME",
-    "LSHW_OUTPUT_NAME",
-    "LXD_OUTPUT_NAME",
-    "NODE_INFO_SCRIPTS",
-    "SERIAL_PORTS_OUTPUT_NAME",
-    "SUPPORT_INFO_OUTPUT_NAME",
-]
-
 from collections import OrderedDict
 import os
 

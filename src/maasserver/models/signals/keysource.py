@@ -3,7 +3,6 @@
 
 """Delete KeySource when no more keys are present."""
 
-__all__ = ["signals"]
 
 from django.db.models.signals import post_delete
 

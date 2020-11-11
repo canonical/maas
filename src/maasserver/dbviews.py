@@ -8,7 +8,6 @@ Views are implemented in the database to better encapsulate complex queries,
 and are recreated during the `dbupgrade` process.
 """
 
-__all__ = ["drop_all_views", "register_all_views", "register_view"]
 
 from contextlib import closing
 from textwrap import dedent

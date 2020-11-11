@@ -3,7 +3,6 @@
 
 """Clean up old snapshot directories."""
 
-__all__ = ["cleanup_snapshots_and_cache"]
 
 import os
 import shutil

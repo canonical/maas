@@ -3,7 +3,6 @@
 
 """Tests for VMFS datastore API."""
 
-__all__ = []
 
 import http.client
 import random

@@ -3,18 +3,6 @@
 
 """Utilities for the command-line interface."""
 
-__all__ = [
-    "dump_response_summary",
-    "ensure_trailing_slash",
-    "get_response_content_type",
-    "handler_command_name",
-    "is_response_textual",
-    "parse_docstring",
-    "print_response_content",
-    "print_response_headers",
-    "safe_name",
-]
-
 from email.message import Message
 from functools import partial
 from inspect import cleandoc, getdoc

@@ -3,7 +3,6 @@
 
 """Tests for the DHCP snippets API."""
 
-__all__ = []
 
 import http.client
 import json

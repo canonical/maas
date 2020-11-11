@@ -3,7 +3,6 @@
 
 """RPC helpers relating to DHCP leases."""
 
-__all__ = ["update_lease"]
 
 from datetime import datetime
 

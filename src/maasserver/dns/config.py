@@ -3,7 +3,6 @@
 
 """DNS management module."""
 
-__all__ = ["dns_force_reload", "dns_update_all_zones"]
 
 from collections import defaultdict
 

@@ -3,7 +3,6 @@
 
 """Tests for the WindowsOS module."""
 
-__all__ = []
 
 import random
 

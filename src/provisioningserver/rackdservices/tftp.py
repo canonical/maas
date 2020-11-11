@@ -3,7 +3,6 @@
 
 """Twisted Application Plugin for the MAAS TFTP server."""
 
-__all__ = ["TFTPBackend", "TFTPService"]
 
 from functools import partial
 from socket import AF_INET, AF_INET6

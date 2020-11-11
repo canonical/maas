@@ -3,7 +3,6 @@
 
 """Tests for Domain API."""
 
-__all__ = []
 
 import http.client
 import json

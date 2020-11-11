@@ -3,7 +3,6 @@
 
 """Adapting `testscenarios` to work with MAAS."""
 
-__all__ = ["WithScenarios"]
 
 import testscenarios
 

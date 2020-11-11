@@ -3,7 +3,6 @@
 
 """The VLAN handler for the WebSocket connection."""
 
-__all__ = ["VLANHandler"]
 
 import netaddr
 

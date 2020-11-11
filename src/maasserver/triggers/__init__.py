@@ -10,7 +10,6 @@ its previous trigger. All triggers will be added into the database via the
 `start_up` method for regiond.
 """
 
-__all__ = ["register_all_triggers", "register_procedure", "register_trigger"]
 
 from contextlib import closing
 from textwrap import dedent

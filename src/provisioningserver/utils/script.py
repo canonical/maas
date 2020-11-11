@@ -3,7 +3,6 @@
 
 """Utilities for adding sub-commands to the MAAS management commands."""
 
-__all__ = ["ActionScript", "MainScript"]
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import io

@@ -3,7 +3,6 @@
 
 """Test the storage layouts."""
 
-__all__ = []
 
 from math import ceil
 import random

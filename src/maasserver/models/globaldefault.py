@@ -3,7 +3,6 @@
 
 """Global default objects."""
 
-__all__ = ["GlobalDefault"]
 
 from datetime import datetime
 

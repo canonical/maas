@@ -3,14 +3,6 @@
 
 """Snap management commands."""
 
-__all__ = [
-    "cmd_config",
-    "cmd_init",
-    "cmd_migrate",
-    "cmd_status",
-    "cmd_reconfigure_supervisord",
-]
-
 import argparse
 from collections import OrderedDict
 import grp

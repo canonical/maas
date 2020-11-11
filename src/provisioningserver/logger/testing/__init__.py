@@ -3,14 +3,6 @@
 
 """Testing helpers for `provisioningserver.logger`."""
 
-__all__ = [
-    "find_log_lines",
-    "make_event",
-    "make_log_text",
-    "pick_log_level",
-    "pick_log_time",
-]
-
 import random
 import re
 import time

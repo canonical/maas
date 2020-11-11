@@ -3,7 +3,6 @@
 
 """RHELOS Operating System."""
 
-__all__ = ["RHELOS"]
 
 import re
 

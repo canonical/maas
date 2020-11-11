@@ -3,7 +3,6 @@
 
 """Tests for log.py"""
 
-__all__ = []
 
 import pathlib
 import subprocess

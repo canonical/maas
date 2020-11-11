@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for testing operating systems-related code."""
 
-__all__ = ["FakeOS"]
-
 
 from maastesting.factory import factory
 from provisioningserver.drivers.osystem import (

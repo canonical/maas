@@ -9,7 +9,6 @@ will raise a notify message in Postgres that a regiond process is listening
 for.
 """
 
-__all__ = ["register_system_triggers"]
 
 from textwrap import dedent
 

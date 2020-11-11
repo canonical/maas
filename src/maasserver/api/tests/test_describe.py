@@ -3,7 +3,6 @@
 
 """Tests for the `describe` view."""
 
-__all__ = []
 
 import http.client
 from operator import itemgetter

@@ -3,7 +3,6 @@
 
 """Physical zone objects."""
 
-__all__ = ["DEFAULT_ZONE_NAME", "Zone"]
 
 import datetime
 

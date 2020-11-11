@@ -3,7 +3,6 @@
 
 """Tests for `maascli.cli`."""
 
-__all__ = []
 
 import doctest
 from io import StringIO

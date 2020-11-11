@@ -6,7 +6,7 @@
 Specifies all types of IP address ranges MAAS can work with, such as
 DHCP ranges and user-reserved ranges.
 """
-__all__ = ["IPRange"]
+
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError

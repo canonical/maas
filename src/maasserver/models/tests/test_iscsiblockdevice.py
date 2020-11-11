@@ -3,7 +3,6 @@
 
 """Tests for `ISCSIBlockDevice`."""
 
-__all__ = []
 
 import random
 

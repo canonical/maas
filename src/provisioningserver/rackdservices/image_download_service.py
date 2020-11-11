@@ -3,8 +3,6 @@
 
 """Service to periodically refresh the boot images."""
 
-__all__ = ["ImageDownloadService"]
-
 
 from datetime import timedelta
 

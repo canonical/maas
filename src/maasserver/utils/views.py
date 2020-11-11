@@ -3,7 +3,6 @@
 
 """View utilities configuration."""
 
-__all__ = ["WebApplicationHandler"]
 
 import http.client
 from itertools import count

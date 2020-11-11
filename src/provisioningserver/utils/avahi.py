@@ -30,7 +30,6 @@ another.
 [1]: https://tools.ietf.org/html/rfc6762#section-20
 """
 
-__all__ = ["add_arguments", "run"]
 
 from contextlib import contextmanager
 import io

@@ -3,7 +3,6 @@
 
 """Interact with a remote MAAS server."""
 
-__all__ = ["register_api_commands"]
 
 import argparse
 from collections import defaultdict

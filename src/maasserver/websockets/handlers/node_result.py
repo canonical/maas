@@ -3,7 +3,6 @@
 
 """The NodeResult handler for the WebSocket connection."""
 
-__all__ = ["NodeResultHandler"]
 
 from operator import attrgetter
 

@@ -3,8 +3,6 @@
 
 """Tests for the Subnet model."""
 
-__all__ = []
-
 
 from datetime import datetime, timedelta
 import random

@@ -3,7 +3,6 @@
 
 """Test ORM utilities."""
 
-__all__ = []
 
 from contextlib import contextmanager
 from itertools import islice, repeat

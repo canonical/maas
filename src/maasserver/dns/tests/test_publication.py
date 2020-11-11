@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.dns.publication`."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 

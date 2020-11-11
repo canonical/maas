@@ -3,7 +3,6 @@
 
 """Tests for VLAN API."""
 
-__all__ = []
 
 import http.client
 import json

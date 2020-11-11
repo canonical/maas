@@ -3,7 +3,6 @@
 
 """Tests for `maascli.init`."""
 
-__all__ = []
 
 from io import StringIO
 import os

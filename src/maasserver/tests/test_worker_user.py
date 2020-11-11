@@ -3,7 +3,6 @@
 
 """Test for the system user that represents node-group workers."""
 
-__all__ = []
 
 from django.contrib.auth.models import User
 

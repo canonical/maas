@@ -3,7 +3,6 @@
 
 """Facebook's Wedge Power Driver."""
 
-__all__ = []
 
 from socket import error as SOCKETError
 

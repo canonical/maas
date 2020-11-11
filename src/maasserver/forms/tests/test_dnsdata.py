@@ -3,7 +3,6 @@
 
 """Tests for DNSData forms."""
 
-__all__ = []
 
 import random
 

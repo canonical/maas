@@ -3,7 +3,6 @@
 
 """API handler: API Version."""
 
-__all__ = ["VersionHandler"]
 
 import http.client
 import json

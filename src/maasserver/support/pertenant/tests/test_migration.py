@@ -3,7 +3,6 @@
 
 """Test `maasserver.support.pertenant.migration."""
 
-__all__ = []
 
 from unittest.mock import call, sentinel
 

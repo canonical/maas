@@ -3,8 +3,6 @@
 
 """Tests for the Domain model."""
 
-__all__ = []
-
 
 import random
 

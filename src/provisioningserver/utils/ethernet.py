@@ -3,7 +3,6 @@
 
 """Utilities for working with Ethernet packets."""
 
-__all__ = ["Ethernet"]
 
 from collections import namedtuple
 import struct

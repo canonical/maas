@@ -3,7 +3,6 @@
 
 """Test node info scripts."""
 
-__all__ = []
 
 import os.path
 import subprocess

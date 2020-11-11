@@ -3,7 +3,6 @@
 
 """TFTP-specific logging stuff."""
 
-__all__ = ["configure_tftp_logging"]
 
 from twisted.logger import globalLogPublisher, LogLevel
 

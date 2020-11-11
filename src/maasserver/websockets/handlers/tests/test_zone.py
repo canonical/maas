@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.zone`"""
 
-__all__ = []
 
 from collections import defaultdict
 

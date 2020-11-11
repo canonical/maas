@@ -3,7 +3,6 @@
 
 """Listens for NOTIFY events from the postgres database."""
 
-__all__ = ["PostgresListenerNotifyError", "PostgresListenerService"]
 
 from collections import defaultdict
 from errno import ENOENT

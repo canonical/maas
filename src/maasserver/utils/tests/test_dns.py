@@ -3,7 +3,6 @@
 
 """Test DNS utilities."""
 
-__all__ = []
 
 from math import pow
 

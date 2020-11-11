@@ -3,7 +3,6 @@
 
 """Test maasserver.stats."""
 
-__all__ = []
 
 import base64
 import json

@@ -3,7 +3,6 @@
 
 """Tests for snappy utilities."""
 
-__all__ = []
 
 import os
 from pathlib import Path

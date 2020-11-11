@@ -3,7 +3,6 @@
 
 """OAuth authentication for the various APIs."""
 
-__all__ = ["api_auth"]
 
 from operator import xor
 

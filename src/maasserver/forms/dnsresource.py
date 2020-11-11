@@ -3,7 +3,6 @@
 
 """DNSResource form."""
 
-__all__ = ["DNSResourceForm"]
 
 from collections.abc import Iterable
 

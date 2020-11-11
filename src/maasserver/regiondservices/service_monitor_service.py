@@ -3,7 +3,6 @@
 
 """Service that periodically checks that system services are running."""
 
-__all__ = ["ServiceMonitorService"]
 
 from datetime import timedelta
 

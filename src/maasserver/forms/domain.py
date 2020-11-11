@@ -3,7 +3,6 @@
 
 """Domain form."""
 
-__all__ = ["DomainForm"]
 
 from django import forms
 

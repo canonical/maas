@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.pcap``."""
 
-__all__ = []
 
 import io
 

@@ -3,7 +3,6 @@
 
 """Tests for the pxe boot method."""
 
-__all__ = []
 
 from collections import OrderedDict
 import os

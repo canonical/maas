@@ -10,7 +10,6 @@ the next release cycle (through MAAS 1.9) in case any bugs with this migration
 occur.
 """
 
-__all__ = []
 
 from testtools.matchers import Is, MatchesStructure, Not
 

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.pod.virsh`."""
 
-__all__ = []
 
 from math import floor
 import os

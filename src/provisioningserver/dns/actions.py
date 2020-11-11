@@ -3,15 +3,6 @@
 
 """Low-level actions to manage the DNS service, like reloading zones."""
 
-__all__ = [
-    "bind_reconfigure",
-    "bind_reload",
-    "bind_reload_zones",
-    "bind_write_configuration",
-    "bind_write_options",
-    "bind_write_zones",
-]
-
 from collections.abc import Sequence
 from subprocess import CalledProcessError, TimeoutExpired
 from time import sleep

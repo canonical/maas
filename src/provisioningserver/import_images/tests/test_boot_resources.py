@@ -3,7 +3,6 @@
 
 """Tests for the boot_resources module."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 import errno

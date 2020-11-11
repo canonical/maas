@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.scenarios`."""
 
-__all__ = []
 
 import unittest
 

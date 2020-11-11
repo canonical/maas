@@ -3,8 +3,6 @@
 
 """Patch django to work with twisted for MAAS."""
 
-__all__ = ["patch_get_script_prefix"]
-
 
 def patch_get_script_prefix():
     """Patch internal django _prefixes to a global.

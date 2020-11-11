@@ -3,7 +3,6 @@
 
 """Tests for :class:`User`-related helpers."""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

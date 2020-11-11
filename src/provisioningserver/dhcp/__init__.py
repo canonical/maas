@@ -3,7 +3,6 @@
 
 """Monitored service driver."""
 
-__all__ = ["DHCPv4Server", "DHCPv6Server"]
 
 from abc import ABCMeta, abstractproperty
 

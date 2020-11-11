@@ -3,7 +3,6 @@
 
 """Windows Operating System."""
 
-__all__ = ["WindowsOS"]
 
 import re
 

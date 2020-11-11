@@ -3,7 +3,6 @@
 
 """RPC helpers for dealing with tags."""
 
-__all__ = ["evaluate_tag"]
 
 from apiclient.maas_client import MAASClient, MAASDispatcher, MAASOAuth
 from provisioningserver.tags import process_node_tags

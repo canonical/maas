@@ -3,7 +3,6 @@
 
 """Helpers for osystem rpc testing."""
 
-__all__ = ["make_rpc_release", "make_rpc_osystem"]
 
 import random
 

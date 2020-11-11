@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.service_monitor`."""
 
-__all__ = []
 
 import logging
 import os

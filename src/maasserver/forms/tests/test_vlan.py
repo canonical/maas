@@ -3,7 +3,6 @@
 
 """Tests for VLAN forms."""
 
-__all__ = []
 
 import random
 

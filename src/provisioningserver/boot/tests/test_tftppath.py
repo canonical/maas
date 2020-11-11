@@ -3,7 +3,6 @@
 
 """Tests for the tftppath module."""
 
-__all__ = []
 
 import errno
 import os.path

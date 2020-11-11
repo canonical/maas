@@ -3,7 +3,6 @@
 
 """The fabric handler for the WebSocket connection."""
 
-__all__ = ["FabricHandler"]
 
 from maasserver.forms.fabric import FabricForm
 from maasserver.models.fabric import Fabric

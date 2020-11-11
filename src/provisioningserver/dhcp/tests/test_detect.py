@@ -3,7 +3,6 @@
 
 """Tests for dhcp/detect.py"""
 
-__all__ = []
 
 import errno
 import random

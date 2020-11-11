@@ -3,7 +3,6 @@
 
 """:class:`KeySource` and friends."""
 
-__all__ = ["KeySource"]
 
 from django.db.models import BooleanField, CharField, Manager
 

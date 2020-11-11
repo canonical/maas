@@ -3,8 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.script`"""
 
-__all__ = []
-
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

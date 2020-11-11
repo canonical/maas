@@ -3,7 +3,6 @@
 
 """Tests for controller forms."""
 
-__all__ = []
 
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.forms import ControllerForm

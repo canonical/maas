@@ -11,7 +11,6 @@
 
 """
 
-__all__ = ["TFTPOffloadService"]
 
 import os
 import shutil

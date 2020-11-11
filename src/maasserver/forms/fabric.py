@@ -3,7 +3,6 @@
 
 """Fabric form."""
 
-__all__ = ["FabricForm"]
 
 from maasserver.forms import MAASModelForm
 from maasserver.models.fabric import Fabric

@@ -3,7 +3,6 @@
 
 """Subnet form."""
 
-__all__ = ["SubnetForm"]
 
 from django import forms
 from django.core.exceptions import ValidationError

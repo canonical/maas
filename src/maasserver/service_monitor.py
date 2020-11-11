@@ -3,7 +3,6 @@
 
 """Services monitored on regiond."""
 
-__all__ = ["service_monitor"]
 
 from maasserver.models.config import Config
 from maasserver.utils.orm import transactional

@@ -3,8 +3,6 @@
 
 """Event-related utilities."""
 
-__all__ = ["Event", "EventGroup"]
-
 
 class Event:
     """Simple event that when fired calls all of the registered handlers on

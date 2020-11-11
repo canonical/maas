@@ -3,7 +3,6 @@
 
 """Tests for Parameters form."""
 
-__all__ = []
 
 import random
 

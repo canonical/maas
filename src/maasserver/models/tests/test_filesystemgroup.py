@@ -3,7 +3,6 @@
 
 """Tests for `FilesystemGroup`."""
 
-__all__ = []
 
 import random
 import re

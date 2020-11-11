@@ -3,7 +3,6 @@
 
 """Test maasserver NodeMetadata model."""
 
-__all__ = []
 
 from crochet import wait_for
 from django.core.exceptions import ValidationError

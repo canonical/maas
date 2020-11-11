@@ -3,7 +3,6 @@
 
 """Routable addresses."""
 
-__all__ = ["find_addresses_between_nodes"]
 
 from collections import defaultdict
 from textwrap import dedent

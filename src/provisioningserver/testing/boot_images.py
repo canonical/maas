@@ -3,7 +3,6 @@
 
 """Test helpers for boot-image parameters."""
 
-__all__ = ["make_boot_image_params"]
 
 from maastesting.factory import factory
 

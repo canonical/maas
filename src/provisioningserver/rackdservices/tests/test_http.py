@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.rackdservices.http`."""
 
-__all__ = []
 
 import random
 from unittest.mock import ANY, Mock

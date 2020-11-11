@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.ethernet``."""
 
-__all__ = []
 
 import random
 

@@ -3,7 +3,6 @@
 
 """Test maasserver RPC views."""
 
-__all__ = []
 
 import json
 

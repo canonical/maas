@@ -3,7 +3,6 @@
 
 """Test config forms utilities."""
 
-__all__ = []
 
 from unittest.mock import ANY, Mock
 

@@ -3,7 +3,6 @@
 
 """Tests for :class:`NodeUserData` and manager."""
 
-__all__ = []
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

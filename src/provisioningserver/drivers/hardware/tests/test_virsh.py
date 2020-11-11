@@ -4,7 +4,6 @@
 """Tests for `provisioningserver.drivers.hardware.virsh`.
 """
 
-__all__ = []
 
 import random
 from textwrap import dedent

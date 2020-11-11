@@ -3,7 +3,6 @@
 
 """Test GlobalDefault objects."""
 
-__all__ = []
 
 import random
 

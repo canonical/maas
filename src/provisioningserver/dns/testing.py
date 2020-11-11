@@ -3,12 +3,6 @@
 
 """Test helpers for DNS."""
 
-__all__ = [
-    "patch_dns_config_path",
-    "patch_dns_default_controls",
-    "patch_dns_rndc_port",
-]
-
 from fixtures import EnvironmentVariable
 
 

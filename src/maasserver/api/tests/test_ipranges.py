@@ -3,7 +3,6 @@
 
 """Tests for IPRange API."""
 
-__all__ = []
 
 import http.client
 import json

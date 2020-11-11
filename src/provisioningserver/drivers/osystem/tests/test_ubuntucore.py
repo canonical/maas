@@ -3,7 +3,6 @@
 
 """Tests for the UbuntuCore module."""
 
-__all__ = []
 
 from itertools import product
 import os

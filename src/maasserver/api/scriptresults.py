@@ -3,7 +3,6 @@
 
 """API handlers: `ScriptResults`."""
 
-__all__ = ["NodeScriptResultHandler", "NodeScriptResultsHandler"]
 
 from base64 import b64encode
 from collections import OrderedDict

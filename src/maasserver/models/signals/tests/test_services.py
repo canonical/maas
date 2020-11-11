@@ -3,7 +3,6 @@
 
 """Tests for updating services."""
 
-__all__ = []
 
 from unittest.mock import call
 

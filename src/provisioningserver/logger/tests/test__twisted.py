@@ -3,7 +3,6 @@
 
 """Tests for Twisted-specific logging stuff."""
 
-__all__ = []
 
 import io
 

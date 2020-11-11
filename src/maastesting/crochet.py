@@ -3,7 +3,6 @@
 
 """Support for testing with `crochet`."""
 
-__all__ = ["EventualResultCatchingMixin"]
 
 import crochet
 from testtools.content import Content, UTF8_TEXT

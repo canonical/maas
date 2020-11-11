@@ -3,7 +3,6 @@
 
 """Test the behaviour of bootsource signals."""
 
-__all__ = []
 
 from django.db import connection
 from twisted.internet import reactor

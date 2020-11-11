@@ -3,7 +3,6 @@
 
 """Tests for `BootImageMapping` and its module."""
 
-__all__ = []
 
 import json
 

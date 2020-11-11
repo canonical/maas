@@ -3,7 +3,6 @@
 
 """Fixtures for testing `driver_parameters`."""
 
-__all__ = ["StaticDriverTypesFixture"]
 
 from copy import deepcopy
 from functools import wraps

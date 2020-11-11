@@ -3,7 +3,6 @@
 
 """XPath-related utilities."""
 
-__all__ = ["try_match_xpath"]
 
 import logging
 

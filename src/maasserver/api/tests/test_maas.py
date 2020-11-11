@@ -3,7 +3,6 @@
 
 """Tests for maas endpoint in the API."""
 
-__all__ = []
 
 import http.client
 import json

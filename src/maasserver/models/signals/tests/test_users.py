@@ -3,7 +3,6 @@
 
 """Test the behaviour of user signals."""
 
-__all__ = []
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

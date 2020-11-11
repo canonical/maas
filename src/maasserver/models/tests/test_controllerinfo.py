@@ -3,7 +3,6 @@
 
 """Test maasserver ControllerInfo model."""
 
-__all__ = []
 
 from crochet import wait_for
 from testtools.matchers import Equals, Is

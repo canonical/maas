@@ -3,7 +3,6 @@
 
 """The notification handler for the WebSocket connection."""
 
-__all__ = ["NotificationHandler"]
 
 from maasserver.models.notification import Notification
 from maasserver.websockets.handlers.timestampedmodel import (

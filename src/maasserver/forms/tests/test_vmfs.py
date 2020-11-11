@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `VMFS`."""
 
-__all__ = []
 
 import uuid
 

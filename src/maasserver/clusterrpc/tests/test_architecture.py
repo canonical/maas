@@ -3,8 +3,6 @@
 
 """Tests for `list_supported_architectures`."""
 
-__all__ = []
-
 
 from collections import OrderedDict
 

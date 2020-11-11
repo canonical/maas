@@ -3,7 +3,6 @@
 
 """API credentials for node-group workers."""
 
-__all__ = ["get_maas_user_gpghome"]
 
 from provisioningserver.path import get_maas_data_path
 

@@ -3,8 +3,6 @@
 
 """Django command: Manage a user's API keys."""
 
-__all__ = []
-
 
 import django
 from django.contrib.auth.models import User

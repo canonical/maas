@@ -3,8 +3,6 @@
 
 """Node user-data for cloud-init's use."""
 
-__all__ = ["NodeUserData"]
-
 
 from django.db.models import CASCADE, Manager, Model, OneToOneField
 

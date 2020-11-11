@@ -3,7 +3,6 @@
 
 """Tests for the region's RPC implementation."""
 
-__all__ = []
 
 from collections import defaultdict
 from operator import attrgetter

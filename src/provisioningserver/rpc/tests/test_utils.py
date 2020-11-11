@@ -5,7 +5,6 @@
 
 """Test `provisioningserver.rpc.utils`."""
 
-__all__ = []
 
 import json
 from random import choice

@@ -3,7 +3,6 @@
 
 """Model for a Bcache cache set."""
 
-__all__ = ["CacheSet"]
 
 from itertools import chain
 

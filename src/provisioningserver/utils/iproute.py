@@ -18,7 +18,6 @@ The dictionary above is generated given the following input:
         172.16.254.0/24 via 192.168.1.1 dev eno1
 """
 
-__all__ = ["get_ip_route"]
 
 from provisioningserver.utils.ipaddr import get_settings_dict
 from provisioningserver.utils.shell import call_and_check

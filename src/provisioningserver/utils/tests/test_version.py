@@ -3,8 +3,6 @@
 
 """Test version utilities."""
 
-__all__ = []
-
 
 import os.path
 from unittest import skipUnless

@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.dhcp`."""
 
-__all__ = []
 
 import copy
 from operator import itemgetter

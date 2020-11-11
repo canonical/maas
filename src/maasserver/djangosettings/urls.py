@@ -3,7 +3,6 @@
 
 """URL configuration for the maas project."""
 
-__all__ = []
 
 from django.conf.urls import include, url
 

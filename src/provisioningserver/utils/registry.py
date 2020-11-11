@@ -3,7 +3,6 @@
 
 """Registry base class for registry singletons."""
 
-__all__ = ["Registry"]
 
 from collections import defaultdict, OrderedDict
 

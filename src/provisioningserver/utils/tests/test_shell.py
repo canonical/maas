@@ -3,7 +3,6 @@
 
 """Tests for utilities to execute external commands."""
 
-__all__ = []
 
 import os
 import random

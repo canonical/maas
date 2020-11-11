@@ -3,7 +3,6 @@
 
 """Tests for devices API."""
 
-__all__ = []
 
 import http.client
 import random

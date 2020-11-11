@@ -3,7 +3,6 @@
 
 """Tests for the Neighbour model."""
 
-__all__ = []
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

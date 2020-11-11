@@ -3,7 +3,6 @@
 
 """Test utilities for URL handling."""
 
-__all__ = []
 
 from random import randint
 

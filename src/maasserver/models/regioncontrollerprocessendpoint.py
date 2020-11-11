@@ -3,7 +3,6 @@
 
 """RegionControllerProcessEndpoint object."""
 
-__all__ = ["RegionControllerProcessEndpoint"]
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (

@@ -3,7 +3,6 @@
 
 """Tests for environment-related helpers."""
 
-__all__ = []
 
 import os
 import string

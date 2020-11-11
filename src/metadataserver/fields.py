@@ -3,7 +3,6 @@
 
 """Custom field types for the metadata server."""
 
-__all__ = ["BinaryField"]
 
 from base64 import b64decode, b64encode
 

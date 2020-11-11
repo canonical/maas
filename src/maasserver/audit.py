@@ -3,7 +3,6 @@
 
 """Utilities for Audit logging."""
 
-__all__ = []
 
 from django.contrib.auth.models import AnonymousUser
 

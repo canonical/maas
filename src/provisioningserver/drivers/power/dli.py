@@ -3,7 +3,6 @@
 
 """DLI Power Driver."""
 
-__all__ = []
 
 import re
 from time import sleep

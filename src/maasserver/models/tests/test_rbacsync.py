@@ -3,7 +3,6 @@
 
 """Tests for RBACSync models."""
 
-__all__ = []
 
 from testtools.matchers import Equals, HasLength
 

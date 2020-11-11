@@ -16,7 +16,6 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-__all__ = ["create_physical_interfaces"]
 
 import datetime
 from textwrap import dedent

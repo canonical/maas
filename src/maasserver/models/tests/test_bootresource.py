@@ -3,7 +3,6 @@
 
 """Tests for `BootResource`."""
 
-__all__ = []
 
 from collections.abc import Iterable
 from datetime import datetime

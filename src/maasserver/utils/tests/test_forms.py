@@ -3,8 +3,6 @@
 
 """Tests for forms helpers."""
 
-__all__ = []
-
 
 from testtools.matchers import ContainsAll
 

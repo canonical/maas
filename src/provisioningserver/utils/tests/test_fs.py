@@ -3,7 +3,6 @@
 
 """Tests for filesystem-related utilities."""
 
-__all__ = []
 
 import glob
 import io

@@ -3,7 +3,6 @@
 
 """Tests for general DNS models."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 from random import randint

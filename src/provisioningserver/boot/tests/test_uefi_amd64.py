@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.boot.uefi_amd64`."""
 
-__all__ = []
 
 import os
 import re

@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `Bcache`."""
 
-__all__ = []
 
 from uuid import uuid4
 

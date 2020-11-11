@@ -3,7 +3,6 @@
 
 """Tests for FanNetwork API."""
 
-__all__ = []
 
 import http.client
 import random

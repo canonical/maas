@@ -17,8 +17,6 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-__all__ = []
-
 
 def _migrate_links_forward(MACAddress, Interface):
     """Using the links from MACAddress to StaticIPAddress, create the link

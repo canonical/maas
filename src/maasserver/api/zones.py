@@ -3,7 +3,6 @@
 
 """API handlers: `Zone`."""
 
-__all__ = ["ZoneHandler", "ZonesHandler"]
 
 from maasserver.api.support import (
     admin_method,

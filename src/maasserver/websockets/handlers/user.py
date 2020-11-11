@@ -3,7 +3,6 @@
 
 """The user handler for the WebSocket connection."""
 
-__all__ = ["UserHandler"]
 
 from django.contrib.auth.forms import (
     AdminPasswordChangeForm,

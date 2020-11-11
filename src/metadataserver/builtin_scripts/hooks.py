@@ -3,7 +3,6 @@
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
 
-__all__ = ["NODE_INFO_SCRIPTS", "update_node_network_information"]
 
 import fnmatch
 import json

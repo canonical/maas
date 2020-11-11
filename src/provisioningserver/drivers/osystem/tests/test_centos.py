@@ -3,7 +3,6 @@
 
 """Tests for the CentOS module."""
 
-__all__ = []
 
 from itertools import product
 

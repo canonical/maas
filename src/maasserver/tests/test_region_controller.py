@@ -3,7 +3,6 @@
 
 """Tests for the region controller service."""
 
-__all__ = []
 
 from operator import attrgetter
 import random

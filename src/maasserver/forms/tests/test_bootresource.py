@@ -3,7 +3,6 @@
 
 """Tests for `BootSourceForm`."""
 
-__all__ = []
 
 import random
 

@@ -3,7 +3,6 @@
 
 """Tests for `Notification`."""
 
-__all__ = []
 
 import itertools
 import random

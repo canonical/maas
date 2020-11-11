@@ -3,7 +3,6 @@
 
 """Model for a partition in a partition table."""
 
-__all__ = ["Partition"]
 
 from collections.abc import Iterable
 from operator import attrgetter

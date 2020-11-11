@@ -8,7 +8,6 @@ Specifically, check
 MAAS codebase.
 """
 
-__all__ = []
 
 from inspect import getdoc
 from itertools import chain

@@ -3,7 +3,6 @@
 
 """Tests for `metadataserver.vendor_data`."""
 
-__all__ = []
 
 import random
 

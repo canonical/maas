@@ -3,7 +3,6 @@
 
 """Configuration items."""
 
-__all__ = ["Config"]
 
 from collections import defaultdict, namedtuple
 import copy

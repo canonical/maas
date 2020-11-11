@@ -3,7 +3,6 @@
 
 """Testing helpers for provisioningserver.utils."""
 
-__all__ = ["callWithServiceRunning", "MAASIDFixture", "RegistryFixture"]
 
 from fixtures import Fixture
 from twisted.internet import defer

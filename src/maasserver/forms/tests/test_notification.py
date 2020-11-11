@@ -3,7 +3,6 @@
 
 """Tests for Notification forms."""
 
-__all__ = []
 
 import json
 import random

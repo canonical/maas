@@ -3,7 +3,6 @@
 
 """Test the `generate_sample_data` management command."""
 
-__all__ = []
 
 from django.core.management import call_command
 from testtools.matchers import Equals, MatchesRegex

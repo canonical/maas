@@ -3,7 +3,6 @@
 
 """Test maasserver models."""
 
-__all__ = []
 
 import random
 from unittest.mock import Mock, sentinel

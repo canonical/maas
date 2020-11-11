@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.dbtasks`."""
 
-__all__ = []
 
 import random
 import threading

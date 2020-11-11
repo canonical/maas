@@ -3,7 +3,6 @@
 
 """Tests for configuration update code."""
 
-__all__ = []
 
 from unittest.mock import Mock
 

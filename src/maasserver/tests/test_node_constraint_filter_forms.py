@@ -3,7 +3,6 @@
 
 """Test node constraint forms."""
 
-__all__ = []
 
 from random import randint
 

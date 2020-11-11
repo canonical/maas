@@ -3,7 +3,6 @@
 
 """Tests for maas_wipe.py."""
 
-__all__ = []
 
 import argparse
 import builtins

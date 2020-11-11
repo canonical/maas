@@ -3,7 +3,6 @@
 
 """Convenient test mix-in classes."""
 
-__all__ = ["PreseedRPCMixin"]
 
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (

@@ -3,7 +3,6 @@
 
 """Tests for network helpers."""
 
-__all__ = []
 
 import itertools
 import random

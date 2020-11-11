@@ -3,7 +3,6 @@
 
 """The subnet handler for the WebSocket connection."""
 
-__all__ = ["SubnetHandler"]
 
 from netaddr import IPNetwork
 

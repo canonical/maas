@@ -3,7 +3,6 @@
 
 """Utilities for URL handling."""
 
-__all__ = ["compose_URL"]
 
 import re
 import urllib.error

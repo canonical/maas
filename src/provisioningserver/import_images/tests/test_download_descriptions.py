@@ -3,7 +3,6 @@
 
 """Tests for the `download_descriptions` module."""
 
-__all__ = []
 
 import logging
 import random

@@ -3,7 +3,6 @@
 
 """Tests for maas-dhcp-support clean command."""
 
-__all__ = []
 
 from maastesting import root
 from maastesting.testcase import MAASTestCase

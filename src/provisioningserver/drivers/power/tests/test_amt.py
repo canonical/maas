@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.amt`."""
 
-__all__ = []
 
 from os.path import dirname, join
 from random import choice

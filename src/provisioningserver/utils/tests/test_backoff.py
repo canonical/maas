@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.utils.backoff`."""
 
-__all__ = []
 
 from itertools import islice
 

@@ -3,7 +3,6 @@
 
 """vendor-data for cloud-init's use."""
 
-__all__ = ["get_vendor_data"]
 
 from base64 import b64encode
 from crypt import crypt

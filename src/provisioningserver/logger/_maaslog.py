@@ -3,7 +3,6 @@
 
 """Logging for MAAS, redirects to syslog."""
 
-__all__ = ["get_maas_logger"]
 
 from collections import deque
 import logging

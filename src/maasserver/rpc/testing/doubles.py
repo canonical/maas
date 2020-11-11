@@ -3,7 +3,6 @@
 
 """Test doubles for the region's RPC implementation."""
 
-__all__ = ["DummyClient", "DummyClients", "HandshakingRegionServer"]
 
 from twisted.internet.defer import succeed
 

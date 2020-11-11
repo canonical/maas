@@ -3,7 +3,6 @@
 
 """Tests for the RDNS model."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 

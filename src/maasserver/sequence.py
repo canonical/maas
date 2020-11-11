@@ -3,7 +3,6 @@
 
 """SQL Sequence."""
 
-__all__ = ["BIGINT_MAX", "INT_MAX", "Sequence"]
 
 from textwrap import dedent
 

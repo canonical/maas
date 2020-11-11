@@ -3,7 +3,6 @@
 
 """Utilities for working with PCAP format streams."""
 
-__all__ = ["PCAP", "PCAPError", "PCAPHeader", "PCAPPacketHeader"]
 
 from collections import namedtuple
 from pprint import pprint

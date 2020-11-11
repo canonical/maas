@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.triggers`."""
 
-__all__ = []
 
 from contextlib import closing
 

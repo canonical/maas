@@ -25,7 +25,6 @@ RBAC:
     RBAC micro-service will be pushed the changed information.
 """
 
-__all__ = ["RegionControllerService"]
 
 from operator import attrgetter
 

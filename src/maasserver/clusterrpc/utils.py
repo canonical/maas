@@ -3,8 +3,6 @@
 
 """Common code for MAAS Cluster RPC operations."""
 
-__all__ = ["call_clusters", "get_error_message_for_exception"]
-
 
 from collections import namedtuple
 from functools import partial

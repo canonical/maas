@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.syslog.config`."""
 
-__all__ = []
 
 import os
 from pathlib import Path

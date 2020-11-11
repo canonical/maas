@@ -3,8 +3,6 @@
 
 """The `ProductMapping` class."""
 
-__all__ = ["map_products"]
-
 
 class ProductMapping:
     """Mapping of product data.

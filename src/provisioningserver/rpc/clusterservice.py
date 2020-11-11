@@ -3,7 +3,6 @@
 
 """RPC implementation for clusters."""
 
-__all__ = ["ClusterClientService"]
 
 from functools import partial
 import json

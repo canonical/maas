@@ -3,7 +3,6 @@
 
 """Services related to DNS publication."""
 
-__all__ = ["DNSPublicationGarbageService"]
 
 from datetime import datetime, timedelta
 import random

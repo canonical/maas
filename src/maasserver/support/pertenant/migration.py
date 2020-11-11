@@ -26,7 +26,6 @@ allocated after this migration will permit access from any of the users with
 SSH keys prior to the migration.
 """
 
-__all__ = ["migrate"]
 
 from django.contrib.auth.models import User
 

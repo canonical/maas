@@ -3,7 +3,6 @@
 
 """Construct sample application data dynamically."""
 
-__all__ = ["populate"]
 
 from collections import defaultdict
 from datetime import timedelta

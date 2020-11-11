@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.osystems`."""
 
-__all__ = []
 
 from operator import itemgetter
 import random

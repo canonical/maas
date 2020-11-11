@@ -3,7 +3,6 @@
 
 """The MAAS command-line interface."""
 
-__all__ = ["main"]
 
 import os
 import sys

@@ -3,7 +3,6 @@
 
 """Interface link form."""
 
-__all__ = ["InterfaceLinkForm"]
 
 from collections import Counter
 

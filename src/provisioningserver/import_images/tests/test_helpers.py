@@ -3,7 +3,6 @@
 
 """Tests for the `helpers` module."""
 
-__all__ = []
 
 from unittest import mock
 

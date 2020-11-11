@@ -3,7 +3,6 @@
 
 """Utilities for working with asynchronous operations."""
 
-__all__ = ["DeferredHooks", "gather"]
 
 from collections import deque
 from contextlib import contextmanager

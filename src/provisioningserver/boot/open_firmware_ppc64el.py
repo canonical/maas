@@ -3,7 +3,6 @@
 
 """OpenFirmware PPC64EL Boot Method"""
 
-__all__ = ["OpenFirmwarePPC64ELBootMethod"]
 
 from provisioningserver.boot import BootMethod
 

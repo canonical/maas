@@ -3,7 +3,6 @@
 
 """Tests for the DNSResource model."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 import re

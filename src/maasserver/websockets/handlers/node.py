@@ -3,7 +3,6 @@
 
 """The node handler for the WebSocket connection."""
 
-__all__ = ["NodeHandler"]
 
 from collections import Counter
 from itertools import chain

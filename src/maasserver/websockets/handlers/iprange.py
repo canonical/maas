@@ -3,7 +3,6 @@
 
 """The IPRange handler for the WebSocket connection."""
 
-__all__ = ["IPRangeHandler"]
 
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange

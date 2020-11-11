@@ -3,7 +3,6 @@
 
 """Tests for maas_certificates."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 import os

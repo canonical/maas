@@ -4,7 +4,6 @@
 """Tests for `provisioningserver.drivers.hardware.seamicro`.
 """
 
-__all__ = []
 
 import json
 from unittest.mock import call, Mock

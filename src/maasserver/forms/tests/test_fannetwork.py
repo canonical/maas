@@ -3,7 +3,6 @@
 
 """Tests for FanNetwork forms."""
 
-__all__ = []
 
 import random
 

@@ -3,7 +3,6 @@
 
 """Tests for the top-level cluster RPC API."""
 
-__all__ = []
 
 from maastesting.testcase import MAASTestCase
 import provisioningserver

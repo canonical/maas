@@ -3,7 +3,6 @@
 
 """Tests for `StaticRoute`."""
 
-__all__ = []
 
 from django.core.exceptions import PermissionDenied, ValidationError
 

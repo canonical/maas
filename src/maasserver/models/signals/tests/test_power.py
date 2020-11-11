@@ -3,7 +3,6 @@
 
 """Tests for node power status query when state changes."""
 
-__all__ = []
 
 from unittest.mock import ANY
 

@@ -3,7 +3,6 @@
 
 """Test builtin_script 7z."""
 
-__all__ = []
 
 import io
 import os

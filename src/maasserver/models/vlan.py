@@ -3,8 +3,6 @@
 
 """VLAN objects."""
 
-__all__ = ["DEFAULT_VID", "DEFAULT_VLAN_NAME"]
-
 
 from django.core.exceptions import ValidationError
 from django.db.models import (

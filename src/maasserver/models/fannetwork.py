@@ -3,7 +3,6 @@
 
 """FanNetwork objects."""
 
-__all__ = ["FanNetwork", "FANNETWORK_BRIDGE_VALIDATOR"]
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator

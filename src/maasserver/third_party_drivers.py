@@ -16,7 +16,6 @@ The current implementation is limited in a number of ways:
   not for commissioning or fastpath installations.
 """
 
-__all__ = ["get_third_party_driver"]
 
 from copy import deepcopy
 import fnmatch

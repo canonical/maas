@@ -3,8 +3,6 @@
 
 """Model that holds hint information for a Pod."""
 
-__all__ = ["PodHints"]
-
 
 from django.db.models import (
     BigIntegerField,

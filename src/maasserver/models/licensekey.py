@@ -3,8 +3,6 @@
 
 """Global license keys."""
 
-__all__ = ["LicenseKey"]
-
 
 from django.db.models import CharField, Manager
 

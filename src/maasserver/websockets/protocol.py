@@ -3,7 +3,6 @@
 
 """The MAAS WebSockets protocol."""
 
-__all__ = ["WebSocketProtocol"]
 
 from collections import deque
 from functools import partial

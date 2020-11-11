@@ -3,7 +3,6 @@
 
 """Start-up utilities for the MAAS server."""
 
-__all__ = ["start_up"]
 
 import logging
 

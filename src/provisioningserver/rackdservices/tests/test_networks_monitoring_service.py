@@ -3,7 +3,6 @@
 
 """Tests for networks monitor."""
 
-__all__ = []
 
 from unittest.mock import call, Mock
 

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
 
-__all__ = []
 
 from unittest.mock import call
 

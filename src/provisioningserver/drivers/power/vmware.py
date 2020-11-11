@@ -3,7 +3,6 @@
 
 """VMware Power Driver."""
 
-__all__ = []
 
 from provisioningserver.drivers import (
     make_ip_extractor,

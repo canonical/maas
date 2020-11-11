@@ -3,7 +3,6 @@
 
 """Space form."""
 
-__all__ = ["SpaceForm"]
 
 from maasserver.forms import MAASModelForm
 from maasserver.models.space import Space

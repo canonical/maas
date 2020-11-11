@@ -3,7 +3,6 @@
 
 """Server fixture for BIND."""
 
-__all__ = ["BINDServer"]
 
 import argparse
 import os

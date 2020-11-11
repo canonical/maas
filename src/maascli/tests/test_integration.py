@@ -3,7 +3,6 @@
 
 """Integration-test the `maascli` command."""
 
-__all__ = []
 
 import os.path
 import random

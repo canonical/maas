@@ -3,7 +3,6 @@
 
 """Django command: run the server.  Overrides the default implementation."""
 
-__all__ = ["Command"]
 
 from socketserver import ThreadingMixIn
 

@@ -3,7 +3,6 @@
 
 """Tests for asynchronous utilities."""
 
-__all__ = []
 
 from functools import partial
 from textwrap import dedent

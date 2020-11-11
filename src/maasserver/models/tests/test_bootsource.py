@@ -3,7 +3,6 @@
 
 """Tests for `BootSource`."""
 
-__all__ = []
 
 import os
 

@@ -3,7 +3,6 @@
 
 """Tests for `VirtualBlockDevice`."""
 
-__all__ = []
 
 import random
 import re

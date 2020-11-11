@@ -3,7 +3,6 @@
 
 """Cluster-side evaluation of tags."""
 
-__all__ = ["merge_details", "merge_details_cleanly", "process_node_tags"]
 
 from collections import OrderedDict
 from functools import partial

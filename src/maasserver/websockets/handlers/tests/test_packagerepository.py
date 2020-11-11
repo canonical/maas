@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.packagerepository`"""
 
-__all__ = []
 
 import maasserver.forms.packagerepository as forms_packagerepository_module
 from maasserver.models import Event, PackageRepository

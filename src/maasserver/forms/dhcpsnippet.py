@@ -3,7 +3,6 @@
 
 """DHCP snippets form."""
 
-__all__ = ["DHCPSnippetForm"]
 
 from django import forms
 

@@ -3,7 +3,6 @@
 
 """Tests for commissioning forms."""
 
-__all__ = []
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import CommissioningForm

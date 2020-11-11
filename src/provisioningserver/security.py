@@ -3,12 +3,6 @@
 
 """Cluster security code."""
 
-__all__ = [
-    "calculate_digest",
-    "get_shared_secret_filesystem_path",
-    "get_shared_secret_from_filesystem",
-]
-
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 import binascii
 from binascii import a2b_hex, b2a_hex

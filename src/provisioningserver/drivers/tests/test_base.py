@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers`."""
 
-__all__ = []
 
 from operator import methodcaller
 import random

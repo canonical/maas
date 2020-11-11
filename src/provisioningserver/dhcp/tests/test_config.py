@@ -3,7 +3,6 @@
 
 """Test cases for dhcp.config"""
 
-__all__ = []
 
 from base64 import b64encode
 from itertools import count

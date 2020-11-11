@@ -3,7 +3,6 @@
 
 """Field type template tag."""
 
-__all__ = ["field_type"]
 
 from django import template
 

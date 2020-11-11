@@ -3,7 +3,6 @@
 
 """Utilities for scanning attached networks."""
 
-__all__ = ["add_arguments", "run"]
 
 from collections import namedtuple
 import json

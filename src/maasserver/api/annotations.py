@@ -172,7 +172,6 @@ NOTES:
     change if a speed improvement is needed.
 """
 
-__all__ = ["APIDocstringParser"]
 
 import json
 import os

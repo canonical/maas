@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.token`"""
 
-__all__ = []
 
 from testtools.matchers import KeysEqual
 

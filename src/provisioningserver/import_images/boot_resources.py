@@ -1,7 +1,6 @@
 # Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = ["import_images", "main", "main_with_services", "make_arg_parser"]
 
 from argparse import ArgumentParser
 import errno

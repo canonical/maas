@@ -3,7 +3,6 @@
 
 """Signals called when config values changed."""
 
-__all__ = ["signals"]
 
 from maasserver.utils.signals import SignalsManager
 

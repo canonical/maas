@@ -3,7 +3,6 @@
 
 """API handler: `StaticIPAddress`."""
 
-__all__ = ["IPAddressesHandler"]
 
 from django.http import Http404
 from django.http.response import HttpResponseBadRequest, HttpResponseForbidden

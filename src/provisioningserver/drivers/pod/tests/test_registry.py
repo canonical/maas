@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.pod.registry`."""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

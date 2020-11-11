@@ -3,7 +3,6 @@
 
 """Test monkey patches."""
 
-__all__ = []
 
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import Equals

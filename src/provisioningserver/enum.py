@@ -3,7 +3,6 @@
 
 """Enumerations meaningful to the rack contoller (and possibly the region)."""
 
-__all__ = ["MACVLAN_MODE", "MACVLAN_MODE_CHOICES"]
 
 # *** IMPORTANT ***
 # Note to all ye who enter here: comments beginning with #: are special

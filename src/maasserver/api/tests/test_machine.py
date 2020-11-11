@@ -3,7 +3,6 @@
 
 """Tests for the Machine API."""
 
-__all__ = []
 
 from base64 import b64encode
 import http.client

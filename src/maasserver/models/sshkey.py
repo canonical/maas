@@ -3,7 +3,6 @@
 
 """:class:`SSHKey` and friends."""
 
-__all__ = ["SSHKey"]
 
 from html import escape
 

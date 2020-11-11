@@ -3,8 +3,6 @@
 
 """Proxy config management module."""
 
-__all__ = ["proxy_update_config"]
-
 
 from django.conf import settings
 from twisted.internet.defer import succeed

@@ -3,7 +3,6 @@
 
 """Test `maasserver.preseed` and related bits and bobs."""
 
-__all__ = []
 
 import http.client
 import json

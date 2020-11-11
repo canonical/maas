@@ -3,7 +3,6 @@
 
 """Tests for `PhysicalBlockDevice`."""
 
-__all__ = []
 
 import random
 

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.dhcpsnippet`"""
 
-__all__ = []
 
 from email.utils import format_datetime
 import random

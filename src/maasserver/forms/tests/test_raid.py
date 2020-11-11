@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `RAID`."""
 
-__all__ = []
 
 import random
 from uuid import uuid4

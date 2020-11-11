@@ -3,7 +3,6 @@
 
 """Boot Resource Set."""
 
-__all__ = ["BootResourceSet"]
 
 from django.db.models import CASCADE, CharField, ForeignKey, Sum
 

@@ -3,7 +3,6 @@
 
 """Tests for the metadata API."""
 
-__all__ = []
 
 import base64
 from collections import namedtuple

@@ -3,7 +3,6 @@
 
 """The machine handler for the WebSocket connection."""
 
-__all__ = ["MachineHandler"]
 
 from functools import partial
 import logging

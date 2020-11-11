@@ -3,7 +3,6 @@
 
 """Tests for `LicenseKeyForm`."""
 
-__all__ = []
 
 from operator import itemgetter
 import random

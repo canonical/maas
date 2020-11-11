@@ -3,7 +3,6 @@
 
 """Simplestreams code to download boot resources."""
 
-__all__ = ["download_all_boot_resources"]
 
 from datetime import datetime
 import os.path

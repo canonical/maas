@@ -3,7 +3,6 @@
 
 """DNSData form."""
 
-__all__ = ["DNSDataForm"]
 
 from django import forms
 

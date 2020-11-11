@@ -3,7 +3,6 @@
 
 """Tests for `BootResourceSet`."""
 
-__all__ = []
 
 import random
 from unittest import skip

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.populate_tags`."""
 
-__all__ = []
 
 from unittest.mock import ANY, call, create_autospec
 

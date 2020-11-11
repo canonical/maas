@@ -3,7 +3,6 @@
 
 """Tests for `rpc.leases`."""
 
-__all__ = []
 
 from datetime import datetime
 import random

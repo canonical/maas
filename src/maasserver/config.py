@@ -3,7 +3,6 @@
 
 """Configuration for the MAAS region."""
 
-__all__ = ["RegionConfiguration"]
 
 from formencode.validators import Int
 

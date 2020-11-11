@@ -3,7 +3,6 @@
 
 """Test maasserver Switch model."""
 
-__all__ = []
 
 from crochet import wait_for
 from django.db.utils import IntegrityError

@@ -3,7 +3,6 @@
 
 """Respond to boot source changes."""
 
-__all__ = ["signals"]
 
 from django.db.models.signals import post_delete, post_save
 from twisted.internet import reactor

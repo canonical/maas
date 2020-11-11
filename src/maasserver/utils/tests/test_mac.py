@@ -3,8 +3,6 @@
 
 """Test MAC utilities."""
 
-__all__ = []
-
 
 from unittest.mock import MagicMock
 

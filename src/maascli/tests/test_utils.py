@@ -3,7 +3,6 @@
 
 """Tests for `maascli.utils`."""
 
-__all__ = []
 
 from collections import OrderedDict
 import http.client

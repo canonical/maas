@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.seamicro`."""
 
-__all__ = []
 
 from random import choice
 

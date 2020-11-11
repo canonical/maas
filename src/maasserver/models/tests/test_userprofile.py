@@ -3,7 +3,6 @@
 
 """Tests for the UserProfile model."""
 
-__all__ = []
 
 from django.contrib.auth.models import User
 from piston3.models import Consumer, Token

@@ -3,7 +3,6 @@
 
 """Test parser for 'ip addr show'."""
 
-__all__ = []
 
 import json
 import os

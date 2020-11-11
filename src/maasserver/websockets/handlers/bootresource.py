@@ -3,7 +3,6 @@
 
 """The BootResource handler for the WebSocket connection."""
 
-__all__ = ["BootResourceHandler"]
 
 from collections import defaultdict
 import json

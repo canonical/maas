@@ -3,8 +3,6 @@
 
 """Helper to obtain the MAAS server's address."""
 
-__all__ = ["get_maas_facing_server_addresses", "get_maas_facing_server_host"]
-
 
 from urllib.parse import urlparse
 

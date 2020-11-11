@@ -10,7 +10,6 @@ from the dynamic range that the DHCP server itself allocates to unknown
 clients.
 """
 
-__all__ = ["StaticIPAddress"]
 
 from collections import defaultdict, namedtuple
 

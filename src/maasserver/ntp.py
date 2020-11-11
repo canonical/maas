@@ -3,7 +3,6 @@
 
 """NTP related functionality."""
 
-__all__ = ["get_peers_for", "get_servers_for"]
 
 from typing import FrozenSet, Iterable, Optional
 

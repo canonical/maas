@@ -3,7 +3,6 @@
 
 """Test AMP argument classes."""
 
-__all__ = []
 
 import random
 import zlib

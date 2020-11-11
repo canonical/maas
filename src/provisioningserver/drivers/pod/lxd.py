@@ -3,7 +3,6 @@
 
 """LXD Pod Driver."""
 
-__all__ = []
 
 from contextlib import suppress
 import re

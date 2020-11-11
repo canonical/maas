@@ -3,7 +3,6 @@
 
 """IPMI Power Driver."""
 
-__all__ = []
 
 import enum
 import re

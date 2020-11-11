@@ -3,7 +3,6 @@
 
 """Respond to BMC changes."""
 
-__all__ = ["signals"]
 
 from django.db.models.signals import post_delete, post_save, pre_delete
 

@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `Partition`."""
 
-__all__ = []
 
 import random
 import uuid

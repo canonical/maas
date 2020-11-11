@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.msftocs`."""
 
-__all__ = []
 
 from io import StringIO
 from random import randint

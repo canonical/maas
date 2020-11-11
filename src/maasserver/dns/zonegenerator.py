@@ -3,8 +3,6 @@
 
 """DNS zone generator."""
 
-__all__ = ["ZoneGenerator"]
-
 
 from collections import defaultdict
 from collections.abc import Iterable, Sequence

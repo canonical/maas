@@ -4,10 +4,7 @@
 """Testing helpers for Twisted code."""
 
 __all__ = [
-    "always_fail_with",
-    "always_succeed_with",
     "extract_result",
-    "TwistedLoggerFixture",
 ]
 
 from copy import copy

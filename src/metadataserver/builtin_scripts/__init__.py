@@ -3,7 +3,6 @@
 
 """Builtin scripts commited to Script model."""
 
-__all__ = ["load_builtin_scripts"]
 
 import os
 

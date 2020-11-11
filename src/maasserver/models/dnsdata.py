@@ -3,7 +3,6 @@
 
 """DNSData objects."""
 
-__all__ = ["DNSData"]
 
 from collections import defaultdict
 import re

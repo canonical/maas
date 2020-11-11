@@ -10,5 +10,3 @@ Tests for sharing IP addresses between BMCs and machines are in:
 Tests related to DNS resources are in:
     src/maasserver/models/tests/test_dnsresource.py
 """
-
-__all__ = []

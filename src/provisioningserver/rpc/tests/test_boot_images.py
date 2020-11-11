@@ -3,7 +3,6 @@
 
 """Tests for provisioningserver.rpc.boot_images"""
 
-__all__ = []
 
 import os
 from random import randint

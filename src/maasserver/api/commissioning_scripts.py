@@ -3,7 +3,6 @@
 
 """API handlers: `CommissioningScript`."""
 
-__all__ = ["CommissioningScriptHandler", "CommissioningScriptsHandler"]
 
 from base64 import b64encode
 

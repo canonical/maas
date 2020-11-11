@@ -52,7 +52,6 @@ you want to do.
 For example, to list all machines, you might GET "/MAAS/api/2.0/machines".
 """
 
-__all__ = ["api_doc_title", "describe", "render_api_docs"]
 
 from functools import partial
 from inspect import getdoc

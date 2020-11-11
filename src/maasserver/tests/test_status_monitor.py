@@ -3,8 +3,6 @@
 
 """Tests for the status monitor module."""
 
-__all__ = []
-
 
 from datetime import timedelta
 from unittest.mock import call

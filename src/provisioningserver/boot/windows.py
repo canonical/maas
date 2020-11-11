@@ -5,7 +5,6 @@
 
 """Windows PXE Boot Method"""
 
-__all__ = ["WindowsPXEBootMethod"]
 
 import os.path
 import re

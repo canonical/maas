@@ -3,8 +3,6 @@
 
 """Tests for ScriptResult status transition event."""
 
-__all__ = []
-
 
 import random
 

@@ -3,7 +3,6 @@
 
 """Service that periodically runs neighbour discovery scans on each rack."""
 
-__all__ = ["ActiveDiscoveryService"]
 
 from datetime import datetime, timedelta
 

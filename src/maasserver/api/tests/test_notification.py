@@ -3,7 +3,6 @@
 
 """Tests for Notification API."""
 
-__all__ = []
 
 import http.client
 import json

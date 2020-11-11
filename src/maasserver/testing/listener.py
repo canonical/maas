@@ -3,7 +3,6 @@
 
 """PostgresListener test helpers."""
 
-__all__ = []
 
 from twisted.internet.defer import succeed
 

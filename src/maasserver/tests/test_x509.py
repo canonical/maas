@@ -5,7 +5,6 @@
 
 """Tests for `maasserver.x509`."""
 
-__all__ = []
 
 import os
 

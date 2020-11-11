@@ -3,7 +3,6 @@
 
 """Tests for DHCP snippets forms."""
 
-__all__ = []
 
 import random
 

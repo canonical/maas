@@ -3,7 +3,6 @@
 
 """Metadata service application."""
 
-__all__ = ["DefaultMeta", "logger"]
 
 import logging
 

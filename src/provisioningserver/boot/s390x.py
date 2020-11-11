@@ -3,7 +3,6 @@
 
 """S390X Boot Method"""
 
-__all__ = ["S390XBootMethod"]
 
 import re
 

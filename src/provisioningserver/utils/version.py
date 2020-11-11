@@ -3,13 +3,6 @@
 
 """Version utilities."""
 
-__all__ = [
-    "get_maas_doc_version",
-    "get_maas_version_subversion",
-    "get_maas_version_ui",
-    "MAASVersion",
-]
-
 from collections import namedtuple
 from functools import lru_cache
 import re

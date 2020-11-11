@@ -3,7 +3,6 @@
 
 """UEFI ARM64 Boot Method"""
 
-__all__ = ["UEFIARM64BootMethod"]
 
 from provisioningserver.boot import BootMethod
 

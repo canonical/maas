@@ -3,7 +3,6 @@
 
 """Write config output for ISC DHCPD."""
 
-__all__ = ["DHCPConfigError", "get_config"]
 
 from itertools import chain, repeat
 import logging

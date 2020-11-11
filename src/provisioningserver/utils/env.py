@@ -3,7 +3,6 @@
 
 """Environment-related utilities."""
 
-__all__ = ["environment_variables"]
 
 from contextlib import contextmanager
 import os

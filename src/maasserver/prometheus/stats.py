@@ -3,7 +3,6 @@
 
 """Prometheus integration"""
 
-__all__ = ["PrometheusService", "PROMETHEUS_SERVICE_PERIOD"]
 
 from datetime import timedelta
 import json

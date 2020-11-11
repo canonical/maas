@@ -3,7 +3,6 @@
 
 """Tests for Clone form."""
 
-__all__ = []
 
 import random
 

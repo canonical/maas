@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.dhcp`."""
 
-__all__ = []
 
 from unittest.mock import ANY, sentinel
 

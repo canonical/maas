@@ -3,7 +3,6 @@
 
 """RPC helpers for getting the configuration for a booting machine."""
 
-__all__ = ["get_config"]
 
 import re
 import shlex

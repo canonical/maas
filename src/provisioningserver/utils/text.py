@@ -3,14 +3,6 @@
 
 """Text-processing utilities."""
 
-__all__ = [
-    "make_gecos_field",
-    "normalise_to_comma_list",
-    "normalise_whitespace",
-    "quote",
-    "split_string_list",
-]
-
 import re
 
 

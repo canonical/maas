@@ -3,7 +3,6 @@
 
 """Preseed generation for curtin/netplan network."""
 
-__all__ = []
 
 from collections import defaultdict, OrderedDict
 from operator import attrgetter

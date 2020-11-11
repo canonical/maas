@@ -3,7 +3,6 @@
 
 """API handler: `Account`."""
 
-__all__ = ["AccountHandler"]
 
 import http.client
 import json

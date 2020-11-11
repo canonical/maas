@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Tests for the import_images keyring management functions."""
 
-__all__ = []
 
 import hashlib
 import os

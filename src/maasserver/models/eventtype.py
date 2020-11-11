@@ -3,8 +3,6 @@
 
 """:class:`EventType` and friends."""
 
-__all__ = ["EventType"]
-
 
 import logging
 

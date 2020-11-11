@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.arp``."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 from datetime import datetime

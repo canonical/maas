@@ -3,7 +3,6 @@
 
 """API handlers: `BootSource`."""
 
-__all__ = ["BootSourceHandler", "BootSourcesHandler"]
 
 from base64 import b64encode
 import http.client

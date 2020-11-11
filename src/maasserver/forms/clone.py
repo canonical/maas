@@ -3,7 +3,6 @@
 
 """Clone form."""
 
-__all__ = ["CloneForm"]
 
 from django import forms
 from django.contrib.postgres.forms.array import SimpleArrayField

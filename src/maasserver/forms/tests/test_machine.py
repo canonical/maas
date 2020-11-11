@@ -3,7 +3,6 @@
 
 """Tests for node forms."""
 
-__all__ = []
 
 from crochet import TimeoutError
 

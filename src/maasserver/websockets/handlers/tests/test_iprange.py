@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.iprange`"""
 
-__all__ = []
 
 from testtools.matchers import MatchesStructure
 

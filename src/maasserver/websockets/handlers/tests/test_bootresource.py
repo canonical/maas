@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.bootresource`"""
 
-__all__ = []
 
 import datetime
 import json

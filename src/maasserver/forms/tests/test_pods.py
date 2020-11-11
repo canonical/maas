@@ -3,7 +3,6 @@
 
 """Tests for pod forms."""
 
-__all__ = []
 
 import random
 from unittest.mock import ANY, call, MagicMock

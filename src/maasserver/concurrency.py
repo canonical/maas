@@ -9,7 +9,6 @@ Twisted concurrency primative, like `DeferredLock` or `DeferredSemaphore`.
 
 """
 
-__all__ = ["webapp"]
 
 from twisted.internet.defer import DeferredSemaphore
 

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
 
-__all__ = []
 
 import random
 from unittest.mock import ANY, call, sentinel

@@ -3,30 +3,6 @@
 
 """Errors arising from the RPC system."""
 
-__all__ = [
-    "AuthenticationFailed",
-    "CannotConfigureDHCP",
-    "CannotCreateHostMap",
-    "CannotDisableAndShutoffRackd",
-    "CannotModifyHostMap",
-    "CannotRegisterCluster",
-    "CannotRemoveHostMap",
-    "CommissionNodeFailed",
-    "NoConnectionsAvailable",
-    "NodeAlreadyExists",
-    "NodeStateViolation",
-    "NoIPFoundForMACAddress",
-    "NoSuchCluster",
-    "NoSuchEventType",
-    "NoSuchNode",
-    "NoSuchOperatingSystem",
-    "PowerActionAlreadyInProgress",
-    "PowerActionFail",
-    "UnknownPowerType",
-    "RegistrationFailed",
-    "RefreshAlreadyInProgress",
-]
-
 
 class NoConnectionsAvailable(Exception):
     """There is no connection available."""

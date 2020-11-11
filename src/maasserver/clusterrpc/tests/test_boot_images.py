@@ -3,7 +3,6 @@
 
 """Tests for the `boot_images` module."""
 
-__all__ = []
 
 import os
 import random

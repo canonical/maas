@@ -3,8 +3,6 @@
 
 """Tests for the VersionedTextFile model."""
 
-__all__ = []
-
 
 import random
 from unittest.mock import Mock

@@ -3,7 +3,6 @@
 
 """Package Repositories form."""
 
-__all__ = ["PackageRepositoryForm"]
 
 from django import forms
 from django.core.exceptions import ValidationError

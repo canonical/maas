@@ -18,7 +18,6 @@ whether its migration is needed.
 Backwards migrations are not supported.
 """
 
-__all__ = ["add_arguments", "run"]
 
 import os
 from os import makedirs

@@ -16,7 +16,6 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-__all__ = ["clear_full_storage_configuration"]
 
 from datetime import datetime
 from uuid import uuid4

@@ -3,7 +3,6 @@
 
 """MAAS-specific test HTTP clients."""
 
-__all__ = ["MAASSensibleClient", "MAASSensibleOAuthClient"]
 
 from time import time
 

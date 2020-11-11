@@ -3,7 +3,6 @@
 
 """Tests for `maascli.config`."""
 
-__all__ = []
 
 import contextlib
 import os.path

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.nos`."""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

@@ -3,7 +3,6 @@
 
 """Helpers for architectures in testing."""
 
-__all__ = ["make_usable_architecture", "patch_usable_architectures"]
 
 from random import randint
 

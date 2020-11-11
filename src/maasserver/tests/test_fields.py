@@ -3,7 +3,6 @@
 
 """Test custom model fields."""
 
-__all__ = []
 
 import json
 from random import randint

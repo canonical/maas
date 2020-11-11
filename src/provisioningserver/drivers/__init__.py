@@ -3,7 +3,6 @@
 
 """Drivers."""
 
-__all__ = ["Architecture", "ArchitectureRegistry"]
 
 from jsonschema import validate
 

@@ -3,7 +3,6 @@
 
 """Fan Network form."""
 
-__all__ = ["FanNetworkForm"]
 
 from maasserver.forms import MAASModelForm
 from maasserver.models.fannetwork import FanNetwork

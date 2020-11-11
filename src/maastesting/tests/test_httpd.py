@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.httpd`."""
 
-__all__ = []
 
 from contextlib import closing
 import gzip

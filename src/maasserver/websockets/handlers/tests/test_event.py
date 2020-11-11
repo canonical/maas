@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.event`"""
 
-__all__ = []
 
 import datetime
 import random

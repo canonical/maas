@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.workers`"""
 
-__all__ = []
 
 import os
 import random

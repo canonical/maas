@@ -3,7 +3,6 @@
 
 """Utilities and helpers to help discover DHCP servers on your network."""
 
-__all__ = ["probe_interface"]
 
 from contextlib import contextmanager
 import errno

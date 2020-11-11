@@ -3,7 +3,6 @@
 
 """Twisted service recieves lease information from the MAAS dhcpd.sock."""
 
-__all__ = ["LeaseSocketService"]
 
 from collections import deque
 import json

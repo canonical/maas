@@ -3,7 +3,6 @@
 
 """Large file storage."""
 
-__all__ = ["LargeFile"]
 
 import hashlib
 

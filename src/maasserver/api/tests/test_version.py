@@ -3,8 +3,6 @@
 
 """Test maasserver API version."""
 
-__all__ = []
-
 
 import http.client
 import json

@@ -3,29 +3,6 @@
 
 """testtools custom matchers"""
 
-__all__ = [
-    "ContainedBy",
-    "DocTestMatches",
-    "FileContains",
-    "GreaterThanOrEqual",
-    "HasAttribute",
-    "IsCallable",
-    "IsCallableMock",
-    "IsFiredDeferred",
-    "IsNonEmptyString",
-    "IsUnfiredDeferred",
-    "LessThanOrEqual",
-    "Matches",
-    "MockAnyCall",
-    "MockCalledOnce",
-    "MockCalledOnceWith",
-    "MockCalledWith",
-    "MockCallsMatch",
-    "MockNotCalled",
-    "Provides",
-    "TextEquals",
-]
-
 from difflib import ndiff
 import doctest
 from functools import partial

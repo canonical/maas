@@ -3,7 +3,6 @@
 
 """Test loader for MAAS and its applications."""
 
-__all__ = ["MAASTestLoader"]
 
 import unittest
 

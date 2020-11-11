@@ -3,7 +3,6 @@
 
 """Tests for `BulkNodeActionForm`."""
 
-__all__ = []
 
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.testing.factory import factory

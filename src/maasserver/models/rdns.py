@@ -3,8 +3,6 @@
 
 """Model definition for observed reverse-DNS entries."""
 
-__all__ = ["RDNS", "RDNSManager"]
-
 
 from typing import List
 

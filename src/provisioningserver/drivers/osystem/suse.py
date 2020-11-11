@@ -3,7 +3,6 @@
 
 """SUSE Operating System."""
 
-__all__ = ["SUSEOS"]
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,

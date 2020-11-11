@@ -3,7 +3,6 @@
 
 """Django command: create an administrator account."""
 
-__all__ = []
 
 from getpass import getpass
 import re

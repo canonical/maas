@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.dbviews`."""
 
-__all__ = []
 
 from django.db import connection
 from testtools.matchers import HasLength

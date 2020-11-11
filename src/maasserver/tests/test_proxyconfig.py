@@ -3,7 +3,6 @@
 
 """Tests for the proxyconfig."""
 
-__all__ = []
 
 from pathlib import Path
 import random

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.third_party_drivers`."""
 
-__all__ = []
 
 import os
 

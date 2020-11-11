@@ -3,7 +3,6 @@
 
 """Tests for Script form."""
 
-__all__ = []
 
 from datetime import timedelta
 import json

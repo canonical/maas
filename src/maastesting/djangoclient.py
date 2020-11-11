@@ -3,7 +3,6 @@
 
 """Django client with sensible handling of data."""
 
-__all__ = ["SensibleClient"]
 
 from functools import wraps
 

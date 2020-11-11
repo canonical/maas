@@ -3,7 +3,6 @@
 
 """The Pod handler for the WebSocket connection."""
 
-__all__ = ["PodHandler"]
 
 import dataclasses
 from functools import partial

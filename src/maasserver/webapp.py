@@ -3,7 +3,6 @@
 
 """The MAAS Web Application."""
 
-__all__ = ["WebApplicationService"]
 
 import copy
 from functools import partial

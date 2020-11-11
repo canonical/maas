@@ -3,7 +3,6 @@
 
 """RPC helpers related to pod."""
 
-__all__ = ["discover_pod"]
 
 from twisted.internet.defer import DeferredList
 

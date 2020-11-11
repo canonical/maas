@@ -3,7 +3,6 @@
 
 """Tests for periodic DHCP prober."""
 
-__all__ = []
 
 from unittest.mock import Mock, sentinel
 

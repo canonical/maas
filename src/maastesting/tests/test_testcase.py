@@ -3,7 +3,6 @@
 
 """Tests for `MAASTestCase`."""
 
-__all__ = []
 
 import os.path
 from shutil import rmtree

@@ -3,7 +3,6 @@
 
 """Tests for `RegionControllerProcessEndpoint`."""
 
-__all__ = []
 
 import random
 

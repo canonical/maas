@@ -3,7 +3,6 @@
 
 """Tests for TFTP-specific logging stuff."""
 
-__all__ = []
 
 from testtools.matchers import Contains, Is
 from twisted.logger import LogLevel

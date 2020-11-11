@@ -3,7 +3,6 @@
 
 """Tests for the top-level region RPC API."""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

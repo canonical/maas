@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.models.nodeprobeddetails`."""
 
-__all__ = []
 
 from maasserver.models.nodeprobeddetails import (
     get_probed_details,

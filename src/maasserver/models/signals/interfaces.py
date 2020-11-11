@@ -3,7 +3,6 @@
 
 """Respond to interface changes."""
 
-__all__ = ["signals"]
 
 import threading
 

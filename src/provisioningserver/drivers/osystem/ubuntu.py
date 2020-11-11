@@ -3,7 +3,6 @@
 
 """Ubuntu Operating System."""
 
-__all__ = ["UbuntuOS"]
 
 from distro_info import UbuntuDistroInfo
 

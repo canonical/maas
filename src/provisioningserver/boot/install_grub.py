@@ -3,7 +3,6 @@
 
 """Install a GRUB2 pre-boot loader config for TFTP download."""
 
-__all__ = ["add_arguments", "run"]
 
 import os
 

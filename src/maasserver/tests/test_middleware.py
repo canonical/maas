@@ -3,7 +3,6 @@
 
 """Test maasserver middleware classes."""
 
-__all__ = []
 
 import http.client
 import json

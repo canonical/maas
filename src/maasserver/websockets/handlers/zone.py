@@ -3,7 +3,6 @@
 
 """The zone handler for the WebSocket connection."""
 
-__all__ = ["ZoneHandler"]
 
 from collections import defaultdict
 

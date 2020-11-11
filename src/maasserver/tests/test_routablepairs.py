@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.routablepairs`."""
 
-__all__ = []
 
 from itertools import product, takewhile
 import random

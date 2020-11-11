@@ -3,7 +3,6 @@
 
 """Test maasserver account views."""
 
-__all__ = []
 
 from http import HTTPStatus
 import http.client

@@ -3,7 +3,6 @@
 
 """Command-related classes."""
 
-__all__ = ["Command", "CommandError"]
 
 from abc import ABCMeta, abstractmethod
 

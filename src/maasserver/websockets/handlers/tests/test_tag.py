@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.tag`"""
 
-__all__ = []
 
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory

@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.protocol`"""
-__all__ = []
+
 
 from collections import deque
 import json

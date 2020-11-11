@@ -3,7 +3,6 @@
 
 """Fake `ProfileConfig` for testing."""
 
-__all__ = ["FakeConfig", "make_configs", "make_profile"]
 
 from maastesting.factory import factory
 

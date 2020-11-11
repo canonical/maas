@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.scan_network``."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import io

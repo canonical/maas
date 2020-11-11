@@ -6,8 +6,6 @@ Monkey patch for the MAAS provisioning server, with code for rack and region
 server patching.
 """
 
-__all__ = ["add_patches_to_txtftp", "add_patches_to_twisted"]
-
 
 def fix_tftp_requests():
     """Use intelligence in determining IPv4 vs IPv6 when creatinging a session.

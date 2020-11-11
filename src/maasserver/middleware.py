@@ -3,7 +3,6 @@
 
 """Access middleware."""
 
-__all__ = ["AccessMiddleware", "ExceptionMiddleware"]
 
 import http.client
 import json

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.utils.config`."""
 
-__all__ = []
 
 import os.path
 import random

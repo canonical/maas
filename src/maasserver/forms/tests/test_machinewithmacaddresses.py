@@ -3,7 +3,6 @@
 
 """Tests for `MachineWithMACAddressesForm`."""
 
-__all__ = []
 
 from django.http import QueryDict
 from testtools.matchers import Contains

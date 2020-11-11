@@ -3,7 +3,6 @@
 
 """Tests for constraints helpers."""
 
-__all__ = []
 
 from testtools import ExpectedException
 from testtools.matchers import Equals, HasLength, Is

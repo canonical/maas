@@ -3,7 +3,6 @@
 
 """Test maasserver API."""
 
-__all__ = []
 
 import http.client
 from itertools import chain

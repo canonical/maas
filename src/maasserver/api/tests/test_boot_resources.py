@@ -3,7 +3,6 @@
 
 """Tests for the `Boot Resources` API."""
 
-__all__ = []
 
 import http.client
 import random

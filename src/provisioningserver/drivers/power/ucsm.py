@@ -3,7 +3,6 @@
 
 """Cisco UCS Power Driver."""
 
-__all__ = []
 
 from provisioningserver.drivers import (
     IP_EXTRACTOR_PATTERNS,

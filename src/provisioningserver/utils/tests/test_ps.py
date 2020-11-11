@@ -3,7 +3,6 @@
 
 """Tests for process helpers."""
 
-__all__ = []
 
 import os
 import random

@@ -3,7 +3,6 @@
 
 """Tests for the Registry"""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

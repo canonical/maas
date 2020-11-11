@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.vlan`"""
 
-__all__ = []
 
 import random
 

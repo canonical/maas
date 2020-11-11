@@ -3,7 +3,6 @@
 
 """Test `maasserver.preseed_storage`."""
 
-__all__ = []
 
 from difflib import ndiff
 import random

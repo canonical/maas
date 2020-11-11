@@ -3,7 +3,6 @@
 
 """Test the behaviour of keysource signals."""
 
-__all__ = []
 
 import random
 

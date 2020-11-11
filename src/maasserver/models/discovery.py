@@ -3,7 +3,6 @@
 
 """Model definition for a `Discovery` (a discovered network device)."""
 
-__all__ = ["Discovery"]
 
 from django.db.models import (
     CharField,

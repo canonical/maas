@@ -3,7 +3,6 @@
 
 """API handlers: `Script`."""
 
-__all__ = ["NodeScriptHandler", "NodeScriptsHandler"]
 
 from base64 import b64encode
 from email.utils import format_datetime

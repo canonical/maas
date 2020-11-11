@@ -6,7 +6,6 @@
 Overrides the default implementation.
 """
 
-__all__ = ["Command"]
 
 import subprocess
 

@@ -3,8 +3,6 @@
 
 """Storage pool for a Pod."""
 
-__all__ = ["PodStoragePool"]
-
 
 from django.db.models import (
     BigIntegerField,

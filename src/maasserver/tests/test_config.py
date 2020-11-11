@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.config`."""
 
-__all__ = []
 
 import random
 

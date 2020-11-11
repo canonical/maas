@@ -3,7 +3,6 @@
 
 """Tests for the `upgrade-cluster` command."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 from itertools import product

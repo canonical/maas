@@ -3,7 +3,6 @@
 
 """The tag handler for the WebSocket connection."""
 
-__all__ = ["TagHandler"]
 
 from maasserver.models.tag import Tag
 from maasserver.websockets.handlers.timestampedmodel import (

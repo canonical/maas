@@ -3,7 +3,6 @@
 
 """MAAS Boot Resources Action."""
 
-__all__ = ["action_class"]
 
 import hashlib
 from io import BytesIO

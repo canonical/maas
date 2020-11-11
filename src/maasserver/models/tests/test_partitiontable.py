@@ -3,7 +3,6 @@
 
 """Tests for `PartitionTable`."""
 
-__all__ = []
 
 from django.core.exceptions import ValidationError
 

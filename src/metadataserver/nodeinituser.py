@@ -3,7 +3,6 @@
 
 """User management for nodes' access to the metadata service."""
 
-__all__ = ["get_node_init_user", "user_name"]
 
 from django.contrib.auth.models import User
 

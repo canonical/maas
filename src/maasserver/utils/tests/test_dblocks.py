@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.dblocks`."""
 
-__all__ = []
 
 from contextlib import closing, contextmanager
 from random import randrange

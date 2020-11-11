@@ -3,7 +3,6 @@
 
 """RegionRackRPCConnection object."""
 
-__all__ = ["RegionRackRPCConnection"]
 
 from django.db.models import CASCADE, ForeignKey
 

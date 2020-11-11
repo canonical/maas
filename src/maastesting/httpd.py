@@ -3,7 +3,6 @@
 
 """HTTP server fixture."""
 
-__all__ = ["HTTPServerFixture"]
 
 import gzip
 from http import HTTPStatus

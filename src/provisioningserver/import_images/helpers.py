@@ -3,7 +3,6 @@
 
 """Miscellaneous small definitions in support of boot-resource import."""
 
-__all__ = ["get_os_from_product", "get_signing_policy", "ImageSpec", "maaslog"]
 
 from collections import namedtuple
 import functools

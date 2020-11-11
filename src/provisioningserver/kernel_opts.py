@@ -3,7 +3,6 @@
 
 """Generate kernel command-line options for inclusion in PXE configs."""
 
-__all__ = ["compose_kernel_command_line", "KernelParameters"]
 
 from collections import namedtuple
 import os

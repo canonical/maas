@@ -3,7 +3,6 @@
 
 """Tests for power parameters."""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

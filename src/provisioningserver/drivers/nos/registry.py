@@ -3,7 +3,6 @@
 
 """Load all NOS drivers."""
 
-__all__ = ["NOSDriverRegistry"]
 
 from jsonschema import validate
 

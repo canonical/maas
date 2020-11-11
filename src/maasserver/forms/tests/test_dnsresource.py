@@ -3,7 +3,6 @@
 
 """Tests for DNSResource forms."""
 
-__all__ = []
 
 import random
 from unittest.mock import Mock

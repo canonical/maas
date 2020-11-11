@@ -3,7 +3,6 @@
 
 """Tests for forms relating to filesystems."""
 
-__all__ = []
 
 from testtools.matchers import Equals, Is, MatchesStructure
 

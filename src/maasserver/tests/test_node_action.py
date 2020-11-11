@@ -3,7 +3,6 @@
 
 """Tests for node actions."""
 
-__all__ = []
 
 import random
 from unittest.mock import ANY

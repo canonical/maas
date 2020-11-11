@@ -3,7 +3,6 @@
 
 """Test the behaviour of node signals."""
 
-__all__ = []
 
 import random
 

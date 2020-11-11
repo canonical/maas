@@ -3,7 +3,6 @@
 
 """Switch objects."""
 
-__all__ = ["Switch"]
 
 from django.db.models import CASCADE, CharField, Manager, OneToOneField
 

@@ -3,7 +3,6 @@
 
 """Tests for the Audit logging utilities."""
 
-__all__ = []
 
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest

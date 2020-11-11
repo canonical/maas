@@ -4,7 +4,6 @@
 """Helper class for all tests using the `PostgresListenerService` under
 `maasserver.triggers.tests`."""
 
-__all__ = []
 
 from crochet import wait_for
 from django.contrib.auth.models import User

@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.noseplug`."""
 
-__all__ = []
 
 from optparse import OptionParser
 from os import devnull, makedirs

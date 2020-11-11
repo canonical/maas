@@ -11,7 +11,6 @@ trigger "node_create" followed by "notify".
 E.g. "maasserver_node_node_create_notify".
 """
 
-__all__ = ["register_websocket_triggers"]
 
 import logging
 from textwrap import dedent

@@ -4,7 +4,7 @@
 """Template objects."""
 
 __metaclass__ = type
-__all__ = ["Template"]
+
 
 import sys
 

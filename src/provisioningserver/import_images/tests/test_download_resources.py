@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.import_images.download_resources`."""
 
-__all__ = []
 
 from datetime import datetime
 import hashlib

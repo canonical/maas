@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.regiondservices.syslog`."""
 
-__all__ = []
 
 from crochet import wait_for
 from netaddr import IPAddress

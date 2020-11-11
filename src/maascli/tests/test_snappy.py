@@ -3,7 +3,6 @@
 
 """Tests for `maascli.snappy`."""
 
-__all__ = []
 
 import io
 import os

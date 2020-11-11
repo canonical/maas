@@ -3,13 +3,6 @@
 
 """Syslog config management module."""
 
-__all__ = [
-    "get_syslog_config_path",
-    "get_syslog_workdir_path",
-    "is_config_present",
-    "write_config",
-]
-
 from operator import itemgetter
 import os
 import sys

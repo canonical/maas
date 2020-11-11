@@ -3,7 +3,6 @@
 
 """Tests for IPRange forms."""
 
-__all__ = []
 
 from unittest.mock import Mock
 

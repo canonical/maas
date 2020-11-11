@@ -3,7 +3,6 @@
 
 """:class:`StaticIPAddress` tests."""
 
-__all__ = []
 
 from datetime import datetime
 from random import randint, shuffle

@@ -3,7 +3,6 @@
 
 """Tests for DHCP management."""
 
-__all__ = []
 
 from datetime import datetime
 from operator import itemgetter

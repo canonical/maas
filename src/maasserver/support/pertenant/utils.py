@@ -3,8 +3,6 @@
 
 """Utilities for the per-tenant file storage work."""
 
-__all__ = ["get_bootstrap_node_owner"]
-
 
 import yaml
 

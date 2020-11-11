@@ -3,7 +3,6 @@
 
 """DNS publication model objects."""
 
-__all__ = ["DNSPublication"]
 
 from datetime import datetime
 

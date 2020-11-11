@@ -3,7 +3,6 @@
 
 """URL API routing configuration."""
 
-__all__ = []
 
 from django.conf.urls import url
 

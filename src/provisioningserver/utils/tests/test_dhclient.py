@@ -3,7 +3,6 @@
 
 """Tests for dhclient helpers."""
 
-__all__ = []
 
 import os
 import random

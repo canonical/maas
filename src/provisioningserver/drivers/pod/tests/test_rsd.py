@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.pod.rsd`."""
 
-__all__ = []
 
 from copy import deepcopy
 from http import HTTPStatus

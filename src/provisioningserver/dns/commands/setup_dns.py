@@ -10,7 +10,6 @@ The main purpose of this command is for it to be run when 'maas-region-api' or
 'maas-rack-controller' is installed.
 """
 
-__all__ = ["add_arguments", "run"]
 
 import sys
 from textwrap import dedent

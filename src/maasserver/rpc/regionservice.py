@@ -3,7 +3,6 @@
 
 """RPC implementation for regions."""
 
-__all__ = ["RegionService"]
 
 from collections import defaultdict
 import copy

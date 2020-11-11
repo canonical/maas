@@ -3,7 +3,6 @@
 
 """Tests for forms helpers."""
 
-__all__ = []
 
 from django.forms import CharField
 from testtools.matchers import Equals

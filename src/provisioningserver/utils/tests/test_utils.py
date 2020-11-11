@@ -5,7 +5,6 @@
 
 """Test `provisioningserver.utils`."""
 
-__all__ = []
 
 from collections.abc import Iterator
 from copy import deepcopy

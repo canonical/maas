@@ -3,8 +3,6 @@
 
 """Model for a cache of images available in a boot source."""
 
-__all__ = ["BootSourceCache"]
-
 
 from django.db.models import CASCADE, CharField, DateField, ForeignKey, Manager
 

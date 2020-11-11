@@ -3,7 +3,6 @@
 
 """Django command: configure the authentication source."""
 
-__all__ = []
 
 import json
 

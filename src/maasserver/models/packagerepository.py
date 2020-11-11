@@ -3,7 +3,6 @@
 
 """PackageRepository objects."""
 
-__all__ = ["PackageRepository"]
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError

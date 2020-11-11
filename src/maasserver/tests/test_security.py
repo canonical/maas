@@ -3,7 +3,6 @@
 
 """Tests for MAAS's security module."""
 
-__all__ = []
 
 import binascii
 from binascii import b2a_hex

@@ -3,7 +3,7 @@
 
 """Commission form."""
 
-__all__ = ["CommissionForm"]
+
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError

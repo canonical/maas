@@ -3,7 +3,6 @@
 
 """Testing facilities for API credentials."""
 
-__all__ = ["make_api_credentials"]
 
 from maastesting.factory import factory
 

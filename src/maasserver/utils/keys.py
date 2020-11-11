@@ -3,7 +3,6 @@
 
 """keys-related utilities."""
 
-__all__ = ["get_protocol_keys"]
 
 import http
 import logging

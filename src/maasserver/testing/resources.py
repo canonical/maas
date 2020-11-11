@@ -3,7 +3,6 @@
 
 """Resources for testing the MAAS region application."""
 
-__all__ = ["DjangoDatabasesManager"]
 
 from itertools import count
 import os

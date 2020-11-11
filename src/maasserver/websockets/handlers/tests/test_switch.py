@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.switch`"""
 
-__all__ = []
 
 from django.http import HttpRequest
 from testtools import ExpectedException

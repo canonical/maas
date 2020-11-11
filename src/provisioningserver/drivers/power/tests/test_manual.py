@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.manual`."""
 
-__all__ = []
 
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase

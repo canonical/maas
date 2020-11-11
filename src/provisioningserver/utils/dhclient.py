@@ -3,7 +3,6 @@
 
 """Helpers for inspecting dhclient."""
 
-__all__ = ["get_dhclient_info"]
 
 import os
 import re

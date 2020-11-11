@@ -3,7 +3,6 @@
 
 """Helpers for testing database locks and related."""
 
-__all__ = ["lock_held_in_other_thread"]
 
 from contextlib import contextmanager
 import threading

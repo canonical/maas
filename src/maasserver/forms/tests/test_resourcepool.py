@@ -3,7 +3,6 @@
 
 """Tests for `ResourcePoolForm`."""
 
-__all__ = []
 
 from maasserver.forms import ResourcePoolForm
 from maasserver.models import ResourcePool

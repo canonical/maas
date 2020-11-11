@@ -3,7 +3,6 @@
 
 """Tests for `UbuntuForm`."""
 
-__all__ = []
 
 from urllib.parse import urlparse
 

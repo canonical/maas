@@ -3,7 +3,6 @@
 
 """RPC helpers relating to operating systems."""
 
-__all__ = ["gen_operating_systems", "validate_license_key"]
 
 from provisioningserver.drivers.osystem import (
     Node,

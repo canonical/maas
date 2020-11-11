@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.controller`"""
 
-__all__ = []
 
 from unittest import skip
 

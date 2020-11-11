@@ -3,7 +3,6 @@
 
 """Tests for Twisted/Crochet-related utilities."""
 
-__all__ = []
 
 from functools import partial
 import io

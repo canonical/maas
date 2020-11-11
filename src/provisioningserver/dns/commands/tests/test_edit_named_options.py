@@ -3,7 +3,6 @@
 
 """Tests for the edit_named_options command."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import io

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.boot`."""
 
-__all__ = []
 
 import errno
 import os

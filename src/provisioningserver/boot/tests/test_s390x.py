@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.boot.s390x`."""
 
-__all__ = []
 
 import re
 from unittest.mock import Mock

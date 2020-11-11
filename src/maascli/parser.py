@@ -3,7 +3,6 @@
 
 """Arguments parser for `maascli`."""
 
-__all__ = ["prepare_parser"]
 
 import argparse
 import os

@@ -3,7 +3,6 @@
 
 """The StaticRoute handler for the WebSocket connection."""
 
-__all__ = ["StaticRouteHandler"]
 
 from django.core.exceptions import PermissionDenied
 

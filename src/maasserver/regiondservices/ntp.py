@@ -3,7 +3,6 @@
 
 """NTP service for the region controller."""
 
-__all__ = ["RegionNetworkTimeProtocolService"]
 
 from datetime import timedelta
 

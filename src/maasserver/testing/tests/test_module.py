@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.testing`."""
 
-__all__ = []
 
 import http.client
 

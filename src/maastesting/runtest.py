@@ -3,7 +3,6 @@
 
 """Test executors for MAAS."""
 
-__all__ = ["MAASCrochetRunTest", "MAASRunTest", "MAASTwistedRunTest"]
 
 import os
 import sys

@@ -3,7 +3,6 @@
 
 """Tests for the Custom module."""
 
-__all__ = []
 
 from itertools import product
 import os

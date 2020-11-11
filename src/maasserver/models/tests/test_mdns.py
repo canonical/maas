@@ -3,7 +3,6 @@
 
 """Tests for the mDNS model."""
 
-__all__ = []
 
 from testtools.matchers import Equals
 

@@ -3,7 +3,6 @@
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
 
-__all__ = ["Options", "ProvisioningServiceMaker"]
 
 from errno import ENOPROTOOPT
 import socket

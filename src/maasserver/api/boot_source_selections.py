@@ -3,8 +3,6 @@
 
 """API handlers: `BootSourceSelection`"""
 
-__all__ = ["BootSourceSelectionHandler", "BootSourceSelectionsHandler"]
-
 
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc

@@ -3,7 +3,6 @@
 
 """Tests for the Node API."""
 
-__all__ = []
 
 from functools import partial
 import http.client

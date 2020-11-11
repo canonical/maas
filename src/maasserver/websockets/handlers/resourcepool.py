@@ -3,7 +3,6 @@
 
 """The resource pool handler for the WebSocket connection."""
 
-__all__ = ["ResourcePoolHandler"]
 
 from django.db.models import Case, Count, IntegerField, Sum, When
 

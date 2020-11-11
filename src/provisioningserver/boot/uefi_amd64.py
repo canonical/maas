@@ -3,7 +3,6 @@
 
 """UEFI AMD64 Boot Method"""
 
-__all__ = ["UEFIAMD64BootMethod"]
 
 from itertools import repeat
 import os

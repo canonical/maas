@@ -3,7 +3,6 @@
 
 """Emit ScriptResult status transition event."""
 
-__all__ = ["signals"]
 
 from maasserver.models import Event
 from maasserver.preseed import CURTIN_INSTALL_LOG

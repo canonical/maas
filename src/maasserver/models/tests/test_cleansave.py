@@ -3,7 +3,6 @@
 
 """Tests for `CleanSave`."""
 
-__all__ = []
 
 from unittest.mock import sentinel
 

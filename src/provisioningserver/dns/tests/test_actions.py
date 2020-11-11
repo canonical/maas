@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`provisioningserver.dns.actions`."""
 
-__all__ = []
 
 import os
 from os.path import join

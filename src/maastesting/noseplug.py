@@ -3,7 +3,6 @@
 
 """Nose plugins for MAAS."""
 
-__all__ = ["Crochet", "main", "Scenarios", "Select", "Resources"]
 
 import inspect
 import io

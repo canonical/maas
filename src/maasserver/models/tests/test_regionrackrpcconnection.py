@@ -3,7 +3,6 @@
 
 """Tests for `RegionRackRPCConnection`."""
 
-__all__ = []
 
 import random
 

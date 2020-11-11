@@ -3,7 +3,6 @@
 
 """Tests for the Discovery model."""
 
-__all__ = []
 
 from testtools.matchers import Equals, Is
 

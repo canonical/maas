@@ -3,8 +3,6 @@
 
 """Tests for the BIND fixture."""
 
-__all__ = []
-
 
 import os
 from subprocess import check_output

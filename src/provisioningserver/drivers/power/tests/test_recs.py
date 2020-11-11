@@ -4,7 +4,6 @@
 
 """Tests for `provisioningserver.drivers.power.recs`."""
 
-__all__ = []
 
 from io import StringIO
 from textwrap import dedent

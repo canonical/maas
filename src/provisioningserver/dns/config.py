@@ -3,13 +3,6 @@
 
 """DNS configuration."""
 
-__all__ = [
-    "DNSConfig",
-    "MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME",
-    "set_up_rndc",
-    "set_up_options_conf",
-]
-
 
 from collections import namedtuple
 from contextlib import contextmanager

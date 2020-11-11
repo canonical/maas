@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `BlockDevice`."""
 
-__all__ = []
 
 import random
 import uuid

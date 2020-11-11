@@ -3,8 +3,6 @@
 
 """API handlers: `Tag`."""
 
-__all__ = ["TagHandler", "TagsHandler"]
-
 
 import http.client
 

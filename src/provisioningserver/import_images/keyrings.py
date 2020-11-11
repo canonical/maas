@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Keyring management functions for the import boot images job and script."""
 
-__all__ = ["write_all_keyrings"]
 
 import hashlib
 import os

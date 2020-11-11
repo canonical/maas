@@ -11,8 +11,6 @@ Django automatically discovers the `admin` module and ensures that models are
 only registered once.
 """
 
-__all__ = []
-
 
 from django.apps import apps
 from django.contrib import admin

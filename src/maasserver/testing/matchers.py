@@ -3,7 +3,6 @@
 
 """Custom matchers for testing in the region."""
 
-__all__ = ["HasStatusCode"]
 
 from http import HTTPStatus
 

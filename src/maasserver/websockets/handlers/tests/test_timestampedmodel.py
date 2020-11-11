@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.timestampedmodel`"""
 
-__all__ = []
 
 from datetime import datetime
 

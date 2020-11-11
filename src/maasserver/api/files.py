@@ -3,7 +3,6 @@
 
 """API handlers: `File`."""
 
-__all__ = ["FileHandler", "FilesHandler"]
 
 from base64 import b64encode
 import http.client

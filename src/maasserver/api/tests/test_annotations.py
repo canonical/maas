@@ -3,8 +3,6 @@
 
 """Tests for API annotations."""
 
-__all__ = []
-
 
 import os
 

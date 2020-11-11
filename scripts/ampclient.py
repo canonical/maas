@@ -3,7 +3,7 @@
 
 """Example code for an AMP client to call into MAAS."""
 
-__all__ = []
+
 
 import sys
 

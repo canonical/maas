@@ -3,7 +3,6 @@
 
 """:class:`PackageRepository` tests."""
 
-__all__ = []
 
 from django.core.exceptions import ValidationError
 from testtools import ExpectedException

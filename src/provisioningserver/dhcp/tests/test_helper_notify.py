@@ -3,7 +3,6 @@
 
 """Tests for maas-dhcp-support notify command."""
 
-__all__ = []
 
 import os
 import random

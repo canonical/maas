@@ -3,7 +3,6 @@
 
 """Tests for static route forms."""
 
-__all__ = []
 
 import random
 

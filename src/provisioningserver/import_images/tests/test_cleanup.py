@@ -3,7 +3,6 @@
 
 """Tests for the `cleanup` module."""
 
-__all__ = []
 
 import os
 from random import randint

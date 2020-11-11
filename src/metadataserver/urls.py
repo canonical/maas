@@ -3,7 +3,6 @@
 
 """Metadata API URLs."""
 
-__all__ = ["urlpatterns"]
 
 from django.conf.urls import url
 

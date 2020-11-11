@@ -5,7 +5,6 @@
 
 __all__ = ["ascii_url", "urlencode"]
 
-
 from urllib.parse import quote_plus, urlparse
 
 

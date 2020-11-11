@@ -3,7 +3,6 @@
 
 """Tests for the cluster's RPC implementation."""
 
-__all__ = []
 
 from hashlib import sha256
 from hmac import HMAC

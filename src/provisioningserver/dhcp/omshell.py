@@ -5,7 +5,6 @@
 inside the DHCP server.
 """
 
-__all__ = ["generate_omapi_key", "Omshell"]
 
 import base64
 import secrets

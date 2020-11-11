@@ -3,7 +3,6 @@
 
 """Django-specific logging stuff."""
 
-__all__ = ["configure_django_logging"]
 
 import warnings
 

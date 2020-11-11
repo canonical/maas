@@ -3,7 +3,6 @@
 
 """Model for a running service on regiond or rackd."""
 
-__all__ = ["Service"]
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
 

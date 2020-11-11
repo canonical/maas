@@ -3,7 +3,6 @@
 
 """Tests for the events API."""
 
-__all__ = []
 
 import http.client
 from itertools import chain, combinations

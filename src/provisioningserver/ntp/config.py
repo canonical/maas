@@ -3,7 +3,6 @@
 
 """NTP service configuration."""
 
-__all__ = ["configure_rack", "configure_region", "normalise_address"]
 
 from functools import partial
 from itertools import dropwhile, groupby

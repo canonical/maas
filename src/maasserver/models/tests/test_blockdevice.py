@@ -3,7 +3,6 @@
 
 """Tests for `BlockDevice`."""
 
-__all__ = []
 
 import random
 from unittest.mock import MagicMock, sentinel

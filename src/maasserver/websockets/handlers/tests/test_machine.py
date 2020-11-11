@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.node`"""
 
-__all__ = []
 
 from functools import partial
 import logging

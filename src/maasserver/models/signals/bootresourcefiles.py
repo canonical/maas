@@ -3,7 +3,6 @@
 
 """Respond to boot resource file changes."""
 
-__all__ = ["signals"]
 
 from django.db.models.signals import post_delete
 

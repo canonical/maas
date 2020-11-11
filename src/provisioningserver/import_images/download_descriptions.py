@@ -8,7 +8,6 @@ resources themselves.  The two are handled in separate Simplestreams
 synchronisation stages.
 """
 
-__all__ = ["download_all_image_descriptions", "validate_product"]
 
 import re
 

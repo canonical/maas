@@ -3,7 +3,6 @@
 
 """Cluster Controller RPC."""
 
-__all__ = ["getRegionClient"]
 
 import provisioningserver
 from provisioningserver.rpc import exceptions

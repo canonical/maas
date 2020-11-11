@@ -3,8 +3,6 @@
 
 """Tests for node transition event."""
 
-__all__ = []
-
 
 from maasserver.enum import NODE_STATUS_CHOICES_DICT
 from maasserver.models import Event

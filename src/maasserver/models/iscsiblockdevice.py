@@ -3,7 +3,6 @@
 
 """Model for a nodes iscsi block device."""
 
-__all__ = ["ISCSIBlockDevice"]
 
 from curtin.block.iscsi import IscsiDisk
 from django.core.exceptions import ValidationError

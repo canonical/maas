@@ -3,7 +3,6 @@
 
 """Test generation of commissioning user data."""
 
-__all__ = []
 
 import base64
 import email

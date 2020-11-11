@@ -3,8 +3,6 @@
 
 """Tests for the Nginx fixture."""
 
-__all__ = []
-
 
 import os
 

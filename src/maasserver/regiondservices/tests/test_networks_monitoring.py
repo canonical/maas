@@ -3,7 +3,6 @@
 
 """Tests for networks monitor."""
 
-__all__ = []
 
 from crochet import wait_for
 from fixtures import FakeLogger

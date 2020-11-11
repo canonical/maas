@@ -3,7 +3,6 @@
 
 """Tests for interface link form."""
 
-__all__ = []
 
 import random
 

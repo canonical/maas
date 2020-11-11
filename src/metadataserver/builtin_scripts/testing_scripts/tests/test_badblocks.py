@@ -3,8 +3,6 @@
 
 """Test badblocks functions."""
 
-__all__ = []
-
 
 import io
 import os

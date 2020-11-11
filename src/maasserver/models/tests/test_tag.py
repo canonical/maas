@@ -3,7 +3,6 @@
 
 """Test maasserver models."""
 
-__all__ = []
 
 from unittest.mock import ANY
 

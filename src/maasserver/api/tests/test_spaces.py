@@ -3,7 +3,6 @@
 
 """Tests for Space API."""
 
-__all__ = []
 
 import http.client
 import json

@@ -3,7 +3,6 @@
 
 """HTTP service for the rack controller."""
 
-__all__ = ["HTTPResource", "RackHTTPService"]
 
 from collections import defaultdict
 from datetime import timedelta

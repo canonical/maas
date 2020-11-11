@@ -3,7 +3,6 @@
 
 """API handlers: `ResourcePool`."""
 
-__all__ = ["ResourcePoolHandler", "ResourcePoolsHandler"]
 
 from piston3.utils import rc
 

@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.dhcp``."""
 
-__all__ = []
 
 from netaddr import IPAddress
 from testtools.matchers import Equals, Is

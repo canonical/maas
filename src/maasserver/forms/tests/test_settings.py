@@ -3,7 +3,6 @@
 
 """Test forms settings."""
 
-__all__ = []
 
 from django import forms
 from django.core.exceptions import ValidationError

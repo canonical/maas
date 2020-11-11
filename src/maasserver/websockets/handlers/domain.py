@@ -3,7 +3,6 @@
 
 """The domain handler for the WebSocket connection."""
 
-__all__ = ["DomainHandler"]
 
 from django.core.exceptions import ValidationError
 

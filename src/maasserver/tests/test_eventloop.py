@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.eventloop`."""
 
-__all__ = []
 
 from unittest.mock import ANY, call, Mock, sentinel
 

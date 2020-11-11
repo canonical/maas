@@ -3,7 +3,6 @@
 
 """BMC objects."""
 
-__all__ = ["BMC"]
 
 from functools import partial
 import re

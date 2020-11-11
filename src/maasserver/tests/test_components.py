@@ -3,8 +3,6 @@
 
 """Test maasserver components module."""
 
-__all__ = []
-
 
 import random
 

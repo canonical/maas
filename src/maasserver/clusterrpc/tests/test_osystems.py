@@ -3,7 +3,6 @@
 
 """Tests for the `osystems` module."""
 
-__all__ = []
 
 from collections import Counter
 from collections.abc import Iterator

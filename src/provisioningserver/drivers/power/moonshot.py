@@ -3,8 +3,6 @@
 
 """Moonshot IPMI Power Driver."""
 
-__all__ = []
-
 
 import re
 

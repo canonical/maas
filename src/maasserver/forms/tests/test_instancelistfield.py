@@ -3,7 +3,6 @@
 
 """Tests for `InstanceListField`."""
 
-__all__ = []
 
 from django.core.exceptions import ValidationError
 

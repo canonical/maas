@@ -3,7 +3,6 @@
 
 """Tests for :class:`NodeKey` model and manager."""
 
-__all__ = []
 
 from testtools.matchers import HasLength
 

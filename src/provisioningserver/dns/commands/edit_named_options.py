@@ -6,7 +6,6 @@ the named.conf.options.inside.maas file, which contains the 'forwarders'
 setting.
 """
 
-__all__ = ["add_arguments", "run"]
 
 from copy import deepcopy
 from datetime import datetime

@@ -3,7 +3,6 @@
 
 """Test monkey patches."""
 
-__all__ = []
 
 from twisted import version as twisted_version
 from twisted.internet.error import ConnectionLost

@@ -5,8 +5,6 @@
 on stays running."""
 
 
-__all__ = ["ServiceMonitorService"]
-
 from datetime import timedelta
 
 from twisted.application.internet import TimerService

@@ -3,7 +3,6 @@
 
 """Boot Methods."""
 
-__all__ = ["BootMethod", "BootMethodRegistry"]
 
 from abc import ABCMeta, abstractproperty
 from errno import ENOENT

@@ -3,7 +3,6 @@
 
 """Tests for provisioningserver.rackdservices.image_download_service"""
 
-__all__ = []
 
 from datetime import timedelta
 from unittest.mock import call, Mock, sentinel

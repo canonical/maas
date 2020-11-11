@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.parallel`."""
 
-__all__ = []
 
 import os
 import random

@@ -3,7 +3,6 @@
 
 """Test the snippets-related support routines for commissioning user data."""
 
-__all__ = []
 
 import os.path
 

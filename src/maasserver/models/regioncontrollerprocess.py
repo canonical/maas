@@ -3,7 +3,6 @@
 
 """RegionControllerProcess object."""
 
-__all__ = ["RegionControllerProcess"]
 
 from django.db.models import CASCADE, ForeignKey, IntegerField
 

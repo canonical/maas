@@ -3,7 +3,6 @@
 
 """Syslog service for the region controller."""
 
-__all__ = ["RegionSyslogService"]
 
 from datetime import timedelta
 

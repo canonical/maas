@@ -3,7 +3,6 @@
 
 """Preseed generation for curtin storage."""
 
-__all__ = ["compose_curtin_storage_config"]
 
 from operator import attrgetter
 

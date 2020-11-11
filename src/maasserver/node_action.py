@@ -12,7 +12,6 @@ provide the missing pieces documented in the class, and add it to
 order as they do in `ACTION_CLASSES`.
 """
 
-__all__ = ["compile_node_actions"]
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import OrderedDict

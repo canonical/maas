@@ -3,7 +3,6 @@
 
 """ESXi Operating System."""
 
-__all__ = ["ESXi"]
 
 import re
 

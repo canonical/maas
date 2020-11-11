@@ -3,7 +3,6 @@
 
 """Tests for boot configuration retrieval from RPC."""
 
-__all__ = []
 
 from datetime import timedelta
 import random

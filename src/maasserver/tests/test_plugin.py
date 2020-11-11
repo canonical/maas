@@ -3,7 +3,6 @@
 
 """Tests for the ``maasregiond`` TAP."""
 
-__all__ = []
 
 import os
 from pathlib import Path

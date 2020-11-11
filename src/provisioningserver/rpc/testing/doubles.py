@@ -3,13 +3,6 @@
 
 """Test doubles for the region's RPC implementation."""
 
-__all__ = [
-    "DummyConnection",
-    "FakeConnection",
-    "FakeConnectionToRegion",
-    "StubOS",
-]
-
 from unittest.mock import sentinel
 
 import attr

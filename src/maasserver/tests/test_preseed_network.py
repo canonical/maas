@@ -3,7 +3,6 @@
 
 """Test `maasserver.preseed_network`."""
 
-__all__ = []
 
 from collections import OrderedDict
 import random

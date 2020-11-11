@@ -3,7 +3,6 @@
 
 """Test `api.auth` module."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 from unittest import mock

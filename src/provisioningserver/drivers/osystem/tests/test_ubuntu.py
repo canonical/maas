@@ -3,7 +3,6 @@
 
 """Tests for the UbuntuOS module."""
 
-__all__ = []
 
 from itertools import product
 import random

@@ -3,7 +3,6 @@
 
 """Tests for tag updating."""
 
-__all__ = []
 
 import doctest
 import http.client

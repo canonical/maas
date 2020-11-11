@@ -3,7 +3,6 @@
 
 """Test smartctl functions."""
 
-__all__ = []
 
 import io
 import random

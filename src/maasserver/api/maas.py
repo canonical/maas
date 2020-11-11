@@ -3,7 +3,6 @@
 
 """API handler: MAAS."""
 
-__all__ = ["MaasHandler"]
 
 import json
 

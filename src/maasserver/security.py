@@ -3,7 +3,6 @@
 
 """Security-related code, primarily relating to TLS."""
 
-__all__ = ["get_region_certificate", "get_shared_secret"]
 
 from datetime import datetime
 import os

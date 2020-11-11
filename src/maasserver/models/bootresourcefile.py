@@ -3,7 +3,6 @@
 
 """Boot Resource File."""
 
-__all__ = ["BootResourceFile"]
 
 from django.db.models import CASCADE, CharField, ForeignKey
 

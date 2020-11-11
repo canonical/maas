@@ -3,7 +3,6 @@
 
 """Testing infrastructure for MAAS."""
 
-__all__ = ["bindir", "root"]
 
 import copy
 from os.path import abspath, dirname, join, pardir, realpath

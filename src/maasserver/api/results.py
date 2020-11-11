@@ -3,7 +3,6 @@
 
 """API handler: `CommissioningResult`."""
 
-__all__ = ["NodeResultsHandler"]
 
 from base64 import b64encode
 

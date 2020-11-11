@@ -3,7 +3,6 @@
 
 """Model definition for Neighbour."""
 
-__all__ = ["Neighbour"]
 
 from django.db.models import (
     CASCADE,

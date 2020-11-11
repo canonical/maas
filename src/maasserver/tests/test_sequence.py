@@ -3,7 +3,6 @@
 
 """Test :class:`Sequence`."""
 
-__all__ = []
 
 from itertools import islice
 import random

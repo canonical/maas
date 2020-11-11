@@ -3,7 +3,6 @@
 
 """The `BootImageMapping` class."""
 
-__all__ = ["BootImageMapping"]
 
 import json
 

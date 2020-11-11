@@ -3,8 +3,6 @@
 
 """Static route between two subnets using a gateway."""
 
-__all__ = ["StaticRoute"]
-
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import (

@@ -3,7 +3,6 @@
 
 """Tests for the commissioning-related portions of the MAAS API."""
 
-__all__ = []
 
 from base64 import b64decode, b64encode
 import http.client

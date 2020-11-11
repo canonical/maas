@@ -3,7 +3,6 @@
 
 """Load all power drivers."""
 
-__all__ = ["PowerDriverRegistry"]
 
 from jsonschema import validate
 

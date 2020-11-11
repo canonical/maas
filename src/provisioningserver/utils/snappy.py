@@ -3,13 +3,6 @@
 
 """Snappy utilities."""
 
-__all__ = [
-    "running_in_snap",
-    "get_snap_path",
-    "get_snap_data_path",
-    "get_snap_version",
-]
-
 import os
 from pathlib import Path
 

@@ -1,6 +1,3 @@
-__all__ = ["create_default_numanode"]
-
-
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import BigIntegerField, CASCADE, ForeignKey, IntegerField
 

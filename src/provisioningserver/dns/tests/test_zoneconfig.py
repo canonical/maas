@@ -3,7 +3,6 @@
 
 """Tests for BIND zone config generation."""
 
-__all__ = []
 
 from itertools import chain
 import os.path

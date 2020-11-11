@@ -3,7 +3,6 @@
 
 """Tests for `ConfigForm`."""
 
-__all__ = []
 
 from django import forms
 from django.http import HttpRequest

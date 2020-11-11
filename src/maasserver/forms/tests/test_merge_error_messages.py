@@ -3,7 +3,6 @@
 
 """Tests for `merge_error_messages`."""
 
-__all__ = []
 
 from maasserver.forms import MAX_MESSAGES, merge_error_messages
 from maasserver.testing.factory import factory

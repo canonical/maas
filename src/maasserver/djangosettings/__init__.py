@@ -3,7 +3,6 @@
 
 """MAAS web."""
 
-__all__ = ["fix_up_databases", "import_settings"]
 
 import sys
 import warnings

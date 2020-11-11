@@ -3,7 +3,6 @@
 
 """ DHCP probing service."""
 
-__all__ = ["DHCPProbeService"]
 
 from datetime import timedelta
 import socket

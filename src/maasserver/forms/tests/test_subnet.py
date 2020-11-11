@@ -3,7 +3,6 @@
 
 """Tests for Subnet forms."""
 
-__all__ = []
 
 import random
 

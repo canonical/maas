@@ -3,7 +3,6 @@
 
 """Tests for the KeySource model."""
 
-__all__ = []
 
 import random
 

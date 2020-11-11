@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.discovery`"""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 import time

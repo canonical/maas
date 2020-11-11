@@ -3,7 +3,6 @@
 
 """Tests for bcache API."""
 
-__all__ = []
 
 import http.client
 from unittest.mock import ANY

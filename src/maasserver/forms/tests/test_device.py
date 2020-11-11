@@ -3,7 +3,6 @@
 
 """Tests for device forms."""
 
-__all__ = []
 
 from django.http import HttpRequest
 from django.http.request import QueryDict

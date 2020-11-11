@@ -3,7 +3,6 @@
 
 """DHCP management module."""
 
-__all__ = ["configure_dhcp", "validate_dhcp_config"]
 
 from collections import defaultdict, namedtuple
 from itertools import groupby

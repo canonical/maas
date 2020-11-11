@@ -3,7 +3,6 @@
 
 """Test maas_api_helper functions."""
 
-__all__ = []
 
 from collections import OrderedDict
 from email.utils import formatdate

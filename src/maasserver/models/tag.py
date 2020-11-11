@@ -3,7 +3,6 @@
 
 """Node objects."""
 
-__all__ = ["Tag"]
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.compose_preseed`."""
 
-__all__ = []
 
 import random
 

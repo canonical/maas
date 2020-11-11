@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.config`"""
 
-__all__ = []
 
 import random
 

@@ -3,7 +3,6 @@
 
 """Interfaces for the RPC implementation."""
 
-__all__ = ["IConnection", "IConnectionToRegion"]
 
 from zope import interface
 

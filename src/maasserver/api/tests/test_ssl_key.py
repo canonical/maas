@@ -3,7 +3,6 @@
 
 """Tests for the ssl key API."""
 
-__all__ = []
 
 import http.client
 import json

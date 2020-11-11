@@ -3,7 +3,6 @@
 
 """Low-level composition code for preseeds."""
 
-__all__ = ["compose_enlistment_preseed", "compose_preseed"]
 
 from datetime import timedelta
 from urllib.parse import urlencode

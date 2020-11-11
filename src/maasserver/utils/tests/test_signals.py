@@ -3,7 +3,6 @@
 
 """Tests for signals helpers."""
 
-__all__ = []
 
 import random
 from unittest.mock import call, Mock, sentinel

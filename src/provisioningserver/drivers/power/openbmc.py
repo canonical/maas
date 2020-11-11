@@ -3,7 +3,6 @@
 
 """OpenBMC Power Driver."""
 
-__all__ = ["OpenBMCPowerDriver"]
 
 from http import HTTPStatus
 from io import BytesIO

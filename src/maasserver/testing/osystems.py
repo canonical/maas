@@ -3,7 +3,6 @@
 
 """Helpers for operating systems in testing."""
 
-__all__ = ["make_usable_osystem", "patch_usable_osystems"]
 
 from random import randint
 

@@ -3,7 +3,6 @@
 
 """Tests for provisioning configuration."""
 
-__all__ = []
 
 import contextlib
 from operator import delitem, methodcaller, setitem

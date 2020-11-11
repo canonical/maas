@@ -3,7 +3,6 @@
 
 """Tests for the `maastesting` package."""
 
-__all__ = []
 
 from random import randint
 from warnings import catch_warnings, warn_explicit

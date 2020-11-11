@@ -3,8 +3,6 @@
 
 """Storage for uploaded files."""
 
-__all__ = ["FileStorage"]
-
 
 from uuid import uuid4
 

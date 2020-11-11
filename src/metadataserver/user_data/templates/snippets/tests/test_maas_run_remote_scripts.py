@@ -3,7 +3,6 @@
 
 """Tests for maas_run_remote_scripts.py."""
 
-__all__ = []
 
 import copy
 from datetime import timedelta

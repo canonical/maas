@@ -3,8 +3,6 @@
 
 """Model for filtering a selection of boot resources."""
 
-__all__ = ["BootSourceSelection"]
-
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError

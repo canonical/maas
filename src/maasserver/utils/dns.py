@@ -3,7 +3,6 @@
 
 """URL and DNS-related utilities."""
 
-__all__ = ["validate_hostname", "validate_url"]
 
 import re
 

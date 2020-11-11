@@ -3,7 +3,6 @@
 
 """Tests for Space forms."""
 
-__all__ = []
 
 from maasserver.forms.space import SpaceForm
 from maasserver.testing.factory import factory

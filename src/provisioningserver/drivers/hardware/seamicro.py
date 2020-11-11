@@ -1,12 +1,6 @@
 # Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = [
-    "power_control_seamicro15k_v09",
-    "power_control_seamicro15k_v2",
-    "probe_seamicro15k_and_enlist",
-]
-
 import http.client
 import json
 import time

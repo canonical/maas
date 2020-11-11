@@ -3,8 +3,6 @@
 
 """API handlers: `LicenseKey`."""
 
-__all__ = ["LicenseKeyHandler", "LicenseKeysHandler"]
-
 
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc

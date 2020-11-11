@@ -3,7 +3,6 @@
 
 """Signal utilities."""
 
-__all__ = ["Signal", "SignalsManager"]
 
 from collections import namedtuple
 from functools import partial

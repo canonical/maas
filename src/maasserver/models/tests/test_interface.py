@@ -3,7 +3,6 @@
 
 """Tests for the Interface model."""
 
-__all__ = []
 
 from collections.abc import Iterable
 import datetime

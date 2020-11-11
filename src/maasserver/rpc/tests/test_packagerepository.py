@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~maasserver.rpc.configuration`."""
 
-__all__ = []
 
 from urllib.parse import urlparse
 

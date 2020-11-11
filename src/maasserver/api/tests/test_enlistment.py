@@ -3,7 +3,6 @@
 
 """Tests for enlistment-related portions of the API."""
 
-__all__ = []
 
 import http.client
 import json

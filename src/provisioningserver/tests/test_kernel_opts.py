@@ -3,7 +3,6 @@
 
 """Test composition of kernel command lines."""
 
-__all__ = ["make_kernel_parameters"]
 
 import os
 import random

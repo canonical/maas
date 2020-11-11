@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.beaconing``."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 from collections import OrderedDict

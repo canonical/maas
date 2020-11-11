@@ -3,7 +3,6 @@
 
 """Status monitoring service."""
 
-__all__ = ["mark_nodes_failed_after_expiring", "StatusMonitorService"]
 
 from datetime import timedelta
 

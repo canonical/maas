@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.fabric`"""
 
-__all__ = []
 
 from maasserver.models.fabric import Fabric
 from maasserver.testing.factory import factory

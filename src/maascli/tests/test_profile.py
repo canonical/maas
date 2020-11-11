@@ -3,7 +3,6 @@
 
 """Tests for `maascli.profile`."""
 
-__all__ = []
 
 from maascli.profile import (
     get_profile,

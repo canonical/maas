@@ -3,7 +3,6 @@
 
 """RootKey model."""
 
-__all__ = ["RootKey"]
 
 from django.db.models import BigAutoField, BinaryField, DateTimeField
 

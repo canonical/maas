@@ -3,7 +3,6 @@
 
 """Respond to Subnet CIDR changes."""
 
-__all__ = ["signals"]
 
 from django.db.models.signals import post_save
 

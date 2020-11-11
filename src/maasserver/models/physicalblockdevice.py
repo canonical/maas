@@ -3,8 +3,6 @@
 
 """Model for a nodes physical block device."""
 
-__all__ = ["PhysicalBlockDevice"]
-
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, SET_NULL

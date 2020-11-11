@@ -3,7 +3,6 @@
 
 """MAC-related utilities."""
 
-__all__ = ["get_vendor_for_mac", "is_mac"]
 
 import re
 

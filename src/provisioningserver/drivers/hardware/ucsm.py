@@ -60,7 +60,6 @@ UUID - The UUID for a server. MAAS persists the UUID of each UCS managed
 server it enlists, and uses it as a key for looking the server up later.
 """
 
-__all__ = ["power_control_ucsm", "power_state_ucsm", "probe_and_enlist_ucsm"]
 
 import contextlib
 from typing import Optional

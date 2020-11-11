@@ -3,15 +3,6 @@
 
 """Event catalog."""
 
-__all__ = [
-    "EVENT_DETAILS",
-    "EVENT_STATUS_MESSAGES",
-    "EVENT_TYPES",
-    "send_node_event",
-    "send_node_event_mac_address",
-    "send_rack_event",
-]
-
 from collections import namedtuple
 from logging import DEBUG, ERROR, INFO, WARN
 

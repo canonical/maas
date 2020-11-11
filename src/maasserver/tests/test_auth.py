@@ -3,7 +3,6 @@
 
 """Test permissions."""
 
-__all__ = []
 
 from functools import partial
 import http.client

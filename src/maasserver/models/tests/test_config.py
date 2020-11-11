@@ -3,7 +3,6 @@
 
 """Tests for the `Config` class and friends."""
 
-__all__ = []
 
 from socket import gethostname
 

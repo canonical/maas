@@ -3,8 +3,6 @@
 
 """Model for a source of boot resources."""
 
-__all__ = ["BootSource"]
-
 
 from django.core.exceptions import ValidationError
 from django.db.models import CharField, URLField

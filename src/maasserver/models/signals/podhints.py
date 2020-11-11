@@ -3,8 +3,6 @@
 
 """Respond to PodHints changes."""
 
-__all__ = ["signals"]
-
 
 from django.db.models.signals import m2m_changed
 

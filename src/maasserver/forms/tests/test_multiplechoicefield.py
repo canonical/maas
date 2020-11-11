@@ -3,7 +3,6 @@
 
 """Tests for multiple-choice fields."""
 
-__all__ = []
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email

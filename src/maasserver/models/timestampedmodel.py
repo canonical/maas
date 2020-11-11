@@ -3,8 +3,6 @@
 
 """Model base class with creation/update timestamps."""
 
-__all__ = ["now", "TimestampedModel"]
-
 
 from django.db.models import DateTimeField, Model
 from django.utils import timezone

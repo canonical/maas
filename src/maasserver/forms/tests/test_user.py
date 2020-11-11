@@ -3,7 +3,6 @@
 
 """Tests for user-creation forms."""
 
-__all__ = []
 
 from django.contrib.auth.models import User
 from testtools.matchers import MatchesRegex

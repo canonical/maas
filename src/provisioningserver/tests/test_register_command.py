@@ -3,7 +3,6 @@
 
 """Tests for register command code."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import io

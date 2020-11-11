@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.notification`."""
 
-__all__ = []
 
 from itertools import product
 import random

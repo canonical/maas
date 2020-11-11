@@ -3,7 +3,6 @@
 
 """Tests for Discoveries API."""
 
-__all__ = []
 
 from datetime import datetime
 import http.client

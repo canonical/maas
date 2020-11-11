@@ -3,7 +3,6 @@
 
 """:class:`TimestampedModel` tests."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 from random import randint

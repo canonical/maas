@@ -8,7 +8,6 @@ A service that runs deferred database operations, and then ensures they're
 finished before stopping.
 """
 
-__all__ = ["DatabaseTaskAlreadyRunning", "DatabaseTasksService"]
 
 from twisted.application.service import Service
 from twisted.internet.defer import Deferred, DeferredQueue

@@ -3,7 +3,6 @@
 
 """Tests for network/cluster interface helpers."""
 
-__all__ = []
 
 from random import randint
 

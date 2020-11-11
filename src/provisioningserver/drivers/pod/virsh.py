@@ -3,7 +3,6 @@
 
 """Virsh pod driver."""
 
-__all__ = ["probe_virsh_and_enlist", "VirshPodDriver"]
 
 from collections import namedtuple
 from math import floor

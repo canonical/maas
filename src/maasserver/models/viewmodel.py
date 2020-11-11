@@ -3,7 +3,6 @@
 
 """Model base class for view-backed models."""
 
-__all__ = ["ViewModel"]
 
 from django.db.models import Model
 

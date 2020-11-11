@@ -3,7 +3,6 @@
 
 """Tests for the Event model."""
 
-__all__ = []
 
 import logging
 import random

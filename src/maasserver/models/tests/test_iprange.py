@@ -3,7 +3,6 @@
 
 """Tests for the IPRange model."""
 
-__all__ = []
 
 import random
 

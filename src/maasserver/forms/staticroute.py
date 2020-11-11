@@ -3,7 +3,6 @@
 
 """Static route form."""
 
-__all__ = ["StaticRouteForm"]
 
 from netaddr import IPAddress
 

@@ -3,12 +3,6 @@
 
 """RPC relating to boot images."""
 
-__all__ = [
-    "import_boot_images",
-    "list_boot_images",
-    "is_import_boot_images_running",
-]
-
 from urllib.parse import urlparse
 
 from twisted.internet.defer import fail, inlineCallbacks

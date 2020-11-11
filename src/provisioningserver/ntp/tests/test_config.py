@@ -3,7 +3,6 @@
 
 """Tests for NTP service configuration."""
 
-__all__ = []
 
 from functools import partial
 from itertools import chain

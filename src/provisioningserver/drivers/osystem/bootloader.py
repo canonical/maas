@@ -3,7 +3,6 @@
 
 """Operating System class used for bootloaders."""
 
-__all__ = ["BootLoaderOS"]
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,

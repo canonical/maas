@@ -3,7 +3,6 @@
 
 """Tests for miscellaneous helpers."""
 
-__all__ = []
 
 import threading
 from unittest.mock import sentinel

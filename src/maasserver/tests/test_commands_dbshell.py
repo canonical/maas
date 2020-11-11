@@ -3,7 +3,6 @@
 
 """Tests for the `dbshell` management command."""
 
-__all__ = []
 
 import subprocess
 from unittest import mock

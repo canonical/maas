@@ -3,7 +3,6 @@
 
 """Model for a nodes block device."""
 
-__all__ = ["BlockDevice"]
 
 from collections.abc import Iterable
 import re

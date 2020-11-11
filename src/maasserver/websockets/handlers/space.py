@@ -3,7 +3,6 @@
 
 """The space handler for the WebSocket connection."""
 
-__all__ = ["SpaceHandler"]
 
 import itertools
 

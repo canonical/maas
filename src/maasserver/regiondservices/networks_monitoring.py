@@ -3,7 +3,6 @@
 
 """Networks monitoring service for region controllers."""
 
-__all__ = ["RegionNetworksMonitoringService"]
 
 from maasserver.models.node import RegionController
 from maasserver.utils.orm import transactional

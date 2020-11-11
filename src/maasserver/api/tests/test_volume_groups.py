@@ -3,7 +3,6 @@
 
 """Tests for volume-group API."""
 
-__all__ = []
 
 import http.client
 import json

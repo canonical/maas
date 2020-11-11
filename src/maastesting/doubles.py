@@ -7,8 +7,6 @@ See http://www.martinfowler.com/bliki/TestDouble.html for the nomenclature
 used.
 """
 
-__all__ = ["StubContext"]
-
 
 class StubContext:
     """A stub context manager.

@@ -3,7 +3,6 @@
 
 """Tests for the `dbupgrade` management command."""
 
-__all__ = []
 
 from django.core.management import call_command
 

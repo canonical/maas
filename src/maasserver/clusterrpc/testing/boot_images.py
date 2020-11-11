@@ -3,7 +3,6 @@
 
 """Helpers for boot image rpc testing."""
 
-__all__ = ["make_rpc_boot_image"]
 
 from maasserver.testing.factory import factory
 

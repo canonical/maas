@@ -3,7 +3,6 @@
 
 """MAAS SSH Keys Import Action."""
 
-__all__ = ["action_class"]
 
 import re
 

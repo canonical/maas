@@ -3,7 +3,6 @@
 
 """LXD utilities."""
 
-__all__ = ["parse_lxd_cpuinfo"]
 
 from collections import defaultdict
 from dataclasses import dataclass, field

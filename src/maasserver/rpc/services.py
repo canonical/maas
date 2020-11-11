@@ -3,7 +3,6 @@
 
 """RPC helpers relating to services."""
 
-__all__ = ["update_services"]
 
 from logging import getLogger
 

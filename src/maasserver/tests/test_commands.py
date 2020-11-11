@@ -3,7 +3,6 @@
 
 """Test custom commands, as found in src/maasserver/management/commands."""
 
-__all__ = []
 
 import io
 from io import StringIO

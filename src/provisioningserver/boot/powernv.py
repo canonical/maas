@@ -3,7 +3,6 @@
 
 """PowerNV Boot Method"""
 
-__all__ = ["PowerNVBootMethod"]
 
 import re
 

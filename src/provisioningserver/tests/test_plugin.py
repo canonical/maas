@@ -3,7 +3,6 @@
 
 """Tests for the ``maasrackd`` TAP."""
 
-__all__ = []
 
 from itertools import count
 import os

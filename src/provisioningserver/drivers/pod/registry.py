@@ -3,7 +3,6 @@
 
 """Load all pod drivers."""
 
-__all__ = ["PodDriverRegistry"]
 
 from jsonschema import validate
 

@@ -3,12 +3,6 @@
 
 """Power control."""
 
-__all__ = [
-    "power_action_registry",
-    "power_state_update",
-    "maybe_change_power_state",
-]
-
 from datetime import timedelta
 from functools import partial
 import sys

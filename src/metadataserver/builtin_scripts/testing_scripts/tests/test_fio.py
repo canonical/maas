@@ -3,7 +3,6 @@
 
 """Test builtin_script fio."""
 
-__all__ = []
 
 import os
 from pathlib import Path

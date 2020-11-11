@@ -3,7 +3,6 @@
 
 """The DHCPSnippet handler for the WebSocket connection."""
 
-__all__ = ["DHCPSnippetHandler"]
 
 from email.utils import format_datetime
 

@@ -3,7 +3,6 @@
 
 """MAAS rack controller support dump commands."""
 
-__all__ = ["add_arguments", "run"]
 
 from functools import lru_cache
 import json

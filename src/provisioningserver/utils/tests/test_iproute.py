@@ -3,7 +3,6 @@
 
 """Test parser for 'ip route list proto static'."""
 
-__all__ = []
 
 import random
 from unittest.mock import sentinel

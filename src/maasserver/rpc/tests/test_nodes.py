@@ -3,7 +3,6 @@
 
 """Test for RPC utility functions for Nodes."""
 
-__all__ = []
 
 from datetime import timedelta
 import json

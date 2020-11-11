@@ -3,7 +3,6 @@
 
 """Nova Power Driver."""
 
-__all__ = []
 
 from importlib import import_module, invalidate_caches
 import urllib

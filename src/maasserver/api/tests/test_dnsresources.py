@@ -3,7 +3,6 @@
 
 """Tests for DNSResource API."""
 
-__all__ = []
 
 import http.client
 import json

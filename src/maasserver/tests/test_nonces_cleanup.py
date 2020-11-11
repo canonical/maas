@@ -3,8 +3,6 @@
 
 """Tests for the nonces cleanup module."""
 
-__all__ = []
-
 
 import time
 from unittest.mock import call

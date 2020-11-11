@@ -3,7 +3,6 @@
 
 """Tests for the subcommand utilities."""
 
-__all__ = []
 
 from argparse import ArgumentParser, Namespace
 from random import randint

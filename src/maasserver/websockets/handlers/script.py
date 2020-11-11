@@ -3,7 +3,6 @@
 
 """The Script handler for the WebSocket connection."""
 
-__all__ = ["ScriptHandler"]
 
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,

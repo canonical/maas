@@ -3,7 +3,6 @@
 
 """Fabric objects."""
 
-__all__ = ["DEFAULT_FABRIC_NAME", "Fabric"]
 
 import datetime
 from operator import attrgetter

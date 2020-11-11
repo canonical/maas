@@ -3,7 +3,6 @@
 
 """ControllerInfo objects."""
 
-__all__ = ["ControllerInfo"]
 
 from collections import namedtuple
 

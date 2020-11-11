@@ -3,7 +3,6 @@
 
 """Django command: change region controller configuration settings."""
 
-__all__ = ["GetCommand", "ResetCommand", "SetCommand"]
 
 import json
 import sys

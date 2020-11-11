@@ -3,14 +3,6 @@
 
 """Miscellaneous fixtures, here until they find a better home."""
 
-__all__ = [
-    "CaptureStandardIO",
-    "DetectLeakedFileDescriptors",
-    "LoggerSilencerFixture",
-    "ProxiesDisabledFixture",
-    "TempDirectory",
-]
-
 import builtins
 import codecs
 from errno import ENOENT

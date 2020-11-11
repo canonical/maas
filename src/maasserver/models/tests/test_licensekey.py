@@ -3,7 +3,6 @@
 
 """Tests for :class:`LicenseKey`."""
 
-__all__ = []
 
 from django.db import IntegrityError
 

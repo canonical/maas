@@ -33,7 +33,6 @@ that are not tied to an HTTP reqoest.
 
 """
 
-__all__ = ["loop", "reset", "services", "start", "stop"]
 
 import os
 from socket import gethostname

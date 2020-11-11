@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.fixtures`."""
 
-__all__ = []
 
 import builtins
 from itertools import repeat

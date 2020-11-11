@@ -3,7 +3,6 @@
 
 """Tests for :py:module;`maasserver.rpc.rackcontroller`."""
 
-__all__ = []
 
 import random
 from unittest.mock import sentinel

@@ -3,7 +3,6 @@
 
 """Tests for networks API."""
 
-__all__ = []
 
 import http.client
 

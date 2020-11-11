@@ -3,7 +3,6 @@
 
 """Tests for `OwnerData`."""
 
-__all__ = []
 
 from maasserver.models.ownerdata import OwnerData
 from maasserver.testing.factory import factory

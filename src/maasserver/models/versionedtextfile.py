@@ -4,7 +4,7 @@
 """VersionedTextFile objects."""
 
 __metaclass__ = type
-__all__ = ["VersionedTextFile"]
+
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, TextField

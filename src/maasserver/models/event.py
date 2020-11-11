@@ -3,7 +3,6 @@
 
 """:class:`Event` and friends."""
 
-__all__ = ["Event"]
 
 import logging
 

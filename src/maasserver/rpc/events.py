@@ -3,7 +3,6 @@
 
 """RPC helpers relating to events."""
 
-__all__ = ["register_event_type", "send_event", "send_event_mac_address"]
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models import Event, EventType, Interface, Node

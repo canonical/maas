@@ -3,7 +3,6 @@
 
 """Manual Power Driver."""
 
-__all__ = []
 
 from twisted.internet.defer import maybeDeferred
 

@@ -3,13 +3,6 @@
 
 """Compute paths relative to root."""
 
-__all__ = [
-    "get_path",
-    "get_data_path",
-    "get_maas_data_path",
-    "get_tentative_data_path",
-]
-
 from os import getenv, makedirs
 from os.path import abspath, dirname, join
 from pathlib import Path

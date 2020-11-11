@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`maasserver.utils.views`."""
 
-__all__ = []
 
 import http.client
 import io

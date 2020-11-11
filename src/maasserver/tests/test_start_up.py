@@ -3,7 +3,6 @@
 
 """Test the start up utility."""
 
-__all__ = []
 
 import random
 from unittest.mock import call

@@ -3,7 +3,6 @@
 
 """Test the behaviour of config signals."""
 
-__all__ = []
 
 from maasserver.models import domain as domain_module
 from maasserver.models.config import Config

@@ -3,7 +3,6 @@
 
 """Account views."""
 
-__all__ = ["authenticate", "login", "logout"]
 
 import json
 

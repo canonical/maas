@@ -3,7 +3,6 @@
 
 """Tests for service monitoring in the regiond."""
 
-__all__ = []
 
 import random
 from textwrap import dedent

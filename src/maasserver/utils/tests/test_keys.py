@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.keys`."""
 
-__all__ = []
 
 import http
 

@@ -3,8 +3,6 @@
 
 """Model for a filesystem on a partition or a block device."""
 
-__all__ = ["Filesystem"]
-
 
 from uuid import uuid4
 

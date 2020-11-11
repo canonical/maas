@@ -16,7 +16,6 @@
   controller URL.
   """
 
-__all__ = ["add_arguments", "run"]
 
 from sys import stderr, stdin
 from textwrap import dedent

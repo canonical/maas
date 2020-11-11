@@ -3,7 +3,6 @@
 
 """Services monitored on rackd."""
 
-__all__ = []
 
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,

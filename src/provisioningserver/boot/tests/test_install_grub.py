@@ -3,7 +3,6 @@
 
 """Tests for the install_grub command."""
 
-__all__ = []
 
 import os.path
 

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.hmc`."""
 
-__all__ = []
 
 from io import BytesIO
 from random import choice

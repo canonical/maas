@@ -3,7 +3,6 @@
 
 """Check the current generated css matches generated css."""
 
-__all__ = []
 
 import os
 from os.path import exists, join

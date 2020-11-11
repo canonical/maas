@@ -3,7 +3,6 @@
 
 """Tests for the twisted metadata API."""
 
-__all__ = []
 
 import base64
 import bz2

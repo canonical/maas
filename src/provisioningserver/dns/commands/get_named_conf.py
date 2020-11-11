@@ -5,7 +5,6 @@
 files with an existing DNS server.
 """
 
-__all__ = ["add_arguments", "run"]
 
 import sys
 from textwrap import dedent

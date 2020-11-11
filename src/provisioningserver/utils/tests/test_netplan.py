@@ -3,7 +3,6 @@
 
 """Tests for netplan helpers."""
 
-__all__ = []
 
 from textwrap import dedent
 

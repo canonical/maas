@@ -7,7 +7,6 @@ Each region controller process starts its own RPC endpoint, and this
 provides the means for clusters to discover what they are.
 """
 
-__all__ = ["info"]
 
 import json
 

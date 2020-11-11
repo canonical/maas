@@ -3,7 +3,6 @@
 
 """Configuration abstractions for the MAAS CLI."""
 
-__all__ = ["ProfileConfig"]
 
 from contextlib import closing, contextmanager
 import json

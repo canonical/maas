@@ -3,7 +3,6 @@
 
 """Tests for the system controller service."""
 
-__all__ = []
 
 import random
 from unittest.mock import call, create_autospec, sentinel

@@ -3,7 +3,6 @@
 
 """Reverse DNS service."""
 
-__all__ = ["ReverseDNSService"]
 
 from typing import List
 

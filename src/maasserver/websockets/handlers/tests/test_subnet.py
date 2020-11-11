@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.subnet`"""
 
-__all__ = []
 
 import re
 from unittest.mock import sentinel

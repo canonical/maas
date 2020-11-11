@@ -3,7 +3,6 @@
 
 """Tests for `BootSourceCache`."""
 
-__all__ = []
 
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.signals import bootsources

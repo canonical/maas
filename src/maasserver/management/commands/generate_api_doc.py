@@ -3,7 +3,6 @@
 
 """Django command: generate the API documentation."""
 
-__all__ = ["Command"]
 
 from django.core.management.base import BaseCommand
 

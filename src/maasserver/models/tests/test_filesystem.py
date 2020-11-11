@@ -3,7 +3,6 @@
 
 """Tests for `Filesystem`."""
 
-__all__ = []
 
 from copy import copy
 from itertools import chain, combinations

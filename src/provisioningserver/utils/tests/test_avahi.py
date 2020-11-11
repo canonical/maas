@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.avahi``."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 from contextlib import contextmanager

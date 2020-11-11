@@ -3,7 +3,6 @@
 
 """Test Service model and manager."""
 
-__all__ = []
 
 import random
 

@@ -3,7 +3,6 @@
 
 """CLI management commands."""
 
-__all__ = ["register_cli_commands"]
 
 from functools import partial
 import os

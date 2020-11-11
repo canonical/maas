@@ -3,7 +3,6 @@
 
 """Test DNS module."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import random

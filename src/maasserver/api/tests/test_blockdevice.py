@@ -3,7 +3,6 @@
 
 """Tests for blockdevice API."""
 
-__all__ = []
 
 import http.client
 import uuid

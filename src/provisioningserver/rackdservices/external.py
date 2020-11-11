@@ -6,7 +6,6 @@
 Managers all the external services that the rack controller runs.
 """
 
-__all__ = ["RackExternalService"]
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import defaultdict

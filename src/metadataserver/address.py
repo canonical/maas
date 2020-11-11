@@ -3,7 +3,6 @@
 
 """Figure out server address for the maas_url setting."""
 
-__all__ = ["guess_server_host"]
 
 import re
 import socket

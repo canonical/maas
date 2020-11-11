@@ -3,7 +3,6 @@
 
 """Model for a block devices partition table."""
 
-__all__ = ["PartitionTable"]
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey

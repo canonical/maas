@@ -3,7 +3,6 @@
 
 """Tests for `maascli.auth`."""
 
-__all__ = []
 
 from argparse import Namespace
 import http.client

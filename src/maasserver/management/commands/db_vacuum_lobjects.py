@@ -3,7 +3,6 @@
 
 """Django command: db_vacuum_lobjects (vacuums the large objects in the DB)."""
 
-__all__ = ["Command"]
 
 import subprocess
 from textwrap import dedent

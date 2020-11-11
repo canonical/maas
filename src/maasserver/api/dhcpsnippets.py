@@ -3,7 +3,6 @@
 
 """API handlers: `DHCPSnippet`."""
 
-__all__ = ["DHCPSnippetHandler", "DHCPSnippetsHandler"]
 
 from email.utils import format_datetime
 

@@ -3,8 +3,6 @@
 
 """Tests for the Fabric model."""
 
-__all__ = []
-
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from testtools.matchers import Contains, MatchesStructure

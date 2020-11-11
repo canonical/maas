@@ -3,7 +3,6 @@
 
 """Utilities for sending and receiving beacons on attached networks."""
 
-__all__ = ["add_arguments", "run"]
 
 from pprint import pformat
 import sys

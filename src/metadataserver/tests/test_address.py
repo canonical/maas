@@ -3,7 +3,6 @@
 
 """Test server-address-guessing logic."""
 
-__all__ = []
 
 import random
 from socket import gethostname

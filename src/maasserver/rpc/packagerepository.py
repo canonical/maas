@@ -3,7 +3,6 @@
 
 """RPC helpers relating to configuration settings."""
 
-__all__ = ["get_archive_mirrors"]
 
 from urllib.parse import urlparse
 

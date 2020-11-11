@@ -1,7 +1,6 @@
 # Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-__all__ = ["RegionControllerHandler", "RegionControllersHandler"]
 
 from formencode.validators import StringBool
 from piston3.utils import rc

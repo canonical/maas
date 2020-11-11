@@ -3,7 +3,6 @@
 
 """Context processors."""
 
-__all__ = ["global_options"]
 
 from django.conf import settings
 

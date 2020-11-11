@@ -3,7 +3,6 @@
 
 """Tests for filesystem paths."""
 
-__all__ = []
 
 from os import getcwd
 import os.path

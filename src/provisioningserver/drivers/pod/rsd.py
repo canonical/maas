@@ -3,7 +3,6 @@
 
 """Rack Scale Design pod driver."""
 
-__all__ = ["RSDPodDriver"]
 
 from http import HTTPStatus
 from io import BytesIO

@@ -3,7 +3,6 @@
 
 """Test matchers."""
 
-__all__ = []
 
 from string import whitespace
 from textwrap import dedent

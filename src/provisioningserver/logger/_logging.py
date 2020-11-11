@@ -3,7 +3,6 @@
 
 """Standard-library `logging`-specific stuff."""
 
-__all__ = ["configure_standard_logging"]
 
 import logging
 import logging.config

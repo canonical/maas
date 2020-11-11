@@ -4,8 +4,6 @@
 """Tests for `provisioningserver.drivers.hardware.vmware`.
 """
 
-__all__ = []
-
 
 import random
 

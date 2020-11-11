@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.pod`."""
 
-__all__ = []
 
 import json
 import random

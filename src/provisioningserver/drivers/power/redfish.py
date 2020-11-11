@@ -3,7 +3,6 @@
 
 """Redfish Power Driver."""
 
-__all__ = ["RedfishPowerDriver"]
 
 from base64 import b64encode
 from http import HTTPStatus

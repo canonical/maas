@@ -3,7 +3,6 @@
 
 """Tests for `maascli.api`."""
 
-__all__ = []
 
 from base64 import b64encode
 from functools import partial

@@ -3,13 +3,6 @@
 
 """Testing utilities."""
 
-__all__ = [
-    "age_file",
-    "content_from_file",
-    "extract_word_list",
-    "sample_binary_data",
-]
-
 import codecs
 import os
 import re

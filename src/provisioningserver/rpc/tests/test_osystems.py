@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.osystems`."""
 
-__all__ = []
 
 from collections.abc import Iterable
 import random

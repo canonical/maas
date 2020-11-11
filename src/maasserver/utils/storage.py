@@ -3,7 +3,6 @@
 
 """Utilities for working with the storage model."""
 
-__all__ = ["get_effective_filesystem", "used_for"]
 
 from maasserver.enum import FILESYSTEM_TYPE
 

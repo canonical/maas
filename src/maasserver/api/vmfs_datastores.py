@@ -3,7 +3,7 @@
 
 """API handlers: `VMFS Datastore`."""
 
-__all__ = ["VmfsDatastoreHandler", "VmfsDatastoresHandler"]
+
 from piston3.utils import rc
 
 from maasserver.api.support import OperationsHandler

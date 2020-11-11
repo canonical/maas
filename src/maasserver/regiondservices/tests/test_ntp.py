@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.regiondservices.ntp`."""
 
-__all__ = []
 
 from crochet import wait_for
 from testtools.matchers import AllMatch, Equals, IsInstance, MatchesStructure

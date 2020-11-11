@@ -3,8 +3,6 @@
 
 """Tests for the DNSData model."""
 
-__all__ = []
-
 
 import random
 import re

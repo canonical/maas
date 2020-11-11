@@ -3,13 +3,6 @@
 
 """Utilities for executing external commands."""
 
-__all__ = [
-    "call_and_check",
-    "ExternalProcessError",
-    "get_env_with_bytes_locale",
-    "get_env_with_locale",
-]
-
 import os
 from pipes import quote
 from string import printable

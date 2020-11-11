@@ -3,7 +3,6 @@
 
 """Test object factories."""
 
-__all__ = ["factory", "Messages"]
 
 from datetime import datetime, timedelta
 import hashlib

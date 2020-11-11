@@ -3,7 +3,6 @@
 
 """Tests for `ZoneForm`."""
 
-__all__ = []
 
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone

@@ -3,7 +3,6 @@
 
 """Tests for `CacheSet`."""
 
-__all__ = []
 
 import random
 

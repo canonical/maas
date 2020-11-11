@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.utils.sshkey`."""
 
-__all__ = []
 
 import re
 

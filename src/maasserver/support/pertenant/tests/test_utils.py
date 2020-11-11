@@ -3,7 +3,6 @@
 
 """Test the utilities of the per-tenant file storage work."""
 
-__all__ = []
 
 from django.urls import reverse
 

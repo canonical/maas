@@ -3,8 +3,6 @@
 
 """Tests for :py:module:`~maasserver.rpc.events`."""
 
-__all__ = []
-
 
 import datetime
 import logging

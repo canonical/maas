@@ -3,7 +3,6 @@
 
 """Tests for XPath utilities."""
 
-__all__ = []
 
 import doctest
 from textwrap import dedent

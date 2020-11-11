@@ -3,7 +3,6 @@
 
 """Common RPC classes and utilties."""
 
-__all__ = ["Authenticate", "Client", "Identify", "RPCProtocol"]
 
 from os import getpid
 from socket import gethostname

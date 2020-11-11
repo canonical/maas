@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.nos.flexswitch`."""
 
-__all__ = []
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.nos import flexswitch as flexswitch_module

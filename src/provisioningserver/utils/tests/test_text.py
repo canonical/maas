@@ -3,7 +3,6 @@
 
 """Tests for text processing utilities."""
 
-__all__ = []
 
 from itertools import repeat
 import string

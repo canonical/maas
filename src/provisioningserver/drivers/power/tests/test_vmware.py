@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.vmware`."""
 
-__all__ = []
 
 from testtools.matchers import Equals
 

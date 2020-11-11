@@ -3,7 +3,6 @@
 
 """Region Controller RPC."""
 
-__all__ = ["getClientFromIdentifiers", "getClientFor", "getAllClients"]
 
 from maasserver import eventloop
 from provisioningserver.rpc import exceptions

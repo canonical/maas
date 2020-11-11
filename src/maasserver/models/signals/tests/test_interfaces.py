@@ -3,7 +3,6 @@
 
 """Test the behaviour of interface signals."""
 
-__all__ = []
 
 import random
 import threading

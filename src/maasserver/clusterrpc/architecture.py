@@ -3,8 +3,6 @@
 
 """Describe the architectures which a cluster controller supports."""
 
-__all__ = ["list_supported_architectures"]
-
 
 from collections import OrderedDict
 

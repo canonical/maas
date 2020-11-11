@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.ipc`"""
 
-__all__ = []
 
 from datetime import timedelta
 import os

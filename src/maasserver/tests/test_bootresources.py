@@ -3,7 +3,6 @@
 
 """Test maasserver.bootresources."""
 
-__all__ = []
 
 from datetime import datetime
 from email.utils import format_datetime

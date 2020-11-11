@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.base`"""
 
-__all__ = []
 
 import random
 from unittest.mock import ANY, MagicMock, sentinel

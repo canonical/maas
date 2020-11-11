@@ -3,7 +3,6 @@
 
 """Tests for the Bootloader module."""
 
-__all__ = []
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase

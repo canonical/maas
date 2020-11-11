@@ -3,7 +3,6 @@
 
 """Django command: generate sample data."""
 
-__all__ = ["Command"]
 
 from django.core.management.base import BaseCommand
 

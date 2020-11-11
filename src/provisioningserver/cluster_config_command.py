@@ -4,8 +4,6 @@
 """Change cluster controller configuration settings.
 """
 
-__all__ = ["add_arguments", "run"]
-
 
 import argparse
 from uuid import uuid4

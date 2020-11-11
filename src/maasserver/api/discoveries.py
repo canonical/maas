@@ -3,7 +3,6 @@
 
 """API handlers: `Discovery`."""
 
-__all__ = ["DiscoveryHandler", "DiscoveriesHandler"]
 
 from textwrap import dedent
 

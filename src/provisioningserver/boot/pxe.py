@@ -3,7 +3,6 @@
 
 """PXE Boot Method"""
 
-__all__ = ["PXEBootMethod"]
 
 from itertools import repeat
 import os

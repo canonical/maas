@@ -3,7 +3,6 @@
 
 """Tests for the get-named-conf command."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import io

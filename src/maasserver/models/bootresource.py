@@ -3,7 +3,6 @@
 
 """Boot Resource."""
 
-__all__ = ["BootResource"]
 
 from operator import attrgetter
 

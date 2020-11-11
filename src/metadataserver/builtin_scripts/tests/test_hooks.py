@@ -3,7 +3,6 @@
 
 """Test hooks."""
 
-__all__ = []
 
 from copy import deepcopy
 import json

@@ -3,8 +3,6 @@
 
 """Tests for `ZoneGenerator` and supporting cast."""
 
-__all__ = []
-
 
 import random
 import socket

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.device`"""
 
-__all__ = []
 
 from operator import itemgetter
 from unittest.mock import ANY

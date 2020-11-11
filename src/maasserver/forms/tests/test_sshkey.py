@@ -3,7 +3,6 @@
 
 """Tests for `SSHKeyForm`."""
 
-__all__ = []
 
 from django.http import HttpRequest
 

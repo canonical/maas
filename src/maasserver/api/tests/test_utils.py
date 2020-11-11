@@ -3,7 +3,6 @@
 
 """Tests for API helpers."""
 
-__all__ = []
 
 from collections import namedtuple
 

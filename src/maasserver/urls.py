@@ -3,8 +3,6 @@
 
 """URL routing configuration."""
 
-__all__ = []
-
 
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import user_passes_test

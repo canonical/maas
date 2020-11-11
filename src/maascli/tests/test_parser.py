@@ -3,7 +3,6 @@
 
 """Tests for `maascli`."""
 
-__all__ = []
 
 import sys
 

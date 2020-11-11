@@ -3,7 +3,6 @@
 
 """Tests for the server_address module."""
 
-__all__ = []
 
 from collections import defaultdict
 from random import randint

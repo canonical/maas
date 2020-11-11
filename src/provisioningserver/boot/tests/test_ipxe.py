@@ -3,7 +3,6 @@
 
 """Tests for the ipxe boot method."""
 
-__all__ = []
 
 import os
 import re

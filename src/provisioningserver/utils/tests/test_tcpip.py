@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.tcpip``."""
 
-__all__ = []
 
 from io import BytesIO
 from random import randint

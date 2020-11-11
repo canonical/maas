@@ -4,8 +4,6 @@
 """Service to periodically query the power state on this cluster's nodes."""
 
 
-__all__ = ["NodePowerMonitorService"]
-
 from datetime import timedelta
 
 from twisted.application.internet import TimerService

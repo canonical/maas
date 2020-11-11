@@ -3,7 +3,6 @@
 
 """Test cases for dns.config"""
 
-__all__ = []
 
 import errno
 import os.path

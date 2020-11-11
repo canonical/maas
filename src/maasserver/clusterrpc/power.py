@@ -3,7 +3,6 @@
 
 """RPC helpers relating to nodes."""
 
-__all__ = ["power_off_node", "power_on_node"]
 
 from functools import partial
 

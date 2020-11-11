@@ -3,7 +3,6 @@
 
 """Respond to staticipaddress changes."""
 
-__all__ = ["signals"]
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import (

@@ -3,8 +3,6 @@
 
 """Tests for lxd utilities."""
 
-__all__ = []
-
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.lxd import lxd_cpu_speed

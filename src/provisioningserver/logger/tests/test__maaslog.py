@@ -3,7 +3,6 @@
 
 """Tests for `p.logger._maaslog`."""
 
-__all__ = []
 
 import logging
 import logging.handlers

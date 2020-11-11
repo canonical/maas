@@ -3,7 +3,6 @@
 
 """MAAS CLI authentication."""
 
-__all__ = ["obtain_credentials"]
 
 from getpass import getpass
 import http.client

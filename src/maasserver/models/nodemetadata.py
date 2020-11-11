@@ -3,7 +3,6 @@
 
 """NodeMetadata objects."""
 
-__all__ = ["NodeMetadata"]
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 

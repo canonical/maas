@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.power`."""
 
-__all__ = []
 
 import logging
 import random

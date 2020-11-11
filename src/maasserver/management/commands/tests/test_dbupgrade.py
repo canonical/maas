@@ -3,7 +3,6 @@
 
 """Tests for the `dbupgrade` command."""
 
-__all__ = []
 
 from contextlib import closing
 import os

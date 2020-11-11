@@ -3,7 +3,6 @@
 
 """Script form."""
 
-__all__ = ["TestingScriptForm", "CommissioningScriptForm", "ScriptForm"]
 
 from datetime import timedelta
 import json

@@ -3,7 +3,6 @@
 
 """Test maasserver models."""
 
-__all__ = []
 
 import base64
 from datetime import datetime, timedelta

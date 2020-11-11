@@ -3,7 +3,6 @@
 
 """The controller handler for the WebSocket connection."""
 
-__all__ = ["ControllerHandler"]
 
 import logging
 

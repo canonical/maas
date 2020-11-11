@@ -3,7 +3,6 @@
 
 """Construct TFTP paths for boot files."""
 
-__all__ = ["compose_image_path", "list_boot_images", "list_subdirs"]
 
 import errno
 from itertools import chain

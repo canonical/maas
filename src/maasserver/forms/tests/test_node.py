@@ -3,7 +3,6 @@
 
 """Tests for node forms."""
 
-__all__ = []
 
 from maasserver.forms import AdminNodeForm, NodeForm
 from maasserver.testing.architecture import (

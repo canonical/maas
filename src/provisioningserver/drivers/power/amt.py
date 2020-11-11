@@ -3,7 +3,6 @@
 
 """AMT Power Driver."""
 
-__all__ = []
 
 from itertools import chain
 from os.path import dirname, join

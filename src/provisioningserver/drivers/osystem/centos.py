@@ -3,7 +3,6 @@
 
 """CentOS Operating System."""
 
-__all__ = ["CentOS"]
 
 import re
 

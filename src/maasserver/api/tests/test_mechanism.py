@@ -5,7 +5,6 @@
 export API methods.
 """
 
-__all__ = []
 
 from maasserver.api.support import operation
 from maasserver.testing.factory import factory

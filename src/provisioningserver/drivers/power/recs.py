@@ -4,7 +4,6 @@
 
 """Christmann RECS|Box Power Driver."""
 
-__all__ = []
 
 from typing import Optional
 import urllib.error

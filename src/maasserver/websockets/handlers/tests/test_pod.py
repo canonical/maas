@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.pod`"""
 
-__all__ = []
 
 import random
 from unittest.mock import MagicMock

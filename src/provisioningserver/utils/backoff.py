@@ -10,7 +10,6 @@ Jitter`__ on the AWS Architecture Blog.
 
 """
 
-__all__ = ["exponential_growth", "full_jitter"]
 
 from itertools import count
 from random import random

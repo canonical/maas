@@ -3,7 +3,6 @@
 
 """Test the maas package."""
 
-__all__ = []
 
 import os
 import types

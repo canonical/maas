@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.runtest`."""
 
-__all__ = []
 
 from testtools import TestCase
 from testtools.matchers import HasLength, Is, MatchesListwise

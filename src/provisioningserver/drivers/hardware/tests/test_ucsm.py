@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.drivers.hardware.ucsm``."""
 
-__all__ = []
 
 from io import StringIO
 from itertools import permutations

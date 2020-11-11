@@ -3,7 +3,6 @@
 
 """Tests for the region's remote procedure calls."""
 
-__all__ = []
 
 from datetime import datetime, timedelta
 from hashlib import sha256

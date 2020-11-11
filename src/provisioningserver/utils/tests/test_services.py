@@ -3,7 +3,6 @@
 
 """Tests for services."""
 
-__all__ = []
 
 from functools import partial
 import random

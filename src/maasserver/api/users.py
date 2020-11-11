@@ -3,8 +3,6 @@
 
 """API handlers: `User`."""
 
-__all__ = ["UserHandler", "UsersHandler"]
-
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404

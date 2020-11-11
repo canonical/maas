@@ -3,7 +3,6 @@
 
 """Tests for event-related helpers."""
 
-__all__ = []
 
 from unittest.mock import MagicMock, sentinel
 

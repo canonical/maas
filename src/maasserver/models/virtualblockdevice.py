@@ -3,7 +3,6 @@
 
 """Model for a nodes virtual block device."""
 
-__all__ = ["VirtualBlockDevice"]
 
 from uuid import uuid4
 

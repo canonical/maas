@@ -3,7 +3,6 @@
 
 """Utilities for working with Netplan."""
 
-__all__ = ["get_netplan_bond_parameters", "get_netplan_bridge_parameters"]
 
 import re
 

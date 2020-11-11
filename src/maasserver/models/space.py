@@ -3,7 +3,6 @@
 
 """Space objects."""
 
-__all__ = ["DEFAULT_SPACE_NAME", "Space"]
 
 import datetime
 import re

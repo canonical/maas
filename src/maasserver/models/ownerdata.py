@@ -3,8 +3,6 @@
 
 """Owner key/value data placed on a machine while it is owned."""
 
-__all__ = ["OwnerData"]
-
 
 from django.db.models import (
     CASCADE,

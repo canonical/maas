@@ -3,7 +3,6 @@
 
 """Tests for converters utilities."""
 
-__all__ = []
 
 from textwrap import dedent
 

@@ -3,7 +3,6 @@
 
 """Flexswitch NOS Driver."""
 
-__all__ = []
 
 from provisioningserver.drivers.nos import NOSDriver
 

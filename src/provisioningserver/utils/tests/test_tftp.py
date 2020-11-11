@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.tftp``."""
 
-__all__ = []
 
 from twisted.python.context import call
 

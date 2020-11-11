@@ -10,7 +10,6 @@ Management (MSCM) CLI via SSH, and for using that support to allow MAAS to
 manage systems via iLO.
 """
 
-__all__ = ["probe_and_enlist_mscm"]
 
 import re
 from socket import error as SOCKETError

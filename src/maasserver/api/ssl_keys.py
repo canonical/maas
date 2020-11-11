@@ -3,7 +3,6 @@
 
 """API handlers: `SSLKey`."""
 
-__all__ = ["SSLKeyHandler", "SSLKeysHandler"]
 
 import http.client
 

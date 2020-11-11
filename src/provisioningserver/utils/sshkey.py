@@ -3,7 +3,6 @@
 
 """Utilities for working with OpenSSH keys."""
 
-__all__ = ["normalise_openssh_public_key", "OpenSSHKeyError"]
 
 from itertools import chain
 import os

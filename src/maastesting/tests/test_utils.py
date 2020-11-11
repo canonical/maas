@@ -3,7 +3,6 @@
 
 """Tests for testing helpers."""
 
-__all__ = []
 
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import extract_word_list

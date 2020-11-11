@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.sshkey`"""
 
-__all__ = []
 
 from testtools.matchers import ContainsDict, Equals
 

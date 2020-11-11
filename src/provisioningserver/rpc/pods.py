@@ -3,7 +3,6 @@
 
 """Pod RPC functions."""
 
-__all__ = ["discover_pod"]
 
 import json
 

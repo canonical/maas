@@ -3,7 +3,6 @@
 
 """The SSLKey handler for the WebSocket connection."""
 
-__all__ = ["SSLKeyHandler"]
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest

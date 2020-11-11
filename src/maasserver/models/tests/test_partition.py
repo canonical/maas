@@ -3,7 +3,6 @@
 
 """Tests for `Partition`."""
 
-__all__ = []
 
 import random
 from unittest.mock import sentinel

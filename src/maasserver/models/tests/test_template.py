@@ -3,7 +3,6 @@
 
 """Tests for the Template model."""
 
-__all__ = []
 
 from testtools.matchers import Equals
 

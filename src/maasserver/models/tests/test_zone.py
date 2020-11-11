@@ -3,7 +3,6 @@
 
 """Test Zone objects."""
 
-__all__ = []
 
 from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import DEFAULT_ZONE_NAME, Zone

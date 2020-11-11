@@ -3,7 +3,6 @@
 
 """Testing utilities for the region event-loop."""
 
-__all__ = ["RegionEventLoopFixture", "RunningEventLoopFixture"]
 
 from crochet import wait_for
 from fixtures import Fixture

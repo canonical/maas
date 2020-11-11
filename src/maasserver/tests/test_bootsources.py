@@ -3,7 +3,6 @@
 
 """Test maasserver.bootsources."""
 
-__all__ = []
 
 import html
 from os import environ

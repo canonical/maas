@@ -3,7 +3,6 @@
 
 """Server fixture for nginx."""
 
-__all__ = ["NginxServer"]
 
 import argparse
 import os

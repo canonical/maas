@@ -1,6 +1,5 @@
 """Tests for `provisioningserver.drivers.power.eaton`."""
 
-__all__ = []
 
 from testtools.matchers import Equals
 

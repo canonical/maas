@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.space`"""
 
-__all__ = []
 
 from testtools import ExpectedException
 from testtools.matchers import Equals

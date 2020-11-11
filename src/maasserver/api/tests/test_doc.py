@@ -3,7 +3,6 @@
 
 """Test maasserver API documentation functionality."""
 
-__all__ = []
 
 from inspect import getdoc
 import random

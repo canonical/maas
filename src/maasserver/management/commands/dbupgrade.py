@@ -5,7 +5,6 @@
 Django command: Upgrade MAAS regiond database.
 """
 
-__all__ = []
 
 import argparse
 from textwrap import dedent

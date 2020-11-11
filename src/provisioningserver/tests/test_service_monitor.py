@@ -3,7 +3,6 @@
 
 """Tests for the DHCPv4 and DHCPv6 service driver."""
 
-__all__ = []
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.service_monitor import (

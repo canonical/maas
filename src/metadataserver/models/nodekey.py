@@ -3,7 +3,6 @@
 
 """:class:`NodeKey` model."""
 
-__all__ = ["NodeKey"]
 
 from django.db.models import CASCADE, CharField, Manager, Model, OneToOneField
 from piston3.models import KEY_SIZE, Token

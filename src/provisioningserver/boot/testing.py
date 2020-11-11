@@ -3,7 +3,6 @@
 
 """Testing helpers for `provisioningserver.boot`."""
 
-__all__ = ["TFTPPath", "TFTPPathAndComponents", "TFTPPathComponents"]
 
 from typing import Dict, Optional, Tuple
 

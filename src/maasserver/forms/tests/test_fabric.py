@@ -3,7 +3,6 @@
 
 """Tests for Fabric forms."""
 
-__all__ = []
 
 from maasserver.forms.fabric import FabricForm
 from maasserver.testing.factory import factory

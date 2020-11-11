@@ -7,7 +7,6 @@ Support for managing lpars via the IBM Hardware Management Console (HMC).
 This module provides support for interacting with IBM's HMC via SSH.
 """
 
-__all__ = []
 
 from socket import error as SOCKETError
 

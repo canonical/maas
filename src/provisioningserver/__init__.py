@@ -3,7 +3,6 @@
 
 """The MAAS Provisioning Server, now referred to as Cluster."""
 
-__all__ = []
 
 from twisted.application.service import MultiService
 

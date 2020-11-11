@@ -5,8 +5,6 @@
 
 """Test helper, copied from the Launchpad source tree."""
 
-__all__ = ["FakeMethod", "MultiFakeMethod"]
-
 
 class FakeMethod:
     """Catch any function or method call, and record the fact.

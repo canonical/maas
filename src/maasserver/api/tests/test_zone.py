@@ -3,7 +3,6 @@
 
 """Tests for physical `Zone` API."""
 
-__all__ = []
 
 import http.client
 import json

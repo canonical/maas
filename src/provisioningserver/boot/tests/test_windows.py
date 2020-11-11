@@ -5,7 +5,6 @@
 
 """Tests for `provisioningserver.boot.windows`."""
 
-__all__ = []
 
 import io
 import os

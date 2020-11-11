@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.send_beacons``."""
 
-__all__ = []
 
 from argparse import ArgumentParser
 import io

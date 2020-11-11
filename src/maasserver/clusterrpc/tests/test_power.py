@@ -3,7 +3,6 @@
 
 """Test for :py:mod:`maasserver.clusterrpc.power`."""
 
-__all__ = []
 
 import random
 from unittest.mock import Mock

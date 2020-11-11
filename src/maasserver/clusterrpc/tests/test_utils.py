@@ -3,7 +3,6 @@
 
 """Tests for :py:mod:`maasserver.clusterrpc.utils`."""
 
-__all__ = []
 
 import random
 from unittest.mock import Mock, sentinel

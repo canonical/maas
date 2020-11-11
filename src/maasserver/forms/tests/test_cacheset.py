@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `CacheSet`."""
 
-__all__ = []
 
 from maasserver.forms import CreateCacheSetForm, UpdateCacheSetForm
 from maasserver.testing.factory import factory

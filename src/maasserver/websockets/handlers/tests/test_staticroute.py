@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.staticrange`"""
 
-__all__ = []
 
 import random
 

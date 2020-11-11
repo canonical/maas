@@ -3,7 +3,6 @@
 
 """Test for sshkeys import action."""
 
-__all__ = []
 
 import random
 from unittest.mock import Mock

@@ -3,7 +3,6 @@
 
 """Tests for Interface forms."""
 
-__all__ = []
 
 import random
 from unittest import skip

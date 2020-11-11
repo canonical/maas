@@ -3,7 +3,6 @@
 
 """Test for boot-resources create action."""
 
-__all__ = []
 
 from functools import partial
 import hashlib

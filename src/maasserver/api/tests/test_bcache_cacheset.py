@@ -3,7 +3,6 @@
 
 """Tests for bcache cache set API."""
 
-__all__ = []
 
 import http.client
 import random

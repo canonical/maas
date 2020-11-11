@@ -3,7 +3,6 @@
 
 """Tests for `rpc.services`."""
 
-__all__ = []
 
 from fixtures import FakeLogger
 from testtools.matchers import MatchesStructure

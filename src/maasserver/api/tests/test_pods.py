@@ -3,7 +3,6 @@
 
 """Tests for pods API."""
 
-__all__ = []
 
 import http.client
 import random

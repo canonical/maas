@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.listener`"""
 
-__all__ = []
 
 from collections import namedtuple
 import errno

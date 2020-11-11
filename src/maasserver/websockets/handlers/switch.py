@@ -3,7 +3,6 @@
 
 """The switch handler for the WebSocket connection."""
 
-__all__ = ["SwitchHandler"]
 
 from maasserver.exceptions import NodeActionError
 from maasserver.models.node import Node

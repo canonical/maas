@@ -3,7 +3,6 @@
 
 """Tests for Fabric API."""
 
-__all__ = []
 
 import http.client
 import random

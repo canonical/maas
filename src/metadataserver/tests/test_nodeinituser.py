@@ -3,7 +3,6 @@
 
 """Model tests for metadata server."""
 
-__all__ = []
 
 from django.contrib.auth.models import User
 

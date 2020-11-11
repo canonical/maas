@@ -3,7 +3,6 @@
 
 """Tests for reverse-DNS service."""
 
-__all__ = []
 
 from unittest.mock import Mock
 

@@ -3,7 +3,6 @@
 
 """Networks monitoring service for rack controllers."""
 
-__all__ = ["RackNetworksMonitoringService"]
 
 from twisted.internet.defer import inlineCallbacks
 

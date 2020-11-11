@@ -3,7 +3,6 @@
 
 """Tests for the `LicenseKey` API."""
 
-__all__ = []
 
 import http.client
 import random

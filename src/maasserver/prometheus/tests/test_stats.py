@@ -3,7 +3,6 @@
 
 """Test maasserver.prometheus.stats."""
 
-__all__ = []
 
 import http.client
 import json

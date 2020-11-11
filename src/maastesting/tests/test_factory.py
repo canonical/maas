@@ -3,7 +3,6 @@
 
 """Test the factory where appropriate.  Don't overdo this."""
 
-__all__ = []
 
 from datetime import datetime
 from itertools import count

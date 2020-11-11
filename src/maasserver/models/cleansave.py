@@ -3,7 +3,6 @@
 
 """Model mixin: track field states and `full_clean` on every `save`."""
 
-__all__ = ["CleanSave"]
 
 from copy import copy
 

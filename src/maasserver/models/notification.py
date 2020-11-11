@@ -3,7 +3,6 @@
 
 """Model for a notification message."""
 
-__all__ = ["Notification"]
 
 from functools import wraps
 

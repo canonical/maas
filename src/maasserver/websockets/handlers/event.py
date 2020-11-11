@@ -3,7 +3,6 @@
 
 """The event handler for the WebSocket connection."""
 
-__all__ = ["EventHandler"]
 
 import datetime
 

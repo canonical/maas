@@ -3,7 +3,6 @@
 
 """Test the behaviour of subnet signals."""
 
-__all__ = []
 
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.testing.factory import factory

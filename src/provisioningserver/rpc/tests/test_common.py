@@ -3,7 +3,6 @@
 
 """Tests for common RPC code."""
 
-__all__ = []
 
 import random
 import re

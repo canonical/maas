@@ -3,7 +3,6 @@
 
 """Tests for the `Boot Sources` API."""
 
-__all__ = []
 
 import http.client
 

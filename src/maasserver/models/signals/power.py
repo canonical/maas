@@ -3,7 +3,6 @@
 
 """Query power status on node state changes."""
 
-__all__ = ["signals"]
 
 from datetime import timedelta
 

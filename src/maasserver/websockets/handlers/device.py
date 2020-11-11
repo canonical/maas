@@ -3,7 +3,6 @@
 
 """The device handler for the WebSocket connection."""
 
-__all__ = ["DeviceHandler"]
 
 from operator import attrgetter
 

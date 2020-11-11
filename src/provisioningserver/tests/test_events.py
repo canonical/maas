@@ -3,7 +3,6 @@
 
 """Test event catalog."""
 
-__all__ = []
 
 import random
 from unittest.mock import ANY, sentinel

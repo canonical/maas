@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.ntp`."""
 
-__all__ = []
 
 from netaddr import IPAddress, IPSet
 from testtools.matchers import (

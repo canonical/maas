@@ -3,7 +3,6 @@
 
 """Tests for src/provisioningserver/rackdservices/lease_socket_service.py"""
 
-__all__ = []
 
 import json
 import os

@@ -3,7 +3,6 @@
 
 """The general handler for the WebSocket connection."""
 
-__all__ = ["GeneralHandler"]
 
 from collections import OrderedDict
 

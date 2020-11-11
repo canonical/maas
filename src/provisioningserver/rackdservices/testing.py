@@ -3,7 +3,6 @@
 
 """Testing resources for `provisioningserver.rackdservices`."""
 
-__all__ = ["prepareRegionForGetControllerType"]
 
 from maastesting.factory import factory
 from maastesting.twisted import always_succeed_with
