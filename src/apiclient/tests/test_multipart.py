@@ -1,15 +1,14 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test multipart MIME helpers."""
 
-__all__ = []
-
 from io import BytesIO
 from os import urandom
+from pathlib import Path
 
 from django.utils.datastructures import MultiValueDict
-from testtools.matchers import EndsWith, StartsWith
+from fixtures import TempDir
 
 from apiclient.multipart import encode_multipart_data, get_content_type
 from apiclient.testing.django import APIClientTestCase
@@ -42,7 +41,7 @@ class TestMultiPart(APIClientTestCase):
         data = {"foo": factory.make_string().encode("ascii")}
         files = {"bar": BytesIO(factory.make_string().encode("ascii"))}
         body, headers = encode_multipart_data(data, files)
-        self.assertThat(body, EndsWith("--"))
+        self.assertTrue(body.endswith("--"))
 
     def test_encode_multipart_data(self):
         # The encode_multipart_data() function should take a list of
@@ -53,9 +52,10 @@ class TestMultiPart(APIClientTestCase):
         files = {"baz": BytesIO(random_data)}
         body, headers = encode_multipart_data(params, files)
         self.assertEqual("%s" % len(body), headers["Content-Length"])
-        self.assertThat(
-            headers["Content-Type"],
-            StartsWith("multipart/form-data; boundary="),
+        self.assertTrue(
+            headers["Content-Type"].startswith(
+                "multipart/form-data; boundary="
+            )
         )
         # Round-trip through Django's multipart code.
         post, files = self.parse_headers_and_body_with_django(headers, body)
@@ -68,6 +68,11 @@ class TestMultiPart(APIClientTestCase):
         self.assertEqual(random_data, files["baz"].read(), ahem_django_ahem)
 
     def test_encode_multipart_data_multiple_params(self):
+        tmpdir = Path(self.useFixture(TempDir()).path)
+        file2 = tmpdir / "file2"
+        file2.write_text("f2")
+        file3 = tmpdir / "file3"
+        file3.write_text("f3")
         # Sequences of parameters and files passed to
         # encode_multipart_data() permit use of the same name for
         # multiple parameters and/or files. See `make_payloads` to
@@ -76,14 +81,15 @@ class TestMultiPart(APIClientTestCase):
         params_in = [("one", "ABC"), ("one", "XYZ"), ("two", ["DEF", "UVW"])]
         files_in = [
             ("f-one", BytesIO(b"f1")),
-            ("f-two", open(self.make_file(contents=b"f2"), "rb")),
-            ("f-three", lambda: open(self.make_file(contents=b"f3"), "rb")),
+            ("f-two", file2.open("rb")),
+            ("f-three", lambda: file3.open("rb")),
         ]
         body, headers = encode_multipart_data(params_in, files_in)
         self.assertEqual("%s" % len(body), headers["Content-Length"])
-        self.assertThat(
-            headers["Content-Type"],
-            StartsWith("multipart/form-data; boundary="),
+        self.assertTrue(
+            headers["Content-Type"].startswith(
+                "multipart/form-data; boundary="
+            )
         )
         # Round-trip through Django's multipart code.
         params_out, files_out = self.parse_headers_and_body_with_django(

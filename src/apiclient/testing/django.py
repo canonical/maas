@@ -3,18 +3,15 @@
 
 """Convenience functions for testing against Django."""
 
-__all__ = []
-
 from io import BytesIO
 
 import django.conf
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.http import multipartparser
+from fixtures import TestWithFixtures
 
-from maastesting.testcase import MAASTestCase
 
-
-class APIClientTestCase(MAASTestCase):
+class APIClientTestCase(TestWithFixtures):
     """
     Provide django and django-piston based content/header parsing methods.
 

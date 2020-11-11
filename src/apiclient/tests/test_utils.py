@@ -1,20 +1,17 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test general utilities."""
 
-__all__ = []
-
+from unittest import TestCase
 from urllib.parse import unquote
 
 from django.utils.encoding import smart_text
-from testtools.matchers import Equals, IsInstance, MatchesAll
 
 from apiclient.utils import ascii_url, urlencode
-from maastesting.testcase import MAASTestCase
 
 
-class TestHelpers(MAASTestCase):
+class TestHelpers(TestCase):
     def test_ascii_url_leaves_ascii_bytes_unchanged(self):
         self.assertEqual(
             b"http://example.com/", ascii_url(b"http://example.com/")
@@ -32,10 +29,7 @@ class TestHelpers(MAASTestCase):
         # string quoting rules, and always returns a byte string.
         data = [("=\u1234", "&\u4321")]
         query = urlencode(data)
-        self.assertThat(
-            query,
-            MatchesAll(Equals("%3D%E1%88%B4=%26%E4%8C%A1"), IsInstance(str)),
-        )
+        self.assertEqual(query, "%3D%E1%88%B4=%26%E4%8C%A1")
 
     def test_urlencode_roundtrip_through_django(self):
         # Check that urlencode's approach works with Django, as described on

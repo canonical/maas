@@ -1,9 +1,7 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test MAAS HTTP API client."""
-
-__all__ = []
 
 from functools import wraps
 import gzip
@@ -16,8 +14,6 @@ import urllib.error
 import urllib.parse
 from urllib.parse import parse_qs, urljoin, urlparse
 import urllib.request
-
-from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
 
 from apiclient.maas_client import MAASClient, MAASDispatcher, MAASOAuth
 from apiclient.testing.django import APIClientTestCase
@@ -389,17 +385,9 @@ class TestMAASClient(APIClientTestCase):
         url, headers, body = make_client()._formulate_change(
             make_path(), params, as_json=True
         )
-        observed = [
-            headers.get("Content-Type"),
-            headers.get("Content-Length"),
-            body,
-        ]
-        expected = [
-            Equals("application/json"),
-            Equals("%d" % (len(body),)),
-            AfterPreprocessing(json.loads, Equals(params)),
-        ]
-        self.assertThat(observed, MatchesListwise(expected))
+        self.assertEqual(headers.get("Content-Type"), "application/json")
+        self.assertEqual(headers.get("Content-Length"), str(len(body)))
+        self.assertEqual(json.loads(body), params)
         data = self.parse_headers_and_body_with_mimer(headers, body)
         self.assertEqual(params, data)
 
@@ -438,7 +426,7 @@ class TestMAASClient(APIClientTestCase):
         request = client.dispatcher.last_call
         self.assertIsNone(request["data"])
         query = parse_qs(urlparse(request["request_url"]).query)
-        self.assertItemsEqual([param], query["parameter"])
+        self.assertCountEqual([param], query["parameter"])
 
     def test_post_dispatches_to_resource(self):
         path = make_path()
