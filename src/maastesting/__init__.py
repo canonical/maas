@@ -43,11 +43,3 @@ filterwarnings("ignore", category=DeprecationWarning, module=r"^twisted\b")
 sentinel_type = type(mock.sentinel.foo)
 copy._copy_dispatch[sentinel_type] = copy._copy_immutable
 copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
-
-# Monkey-patch test dependencies here.
-from maastesting.twisted import (  # noqa:E402 isort:skip
-    maybe_fix_bug_230_in_CaptureTwistedLogs,
-)
-
-maybe_fix_bug_230_in_CaptureTwistedLogs()
-del maybe_fix_bug_230_in_CaptureTwistedLogs

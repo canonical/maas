@@ -8,32 +8,14 @@ __all__ = [
 ]
 
 from copy import copy
-import inspect
-from textwrap import dedent
 
 from fixtures import Fixture
 from testtools.content import Content, UTF8_TEXT
-from testtools.deferredruntest import CaptureTwistedLogs
 from testtools.monkey import patch
 from testtools.twistedsupport._deferred import extract_result
 from twisted.internet import defer
 from twisted.logger import formatEvent, globalLogPublisher, LogLevel
 from twisted.python import log
-
-
-def maybe_fix_bug_230_in_CaptureTwistedLogs():
-    """Fix a bug in testtools's `CaptureTwistedLogs`.
-
-    Specifically "TypeError: CaptureTwistedLogs puts strings into details",
-    https://github.com/testing-cabal/testtools/issues/230. At the time of
-    writing this has been fixed upstream but not released.
-    """
-    source = inspect.getsource(CaptureTwistedLogs._setUp)
-    if "[logs.getvalue()]" in source:
-        source = source.replace("getvalue()", "getvalue().encode('utf-8')")
-        namespace = CaptureTwistedLogs._setUp.__globals__.copy()
-        exec(dedent(source), namespace)
-        CaptureTwistedLogs._setUp = namespace["_setUp"]
 
 
 class TwistedLoggerFixture(Fixture):
