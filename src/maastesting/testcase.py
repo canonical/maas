@@ -5,8 +5,8 @@
 
 __all__ = ["MAASRunTest", "MAASTestCase", "MAASTwistedRunTest"]
 
-import abc
-from collections.abc import Mapping, Sequence
+
+from collections.abc import Mapping
 from contextlib import contextmanager
 from functools import wraps
 from importlib import import_module
@@ -61,41 +61,10 @@ def active_test(result, test):
         yield
 
 
-class MAASTestType(abc.ABCMeta):
-    """Base type for MAAS's test cases.
-
-    Its only task at present is to ensure that `scenarios` is defined as a
-    sequence. If not, for example it might be defined using a generator, it is
-    coerced into a sequence.
-
-    No attempt is made to suppress exceptions arising from this coercion, so
-    failures are early and loud.
-
-    Coercing generators is valuable because the use of these for scenarios can
-    result in strange behaviour that doesn't obviously point to the cause.
-
-    An alternative might be to reject non-sequences, but it seems we can
-    safely handle them here just as well. Now that the issue is known, and a
-    mechanism is in place to deal with it, we can easily change the policy
-    later on.
-
-    """
-
-    def __new__(meta, name, bases, attrs):
-        scenarios = attrs.get("scenarios")
-        if scenarios is not None:
-            if not isinstance(scenarios, Sequence):
-                scenarios = attrs["scenarios"] = tuple(scenarios)
-            if len(scenarios) == 0:
-                scenarios = attrs["scenarios"] = None
-        return super(MAASTestType, meta).__new__(meta, name, bases, attrs)
-
-
 class MAASTestCase(
     WithScenarios,
     EventualResultCatchingMixin,
     testtools.TestCase,
-    metaclass=MAASTestType,
 ):
     """Base `TestCase` for MAAS.
 

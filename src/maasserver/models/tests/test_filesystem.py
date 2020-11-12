@@ -352,14 +352,14 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         ),
     )
 
-    scenarios = chain(
-        multiply_scenarios(
+    scenarios = [
+        *multiply_scenarios(
             scenarios_fstypes_with_storage, scenarios_substrate_storage
         ),
-        multiply_scenarios(
+        *multiply_scenarios(
             scenarios_fstypes_without_storage, scenarios_substrate_node
         ),
-    )
+    ]
 
     def test_can_create_mountable_filesystem(self):
         substrate = self.make_substrate()

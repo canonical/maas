@@ -10,6 +10,7 @@ __all__ = [
     "make_worker_client",
 ]
 
+import abc
 import functools
 
 from django.contrib.auth.models import AnonymousUser
@@ -25,7 +26,7 @@ from maasserver.testing.testcase import (
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
-from maastesting.testcase import MAASTestCase, MAASTestType
+from maastesting.testcase import MAASTestCase
 
 
 def merge_scenarios(*scenario_lists):
@@ -43,7 +44,7 @@ def merge_scenarios(*scenario_lists):
         return multiply_scenarios(*scenario_lists)
 
 
-class APITestType(MAASTestType):
+class APITestType(abc.ABCMeta):
     """Base type for MAAS's Web API test cases."""
 
     @functools.lru_cache(maxsize=None)
