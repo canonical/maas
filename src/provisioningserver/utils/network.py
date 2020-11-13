@@ -5,7 +5,8 @@
 
 import codecs
 from collections import namedtuple
-from operator import attrgetter
+import json
+from operator import attrgetter, itemgetter
 import random
 import re
 import socket
@@ -691,34 +692,21 @@ def find_mac_via_arp(ip: str) -> str:
     # Normalise ip.  IPv6 has a wealth of alternate notations, so we can't
     # just look for the string; we have to parse.
     ip = IPAddress(ip)
-    # Use "C" locale; we're parsing output so we don't want any translations.
     output = call_and_check(
-        ["ip", "neigh"], env=get_env_with_locale(locale="C")
+        ["ip", "--json", "neigh"], env=get_env_with_locale(locale="C")
     )
-    output = output.decode("ascii").splitlines()
+    if not output:
+        return None
 
-    for line in sorted(output):
-        columns = line.split()
-        if len(columns) < 4:
-            raise Exception(
-                "Output line from 'ip neigh' does not look like a neighbour "
-                "entry: '%s'" % line
-            )
-        # Normal "ip neigh" output lines look like:
-        #   <IP> dev <interface> lladdr <MAC> [router] <status>
-        #
-        # Where <IP> is an IPv4 or IPv6 address, <interface> is a network
-        # interface name such as eth0, <MAC> is a MAC address, and status
-        # can be REACHABLE, STALE, etc.
-        #
-        # However sometimes you'll also see lines like:
-        #   <IP> dev <interface>  FAILED
-        #
-        # Note the missing lladdr entry.
-        if IPAddress(columns[0]) == ip and columns[3] == "lladdr":
-            # Found matching IP address.  Return MAC.
-            return columns[4]
-    return None
+    # skip failed entries (with no MAC) and ensure consistent sorting in case
+    # multiple entries are present for the same IP
+    entries = sorted(
+        (entry for entry in json.loads(output) if entry.get("lladdr")),
+        key=itemgetter("lladdr"),
+    )
+    for entry in entries:
+        if IPAddress(entry["dst"]) == ip:
+            return entry.get("lladdr")
 
 
 def clean_up_netifaces_address(address: str, interface: str):

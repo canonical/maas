@@ -5,6 +5,7 @@
 
 
 import itertools
+import json
 import random
 import socket
 from socket import EAI_BADFLAGS, EAI_NODATA, EAI_NONAME, gaierror, IPPROTO_TCP
@@ -245,32 +246,35 @@ class TestFindMACViaARP(MAASTestCase):
         fake.return_value = output.encode("ascii")
         return fake
 
-    def make_output_line(self, ip=None, mac=None, dev=None):
-        """Compose an `ip neigh` output line for given `ip` and `mac`."""
+    def make_output(self, ip=None, mac=None, dev=None, state="REACHABLE"):
+        """Compose an `ip --json neigh` output for given `ip` and `mac`."""
         if ip is None:
             ip = factory.make_ipv4_address()
         if mac is None:
             mac = factory.make_mac_address()
         if dev is None:
             dev = factory.make_name("eth", sep="")
-        return "%(ip)s dev %(dev)s lladdr %(mac)s\n" % {
-            "ip": ip,
+        entry = {
+            "dst": ip,
             "dev": dev,
-            "mac": mac,
+            "state": [state],
         }
+        if state != "FAILED":
+            entry["lladdr"] = mac
+        return json.dumps([entry])
 
     def test_calls_ip_neigh(self):
         call_and_check = self.patch_call("")
         find_mac_via_arp(factory.make_ipv4_address())
         env = get_env_with_locale(locale="C")
         self.assertThat(
-            call_and_check, MockCalledOnceWith(["ip", "neigh"], env=env)
+            call_and_check,
+            MockCalledOnceWith(["ip", "--json", "neigh"], env=env),
         )
 
     def test_works_with_real_call(self):
-        find_mac_via_arp(factory.make_ipv4_address())
         # No error.
-        pass
+        find_mac_via_arp(factory.make_ipv4_address())
 
     def test_fails_on_nonsensical_output(self):
         self.patch_call("Weird output...")
@@ -279,50 +283,64 @@ class TestFindMACViaARP(MAASTestCase):
         )
 
     def test_returns_None_if_not_found(self):
-        self.patch_call(self.make_output_line())
+        self.patch_call(self.make_output())
         self.assertIsNone(find_mac_via_arp(factory.make_ipv4_address()))
 
     def test_resolves_IPv4_address_to_MAC(self):
-        sample = "10.55.60.9 dev eth0 lladdr 3c:41:92:68:2e:00 REACHABLE\n"
-        self.patch_call(sample)
+        self.patch_call(
+            self.make_output(ip="10.55.60.9", mac="3c:41:92:68:2e:00")
+        )
         mac_address_observed = find_mac_via_arp("10.55.60.9")
         self.assertEqual("3c:41:92:68:2e:00", mac_address_observed)
 
     def test_resolves_IPv6_address_to_MAC(self):
-        sample = (
-            "fd10::a76:d7fe:fe93:7cb dev eth0 lladdr 3c:41:92:6b:2e:00 "
-            "REACHABLE\n"
+        self.patch_call(
+            self.make_output(
+                ip="fd10::a76:d7fe:fe93:7cb", mac="3c:41:92:6b:2e:00"
+            )
         )
-        self.patch_call(sample)
         mac_address_observed = find_mac_via_arp("fd10::a76:d7fe:fe93:7cb")
         self.assertEqual("3c:41:92:6b:2e:00", mac_address_observed)
 
     def test_ignores_failed_neighbours(self):
         ip = factory.make_ipv4_address()
-        self.patch_call("%s dev eth0  FAILED\n" % ip)
+        self.patch_call(self.make_output(ip=ip, state="FAILED"))
         self.assertIsNone(find_mac_via_arp(ip))
-
-    def test_is_not_fooled_by_prefixing(self):
-        self.patch_call(self.make_output_line("10.1.1.10"))
-        self.assertIsNone(find_mac_via_arp("10.1.1.1"))
-        self.assertIsNone(find_mac_via_arp("10.1.1.100"))
 
     def test_is_not_fooled_by_different_notations(self):
         mac = factory.make_mac_address()
-        self.patch_call(self.make_output_line("9::0:05", mac=mac))
+        self.patch_call(self.make_output(ip="9::0:05", mac=mac))
         self.assertEqual(mac, find_mac_via_arp("09:0::5"))
 
     def test_returns_consistent_output(self):
         ip = factory.make_ipv4_address()
         macs = ["52:54:00:02:86:4b", "90:f6:52:f6:17:92"]
-        lines = [self.make_output_line(ip, mac) for mac in macs]
-        self.patch_call("".join(lines))
+        entries = [{"dst": ip, "dev": "eth0", "lladdr": mac} for mac in macs]
+        self.patch_call(json.dumps(entries))
         one_result = find_mac_via_arp(ip)
-        self.patch_call("".join(reversed(lines)))
+        self.patch_call(json.dumps(list(reversed(entries))))
         other_result = find_mac_via_arp(ip)
-
         self.assertIn(one_result, macs)
         self.assertEqual(one_result, other_result)
+
+    def test_skips_failed(self):
+        ip = factory.make_ipv4_address()
+        mac = factory.make_mac_address()
+        entries = [
+            {
+                "dst": ip,
+                "dev": "eth0",
+                "state": ["FAILED"],
+            },
+            {
+                "dst": ip,
+                "dev": "eth0",
+                "lladdr": mac,
+                "state": ["REACHABLE"],
+            },
+        ]
+        self.patch_call(json.dumps(entries))
+        self.assertEqual(find_mac_via_arp(ip), mac)
 
 
 def patch_interfaces(testcase, interfaces):
