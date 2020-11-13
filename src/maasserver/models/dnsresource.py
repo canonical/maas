@@ -192,7 +192,7 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
                 dnsrr.ip_addresses.add(sip)
                 log.msg(
                     f"Updated dynamic hostname '{dnsrr.fqdn}'."
-                    f" Added IP address 'sip.ip'."
+                    f" Added IP address '{sip.ip}'."
                 )
 
     def release_dynamic_hostname(self, sip, but_not_for=None):
