@@ -4338,11 +4338,16 @@ class Node(CleanSave, TimestampedModel):
         # interface_set, we could skip a newly-created bridge if it was created
         # at deployment time.
         for interface in Interface.objects.filter(node=self):
+            maaslog.debug(f"Claiming IP for {self.system_id}:{interface.name}")
             claimed_ips = interface.claim_auto_ips(
                 temp_expires_after=temp_expires_after,
                 exclude_addresses=exclude_addresses,
             )
             for ip in claimed_ips:
+                maaslog.debug(
+                    f"Claimed IP for {self.system_id}:{interface.name}: "
+                    f"{ip.ip}"
+                )
                 exclude_addresses.add(str(ip.ip))
                 allocated_ips.add(ip)
         return allocated_ips
@@ -4402,6 +4407,7 @@ class Node(CleanSave, TimestampedModel):
             for subnet_id, ips in subnets_to_ips.items():
                 clients = subnets_to_clients.get(subnet_id)
                 if clients:
+                    maaslog.debug(f"Creating deferred to check IP {ips}")
                     client = random.choice(clients)
                     d = client(
                         CheckIPs,
@@ -4421,6 +4427,9 @@ class Node(CleanSave, TimestampedModel):
 
         @transactional
         def process_results(results, try_count=0, max_try_count=2):
+            maaslog.debug(
+                f"Processing IP allocation results for {self.system_id}"
+            )
             # Early-out if no IP addresses where allocated.
             if results is None:
                 return False, try_count, max_try_count
@@ -4506,6 +4515,7 @@ class Node(CleanSave, TimestampedModel):
                         "after %d retries." % max_try_count
                     )
                 else:
+                    maaslog.debug("Retrying claiming of IPs.")
                     # Re-loop the whole process again until max_try_count.
                     d = succeed(None)
                     d.addCallback(

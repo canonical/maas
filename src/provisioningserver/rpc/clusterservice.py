@@ -245,12 +245,11 @@ def check_ip_address(request):
     :param request: An individual request from the
         :py:class:`~provisioningserver.rpc.cluster.CheckIPs`.
     """
-    done, protocol = makeDeferredWithProcessProtocol()
     args = ["ping", "-c", "1"]
     if request.get("interface"):
         args += ["-I", request["interface"]]
     args += [request["ip_address"]]
-    spawnProcessAndNullifyStdout(protocol, args)
+    done = deferToThread(call_and_check, args)
 
     # This will only occur if the ping was successful and now the MAC address
     # for that IP address will now be in the ARP cache.
