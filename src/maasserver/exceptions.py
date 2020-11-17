@@ -141,6 +141,12 @@ class StaticIPAddressExhaustion(MAASAPIException):
     api_error = int(http.client.SERVICE_UNAVAILABLE)
 
 
+class IPAddressCheckFailed(MAASAPIException):
+    """IP address allocation checks failed."""
+
+    api_error = int(http.client.SERVICE_UNAVAILABLE)
+
+
 class StaticIPAddressUnavailable(MAASAPIException):
     """Raised when a requested IP is not available."""
 

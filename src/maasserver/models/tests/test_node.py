@@ -60,6 +60,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
     NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -71,6 +72,7 @@ from maasserver.enum import (
     SERVICE_STATUS,
 )
 from maasserver.exceptions import (
+    IPAddressCheckFailed,
     NodeStateViolation,
     PodProblem,
     PowerProblem,
@@ -215,6 +217,7 @@ from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum, map_enum_reverse
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.fs import NamedLock
+from provisioningserver.utils.network import inet_ntop
 from provisioningserver.utils.testing import MAASIDFixture
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -8565,7 +8568,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         claim_auto_ips = self.patch_autospec(node, "_claim_auto_ips")
         node.start(user)
 
-        self.expectThat(claim_auto_ips, MockCalledOnceWith(ANY))
+        self.expectThat(claim_auto_ips, MockCalledOnce())
 
     def test_only_claims_auto_addresses_when_allocated(self):
         user = factory.make_User()
@@ -8684,8 +8687,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         ]
 
-        # No rack controllers are currently connected to the test region
-        # so no IP address checking will be performed.
         with post_commit_hooks:
             node.start(user)
 
@@ -8728,8 +8729,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
             first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
             first_ip.save()
 
-        # 2 tries will be made on the rack controller, both IP will be
-        # used.
         client.side_effect = [
             defer.fail(Exception()),
             defer.fail(Exception()),
@@ -8738,8 +8737,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ),
         ]
 
-        # No rack controllers are currently connected to the test region
-        # so no IP address checking will be performed.
         with post_commit_hooks:
             node.start(user)
 
@@ -8747,7 +8744,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(auto_ip.ip, Equals(first_ip.ip))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
 
-    def test_claims_auto_ip_addresses_assigns_ip_on_three_failures(self):
+    def test_claims_auto_ip_addresses_fails_on_three_failures(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8782,24 +8779,21 @@ class TestNode_Start(MAASTransactionServerTestCase):
             first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
             first_ip.save()
 
-        # 2 tries will be made on the rack controller, both IP will be
-        # used.
         client.side_effect = [
             defer.fail(Exception()),
             defer.fail(Exception()),
             defer.fail(Exception()),
         ]
 
-        # No rack controllers are currently connected to the test region
-        # so no IP address checking will be performed.
-        with post_commit_hooks:
-            node.start(user)
+        with ExpectedException(IPAddressCheckFailed):
+            with post_commit_hooks:
+                node.start(user)
 
         auto_ip = reload_object(auto_ip)
         self.assertThat(auto_ip.ip, Equals(first_ip.ip))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
 
-    def test_claims_auto_ip_addresses_fails_after_three_tries(self):
+    def test_claims_auto_ip_addresses_eventually_succeds_with_many_used(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
@@ -8841,16 +8835,21 @@ class TestNode_Start(MAASTransactionServerTestCase):
                 exclude_addresses=[first_ip.ip],
             )
             second_ip.delete()
-
-            # This is the next IP address that will actaully get picked for the
-            # machine as it will be free from the database and will no be
-            # reported as used from the rack controller.
             third_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet,
                 alloc_type=IPADDRESS_TYPE.AUTO,
                 exclude_addresses=[first_ip.ip, second_ip.ip],
             )
             third_ip.delete()
+            # This is the next IP address that will actaully get picked for the
+            # machine as it will be free from the database and will no be
+            # reported as used from the rack controller.
+            fourth_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet,
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                exclude_addresses=[first_ip.ip, second_ip.ip, third_ip.ip],
+            )
+            fourth_ip.delete()
 
         # 2 tries will be made on the rack controller, both IP will be
         # used.
@@ -8864,10 +8863,69 @@ class TestNode_Start(MAASTransactionServerTestCase):
             defer.succeed(
                 {"ip_addresses": [{"ip_address": third_ip.ip, "used": True}]}
             ),
+            defer.succeed(
+                {"ip_addresses": [{"ip_address": fourth_ip.ip, "used": False}]}
+            ),
         ]
 
-        # No rack controllers are currently connected to the test region
-        # so no IP address checking will be performed.
+        with post_commit_hooks:
+            node.start(user)
+
+        auto_ip = reload_object(auto_ip)
+        self.assertEqual(auto_ip.ip, fourth_ip.ip)
+        self.assertIsNone(auto_ip.temp_expires_on)
+
+    def test_claims_auto_ip_doesnt_retry_in_use(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual"
+        )
+        node_interface = node.get_boot_interface()
+        [auto_ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO
+        )
+
+        # Create a rack controller that has an interface on the same subnet
+        # as the node.
+        rack = factory.make_RackController()
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
+        rackif.neighbour_discovery_state = True
+        rackif.save()
+        rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, auto_ip.subnet, rackif_ip
+        )
+
+        # Mock the rack controller connected to the region controller.
+        client = Mock()
+        client.ident = rack.system_id
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Must be executed in a transaction as `allocate_new` uses savepoints.
+        with transaction.atomic():
+            used_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO
+            )
+            # save the address for now, so it doesn't show in free ranges
+            used_ip.save()
+
+        # reserve all available ranges
+        subnet_ranges = auto_ip.subnet.get_ipranges_not_in_use()
+        for rng in subnet_ranges.ranges:
+            factory.make_IPRange(
+                subnet=auto_ip.subnet,
+                start_ip=inet_ntop(rng.first),
+                end_ip=inet_ntop(rng.last),
+                alloc_type=IPRANGE_TYPE.RESERVED,
+            )
+        # remove the used IP, MAAS thinks it's available, but return it as used
+        # in checks
+        used_ip.delete()
+        client.return_value = defer.succeed(
+            {"ip_addresses": [{"ip_address": used_ip.ip, "used": True}]}
+        )
+
         with ExpectedException(StaticIPAddressExhaustion):
             with post_commit_hooks:
                 node.start(user)
@@ -8878,11 +8936,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             user, power_state=POWER_STATE.ON
         )
 
-        post_commit_defer = self.patch(node_module, "post_commit")
         mock_claim_auto_ips = self.patch(Node, "_claim_auto_ips")
-        mock_claim_auto_ips.return_value = post_commit_defer
         mock_power_control = self.patch(Node, "_power_control_node")
-        mock_power_control.return_value = post_commit_defer
 
         node.start(user)
 
@@ -8890,7 +8945,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYING))
 
         # Calls _claim_auto_ips.
-        self.assertThat(mock_claim_auto_ips, MockCalledOnceWith(ANY))
+        self.assertThat(mock_claim_auto_ips, MockCalledOnce())
 
         # Calls _power_control_node when power_cycle.
         self.assertThat(
@@ -8929,15 +8984,11 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.save()
 
-        post_commit_defer = self.patch(node_module, "post_commit")
+        self.patch(Node, "_power_control_node")
         mock_claim_auto_ips = self.patch(Node, "_claim_auto_ips")
-        mock_claim_auto_ips.return_value = post_commit_defer
-        mock_power_control = self.patch(Node, "_power_control_node")
-        mock_power_control.return_value = post_commit_defer
 
         node._start(user)
-
-        self.assertThat(mock_claim_auto_ips, MockCalledOnceWith(ANY))
+        self.assertThat(mock_claim_auto_ips, MockCalledOnce())
 
     def test_doesnt_claims_auto_ips_when_script_doenst_need_it(self):
         user = factory.make_User()

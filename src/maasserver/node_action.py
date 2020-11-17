@@ -33,7 +33,11 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES_DICT,
     POWER_STATE,
 )
-from maasserver.exceptions import NodeActionError, StaticIPAddressExhaustion
+from maasserver.exceptions import (
+    IPAddressCheckFailed,
+    NodeActionError,
+    StaticIPAddressExhaustion,
+)
 from maasserver.models import Config, ResourcePool, Tag, Zone
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
@@ -544,6 +548,10 @@ class Deploy(NodeAction):
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname
             )
+        except IPAddressCheckFailed:
+            raise NodeActionError(
+                f"{self.node.hostname}: Failed to start, IP addresses check failed."
+            )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
@@ -576,6 +584,10 @@ class PowerOn(NodeAction):
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname
+            )
+        except IPAddressCheckFailed:
+            raise NodeActionError(
+                f"{self.node.hostname}: Failed to start, IP addresses check failed."
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
