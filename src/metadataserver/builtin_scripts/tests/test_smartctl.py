@@ -280,6 +280,16 @@ class TestCheckSMARTSupport(MAASTestCase):
             smartctl.check_SMART_support(factory.make_name("blockdevice")),
         )
 
+    def test_available2(self):
+        mock_run_smartctl = self.patch(smartctl, "run_smartctl")
+        mock_run_smartctl.return_value = (
+            "SMART overall-health self-assessment test result: "
+        )
+        self.assertItemsEqual(
+            [None, []],
+            smartctl.check_SMART_support(factory.make_name("blockdevice")),
+        )
+
     def test_available_megaraid(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.return_value = (
