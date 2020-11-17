@@ -31,6 +31,7 @@ from maasserver.enum import (
     BRIDGE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_TYPE,
+    INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -715,8 +716,9 @@ class TestMachineAPI(APITestCase.ForUser):
         ).return_value = [rack_controller]
         self.patch(node_module.Node, "_power_control_node")
         self.patch(node_module.Node, "_start_deployment")
+        self.patch(node_module.Node, "_claim_auto_ips")
         self.patch(machines_module, "get_curtin_merged_config")
-        machine = factory.make_Node(
+        machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
             power_type="virsh",
@@ -724,6 +726,22 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.ALLOCATED,
             bmc_connected_to=rack_controller,
         )
+
+        # assign an IP to both the machine and the rack on the same subnet
+        machine_interface = machine.get_boot_interface()
+        [auto_ip] = machine_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO
+        )
+        ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        auto_ip.ip = ip
+        auto_ip.save()
+        rack_if = rack_controller.interface_set.first()
+        rack_if.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC,
+            auto_ip.subnet,
+            factory.pick_ip_in_Subnet(auto_ip.subnet),
+        )
+
         osystem = make_usable_osystem(self)
         distro_series = osystem["default_release"]
         user_data = (

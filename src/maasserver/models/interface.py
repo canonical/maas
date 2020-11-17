@@ -1539,13 +1539,15 @@ class Interface(CleanSave, TimestampedModel):
         deleted = Neighbour.objects.delete_and_log_obsolete_neighbours(
             ip, mac, interface=self, vid=vid
         )
-        neighbour = Neighbour.objects.get_current_binding(
-            ip, mac, interface=self, vid=vid
+
+        neighbour, created = Neighbour.objects.get_or_create(
+            defaults={"time": time},
+            ip=ip,
+            mac_address=mac,
+            vid=vid,
+            interface=self,
         )
-        if neighbour is None:
-            neighbour = Neighbour.objects.create(
-                interface=self, ip=ip, vid=vid, mac_address=mac, time=time
-            )
+        if created:
             # If we deleted a previous neighbour, then we have already
             # generated a log statement about this neighbour.
             if not deleted:
