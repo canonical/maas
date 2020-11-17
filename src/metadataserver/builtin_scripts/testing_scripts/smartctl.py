@@ -5,7 +5,7 @@
 # Author: Lee Trager <lee.trager@canonical.com>
 #         Newell Jensen <newell.jensen@canonical.com>
 #
-# Copyright (C) 2017-2018 Canonical
+# Copyright (C) 2017-2020 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -190,7 +190,14 @@ def check_SMART_support(blockdevice, device=None):
         else:
             output = e.output.decode()
 
-    if re.search(r"SMART support is:\s+Available", output) is None:
+    if (
+        re.search(
+            r"(SMART support is:\s+Available)|"
+            r"(SMART overall-health self-assessment test result)",
+            output,
+        )
+        is None
+    ):
         if re.search(r"Product:\s+MegaRAID", output) is not None:
             return "megaraid", detect_megaraid_config(blockdevice)
         else:
