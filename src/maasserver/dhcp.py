@@ -40,7 +40,7 @@ from maasserver.models import (
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.dhcp.omshell import generate_omapi_key
+from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
