@@ -23,7 +23,7 @@ from twisted.internet.threads import deferToThread
 
 from provisioningserver.dhcp import DHCPv4Server, DHCPv6Server
 from provisioningserver.dhcp.config import get_config
-from provisioningserver.dhcp.omshell import Omshell
+from provisioningserver.dhcp.omapi import OmapiClient, OmapiError
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
@@ -187,70 +187,25 @@ def _delete_config(server):
         sudo_delete_file(server.config_filename)
 
 
-def _remove_host_map(omshell, mac):
-    """Remove host by `mac`."""
-    try:
-        omshell.remove(mac)
-    except ExternalProcessError as e:
-        if "not connected." in e.output_as_unicode:
-            msg = "The DHCP server could not be reached."
-        else:
-            msg = str(e)
-        err = "Could not remove host map for %s: %s" % (mac, msg)
-        maaslog.error(err)
-        raise CannotRemoveHostMap(err)
-
-
-def _create_host_map(omshell, mac, ip_address):
-    """Create host with `mac` -> `ip_address`."""
-    try:
-        omshell.create(ip_address, mac)
-    except ExternalProcessError as e:
-        if "not connected." in e.output_as_unicode:
-            msg = "The DHCP server could not be reached."
-        else:
-            msg = str(e)
-        err = "Could not create host map for %s -> %s: %s" % (
-            mac,
-            ip_address,
-            msg,
-        )
-        maaslog.error(err)
-        raise CannotCreateHostMap(err)
-
-
-def _modify_host_map(omshell, mac, ip_address):
-    """Modify host with `mac` -> `ip_address`."""
-    try:
-        omshell.modify(ip_address, mac)
-    except ExternalProcessError as e:
-        if "not connected." in e.output_as_unicode:
-            msg = "The DHCP server could not be reached."
-        else:
-            msg = str(e)
-        err = "Could not modify host map for %s -> %s: %s" % (
-            mac,
-            ip_address,
-            msg,
-        )
-        maaslog.error(err)
-        raise CannotModifyHostMap(err)
-
-
 @synchronous
 def _update_hosts(server, remove, add, modify):
     """Update the hosts using the OMAPI."""
-    omshell = Omshell(
-        server_address="127.0.0.1",
-        shared_key=server.omapi_key,
-        ipv6=server.ipv6,
-    )
-    for host in remove:
-        _remove_host_map(omshell, host["mac"])
-    for host in add:
-        _create_host_map(omshell, host["mac"], host["ip"])
-    for host in modify:
-        _modify_host_map(omshell, host["mac"], host["ip"])
+    omapi_client = OmapiClient(server.omapi_key, server.ipv6)
+    try:
+        for host in remove:
+            omapi_client.del_host(host["mac"])
+    except OmapiError as e:
+        raise CannotRemoveHostMap(str(e))
+    try:
+        for host in add:
+            omapi_client.add_host(host["mac"], host["ip"])
+    except OmapiError as e:
+        raise CannotCreateHostMap(str(e))
+    try:
+        for host in modify:
+            omapi_client.update_host(host["mac"], host["ip"])
+    except OmapiError as e:
+        raise CannotModifyHostMap(str(e))
 
 
 @asynchronous

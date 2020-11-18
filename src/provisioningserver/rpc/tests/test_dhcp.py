@@ -20,6 +20,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver.dhcp.omapi import OmapiError
 from provisioningserver.dhcp.testing.config import (
     DHCPConfigNameResolutionDisabled,
     fix_shared_networks_failover,
@@ -433,172 +434,74 @@ class TestDHCPState(MAASTestCase):
         )
 
 
-class TestRemoveHostMap(MAASTestCase):
-    def test_calls_omshell_remove(self):
-        omshell = Mock()
-        mac = factory.make_mac_address()
-        dhcp._remove_host_map(omshell, mac)
-        self.assertThat(omshell.remove, MockCalledOnceWith(mac))
-
-    def test_raises_error_when_omshell_crashes(self):
-        error_message = factory.make_name("error").encode("ascii")
-        omshell = Mock()
-        omshell.remove.side_effect = ExternalProcessError(
-            returncode=2, cmd=("omshell",), output=error_message
-        )
-        mac = factory.make_mac_address()
-        with FakeLogger("maas.dhcp") as logger:
-            error = self.assertRaises(
-                exceptions.CannotRemoveHostMap,
-                dhcp._remove_host_map,
-                omshell,
-                mac,
-            )
-        # The CannotRemoveHostMap exception includes a message describing the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not remove host map for %s: ..." % mac, str(error)
-        )
-        # A message is also written to the maas.dhcp logger that describes the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not remove host map for %s: ..." % mac, logger.output
-        )
-
-    def test_raises_error_when_omshell_not_connected(self):
-        error = ExternalProcessError(returncode=2, cmd=("omshell",), output="")
-        self.patch(ExternalProcessError, "output_as_unicode", "not connected.")
-        omshell = Mock()
-        omshell.remove.side_effect = error
-        mac = factory.make_mac_address()
-        with FakeLogger("maas.dhcp") as logger:
-            error = self.assertRaises(
-                exceptions.CannotRemoveHostMap,
-                dhcp._remove_host_map,
-                omshell,
-                mac,
-            )
-        # The CannotCreateHostMap exception includes a message describing the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not remove host map for %s: "
-            "The DHCP server could not be reached." % mac,
-            str(error),
-        )
-        # A message is also written to the maas.dhcp logger that describes the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not remove host map for %s: "
-            "The DHCP server could not be reached." % mac,
-            logger.output,
-        )
-
-
-class TestCreateHostMap(MAASTestCase):
-    def test_calls_omshell_create(self):
-        omshell = Mock()
-        mac = factory.make_mac_address()
-        ip = factory.make_ip_address()
-        dhcp._create_host_map(omshell, mac, ip)
-        self.assertThat(omshell.create, MockCalledOnceWith(ip, mac))
-
-    def test_raises_error_when_omshell_crashes(self):
-        error_message = factory.make_name("error").encode("ascii")
-        omshell = Mock()
-        omshell.create.side_effect = ExternalProcessError(
-            returncode=2, cmd=("omshell",), output=error_message
-        )
-        mac = factory.make_mac_address()
-        ip = factory.make_ip_address()
-        with FakeLogger("maas.dhcp") as logger:
-            error = self.assertRaises(
-                exceptions.CannotCreateHostMap,
-                dhcp._create_host_map,
-                omshell,
-                mac,
-                ip,
-            )
-        # The CannotCreateHostMap exception includes a message describing the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not create host map for %s -> %s: ..." % (mac, ip),
-            str(error),
-        )
-        # A message is also written to the maas.dhcp logger that describes the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not create host map for %s -> %s: ..." % (mac, ip),
-            logger.output,
-        )
-
-    def test_raises_error_when_omshell_not_connected(self):
-        error = ExternalProcessError(returncode=2, cmd=("omshell",), output="")
-        self.patch(ExternalProcessError, "output_as_unicode", "not connected.")
-        omshell = Mock()
-        omshell.create.side_effect = error
-        mac = factory.make_mac_address()
-        ip = factory.make_ip_address()
-        with FakeLogger("maas.dhcp") as logger:
-            error = self.assertRaises(
-                exceptions.CannotCreateHostMap,
-                dhcp._create_host_map,
-                omshell,
-                mac,
-                ip,
-            )
-        # The CannotCreateHostMap exception includes a message describing the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not create host map for %s -> %s: "
-            "The DHCP server could not be reached." % (mac, ip),
-            str(error),
-        )
-        # A message is also written to the maas.dhcp logger that describes the
-        # problematic mapping.
-        self.assertDocTestMatches(
-            "Could not create host map for %s -> %s: "
-            "The DHCP server could not be reached." % (mac, ip),
-            logger.output,
-        )
-
-
-class TestUpdateHost(MAASTestCase):
-    def test_creates_omshell_with_correct_arguments(self):
-        omshell = self.patch(dhcp, "Omshell")
+class TestUpdateHosts(MAASTestCase):
+    def test_creates_client_with_correct_arguments(self):
+        omapi_cli = self.patch(dhcp, "OmapiClient")
         server = Mock()
         server.ipv6 = factory.pick_bool()
         dhcp._update_hosts(server, [], [], [])
-        self.assertThat(
-            omshell,
-            MockCallsMatch(
-                call(
-                    ipv6=server.ipv6,
-                    server_address="127.0.0.1",
-                    shared_key=server.omapi_key,
-                )
-            ),
-        )
+        omapi_cli.assert_called_once_with(server.omapi_key, server.ipv6)
 
     def test_performs_operations(self):
-        omshell = Mock()
-        self.patch(dhcp, "Omshell").return_value = omshell
         remove_host = make_host()
         add_host = make_host()
         modify_host = make_host()
-        server = Mock()
-        server.ipv6 = factory.pick_bool()
-        dhcp._update_hosts(server, [remove_host], [add_host], [modify_host])
-        self.assertThat(
-            omshell.remove, MockCallsMatch(call(remove_host["mac"]))
+        omapi_cli = Mock()
+        self.patch(dhcp, "OmapiClient").return_value = omapi_cli
+        dhcp._update_hosts(Mock(), [remove_host], [add_host], [modify_host])
+        self.assertEqual(
+            omapi_cli.mock_calls,
+            [
+                call.del_host(remove_host["mac"]),
+                call.add_host(add_host["mac"], add_host["ip"]),
+                call.update_host(modify_host["mac"], modify_host["ip"]),
+            ],
         )
-        self.assertThat(
-            omshell.create,
-            MockCallsMatch(call(add_host["ip"], add_host["mac"])),
+
+    def test_fail_remove(self):
+        host = make_host()
+        omapi_cli = Mock()
+        omapi_cli.del_host.side_effect = OmapiError("Fail")
+        self.patch(dhcp, "OmapiClient").return_value = omapi_cli
+        err = self.assertRaises(
+            exceptions.CannotRemoveHostMap,
+            dhcp._update_hosts,
+            Mock(),
+            [host],
+            [],
+            [],
         )
-        self.assertThat(
-            omshell.modify,
-            MockCallsMatch(call(modify_host["ip"], modify_host["mac"])),
+        self.assertEqual(str(err), "Fail")
+
+    def test_fail_create(self):
+        host = make_host()
+        omapi_cli = Mock()
+        omapi_cli.add_host.side_effect = OmapiError("Fail")
+        self.patch(dhcp, "OmapiClient").return_value = omapi_cli
+        err = self.assertRaises(
+            exceptions.CannotCreateHostMap,
+            dhcp._update_hosts,
+            Mock(),
+            [],
+            [host],
+            [],
         )
+        self.assertEqual(str(err), "Fail")
+
+    def test_fail_modify(self):
+        host = make_host()
+        omapi_cli = Mock()
+        omapi_cli.update_host.side_effect = OmapiError("Fail")
+        self.patch(dhcp, "OmapiClient").return_value = omapi_cli
+        err = self.assertRaises(
+            exceptions.CannotModifyHostMap,
+            dhcp._update_hosts,
+            Mock(),
+            [],
+            [],
+            [host],
+        )
+        self.assertEqual(str(err), "Fail")
 
 
 class TestConfigureDHCP(MAASTestCase):

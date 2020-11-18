@@ -225,6 +225,7 @@ RackControllerRule = Rule(
     Allow("prometheus_client|prometheus_client.multiprocess"),
     Allow("provisioningserver|provisioningserver.**"),
     Allow("pylxd.**"),
+    Allow("pypureomapi.**"),
     Allow("secrets"),
     Allow("seamicroclient|seamicroclient.**"),
     Allow("simplestreams.**"),
