@@ -10,8 +10,10 @@ import json
 import logging
 import re
 
+from django.core.exceptions import ValidationError
+
 from maasserver.enum import NODE_METADATA, NODE_STATUS
-from maasserver.models import Fabric, NUMANode, Subnet
+from maasserver.models import Fabric, Node, NUMANode, Subnet
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import Interface, PhysicalInterface
 from maasserver.models.nodemetadata import NodeMetadata
@@ -414,8 +416,29 @@ def _process_system_information(node, system_data):
             NodeMetadata.objects.filter(node=node, key=key).delete()
 
     uuid = system_data.get("uuid")
-    # Convert "" to None, so that the unique check isn't triggered.
-    node.hardware_uuid = None if uuid == "" else uuid
+    if not uuid or not re.search(
+        r"^[\da-f]{8}[\-]?([\da-f]{4}[\-]?){3}[\da-f]{12}$", uuid, re.I
+    ):
+        # Convert "" to None, so that the unique check isn't triggered.
+        # Some vendors store the service tag as the UUID which is not unique,
+        # if the UUID isn't a valid UUID ignore it.
+        node.hardware_uuid = None
+    else:
+        # LP:1893690 - If the UUID is valid check that it isn't duplicated
+        # with save so the check is atomic.
+        node.hardware_uuid = uuid
+        try:
+            node.save()
+        except ValidationError as e:
+            # Check that the ValidationError is due to the hardware_uuid
+            # other errors will be caught and logged later.
+            if "hardware_uuid" in e.error_dict:
+                node.hardware_uuid = None
+                # If the UUID isn't really unique make sure it isn't stored on
+                # any Node.
+                Node.objects.filter(hardware_uuid=uuid).update(
+                    hardware_uuid=None
+                )
 
     # Gather system information. Custom built machines and some Supermicro
     # servers do not provide this information.

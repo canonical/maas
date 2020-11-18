@@ -1273,6 +1273,22 @@ class TestProcessLXDResults(MAASServerTestCase):
         # check for unique UUIDs isn't triggered.
         self.assertIsNone(node.hardware_uuid)
 
+    def test_removes_duplicate_uuid(self):
+        uuid = factory.make_UUID()
+        duplicate_uuid_node = factory.make_Node(hardware_uuid=uuid)
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+        self.assertIsNone(reload_object(node).hardware_uuid)
+        self.assertIsNone(reload_object(duplicate_uuid_node).hardware_uuid)
+
+    def test_ignores_invalid_uuid(self):
+        uuid = factory.make_name("invalid_uuid")
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+        self.assertIsNone(reload_object(node).hardware_uuid)
+
     def test_sets_os_hostname_for_controller(self):
         rack = factory.make_RackController()
         create_IPADDR_OUTPUT_NAME_script(rack, IP_ADDR_OUTPUT)
