@@ -8930,6 +8930,29 @@ class TestNode_Start(MAASTransactionServerTestCase):
             with post_commit_hooks:
                 node.start(user)
 
+    def test_claims_auto_ip_ignores_staticly_assigned_addresses(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual"
+        )
+
+        # set a static IP on the node interface
+        node_interface = node.get_boot_interface()
+        [ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO
+        )
+
+        static_ip = factory.pick_ip_in_Subnet(ip.subnet)
+        ip.alloc_type = IPADDRESS_TYPE.STICKY
+        ip.ip = static_ip
+        ip.save()
+
+        with post_commit_hooks:
+            node.start(user)
+
+        ip = reload_object(ip)
+        self.assertEqual(ip.ip, static_ip)
+
     def test_sets_deploying_before_claiming_auto_ips(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(

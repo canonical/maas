@@ -4498,6 +4498,9 @@ class Node(CleanSave, TimestampedModel):
                 transactional(self.claim_auto_ips),
                 temp_expires_after=timedelta(minutes=5),
             )
+            if not allocated_ips:
+                # no IPs to test (e.g. all IPs are statically assigned)
+                return
             # skip IPs that have been tested already
             allocated_ips = set(
                 ip for ip in allocated_ips if ip.ip not in attempted_ips
