@@ -28,7 +28,7 @@ build: $(BINARIES)
 .PHONY: build
 
 $(BINARIES): $(PACKAGE_VENDOR_DIR) $(PACKAGE_DIR)/main.go
-	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(GOARCH_$(notdir $@)) go build -ldflags '-s -w' -o $@ machine-resources
+	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(GOARCH_$(notdir $@)) go build -ldflags '-s -w' -o $(CURDIR)/$@ machine-resources
 
 $(PACKAGE_VENDOR_DIR) vendor:
 	rm -rf $(PACKAGE_VENDOR_DIR)
