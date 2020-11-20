@@ -1588,6 +1588,7 @@ class TestParseParameters(MAASTestCase):
     def tearDown(self):
         super().tearDown()
         maas_run_remote_scripts._block_devices = None
+        maas_run_remote_scripts._interfaces = None
 
     def test_get_block_devices(self):
         mock_get_storage_model_from_udev = self.patch(
@@ -1777,6 +1778,27 @@ class TestParseParameters(MAASTestCase):
         # This should only be called once but sometimes unittest catches
         # sleeps from itself which cause the lander to fail.
         self.assertThat(mock_sleep, MockAnyCall(0.1))
+
+    def test_get_interfaces_fallback(self):
+        mock_listdir = self.patch(maas_run_remote_scripts.os, "listdir")
+        mock_listdir.side_effect = (
+            FileNotFoundError(),
+            ["lo", "eth0"],
+        )
+        eth0_mac = factory.make_mac_address()
+        sys_dir = self.useFixture(TempDirectory()).path
+        lo_mac_file = os.path.join(sys_dir, "lo")
+        eth0_mac_file = os.path.join(sys_dir, "eth0")
+        with open(lo_mac_file, "w") as f:
+            f.write("00:00:00:00:00:00")
+        with open(eth0_mac_file, "w") as f:
+            f.write(eth0_mac)
+        mock_join = self.patch(maas_run_remote_scripts.os.path, "join")
+        mock_join.side_effect = (
+            lo_mac_file,
+            eth0_mac_file,
+        )
+        self.assertEqual({eth0_mac: "eth0"}, get_interfaces())
 
     def test_get_interfaces_cached(self):
         interfaces = {factory.make_mac_address(): factory.make_name("dev")}

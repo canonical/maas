@@ -135,6 +135,8 @@ def get_maas_machines(md_endpoint, query="", post_data=None):
         path="/MAAS/api/2.0/machines/", query=query, params=None, fragment=None
     )
     response = geturl(url.geturl(), post_data=post_data).read()
+    if isinstance(response, bytes):
+        response = response.decode()
     return json.loads(response)
 
 
@@ -731,7 +733,11 @@ def get_interfaces(clear_cache=False):
         _interfaces = None
     if _interfaces is None:
         interfaces = {}
-        for cfg_file in os.listdir(NETPLAN_DIR):
+        try:
+            netplan_cfgs = os.listdir(NETPLAN_DIR)
+        except FileNotFoundError:
+            netplan_cfgs = []
+        for cfg_file in netplan_cfgs:
             cfg_path = os.path.join(NETPLAN_DIR, cfg_file)
             try:
                 with open(cfg_path, "r") as f:
@@ -761,22 +767,33 @@ def get_interfaces(clear_cache=False):
                     ):
                         interfaces[macaddress] = info.get("set-name", dev)
 
-        # XXX ltrager 2019-07-26 - netplan is non-blocking(LP:1838114). Try
-        # to wait until all devices have come up. If this doesn't happen after
-        # 5 seconds continue the error will be reported later.
-        for naptime in (0.1, 0.1, 0.1, 0.2, 0.2, 0.3, 0.5, 0.5, 1, 2):
-            live_devs = os.listdir("/sys/class/net")
-            missing = False
-            for dev in interfaces.values():
-                if dev not in live_devs:
-                    missing = True
+        if interfaces:
+            # XXX ltrager 2019-07-26 - netplan is non-blocking(LP:1838114). Try
+            # to wait until all devices have come up. If this doesn't happen after
+            # 5 seconds continue the error will be reported later.
+            for naptime in (0.1, 0.1, 0.1, 0.2, 0.2, 0.3, 0.5, 0.5, 1, 2):
+                live_devs = os.listdir("/sys/class/net")
+                missing = False
+                for dev in interfaces.values():
+                    if dev not in live_devs:
+                        missing = True
+                        break
+                if missing:
+                    time.sleep(naptime)
+                else:
                     break
             if missing:
-                time.sleep(naptime)
-            else:
-                break
-        if missing:
-            sys.stderr.write("Error: Not all interfaces were brought up!")
+                sys.stderr.write("Error: Not all interfaces were brought up!")
+        else:
+            # If no interfaces were found read /sys directly. This is required
+            # for enlisting Xenial as Xenial does not support Netplan.
+            for dev in os.listdir("/sys/class/net"):
+                address_path = os.path.join("/sys/class/net", dev, "address")
+                if os.path.isfile(address_path):
+                    with open(address_path, "r") as f:
+                        mac_address = f.read().strip()
+                        if mac_address and mac_address != "00:00:00:00:00:00":
+                            interfaces[mac_address] = dev
         _interfaces = interfaces
 
     if _interfaces_lock.locked():
