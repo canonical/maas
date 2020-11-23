@@ -151,7 +151,7 @@ class TestScriptForm(MAASServerTestCase):
                 "default": True,
             }
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
         self.assertFalse(script.default)
 
@@ -317,7 +317,7 @@ class TestScriptForm(MAASServerTestCase):
             data={"tags": ",".join(tags), "timeout": str(timeout)},
             instance=script,
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
 
         self.assertThat(script.tags, ContainsAll(tags))
@@ -596,7 +596,7 @@ class TestScriptForm(MAASServerTestCase):
                 "type": script_type,
             }
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
         self.assertEquals(script_type, script.script_type)
 
@@ -698,7 +698,7 @@ class TestScriptForm(MAASServerTestCase):
                 ),
             }
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_errors_on_bad_yaml(self):
         form = ScriptForm(

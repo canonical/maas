@@ -78,7 +78,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         )
         data = {"size": size}
         form = AddPartitionForm(block_device, data=data)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         partition = form.save()
         self.assertEqual(rounded_size, partition.size)
 
@@ -87,7 +87,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         part_uuid = "%s" % uuid.uuid4()
         data = {"size": MIN_BLOCK_DEVICE_SIZE, "uuid": part_uuid}
         form = AddPartitionForm(block_device, data=data)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         partition = form.save()
         self.assertEqual(part_uuid, partition.uuid)
 
@@ -95,7 +95,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice()
         data = {"size": MIN_BLOCK_DEVICE_SIZE, "bootable": True}
         form = AddPartitionForm(block_device, data=data)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         partition = form.save()
         self.assertTrue(partition.bootable, "Partition should be bootable.")
 
@@ -109,7 +109,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         )
         data = {"uuid": str(uuid.uuid4())}
         form = AddPartitionForm(block_device, data=data)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         partition = form.save()
         self.assertEqual(
             partition.size, partition_table.get_size() - first_partition.size

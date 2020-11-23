@@ -83,7 +83,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
 
         form = FakeForm(data)
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             {"field_a": fielda_value, "field_b": "", "field_c": fieldc_value},
             form.cleaned_data["multi_field"],
@@ -139,7 +139,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
 
         form = FakeFormSkip(data)
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             {field_name: field_value}, form.cleaned_data["multi_field"]
         )
@@ -191,7 +191,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
         char_value = factory.make_string(10)
         data = QueryDict("char_field=%s" % char_value)
         form = FakeFormRequiredFalse(data)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             {"char_field": char_value, "multi_field": None}, form.cleaned_data
         )

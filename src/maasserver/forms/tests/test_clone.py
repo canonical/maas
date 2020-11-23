@@ -195,6 +195,6 @@ class TestCloneForm(MAASServerTestCase):
                 "interfaces": True,
             },
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         # An exception here will cause the test to fail.
         form.save()

@@ -1001,7 +1001,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request = MagicMock()
         pod = make_pod_with_hints()
         form = ComposeMachineForm(data={}, request=request, pod=pod)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
@@ -2067,7 +2067,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         mock_commissioning = self.patch(Machine, "start_commissioning")
 
         form = ComposeMachineForm(data={}, request=request, pod=pod)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         created_machine = form.compose()
         self.assertThat(
             created_machine,

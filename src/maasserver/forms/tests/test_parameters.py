@@ -237,7 +237,7 @@ class TestParametersForm(MAASServerTestCase):
                 "runtime": {"type": "runtime"},
             }
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_validates_against_unsupported_parameter_types(self):
         unsupported_type = factory.make_name("unsupported")
@@ -258,7 +258,7 @@ class TestParametersForm(MAASServerTestCase):
         form = ParametersForm(
             data={"storage": {"type": unsupported_type, "required": False}}
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_validates_storage_interface_type_has_no_min_or_max(self):
         ptype = random.choice(["storage", "interface"])
@@ -902,7 +902,7 @@ class TestParametersForm(MAASServerTestCase):
     def test_input_url_defaults_empty_with_no_input(self):
         script = factory.make_Script(parameters={"url": {"type": "url"}})
         form = ParametersForm(data={}, script=script, node=factory.make_Node())
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertDictEqual({}, form.cleaned_data["input"][0])
 
     def test_input_url_allows_ipv4(self):
@@ -1074,7 +1074,7 @@ class TestParametersForm(MAASServerTestCase):
             data={param_type: input}, script=script, node=factory.make_Node()
         )
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             input, form.cleaned_data["input"][0][param_type]["value"]
         )
@@ -1091,7 +1091,7 @@ class TestParametersForm(MAASServerTestCase):
             data={param_type: input}, script=script, node=factory.make_Node()
         )
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             input, form.cleaned_data["input"][0][param_type]["value"]
         )
@@ -1106,7 +1106,7 @@ class TestParametersForm(MAASServerTestCase):
 
         form = ParametersForm(data={}, script=script, node=factory.make_Node())
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             default, form.cleaned_data["input"][0][param_type]["value"]
         )
@@ -1120,7 +1120,7 @@ class TestParametersForm(MAASServerTestCase):
 
         form = ParametersForm(data={}, script=script, node=factory.make_Node())
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             maas_auto_ipmi_user,
             form.cleaned_data["input"][0]["maas_auto_ipmi_user"]["value"],
@@ -1139,7 +1139,7 @@ class TestParametersForm(MAASServerTestCase):
 
         form = ParametersForm(data={}, script=script, node=factory.make_Node())
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             maas_auto_ipmi_k_g_bmc_key,
             form.cleaned_data["input"][0]["maas_auto_ipmi_k_g_bmc_key"][
@@ -1203,7 +1203,7 @@ class TestParametersForm(MAASServerTestCase):
             data={"choice": choice}, script=script, node=factory.make_Node()
         )
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             choice, form.cleaned_data["input"][0]["choice"]["value"]
         )
@@ -1223,7 +1223,7 @@ class TestParametersForm(MAASServerTestCase):
             data={"choice": choice}, script=script, node=factory.make_Node()
         )
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             choice, form.cleaned_data["input"][0]["choice"]["value"]
         )
@@ -1247,7 +1247,7 @@ class TestParametersForm(MAASServerTestCase):
 
         form = ParametersForm(data={}, script=script, node=factory.make_Node())
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             default, form.cleaned_data["input"][0]["choice"]["value"]
         )

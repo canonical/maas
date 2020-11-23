@@ -248,7 +248,7 @@ class TestVLANForm(MAASServerTestCase):
         form = VLANForm(
             instance=vlan, data={"secondary_rack": second_rack.system_id}
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         form.save()
         vlan = reload_object(vlan)
         self.assertEqual(second_rack, vlan.secondary_rack)

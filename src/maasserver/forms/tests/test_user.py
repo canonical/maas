@@ -38,7 +38,7 @@ class TestUniqueEmailForms(MAASServerTestCase):
         email = "%s@example.com" % factory.make_string()
         user = factory.make_User(email=email)
         form = ProfileForm(instance=user, data={"email": email})
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_NewUserCreationForm_fails_validation_if_email_taken(self):
         email = "%s@example.com" % factory.make_string()
@@ -70,7 +70,7 @@ class TestUniqueEmailForms(MAASServerTestCase):
             instance=user,
             data={"email": email, "username": factory.make_string()},
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
 
 class TestNewUserCreationForm(MAASServerTestCase):

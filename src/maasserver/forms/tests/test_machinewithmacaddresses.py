@@ -157,7 +157,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
             )
         )
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_mac_address_is_required(self):
         form = MachineWithMACAddressesForm(
@@ -176,14 +176,14 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         params["architecture"] = None
         params["power_type"] = "ipmi"
         form = MachineWithMACAddressesForm(data=params)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_save(self):
         macs = ["aa:bb:cc:dd:ee:ff", "9a:bb:c3:33:e5:7f"]
         form = MachineWithMACAddressesForm(
             data=self.make_params(mac_addresses=macs)
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
 
         self.assertIsNotNone(node.id)  # The node is persisted.
@@ -194,7 +194,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
 
     def test_form_without_hostname_generates_hostname(self):
         form = MachineWithMACAddressesForm(data=self.make_params(hostname=""))
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertTrue(len(node.hostname) > 0)
 
@@ -203,7 +203,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         form = MachineWithMACAddressesForm(
             data=self.make_params(hostname=ip_based_hostname)
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertNotEqual("192-168-12-10", node.hostname)
 
@@ -212,7 +212,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         form = MachineWithMACAddressesForm(
             data=self.make_params(hostname=ip_prefixed_hostname)
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertEqual("192-168-12-10-extra", node.hostname)
 
@@ -220,7 +220,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         form = MachineWithMACAddressesForm(
             data={"commission": True, **self.make_params()}
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         machine = form.save()
         self.assertEquals(NODE_STATUS.COMMISSIONING, machine.status)
         self.assertIsNotNone(machine.current_commissioning_script_set)

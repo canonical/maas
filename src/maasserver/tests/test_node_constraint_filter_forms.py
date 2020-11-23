@@ -262,7 +262,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     def test_no_constraints(self):
         nodes = [factory.make_Node() for _ in range(3)]
         form = FilterNodeForm(data={})
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertItemsEqual(nodes, Machine.objects.all())
 
     def test_subnets_filters_by_name(self):
