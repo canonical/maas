@@ -704,12 +704,13 @@ class LXDPodDriver(PodDriver):
     def decompose(self, pod_id, context):
         """Decompose a virtual machine."""
         client = yield self.get_client(pod_id, context)
-        machine = yield deferToThread(
-            client.virtual_machines.get, context["instance_name"]
-        )
-        # Stop the machine.
-        yield deferToThread(machine.stop)
-        yield deferToThread(machine.delete, wait=True)
+
+        def sync_decompose(instance_name):
+            machine = client.virtual_machines.get(instance_name)
+            machine.stop(force=True, wait=True)
+            machine.delete(wait=True)
+
+        yield deferToThread(sync_decompose, context["instance_name"])
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
 

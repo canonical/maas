@@ -1046,7 +1046,9 @@ class TestLXDPodDriver(MAASTestCase):
         client.virtual_machines.get.return_value = mock_machine
         empty_hints = yield driver.decompose(pod_id, context)
 
-        self.assertThat(mock_machine.stop, MockCalledOnceWith())
+        self.assertThat(
+            mock_machine.stop, MockCalledOnceWith(force=True, wait=True)
+        )
         self.assertThat(mock_machine.delete, MockCalledOnceWith(wait=True))
         self.assertThat(
             empty_hints,
