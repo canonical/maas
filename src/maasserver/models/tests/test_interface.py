@@ -73,9 +73,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from provisioningserver.utils.ipaddr import (
-    get_first_and_last_usable_host_in_network,
-)
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
 )
@@ -3696,11 +3693,9 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 subnet=subnet,
                 interface=interface,
             )
-            exclude = get_first_and_last_usable_host_in_network(
-                subnet.get_ipnetwork()
-            )[0]
+            exclude = factory.pick_ip_in_Subnet(subnet)
         with transaction.atomic():
-            interface.claim_auto_ips(exclude_addresses=set([str(exclude)]))
+            interface.claim_auto_ips(exclude_addresses=set([exclude]))
             auto_ip = interface.ip_addresses.get(
                 alloc_type=IPADDRESS_TYPE.AUTO
             )

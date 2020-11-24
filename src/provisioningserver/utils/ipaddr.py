@@ -48,11 +48,10 @@ state UP mode DEFAULT group default qlen 1000
                 valid_lft forever preferred_lft forever
 """
 
-import json
 import os
 import re
 
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPNetwork
 import netifaces
 
 from provisioningserver.utils.shell import call_and_check
@@ -162,26 +161,6 @@ def parse_ip_addr(output):
             if interface is not None:
                 _add_additional_interface_properties(interface, line)
     return interfaces
-
-
-def get_first_and_last_usable_host_in_network(network):
-    """Return the first and last usable host in network."""
-    if network.version == 4:
-        # IPv4 networks reserve the first address inside a CIDR for the
-        # network address, and the last address for the broadcast address.
-        return (
-            IPAddress(network.first + 1, network.version),
-            IPAddress(network.last - 1, network.version),
-        )
-    elif network.version == 6:
-        # IPv6 networks reserve the first address inside a CIDR for the
-        # network address, but do not have the notion of a broadcast address.
-        return (
-            IPAddress(network.first + 1, network.version),
-            IPAddress(network.last, network.version),
-        )
-    else:
-        raise ValueError("Unknown IP address family: %s" % network.version)
 
 
 def get_bonded_interfaces(ifname, sys_class_net="/sys/class/net"):
@@ -396,15 +375,6 @@ def get_ip_addr():
     ip_addr_output = call_and_check(["ip", "addr"])
     ifaces = parse_ip_addr(ip_addr_output)
     return annotate_with_driver_information(ifaces)
-
-
-def get_ip_addr_json():
-    """Returns this system's local IP address information, in JSON format.
-
-    :raises:ExternalProcessError: if IP address information could not be
-        gathered.
-    """
-    return json.dumps(get_ip_addr())
 
 
 def get_mac_addresses():

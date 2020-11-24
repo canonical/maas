@@ -4,7 +4,6 @@
 """Test parser for 'ip addr show'."""
 
 
-import json
 import os
 from shutil import rmtree
 from subprocess import check_output
@@ -28,7 +27,6 @@ from provisioningserver.utils.ipaddr import (
     get_bonded_interfaces,
     get_interface_type,
     get_ip_addr,
-    get_ip_addr_json,
     get_mac_addresses,
     get_machine_default_gateway_ip,
     get_settings_dict,
@@ -665,7 +663,7 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
 
 
 class TestGetIPAddr(MAASTestCase):
-    """Tests for `get_ip_addr`, `get_ip_addr_json`, `get_mac_addresses`."""
+    """Tests for `get_ip_addr`, `get_mac_addresses`."""
 
     def test_get_ip_addr_calls_methods(self):
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
@@ -687,16 +685,6 @@ class TestGetIPAddr(MAASTestCase):
             patch_annotate_with_driver_information,
             MockCalledOnceWith(sentinel.parse_result),
         )
-
-    def test_get_ip_addr_json_returns_json(self):
-        results = {
-            factory.make_name("eth"): {"mac": factory.make_mac_address()}
-        }
-        patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
-        patch_get_ip_addr.return_value = results
-        observed = get_ip_addr_json()
-        self.assertIsInstance(observed, str)
-        self.assertEquals(results, json.loads(observed))
 
     def test_get_mac_addresses_returns_all_mac_addresses(self):
         mac_addresses = []
